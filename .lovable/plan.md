@@ -1,44 +1,47 @@
-## What's happening
+# Restore Lovable Cloud & Audit Spend
 
-The AI judge in `supabase/functions/rate-draft/index.ts` uses **Gemini 2.5 Pro** with today's date injected into the system prompt. The model is told "Use today's real-world status — do not treat released content as unreleased."
+Current state (confirmed): the Lovable Cloud backend is **paused** — all database/auth calls fail until it is resumed. This plan gets it back online, verifies migrations, and trims recurring spend so it stays within the free Cloud balance without topping up.
 
-But that's the only recency safeguard. The judge gets **only the raw pick text** (e.g. "Nintendo Switch 2") — no release dates, no descriptions, no current status. So when Gemini's training cutoff predates a release (Switch 2 launched June 5, 2025; the model's world knowledge is older), it falls back to "this isn't out yet" and dings the pick. That's what happened on the Video Game Consoles draft.
+## Step 1 — Bring the backend back online
 
-## Fix: give the judge real facts, not memory
+1. Resume the backend via the Cloud resume tool (approval-gated).
+2. Poll status until it reports healthy, then smoke-test with a simple read query.
+3. If resume is blocked because the monthly Cloud balance is exhausted, there is no free workaround to force it on — options are: wait for the free monthly balance to reset, or add Cloud balance. I'll report back if this happens.
 
-Three layered improvements, ordered by impact.
+## Step 2 — Verify all migrations are applied
 
-### 1. Feed enrichment metadata into the judge prompt (biggest win)
+1. Once healthy, compare the 200+ files in `supabase/migrations/` against the applied-migration history in the database.
+2. The most recent files (which may not be applied if the backend paused first) are the prime suspects:
+   - `20260813150000–20260813153000` (Journey art/portraits/block images storage)
+   - `20260819120000_rune-delve-atomic-wallet.sql`
+   - `20260821090000_ai-usage-and-controls.sql`
+3. Apply any that are pending, in timestamp order.
 
-Every draft pick already gets enriched by `enrich-draft-picks` and stored in `item_enrichments` (matched name, source provider, and a `metadata` JSON blob that typically includes release year, description, and provider — TMDB, IGDB, iTunes, Pexels, etc.).
+## Step 3 — Audit recurring spend drivers
 
-`rate-draft` currently ignores all of it. Change:
+Confirmed scheduled jobs in the migrations (these keep the database busy and can prevent the free inactivity-pause):
 
-- After loading picks, fetch `item_enrichments` for every `pick.id` (`item_type = 'draft_pick'`).
-- For each pick, append a compact factual line to the prompt, e.g.:
-  `Round 3: "Nintendo Switch 2" — Verified: Nintendo Switch 2 (IGDB, released 2025-06-05). Hybrid console, successor to Switch.`
-- Add an explicit instruction: *"Treat the 'Verified' facts as ground truth. If a pick is verified as released, do NOT claim it is unreleased, hypothetical, or rumored — even if it conflicts with your prior knowledge."*
+| Job | Schedule | Purpose |
+|---|---|---|
+| `forge-weekly-roll` | Mon 00:00 UTC | FORGE weekly gauntlet roll |
+| `forge-notify-new` / `-mid` / `-final` | Mon / Thu / Sun | FORGE notifications |
+| `lockbox-daily-reminder` | Daily | Lockbox nudges |
+| `finalize-lockbox-day` | Daily | Lockbox scoring |
 
-### 2. Enable Gemini Google Search grounding for picks the AI is unsure about
+Plus realtime publications on ~20 tables (chat, drafts, narrative, nexus, games...) — active realtime connections and frequent client polling also keep compute billed.
 
-The Lovable AI gateway supports Gemini's `google_search` tool. Add it alongside the existing `rate_draft_results` tool call so Gemini can verify recent/uncertain entries (new movies, recent product launches, current sports rosters, etc.) before scoring.
+**Actions:**
+1. Review each job in **More → Cloud → Jobs**; recommend disabling/rescheduling any that run more often than the feature needs (candidates: daily Lockbox jobs if Lockbox is rarely played).
+2. Check for client-side polling loops / always-open realtime channels that hold the backend awake.
+3. Check database size and connection saturation via the health snapshot to confirm nothing else is driving cost.
 
-This makes the report robust to anything enrichment missed — sports stats, new albums, current events — without us having to maintain per-category metadata.
+## Step 4 — Report & guardrails
 
-### 3. Tighten the recency instruction
+- Summary: migration status (applied vs pending), which jobs to keep/trim, and realistic monthly spend expectation under the free $25 Cloud balance.
+- Save a project-memory note with the cost posture so future work defaults to low-spend patterns (batch queries, no unnecessary polling, minimal new cron).
 
-Replace the single sentence about "use today's real-world status" with a stricter block that lists the failure modes we've seen:
+## Technical details
 
-- Do not say a pick is "unreleased," "upcoming," "rumored," or "hypothetical" unless the Verified facts explicitly say so.
-- When in doubt about whether something exists or has launched, treat it as released and score it on merit.
-- The current date is {today} — anything with a known release on or before that date is released.
-
-## Files touched
-
-- `supabase/functions/rate-draft/index.ts` — fetch enrichments, build verified-facts block per pick, add Google Search grounding tool, strengthen recency instructions.
-
-No DB schema changes. No client changes. No new secrets.
-
-## Validation
-
-Re-run the report on the Video Game Consoles draft after deploy and confirm Switch 2 is judged as a real, released console. Spot-check one other recent draft to make sure scoring still looks sensible.
+- No schema changes, no code rewrites — this is operational: resume, verify, audit, recommend.
+- Cron changes happen in the Cloud Jobs UI (not raw SQL) per platform rules.
+- Nothing is deleted; disabling a job is reversible.
