@@ -4,6 +4,7 @@ import { useClub } from '@/contexts/ClubContext';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PlatformAsset, InstalledAsset } from '@/types/assets';
 import { NAV_ASSET_SLUGS } from '@/types/assets';
+import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 interface UseClubAssetsReturn {
   installedAssets: InstalledAsset[];
@@ -64,24 +65,45 @@ export function useClubAssets(): UseClubAssetsReturn {
     if (!club) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [{ data: platform, error: platErr }, { data: installed, error: instErr }] = await Promise.all([
-        (supabase as any).from('platform_assets')
-          .select('*')
-          .eq('is_active', true)
-          .order('sort_order'),
-        (supabase as any).from('club_installed_assets')
-          .select('*, asset:platform_assets(*)')
-          .eq('club_id', club.id)
-          .order('sort_order'),
-      ]);
-      if (platErr) {
-        console.error('[useClubAssets] platform_assets fetch error:', platErr.message, platErr.code);
+      const [platformResult, installedResult] = await withTimeout(
+        Promise.allSettled([
+          withTimeout(
+            (supabase as any).from('platform_assets')
+              .select('*')
+              .eq('is_active', true)
+              .order('sort_order'),
+            QUERY_TIMEOUT_MS,
+            'platform assets',
+          ),
+          withTimeout(
+            (supabase as any).from('club_installed_assets')
+              .select('*, asset:platform_assets(*)')
+              .eq('club_id', club.id)
+              .order('sort_order'),
+            QUERY_TIMEOUT_MS,
+            'club installed assets',
+          ),
+        ]),
+        HYDRATE_TIMEOUT_MS,
+        'club assets hydrate',
+      );
+
+      const platformResponse = platformResult.status === 'fulfilled' ? platformResult.value : null;
+      const installedResponse = installedResult.status === 'fulfilled' ? installedResult.value : null;
+      if (platformResult.status === 'rejected') {
+        console.error('[useClubAssets] platform_assets fetch failed:', platformResult.reason);
       }
-      if (instErr) {
-        console.error('[useClubAssets] club_installed_assets fetch error:', instErr.message, instErr.code);
+      if (installedResult.status === 'rejected') {
+        console.error('[useClubAssets] club_installed_assets fetch failed:', installedResult.reason);
       }
-      setAllAssets((platform as PlatformAsset[]) ?? []);
-      setInstalledAssets((installed as InstalledAsset[]) ?? []);
+      if (platformResponse?.error) {
+        console.error('[useClubAssets] platform_assets fetch error:', platformResponse.error.message, platformResponse.error.code);
+      }
+      if (installedResponse?.error) {
+        console.error('[useClubAssets] club_installed_assets fetch error:', installedResponse.error.message, installedResponse.error.code);
+      }
+      setAllAssets((platformResponse?.data as PlatformAsset[]) ?? []);
+      setInstalledAssets((installedResponse?.data as InstalledAsset[]) ?? []);
     } catch (err) {
       console.error('[useClubAssets] unexpected fetch error:', err);
       setAllAssets([]);

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 export type Club = {
   id: string;
@@ -64,27 +65,53 @@ export function ClubProvider({ children }: { children: ReactNode }) {
       // onboarding screen (/club/request).
 
 
-      const [{ data: m }, { data: ownerRow }, { data: adminRow }] = await Promise.all([
-        supabase
-          .from('club_members')
-          .select('club_id, role, clubs:club_id(id, name, slug, accent_color, logo_url, owner_admin_id, status, password_visible)')
-          .eq('user_id', user.id)
-          .maybeSingle(),
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'owner')
-          .maybeSingle(),
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle(),
-      ]);
-      setIsPlatformOwner(!!ownerRow);
-      setIsAppAdmin(!!adminRow);
+      const [membershipResult, ownerResult, adminResult] = await withTimeout(
+        Promise.allSettled([
+          withTimeout(
+            supabase
+              .from('club_members')
+              .select('club_id, role, clubs:club_id(id, name, slug, accent_color, logo_url, owner_admin_id, status, password_visible)')
+              .eq('user_id', user.id)
+              .maybeSingle(),
+            QUERY_TIMEOUT_MS,
+            'club membership',
+          ),
+          withTimeout(
+            supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.id)
+              .eq('role', 'owner')
+              .maybeSingle(),
+            QUERY_TIMEOUT_MS,
+            'platform owner role',
+          ),
+          withTimeout(
+            supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.id)
+              .eq('role', 'admin')
+              .maybeSingle(),
+            QUERY_TIMEOUT_MS,
+            'app admin role',
+          ),
+        ]),
+        HYDRATE_TIMEOUT_MS,
+        'club hydrate',
+      );
+
+      const membershipResponse = membershipResult.status === 'fulfilled' ? membershipResult.value : null;
+      const ownerResponse = ownerResult.status === 'fulfilled' ? ownerResult.value : null;
+      const adminResponse = adminResult.status === 'fulfilled' ? adminResult.value : null;
+
+      if (membershipResult.status === 'rejected') console.error('[ClubContext] membership load failed', membershipResult.reason);
+      if (ownerResult.status === 'rejected') console.error('[ClubContext] owner role load failed', ownerResult.reason);
+      if (adminResult.status === 'rejected') console.error('[ClubContext] admin role load failed', adminResult.reason);
+
+      const m = membershipResponse?.data;
+      setIsPlatformOwner(!!ownerResponse?.data);
+      setIsAppAdmin(!!adminResponse?.data);
       if (m?.clubs) {
         setClub(m.clubs as Club);
         setMembership({ club_id: m.club_id, role: (m.role as ClubMembership['role']) });

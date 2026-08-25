@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 interface AuthContextType {
   user: User | null;
@@ -24,19 +25,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let alive = true;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!alive) return;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    void withTimeout(supabase.auth.getSession(), QUERY_TIMEOUT_MS, 'auth session')
+      .then(({ data: { session } }) => {
+        if (!alive) return;
+        setSession(session);
+        setUser(session?.user ?? null);
+      })
+      .catch((err) => {
+        console.error('[AuthContext] session load failed', err);
+        if (!alive) return;
+        setSession(null);
+        setUser(null);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      alive = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
