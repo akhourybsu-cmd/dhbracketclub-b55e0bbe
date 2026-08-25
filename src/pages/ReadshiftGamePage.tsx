@@ -76,6 +76,31 @@ export default function ReadshiftGamePage() {
   const isLobby = game.phase === 'lobby';
   const deadline = game.phase_deadline ? new Date(game.phase_deadline) : null;
 
+  const roundFallback = (
+    <div className="glass-card p-5 text-center space-y-3">
+      {rs.loading ? (
+        <div className="h-4 w-2/3 rounded skeleton-shimmer mx-auto" />
+      ) : (
+        <>
+          <p className="text-sm font-bold">Round data did not load.</p>
+          <p className="text-[12px] text-muted-foreground/70 leading-snug">
+            {rs.error || 'This game may be waiting on the backend to create or advance the round.'}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={() => void rs.refresh()} className="flex-1 h-10 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-[12px] font-bold btn-press">
+              Retry
+            </button>
+            {canManage && (
+              <button onClick={() => run(() => api.triggerPhase(game.id, 'advance'), 'Checked phase')} disabled={busy} className="flex-1 h-10 rounded-lg bg-primary/15 text-primary hover:bg-primary/20 transition-colors text-[12px] font-bold btn-press disabled:opacity-50">
+                Check phase
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div>
       <div className="flex items-center gap-2.5 mb-4">
@@ -213,13 +238,13 @@ export default function ReadshiftGamePage() {
           rs.round ? (
             <ShiftPhase game={game} round={rs.round} assignment={rs.assignment} myAnswer={rs.myAnswer}
               participants={activeParts} progress={rs.progress} userId={user.id} clubId={club.id} onSaved={refreshAll} />
-          ) : <div className="glass-card p-6"><div className="h-4 w-2/3 rounded skeleton-shimmer" /></div>
+          ) : roundFallback
         ) : game.phase === 'read' && user && club ? (
           rs.round ? (
             <ReadPhase game={game} round={rs.round} readCards={rs.readCards} authorPool={rs.authorPool}
               myGuesses={rs.myGuesses} myAnswer={rs.myAnswer} participants={activeParts} progress={rs.progress}
               userId={user.id} clubId={club.id} onSaved={refreshAll} />
-          ) : <div className="glass-card p-6"><div className="h-4 w-2/3 rounded skeleton-shimmer" /></div>
+          ) : roundFallback
         ) : game.phase === 'reveal' && user && club ? (
           rs.round ? (
             <>
@@ -234,7 +259,7 @@ export default function ReadshiftGamePage() {
               <RevealPhase game={game} round={rs.round} result={rs.result} awards={rs.awards}
                 comments={rs.comments} participants={activeParts} userId={user.id} clubId={club.id} onChanged={refreshAll} />
             </>
-          ) : <div className="glass-card p-6"><div className="h-4 w-2/3 rounded skeleton-shimmer" /></div>
+          ) : roundFallback
         ) : game.phase === 'completed' ? (
           <FinalResults game={game} participants={activeParts} />
         ) : (

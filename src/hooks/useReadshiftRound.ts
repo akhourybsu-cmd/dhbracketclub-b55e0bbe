@@ -18,9 +18,10 @@ export interface RoundState {
   result: RsRoundResult | null;
   awards: RsRoundAward[];
   comments: RsComment[];
+  error: string | null;
 }
 
-const EMPTY: RoundState = { round: null, assignment: null, myAnswer: null, readCards: [], authorPool: [], myGuesses: [], progress: { submitted: 0, total: 0 }, result: null, awards: [], comments: [] };
+const EMPTY: RoundState = { round: null, assignment: null, myAnswer: null, readCards: [], authorPool: [], myGuesses: [], progress: { submitted: 0, total: 0 }, result: null, awards: [], comments: [], error: null };
 
 export function useReadshiftRound(game: RsGame | null) {
   const [state, setState] = useState<RoundState>(EMPTY);
@@ -35,7 +36,7 @@ export function useReadshiftRound(game: RsGame | null) {
     }
     try {
       const round = await withTimeout(api.getRound(gameId, roundNo), QUERY_TIMEOUT_MS, 'rs round');
-      if (!round) { setState(EMPTY); setLoading(false); return; }
+      if (!round) { setState({ ...EMPTY, error: 'Round data is not available yet.' }); setLoading(false); return; }
       const assignment = await withTimeout(api.getMyAssignment(round.id), QUERY_TIMEOUT_MS, 'rs assignment');
       const next: RoundState = { ...EMPTY, round, assignment };
 
@@ -56,8 +57,9 @@ export function useReadshiftRound(game: RsGame | null) {
         next.result = result; next.awards = awards; next.comments = comments;
       }
       setState(next);
-    } catch {
-      // Leave prior state; the game hook drives error UI.
+    } catch (err) {
+      console.error('[useReadshiftRound] refresh failed', err);
+      setState((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to load this round.' }));
     } finally {
       setLoading(false);
     }

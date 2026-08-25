@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
+import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 export type ClubRequest = {
   id: string;
@@ -35,16 +36,26 @@ export function useOnboardingStatus() {
       return;
     }
     setRequestLoading(true);
-    const { data } = await (supabase as any)
-      .from('club_requests')
-      .select('id, proposed_name, reason, user_note, status, review_notes, created_at, updated_at')
-      .eq('requested_by', user.id)
-      .in('status', ['pending', 'needs_info', 'rejected'])
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setRequest((data as ClubRequest) ?? null);
-    setRequestLoading(false);
+    try {
+      const { data } = await withTimeout(
+        (supabase as any)
+          .from('club_requests')
+          .select('id, proposed_name, reason, user_note, status, review_notes, created_at, updated_at')
+          .eq('requested_by', user.id)
+          .in('status', ['pending', 'needs_info', 'rejected'])
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        QUERY_TIMEOUT_MS,
+        'club request status',
+      );
+      setRequest((data as ClubRequest) ?? null);
+    } catch (err) {
+      console.error('[useOnboardingStatus] request load failed', err);
+      setRequest(null);
+    } finally {
+      setRequestLoading(false);
+    }
   }, [user]);
 
   useEffect(() => {
