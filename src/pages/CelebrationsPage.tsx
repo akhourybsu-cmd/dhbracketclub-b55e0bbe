@@ -9,7 +9,7 @@ import { useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Cake, Sparkles, PartyPopper, CalendarHeart,
+  Cake, Sparkles, PartyPopper, CalendarHeart,
   ChevronRight, Pencil as Edit, Crown, EyeOff, Lock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,19 +63,14 @@ export default function CelebrationsPage() {
   const futureOrTodayUpcoming = upcoming.filter(c => c.daysAway >= 0);
 
   return (
-    <div className="pb-8">
-      {/* Header */}
-      <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 btn-press">
-        <ArrowLeft className="w-4 h-4" /> Home
-      </Link>
-
+    <div className="member-page">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4 flex items-center gap-3"
+        className="page-header"
       >
         <div
-          className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+          className="page-header-icon"
           style={{
             background: `linear-gradient(135deg, hsl(${ACCENT} / 0.22), hsl(${ACCENT} / 0.06))`,
             border: `1px solid hsl(${ACCENT} / 0.32)`,
@@ -85,8 +80,8 @@ export default function CelebrationsPage() {
           <PartyPopper className="w-5 h-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[20px] font-extrabold tracking-tight leading-tight">Celebrations</h1>
-          <p className="text-[11px] text-muted-foreground/70 leading-snug">
+          <h1 className="page-header-title">Celebrations</h1>
+          <p className="page-header-subtitle">
             Birthdays & milestones for {club?.name ?? 'your club'}
           </p>
         </div>
@@ -98,7 +93,7 @@ export default function CelebrationsPage() {
           <button
             type="button"
             onClick={() => setBdayOpen(true)}
-            className="flex-1 h-10 rounded-xl text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+            className="flex-1 min-h-11 rounded-xl px-3 text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
             style={{
               background: `linear-gradient(135deg, hsl(${ACCENT}), hsl(${ACCENT} / 0.85))`,
               color: 'hsl(218 50% 6%)',
@@ -112,7 +107,7 @@ export default function CelebrationsPage() {
           <button
             type="button"
             onClick={() => { setEditingMilestone(null); setMilestoneOpen(true); }}
-            className="flex-1 h-10 rounded-xl text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+            className="flex-1 min-h-11 rounded-xl px-3 text-[12px] font-extrabold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
             style={{
               background: 'hsl(var(--muted) / 0.4)',
               border: '1px solid hsl(var(--border) / 0.4)',
@@ -149,7 +144,7 @@ export default function CelebrationsPage() {
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                'flex-shrink-0 px-3 h-8 rounded-full text-[11px] font-bold flex items-center gap-1 transition',
+                'flex-shrink-0 px-3.5 min-h-11 rounded-xl text-[11px] font-bold flex items-center gap-1 transition',
               )}
               style={
                 active
@@ -267,7 +262,7 @@ function TodayRow({ celebration }: { celebration: UpcomingCelebration }) {
       </div>
       <Link
         to={composerHref}
-        className="h-9 px-3 rounded-xl text-[11px] font-extrabold flex items-center gap-1 active:scale-[0.98] transition flex-shrink-0"
+        className="h-11 px-3 rounded-xl text-[11px] font-extrabold flex items-center gap-1 active:scale-[0.98] transition flex-shrink-0"
         style={{
           background: `linear-gradient(135deg, hsl(${ACCENT}), hsl(${ACCENT} / 0.85))`,
           color: 'hsl(218 50% 6%)',
@@ -467,7 +462,7 @@ function MilestonesList({
                 type="button"
                 onClick={() => onEdit(m)}
                 aria-label="Edit milestone"
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground/65 hover:text-foreground active:scale-90 transition flex-shrink-0"
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-muted-foreground/65 hover:text-foreground active:scale-90 transition flex-shrink-0"
                 style={{ background: 'hsl(var(--muted) / 0.35)' }}
               >
                 <Edit className="w-3.5 h-3.5" />

@@ -108,9 +108,9 @@ export default function PostDetailPage() {
   const isAuthor = user?.id === post.user_id;
 
   return (
-    <div className="pb-6">
+    <div className="member-page max-w-2xl mx-auto">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <button onClick={() => navigate('/feed')} className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-foreground mb-4 transition-colors">
+        <button onClick={() => navigate('/feed')} className="back-link">
           <ArrowLeft className="w-3.5 h-3.5" /> Feed
         </button>
 
@@ -134,10 +134,10 @@ export default function PostDetailPage() {
 
         {isAuthor && (
           <div className="flex gap-2 mb-6">
-            <Button variant="ghost" size="sm" onClick={togglePin} className="text-xs h-7 text-muted-foreground/70">
+            <Button variant="ghost" size="sm" onClick={togglePin} className="text-xs h-11 rounded-xl text-muted-foreground/70">
               <Pin className="w-3 h-3 mr-1" /> {post.is_pinned ? 'Unpin' : 'Pin'}
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowDeleteAlert(true)} className="text-xs h-7 text-destructive/60 hover:text-destructive">
+            <Button variant="ghost" size="sm" onClick={() => setShowDeleteAlert(true)} className="text-xs h-11 rounded-xl text-destructive/70 hover:text-destructive">
               <Trash2 className="w-3 h-3 mr-1" /> Delete
             </Button>
           </div>
@@ -171,9 +171,9 @@ export default function PostDetailPage() {
               onChange={e => setNewComment(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleComment()}
               placeholder="Add a comment..."
-              className="flex-1 h-9 text-xs bg-muted/50 border-border/25"
+              className="flex-1 h-11 text-xs bg-muted/50 border-border/35 rounded-xl"
             />
-            <Button size="sm" onClick={handleComment} disabled={!newComment.trim()} className="h-9 w-9 p-0 rounded-xl">
+            <Button size="sm" onClick={handleComment} disabled={!newComment.trim()} className="h-11 w-11 p-0 rounded-xl" aria-label="Post comment">
               <Send className="w-3.5 h-3.5" />
             </Button>
           </div>

@@ -15,11 +15,13 @@ import { ThemeProvider } from "next-themes";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useOfflineIndicator } from "@/hooks/useOfflineIndicator";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
+import { useThemeChrome } from "@/hooks/useThemeChrome";
 
 // Lazy-loaded pages for code splitting
 const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
 const AuthPage = lazyWithRetry(() => import("./pages/AuthPage"));
 const DashboardPage = lazyWithRetry(() => import("./pages/DashboardPage"));
+const ClubPage = lazyWithRetry(() => import("./pages/ClubPage"));
 const CreatePoolPage = lazyWithRetry(() => import("./pages/CreatePoolPage"));
 const JoinPoolPage = lazyWithRetry(() => import("./pages/JoinPoolPage"));
 const PoolDetailPage = lazyWithRetry(() => import("./pages/PoolDetailPage"));
@@ -128,13 +130,13 @@ const NexusSigilVaultPage = lazyWithRetry(() => import("./pages/NexusSigilVaultP
 const NexusSimulatorPage = lazyWithRetry(() => import("./pages/NexusSimulatorPage"));
 const NexusMissionWorkshopPage = lazyWithRetry(() => import("./pages/NexusMissionWorkshopPage"));
 const PortfolioWarsPage = lazyWithRetry(() => import("./pages/PortfolioWarsPage"));
-import { PwLayout } from "./components/portfolioWars/PwLayout";
-import { RuneDelveLayout } from "./components/runedelve/RuneDelveLayout";
-import { NexusLayout } from "./components/nexus/NexusLayout";
-import { PickemLayout } from "./components/pickem/PickemLayout";
-import { DraftArenaLayout } from "./components/drafts/DraftArenaLayout";
-import { ForgeLayout } from "./components/workout/ForgeLayout";
-import { ReadshiftLayout } from "./components/readshift/ReadshiftLayout";
+const PwLayout = lazyWithRetry(() => import("./components/portfolioWars/PwLayout").then(m => ({ default: m.PwLayout })));
+const RuneDelveLayout = lazyWithRetry(() => import("./components/runedelve/RuneDelveLayout").then(m => ({ default: m.RuneDelveLayout })));
+const NexusLayout = lazyWithRetry(() => import("./components/nexus/NexusLayout").then(m => ({ default: m.NexusLayout })));
+const PickemLayout = lazyWithRetry(() => import("./components/pickem/PickemLayout").then(m => ({ default: m.PickemLayout })));
+const DraftArenaLayout = lazyWithRetry(() => import("./components/drafts/DraftArenaLayout").then(m => ({ default: m.DraftArenaLayout })));
+const ForgeLayout = lazyWithRetry(() => import("./components/workout/ForgeLayout").then(m => ({ default: m.ForgeLayout })));
+const ReadshiftLayout = lazyWithRetry(() => import("./components/readshift/ReadshiftLayout").then(m => ({ default: m.ReadshiftLayout })));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -165,23 +167,17 @@ const ProtectedPage = ({
   /** When set, also requires the named asset to be installed for the active club. App admins bypass. */
   assetSlug?: string;
 }) => (
-  <ProtectedRoute>
-    <ClubGate>
-      <AppLayout>
-        <PageTransition>
-          <Suspense fallback={<PageFallback />}>
-            {assetSlug ? <AssetGuard slug={assetSlug}>{children}</AssetGuard> : children}
-          </Suspense>
-        </PageTransition>
-      </AppLayout>
-    </ClubGate>
-  </ProtectedRoute>
+  <PageTransition>
+    <Suspense fallback={<PageFallback />}>
+      {assetSlug ? <AssetGuard slug={assetSlug}>{children}</AssetGuard> : children}
+    </Suspense>
+  </PageTransition>
 );
 
 function AnimatedRoutes() {
   const location = useLocation();
 
-  return (
+  const routes = (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Suspense fallback={<PageFallback />}><LandingPage /></Suspense>} />
@@ -190,6 +186,7 @@ function AnimatedRoutes() {
 
         {/* Dashboard / Home */}
         <Route path="/dashboard" element={<ProtectedPage><DashboardPage /></ProtectedPage>} />
+        <Route path="/club" element={<ProtectedPage><ClubPage /></ProtectedPage>} />
 
         {/* Chat */}
         <Route path="/chat" element={<ProtectedPage assetSlug="chat"><ChatPage /></ProtectedPage>} />
@@ -343,12 +340,32 @@ function AnimatedRoutes() {
       </Routes>
     </AnimatePresence>
   );
+
+  // Keep the everyday app chrome mounted across route changes. Previously
+  // every route created its own AppLayout, re-running unread queries and
+  // rebuilding navigation on each tap. Public/auth and club-request routes
+  // intentionally remain outside the club shell.
+  const shellless = location.pathname === '/' ||
+    location.pathname === '/auth' ||
+    location.pathname === '/reset-password' ||
+    location.pathname === '/club/request';
+
+  if (shellless) return routes;
+
+  return (
+    <ProtectedRoute>
+      <ClubGate>
+        <AppLayout>{routes}</AppLayout>
+      </ClubGate>
+    </ProtectedRoute>
+  );
 }
 
 function AppWithUpdate() {
   useAppUpdate();
   useOfflineIndicator();
   useRoutePrefetch();
+  useThemeChrome();
   return <AnimatedRoutes />;
 }
 

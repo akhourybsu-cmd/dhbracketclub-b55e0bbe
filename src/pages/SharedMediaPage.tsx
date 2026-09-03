@@ -266,10 +266,13 @@ export default function SharedMediaPage() {
   };
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-extrabold tracking-tight">Shared</h1>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">Links and media shared across all channels</p>
+    <div className="member-page space-y-5">
+      <div className="page-header mb-0">
+        <div className="page-header-icon"><Link2 /></div>
+        <div>
+          <h1 className="page-header-title">Shared Media</h1>
+          <p className="page-header-subtitle">Links and media from every channel</p>
+        </div>
       </div>
 
       {/* Type filter tabs */}
@@ -282,7 +285,7 @@ export default function SharedMediaPage() {
               key={tab.value}
               onClick={() => setActiveType(tab.value)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all duration-150",
+                "flex min-h-11 items-center gap-1.5 px-3 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all duration-150",
                 active
                   ? "bg-primary/15 text-primary border border-primary/20"
                   : "bg-muted/15 text-muted-foreground/60 border border-border/10 hover:bg-muted/30 hover:text-foreground/70"
@@ -300,7 +303,7 @@ export default function SharedMediaPage() {
       <div className="flex items-center gap-2">
         <Filter className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
         <Select value={filterChannel} onValueChange={setFilterChannel}>
-          <SelectTrigger className="h-8 text-xs flex-1 sm:max-w-[220px] bg-muted/15 border-border/20">
+          <SelectTrigger className="h-11 text-xs flex-1 sm:max-w-[220px] bg-muted/20 border-border/35 rounded-xl">
             <SelectValue placeholder="All channels" />
           </SelectTrigger>
           <SelectContent>
@@ -326,7 +329,7 @@ export default function SharedMediaPage() {
           <p className="text-[11px] text-muted-foreground/55 mt-1 max-w-xs mx-auto break-words">{error}</p>
           <button
             onClick={() => fetchMedia()}
-            className="mt-4 inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[11.5px] font-extrabold bg-muted/30 border border-border/40 active:scale-95"
+            className="mt-4 inline-flex items-center gap-1.5 h-11 px-4 rounded-xl text-[11.5px] font-extrabold bg-muted/30 border border-border/40 active:scale-95"
           >
             <RefreshCw className="w-3 h-3" /> Try again
           </button>
@@ -352,7 +355,7 @@ export default function SharedMediaPage() {
               {filtered && (
                 <button
                   onClick={() => { setActiveType('all'); setFilterChannel('all'); }}
-                  className="mt-4 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[11px] font-bold bg-muted/30 border border-border/40 active:scale-95"
+                  className="mt-4 inline-flex items-center gap-1.5 h-11 px-4 rounded-xl text-[11px] font-bold bg-muted/30 border border-border/40 active:scale-95"
                 >
                   Reset filters
                 </button>
@@ -380,7 +383,7 @@ export default function SharedMediaPage() {
                 type="button"
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl text-[11.5px] font-extrabold bg-muted/30 border border-border/40 hover:bg-muted/50 active:scale-95 transition disabled:opacity-55"
+                className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl text-[11.5px] font-extrabold bg-muted/30 border border-border/40 hover:bg-muted/50 active:scale-95 transition disabled:opacity-55"
               >
                 {loadingMore ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 {loadingMore ? 'Loading…' : 'Load more'}
@@ -479,7 +482,7 @@ function MediaItemCard({ item, getTypeIcon, onDelete, canDelete }: { item: Media
       {canDelete && (
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(item.id); }}
-          className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-destructive/10 text-destructive/60 hover:bg-destructive/20 hover:text-destructive opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-all z-20"
+          className="absolute top-2 right-2 w-11 h-11 rounded-xl bg-destructive/10 text-destructive/70 hover:bg-destructive/20 hover:text-destructive opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all z-20 flex items-center justify-center"
           title="Remove from shared"
           aria-label="Remove from shared"
         >

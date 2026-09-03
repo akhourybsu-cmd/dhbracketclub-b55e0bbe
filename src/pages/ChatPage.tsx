@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-empty, prefer-const */
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,23 @@ import { useChatRealtime, useChatTyping } from '@/hooks/useChatRealtime';
 import { useChatActions } from '@/hooks/useChatActions';
 import { applySlashCommand } from '@/lib/chatSlashCommands';
 import { useClubPresence } from '@/hooks/useClubPresence';
+import { MobileIconButton } from '@/components/mobile/MobileIconButton';
+import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
+
+const CHAT_DRAFT_PREFIX = 'dh_chat_draft_v1';
+
+function readChatDraft(userId: string, channelId: string): string {
+  try { return localStorage.getItem(`${CHAT_DRAFT_PREFIX}:${userId}:${channelId}`) ?? ''; }
+  catch { return ''; }
+}
+
+function writeChatDraft(userId: string, channelId: string, value: string) {
+  const key = `${CHAT_DRAFT_PREFIX}:${userId}:${channelId}`;
+  try {
+    if (value.trim()) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  } catch { /* private mode / full storage */ }
+}
 
 export default function ChatPage() {
   const { user } = useAuth();
@@ -185,27 +203,40 @@ export default function ChatPage() {
 
   const fetchChannels = useCallback(async () => {
     if (!user) return;
-    const [{ data: cats }, { data: chs }] = await Promise.all([
-      supabase.from('channel_categories').select('*').order('position'),
-      supabase.from('channels').select('*').order('position'),
-    ]);
+    try {
+    const [{ data: cats }, { data: chs }] = await withTimeout(Promise.all([
+      withTimeout(supabase.from('channel_categories').select('*').order('position'), QUERY_TIMEOUT_MS, 'chat categories'),
+      withTimeout(supabase.from('channels').select('*').order('position'), QUERY_TIMEOUT_MS, 'chat channels'),
+    ]), HYDRATE_TIMEOUT_MS, 'chat channel hydrate');
     if (cats) setCategories(cats);
     if (chs) {
       // Hide admin_only channels from non-admins (RLS doesn't gate this — channels are club-scoped only).
       const visibleChs = (chs as Channel[]).filter(c => c.channel_type !== 'admin_only' || isClubAdmin);
       setChannels(visibleChs);
       const chIds = visibleChs.map((c: any) => c.id);
-      const { data: lastMsgs } = await supabase
-        .from('messages')
-        .select('channel_id, content, created_at, user_id, profiles:user_id(display_name)')
-        .is('parent_message_id', null)
-        .in('channel_id', chIds)
-        .order('created_at', { ascending: false })
-        .limit(200);
+      const { data: lastMsgs } = chIds.length > 0
+        ? await withTimeout(
+            supabase
+              .from('messages')
+              .select('channel_id, content, created_at, user_id, profiles:user_id(display_name)')
+              .is('parent_message_id', null)
+              .in('channel_id', chIds)
+              .order('created_at', { ascending: false })
+              .limit(200),
+            QUERY_TIMEOUT_MS,
+            'chat channel previews',
+          )
+        : { data: [] };
 
       let readStatesMap = new Map<string, string>();
       try {
-        const { data: rsData } = await supabase.from('channel_read_states' as any).select('channel_id, last_read_at').eq('user_id', user.id).in('channel_id', chIds);
+        const { data: rsData } = chIds.length > 0
+          ? await withTimeout(
+              supabase.from('channel_read_states' as any).select('channel_id, last_read_at').eq('user_id', user.id).in('channel_id', chIds),
+              QUERY_TIMEOUT_MS,
+              'chat read states',
+            )
+          : { data: [] };
         if (rsData) (rsData as any[]).forEach((rs: any) => readStatesMap.set(rs.channel_id, rs.last_read_at));
       } catch {}
 
@@ -245,6 +276,7 @@ export default function ChatPage() {
         if (!target) target = visibleChs.find(c => c.is_default) || (chs[0] as Channel);
         if (target) {
           setSelectedChannel(target);
+          setNewMessage(readChatDraft(user.id, target.id));
           if (isDesktop) setShowChannelList(false);
         }
       } else {
@@ -253,7 +285,11 @@ export default function ChatPage() {
         if (refreshed) setSelectedChannel(refreshed);
       }
     }
-    setLoading(false);
+    } catch (error) {
+      console.error('[ChatPage] channel hydrate failed', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user, isClubAdmin]);
 
   useEffect(() => { fetchChannels(); }, [fetchChannels]);
@@ -346,7 +382,7 @@ export default function ChatPage() {
         setTimeout(() => setJumpSignal(prev => ({ id, n: (prev?.n ?? 0) + 1 })), 120);
       }
     });
-  }, [selectedChannel?.id, user?.id]);
+  }, [fetchMessages, selectedChannel, user]);
 
   const handleLoadMore = useCallback(() => {
     if (selectedChannel) loadOlderMessages(selectedChannel.id);
@@ -543,6 +579,7 @@ export default function ChatPage() {
       setShowChannelList(false);
       return;
     }
+    if (user && selectedChannel) writeChatDraft(user.id, selectedChannel.id, newMessage);
     // Immediately update selected channel & header
     setSelectedChannel(ch);
     // Clear all channel-specific state atomically
@@ -555,7 +592,7 @@ export default function ChatPage() {
     setSearchQuery('');
     setSearchResults(null);
     cancelEdit();
-    setNewMessage('');
+    setNewMessage(user ? readChatDraft(user.id, ch.id) : '');
     try { localStorage.setItem('last_chat_channel_id', ch.id); } catch {}
     // Optimistically clear unread dot for the channel we're entering
     setChannelMeta(prev => {
@@ -571,6 +608,13 @@ export default function ChatPage() {
       setTimeout(() => composerRef.current?.focus(), 200);
     }
   };
+
+  // A message draft survives channel switches, route changes, and accidental
+  // PWA closes without requiring any server-side schema or synchronization.
+  useEffect(() => {
+    if (!user || !selectedChannel) return;
+    writeChatDraft(user.id, selectedChannel.id, newMessage);
+  }, [newMessage, selectedChannel, user]);
 
   /* ═══ DB-SIDE SEARCH ═══ */
   useEffect(() => {
@@ -677,9 +721,9 @@ export default function ChatPage() {
             paddingRight: 'max(0.625rem, env(safe-area-inset-right, 0px))',
           }}
         >
-          <button onClick={() => { setShowChannelList(true); setShowPinned(false); }} className="p-1.5 -ml-0.5 rounded-lg hover:bg-muted/50 active:bg-muted/70 transition-colors lg:hidden">
+          <MobileIconButton onClick={() => { setShowChannelList(true); setShowPinned(false); }} aria-label="Back to channels" className="-ml-1 lg:hidden">
             <ChevronLeft className="w-5 h-5 text-foreground/70" />
-          </button>
+          </MobileIconButton>
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
             style={{ background: `hsl(${typeMeta.accent} / ${isElevated ? 0.18 : 0.12})` }}
@@ -706,7 +750,7 @@ export default function ChatPage() {
                 </StatusPill>
               )}
             </div>
-            {selectedChannel?.description && <p className="text-[10px] text-muted-foreground/70 truncate leading-tight">{selectedChannel.description}</p>}
+            {selectedChannel?.description && <p className="text-[11px] text-muted-foreground/75 truncate leading-tight mt-0.5">{selectedChannel.description}</p>}
           </div>
           {/* Desktop: individual buttons */}
           <button onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); setSearchResults(null); }} className={cn("hidden sm:inline-flex p-2 rounded-full transition-colors", showSearch ? "bg-primary/15 text-primary" : "hover:bg-muted/50 text-muted-foreground/70")} title="Search messages">
@@ -729,9 +773,9 @@ export default function ChatPage() {
           {/* Mobile: overflow menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="sm:hidden p-2 rounded-full hover:bg-muted/50 text-muted-foreground/70 transition-colors" aria-label="Channel actions">
+              <MobileIconButton className="sm:hidden" aria-label="Channel actions">
                 <MoreVertical className="w-[18px] h-[18px]" />
-              </button>
+              </MobileIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem onClick={() => { setShowSearch(true); setSearchQuery(''); setSearchResults(null); }}>

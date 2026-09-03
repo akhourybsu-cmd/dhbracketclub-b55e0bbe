@@ -5,9 +5,9 @@ import { ReactNode, forwardRef } from 'react';
 // pauses before the next page enters) and the enter is a quick spring. This
 // keeps navigation feeling immediate while retaining a touch of polish.
 const MOTION: Variants = {
-  initial: { opacity: 0, y: 8, scale: 0.995 },
-  animate: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 520, damping: 36, mass: 0.6 } },
-  exit: { opacity: 0, y: -4, transition: { duration: 0.09, ease: 'easeIn' } },
+  initial: { opacity: 0, y: 5 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.06, ease: 'linear' } },
 };
 
 // prefers-reduced-motion: fade only, no movement.

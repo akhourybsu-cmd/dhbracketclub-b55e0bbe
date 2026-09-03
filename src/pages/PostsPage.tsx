@@ -77,9 +77,9 @@ export default function PostsPage() {
   };
 
   return (
-    <div className="pb-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between mb-6">
+    <div className="member-page">
+      <div>
+        <div className="page-toolbar">
           <div className="page-header mb-0">
             <div className="page-header-icon"><FileText /></div>
             <div>
@@ -87,7 +87,7 @@ export default function PostsPage() {
               <p className="page-header-subtitle">Conversations & threads</p>
             </div>
           </div>
-          <Button size="sm" onClick={() => setShowCreate(true)} className="h-8 gap-1.5 text-xs font-bold rounded-xl">
+          <Button size="sm" onClick={() => setShowCreate(true)} className="page-action gap-1.5 text-xs">
             <Plus className="w-3.5 h-3.5" /> New Post
           </Button>
         </div>
@@ -99,11 +99,11 @@ export default function PostsPage() {
               <div className="glass-card p-4 space-y-3">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-sm font-bold">New Discussion</h3>
-                  <button onClick={() => setShowCreate(false)} className="p-1 rounded hover:bg-muted/50"><X className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setShowCreate(false)} className="w-11 h-11 -m-2 rounded-xl hover:bg-muted/50 flex items-center justify-center" aria-label="Close new discussion"><X className="w-4 h-4" /></button>
                 </div>
-                <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="h-9 text-sm" />
+                <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="h-11 text-sm rounded-xl" />
                 <Textarea placeholder="What's on your mind?" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} className="text-sm min-h-[100px]" />
-                <Button onClick={handleCreate} disabled={!form.title.trim() || !form.content.trim()} className="w-full h-9 text-xs font-bold">Post</Button>
+                <Button onClick={handleCreate} disabled={!form.title.trim() || !form.content.trim()} className="w-full h-11 rounded-xl text-xs font-bold">Post Discussion</Button>
               </div>
             </motion.div>
           )}
@@ -166,12 +166,12 @@ export default function PostsPage() {
             <div className="empty-state-icon"><FileText /></div>
             <p className="empty-state-title">No discussions yet</p>
             <p className="empty-state-desc mb-4">Start a conversation with your crew.</p>
-            <Button size="sm" onClick={() => setShowCreate(true)} className="gap-1.5 font-bold rounded-xl">
+            <Button size="sm" onClick={() => setShowCreate(true)} className="h-11 gap-1.5 font-bold rounded-xl">
               <Plus className="w-3.5 h-3.5" /> New Post
             </Button>
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

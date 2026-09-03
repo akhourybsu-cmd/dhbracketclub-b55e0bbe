@@ -25,6 +25,8 @@ Auth → Club → Installed Assets → Plugin UI surfaces (Home / Settings / Pro
 | Onboarding framework | [`src/lib/onboarding/`](src/lib/onboarding/) + [`src/components/onboarding/`](src/components/onboarding/) + [`src/hooks/useOnboarding.ts`](src/hooks/useOnboarding.ts) |
 | Home screen orchestrator | [`src/pages/DashboardPage.tsx`](src/pages/DashboardPage.tsx) — slim composer of `home/` modules |
 | Home modules | [`src/components/home/`](src/components/home/) — `HomeHero`, `QuickBar`, `RightNowCard`, `AssetLauncher`, `LeagueSnapshot`, `EventsStrip`, `ClubPulse`, `Highlights`, `MembersOnline`, `DiscoverStrip`, `EmptyClubState` |
+| Shared app navigation | [`src/lib/appNavigation.ts`](src/lib/appNavigation.ts) — canonical route labels, icons, sections, active matching, mobile tabs, and game-shell detection |
+| Shared mobile shell primitives | [`src/components/mobile/`](src/components/mobile/) — accessible 44px icon buttons, screen headers, and token-driven surfaces |
 
 ## Asset/plugin system — how to add a new one
 
@@ -42,6 +44,9 @@ Existing slugs (canonical list in `NAV_ASSET_SLUGS`):
 ## Conventions
 
 - **Mobile-first.** Bottom-sheet modals via `createPortal(node, document.body)` to escape transform contexts (PageTransition, framer-motion route wrappers). The first time someone forgets this, the sheet ends up positioned relative to a transformed ancestor instead of the viewport.
+- **Do not add app-wide pull-to-refresh.** It intercepts downward scrolling at the top of long mobile pages and conflicts with native browser/PWA gestures. Use explicit page refresh/retry controls for surfaces that need them.
+- **Non-game pages use the member-page system.** Add `.member-page` to member/community page roots and reuse `.page-toolbar`, `.page-toolbar-actions`, `.page-action`, `.page-header`, and `.back-link` for consistent spacing and touch targets. Do not apply this system to bespoke game shells.
+- **Navigation has one source of truth.** Add or reorder shared shell routes in [`src/lib/appNavigation.ts`](src/lib/appNavigation.ts); the drawer, desktop sidebar, mobile tabs, page titles, active-route matching, and game-shell detection consume it.
 - **Tailwind + shadcn/ui.** Don't introduce new icon libraries; use `lucide-react`. Colors via `hsl(var(--...))` tokens — full set in [`src/index.css`](src/index.css).
 - **Light/dark mode.** Always test both; never use raw hex/rgb that fails contrast in one mode.
 - **`(supabase as any).from('...')`** is the pattern for tables whose types aren't in the generated Supabase types yet. Use real types once they're generated.
@@ -92,6 +97,7 @@ Auth + club guards live in [`src/App.tsx`](src/App.tsx):
 |---|---|
 | `dh_home_quickbar_v1:` | QuickBar pinned apps per (user, club) |
 | `dh_onboarding_v1:` | Onboarding status per (user, club) |
+| `dh_chat_draft_v1:` | Unsent Chat composer draft per (user, channel); cleared on sign-out |
 | `nexus_run_state_v1:` | In-flight Nexus battle saves per (user, mission) |
 | `nexus_endless_layout_v1` | Endless map layout choice |
 | `dh_workout_timer_v1:` | In-progress Workout Arena timer (timed hold / countdown) per exercise — timestamp-based, survives reload |

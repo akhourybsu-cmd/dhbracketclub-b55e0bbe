@@ -1,11 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-empty */
 import { ReactNode, useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { LayoutDashboard, MessageSquareText, CalendarDays, Swords, Newspaper, User, Trophy, BarChart3, MessageCircle, Bookmark, Link2, ScrollText, Lock, FileText, Sparkles, Shield, Menu, Brackets as BracketsIcon, TrendingUp, Settings, Cake, BookOpen, BookMarked, Dumbbell, Flame } from 'lucide-react';
+import { Menu, Settings, Shield, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import { BottomTabBar } from '@/components/BottomTabBar';
-import { PullToRefresh } from '@/components/PullToRefresh';
 import dhMonogram from '@/assets/dh-monogram.png';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,74 +14,9 @@ import { useClub } from '@/contexts/ClubContext';
 import { AppDrawer } from '@/components/AppDrawer';
 import { NavDrawerProvider, useNavDrawer } from '@/contexts/NavDrawerContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
-
-type SidebarItem = { path: string; label: string; icon: React.ComponentType<{ className?: string }> };
-type SidebarSection = { label: string; items: SidebarItem[] };
-
-const STATIC_SECTIONS: SidebarSection[] = [
-  {
-    label: 'Main',
-    items: [
-      { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
-      { path: '/chat', label: 'Chat', icon: MessageSquareText },
-      { path: '/compete', label: 'Compete', icon: Swords },
-      { path: '/feed', label: 'Feed', icon: Newspaper },
-      { path: '/events', label: 'Events', icon: CalendarDays },
-      { path: '/lore', label: 'Lore', icon: ScrollText },
-      { path: '/celebrations', label: 'Celebrations', icon: Cake },
-    ],
-  },
-  {
-    label: 'Games',
-    items: [
-      { path: '/drafts', label: 'Draft Arena', icon: Bookmark },
-      { path: '/rune-delve', label: 'Rune Delve', icon: Sparkles },
-      { path: '/nexus', label: 'Nexus Defense', icon: Shield },
-      { path: '/pickem', label: "NFL Pick'em", icon: Trophy },
-      { path: '/brackets', label: 'Brackets', icon: BracketsIcon },
-      { path: '/portfolio-wars', label: 'Portfolio Wars', icon: TrendingUp },
-      { path: '/lockbox', label: 'Lockbox', icon: Lock },
-      { path: '/readshift', label: 'READSHIFT', icon: BookMarked },
-      { path: '/workouts', label: 'FORGE', icon: Flame },
-      { path: '/journey', label: 'The Splendid Journey', icon: ScrollText },
-    ],
-  },
-  {
-    label: 'Community',
-    items: [
-      { path: '/narrative', label: 'Narrative RPG', icon: BookOpen },
-      { path: '/polls', label: 'Polls', icon: MessageCircle },
-      { path: '/rankings', label: 'Rankings', icon: BarChart3 },
-      { path: '/posts', label: 'Posts', icon: FileText },
-      { path: '/shared', label: 'Shared Media', icon: Link2 },
-    ],
-  },
-];
-
-// Map of routes -> friendly title shown in mobile header
-const routeTitles: Array<[RegExp, string]> = [
-  [/^\/dashboard/, 'Home'],
-  [/^\/chat/, 'Chat'],
-  [/^\/compete/, 'Compete'],
-  [/^\/events/, 'Events'],
-  [/^\/lore/, 'Lore'],
-  [/^\/feed/, 'Feed'],
-  [/^\/profile/, 'Profile'],
-  [/^\/posts/, 'Posts'],
-  [/^\/polls/, 'Polls'],
-  [/^\/rankings/, 'Rankings'],
-  [/^\/shared/, 'Shared Media'],
-  [/^\/lockbox/, 'Lockbox'],
-  [/^\/brackets/, 'Brackets'],
-  [/^\/pools/, 'Pools'],
-  [/^\/admin\/clubs/, 'Manage Clubs'],
-  [/^\/club\/settings/, 'Club Settings'],
-  [/^\/club\/request/, 'Club Access'],
-];
-function getRouteTitle(pathname: string): string {
-  for (const [re, title] of routeTitles) if (re.test(pathname)) return title;
-  return 'DH Club';
-}
+import { APP_NAV_SECTIONS, getRouteTitle, isGameShellRoute, isRouteActive, type AppNavSection } from '@/lib/appNavigation';
+import { MobileIconButton } from '@/components/mobile/MobileIconButton';
+import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -97,13 +32,6 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { club, isClubAdmin, isPlatformOwner, isAppAdmin } = useClub();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  // Bumping this remounts the current page's content, re-running its data
-  // fetch — the effect of a pull-to-refresh without per-page wiring.
-  const [refreshKey, setRefreshKey] = useState(0);
-  const handleRefresh = useCallback(async () => {
-    setRefreshKey(k => k + 1);
-    await new Promise(res => setTimeout(res, 550));
-  }, []);
   const { open: drawerOpen, setOpen: setDrawerOpen } = useNavDrawer();
   const { filterNavPaths } = useClubAssets();
   const lastFetchAtRef = useRef<number>(0);
@@ -116,21 +44,29 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
     lastFetchAtRef.current = now;
     try {
       const [{ data: channels }, { data: readStates }] = await Promise.all([
-        supabase.from('channels').select('id'),
-        (supabase as any).from('channel_read_states').select('channel_id, last_read_at').eq('user_id', user.id),
+        withTimeout(supabase.from('channels').select('id'), QUERY_TIMEOUT_MS, 'shell channels'),
+        withTimeout((supabase as any).from('channel_read_states').select('channel_id, last_read_at').eq('user_id', user.id), QUERY_TIMEOUT_MS, 'shell chat read states'),
       ]);
       if (!channels) return;
       const readMap = new Map<string, string>();
       if (readStates) (readStates as any[]).forEach((rs: any) => readMap.set(rs.channel_id, rs.last_read_at));
 
       const chIds = channels.map((c: any) => c.id);
-      const { data: lastMsgs } = await supabase
-        .from('messages')
-        .select('channel_id, created_at')
-        .is('parent_message_id', null)
-        .in('channel_id', chIds)
-        .order('created_at', { ascending: false })
-        .limit(200);
+      if (chIds.length === 0) {
+        setUnreadChatCount(0);
+        return;
+      }
+      const { data: lastMsgs } = await withTimeout(
+        supabase
+          .from('messages')
+          .select('channel_id, created_at')
+          .is('parent_message_id', null)
+          .in('channel_id', chIds)
+          .order('created_at', { ascending: false })
+          .limit(200),
+        QUERY_TIMEOUT_MS,
+        'shell latest chat messages',
+      );
 
       if (!lastMsgs) return;
       const latestPerChannel = new Map<string, string>();
@@ -155,33 +91,15 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   useEffect(() => { fetchUnreadCount(); }, [location.pathname, fetchUnreadCount]);
 
   const isChatRoute = location.pathname.startsWith('/chat');
-  const isRuneDelve = location.pathname.startsWith('/rune-delve');
-  const isNexus = location.pathname.startsWith('/nexus');
-  const isPickem = location.pathname.startsWith('/pickem');
   const isDrafts = location.pathname.startsWith('/drafts');
-  const isPortfolioWars = location.pathname.startsWith('/portfolio-wars');
-  const isReadshift = location.pathname.startsWith('/readshift');
   const isForge = location.pathname.startsWith('/workouts');
-  // The Splendid Journey owns the whole viewport on every breakpoint: reading
-  // long-form prose inside the DH frame breaks the immersion the module needs.
-  const isJourney = location.pathname.startsWith('/journey');
   // Draft Arena keeps its own gold HUD, but on desktop it now lives INSIDE the
   // shared DH Club frame (global sidebar + notifications) instead of replacing
   // the whole shell. Mobile behaviour is unchanged: full-bleed game shell.
   // FORGE behaves like Draft Arena: own HUD, keeps the desktop DH frame.
-  const isGameShell = isRuneDelve || isNexus || isPickem || isDrafts || isPortfolioWars || isReadshift || isForge || isJourney;
+  const isGameShell = isGameShellRoute(location.pathname);
   const isImmersiveShell = isGameShell && !isDrafts && !isForge;
 
-
-  const isNavActive = (path: string) => {
-    if (path === '/brackets') return location.pathname.startsWith('/brackets') || location.pathname.startsWith('/pools');
-    if (path === '/compete') return location.pathname === '/compete';
-    if (path === '/feed') return location.pathname === '/feed';
-    if (path === '/posts') return location.pathname.startsWith('/posts');
-    if (path === '/lore') return location.pathname.startsWith('/lore');
-    if (path === '/dashboard') return location.pathname === '/dashboard';
-    return location.pathname.startsWith(path);
-  };
 
   // Mobile header is hidden inside game shells (they own the viewport) and in chat
   // (chat owns its own compact header, including a hamburger button).
@@ -190,7 +108,10 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const mobileTitle = getRouteTitle(location.pathname);
 
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div
+      className="min-h-[100dvh] bg-background flex flex-col"
+      style={{ paddingTop: showMobileHeader ? 'env(safe-area-inset-top, 0px)' : undefined }}
+    >
       {/* Mobile top header with hamburger.
           Calm shell rules:
           - Hamburger and profile tap targets are both 44×44 (Apple HIG min).
@@ -201,7 +122,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             feeling cramped against the screen edge or notch safe area. */}
       {showMobileHeader && (
         <header
-          className="lg:hidden sticky top-0 z-40 flex items-center gap-2 h-12 border-b border-border/25 bg-background/80"
+          className="lg:hidden sticky top-0 z-40 flex items-center gap-2 h-12 border-b border-border/40 bg-card/[0.88] shadow-[0_1px_10px_hsl(var(--background)/0.35)]"
           style={{
             backdropFilter: 'blur(16px) saturate(160%)',
             WebkitBackdropFilter: 'blur(16px) saturate(160%)',
@@ -209,14 +130,13 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
           }}
         >
-          <button
-            type="button"
+          <MobileIconButton
             aria-label="Open navigation menu"
             onClick={() => { play('tap'); setDrawerOpen(true); }}
-            className="p-2 -ml-1 rounded-lg hover:bg-muted/40 active:bg-muted/60 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="-ml-1"
           >
             <Menu className="w-5 h-5 text-foreground/85" />
-          </button>
+          </MobileIconButton>
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {!isDashboard && (
               <h1 className="text-[15px] font-bold tracking-tight truncate">{mobileTitle}</h1>
@@ -228,11 +148,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
             aria-label="Profile"
             className="rounded-full active:opacity-80 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-1"
           >
-            {club?.logo_url ? (
-              <img src={club.logo_url} alt="" className="w-8 h-8 rounded-full object-cover border border-border/40" />
-            ) : (
-              <img src={dhMonogram} alt="" className="w-8 h-8 rounded-full object-contain" />
-            )}
+            <span className="w-9 h-9 rounded-full bg-muted/45 border border-border/35 flex items-center justify-center text-foreground/80">
+              <User className="w-[18px] h-[18px]" />
+            </span>
           </Link>
         </header>
       )}
@@ -267,25 +185,21 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
           // Long-form reading pages (Lore article detail, etc.) re-apply
           // a narrower cap at the page root via `lg:max-w-[760px]
           // lg:mx-auto` so prose stays readable.
-          <PullToRefresh onRefresh={handleRefresh}>
-            <div key={refreshKey} className="max-w-[640px] lg:max-w-[1280px] mx-auto px-4 sm:px-5 pt-5 sm:pt-6 lg:pt-6 pb-24 lg:pb-6 min-w-0">
-              {children}
-            </div>
-          </PullToRefresh>
+          <div className="max-w-[640px] lg:max-w-[1280px] mx-auto px-4 sm:px-5 pt-4 sm:pt-5 lg:pt-6 pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-6 min-w-0">
+            {children}
+          </div>
         )}
       </main>
 
       {/* Desktop Sidebar — hidden inside game shells (Rune Delve, Nexus, etc.) */}
       {!isImmersiveShell && (() => {
         // Build sections including conditional admin section, filtered by installed assets
-        const sections: SidebarSection[] = STATIC_SECTIONS.map(sec => ({
+        const sections: AppNavSection[] = APP_NAV_SECTIONS.map(sec => ({
           ...sec,
           items: sec.items.filter(item => filterNavPaths([item.path]).length > 0),
         })).filter(sec => sec.items.length > 0);
-        const accountItems: SidebarItem[] = [{ path: '/profile', label: 'Profile', icon: User }];
-        sections.push({ label: 'Account', items: accountItems });
         if (isClubAdmin || isPlatformOwner || isAppAdmin) {
-          const adminItems: SidebarItem[] = [
+          const adminItems = [
             ...(isClubAdmin ? [{ path: '/club/settings', label: 'Club Settings', icon: Settings }] : []),
             ...((isAppAdmin || isPlatformOwner) ? [{ path: '/admin', label: 'Admin Portal', icon: Shield }] : []),
           ];
@@ -325,7 +239,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                   <div className="flex flex-col gap-0.5">
                     {sec.items.map((item) => {
                       const Icon = item.icon;
-                      const active = isNavActive(item.path);
+                      const active = isRouteActive(location.pathname, item.path);
                       const showBadge = item.path === '/chat' && unreadChatCount > 0;
                       return (
                         <Link

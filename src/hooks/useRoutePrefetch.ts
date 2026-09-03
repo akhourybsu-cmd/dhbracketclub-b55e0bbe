@@ -9,6 +9,13 @@ import { useLocation } from 'react-router-dom';
  */
 
 type PrefetchFn = () => Promise<unknown>;
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+};
+type NetworkInformation = {
+  saveData?: boolean;
+  effectiveType?: string;
+};
 
 // Map current path → list of dynamic imports to warm.
 // IMPORTANT: imports must mirror the exact paths used in App.tsx so Vite
@@ -19,6 +26,14 @@ const PREFETCH_MAP: Array<{ test: (p: string) => boolean; loaders: PrefetchFn[] 
     loaders: [
       () => import('@/pages/ChatPage'),
       () => import('@/pages/CompetePage'),
+      () => import('@/pages/ClubPage'),
+    ],
+  },
+  {
+    test: (p) => p === '/club',
+    loaders: [
+      () => import('@/pages/FeedPage'),
+      () => import('@/pages/EventsPage'),
     ],
   },
   {
@@ -35,7 +50,7 @@ const PREFETCH_MAP: Array<{ test: (p: string) => boolean; loaders: PrefetchFn[] 
 ];
 
 function ric(cb: () => void) {
-  const w = window as any;
+  const w = window as IdleWindow;
   if (typeof w.requestIdleCallback === 'function') {
     w.requestIdleCallback(cb, { timeout: 2000 });
   } else {
@@ -47,7 +62,7 @@ export function useRoutePrefetch() {
   const location = useLocation();
   useEffect(() => {
     // Skip on slow connections / data saver
-    const conn = (navigator as any).connection;
+    const conn = (navigator as Navigator & { connection?: NetworkInformation }).connection;
     if (conn && (conn.saveData || /(^2g|slow-2g)/.test(conn.effectiveType || ''))) return;
 
     const entry = PREFETCH_MAP.find((e) => e.test(location.pathname));

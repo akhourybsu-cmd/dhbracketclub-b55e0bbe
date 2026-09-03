@@ -49,8 +49,8 @@ export default function PollsListPage() {
   }, [user]);
 
   return (
-    <div className="pb-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="member-page">
+      <div className="page-toolbar">
         <div className="page-header mb-0">
           <div className="page-header-icon" style={{
             background: 'linear-gradient(135deg, hsl(var(--warning) / 0.2), hsl(var(--warning) / 0.05))',
@@ -64,7 +64,7 @@ export default function PollsListPage() {
           </div>
         </div>
         <Link to="/polls/create">
-          <Button size="sm" className="gap-1.5 rounded-lg font-bold btn-press">
+          <Button size="sm" className="page-action gap-1.5 btn-press">
             <Plus className="w-4 h-4" /> Create
           </Button>
         </Link>
@@ -104,7 +104,7 @@ export default function PollsListPage() {
             return (
               <motion.div key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 + i * 0.04 }}>
                 <Link to={`/polls/${p.id}`} className="block group">
-                  <div className="glass-card p-4 hover-lift cursor-pointer">
+                  <div className="glass-card min-h-[72px] p-4 hover-lift cursor-pointer">
                     <div className="flex items-center justify-between relative z-10">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{

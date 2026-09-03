@@ -257,7 +257,7 @@ export default function RankingDetailPage() {
   const hasEnrichments = enrichments.size > 0;
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="member-page max-w-md mx-auto">
       <Link to="/rankings" className="back-link">
         <ArrowLeft /> Back to Rankings
       </Link>
@@ -274,10 +274,10 @@ export default function RankingDetailPage() {
                   className="form-input text-lg font-extrabold"
                   autoFocus
                 />
-                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="shrink-0">
+                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="h-11 shrink-0 rounded-xl">
                   {saving ? '…' : 'Save'}
                 </Button>
-                <button onClick={() => { setEditing(false); setEditTopic(ranking.topic); }} className="p-1.5 text-muted-foreground hover:text-foreground">
+                <button onClick={() => { setEditing(false); setEditTopic(ranking.topic); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground" aria-label="Cancel editing">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -300,8 +300,9 @@ export default function RankingDetailPage() {
               <button
                 onClick={handleReEnrich}
                 disabled={enriching}
-                className="p-2 rounded-lg text-muted-foreground/60 hover:text-primary transition-colors disabled:opacity-40"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-primary disabled:opacity-40"
                 title="Re-enrich items"
+                aria-label="Refresh item details"
               >
                 <RefreshCw className={cn("w-4 h-4", enriching && "animate-spin")} />
               </button>
@@ -312,7 +313,7 @@ export default function RankingDetailPage() {
             {isCreator && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-foreground transition-colors">
+                  <button className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground" aria-label="Ranking actions">
                     <MoreVertical className="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
@@ -364,7 +365,7 @@ export default function RankingDetailPage() {
           <button
             onClick={() => setShowResults(false)}
             className={cn(
-              "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
+              "flex-1 min-h-11 py-2.5 rounded-lg text-xs font-semibold transition-all",
               !showResults ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground"
             )}
           >
@@ -373,7 +374,7 @@ export default function RankingDetailPage() {
           <button
             onClick={() => setShowResults(true)}
             className={cn(
-              "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all",
+              "flex-1 min-h-11 py-2.5 rounded-lg text-xs font-semibold transition-all",
               showResults ? "bg-primary text-primary-foreground shadow-md" : "text-muted-foreground"
             )}
           >
@@ -406,18 +407,20 @@ export default function RankingDetailPage() {
                     compact={!hasEnrichments}
                     actions={
                       !mySubmission && isOpen ? (
-                        <div className="flex flex-col gap-0.5 flex-shrink-0">
+                        <div className="flex flex-shrink-0 gap-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); moveItem(idx, 'up'); }}
                             disabled={idx === 0}
-                            className="p-1 rounded text-muted-foreground/60 hover:text-foreground disabled:opacity-20 transition-colors"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-20"
+                            aria-label={`Move ${item.label} up`}
                           >
                             <ChevronUp className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); moveItem(idx, 'down'); }}
                             disabled={idx === myOrder.length - 1}
-                            className="p-1 rounded text-muted-foreground/60 hover:text-foreground disabled:opacity-20 transition-colors"
+                            className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground disabled:opacity-20"
+                            aria-label={`Move ${item.label} down`}
                           >
                             <ChevronDown className="w-3.5 h-3.5" />
                           </button>

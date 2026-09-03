@@ -128,11 +128,11 @@ export default function EventDetailPage() {
   const eventPast = isPast(new Date(event.starts_at));
 
   return (
-    <div className="pb-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <div className="member-page max-w-2xl mx-auto">
+      <div>
         {/* Nav */}
         <div className="flex items-center gap-1 justify-between mb-4">
-          <button onClick={() => navigate('/events')} className="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-foreground transition-colors">
+          <button onClick={() => navigate('/events')} className="back-link mb-0">
             <ArrowLeft className="w-3.5 h-3.5" /> Events
           </button>
           <div className="flex items-center gap-1">
@@ -140,7 +140,7 @@ export default function EventDetailPage() {
             {isCreator && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+                  <button className="w-11 h-11 rounded-xl hover:bg-muted/50 transition-colors flex items-center justify-center" aria-label="Event actions">
                     <MoreVertical className="w-4 h-4 text-muted-foreground/70" />
                   </button>
                 </DropdownMenuTrigger>
@@ -163,24 +163,24 @@ export default function EventDetailPage() {
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-5">
               <div className="glass-card p-4 space-y-3">
                 <h3 className="text-sm font-bold">Edit Event</h3>
-                <Input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="h-9 text-sm font-semibold bg-muted/50 border-border/25" />
+                <Input value={editForm.title} onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))} className="h-11 text-sm font-semibold bg-muted/50 border-border/35 rounded-xl" />
                 <Textarea value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} placeholder="Description" className="text-sm min-h-[60px] bg-muted/50 border-border/25" />
-                <Input value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} placeholder="Location" className="h-9 text-xs bg-muted/50 border-border/25" />
+                <Input value={editForm.location} onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))} placeholder="Location" className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">When</label>
-                    <Input type="datetime-local" value={editForm.starts_at} onChange={e => setEditForm(f => ({ ...f, starts_at: e.target.value }))} className="h-9 text-xs bg-muted/50 border-border/25" />
+                    <Input type="datetime-local" value={editForm.starts_at} onChange={e => setEditForm(f => ({ ...f, starts_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">Until</label>
-                    <Input type="datetime-local" value={editForm.ends_at} onChange={e => setEditForm(f => ({ ...f, ends_at: e.target.value }))} className="h-9 text-xs bg-muted/50 border-border/25" />
+                    <Input type="datetime-local" value={editForm.ends_at} onChange={e => setEditForm(f => ({ ...f, ends_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveEdit} disabled={!editForm.title.trim() || !editForm.starts_at} className="flex-1 h-9 text-xs font-bold rounded-xl gap-1.5">
+                  <Button onClick={handleSaveEdit} disabled={!editForm.title.trim() || !editForm.starts_at} className="flex-1 h-11 text-xs font-bold rounded-xl gap-1.5">
                     <Check className="w-3.5 h-3.5" /> Save
                   </Button>
-                  <Button variant="ghost" onClick={() => setEditing(false)} className="h-9 text-xs rounded-xl">
+                  <Button variant="ghost" onClick={() => setEditing(false)} className="h-11 w-11 p-0 text-xs rounded-xl" aria-label="Cancel editing">
                     <X className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -237,7 +237,7 @@ export default function EventDetailPage() {
                 size="sm"
                 onClick={() => handleRsvp(status)}
                 className={cn(
-                  "flex-1 h-10 text-xs font-bold capitalize rounded-xl transition-colors",
+                  "flex-1 h-11 text-xs font-bold capitalize rounded-xl transition-colors",
                   userRsvp === status
                     ? status === 'going' ? 'bg-success/20 text-success border border-success/30'
                       : status === 'maybe' ? 'bg-warning/20 text-warning border border-warning/30'
@@ -313,14 +313,14 @@ export default function EventDetailPage() {
               onChange={e => setNewComment(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleComment()}
               placeholder="Add a comment..."
-              className="flex-1 h-10 text-xs bg-muted/50 border-border/25"
+              className="flex-1 h-11 text-xs bg-muted/50 border-border/25"
             />
-            <Button size="sm" onClick={handleComment} disabled={!newComment.trim()} className="h-10 w-10 p-0 rounded-xl">
+            <Button size="sm" onClick={handleComment} disabled={!newComment.trim()} className="h-11 w-11 p-0 rounded-xl" aria-label="Send comment">
               <Send className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Delete Alert */}
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>

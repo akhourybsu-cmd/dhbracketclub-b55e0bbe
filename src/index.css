@@ -44,6 +44,14 @@
 
     --radius: 0.75rem;
 
+    /* Shared app-shell motion. Keep navigation feedback quick; reserve the
+     * longer duration for sheets and larger spatial changes. */
+    --motion-instant: 80ms;
+    --motion-fast: 140ms;
+    --motion-base: 220ms;
+    --motion-slow: 320ms;
+    --ease-app: cubic-bezier(0.22, 1, 0.36, 1);
+
     /* Premium warm accent for gold/achievements */
     --premium-warm: 28 80% 58%;
 
@@ -302,6 +310,12 @@
     @apply border-border;
   }
 
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   html {
     /* Prevent iOS bounce/overscroll on the viewport level */
     height: 100%;
@@ -513,7 +527,7 @@
   .light [data-radix-popper-content-wrapper] > * {
     box-shadow: var(--shadow-elevated);
   }
-  .light [role="dialog"].bg-background,
+  .light [role="dialog"][class~="bg-background"],
   .light [data-radix-popper-content-wrapper] > .bg-background,
   .light .bg-popover {
     background-color: hsl(var(--popover));
@@ -697,6 +711,89 @@
   }
   .page-header-subtitle {
     @apply text-xs sm:text-sm text-muted-foreground font-medium;
+  }
+
+  /* ═══ Member-page system ═══
+   * Scoped to non-game pages so community surfaces share one clean rhythm
+   * without leaking visual changes into the bespoke game shells. */
+  .member-page {
+    @apply w-full min-w-0;
+  }
+  .member-page .page-toolbar {
+    @apply flex flex-wrap items-center justify-between gap-3 mb-5;
+  }
+  .member-page .page-toolbar > .page-header {
+    flex: 1 1 11rem;
+  }
+  .member-page .page-toolbar-actions {
+    @apply flex items-center gap-2 flex-shrink-0 ml-auto;
+  }
+  .member-page .page-header {
+    @apply gap-3 mb-5 min-w-0;
+  }
+  .member-page .page-header > div:last-child {
+    @apply min-w-0;
+  }
+  .member-page .page-header-icon {
+    @apply rounded-2xl;
+    border: 1px solid hsl(var(--primary) / 0.16);
+    box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.05);
+  }
+  .member-page .page-header-title {
+    @apply text-[22px] sm:text-2xl tracking-[-0.025em];
+  }
+  .member-page .page-header-subtitle {
+    @apply mt-0.5 text-[12.5px] leading-snug;
+  }
+  .member-page .glass-card {
+    border-color: hsl(var(--border) / 0.52);
+    transition: transform var(--motion-fast) var(--ease-app), box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease;
+    will-change: auto;
+  }
+  .member-page .glass-card::before {
+    opacity: 0.42;
+  }
+  .member-page .section-header {
+    @apply text-[10.5px] mb-2.5;
+  }
+  .member-page .form-label {
+    @apply text-[10.5px] mb-2;
+  }
+  .member-page .form-input {
+    @apply min-h-11 text-sm;
+  }
+  .member-page .empty-state {
+    @apply px-6 py-10;
+  }
+  .member-page .empty-state-icon {
+    @apply w-14 h-14 mb-4;
+  }
+  .member-page .back-link {
+    @apply min-h-11 px-2 -ml-2 mb-3 rounded-xl;
+  }
+  .member-page .page-action {
+    @apply min-h-11 rounded-xl px-3.5 font-bold touch-manipulation;
+  }
+  .member-page .status-pill {
+    animation: none;
+  }
+  @media (hover: none) {
+    .member-page .hover-lift:hover,
+    .member-page .action-tile:hover,
+    .member-page .pool-row:hover {
+      transform: none;
+    }
+  }
+  @media (max-width: 380px) {
+    .member-page .page-header-icon {
+      @apply w-10 h-10 rounded-xl;
+    }
+    .member-page .page-header-title {
+      @apply text-xl;
+    }
+    .member-page .page-action {
+      @apply px-3;
+    }
   }
 
   /* ═══ Section header ═══ */
@@ -3695,7 +3792,7 @@
 .pw-mode .border-primary\/40 { border-color: hsl(var(--pw-bull) / 0.4); }
 .pw-mode .border-primary\/30 { border-color: hsl(var(--pw-bull) / 0.32); }
 .pw-mode .border-primary\/20 { border-color: hsl(var(--pw-bull) / 0.22); }
-.pw-mode [data-state="active"].text-foreground,
+.pw-mode [data-state="active"][class~="text-foreground"],
 .pw-mode [role="tab"][data-state="active"] {
   color: hsl(var(--pw-bull));
 }

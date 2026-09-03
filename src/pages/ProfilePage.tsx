@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import { LogOut, User, Volume2, VolumeX, BarChart3, MessageCircle, CalendarDays, MessageSquareText, Trophy, Bookmark, Zap, Sun, Moon, Bell, BellOff, Camera, Loader2, RefreshCw, Settings, ShieldCheck, KeyRound, Eye, EyeOff, Copy } from 'lucide-react';
 import { nukeAndReload } from '@/lib/forceUpdate';
 import { useTheme } from 'next-themes';
-import { motion } from 'framer-motion';
 import dhMonogram from '@/assets/dh-monogram.png';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -151,12 +150,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring' as const, stiffness: 380, damping: 30 }}
-      className="max-w-md lg:max-w-none mx-auto lg:mx-0"
-    >
+    <div className="member-page max-w-md lg:max-w-none mx-auto lg:mx-0">
       {/* Page header — full width on every breakpoint.
           Note on the wrapper className above: mobile/tablet keeps the
           original 28rem reading-column. On lg+ the cap is lifted so
@@ -260,7 +254,7 @@ export default function ProfilePage() {
             </div>
             {isClubAdmin && (
               <Link to="/club/settings">
-                <Button size="sm" variant="ghost" className="h-9 px-3 gap-1.5 text-[11px] font-bold">
+                <Button size="sm" variant="ghost" className="h-11 px-3 gap-1.5 text-[11px] font-bold rounded-xl">
                   <Settings className="w-3.5 h-3.5" /> Manage
                 </Button>
               </Link>
@@ -287,7 +281,7 @@ export default function ProfilePage() {
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">Your Club</h3>
           <p className="text-[12px] text-muted-foreground mb-3">You're not in a club yet.</p>
           <Link to="/club/request">
-            <Button size="sm" className="w-full h-10 font-bold rounded-xl btn-press text-[12px]">Request a club</Button>
+            <Button size="sm" className="w-full h-11 font-bold rounded-xl btn-press text-[12px]">Request a club</Button>
           </Link>
         </div>
       )}
@@ -459,7 +453,7 @@ export default function ProfilePage() {
               play('tap');
               await nukeAndReload();
             }}
-            className="h-8 text-[11px] font-bold rounded-lg btn-press"
+            className="h-11 text-[11px] font-bold rounded-xl btn-press"
           >
             Update
           </Button>
@@ -509,11 +503,11 @@ export default function ProfilePage() {
       {/* Sign out */}
       <button
         onClick={signOut}
-        className="w-full flex items-center justify-center gap-2 h-10 rounded-xl text-[13px] font-medium text-muted-foreground/60 hover:text-destructive transition-colors duration-200"
+        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl text-[13px] font-medium text-muted-foreground/60 hover:text-destructive transition-colors duration-200"
       >
         <LogOut className="w-3.5 h-3.5" /> Sign Out
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -561,7 +555,7 @@ function ClubPasswordRow({
         <button
           type="button"
           onClick={() => setVisible(!visible)}
-          className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 btn-press"
+          className="min-h-11 px-2 -mr-2 text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 rounded-xl btn-press"
         >
           {visible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
           {visible ? 'Hide' : 'Show'}
@@ -571,7 +565,7 @@ function ClubPasswordRow({
         <code className="flex-1 font-mono text-sm font-semibold tracking-wide truncate">
           {visible ? value : '•'.repeat(Math.min(value.length, 12))}
         </code>
-        <button onClick={copy} className="p-1 rounded-md hover:bg-muted/40 btn-press" aria-label="Copy">
+        <button onClick={copy} className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/40 btn-press" aria-label="Copy club password">
           <Copy className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
       </div>

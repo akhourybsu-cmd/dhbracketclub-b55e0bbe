@@ -78,7 +78,7 @@ export function QuickBar({ pinned, accent, onEditClick }: Props) {
           onClick={onEditClick}
           // Bumped from a bare inline button to a min-h-9 tap zone on
           // mobile (36px), keeps the tighter look on lg+ desktop.
-          className="text-[11.5px] font-semibold text-muted-foreground/80 hover:text-foreground transition-colors inline-flex items-center gap-1 flex-shrink-0 min-h-9 lg:min-h-0 px-1.5 lg:px-0 -mr-1.5 lg:mr-0 rounded-md active:bg-muted/30 lg:active:bg-transparent"
+          className="text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1 flex-shrink-0 min-h-11 lg:min-h-0 px-2 lg:px-0 -mr-2 lg:mr-0 rounded-lg active:bg-muted/40 lg:active:bg-transparent"
           aria-label="Customize quick access"
         >
           <Pencil className="w-3 h-3" strokeWidth={2.4} />
@@ -106,12 +106,12 @@ function QuickTile({ slug, name, fallbackAccent }: { slug: string; name: string;
   return (
     <Link
       to={meta?.to ?? '/'}
-      className="flex-1 min-w-0 active:scale-95 transition flex flex-col items-center gap-1.5"
+      className="flex-1 min-w-0 active:scale-[0.94] transition-transform duration-100 flex flex-col items-center gap-1.5"
       title={name}
       aria-label={name}
     >
       <div
-        className="relative w-full h-14 rounded-2xl flex items-center justify-center overflow-hidden bg-card border border-border/40"
+        className="relative w-full h-[60px] rounded-2xl flex items-center justify-center overflow-hidden bg-card border border-border/45"
         style={{ boxShadow: 'inset 0 1px 0 hsl(var(--foreground) / 0.04)' }}
       >
         <span
@@ -137,7 +137,7 @@ function QuickTile({ slug, name, fallbackAccent }: { slug: string; name: string;
           <Bookmark className="w-5 h-5 text-muted-foreground" />
         )}
       </div>
-      <p className="text-[10px] font-bold tracking-tight text-foreground/75 leading-tight text-center w-full truncate px-0.5">
+      <p className="text-[11px] font-bold tracking-tight text-foreground/80 leading-tight text-center w-full truncate px-0.5">
         {name}
       </p>
     </Link>
