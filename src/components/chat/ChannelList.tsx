@@ -84,11 +84,19 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
     >
       <div
         onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onSelect();
+          }
+        }}
+        role="button"
+        tabIndex={0}
         className={cn(
           // Discord-style row: a thin left-edge accent bar appears
           // on the active channel via a pseudo-element. Inactive rows
           // get the standard hover-tint; unread rows lift slightly.
-          "relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors duration-150 cursor-pointer group active:bg-muted/50 active:scale-[0.995]",
+            "relative w-full min-h-[62px] flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors duration-150 cursor-pointer group active:bg-muted/50 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           // Active state — stronger bg + dedicated treatment
           isCurrent
             ? "bg-primary/12 hover:bg-primary/15"
@@ -322,11 +330,11 @@ export function ChannelList({
           {isAdmin && (
             <div className="flex items-center gap-1">
               {onCreateCategory && (
-                <Button size="sm" variant="ghost" onClick={() => setShowNewCategory(true)} className="h-9 w-9 p-0 rounded-full hover:bg-muted/30" title="New Category" aria-label="New Category">
+                <Button size="sm" variant="ghost" onClick={() => setShowNewCategory(true)} className="h-11 w-11 lg:h-9 lg:w-9 p-0 rounded-xl hover:bg-muted/30" title="New Category" aria-label="New Category">
                   <FolderPlus className="w-4 h-4" />
                 </Button>
               )}
-              <Button size="sm" variant="ghost" onClick={() => setShowNewChannel(true)} className="h-9 w-9 p-0 rounded-full hover:bg-muted/30" title="New Channel" aria-label="New Channel">
+              <Button size="sm" variant="ghost" onClick={() => setShowNewChannel(true)} className="h-11 w-11 lg:h-9 lg:w-9 p-0 rounded-xl hover:bg-muted/30" title="New Channel" aria-label="New Channel">
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -341,8 +349,8 @@ export function ChannelList({
                 <h3 className="text-xs font-bold">New Category</h3>
                 <Input placeholder="Category name" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="h-9 text-sm" />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleCreateCat} disabled={!newCategoryName.trim()} className="flex-1 h-8 text-xs font-bold">Create</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowNewCategory(false)} className="h-8 text-xs">Cancel</Button>
+                  <Button size="sm" onClick={handleCreateCat} disabled={!newCategoryName.trim()} className="flex-1 h-11 text-xs font-bold">Create</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowNewCategory(false)} className="h-11 text-xs">Cancel</Button>
                 </div>
               </div>
             </motion.div>
@@ -359,8 +367,8 @@ export function ChannelList({
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleCreate} disabled={!newChannelName.trim()} className="flex-1 h-8 text-xs font-bold">Create</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowNewChannel(false)} className="h-8 text-xs">Cancel</Button>
+                  <Button size="sm" onClick={handleCreate} disabled={!newChannelName.trim()} className="flex-1 h-11 text-xs font-bold">Create</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowNewChannel(false)} className="h-11 text-xs">Cancel</Button>
                 </div>
               </div>
             </motion.div>
@@ -389,7 +397,7 @@ export function ChannelList({
                   // Explicit min-h on mobile so the chevron + label
                   // has a real 36px tap zone. Desktop is unchanged
                   // (the row collapses to its natural text height).
-                  className="w-full flex items-center gap-1.5 px-2 mb-1.5 group/cat rounded-md hover:bg-muted/15 transition-colors active:scale-[0.99] min-h-[36px] lg:min-h-0"
+                  className="w-full flex items-center gap-1.5 px-2 mb-1.5 group/cat rounded-lg hover:bg-muted/15 transition-colors active:scale-[0.99] min-h-11 lg:min-h-0"
                   aria-expanded={!isCollapsed}
                 >
                   <ChevronDown

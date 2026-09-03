@@ -1,17 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LayoutDashboard, MessageSquareText, Swords, Newspaper, User } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
-
-interface Tab {
-  path: string;
-  label: string;
-  icon: LucideIcon;
-  isActive: (p: string) => boolean;
-  badge?: number;
-}
+import { isMobilePrimaryActive, MOBILE_PRIMARY_NAV } from '@/lib/appNavigation';
 
 /**
  * Persistent mobile bottom tab bar — one-tap access to the core sections with
@@ -24,14 +15,6 @@ export function BottomTabBar({ unreadChatCount = 0 }: { unreadChatCount?: number
   const navigate = useNavigate();
   const { play } = useSoundEffect();
 
-  const tabs: Tab[] = [
-    { path: '/dashboard', label: 'Home', icon: LayoutDashboard, isActive: p => p === '/dashboard' },
-    { path: '/chat', label: 'Chat', icon: MessageSquareText, isActive: p => p.startsWith('/chat'), badge: unreadChatCount },
-    { path: '/compete', label: 'Compete', icon: Swords, isActive: p => p === '/compete' },
-    { path: '/feed', label: 'Feed', icon: Newspaper, isActive: p => p === '/feed' },
-    { path: '/profile', label: 'You', icon: User, isActive: p => p.startsWith('/profile') },
-  ];
-
   const go = (path: string, active: boolean) => {
     if (active) return;
     play('tap');
@@ -41,7 +24,7 @@ export function BottomTabBar({ unreadChatCount = 0 }: { unreadChatCount?: number
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/25 bg-background/85"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/40 bg-card/[0.90] shadow-[0_-6px_20px_hsl(var(--background)/0.28)]"
       style={{
         backdropFilter: 'blur(16px) saturate(160%)',
         WebkitBackdropFilter: 'blur(16px) saturate(160%)',
@@ -52,36 +35,37 @@ export function BottomTabBar({ unreadChatCount = 0 }: { unreadChatCount?: number
       aria-label="Primary"
     >
       <div className="flex items-stretch">
-        {tabs.map(tab => {
-          const active = tab.isActive(pathname);
+        {MOBILE_PRIMARY_NAV.map(tab => {
+          const active = isMobilePrimaryActive(pathname, tab.path);
           const Icon = tab.icon;
+          const badge = tab.path === '/chat' ? unreadChatCount : 0;
           return (
             <button
               key={tab.path}
               onClick={() => go(tab.path, active)}
               aria-label={tab.label}
               aria-current={active ? 'page' : undefined}
-              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 h-14 min-w-0 active:scale-95 transition-transform"
+              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 h-[58px] min-w-0 touch-manipulation active:scale-[0.94] transition-transform duration-100"
             >
               <div className="relative flex items-center justify-center w-12 h-7">
                 {active && (
                   <motion.div
                     layoutId="bottomTabGlow"
                     className="absolute inset-0 rounded-full bg-primary/15"
-                    transition={{ type: 'spring', stiffness: 480, damping: 34 }}
+                    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
                   />
                 )}
                 <Icon
-                  className={cn('relative w-[22px] h-[22px] transition-colors duration-150', active ? 'text-primary' : 'text-muted-foreground/55')}
+                  className={cn('relative w-[22px] h-[22px] transition-colors duration-150', active ? 'text-primary' : 'text-muted-foreground/75')}
                   strokeWidth={active ? 2.4 : 2}
                 />
-                {!!tab.badge && tab.badge > 0 && (
+                {badge > 0 && (
                   <span className="absolute -top-1 right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-destructive text-destructive-foreground text-[8.5px] font-black flex items-center justify-center ring-2 ring-background tabular-nums">
-                    {tab.badge > 9 ? '9+' : tab.badge}
+                    {badge > 9 ? '9+' : badge}
                   </span>
                 )}
               </div>
-              <span className={cn('text-[9.5px] font-bold tracking-tight transition-colors duration-150', active ? 'text-primary' : 'text-muted-foreground/50')}>
+              <span className={cn('text-[10px] font-bold tracking-tight transition-colors duration-150', active ? 'text-primary' : 'text-muted-foreground/75')}>
                 {tab.label}
               </span>
             </button>

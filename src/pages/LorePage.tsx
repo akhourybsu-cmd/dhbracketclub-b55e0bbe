@@ -46,7 +46,7 @@ export default function LorePage() {
   };
 
   return (
-    <div className="pb-6">
+    <div className="member-page">
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -77,7 +77,7 @@ export default function LorePage() {
           </div>
           <button
             onClick={() => setAddOpen(true)}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 h-10 px-3.5 rounded-xl font-extrabold text-[12px] tracking-tight text-white btn-press"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 h-11 px-3.5 rounded-xl font-extrabold text-[12px] tracking-tight text-white btn-press"
             style={{
               background: 'linear-gradient(135deg, hsl(var(--lore)), hsl(var(--lore) / 0.8))',
               boxShadow: '0 4px 14px hsl(var(--lore) / 0.3)',
@@ -168,7 +168,7 @@ export default function LorePage() {
               key={f.value}
               onClick={() => setFilter(f)}
               className={cn(
-                'flex-shrink-0 px-3 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all btn-press min-h-[36px]',
+                'flex-shrink-0 px-3.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all btn-press min-h-11',
                 active
                   ? 'text-white'
                   : 'text-muted-foreground bg-[hsl(var(--surface-elevated))] border border-border/40',
@@ -212,7 +212,7 @@ export default function LorePage() {
           </p>
           <button
             onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-2 font-extrabold rounded-xl px-4 py-2.5 text-[13px] text-white btn-press"
+            className="inline-flex min-h-11 items-center gap-2 font-extrabold rounded-xl px-4 py-2.5 text-[13px] text-white btn-press"
             style={{
               background: 'linear-gradient(135deg, hsl(var(--lore)), hsl(var(--lore) / 0.8))',
               boxShadow: '0 4px 14px hsl(var(--lore) / 0.3)',

@@ -204,7 +204,7 @@ export default function PollDetailPage() {
   const maxVotes = Math.max(...options.map(o => voteCounts.get(o.id) || 0), 0);
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="member-page max-w-md mx-auto">
       <Link to="/polls" className="back-link">
         <ArrowLeft /> Back to Polls
       </Link>
@@ -221,10 +221,10 @@ export default function PollDetailPage() {
                   className="form-input text-lg font-extrabold"
                   autoFocus
                 />
-                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="shrink-0">
+                <Button size="sm" onClick={handleSaveEdit} disabled={saving} className="h-11 shrink-0 rounded-xl">
                   {saving ? '…' : 'Save'}
                 </Button>
-                <button onClick={() => { setEditing(false); setEditQuestion(poll.question); }} className="p-1.5 text-muted-foreground hover:text-foreground">
+                <button onClick={() => { setEditing(false); setEditQuestion(poll.question); }} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground" aria-label="Cancel editing">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -243,7 +243,7 @@ export default function PollDetailPage() {
             {isCreator && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-foreground transition-colors">
+                  <button className="flex h-11 w-11 items-center justify-center rounded-xl text-muted-foreground/60 transition-colors hover:bg-muted/60 hover:text-foreground" aria-label="Poll actions">
                     <MoreVertical className="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
@@ -308,7 +308,7 @@ export default function PollDetailPage() {
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.6, ease: 'easeOut', delay: idx * 0.05 }}
+                    transition={{ duration: 0.35, ease: 'easeOut', delay: idx * 0.025 }}
                     className="absolute inset-y-0 left-0 z-0 rounded-2xl"
                     style={{
                       background: isWinner

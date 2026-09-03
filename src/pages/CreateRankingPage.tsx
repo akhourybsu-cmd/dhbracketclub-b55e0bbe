@@ -126,7 +126,7 @@ export default function CreateRankingPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="member-page max-w-md mx-auto">
       <Link to="/rankings" className="back-link">
         <ArrowLeft /> Back to Rankings
       </Link>
@@ -192,7 +192,7 @@ export default function CreateRankingPage() {
                   className="form-input flex-1"
                 />
                 {items.length > 2 && (
-                  <button type="button" onClick={() => removeItem(idx)} className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-destructive transition-colors">
+                  <button type="button" onClick={() => removeItem(idx)} className="w-11 h-11 -mr-2 rounded-xl text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center" aria-label={`Remove item ${idx + 1}`}>
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -200,7 +200,7 @@ export default function CreateRankingPage() {
             ))}
           </div>
           {items.length < 20 && (
-            <button type="button" onClick={addItem} className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-[11px] font-bold text-muted-foreground/60 hover:text-foreground transition-colors" style={{
+            <button type="button" onClick={addItem} className="mt-3 w-full min-h-11 flex items-center justify-center gap-1.5 rounded-xl text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors" style={{
               background: 'hsl(var(--surface-elevated))',
               border: '1px solid hsl(var(--border) / 0.3)',
             }}>

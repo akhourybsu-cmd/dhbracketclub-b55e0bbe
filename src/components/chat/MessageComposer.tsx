@@ -270,9 +270,11 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
       setPendingFiles(prev => prev.filter((_, i) => i !== index));
     };
 
+    const pendingImagesRef = useRef(pendingImages);
+    pendingImagesRef.current = pendingImages;
     useEffect(() => {
       return () => {
-        pendingImages.forEach(p => URL.revokeObjectURL(p.previewUrl));
+        pendingImagesRef.current.forEach(p => URL.revokeObjectURL(p.previewUrl));
       };
     }, []);
 
@@ -499,7 +501,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                 aria-expanded={showAttachMenu}
                 type="button"
                 className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90",
+                  "w-11 h-11 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-90",
                   showAttachMenu
                     ? "bg-primary/15 text-primary rotate-45"
                     : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/30"
@@ -589,10 +591,10 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
               rows={1}
               className={cn(
                 "w-full resize-none bg-muted/30 border border-border/20 rounded-[20px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30 transition-colors duration-150 placeholder:text-muted-foreground/45",
-                compact ? "text-xs pl-3.5 pr-3.5 py-2" : "text-[15px] pl-4 pr-4 py-2"
+                compact ? "text-xs pl-3.5 pr-3.5 py-2" : "text-[15px] pl-4 pr-4 py-2.5"
               )}
               autoComplete="off"
-              style={{ minHeight: compact ? 36 : 38, maxHeight: compact ? 96 : 120, lineHeight: 1.4 }}
+              style={{ minHeight: compact ? 36 : 44, maxHeight: compact ? 96 : 120, lineHeight: 1.4 }}
             />
           </div>
 
@@ -605,7 +607,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                 aria-expanded={showEmoji}
                 type="button"
                 className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90",
+                  "w-11 h-11 lg:w-9 lg:h-9 rounded-xl flex items-center justify-center transition-all duration-150 active:scale-90",
                   showEmoji ? "bg-primary/15 text-primary" : "text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/30"
                 )}
               >

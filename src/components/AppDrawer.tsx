@@ -1,10 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, MessageSquareText, CalendarDays, Swords, Newspaper,
-  User, Trophy, BarChart3, MessageCircle, Bookmark, Link2, ScrollText,
-  Lock, FileText, Sparkles, Shield, Settings, LogOut, Brackets as BracketsIcon, TrendingUp, Cake, BookOpen, BookMarked, Flame, Compass, LayoutGrid,
-} from 'lucide-react';
+import { LayoutGrid, LogOut, Settings, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
@@ -14,8 +10,9 @@ import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { useClubAssets } from '@/hooks/useClubAssets';
 import { NAV_ASSET_SLUGS } from '@/types/assets';
 import dhMonogram from '@/assets/dh-monogram.png';
+import { APP_NAV_SECTIONS, isRouteActive, type AppNavItem } from '@/lib/appNavigation';
 
-type NavEntry = { path: string; label: string; icon: any; badge?: number };
+type NavEntry = AppNavItem & { badge?: number };
 type Section = { label: string; items: NavEntry[] };
 
 interface AppDrawerProps {
@@ -31,54 +28,21 @@ export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawer
   const { play } = useSoundEffect();
   const { filterNavPaths, installedAssets, isVisible } = useClubAssets();
 
-  // Close on route change
-  useEffect(() => { if (open) onOpenChange(false); /* eslint-disable-next-line */ }, [location.pathname]);
+  // Close only when navigation actually completes, not whenever the sheet's
+  // own open state changes.
+  const previousPathRef = useRef(location.pathname);
+  useEffect(() => {
+    if (previousPathRef.current !== location.pathname && open) onOpenChange(false);
+    previousPathRef.current = location.pathname;
+  }, [location.pathname, onOpenChange, open]);
 
-  const rawSections: Section[] = [
-    {
-      label: 'Main',
-      items: [
-        { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
-        { path: '/chat', label: 'Chat', icon: MessageSquareText, badge: unreadChatCount },
-        { path: '/compete', label: 'Compete', icon: Swords },
-        { path: '/events', label: 'Events', icon: CalendarDays },
-        { path: '/lore', label: 'Lore', icon: ScrollText },
-        { path: '/feed', label: 'Feed', icon: Newspaper },
-        { path: '/celebrations', label: 'Celebrations', icon: Cake },
-      ],
-    },
-    {
-      label: 'Games',
-      items: [
-        { path: '/drafts', label: 'Draft Arena', icon: Bookmark },
-        { path: '/rune-delve', label: 'Rune Delve', icon: Sparkles },
-        { path: '/nexus', label: 'Nexus Defense', icon: Shield },
-        { path: '/pickem', label: "NFL Pick'em", icon: Trophy },
-        { path: '/brackets', label: 'Brackets', icon: BracketsIcon },
-        { path: '/portfolio-wars', label: 'Portfolio Wars', icon: TrendingUp },
-        { path: '/lockbox', label: 'Lockbox', icon: Lock },
-        { path: '/readshift', label: 'READSHIFT', icon: BookMarked },
-        { path: '/workouts', label: 'FORGE', icon: Flame },
-      ],
-    },
-    {
-      label: 'Community',
-      items: [
-        { path: '/narrative', label: 'Narrative RPG', icon: BookOpen },
-        { path: '/journey', label: 'The Splendid Journey', icon: Compass },
-        { path: '/polls', label: 'Polls', icon: MessageCircle },
-        { path: '/rankings', label: 'Rankings', icon: BarChart3 },
-        { path: '/posts', label: 'Posts', icon: FileText },
-        { path: '/shared', label: 'Shared Media', icon: Link2 },
-      ],
-    },
-    {
-      label: 'Account',
-      items: [
-        { path: '/profile', label: 'Profile', icon: User },
-      ],
-    },
-  ];
+  const rawSections: Section[] = APP_NAV_SECTIONS.map(section => ({
+    ...section,
+    items: section.items.map(item => ({
+      ...item,
+      badge: item.path === '/chat' ? unreadChatCount : undefined,
+    })),
+  }));
 
   const sections: Section[] = rawSections.map(sec => ({
     ...sec,
@@ -107,13 +71,6 @@ export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawer
       ],
     });
   }
-
-  const isActive = (path: string) => {
-    if (path === '/dashboard') return location.pathname === '/dashboard';
-    if (path === '/brackets') return location.pathname.startsWith('/brackets') || location.pathname.startsWith('/pools');
-    if (path === '/compete') return location.pathname === '/compete';
-    return location.pathname === path || location.pathname.startsWith(path + '/');
-  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -157,7 +114,7 @@ export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawer
               <div className="flex flex-col gap-0.5">
                 {sec.items.map((item) => {
                   const Icon = item.icon;
-                  const active = isActive(item.path);
+                  const active = isRouteActive(location.pathname, item.path);
                   return (
                     <Link
                       key={item.path}

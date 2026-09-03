@@ -162,10 +162,10 @@ export default function EventsPage() {
   const eventsOnDay = (day: Date) => events.filter(e => isSameDay(new Date(e.starts_at), day));
 
   return (
-    <div className="pb-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <div className="member-page">
+      <div>
         {/* Header */}
-        <div className="flex items-center justify-between mb-5 gap-2">
+        <div className="page-toolbar">
           <div className="page-header mb-0">
             <div className="page-header-icon"><CalendarDays /></div>
             <div>
@@ -173,22 +173,26 @@ export default function EventsPage() {
               <p className="page-header-subtitle">Hang outs & plans</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="page-toolbar-actions">
             <div className="flex rounded-xl overflow-hidden border border-border/30">
               <button
                 onClick={() => setView('list')}
-                className={cn("p-1.5 transition-colors", view === 'list' ? 'bg-primary/15 text-primary' : 'text-muted-foreground/60 hover:text-muted-foreground')}
+                className={cn("w-11 h-11 flex items-center justify-center transition-colors", view === 'list' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+                aria-label="List view"
+                aria-pressed={view === 'list'}
               >
                 <List className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setView('calendar')}
-                className={cn("p-1.5 transition-colors", view === 'calendar' ? 'bg-primary/15 text-primary' : 'text-muted-foreground/60 hover:text-muted-foreground')}
+                className={cn("w-11 h-11 flex items-center justify-center transition-colors", view === 'calendar' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+                aria-label="Calendar view"
+                aria-pressed={view === 'calendar'}
               >
                 <Grid3X3 className="w-3.5 h-3.5" />
               </button>
             </div>
-            <Button size="sm" onClick={() => setShowCreate(true)} className="h-8 gap-1.5 text-xs font-bold rounded-xl">
+            <Button size="sm" onClick={() => setShowCreate(true)} className="page-action gap-1.5 text-xs">
               <Plus className="w-3.5 h-3.5" /> New
             </Button>
           </div>
@@ -201,13 +205,13 @@ export default function EventsPage() {
               <div className="glass-card p-4 space-y-3">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-sm font-bold">New Event</h3>
-                  <button onClick={() => setShowCreate(false)} className="p-2.5 -m-1 rounded-lg hover:bg-muted/50" aria-label="Close create form"><X className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setShowCreate(false)} className="w-11 h-11 -m-2 rounded-xl hover:bg-muted/50 flex items-center justify-center" aria-label="Close create form"><X className="w-4 h-4" /></button>
                 </div>
                 <Input
                   placeholder="What's the plan?"
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="h-10 text-sm font-semibold bg-muted/50 border-border/25"
+                  className="h-11 text-sm font-semibold bg-muted/50 border-border/35 rounded-xl"
                   autoFocus
                 />
                 <Textarea
@@ -222,21 +226,21 @@ export default function EventsPage() {
                       placeholder="Location"
                       value={form.location}
                       onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-                      className="h-9 text-xs bg-muted/50 border-border/25"
+                      className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">When</label>
-                    <Input type="datetime-local" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} className="h-9 text-xs bg-muted/50 border-border/25" />
+                    <Input type="datetime-local" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">Until (opt.)</label>
-                    <Input type="datetime-local" value={form.ends_at} onChange={e => setForm(f => ({ ...f, ends_at: e.target.value }))} className="h-9 text-xs bg-muted/50 border-border/25" />
+                    <Input type="datetime-local" value={form.ends_at} onChange={e => setForm(f => ({ ...f, ends_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                   </div>
                 </div>
-                <Button onClick={handleCreate} disabled={!form.title.trim() || !form.starts_at || creating} className="w-full h-10 text-xs font-bold rounded-xl">
+                <Button onClick={handleCreate} disabled={!form.title.trim() || !form.starts_at || creating} className="w-full h-11 text-xs font-bold rounded-xl">
                   {creating ? 'Creating...' : 'Create Event'}
                 </Button>
               </div>
@@ -248,11 +252,11 @@ export default function EventsPage() {
         {view === 'calendar' && !loading && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <button onClick={() => setCalMonth(m => subMonths(m, 1))} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+              <button onClick={() => setCalMonth(m => subMonths(m, 1))} className="w-11 h-11 rounded-xl hover:bg-muted/50 transition-colors flex items-center justify-center" aria-label="Previous month">
                 <ChevronLeft className="w-4 h-4 text-muted-foreground/60" />
               </button>
               <h2 className="text-sm font-bold tracking-tight">{format(calMonth, 'MMMM yyyy')}</h2>
-              <button onClick={() => setCalMonth(m => addMonths(m, 1))} className="p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+              <button onClick={() => setCalMonth(m => addMonths(m, 1))} className="w-11 h-11 rounded-xl hover:bg-muted/50 transition-colors flex items-center justify-center" aria-label="Next month">
                 <ChevronRight className="w-4 h-4 text-muted-foreground/60" />
               </button>
             </div>
@@ -447,13 +451,13 @@ export default function EventsPage() {
             </div>
             <p className="text-sm font-semibold text-foreground/70 mb-1">No events yet</p>
             <p className="text-xs text-muted-foreground/60 mb-4">Plan something with the crew</p>
-            <Button size="sm" variant="outline" onClick={() => setShowCreate(true)} className="gap-1.5 text-xs rounded-xl">
+            <Button size="sm" variant="outline" onClick={() => setShowCreate(true)} className="h-11 gap-1.5 text-xs rounded-xl">
               <Plus className="w-3.5 h-3.5" /> Create Event
             </Button>
           </div>
         )}
 
-      </motion.div>
+      </div>
     </div>
   );
 }

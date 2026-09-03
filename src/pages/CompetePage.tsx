@@ -62,10 +62,8 @@ function WorkoutArenaCompeteCard() {
               <p className="text-[11px] text-muted-foreground/70 truncate">{context}</p>
             </div>
           </div>
-          <Link to="/workouts" className="block">
-            <button className="w-full h-8 rounded-lg bg-primary/12 text-primary text-[11px] font-bold hover:bg-primary/15 transition-colors flex items-center justify-center gap-1.5">
-              {week ? 'Log a workout' : 'Open'} <ChevronRight className="w-3 h-3" />
-            </button>
+          <Link to="/workouts" className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary/12 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15">
+            {week ? 'Log a workout' : 'Open'} <ChevronRight className="w-3 h-3" />
           </Link>
         </div>
       </div>
@@ -118,17 +116,13 @@ function LockboxCompeteCard() {
             )}
           </div>
           <div className="flex gap-2">
-            <Link to="/lockbox" className="flex-1">
-              <button className="w-full h-8 rounded-lg bg-muted/50 text-[11px] font-bold text-foreground/80 hover:bg-muted/50 transition-colors flex items-center justify-center gap-1.5">
-                Open <ChevronRight className="w-3 h-3" />
-              </button>
+            <Link to="/lockbox" className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-muted/50 text-[11px] font-bold text-foreground/80 transition-colors hover:bg-muted/60">
+              Open <ChevronRight className="w-3 h-3" />
             </Link>
             {!myLock && (
-              <Link to="/lockbox">
-                <button className="h-8 px-3 rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1.5"
-                  style={{ background: 'hsl(var(--destructive) / 0.15)', color: 'hsl(var(--destructive))' }}>
-                  <Lock className="w-3 h-3" /> Create Lock
-                </button>
+              <Link to="/lockbox" className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-[11px] font-bold transition-colors"
+                style={{ background: 'hsl(var(--destructive) / 0.15)', color: 'hsl(var(--destructive))' }}>
+                <Lock className="w-3 h-3" /> Create Lock
               </Link>
             )}
           </div>
@@ -573,7 +567,7 @@ export default function CompetePage() {
   const totalDrafts = season ? getSeasonDraftTarget(season) : 12;
 
   return (
-    <div className="pb-6">
+    <div className="member-page">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="page-header">
           <div className="page-header-icon"

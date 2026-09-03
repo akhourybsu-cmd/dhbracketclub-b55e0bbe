@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Message } from '@/components/chat/types';
+import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 const PAGE_SIZE = 50;
 
@@ -14,10 +16,22 @@ export function useChatMessages(userId: string | undefined) {
   const enrichMessages = useCallback(async (rawMsgs: any[]): Promise<Message[]> => {
     if (rawMsgs.length === 0 || !userId) return [];
     const msgIds = rawMsgs.map(m => m.id);
-    const [repliesRes, rxnsRes] = await Promise.all([
-      supabase.from('messages').select('parent_message_id').in('parent_message_id', msgIds),
-      supabase.from('message_reactions').select('*').in('message_id', msgIds),
-    ]);
+    const [repliesRes, rxnsRes] = await withTimeout(
+      Promise.all([
+        withTimeout(
+          supabase.from('messages').select('parent_message_id').in('parent_message_id', msgIds),
+          QUERY_TIMEOUT_MS,
+          'chat reply counts',
+        ),
+        withTimeout(
+          supabase.from('message_reactions').select('*').in('message_id', msgIds),
+          QUERY_TIMEOUT_MS,
+          'chat reactions',
+        ),
+      ]),
+      HYDRATE_TIMEOUT_MS,
+      'chat message enrichment',
+    );
 
     const replyCounts = new Map<string, number>();
     (repliesRes.data || []).forEach((r: any) => {
@@ -39,10 +53,14 @@ export function useChatMessages(userId: string | undefined) {
     const refIds = [...new Set(rawMsgs.map(m => m.reply_to_id).filter(Boolean))] as string[];
     const refMap = new Map<string, { id: string; content: string; user_id: string; display_name?: string | null }>();
     if (refIds.length) {
-      const { data: refs } = await supabase
-        .from('messages')
-        .select('id, content, user_id, profiles:user_id(display_name)')
-        .in('id', refIds);
+      const { data: refs } = await withTimeout(
+        supabase
+          .from('messages')
+          .select('id, content, user_id, profiles:user_id(display_name)')
+          .in('id', refIds),
+        QUERY_TIMEOUT_MS,
+        'chat reply references',
+      );
       (refs || []).forEach((r: any) => refMap.set(r.id, {
         id: r.id, content: r.content, user_id: r.user_id, display_name: r.profiles?.display_name,
       }));
@@ -77,21 +95,25 @@ export function useChatMessages(userId: string | undefined) {
 
     if (before) query = query.lt('created_at', before);
 
-    const { data } = await query;
-    if (!data) return;
+    try {
+      const { data } = await withTimeout(query, QUERY_TIMEOUT_MS, 'chat messages');
+      if (!data) return;
 
-    // Discard result if user switched channels while this was in flight
-    if (activeChannelRef.current !== channelId) return;
+      // Discard result if user switched channels while this was in flight
+      if (activeChannelRef.current !== channelId) return;
 
-    const reversed = [...data].reverse();
-    const enriched = await enrichMessages(reversed);
+      const reversed = [...data].reverse();
+      const enriched = await enrichMessages(reversed);
 
-    if (before) {
-      setMessages(prev => [...enriched, ...prev]);
-    } else {
-      setMessages(enriched);
+      if (before) {
+        setMessages(prev => [...enriched, ...prev]);
+      } else {
+        setMessages(enriched);
+      }
+      setHasMore(data.length === PAGE_SIZE);
+    } catch (error) {
+      console.error('[useChatMessages] fetch failed', error);
     }
-    setHasMore(data.length === PAGE_SIZE);
   }, [userId, enrichMessages]);
 
   const loadOlderMessages = useCallback((channelId: string) => {

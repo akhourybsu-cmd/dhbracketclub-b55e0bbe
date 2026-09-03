@@ -18,7 +18,7 @@ export default function LoreDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="pb-6 lg:max-w-[760px] lg:mx-auto">
+      <div className="member-page lg:max-w-[760px] lg:mx-auto">
         <div className="h-4 w-20 skeleton-shimmer rounded mb-6" />
         <div className="glass-card p-5 h-64 skeleton-shimmer" />
       </div>
@@ -27,7 +27,7 @@ export default function LoreDetailPage() {
 
   if (!entry) {
     return (
-      <div className="pb-6 text-center py-12">
+      <div className="member-page text-center py-12">
         <p className="text-sm text-muted-foreground">Lore not found</p>
         <Link to="/lore" className="inline-block mt-4 text-primary text-sm font-bold">← Back to Lore</Link>
       </div>
@@ -50,7 +50,7 @@ export default function LoreDetailPage() {
   // Long-form article — re-narrow to 760px on lg so prose stays
   // comfortable to read instead of stretching to the desktop shell.
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pb-6 lg:max-w-[760px] lg:mx-auto">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="member-page lg:max-w-[760px] lg:mx-auto">
       <Link to="/lore" className="back-link">
         <ArrowLeft /> Lore
       </Link>

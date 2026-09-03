@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, prefer-const */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 import {
   Trophy, BarChart3, MessageCircle, Bookmark, CalendarDays, FileText, Newspaper,
   Zap, Users, Pin, ChevronRight, Plus, Lock, Unlock
@@ -98,9 +98,9 @@ export default function FeedPage() {
   const pinnedPosts = posts.filter(p => p.is_pinned);
 
   return (
-    <div className="pb-6">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between mb-6">
+    <div className="member-page">
+      <div>
+        <div className="page-toolbar">
           <div className="page-header mb-0">
             <div className="page-header-icon"><Newspaper /></div>
             <div>
@@ -109,7 +109,7 @@ export default function FeedPage() {
             </div>
           </div>
           <Link to="/posts/create">
-            <Button size="sm" className="h-8 gap-1.5 text-xs font-bold rounded-xl">
+            <Button size="sm" className="page-action gap-1.5 text-xs">
               <Plus className="w-3.5 h-3.5" /> Post
             </Button>
           </Link>
@@ -265,7 +265,7 @@ export default function FeedPage() {
               <p className="text-sm font-semibold text-foreground/70 mb-1">No activity yet</p>
               <p className="text-xs text-muted-foreground/60 mb-4">Start a discussion or create something to get the feed going</p>
               <Link to="/posts/create">
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs rounded-xl">
+                <Button size="sm" variant="outline" className="h-11 gap-1.5 text-xs rounded-xl">
                   <Plus className="w-3.5 h-3.5" /> Start a Discussion
                 </Button>
               </Link>
@@ -275,7 +275,7 @@ export default function FeedPage() {
         )}
           </div>{/* /lg right column — Activity */}
         </div>{/* /lg 2-col grid */}
-      </motion.div>
+      </div>
     </div>
   );
 }

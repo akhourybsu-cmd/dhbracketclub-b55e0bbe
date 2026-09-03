@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Bell, CheckCheck, X, Loader2 } from 'lucide-react';
 import { formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -51,9 +50,9 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="pb-6 max-w-2xl mx-auto">
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="flex items-center justify-between mb-4">
+    <div className="member-page max-w-2xl mx-auto">
+      <div>
+        <div className="page-toolbar">
           <div className="page-header mb-0">
             <div className="page-header-icon"><Bell className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} /></div>
             <div>
@@ -64,7 +63,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={() => void markAllRead()}
-              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-muted/50 hover:bg-muted text-[12px] font-bold btn-press"
+              className="page-action inline-flex items-center gap-1.5 bg-muted/50 hover:bg-muted text-[12px] btn-press"
             >
               <CheckCheck className="w-4 h-4" /> Mark all read
             </button>
@@ -72,13 +71,15 @@ export default function NotificationsPage() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex gap-1 p-1 rounded-xl bg-muted/30 mb-4 w-fit">
+        <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-muted/30 mb-4 w-full sm:w-fit" role="tablist" aria-label="Notification filters">
           {(['all', 'unread'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
+              role="tab"
+              aria-selected={tab === t}
               className={cn(
-                'px-4 h-8 rounded-lg text-[12px] font-bold capitalize transition-colors',
+                'px-5 h-11 rounded-xl text-[12px] font-bold capitalize transition-colors',
                 tab === t ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground/70 hover:text-foreground/85',
               )}
             >
@@ -114,7 +115,7 @@ export default function NotificationsPage() {
                     return (
                       <StaggerItem
                         key={n.id}
-                        className={cn('group flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-muted/20', !n.read_at && 'bg-primary/[0.05]')}
+                        className={cn('group flex min-h-[72px] items-start gap-3 px-3.5 py-3 transition-colors hover:bg-muted/20', !n.read_at && 'bg-primary/[0.05]')}
                       >
                         <button onClick={() => openItem(n)} className="flex items-start gap-3 flex-1 min-w-0 text-left">
                           <div
@@ -133,7 +134,7 @@ export default function NotificationsPage() {
                           {!n.read_at && <span className="w-2 h-2 rounded-full bg-primary" aria-label="Unread" />}
                           <button
                             onClick={() => void dismiss(n.id)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-foreground/80 hover:bg-muted/40 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="w-11 h-11 -my-2 -mr-2 rounded-xl flex items-center justify-center text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/40 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
                             aria-label="Dismiss"
                           >
                             <X className="w-3.5 h-3.5" />
@@ -152,7 +153,7 @@ export default function NotificationsPage() {
           </div>
         )}
         </LoadingSwap>
-      </motion.div>
+      </div>
     </div>
   );
 }
