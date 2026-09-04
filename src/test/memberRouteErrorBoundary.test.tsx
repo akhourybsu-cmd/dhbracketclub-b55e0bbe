@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemberRouteErrorBoundary } from '@/components/member/MemberRouteErrorBoundary';
 
-function BrokenRoute() {
+function BrokenRoute(): never {
   throw new Error('render failed');
 }
 
