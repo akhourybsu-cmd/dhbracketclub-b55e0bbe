@@ -154,7 +154,7 @@ export default function DraftDetailPage() {
   const { aiEnabled } = useClubAI();
   const { suggestion, localDuplicate, setText, runCheck, needsCheck, clearSuggestion } = usePickSuggestion(
     draft?.topic || '',
-    draft?.category || null,
+    null, // no sub-category — title-only judging
     existingPickTexts,
     draft?.ai_context || null,
     draft?.ai_context_override || null,
@@ -908,14 +908,7 @@ export default function DraftDetailPage() {
               >
                 {isSetup ? 'Setup' : isInProgress && !isDraftComplete ? 'In Progress' : 'Complete'}
               </span>
-              {draft.category && (
-                <span
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider"
-                  style={{ background: 'hsl(var(--primary) / 0.1)', color: 'hsl(var(--primary))' }}
-                >
-                  <Sparkles className="w-2.5 h-2.5" />{draft.category}
-                </span>
-              )}
+              {/* Sub-category chip removed — drafts are judged on the title alone. */}
             </div>
 
             {/* Title — full width, its own line */}
@@ -2030,7 +2023,7 @@ export default function DraftDetailPage() {
                             <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-semibold">{pickInfo?.pick_text || 'Unknown pick'}</p>
                               <p className="text-[10px] text-muted-foreground">
-                                {draft?.topic}{draft?.category ? ` · ${draft.category}` : ''} · Current score: {pickInfo?.score?.toFixed(1) || '?'}
+                                {draft?.topic} · Current score: {pickInfo?.score?.toFixed(1) || '?'}
                               </p>
                             </div>
                           </div>

@@ -365,7 +365,7 @@ export default function ChatPage() {
       // Capture lastReadAt BEFORE updating read state
       try {
         const sb = supabase as any;
-        const existing = await memberData(
+        const existing = await memberData<{ id: string; last_read_at: string } | null>(
           sb.from('channel_read_states').select('id, last_read_at').eq('channel_id', selectedChannel.id).eq('user_id', user.id).maybeSingle(),
           'Load channel read state',
         );
@@ -452,7 +452,7 @@ export default function ChatPage() {
     setMessages(prev => [...prev, optimisticMsg]);
 
     try {
-      const inserted = await memberData((supabase as any)
+      const inserted = await memberData<any>((supabase as any)
         .from('messages')
         .insert({
           channel_id: selectedChannel.id,

@@ -112,7 +112,7 @@ export function DraftAiContextCard({
               </p>
             ) : (
               <p className="text-[11px] text-muted-foreground/70 mt-0.5 italic">
-                No scope set. AI will interpret this category broadly.
+                No scope set. AI will interpret the draft title broadly.
               </p>
             )}
             {hasOverride && (
@@ -141,7 +141,7 @@ export function DraftAiContextCard({
               Adjust AI Context
             </SheetTitle>
             <SheetDescription className="text-[12px]">
-              Use this if the AI misunderstood the draft category. The override is used for future AI reports and judging.
+              Use this if the AI misunderstood the draft topic. The override is used for future AI reports and judging.
             </SheetDescription>
           </SheetHeader>
 

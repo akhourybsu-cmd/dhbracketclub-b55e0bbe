@@ -147,7 +147,7 @@ serve(async (req) => {
       : `\n\n=== JUDGING SCOPE ===\nNo explicit scope was set. Interpret the category broadly across all relevant media (film, TV, video games, comics, anime, books, mythology, etc.) unless the title clearly limits it.\n`;
 
     // Build AI prompt for re-evaluation
-    const prompt = `You are an impartial draft judge for DH Bracket Club re-evaluating a single pick from a "${draft.topic}"${draft.category ? ` (Category: ${draft.category})` : ""} draft.${ctxBlock}
+    const prompt = `You are an impartial draft judge for DH Bracket Club re-evaluating a single pick from a "${draft.topic}" draft.${ctxBlock}
 
 ${GLOBAL_STANDALONE_PICK_JUDGING_RULES}
 

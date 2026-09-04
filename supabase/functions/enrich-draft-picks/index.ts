@@ -1066,10 +1066,10 @@ serve(async (req) => {
       console.log("Draft classification:", classification);
       category = classification.category;
 
-      await supabase
-        .from("drafts")
-        .update({ category })
-        .eq("id", draft_id);
+      // NOTE: the classification is used ONLY as an internal enrichment hint
+      // (image search, metadata source selection). It is intentionally NOT
+      // persisted to drafts.category — drafts are judged on their title
+      // alone, with no sub-category narrowing.
     }
 
     // 5. AI-enrich all picks in batch
