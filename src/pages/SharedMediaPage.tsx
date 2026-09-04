@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { cn } from '@/lib/utils';
-import { Link2, Image as ImageIcon, Play, Music, Globe, ExternalLink, Loader2, Filter, Trash2, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
+import { Link2, Image as ImageIcon, Play, Music, Globe, ExternalLink, Loader2, Filter, Trash2, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { UserAvatar } from '@/components/chat/UserAvatar';
 import { ChatAttachmentImage } from '@/components/chat/ChatAttachmentImage';
@@ -15,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
 
 type MediaType = 'all' | 'link' | 'image' | 'youtube' | 'spotify';
 
@@ -85,13 +87,15 @@ export default function SharedMediaPage() {
       // channel server-side first.
       let scopedMessageIds: string[] | null = null;
       if (filterChannel !== 'all') {
-        const { data: msgs, error: mErr } = await supabase
-          .from('messages')
-          .select('id')
-          .eq('channel_id', filterChannel)
-          .order('created_at', { ascending: false })
-          .limit(500);
-        if (mErr) throw mErr;
+        const msgs = (await memberData(
+          supabase
+            .from('messages')
+            .select('id')
+            .eq('channel_id', filterChannel)
+            .order('created_at', { ascending: false })
+            .limit(500),
+          'Filter shared media',
+        )) ?? [];
         scopedMessageIds = (msgs ?? []).map((m: any) => m.id);
         if (scopedMessageIds.length === 0) {
           if (mode === 'initial') setItems([]);
@@ -121,8 +125,7 @@ export default function SharedMediaPage() {
         query = query.lt('created_at', oldestCreatedAt);
       }
 
-      const { data: previews, error: pErr } = await query;
-      if (pErr) throw pErr;
+      const previews = await memberData(query, 'Load shared media');
       const rows = previews ?? [];
       // hasMore = server returned a full page; if it returned fewer
       // than PAGE_SIZE we know there's nothing more after this batch.
@@ -136,19 +139,21 @@ export default function SharedMediaPage() {
       }
 
       const messageIds = [...new Set(rows.map((p: any) => p.message_id))];
-      const { data: messagesData, error: msgErr } = await supabase
-        .from('messages')
-        .select('id, channel_id, user_id, profiles:user_id(display_name, avatar_url)')
-        .in('id', messageIds);
-      if (msgErr) throw msgErr;
+      const messagesData = (await memberData(
+        supabase
+          .from('messages')
+          .select('id, channel_id, user_id, profiles:user_id(display_name, avatar_url)')
+          .in('id', messageIds),
+        'Load shared media senders',
+      )) ?? [];
 
       const msgMap = new Map<string, any>();
       (messagesData || []).forEach((m: any) => msgMap.set(m.id, m));
 
       const channelIds = [...new Set((messagesData || []).map((m: any) => m.channel_id).filter(Boolean))];
-      const { data: chData } = channelIds.length > 0
-        ? await supabase.from('channels').select('id, name').in('id', channelIds)
-        : { data: [] };
+      const chData = channelIds.length > 0
+        ? (await memberData(supabase.from('channels').select('id, name').in('id', channelIds), 'Load shared media channels')) ?? []
+        : [];
       const chMap = new Map((chData || []).map(c => [c.id, c.name]));
 
       const newBatch: MediaItem[] = rows.map((p: any) => {
@@ -182,7 +187,7 @@ export default function SharedMediaPage() {
     } catch (err: any) {
       console.error('SharedMedia fetch error:', err);
       if (mode === 'initial') {
-        setError(err?.message ?? 'Failed to load shared media.');
+        setError(memberErrorMessage(err));
         setItems([]);
       } else {
         toast.error(`Couldn't load more: ${err?.message ?? 'unknown error'}`);
@@ -207,9 +212,9 @@ export default function SharedMediaPage() {
 
   // Fetch channels once.
   useEffect(() => {
-    supabase.from('channels').select('id, name').order('position').then(({ data }) => {
-      if (data) setChannels(data);
-    });
+    void memberData(supabase.from('channels').select('id, name').order('position'), 'Load channels')
+      .then(data => setChannels(data ?? []))
+      .catch(() => {});
   }, []);
 
   // Realtime: new shared link previews appear without a manual refresh.
@@ -243,16 +248,20 @@ export default function SharedMediaPage() {
     // sees a clear error if they're not the sender / admin.
     const snapshot = items;
     setItems(prev => prev.filter(i => i.id !== itemId));
-    const { error } = await supabase.from('message_link_previews').delete().eq('id', itemId);
-    if (error) {
+    try {
+      await memberData(
+        supabase.from('message_link_previews').delete().eq('id', itemId).select('id'),
+        'Remove shared media',
+      );
+      toast.success('Removed from shared');
+    } catch (deleteError) {
       setItems(snapshot);
       // Postgrest surfaces a friendly message when the delete row count
       // is zero — most often that means RLS rejected the row.
-      toast.error(error.message?.includes('Results contain 0 rows')
+      const detail = deleteError instanceof Error ? deleteError.message : '';
+      toast.error(detail.includes('Results contain 0 rows')
         ? "You can only remove links you shared (or ask an admin)."
-        : `Couldn't remove: ${error.message}`);
-    } else {
-      toast.success('Removed from shared');
+        : memberErrorMessage(deleteError));
     }
   };
 
@@ -266,7 +275,7 @@ export default function SharedMediaPage() {
   };
 
   return (
-    <div className="member-page space-y-5">
+    <div className="member-page space-y-5" aria-busy={loading || loadingMore}>
       <div className="page-header mb-0">
         <div className="page-header-icon"><Link2 /></div>
         <div>
@@ -276,13 +285,16 @@ export default function SharedMediaPage() {
       </div>
 
       {/* Type filter tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="Shared media types">
         {TYPE_TABS.map(tab => {
           const Icon = tab.icon;
           const active = activeType === tab.value;
           return (
             <button
               key={tab.value}
+              type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => setActiveType(tab.value)}
               className={cn(
                 "flex min-h-11 items-center gap-1.5 px-3 rounded-xl text-[11px] font-semibold whitespace-nowrap transition-all duration-150",
@@ -321,19 +333,7 @@ export default function SharedMediaPage() {
           <Loader2 className="w-5 h-5 text-muted-foreground/40 animate-spin" />
         </div>
       ) : error ? (
-        <div className="text-center py-12">
-          <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: 'hsl(var(--destructive) / 0.12)' }}>
-            <AlertCircle className="w-6 h-6 text-destructive/70" />
-          </div>
-          <p className="text-sm font-medium">Couldn't load shared media</p>
-          <p className="text-[11px] text-muted-foreground/55 mt-1 max-w-xs mx-auto break-words">{error}</p>
-          <button
-            onClick={() => fetchMedia()}
-            className="mt-4 inline-flex items-center gap-1.5 h-11 px-4 rounded-xl text-[11.5px] font-extrabold bg-muted/30 border border-border/40 active:scale-95"
-          >
-            <RefreshCw className="w-3 h-3" /> Try again
-          </button>
-        </div>
+        <MemberLoadError message={error} onRetry={() => void fetchMedia()} />
       ) : items.length === 0 ? (
         // Distinguish filtered-empty from truly-empty so the user knows
         // whether to share a link or just relax the filter.

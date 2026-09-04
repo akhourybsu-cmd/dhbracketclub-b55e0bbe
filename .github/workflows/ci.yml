@@ -24,8 +24,11 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm test
+      - name: Member experience lint
+        run: npm run lint:member
+
+      - name: Deterministic unit tests
+        run: npm run test:unit
 
       - name: Production build
         run: npm run build

@@ -27,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 interface PollOption {
   id: string;
@@ -43,6 +45,7 @@ export default function PollDetailPage() {
   const [votes, setVotes] = useState<any[]>([]);
   const [myVote, setMyVote] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [voting, setVoting] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -54,40 +57,47 @@ export default function PollDetailPage() {
   const isCreator = poll?.created_by === user?.id;
 
   const fetchData = useCallback(async () => {
-    if (!pollId || !user) return;
+    if (!pollId || !user) {
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    try {
+      const [pollData, optData, voteData] = await Promise.all([
+        memberData(supabase.from('polls').select('*, competitions(title, status), profiles:created_by(display_name)').eq('id', pollId).single(), 'Load poll'),
+        memberData(supabase.from('poll_options').select('*').eq('poll_id', pollId).order('position'), 'Load poll options'),
+        memberData(supabase.from('poll_votes').select('*, profiles:user_id(display_name)').eq('poll_id', pollId), 'Load poll votes'),
+      ]);
 
-    const [{ data: pollData }, { data: optData }, { data: voteData }] = await Promise.all([
-      supabase.from('polls').select('*, competitions(title, status), profiles:created_by(display_name)').eq('id', pollId).single(),
-      supabase.from('poll_options').select('*').eq('poll_id', pollId).order('position'),
-      supabase.from('poll_votes').select('*, profiles:user_id(display_name)').eq('poll_id', pollId),
-    ]);
-
-    if (pollData) {
       setPoll(pollData);
       setEditQuestion(pollData.question);
-    }
-    if (optData) setOptions(optData);
-    if (voteData) {
-      setVotes(voteData);
-      const mine = voteData.find(v => v.user_id === user.id);
+      setOptions(optData ?? []);
+      const nextVotes = voteData ?? [];
+      setVotes(nextVotes);
+      const mine = nextVotes.find(v => v.user_id === user.id);
       if (mine) {
         setMyVote(mine.option_id);
         setSelectedOption(mine.option_id);
+      } else {
+        setMyVote(null);
       }
+    } catch (loadError) {
+      setError(memberErrorMessage(loadError));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [pollId, user]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   // Auto-close poll if past closes_at and still marked open in DB
   useEffect(() => {
     if (poll && poll.status === 'open' && poll.closes_at && new Date(poll.closes_at) < new Date()) {
-      supabase.from('polls').update({ status: 'closed' }).eq('id', poll.id).then(() => {
-        fetchData();
-      });
+      void memberData(supabase.from('polls').update({ status: 'closed' }).eq('id', poll.id).select('id'), 'Close expired poll')
+        .then(() => fetchData())
+        .catch(() => {});
     }
-  }, [poll?.id, poll?.status, poll?.closes_at]);
+  }, [fetchData, poll]);
 
   // Realtime: auto-refresh when anyone votes
   usePollVoteUpdates(pollId, fetchData);
@@ -96,26 +106,25 @@ export default function PollDetailPage() {
     if (!user || !pollId || !selectedOption || myVote) return;
     setVoting(true);
     try {
-      const { error } = await supabase.from('poll_votes').insert({
+      await memberData(supabase.from('poll_votes').insert({
         poll_id: pollId,
         option_id: selectedOption,
         user_id: user.id,
-      });
-      if (error) throw error;
+      }).select('id'), 'Cast poll vote');
 
-      await supabase.from('activity_feed').insert({
+      void memberData(supabase.from('activity_feed').insert({
         actor_user_id: user.id,
         event_type: 'poll_voted',
         target_type: 'poll',
         target_id: pollId,
         metadata: { question: poll?.question },
-      });
+      }).select('id'), 'Log poll vote').catch(() => {});
 
       toast.success('Vote cast! 🗳️');
       setMyVote(selectedOption);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to vote');
+      void fetchData();
+    } catch (voteError) {
+      toast.error(memberErrorMessage(voteError));
     } finally {
       setVoting(false);
     }
@@ -126,18 +135,17 @@ export default function PollDetailPage() {
     setDeleting(true);
     try {
       // Delete votes, options, then poll
-      await supabase.from('poll_votes').delete().eq('poll_id', pollId);
-      await supabase.from('poll_options').delete().eq('poll_id', pollId);
-      const { error } = await supabase.from('polls').delete().eq('id', pollId);
-      if (error) throw error;
+      await memberData(supabase.from('poll_votes').delete().eq('poll_id', pollId).select('id'), 'Delete poll votes');
+      await memberData(supabase.from('poll_options').delete().eq('poll_id', pollId).select('id'), 'Delete poll options');
+      await memberData(supabase.from('polls').delete().eq('id', pollId).select('id'), 'Delete poll');
       // Delete competition
       if (poll?.competition_id) {
-        await supabase.from('competitions').delete().eq('id', poll.competition_id);
+        await memberData(supabase.from('competitions').delete().eq('id', poll.competition_id).select('id'), 'Delete poll competition');
       }
       toast.success('Poll deleted');
       navigate('/polls');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to delete');
+    } catch (deleteError) {
+      toast.error(memberErrorMessage(deleteError));
     } finally {
       setDeleting(false);
       setShowDeleteDialog(false);
@@ -148,17 +156,16 @@ export default function PollDetailPage() {
     if (!pollId || !editQuestion.trim()) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('polls').update({ question: editQuestion.trim() }).eq('id', pollId);
-      if (error) throw error;
+      await memberData(supabase.from('polls').update({ question: editQuestion.trim() }).eq('id', pollId).select('id'), 'Update poll');
       // Update competition title too
       if (poll?.competition_id) {
-        await supabase.from('competitions').update({ title: editQuestion.trim() }).eq('id', poll.competition_id);
+        await memberData(supabase.from('competitions').update({ title: editQuestion.trim() }).eq('id', poll.competition_id).select('id'), 'Update poll competition');
       }
       toast.success('Poll updated');
       setEditing(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update');
+      void fetchData();
+    } catch (saveError) {
+      toast.error(memberErrorMessage(saveError));
     } finally {
       setSaving(false);
     }
@@ -168,12 +175,11 @@ export default function PollDetailPage() {
     if (!pollId || !isCreator) return;
     const newStatus = poll.status === 'open' ? 'closed' : 'open';
     try {
-      const { error } = await supabase.from('polls').update({ status: newStatus }).eq('id', pollId);
-      if (error) throw error;
+      await memberData(supabase.from('polls').update({ status: newStatus }).eq('id', pollId).select('id'), 'Update poll status');
       toast.success(`Poll ${newStatus === 'open' ? 'reopened' : 'closed'}`);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update status');
+      void fetchData();
+    } catch (statusError) {
+      toast.error(memberErrorMessage(statusError));
     }
   };
 
@@ -184,6 +190,10 @@ export default function PollDetailPage() {
         <p className="loading-spinner-text">Loading poll…</p>
       </div>
     );
+  }
+
+  if (error) {
+    return <div className="member-page max-w-3xl mx-auto"><MemberLoadError message={error} onRetry={() => { setLoading(true); void fetchData(); }} /></div>;
   }
 
   if (!poll) {
@@ -204,7 +214,7 @@ export default function PollDetailPage() {
   const maxVotes = Math.max(...options.map(o => voteCounts.get(o.id) || 0), 0);
 
   return (
-    <div className="member-page max-w-md mx-auto">
+    <div className="member-page max-w-3xl mx-auto" aria-busy={voting || deleting || saving}>
       <Link to="/polls" className="back-link">
         <ArrowLeft /> Back to Polls
       </Link>
@@ -216,6 +226,7 @@ export default function PollDetailPage() {
             {editing ? (
               <div className="flex items-center gap-2">
                 <Input
+                  aria-label="Poll question"
                   value={editQuestion}
                   onChange={(e) => setEditQuestion(e.target.value)}
                   className="form-input text-lg font-extrabold"

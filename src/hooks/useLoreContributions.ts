@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { memberData } from '@/lib/memberData';
 
 export type LoreContribution = {
   id: string;
@@ -17,12 +18,11 @@ export function useLoreContributions(loreId: string | undefined) {
     queryKey: ['lore-contributions', loreId],
     enabled: !!loreId,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const data = await memberData((supabase as any)
         .from('lore_contributions')
         .select('*, profiles:user_id(id, display_name, avatar_url)')
         .eq('lore_id', loreId)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
+        .order('created_at', { ascending: true }), 'Load lore contributions');
       return (data || []) as LoreContribution[];
     },
   });
@@ -35,12 +35,11 @@ export function useAddLoreContribution() {
   return useMutation({
     mutationFn: async ({ loreId, content }: { loreId: string; content: string }) => {
       if (!user) throw new Error('Not authenticated');
-      const { data, error } = await (supabase as any)
+      const data = await memberData((supabase as any)
         .from('lore_contributions')
         .insert({ lore_id: loreId, user_id: user.id, content })
         .select('*, profiles:user_id(id, display_name, avatar_url)')
-        .single();
-      if (error) throw error;
+        .single(), 'Add lore contribution');
 
       // Notify lore author (if not self)
       try {
@@ -79,11 +78,11 @@ export function useUpdateLoreContribution() {
 
   return useMutation({
     mutationFn: async ({ id, content }: { id: string; loreId: string; content: string }) => {
-      const { error } = await (supabase as any)
+      await memberData((supabase as any)
         .from('lore_contributions')
         .update({ content })
-        .eq('id', id);
-      if (error) throw error;
+        .eq('id', id)
+        .select('id'), 'Update lore contribution');
     },
     onSuccess: (_d, vars) => {
       queryClient.invalidateQueries({ queryKey: ['lore-contributions', vars.loreId] });
@@ -96,11 +95,11 @@ export function useDeleteLoreContribution() {
 
   return useMutation({
     mutationFn: async ({ id }: { id: string; loreId: string }) => {
-      const { error } = await (supabase as any)
+      await memberData((supabase as any)
         .from('lore_contributions')
         .delete()
-        .eq('id', id);
-      if (error) throw error;
+        .eq('id', id)
+        .select('id'), 'Delete lore contribution');
     },
     onSuccess: (_d, vars) => {
       queryClient.invalidateQueries({ queryKey: ['lore-contributions', vars.loreId] });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,30 +7,41 @@ import { MessageCircle, Plus, ArrowRight, Users, CheckCircle2 } from 'lucide-rea
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import type { Database } from '@/integrations/supabase/types';
+
+type PollListItem = Database['public']['Tables']['polls']['Row'] & {
+  competitions?: { title: string; status: string } | null;
+  profiles?: { display_name: string } | null;
+};
 
 export default function PollsListPage() {
   const { user } = useAuth();
-  const [polls, setPolls] = useState<any[]>([]);
+  const [polls, setPolls] = useState<PollListItem[]>([]);
   const [voteCounts, setVoteCounts] = useState<Map<string, number>>(new Map());
   const [myVotes, setMyVotes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    const fetch = async () => {
-      const { data } = await supabase
+  const fetchPolls = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await memberData(supabase
         .from('polls')
         .select('*, competitions(title, status), profiles:created_by(display_name)')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }), 'polls');
 
       if (data) {
         setPolls(data);
         const pollIds = data.map(p => p.id);
 
         if (pollIds.length > 0) {
-          const [{ data: allVotes }, { data: mine }] = await Promise.all([
-            supabase.from('poll_votes').select('poll_id').in('poll_id', pollIds),
-            supabase.from('poll_votes').select('poll_id').eq('user_id', user.id).in('poll_id', pollIds),
+          const [allVotes, mine] = await Promise.all([
+            memberData(supabase.from('poll_votes').select('poll_id').in('poll_id', pollIds), 'poll vote totals'),
+            memberData(supabase.from('poll_votes').select('poll_id').eq('user_id', user.id).in('poll_id', pollIds), 'your poll votes'),
           ]);
 
           if (allVotes) {
@@ -43,13 +54,17 @@ export default function PollsListPage() {
           }
         }
       }
+    } catch (cause) {
+      setError(memberErrorMessage(cause));
+    } finally {
       setLoading(false);
-    };
-    fetch();
+    }
   }, [user]);
 
+  useEffect(() => { void fetchPolls(); }, [fetchPolls]);
+
   return (
-    <div className="member-page">
+    <div className="member-page" aria-busy={loading}>
       <div className="page-toolbar">
         <div className="page-header mb-0">
           <div className="page-header-icon" style={{
@@ -63,11 +78,11 @@ export default function PollsListPage() {
             <p className="page-header-subtitle">Quick votes & group decisions</p>
           </div>
         </div>
-        <Link to="/polls/create">
-          <Button size="sm" className="page-action gap-1.5 btn-press">
+        <Button asChild size="sm" className="page-action gap-1.5 btn-press">
+          <Link to="/polls/create">
             <Plus className="w-4 h-4" /> Create
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {loading ? (
@@ -79,6 +94,8 @@ export default function PollsListPage() {
             </div>
           ))}
         </div>
+      ) : error ? (
+        <MemberLoadError message={error} onRetry={() => void fetchPolls()} />
       ) : polls.length === 0 ? (
         <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="empty-state">
           <div className="empty-state-icon" style={{
@@ -88,11 +105,11 @@ export default function PollsListPage() {
           </div>
           <p className="empty-state-title">No polls yet</p>
           <p className="empty-state-desc mb-6">Create a poll to settle the debate.</p>
-          <Link to="/polls/create">
-            <Button className="font-bold rounded-xl gap-2 btn-press">
+          <Button asChild className="font-bold rounded-xl gap-2 btn-press">
+            <Link to="/polls/create">
               <Plus className="w-4 h-4" /> Create Poll
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </motion.div>
       ) : (
         // Mobile/tablet: vertical list. lg+: 2-col grid so wide

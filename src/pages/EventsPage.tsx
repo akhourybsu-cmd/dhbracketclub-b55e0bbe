@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,9 @@ import {
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { toast } from 'sonner';
 import { logActivity } from '@/lib/activityLogger';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { nextRsvpStatus, optimisticGoingCount, type RsvpStatus } from '@/lib/memberWorkflows';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
 
 type Event = {
   id: string;
@@ -39,37 +42,43 @@ export default function EventsPage() {
   const { play } = useSoundEffect();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [calMonth, setCalMonth] = useState(new Date());
   const [form, setForm] = useState({ title: '', description: '', location: '', starts_at: '', ends_at: '' });
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => { fetchEvents(); }, [user]);
+  const fetchEvents = useCallback(async () => {
+    if (!user) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = (await memberData(
+        supabase
+          .from('events')
+          .select('*, profiles:created_by(display_name)')
+          .order('starts_at', { ascending: true }),
+        'Load events',
+      )) ?? [];
 
-  const fetchEvents = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from('events')
-      .select('*, profiles:created_by(display_name)')
-      .order('starts_at', { ascending: true });
-
-    if (data) {
       const eventIds = data.map(e => e.id);
-      let rsvpMap = new Map<string, number>();
-      let userRsvpMap = new Map<string, string>();
+      const rsvpMap = new Map<string, number>();
+      const userRsvpMap = new Map<string, string>();
 
       if (eventIds.length > 0) {
-        const { data: rsvps } = await supabase
-          .from('event_rsvps')
-          .select('*')
-          .in('event_id', eventIds);
-        if (rsvps) {
-          rsvps.forEach(r => {
-            if (r.status === 'going') rsvpMap.set(r.event_id, (rsvpMap.get(r.event_id) || 0) + 1);
-            if (r.user_id === user.id) userRsvpMap.set(r.event_id, r.status);
-          });
-        }
+        const rsvps = (await memberData(
+          supabase.from('event_rsvps').select('*').in('event_id', eventIds),
+          'Load event RSVPs',
+        )) ?? [];
+        rsvps.forEach(r => {
+          if (r.status === 'going') rsvpMap.set(r.event_id, (rsvpMap.get(r.event_id) || 0) + 1);
+          if (r.user_id === user.id) userRsvpMap.set(r.event_id, r.status);
+        });
       }
 
       setEvents(data.map(e => ({
@@ -77,30 +86,41 @@ export default function EventsPage() {
         rsvp_count: rsvpMap.get(e.id) || 0,
         user_rsvp: userRsvpMap.get(e.id) || null,
       })));
+    } catch (loadError) {
+      setError(memberErrorMessage(loadError));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => { void fetchEvents(); }, [fetchEvents]);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.starts_at || !user) return;
     setCreating(true);
-    play('success');
-    const { data, error } = await supabase.from('events').insert({
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      location: form.location.trim() || null,
-      starts_at: new Date(form.starts_at).toISOString(),
-      ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
-      created_by: user.id,
-    }).select().single();
+    let createdEventId: string | null = null;
+    try {
+      const data = await memberData(
+        supabase.from('events').insert({
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          location: form.location.trim() || null,
+          starts_at: new Date(form.starts_at).toISOString(),
+          ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
+          created_by: user.id,
+        }).select().single(),
+        'Create event',
+      );
+      createdEventId = data.id;
+      await memberData(
+        supabase.from('event_rsvps').insert({ event_id: data.id, user_id: user.id, status: 'going' }).select('id'),
+        'Create event RSVP',
+      );
+      play('success');
+      void logActivity(user.id, { event_type: 'event_created', target_type: 'event', target_id: data.id, metadata: { title: data.title } }).catch(() => {});
 
-    if (error) { toast.error('Failed to create event'); setCreating(false); return; }
-    if (data) {
-      await supabase.from('event_rsvps').insert({ event_id: data.id, user_id: user.id, status: 'going' });
-      await logActivity(user.id, { event_type: 'event_created', target_type: 'event', target_id: data.id, metadata: { title: data.title } });
-
-      // Fire-and-forget push notification
-      supabase.functions.invoke('send-push-notification', {
+      // Fire-and-forget push notification.
+      void supabase.functions.invoke('send-push-notification', {
         body: {
           type: 'event',
           title: '📅 New Event',
@@ -112,31 +132,62 @@ export default function EventsPage() {
 
       setShowCreate(false);
       setForm({ title: '', description: '', location: '', starts_at: '', ends_at: '' });
-      setCreating(false);
       navigate(`/events/${data.id}`);
+    } catch (createError) {
+      if (createdEventId) {
+        await memberData(supabase.from('event_rsvps').delete().eq('event_id', createdEventId).select('id'), 'Roll back event RSVP').catch(() => {});
+        await memberData(supabase.from('events').delete().eq('id', createdEventId).select('id'), 'Roll back event').catch(() => {});
+      }
+      toast.error(memberErrorMessage(createError));
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleRsvp = async (eventId: string, status: string) => {
+  const handleRsvp = async (eventId: string, status: RsvpStatus) => {
     if (!user) return;
     play('tap');
-    const { data: existing } = await supabase
-      .from('event_rsvps')
-      .select('id, status')
-      .eq('event_id', eventId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const snapshot = events;
+    const current = events.find(event => event.id === eventId)?.user_rsvp as RsvpStatus | null | undefined;
+    const next = nextRsvpStatus(current ?? null, status);
+    setEvents(previous => previous.map(event => {
+      if (event.id !== eventId) return event;
+      return {
+        ...event,
+        user_rsvp: next,
+        rsvp_count: optimisticGoingCount(event.rsvp_count ?? 0, current, next),
+      };
+    }));
 
-    if (existing) {
-      if (existing.status === status) {
-        await supabase.from('event_rsvps').delete().eq('id', existing.id);
+    try {
+      const existing = await memberData(
+        supabase
+          .from('event_rsvps')
+          .select('id, status')
+          .eq('event_id', eventId)
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        'Check event RSVP',
+      );
+
+      if (existing) {
+        if (next === null) {
+          await memberData(supabase.from('event_rsvps').delete().eq('id', existing.id).select('id'), 'Remove event RSVP');
+        } else {
+          await memberData(supabase.from('event_rsvps').update({ status: next }).eq('id', existing.id).select('id'), 'Update event RSVP');
+        }
       } else {
-        await supabase.from('event_rsvps').update({ status }).eq('id', existing.id);
+        if (next) {
+          await memberData(
+            supabase.from('event_rsvps').insert({ event_id: eventId, user_id: user.id, status: next }).select('id'),
+            'Create event RSVP',
+          );
+        }
       }
-    } else {
-      await supabase.from('event_rsvps').insert({ event_id: eventId, user_id: user.id, status });
+    } catch (rsvpError) {
+      setEvents(snapshot);
+      toast.error(memberErrorMessage(rsvpError));
     }
-    fetchEvents();
   };
 
   const getTimeLabel = (dateStr: string) => {
@@ -162,7 +213,7 @@ export default function EventsPage() {
   const eventsOnDay = (day: Date) => events.filter(e => isSameDay(new Date(e.starts_at), day));
 
   return (
-    <div className="member-page">
+    <div className="member-page" aria-busy={loading}>
       <div>
         {/* Header */}
         <div className="page-toolbar">
@@ -174,7 +225,7 @@ export default function EventsPage() {
             </div>
           </div>
           <div className="page-toolbar-actions">
-            <div className="flex rounded-xl overflow-hidden border border-border/30">
+            <div className="flex rounded-xl overflow-hidden border border-border/30" role="group" aria-label="Event view">
               <button
                 onClick={() => setView('list')}
                 className={cn("w-11 h-11 flex items-center justify-center transition-colors", view === 'list' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
@@ -208,6 +259,7 @@ export default function EventsPage() {
                   <button onClick={() => setShowCreate(false)} className="w-11 h-11 -m-2 rounded-xl hover:bg-muted/50 flex items-center justify-center" aria-label="Close create form"><X className="w-4 h-4" /></button>
                 </div>
                 <Input
+                  aria-label="Event title"
                   placeholder="What's the plan?"
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -215,6 +267,7 @@ export default function EventsPage() {
                   autoFocus
                 />
                 <Textarea
+                  aria-label="Event description"
                   placeholder="Add some details (optional)"
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -223,6 +276,7 @@ export default function EventsPage() {
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <Input
+                      aria-label="Event location"
                       placeholder="Location"
                       value={form.location}
                       onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
@@ -232,12 +286,12 @@ export default function EventsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">When</label>
-                    <Input type="datetime-local" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
+                    <label htmlFor="event-start" className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">When</label>
+                    <Input id="event-start" type="datetime-local" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">Until (opt.)</label>
-                    <Input type="datetime-local" value={form.ends_at} onChange={e => setForm(f => ({ ...f, ends_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
+                    <label htmlFor="event-end" className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-1 block">Until (opt.)</label>
+                    <Input id="event-end" type="datetime-local" value={form.ends_at} onChange={e => setForm(f => ({ ...f, ends_at: e.target.value }))} className="h-11 text-xs bg-muted/50 border-border/35 rounded-xl" />
                   </div>
                 </div>
                 <Button onClick={handleCreate} disabled={!form.title.trim() || !form.starts_at || creating} className="w-full h-11 text-xs font-bold rounded-xl">
@@ -248,8 +302,10 @@ export default function EventsPage() {
           )}
         </AnimatePresence>
 
+        {error && !loading && <MemberLoadError message={error} onRetry={() => void fetchEvents()} />}
+
         {/* ═══ CALENDAR VIEW ═══ */}
-        {view === 'calendar' && !loading && (
+        {view === 'calendar' && !loading && !error && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <button onClick={() => setCalMonth(m => subMonths(m, 1))} className="w-11 h-11 rounded-xl hover:bg-muted/50 transition-colors flex items-center justify-center" aria-label="Previous month">
@@ -276,26 +332,28 @@ export default function EventsPage() {
                 const isCurrentMonth = isSameMonth(day, calMonth);
                 const today = isToday(day);
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={day.toISOString()}
+                    disabled={dayEvents.length !== 1}
+                    aria-label={`${format(day, 'MMMM d, yyyy')}${dayEvents.length ? `, ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ''}`}
                     className={cn(
-                      "aspect-square rounded-lg flex flex-col items-center justify-center relative cursor-pointer transition-colors",
-                      today ? 'bg-primary/15' : 'hover:bg-muted/50',
+                      "aspect-square rounded-lg flex flex-col items-center justify-center relative transition-colors",
+                      dayEvents.length === 1 && 'cursor-pointer',
+                      today ? 'bg-primary/15' : dayEvents.length === 1 && 'hover:bg-muted/50',
                       !isCurrentMonth && 'opacity-30'
                     )}
-                    onClick={() => {
-                      if (dayEvents.length === 1) navigate(`/events/${dayEvents[0].id}`);
-                    }}
+                    onClick={() => navigate(`/events/${dayEvents[0].id}`)}
                   >
                     <span className={cn("text-[11px] font-semibold", today && 'text-primary')}>{format(day, 'd')}</span>
                     {dayEvents.length > 0 && (
-                      <div className="flex gap-0.5 mt-0.5">
+                      <div className="flex gap-0.5 mt-0.5" aria-hidden="true">
                         {dayEvents.slice(0, 3).map((e, i) => (
                           <div key={i} className="w-1 h-1 rounded-full bg-primary" />
                         ))}
                       </div>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -347,7 +405,7 @@ export default function EventsPage() {
           </div>
         )}
 
-        {view === 'list' && !loading && (
+        {view === 'list' && !loading && !error && (
           <>
             {/* Upcoming */}
             {upcoming.length > 0 && (
@@ -360,10 +418,9 @@ export default function EventsPage() {
                     stack of event cards. Mobile/tablet unchanged. */}
                 <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
                   {upcoming.map((event, i) => (
-                    <motion.div key={event.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                      <Link to={`/events/${event.id}`} className="block group">
-                        <div className="glass-card p-4 transition-all duration-200 group-hover:border-primary/15">
-                          <div className="relative z-10">
+                    <motion.div key={event.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="glass-card p-4 transition-all duration-200 hover:border-primary/15">
+                      <div className="relative z-10">
+                        <Link to={`/events/${event.id}`} className="block group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-start gap-3 flex-1 min-w-0">
                                 {/* Date badge */}
@@ -391,30 +448,31 @@ export default function EventsPage() {
                               </div>
                               <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1" />
                             </div>
-                            <div className="flex items-center justify-between mt-2 pl-14">
-                              <span className="text-[10px] text-muted-foreground/60 font-medium flex items-center gap-1">
-                                <Users className="w-3 h-3" /> {event.rsvp_count} going
-                              </span>
-                              <div className="flex gap-1">
-                                {['going', 'maybe'].map(status => (
-                                  <button
-                                    key={status}
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRsvp(event.id, status); }}
-                                    className={cn(
-                                      "px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize transition-colors",
-                                      event.user_rsvp === status
-                                        ? status === 'going' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
-                                        : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted/50'
-                                    )}
-                                  >
-                                    {status === 'going' ? '✓ Going' : 'Maybe'}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                        </Link>
+                        <div className="flex items-center justify-between mt-2 pl-14">
+                          <span className="text-[10px] text-muted-foreground/60 font-medium flex items-center gap-1">
+                            <Users className="w-3 h-3" /> {event.rsvp_count} going
+                          </span>
+                          <div className="flex gap-1" aria-label={`RSVP for ${event.title}`}>
+                            {(['going', 'maybe'] as RsvpStatus[]).map(status => (
+                              <button
+                                type="button"
+                                key={status}
+                                onClick={() => void handleRsvp(event.id, status)}
+                                aria-pressed={event.user_rsvp === status}
+                                className={cn(
+                                  "min-h-11 px-3 rounded-xl text-[10px] font-bold capitalize transition-colors",
+                                  event.user_rsvp === status
+                                    ? status === 'going' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
+                                    : 'bg-muted/50 text-muted-foreground/70 hover:bg-muted/70'
+                                )}
+                              >
+                                {status === 'going' ? '✓ Going' : 'Maybe'}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -444,7 +502,7 @@ export default function EventsPage() {
           </>
         )}
 
-        {events.length === 0 && !loading && (
+        {events.length === 0 && !loading && !error && (
           <div className="text-center py-16">
             <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, hsl(var(--success) / 0.12), hsl(var(--success) / 0.04))' }}>
               <CalendarDays className="w-7 h-7 text-success/60" />

@@ -13,6 +13,7 @@ import { useClub } from '@/contexts/ClubContext';
 import {
   formatMonthDay, isTodayMD, isTodayDate, nextOccurrenceOf, daysUntil,
 } from '@/lib/celebrations/dates';
+import { memberData } from '@/lib/memberData';
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
@@ -91,14 +92,18 @@ export function useCelebrationSettings() {
   const load = useCallback(async () => {
     if (!club) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('club_celebration_settings')
-      .select('*')
-      .eq('club_id', club.id)
-      .maybeSingle();
-    if (error) console.warn('[useCelebrationSettings] load error', error.message);
-    setSettings((data as CelebrationSettings) ?? null);
-    setLoading(false);
+    try {
+      const data = await memberData((supabase as any)
+        .from('club_celebration_settings')
+        .select('*')
+        .eq('club_id', club.id)
+        .maybeSingle(), 'Load celebration settings');
+      setSettings((data as CelebrationSettings) ?? null);
+    } catch (error) {
+      console.warn('[useCelebrationSettings] load error', error);
+    } finally {
+      setLoading(false);
+    }
   }, [club?.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -121,15 +126,18 @@ export function useCelebrationSettings() {
       const next = { ...DEFAULT_CELEBRATION_SETTINGS, ...(settings ?? {}), ...patch, club_id: club.id };
       // Optimistic
       setSettings(s => ({ ...(s ?? ({ ...next, created_at: '', updated_at: '' } as CelebrationSettings)), ...patch }));
-      const { error } = await (supabase as any)
-        .from('club_celebration_settings')
-        .upsert(next, { onConflict: 'club_id' });
-      if (error) {
-        console.warn('[useCelebrationSettings] save error', error.message);
+      try {
+        await memberData((supabase as any)
+          .from('club_celebration_settings')
+          .upsert(next, { onConflict: 'club_id' })
+          .select('club_id'), 'Save celebration settings');
+      } catch (error) {
+        console.warn('[useCelebrationSettings] save error', error);
         // Reload to recover
-        load();
+        void load();
+      } finally {
+        setSaving(false);
       }
-      setSaving(false);
     },
     [club, isClubAdmin, settings, load],
   );
@@ -149,15 +157,19 @@ export function useMyBirthday() {
   const load = useCallback(async () => {
     if (!user || !club) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('member_birthdays')
-      .select('*')
-      .eq('club_id', club.id)
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (error) console.warn('[useMyBirthday] load error', error.message);
-    setBirthday((data as MemberBirthday) ?? null);
-    setLoading(false);
+    try {
+      const data = await memberData((supabase as any)
+        .from('member_birthdays')
+        .select('*')
+        .eq('club_id', club.id)
+        .eq('user_id', user.id)
+        .maybeSingle(), 'Load your birthday');
+      setBirthday((data as MemberBirthday) ?? null);
+    } catch (error) {
+      console.warn('[useMyBirthday] load error', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user?.id, club?.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -176,15 +188,20 @@ export function useMyBirthday() {
         visibility: payload.visibility ?? 'club',
         reminder_opt_in: payload.reminder_opt_in ?? true,
       };
-      const { data, error } = await (supabase as any)
-        .from('member_birthdays')
-        .upsert(row, { onConflict: 'club_id,user_id' })
-        .select()
-        .single();
-      if (error) console.warn('[useMyBirthday] save error', error.message);
-      if (data) setBirthday(data as MemberBirthday);
-      setSaving(false);
-      return !error;
+      try {
+        const data = await memberData((supabase as any)
+          .from('member_birthdays')
+          .upsert(row, { onConflict: 'club_id,user_id' })
+          .select()
+          .single(), 'Save birthday');
+        if (data) setBirthday(data as MemberBirthday);
+        return true;
+      } catch (error) {
+        console.warn('[useMyBirthday] save error', error);
+        return false;
+      } finally {
+        setSaving(false);
+      }
     },
     [user, club],
   );
@@ -192,12 +209,18 @@ export function useMyBirthday() {
   const remove = useCallback(async () => {
     if (!user || !club || !birthday) return;
     setSaving(true);
-    const { error } = await (supabase as any)
-      .from('member_birthdays')
-      .delete()
-      .eq('id', birthday.id);
-    if (!error) setBirthday(null);
-    setSaving(false);
+    try {
+      await memberData((supabase as any)
+        .from('member_birthdays')
+        .delete()
+        .eq('id', birthday.id)
+        .select('id'), 'Remove birthday');
+      setBirthday(null);
+    } catch (error) {
+      console.warn('[useMyBirthday] remove error', error);
+    } finally {
+      setSaving(false);
+    }
   }, [user, club, birthday]);
 
   return { birthday, loading, saving, save, remove };
@@ -214,13 +237,17 @@ export function useClubBirthdays() {
     if (!club) { setLoading(false); return; }
     setLoading(true);
     // RLS filters down to rows the caller can see (own + club-visible + admin-only-if-admin).
-    const { data, error } = await (supabase as any)
-      .from('member_birthdays')
-      .select('*, profile:user_id(display_name, avatar_url)')
-      .eq('club_id', club.id);
-    if (error) console.warn('[useClubBirthdays] load error', error.message);
-    setRows(((data as MemberBirthday[]) ?? []).filter(r => r.visibility !== 'hidden'));
-    setLoading(false);
+    try {
+      const data = await memberData((supabase as any)
+        .from('member_birthdays')
+        .select('*, profile:user_id(display_name, avatar_url)')
+        .eq('club_id', club.id), 'Load club birthdays');
+      setRows(((data as MemberBirthday[]) ?? []).filter(r => r.visibility !== 'hidden'));
+    } catch (error) {
+      console.warn('[useClubBirthdays] load error', error);
+    } finally {
+      setLoading(false);
+    }
   }, [club?.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -238,14 +265,18 @@ export function useClubMilestones() {
   const load = useCallback(async () => {
     if (!club) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('club_milestones')
-      .select('*, profile:user_id(display_name, avatar_url)')
-      .eq('club_id', club.id)
-      .order('milestone_date', { ascending: true });
-    if (error) console.warn('[useClubMilestones] load error', error.message);
-    setRows(((data as ClubMilestone[]) ?? []).filter(r => r.visibility !== 'hidden'));
-    setLoading(false);
+    try {
+      const data = await memberData((supabase as any)
+        .from('club_milestones')
+        .select('*, profile:user_id(display_name, avatar_url)')
+        .eq('club_id', club.id)
+        .order('milestone_date', { ascending: true }), 'Load club milestones');
+      setRows(((data as ClubMilestone[]) ?? []).filter(r => r.visibility !== 'hidden'));
+    } catch (error) {
+      console.warn('[useClubMilestones] load error', error);
+    } finally {
+      setLoading(false);
+    }
   }, [club?.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -257,43 +288,48 @@ export function useClubMilestones() {
       const userId = userRow?.user?.id;
       if (!userId) return null;
       const row = { ...payload, club_id: club.id, created_by: userId };
-      const { data, error } = await (supabase as any)
-        .from('club_milestones')
-        .insert(row)
-        .select('*, profile:user_id(display_name, avatar_url)')
-        .single();
-      if (error) {
-        console.warn('[useClubMilestones] create error', error.message);
+      try {
+        const data = await memberData((supabase as any)
+          .from('club_milestones')
+          .insert(row)
+          .select('*, profile:user_id(display_name, avatar_url)')
+          .single(), 'Create milestone');
+        setRows(prev => [...prev, data as ClubMilestone]);
+        return data as ClubMilestone;
+      } catch (error) {
+        console.warn('[useClubMilestones] create error', error);
         return null;
       }
-      setRows(prev => [...prev, data as ClubMilestone]);
-      return data as ClubMilestone;
     },
     [club],
   );
 
   const update = useCallback(
     async (id: string, patch: Partial<Omit<ClubMilestone, 'id' | 'club_id' | 'created_at' | 'updated_at' | 'created_by' | 'profile'>>) => {
-      const { data, error } = await (supabase as any)
-        .from('club_milestones')
-        .update(patch)
-        .eq('id', id)
-        .select('*, profile:user_id(display_name, avatar_url)')
-        .single();
-      if (error) {
-        console.warn('[useClubMilestones] update error', error.message);
+      try {
+        const data = await memberData((supabase as any)
+          .from('club_milestones')
+          .update(patch)
+          .eq('id', id)
+          .select('*, profile:user_id(display_name, avatar_url)')
+          .single(), 'Update milestone');
+        setRows(prev => prev.map(r => r.id === id ? (data as ClubMilestone) : r));
+        return data as ClubMilestone;
+      } catch (error) {
+        console.warn('[useClubMilestones] update error', error);
         return null;
       }
-      setRows(prev => prev.map(r => r.id === id ? (data as ClubMilestone) : r));
-      return data as ClubMilestone;
     },
     [],
   );
 
   const remove = useCallback(async (id: string) => {
-    const { error } = await (supabase as any).from('club_milestones').delete().eq('id', id);
-    if (error) { console.warn('[useClubMilestones] remove error', error.message); return; }
-    setRows(prev => prev.filter(r => r.id !== id));
+    try {
+      await memberData((supabase as any).from('club_milestones').delete().eq('id', id).select('id'), 'Delete milestone');
+      setRows(prev => prev.filter(r => r.id !== id));
+    } catch (error) {
+      console.warn('[useClubMilestones] remove error', error);
+    }
   }, []);
 
   return { milestones: rows, loading, refresh: load, create, update, remove };

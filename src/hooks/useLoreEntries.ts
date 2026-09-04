@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { memberData } from '@/lib/memberData';
 
 export type LoreEntry = {
   id: string;
@@ -47,8 +48,7 @@ export function useLoreEntries(filters?: { type?: string; status?: string; searc
         q = q.or(`title.ilike.%${filters.search}%,context.ilike.%${filters.search}%`);
       }
 
-      const { data, error } = await q;
-      if (error) throw error;
+      const data = await memberData(q, 'Load club lore');
       return (data || []) as LoreEntry[];
     },
   });
@@ -59,12 +59,11 @@ export function useLoreEntry(id: string | undefined) {
     queryKey: ['lore-entry', id],
     enabled: !!id,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const data = await memberData((supabase as any)
         .from('lore_entries')
         .select('*, profiles:created_by(id, display_name, avatar_url), reactions:lore_reactions(reaction, user_id), contributions:lore_contributions(count)')
         .eq('id', id)
-        .single();
-      if (error) throw error;
+        .single(), 'Load lore entry');
       return data as LoreEntry;
     },
   });
@@ -88,12 +87,11 @@ export function useCreateLoreEntry() {
         era: input.era || null,
         status: input.status || 'classic',
       };
-      const { data, error } = await (supabase as any)
+      const data = await memberData((supabase as any)
         .from('lore_entries')
         .insert(payload)
         .select()
-        .single();
-      if (error) throw error;
+        .single(), 'Create lore entry');
       return data as LoreEntry;
     },
     onSuccess: () => {
@@ -106,8 +104,7 @@ export function useDeleteLoreEntry() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('lore_entries').delete().eq('id', id);
-      if (error) throw error;
+      await memberData((supabase as any).from('lore_entries').delete().eq('id', id).select('id'), 'Delete lore entry');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lore-entries'] });
@@ -123,18 +120,18 @@ export function useToggleLoreReaction() {
     mutationFn: async ({ loreId, reaction, hasReacted }: { loreId: string; reaction: LoreReaction; hasReacted: boolean }) => {
       if (!user) throw new Error('Not authenticated');
       if (hasReacted) {
-        const { error } = await (supabase as any)
+        await memberData((supabase as any)
           .from('lore_reactions')
           .delete()
           .eq('lore_id', loreId)
           .eq('user_id', user.id)
-          .eq('reaction', reaction);
-        if (error) throw error;
+          .eq('reaction', reaction)
+          .select('id'), 'Remove lore reaction');
       } else {
-        const { error } = await (supabase as any)
+        await memberData((supabase as any)
           .from('lore_reactions')
-          .insert({ lore_id: loreId, user_id: user.id, reaction });
-        if (error) throw error;
+          .insert({ lore_id: loreId, user_id: user.id, reaction })
+          .select('id'), 'Add lore reaction');
       }
     },
     onSuccess: (_d, vars) => {

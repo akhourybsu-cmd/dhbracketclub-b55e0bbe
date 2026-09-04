@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,30 +6,41 @@ import { Button } from '@/components/ui/button';
 import { BarChart3, Plus, ArrowRight, Users, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import type { Database } from '@/integrations/supabase/types';
+
+type RankingListItem = Database['public']['Tables']['rankings']['Row'] & {
+  competitions?: { title: string; status: string } | null;
+  profiles?: { display_name: string } | null;
+};
 
 export default function RankingsListPage() {
   const { user } = useAuth();
-  const [rankings, setRankings] = useState<any[]>([]);
+  const [rankings, setRankings] = useState<RankingListItem[]>([]);
   const [submissionCounts, setSubmissionCounts] = useState<Map<string, number>>(new Map());
   const [mySubmissions, setMySubmissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    const fetch = async () => {
-      const { data } = await supabase
+  const fetchRankings = useCallback(async () => {
+    if (!user) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await memberData(supabase
         .from('rankings')
         .select('*, competitions(title, status), profiles:created_by(display_name)')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }), 'rankings');
 
       if (data) {
         setRankings(data);
         const rankingIds = data.map(r => r.id);
 
         if (rankingIds.length > 0) {
-          const [{ data: subs }, { data: mySubs }] = await Promise.all([
-            supabase.from('ranking_submissions').select('ranking_id').in('ranking_id', rankingIds),
-            supabase.from('ranking_submissions').select('ranking_id').eq('user_id', user.id).in('ranking_id', rankingIds),
+          const [subs, mySubs] = await Promise.all([
+            memberData(supabase.from('ranking_submissions').select('ranking_id').in('ranking_id', rankingIds), 'ranking totals'),
+            memberData(supabase.from('ranking_submissions').select('ranking_id').eq('user_id', user.id).in('ranking_id', rankingIds), 'your rankings'),
           ]);
 
           if (subs) {
@@ -42,13 +53,17 @@ export default function RankingsListPage() {
           }
         }
       }
+    } catch (cause) {
+      setError(memberErrorMessage(cause));
+    } finally {
       setLoading(false);
-    };
-    fetch();
+    }
   }, [user]);
 
+  useEffect(() => { void fetchRankings(); }, [fetchRankings]);
+
   return (
-    <div className="member-page">
+    <div className="member-page" aria-busy={loading}>
       <div className="page-toolbar">
         <div className="page-header mb-0">
           <div className="page-header-icon"><BarChart3 /></div>
@@ -57,11 +72,11 @@ export default function RankingsListPage() {
             <p className="page-header-subtitle">Power rankings & tier lists</p>
           </div>
         </div>
-        <Link to="/rankings/create">
-          <Button size="sm" className="page-action gap-1.5 btn-press">
+        <Button asChild size="sm" className="page-action gap-1.5 btn-press">
+          <Link to="/rankings/create">
             <Plus className="w-4 h-4" /> Create
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {loading ? (
@@ -73,16 +88,18 @@ export default function RankingsListPage() {
             </div>
           ))}
         </div>
+      ) : error ? (
+        <MemberLoadError message={error} onRetry={() => void fetchRankings()} />
       ) : rankings.length === 0 ? (
         <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="empty-state">
           <div className="empty-state-icon"><BarChart3 /></div>
           <p className="empty-state-title">No rankings yet</p>
           <p className="empty-state-desc mb-6">Create a ranking to get your crew's takes.</p>
-          <Link to="/rankings/create">
-            <Button className="font-bold rounded-xl gap-2 btn-press">
+          <Button asChild className="font-bold rounded-xl gap-2 btn-press">
+            <Link to="/rankings/create">
               <Plus className="w-4 h-4" /> Create Ranking
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </motion.div>
       ) : (
         <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">

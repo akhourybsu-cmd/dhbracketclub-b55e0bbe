@@ -9,8 +9,13 @@
     "build:dev": "vite build --mode development",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
+    "lint:member": "eslint src/App.tsx src/components/member src/hooks/useChatMessages.ts src/hooks/useNotifications.ts src/lib/memberData.ts src/lib/memberWorkflows.ts src/pages/ChatPage.tsx src/pages/ClubPage.tsx src/pages/CreatePollPage.tsx src/pages/CreateRankingPage.tsx src/pages/DashboardPage.tsx src/pages/EventsPage.tsx src/pages/FeedPage.tsx src/pages/LorePage.tsx src/pages/NotificationsPage.tsx src/pages/PollsListPage.tsx src/pages/PostsPage.tsx src/pages/RankingsListPage.tsx src/pages/CelebrationsPage.tsx src/test/appNavigation.test.ts src/test/memberData.test.ts src/test/memberWorkflows.test.ts src/test/memberRouteErrorBoundary.test.tsx",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude src/test/journey/engineAccess.test.ts --exclude src/test/rls/anonymous-access.test.ts",
+    "test:live": "vitest run src/test/journey/engineAccess.test.ts src/test/rls/anonymous-access.test.ts",
+    "test:member": "vitest run src/test/appNavigation.test.ts src/test/memberData.test.ts src/test/memberWorkflows.test.ts src/test/memberRouteErrorBoundary.test.tsx",
+    "check:member": "npm run typecheck && npm run lint:member && npm run test:member && npm run build",
     "test:watch": "vitest"
   },
   "dependencies": {

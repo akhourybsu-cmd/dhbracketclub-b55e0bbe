@@ -30,7 +30,9 @@ import { useChatActions } from '@/hooks/useChatActions';
 import { applySlashCommand } from '@/lib/chatSlashCommands';
 import { useClubPresence } from '@/hooks/useClubPresence';
 import { MobileIconButton } from '@/components/mobile/MobileIconButton';
-import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
+import { HYDRATE_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 const CHAT_DRAFT_PREFIX = 'dh_chat_draft_v1';
 
@@ -111,6 +113,7 @@ export default function ChatPage() {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [showChannelList, setShowChannelList] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [channelError, setChannelError] = useState<string | null>(null);
 
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -141,7 +144,7 @@ export default function ChatPage() {
 
   // ═══ HOOKS ═══
   const {
-    messages, setMessages, hasMore, loadingMore, fetchMessages, loadOlderMessages,
+    messages, setMessages, hasMore, loadingMore, error: messageError, fetchMessages, loadOlderMessages,
   } = useChatMessages(user?.id);
 
   // Shared echo set so optimistic reaction toggles (useChatActions)
@@ -203,19 +206,21 @@ export default function ChatPage() {
 
   const fetchChannels = useCallback(async () => {
     if (!user) return;
+    setLoading(true);
+    setChannelError(null);
     try {
-    const [{ data: cats }, { data: chs }] = await withTimeout(Promise.all([
-      withTimeout(supabase.from('channel_categories').select('*').order('position'), QUERY_TIMEOUT_MS, 'chat categories'),
-      withTimeout(supabase.from('channels').select('*').order('position'), QUERY_TIMEOUT_MS, 'chat channels'),
+    const [cats, chs] = await withTimeout(Promise.all([
+      memberData(supabase.from('channel_categories').select('*').order('position'), 'Load chat categories'),
+      memberData(supabase.from('channels').select('*').order('position'), 'Load chat channels'),
     ]), HYDRATE_TIMEOUT_MS, 'chat channel hydrate');
-    if (cats) setCategories(cats);
+    setCategories(cats ?? []);
     if (chs) {
       // Hide admin_only channels from non-admins (RLS doesn't gate this — channels are club-scoped only).
       const visibleChs = (chs as Channel[]).filter(c => c.channel_type !== 'admin_only' || isClubAdmin);
       setChannels(visibleChs);
       const chIds = visibleChs.map((c: any) => c.id);
-      const { data: lastMsgs } = chIds.length > 0
-        ? await withTimeout(
+      const lastMsgs = chIds.length > 0
+        ? await memberData(
             supabase
               .from('messages')
               .select('channel_id, content, created_at, user_id, profiles:user_id(display_name)')
@@ -223,20 +228,18 @@ export default function ChatPage() {
               .in('channel_id', chIds)
               .order('created_at', { ascending: false })
               .limit(200),
-            QUERY_TIMEOUT_MS,
-            'chat channel previews',
+            'Load chat previews',
           )
-        : { data: [] };
+        : [];
 
       let readStatesMap = new Map<string, string>();
       try {
-        const { data: rsData } = chIds.length > 0
-          ? await withTimeout(
+        const rsData = chIds.length > 0
+          ? await memberData(
               supabase.from('channel_read_states' as any).select('channel_id, last_read_at').eq('user_id', user.id).in('channel_id', chIds),
-              QUERY_TIMEOUT_MS,
-              'chat read states',
+              'Load chat read states',
             )
-          : { data: [] };
+          : [];
         if (rsData) (rsData as any[]).forEach((rs: any) => readStatesMap.set(rs.channel_id, rs.last_read_at));
       } catch {}
 
@@ -287,6 +290,7 @@ export default function ChatPage() {
     }
     } catch (error) {
       console.error('[ChatPage] channel hydrate failed', error);
+      setChannelError(memberErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -335,18 +339,21 @@ export default function ChatPage() {
   useEffect(() => {
     if (!user || !club?.id) return;
     (async () => {
-      const { data: memberRows } = await supabase
-        .from('club_members')
-        .select('user_id, profiles:user_id(id, display_name, avatar_url)')
-        .eq('club_id', club.id);
-      if (memberRows) {
+      try {
+        const memberRows = await memberData(
+          supabase
+            .from('club_members')
+            .select('user_id, profiles:user_id(id, display_name, avatar_url)')
+            .eq('club_id', club.id),
+          'Load chat members',
+        );
         const list = memberRows
           .map((r: any) => r.profiles)
           .filter((p: any) => p && p.id && p.display_name);
         setMembers(list.map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url })));
         const me = list.find((p: any) => p.id === user.id);
         if (me) setCurrentDisplayName(me.display_name);
-      }
+      } catch {}
     })();
   }, [user, club?.id]);
 
@@ -358,13 +365,16 @@ export default function ChatPage() {
       // Capture lastReadAt BEFORE updating read state
       try {
         const sb = supabase as any;
-        const { data: existing } = await sb.from('channel_read_states').select('id, last_read_at').eq('channel_id', selectedChannel.id).eq('user_id', user.id).maybeSingle();
+        const existing = await memberData(
+          sb.from('channel_read_states').select('id, last_read_at').eq('channel_id', selectedChannel.id).eq('user_id', user.id).maybeSingle(),
+          'Load channel read state',
+        );
         if (existing) {
           setLastReadAt(existing.last_read_at);
-          await sb.from('channel_read_states').update({ last_read_at: new Date().toISOString() }).eq('id', existing.id);
+          await memberData(sb.from('channel_read_states').update({ last_read_at: new Date().toISOString() }).eq('id', existing.id).select('id'), 'Update channel read state');
         } else {
           setLastReadAt(null);
-          await sb.from('channel_read_states').insert({ channel_id: selectedChannel.id, user_id: user.id });
+          await memberData(sb.from('channel_read_states').insert({ channel_id: selectedChannel.id, user_id: user.id }).select('id'), 'Create channel read state');
         }
       } catch {}
 
@@ -395,6 +405,7 @@ export default function ChatPage() {
     if ((!hasText && !hasImages) || !selectedChannel || !user || sending) return;
     play('tap');
     setSending(true);
+    const draftText = newMessage;
 
     // Apply Discord-style slash command transformations (e.g.
     // "/shrug hi" → "hi ¯\_(ツ)_/¯", "/me dances" → "*dances*").
@@ -440,33 +451,36 @@ export default function ChatPage() {
     };
     setMessages(prev => [...prev, optimisticMsg]);
 
-    const { data: inserted, error } = await (supabase as any)
-      .from('messages')
-      .insert({
-        channel_id: selectedChannel.id,
-        user_id: user.id,
-        content,
-        ...(replyTarget ? { reply_to_id: replyTarget.id } : {}),
-      })
-      .select('*, profiles:user_id(display_name, avatar_url)')
-      .single();
+    try {
+      const inserted = await memberData((supabase as any)
+        .from('messages')
+        .insert({
+          channel_id: selectedChannel.id,
+          user_id: user.id,
+          content,
+          ...(replyTarget ? { reply_to_id: replyTarget.id } : {}),
+        })
+        .select('*, profiles:user_id(display_name, avatar_url)')
+        .single(), 'Send message');
 
-    if (error || !inserted) {
-      setMessages(prev => prev.filter(m => m.id !== optimisticId));
-      toast.error('Failed to send message');
-    } else {
       setMessages(prev => prev.map(m => m.id === optimisticId
         ? { ...inserted, reply_count: 0, reactions: [], reply_to: replyToPreview }
         : m
       ));
-      // Fire-and-forget: push notification + link preview generation
-      supabase.functions.invoke('send-push-notification', {
+      // Fire-and-forget: push notification + link preview generation.
+      void supabase.functions.invoke('send-push-notification', {
         body: { record: { id: inserted.id, channel_id: inserted.channel_id, user_id: inserted.user_id, content: inserted.content, reply_to_author_id: replyTarget?.user_id ?? null } },
       }).catch(() => {});
 
-      // Link previews are generated by LinkPreviewCard on render — no duplicate insert here
+      // Link previews are generated by LinkPreviewCard on render — no duplicate insert here.
+    } catch (sendError) {
+      setMessages(prev => prev.filter(m => m.id !== optimisticId));
+      if (draftText.trim()) setNewMessage(current => current || draftText);
+      if (replyTarget) setReplyingTo(current => current ?? replyTarget);
+      toast.error(memberErrorMessage(sendError));
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   const handleTogglePin = useCallback(async (msg: Message) => {
@@ -483,42 +497,58 @@ export default function ChatPage() {
   const loadPinnedMessages = async () => {
     if (!selectedChannel) return;
     setShowPinned(true);
-    const { data } = await supabase
-      .from('messages')
-      .select('*, profiles:user_id(display_name, avatar_url)')
-      .eq('channel_id', selectedChannel.id)
-      .eq('is_pinned', true)
-      .order('created_at', { ascending: false });
-    setPinnedMessages(data || []);
+    try {
+      const data = await memberData(
+        supabase
+          .from('messages')
+          .select('*, profiles:user_id(display_name, avatar_url)')
+          .eq('channel_id', selectedChannel.id)
+          .eq('is_pinned', true)
+          .order('created_at', { ascending: false }),
+        'Load pinned messages',
+      );
+      setPinnedMessages(data || []);
+    } catch (loadError) {
+      setShowPinned(false);
+      toast.error(memberErrorMessage(loadError));
+    }
   };
 
   const handleCreateChannel = async (name: string, categoryId: string) => {
     if (!user) return;
-    play('success');
-    await supabase.from('channels').insert({ name, category_id: categoryId || null, created_by: user.id, position: channels.length });
-    fetchChannels();
+    try {
+      await memberData(
+        supabase.from('channels').insert({ name, category_id: categoryId || null, created_by: user.id, position: channels.length }).select('id'),
+        'Create channel',
+      );
+      play('success');
+      void fetchChannels();
+    } catch (createError) {
+      toast.error(memberErrorMessage(createError));
+    }
   };
 
   const handleEditChannel = async (channelId: string, newName: string) => {
     if (!user) return;
-    const { error } = await supabase.from('channels').update({ name: newName }).eq('id', channelId);
-    if (error) {
-      toast.error('Failed to rename channel');
-    } else {
+    try {
+      await memberData(supabase.from('channels').update({ name: newName }).eq('id', channelId).select('id'), 'Rename channel');
       play('success');
       toast.success('Channel renamed');
       setChannels(prev => prev.map(ch => ch.id === channelId ? { ...ch, name: newName } : ch));
       if (selectedChannel?.id === channelId) {
         setSelectedChannel(prev => prev ? { ...prev, name: newName } : prev);
       }
+    } catch (updateError) {
+      toast.error(memberErrorMessage(updateError));
     }
   };
 
   const handleUpdateChannel = async (channelId: string, updates: Partial<Pick<Channel, 'name' | 'description' | 'icon' | 'category_id' | 'is_default' | 'channel_type' | 'post_permission'>>): Promise<boolean> => {
     if (!user) return false;
-    const { error } = await supabase.from('channels').update(updates as any).eq('id', channelId);
-    if (error) {
-      toast.error('Failed to update channel');
+    try {
+      await memberData(supabase.from('channels').update(updates as any).eq('id', channelId).select('id'), 'Update channel');
+    } catch (updateError) {
+      toast.error(memberErrorMessage(updateError));
       return false;
     }
     play('success');
@@ -533,10 +563,8 @@ export default function ChatPage() {
   const handleDeleteChannel = async (channelId: string) => {
     if (!user) return;
     // messages.channel_id has ON DELETE CASCADE — no need to nuke rows client-side.
-    const { error } = await supabase.from('channels').delete().eq('id', channelId);
-    if (error) {
-      toast.error('Failed to delete channel');
-    } else {
+    try {
+      await memberData(supabase.from('channels').delete().eq('id', channelId).select('id'), 'Delete channel');
       play('success');
       toast.success('Channel deleted');
       setChannels(prev => prev.filter(ch => ch.id !== channelId));
@@ -546,17 +574,19 @@ export default function ChatPage() {
         setSelectedChannel(def);
         if (!def) setShowChannelList(true);
       }
+    } catch (deleteError) {
+      toast.error(memberErrorMessage(deleteError));
     }
   };
 
   const handleCreateCategory = async (name: string) => {
     if (!user) return;
-    const { error } = await supabase.from('channel_categories').insert({ name, position: categories.length });
-    if (error) {
-      toast.error('Failed to create category');
-    } else {
+    try {
+      await memberData(supabase.from('channel_categories').insert({ name, position: categories.length }).select('id'), 'Create channel category');
       play('success');
-      fetchChannels();
+      void fetchChannels();
+    } catch (createError) {
+      toast.error(memberErrorMessage(createError));
     }
   };
 
@@ -622,20 +652,26 @@ export default function ChatPage() {
       setSearchResults(null);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select('*, profiles:user_id(display_name, avatar_url)')
-        .eq('channel_id', selectedChannel.id)
-        .is('parent_message_id', null)
-        .ilike('content', `%${searchQuery}%`)
-        .order('created_at', { ascending: true })
-        .limit(50);
-      if (data) {
-        setSearchResults(data.map(m => ({ ...m, reply_count: 0, reactions: [] })));
+      try {
+        const data = await memberData(
+          supabase
+            .from('messages')
+            .select('*, profiles:user_id(display_name, avatar_url)')
+            .eq('channel_id', selectedChannel.id)
+            .is('parent_message_id', null)
+            .ilike('content', `%${searchQuery}%`)
+            .order('created_at', { ascending: true })
+            .limit(50),
+          'Search messages',
+        );
+        if (!cancelled) setSearchResults((data ?? []).map(m => ({ ...m, reply_count: 0, reactions: [] })));
+      } catch {
+        if (!cancelled) setSearchResults([]);
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [searchQuery, showSearch, selectedChannel]);
 
   const pinnedCount = useMemo(() => messages.filter(m => m.is_pinned).length, [messages]);
@@ -654,6 +690,16 @@ export default function ChatPage() {
     : isAnnouncement
       ? 'Only admins can post announcements'
       : 'Only admins can post here';
+
+  if (channelError && channels.length === 0) {
+    return (
+      <div className="member-page flex items-center justify-center px-4" style={{ height: chatHeight }}>
+        <div className="w-full max-w-md">
+          <MemberLoadError message={channelError} onRetry={() => void fetchChannels()} />
+        </div>
+      </div>
+    );
+  }
 
   /* ═══ CHANNEL LIST VIEW (mobile only — desktop uses sidebar) ═══ */
   if (showChannelList) {
@@ -753,19 +799,19 @@ export default function ChatPage() {
             {selectedChannel?.description && <p className="text-[11px] text-muted-foreground/75 truncate leading-tight mt-0.5">{selectedChannel.description}</p>}
           </div>
           {/* Desktop: individual buttons */}
-          <button onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); setSearchResults(null); }} className={cn("hidden sm:inline-flex p-2 rounded-full transition-colors", showSearch ? "bg-primary/15 text-primary" : "hover:bg-muted/50 text-muted-foreground/70")} title="Search messages">
+          <button onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); setSearchResults(null); }} className={cn("hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showSearch ? "bg-primary/15 text-primary" : "hover:bg-muted/50 text-muted-foreground/70")} title="Search messages" aria-label="Search messages" aria-pressed={showSearch}>
             <Search className="w-[18px] h-[18px]" />
           </button>
-          <button onClick={() => navigate('/shared')} className="hidden sm:inline-flex p-2 rounded-full hover:bg-muted/50 text-muted-foreground/70 transition-colors" title="Shared Media">
+          <button onClick={() => navigate('/shared')} className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/50 text-muted-foreground/70 transition-colors" title="Shared Media" aria-label="Open shared media">
             <Link2 className="w-[18px] h-[18px]" />
           </button>
           {pinnedCount > 0 && (
-            <button onClick={loadPinnedMessages} className={cn("hidden sm:inline-flex p-2 rounded-full transition-colors", showPinned ? "bg-premium-warm/15 text-premium-warm" : "hover:bg-muted/50 text-muted-foreground/70")} title="Pinned messages">
+            <button onClick={loadPinnedMessages} className={cn("hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showPinned ? "bg-premium-warm/15 text-premium-warm" : "hover:bg-muted/50 text-muted-foreground/70")} title="Pinned messages" aria-label="Open pinned messages" aria-pressed={showPinned}>
               <Pin className="w-[18px] h-[18px]" />
             </button>
           )}
           {selectedChannel && (
-            <button onClick={() => setSettingsChannel(selectedChannel)} className="hidden sm:inline-flex p-2 rounded-full hover:bg-muted/50 text-muted-foreground/70 transition-colors" title="Channel Settings" aria-label="Channel settings">
+            <button onClick={() => setSettingsChannel(selectedChannel)} className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/50 text-muted-foreground/70 transition-colors" title="Channel Settings" aria-label="Channel settings">
               <Settings className="w-[18px] h-[18px]" />
             </button>
           )}
@@ -806,6 +852,7 @@ export default function ChatPage() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search messages..."
+              aria-label="Search messages"
               // Mobile: h-9 (36px) so it's comfortable to focus with a
               // thumb without misfiring on the surrounding border.
               // Desktop: original h-8 keeps the header compact.
@@ -827,43 +874,53 @@ export default function ChatPage() {
                   <h3 className="text-sm font-bold flex items-center gap-1.5">
                     <Pin className="w-3.5 h-3.5" style={{ color: 'hsl(var(--premium-warm))' }} /> Pinned Messages
                   </h3>
-                  <button onClick={() => setShowPinned(false)} className="p-1 rounded-lg hover:bg-muted/50">
+                  <button onClick={() => setShowPinned(false)} className="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/50" aria-label="Close pinned messages">
                     <X className="w-4 h-4 text-muted-foreground/70" />
                   </button>
                 </div>
                 <div className="space-y-2">
                   {pinnedMessages.map(msg => (
-                    <button
-                      key={msg.id}
-                      type="button"
-                      onClick={() => jumpToMessage(msg.id)}
-                      className="glass-card p-3.5 w-full text-left hover:bg-muted/10 transition-colors btn-press"
-                      title="Jump to message"
-                    >
-                      <div className="flex items-center gap-2 mb-1.5 relative z-10">
-                        <UserAvatar userId={msg.user_id} name={msg.profiles?.display_name || '?'} avatarUrl={msg.profiles?.avatar_url} size={24} />
-                        <span className="text-[11px] font-bold text-foreground/80">{msg.profiles?.display_name}</span>
-                        <span className="text-[9px] text-muted-foreground/70">{format(new Date(msg.created_at), 'MMM d, h:mm a')}</span>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); handleTogglePin(msg); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleTogglePin(msg); } }}
-                          className="ml-auto p-1 rounded-md hover:bg-muted/50 transition-colors"
-                          title="Unpin"
-                        >
-                          <Pin className="w-3 h-3 text-premium-warm" />
-                        </span>
-                      </div>
-                      <p className="text-[13px] text-foreground/80 leading-relaxed pl-8 relative z-10 line-clamp-3">{msg.content}</p>
-                    </button>
+                    <div key={msg.id} className="glass-card relative overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => jumpToMessage(msg.id)}
+                        className="w-full p-3.5 pr-14 text-left hover:bg-muted/10 transition-colors btn-press"
+                        title="Jump to message"
+                      >
+                        <div className="flex items-center gap-2 mb-1.5 relative z-10">
+                          <UserAvatar userId={msg.user_id} name={msg.profiles?.display_name || '?'} avatarUrl={msg.profiles?.avatar_url} size={24} />
+                          <span className="text-[11px] font-bold text-foreground/80">{msg.profiles?.display_name}</span>
+                          <span className="text-[9px] text-muted-foreground/70">{format(new Date(msg.created_at), 'MMM d, h:mm a')}</span>
+                        </div>
+                        <p className="text-[13px] text-foreground/80 leading-relaxed pl-8 relative z-10 line-clamp-3">{msg.content}</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePin(msg)}
+                        className="absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/50 transition-colors"
+                        title="Unpin"
+                        aria-label="Unpin message"
+                      >
+                        <Pin className="w-3.5 h-3.5 text-premium-warm" />
+                      </button>
+                    </div>
                   ))}
                   {pinnedMessages.length === 0 && <p className="text-xs text-muted-foreground/70 text-center py-8">No pinned messages</p>}
                 </div>
               </div>
             ) : (
               <>
-                <MessageList
+                {messageError && !searchResults ? (
+                  <div className="flex flex-1 items-center justify-center overflow-y-auto p-4">
+                    <div className="w-full max-w-md">
+                      <MemberLoadError
+                        compact
+                        message={messageError}
+                        onRetry={() => { if (selectedChannel) void fetchMessages(selectedChannel.id); }}
+                      />
+                    </div>
+                  </div>
+                ) : <MessageList
                   key={selectedChannel?.id || 'none'}
                   messages={searchResults || messages}
                   selectedChannel={selectedChannel}
@@ -888,7 +945,7 @@ export default function ChatPage() {
                   isSearchActive={!!searchResults}
                   lastReadAt={lastReadAt}
                   scrollToBottomTrigger={scrollToBottomTrigger}
-                />
+                />}
                 {!searchResults && (
                   <div className="flex-shrink-0 border-t border-border/15 z-10">
                     <AnimatePresence>

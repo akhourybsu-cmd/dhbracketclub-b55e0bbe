@@ -14,7 +14,7 @@ export default function ClubPage() {
   const accent = club?.accent_color ?? '152 72% 46%';
 
   return (
-    <div className="member-page">
+    <div className="member-page lg:max-w-5xl lg:mx-auto">
       <ScreenHeader
         eyebrow="Together"
         title={club?.name ?? 'Your club'}
@@ -31,15 +31,14 @@ export default function ClubPage() {
       />
 
       {visibleItems.length > 0 ? (
-        <AppSurface className="overflow-hidden">
+        <AppSurface className="overflow-hidden lg:grid lg:grid-cols-2 lg:gap-3 lg:overflow-visible lg:border-0 lg:bg-transparent lg:shadow-none">
           {visibleItems.map((item, index) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className="group flex min-h-[68px] items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-muted/30 active:bg-muted/55"
-                style={index > 0 ? { borderTop: '1px solid hsl(var(--border) / 0.3)' } : undefined}
+                className={`group flex min-h-[76px] items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-muted/30 active:bg-muted/55 lg:rounded-2xl lg:!border lg:border-border/45 lg:bg-card lg:shadow-[var(--shadow-card)] ${index > 0 ? 'border-t border-border/30 lg:border-t' : ''}`}
               >
                 <span
                   className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"

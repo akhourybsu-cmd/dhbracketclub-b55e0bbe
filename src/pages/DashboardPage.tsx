@@ -515,7 +515,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={doInstall}
-              className="flex-1 flex items-center gap-2 text-left px-3 py-2 rounded-l-xl active:scale-[0.99] transition"
+              className="flex min-h-11 flex-1 items-center gap-2 rounded-l-xl px-3 py-2 text-left transition active:scale-[0.99]"
               aria-label="Install DH on your phone"
             >
               <Download className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
@@ -525,7 +525,7 @@ export default function DashboardPage() {
               type="button"
               onClick={dismissPwa}
               aria-label="Dismiss install prompt"
-              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-current opacity-65 hover:opacity-100 active:scale-90 transition"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-current opacity-65 transition hover:opacity-100 active:scale-90"
             >
               <X className="w-3 h-3" />
             </button>

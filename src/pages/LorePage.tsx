@@ -7,6 +7,8 @@ import { useLoreEntries } from '@/hooks/useLoreEntries';
 import { LoreCard } from '@/components/lore/LoreCard';
 import { QuickAddLoreSheet } from '@/components/lore/QuickAddLoreSheet';
 import { cn } from '@/lib/utils';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberErrorMessage } from '@/lib/memberData';
 
 const FILTERS: { value: string; label: string; kind: 'type' | 'status' | 'all' }[] = [
   { value: 'all', label: 'All', kind: 'all' },
@@ -31,7 +33,7 @@ export default function LorePage() {
     search: search.trim() || undefined,
   }), [filter, search]);
 
-  const { data: entries, isLoading } = useLoreEntries(queryFilters);
+  const { data: entries, isLoading, isError, error, refetch } = useLoreEntries(queryFilters);
 
   const featured = useMemo(() => {
     if (!entries) return [];
@@ -46,7 +48,7 @@ export default function LorePage() {
   };
 
   return (
-    <div className="member-page">
+    <div className="member-page lg:max-w-5xl lg:mx-auto" aria-busy={isLoading}>
       {/* Hero */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -91,7 +93,7 @@ export default function LorePage() {
 
       {/* Featured legendary */}
       {featured.length > 0 && (
-        <div className="mb-5 space-y-2">
+        <div className="mb-5 space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {featured.map((entry, i) => (
             <motion.div
               key={entry.id}
@@ -140,6 +142,7 @@ export default function LorePage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search lore..."
+            aria-label="Search lore"
             className="form-input pl-9 h-11"
           />
         </div>
@@ -160,12 +163,14 @@ export default function LorePage() {
       </div>
 
       {/* Filter chips */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-none -mx-4 px-4 pb-1">
+      <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-none -mx-4 px-4 pb-1" role="group" aria-label="Lore filters">
         {FILTERS.map((f) => {
           const active = filter.value === f.value;
           return (
             <button
               key={f.value}
+              type="button"
+              aria-pressed={active}
               onClick={() => setFilter(f)}
               className={cn(
                 'flex-shrink-0 px-3.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all btn-press min-h-11',
@@ -186,8 +191,10 @@ export default function LorePage() {
         <div className="space-y-2.5">
           {[1, 2, 3].map((i) => <div key={i} className="glass-card p-4 h-28 skeleton-shimmer" />)}
         </div>
+      ) : isError ? (
+        <MemberLoadError message={memberErrorMessage(error)} onRetry={() => void refetch()} />
       ) : entries && entries.length > 0 ? (
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {entries.map((e, i) => <LoreCard key={e.id} entry={e} index={i} />)}
         </div>
       ) : (

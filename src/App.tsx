@@ -16,6 +16,7 @@ import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useOfflineIndicator } from "@/hooks/useOfflineIndicator";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
 import { useThemeChrome } from "@/hooks/useThemeChrome";
+import { MemberRouteErrorBoundary } from "@/components/member/MemberRouteErrorBoundary";
 
 // Lazy-loaded pages for code splitting
 const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
@@ -350,12 +351,16 @@ function AnimatedRoutes() {
     location.pathname === '/reset-password' ||
     location.pathname === '/club/request';
 
-  if (shellless) return routes;
+  if (shellless) {
+    return <MemberRouteErrorBoundary resetKey={location.pathname}>{routes}</MemberRouteErrorBoundary>;
+  }
 
   return (
     <ProtectedRoute>
       <ClubGate>
-        <AppLayout>{routes}</AppLayout>
+        <MemberRouteErrorBoundary resetKey={location.pathname}>
+          <AppLayout>{routes}</AppLayout>
+        </MemberRouteErrorBoundary>
       </ClubGate>
     </ProtectedRoute>
   );

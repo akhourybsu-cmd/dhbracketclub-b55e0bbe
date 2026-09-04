@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 type Comment = {
   id: string;
@@ -36,79 +38,122 @@ export default function PostDetailPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [commenting, setCommenting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
-  useEffect(() => {
-    if (!postId) return;
-    const fetch = async () => {
-      const [{ data: p }, { data: c }] = await Promise.all([
-        supabase.from('posts').select('*, profiles:user_id(display_name)').eq('id', postId).single(),
-        supabase.from('post_comments').select('*, profiles:user_id(display_name)').eq('post_id', postId).order('created_at'),
-      ]);
-      if (p) setPost(p);
-      if (c) setComments(c as Comment[]);
+  const fetchData = useCallback(async () => {
+    if (!postId) {
       setLoading(false);
-    };
-    fetch();
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const [p, c] = await Promise.all([
+        memberData(supabase.from('posts').select('*, profiles:user_id(display_name)').eq('id', postId).single(), 'Load discussion'),
+        memberData(supabase.from('post_comments').select('*, profiles:user_id(display_name)').eq('post_id', postId).order('created_at'), 'Load comments'),
+      ]);
+      setPost(p);
+      setComments((c ?? []) as Comment[]);
+    } catch (loadError) {
+      setError(memberErrorMessage(loadError));
+    } finally {
+      setLoading(false);
+    }
   }, [postId]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleComment = async () => {
     if (!newComment.trim() || !user || !postId) return;
     play('tap');
     const content = newComment.trim();
     setNewComment('');
-    await supabase.from('post_comments').insert({ post_id: postId, user_id: user.id, content });
-    const { data } = await supabase.from('post_comments').select('*, profiles:user_id(display_name)').eq('post_id', postId).order('created_at');
-    if (data) setComments(data as Comment[]);
-
-    // Notify post author (if not self) + prior commenters
-    if (post) {
-      const priorCommenters = (data || [])
-        .map((c: any) => c.user_id)
-        .filter((uid: string) => uid && uid !== user.id);
-      const recipients = Array.from(new Set([post.user_id, ...priorCommenters])).filter(
-        (uid) => uid && uid !== user.id,
+    setCommenting(true);
+    try {
+      await memberData(
+        supabase.from('post_comments').insert({ post_id: postId, user_id: user.id, content }).select('id'),
+        'Post comment',
       );
-      if (recipients.length > 0) {
-        const senderName = user.user_metadata?.display_name || 'Someone';
-        const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
-        notify({
-          type: 'posts',
-          title: post.user_id === user.id
-            ? `${senderName} replied on their post`
-            : `${senderName} commented on "${post.title || 'your post'}"`,
-          message: preview,
-          tag: `dh-posts-${postId}`,
-          url: `/posts/${postId}`,
-          senderUserId: user.id,
-          targetUserIds: recipients,
-        });
+      const data = await memberData(
+        supabase.from('post_comments').select('*, profiles:user_id(display_name)').eq('post_id', postId).order('created_at'),
+        'Refresh comments',
+      );
+      setComments((data ?? []) as Comment[]);
+
+      // Notify post author (if not self) + prior commenters.
+      if (post) {
+        const priorCommenters = (data || [])
+          .map((c: any) => c.user_id)
+          .filter((uid: string) => uid && uid !== user.id);
+        const recipients = Array.from(new Set([post.user_id, ...priorCommenters])).filter(
+          (uid) => uid && uid !== user.id,
+        );
+        if (recipients.length > 0) {
+          const senderName = user.user_metadata?.display_name || 'Someone';
+          const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
+          void notify({
+            type: 'posts',
+            title: post.user_id === user.id
+              ? `${senderName} replied on their post`
+              : `${senderName} commented on "${post.title || 'your post'}"`,
+            message: preview,
+            tag: `dh-posts-${postId}`,
+            url: `/posts/${postId}`,
+            senderUserId: user.id,
+            targetUserIds: recipients,
+          });
+        }
       }
+    } catch (commentError) {
+      setNewComment(content);
+      toast.error(memberErrorMessage(commentError));
+    } finally {
+      setCommenting(false);
     }
   };
 
   const handleDelete = async () => {
     if (!postId) return;
-    await supabase.from('post_comments').delete().eq('post_id', postId);
-    await supabase.from('posts').delete().eq('id', postId);
-    toast.success('Post deleted');
-    navigate('/feed');
+    setDeleting(true);
+    try {
+      await memberData(supabase.from('post_comments').delete().eq('post_id', postId).select('id'), 'Delete comments');
+      await memberData(supabase.from('posts').delete().eq('id', postId).select('id'), 'Delete discussion');
+      toast.success('Post deleted');
+      navigate('/feed');
+    } catch (deleteError) {
+      toast.error(memberErrorMessage(deleteError));
+      setDeleting(false);
+    }
   };
 
   const togglePin = async () => {
     if (!postId || !post) return;
     play('tap');
-    await supabase.from('posts').update({ is_pinned: !post.is_pinned }).eq('id', postId);
-    setPost({ ...post, is_pinned: !post.is_pinned });
+    const snapshot = post;
+    const nextPinned = !post.is_pinned;
+    setPost({ ...post, is_pinned: nextPinned });
+    try {
+      await memberData(
+        supabase.from('posts').update({ is_pinned: nextPinned }).eq('id', postId).select('id'),
+        nextPinned ? 'Pin discussion' : 'Unpin discussion',
+      );
+    } catch (pinError) {
+      setPost(snapshot);
+      toast.error(memberErrorMessage(pinError));
+    }
   };
 
   if (loading) return <div className="loading-spinner"><div className="loading-spinner-ring" /><p className="loading-spinner-text">Loading…</p></div>;
+  if (error) return <div className="member-page max-w-3xl mx-auto"><MemberLoadError message={error} onRetry={() => void fetchData()} /></div>;
   if (!post) return <div className="text-center py-16 text-muted-foreground font-medium text-sm">Post not found</div>;
 
   const isAuthor = user?.id === post.user_id;
 
   return (
-    <div className="member-page max-w-2xl mx-auto">
+    <div className="member-page max-w-3xl mx-auto" aria-busy={commenting || deleting}>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <button onClick={() => navigate('/feed')} className="back-link">
           <ArrowLeft className="w-3.5 h-3.5" /> Feed
@@ -167,13 +212,14 @@ export default function PostDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <Input
+              aria-label="Discussion comment"
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleComment()}
               placeholder="Add a comment..."
               className="flex-1 h-11 text-xs bg-muted/50 border-border/35 rounded-xl"
             />
-            <Button size="sm" onClick={handleComment} disabled={!newComment.trim()} className="h-11 w-11 p-0 rounded-xl" aria-label="Post comment">
+            <Button size="sm" onClick={handleComment} disabled={!newComment.trim() || commenting} className="h-11 w-11 p-0 rounded-xl" aria-label="Post comment">
               <Send className="w-3.5 h-3.5" />
             </Button>
           </div>
@@ -190,8 +236,8 @@ export default function PostDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? 'Deleting…' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

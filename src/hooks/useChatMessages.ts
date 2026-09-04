@@ -3,6 +3,7 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Message } from '@/components/chat/types';
 import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
+import { memberErrorMessage } from '@/lib/memberData';
 
 const PAGE_SIZE = 50;
 
@@ -10,6 +11,7 @@ export function useChatMessages(userId: string | undefined) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Track the active channel to discard stale fetch results
   const activeChannelRef = useRef<string | null>(null);
 
@@ -83,7 +85,10 @@ export function useChatMessages(userId: string | undefined) {
   const fetchMessages = useCallback(async (channelId: string, before?: string) => {
     if (!userId) return;
     // Track which channel this fetch is for
-    if (!before) activeChannelRef.current = channelId;
+    if (!before) {
+      activeChannelRef.current = channelId;
+      setError(null);
+    }
 
     let query = supabase
       .from('messages')
@@ -113,6 +118,9 @@ export function useChatMessages(userId: string | undefined) {
       setHasMore(data.length === PAGE_SIZE);
     } catch (error) {
       console.error('[useChatMessages] fetch failed', error);
+      if (!before && activeChannelRef.current === channelId) {
+        setError(memberErrorMessage(error));
+      }
     }
   }, [userId, enrichMessages]);
 
@@ -127,6 +135,7 @@ export function useChatMessages(userId: string | undefined) {
     setMessages,
     hasMore,
     loadingMore,
+    error,
     fetchMessages,
     loadOlderMessages,
   };

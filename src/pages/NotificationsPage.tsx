@@ -7,6 +7,7 @@ import { useNotifications, type AppNotification } from '@/hooks/useNotifications
 import { notifIcon } from '@/components/notifications/meta';
 import { Stagger, StaggerItem } from '@/components/motion/Stagger';
 import { LoadingSwap } from '@/components/motion/LoadingSwap';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
 
 type Tab = 'all' | 'unread';
 
@@ -20,7 +21,7 @@ function bucketOf(iso: string): string {
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('all');
-  const { items, unreadCount, loading, loadingMore, hasMore, loadMore, markRead, markAllRead, dismiss } =
+  const { items, unreadCount, loading, loadingMore, hasMore, error, loadMore, markRead, markAllRead, dismiss, refresh } =
     useNotifications({ pageSize: 30, unreadOnly: tab === 'unread' });
 
   // Infinite scroll sentinel.
@@ -50,7 +51,7 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="member-page max-w-2xl mx-auto">
+    <div className="member-page max-w-4xl mx-auto" aria-busy={loading}>
       <div>
         <div className="page-toolbar">
           <div className="page-header mb-0">
@@ -88,7 +89,9 @@ export default function NotificationsPage() {
           ))}
         </div>
 
-        <LoadingSwap
+        {error && !loading ? (
+          <MemberLoadError message={error} onRetry={() => void refresh()} />
+        ) : <LoadingSwap
           loading={loading}
           skeleton={
             <div className="space-y-2">
@@ -131,7 +134,7 @@ export default function NotificationsPage() {
                           </div>
                         </button>
                         <div className="flex items-center gap-2 flex-shrink-0 pt-1">
-                          {!n.read_at && <span className="w-2 h-2 rounded-full bg-primary" aria-label="Unread" />}
+                          {!n.read_at && <span className="w-2 h-2 rounded-full bg-primary" role="status" aria-label="Unread" />}
                           <button
                             onClick={() => void dismiss(n.id)}
                             className="w-11 h-11 -my-2 -mr-2 rounded-xl flex items-center justify-center text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/40 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
@@ -152,7 +155,7 @@ export default function NotificationsPage() {
             </div>
           </div>
         )}
-        </LoadingSwap>
+        </LoadingSwap>}
       </div>
     </div>
   );

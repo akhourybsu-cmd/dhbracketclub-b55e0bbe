@@ -28,6 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { moveListItem } from '@/lib/memberWorkflows';
 
 interface RankingItem {
   id: string;
@@ -46,6 +49,7 @@ export default function RankingDetailPage() {
   const [mySubmission, setMySubmission] = useState<any>(null);
   const [aggregated, setAggregated] = useState<{ item: RankingItem; avgRank: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -61,49 +65,58 @@ export default function RankingDetailPage() {
   const isCreator = ranking?.created_by === user?.id;
 
   const fetchData = useCallback(async () => {
-    if (!rankingId || !user) return;
+    if (!rankingId || !user) {
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    try {
+      const [rankData, itemData] = await Promise.all([
+        memberData(supabase.from('rankings').select('*, competitions(title, status), profiles:created_by(display_name)').eq('id', rankingId).single(), 'Load ranking'),
+        memberData(supabase.from('ranking_items').select('*').eq('ranking_id', rankingId).order('position'), 'Load ranking items'),
+      ]);
 
-    const [{ data: rankData }, { data: itemData }] = await Promise.all([
-      supabase.from('rankings').select('*, competitions(title, status), profiles:created_by(display_name)').eq('id', rankingId).single(),
-      supabase.from('ranking_items').select('*').eq('ranking_id', rankingId).order('position'),
-    ]);
-
-    if (rankData) {
       setRanking(rankData);
       setEditTopic(rankData.topic);
-    }
-    if (itemData) {
-      setItems(itemData);
-      setMyOrder([...itemData]);
-    }
+      const nextItems = itemData ?? [];
+      setItems(nextItems);
+      setMyOrder([...nextItems]);
 
-    const { data: subs } = await supabase
-      .from('ranking_submissions')
-      .select('*, profiles:user_id(display_name)')
-      .eq('ranking_id', rankingId);
-
-    if (subs && subs.length > 0) {
+      const subs = (await memberData(
+        supabase
+          .from('ranking_submissions')
+          .select('*, profiles:user_id(display_name)')
+          .eq('ranking_id', rankingId),
+        'Load ranking submissions',
+      )) ?? [];
       setSubmissions(subs);
-      const mine = subs.find(s => s.user_id === user.id);
-      if (mine) {
-        setMySubmission(mine);
-        setShowResults(true);
-      }
+      setAggregated([]);
+      setMySubmission(null);
+      if (subs.length === 0) setShowResults(false);
 
-      const subIds = subs.map(s => s.id);
-      const { data: entries } = await supabase
-        .from('ranking_submission_entries')
-        .select('*')
-        .in('submission_id', subIds);
+      if (subs.length > 0) {
+        const mine = subs.find(s => s.user_id === user.id);
+        if (mine) {
+          setMySubmission(mine);
+          setShowResults(true);
+        }
 
-      if (entries && itemData) {
+        const subIds = subs.map(s => s.id);
+        const entries = (await memberData(
+          supabase
+            .from('ranking_submission_entries')
+            .select('*')
+            .in('submission_id', subIds),
+          'Load ranking entries',
+        )) ?? [];
+
         const rankSums = new Map<string, { total: number; count: number }>();
         entries.forEach(e => {
           const existing = rankSums.get(e.item_id) || { total: 0, count: 0 };
           rankSums.set(e.item_id, { total: existing.total + e.rank, count: existing.count + 1 });
         });
 
-        const agg = itemData.map(item => ({
+        const agg = nextItems.map(item => ({
           item,
           avgRank: rankSums.has(item.id) ? rankSums.get(item.id)!.total / rankSums.get(item.id)!.count : item.position + 1,
         })).sort((a, b) => a.avgRank - b.avgRank);
@@ -112,62 +125,69 @@ export default function RankingDetailPage() {
 
         if (mine) {
           const myEntries = entries.filter(e => e.submission_id === mine.id).sort((a, b) => a.rank - b.rank);
-          const ordered = myEntries.map(e => itemData.find(i => i.id === e.item_id)).filter(Boolean) as RankingItem[];
+          const ordered = myEntries.map(e => nextItems.find(i => i.id === e.item_id)).filter(Boolean) as RankingItem[];
           if (ordered.length > 0) setMyOrder(ordered);
         }
       }
+    } catch (loadError) {
+      setError(memberErrorMessage(loadError));
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [rankingId, user]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => { if (items.length) fetchEnrichments(); }, [items.length, fetchEnrichments]);
+  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { if (items.length) void fetchEnrichments(); }, [items.length, fetchEnrichments]);
 
   useRankingUpdates(rankingId, fetchData);
 
   const moveItem = (fromIdx: number, direction: 'up' | 'down') => {
     if (mySubmission) return;
-    const toIdx = direction === 'up' ? fromIdx - 1 : fromIdx + 1;
-    if (toIdx < 0 || toIdx >= myOrder.length) return;
-    const newOrder = [...myOrder];
-    [newOrder[fromIdx], newOrder[toIdx]] = [newOrder[toIdx], newOrder[fromIdx]];
-    setMyOrder(newOrder);
+    setMyOrder(previous => moveListItem(previous, fromIdx, direction));
   };
 
   const handleSubmit = async () => {
     if (!user || !rankingId || mySubmission) return;
     setSubmitting(true);
+    let createdSubmissionId: string | null = null;
     try {
-      const { data: sub, error: subErr } = await supabase
-        .from('ranking_submissions')
-        .insert({ ranking_id: rankingId, user_id: user.id })
-        .select()
-        .single();
-      if (subErr) throw subErr;
+      const sub = await memberData(
+        supabase
+          .from('ranking_submissions')
+          .insert({ ranking_id: rankingId, user_id: user.id })
+          .select()
+          .single(),
+        'Create ranking submission',
+      );
+      createdSubmissionId = sub.id;
 
       const entries = myOrder.map((item, i) => ({
         submission_id: sub.id,
         item_id: item.id,
         rank: i + 1,
       }));
-      const { error: entErr } = await supabase.from('ranking_submission_entries').insert(entries);
-      if (entErr) throw entErr;
+      await memberData(supabase.from('ranking_submission_entries').insert(entries).select('id'), 'Save ranking order');
 
-      await supabase.from('activity_feed').insert({
+      void memberData(supabase.from('activity_feed').insert({
         actor_user_id: user.id,
         event_type: 'ranking_submitted',
         target_type: 'ranking',
         target_id: rankingId,
         metadata: { topic: ranking?.topic },
-      });
+      }).select('id'), 'Log ranking submission').catch(() => {});
 
       toast.success('Ranking submitted! 🏆');
       setMySubmission(sub);
       setShowResults(true);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to submit');
+      void fetchData();
+    } catch (submitError) {
+      if (createdSubmissionId) {
+        void memberData(
+          supabase.from('ranking_submissions').delete().eq('id', createdSubmissionId).select('id'),
+          'Roll back ranking submission',
+        ).catch(() => {});
+      }
+      toast.error(memberErrorMessage(submitError));
     } finally {
       setSubmitting(false);
     }
@@ -188,20 +208,21 @@ export default function RankingDetailPage() {
     try {
       const subIds = submissions.map(s => s.id);
       if (subIds.length > 0) {
-        await supabase.from('ranking_submission_entries').delete().in('submission_id', subIds);
-        await supabase.from('ranking_submissions').delete().eq('ranking_id', rankingId);
+        await memberData(supabase.from('ranking_submission_entries').delete().in('submission_id', subIds).select('id'), 'Delete ranking entries');
+        await memberData(supabase.from('ranking_submissions').delete().eq('ranking_id', rankingId).select('id'), 'Delete ranking submissions');
       }
-      await supabase.from('item_enrichments').delete().in('item_id', items.map(i => i.id));
-      await supabase.from('ranking_items').delete().eq('ranking_id', rankingId);
-      const { error } = await supabase.from('rankings').delete().eq('id', rankingId);
-      if (error) throw error;
+      if (items.length > 0) {
+        await memberData(supabase.from('item_enrichments').delete().in('item_id', items.map(i => i.id)).select('id'), 'Delete ranking details');
+      }
+      await memberData(supabase.from('ranking_items').delete().eq('ranking_id', rankingId).select('id'), 'Delete ranking items');
+      await memberData(supabase.from('rankings').delete().eq('id', rankingId).select('id'), 'Delete ranking');
       if (ranking?.competition_id) {
-        await supabase.from('competitions').delete().eq('id', ranking.competition_id);
+        await memberData(supabase.from('competitions').delete().eq('id', ranking.competition_id).select('id'), 'Delete ranking competition');
       }
       toast.success('Ranking deleted');
       navigate('/rankings');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to delete');
+    } catch (deleteError) {
+      toast.error(memberErrorMessage(deleteError));
     } finally {
       setDeleting(false);
       setShowDeleteDialog(false);
@@ -212,16 +233,15 @@ export default function RankingDetailPage() {
     if (!rankingId || !editTopic.trim()) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('rankings').update({ topic: editTopic.trim() }).eq('id', rankingId);
-      if (error) throw error;
+      await memberData(supabase.from('rankings').update({ topic: editTopic.trim() }).eq('id', rankingId).select('id'), 'Update ranking');
       if (ranking?.competition_id) {
-        await supabase.from('competitions').update({ title: editTopic.trim() }).eq('id', ranking.competition_id);
+        await memberData(supabase.from('competitions').update({ title: editTopic.trim() }).eq('id', ranking.competition_id).select('id'), 'Update ranking competition');
       }
       toast.success('Ranking updated');
       setEditing(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update');
+      void fetchData();
+    } catch (saveError) {
+      toast.error(memberErrorMessage(saveError));
     } finally {
       setSaving(false);
     }
@@ -231,12 +251,11 @@ export default function RankingDetailPage() {
     if (!rankingId || !isCreator) return;
     const newStatus = ranking.status === 'open' ? 'closed' : 'open';
     try {
-      const { error } = await supabase.from('rankings').update({ status: newStatus }).eq('id', rankingId);
-      if (error) throw error;
+      await memberData(supabase.from('rankings').update({ status: newStatus }).eq('id', rankingId).select('id'), 'Update ranking status');
       toast.success(`Ranking ${newStatus === 'open' ? 'reopened' : 'closed'}`);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to update status');
+      void fetchData();
+    } catch (statusError) {
+      toast.error(memberErrorMessage(statusError));
     }
   };
 
@@ -249,6 +268,10 @@ export default function RankingDetailPage() {
     );
   }
 
+  if (error) {
+    return <div className="member-page max-w-3xl mx-auto"><MemberLoadError message={error} onRetry={() => { setLoading(true); void fetchData(); }} /></div>;
+  }
+
   if (!ranking) {
     return <div className="text-center py-16 text-muted-foreground font-medium text-sm">Ranking not found.</div>;
   }
@@ -257,7 +280,7 @@ export default function RankingDetailPage() {
   const hasEnrichments = enrichments.size > 0;
 
   return (
-    <div className="member-page max-w-md mx-auto">
+    <div className="member-page max-w-3xl mx-auto" aria-busy={submitting || deleting || saving || enriching}>
       <Link to="/rankings" className="back-link">
         <ArrowLeft /> Back to Rankings
       </Link>
@@ -361,8 +384,11 @@ export default function RankingDetailPage() {
 
       {/* Tab toggle */}
       {submissions.length > 0 && (
-        <div className="flex gap-1.5 mb-5 p-1 bg-muted/50 rounded-xl">
+        <div className="flex gap-1.5 mb-5 p-1 bg-muted/50 rounded-xl" role="tablist" aria-label="Ranking views">
           <button
+            type="button"
+            role="tab"
+            aria-selected={!showResults}
             onClick={() => setShowResults(false)}
             className={cn(
               "flex-1 min-h-11 py-2.5 rounded-lg text-xs font-semibold transition-all",
@@ -372,6 +398,9 @@ export default function RankingDetailPage() {
             {mySubmission ? 'My Ranking' : 'Submit Ranking'}
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={showResults}
             onClick={() => setShowResults(true)}
             className={cn(
               "flex-1 min-h-11 py-2.5 rounded-lg text-xs font-semibold transition-all",

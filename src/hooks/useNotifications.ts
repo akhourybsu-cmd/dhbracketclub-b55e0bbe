@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { mergeUniqueById } from '@/lib/memberWorkflows';
 
 export interface AppNotification {
   id: string;
@@ -40,6 +43,7 @@ export function useNotifications({ pageSize = 30, unreadOnly = false }: UseNotif
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const baseQuery = useCallback(() => {
     let q = sb.from('notifications').select('*').eq('user_id', uid).order('created_at', { ascending: false });
@@ -48,26 +52,38 @@ export function useNotifications({ pageSize = 30, unreadOnly = false }: UseNotif
   }, [uid, unreadOnly]);
 
   const load = useCallback(async () => {
-    if (!uid) { setItems([]); setLoading(false); return; }
-    const { data } = await baseQuery().limit(pageSize);
-    const rows = (data ?? []) as AppNotification[];
-    setItems(rows);
-    setHasMore(rows.length === pageSize);
-    setLoading(false);
+    if (!uid) { setItems([]); setError(null); setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await memberData(baseQuery().limit(pageSize), 'Load notifications');
+      const rows = (data ?? []) as AppNotification[];
+      setItems(rows);
+      setHasMore(rows.length === pageSize);
+    } catch (loadError) {
+      setError(memberErrorMessage(loadError));
+    } finally {
+      setLoading(false);
+    }
   }, [uid, baseQuery, pageSize]);
 
   const loadMore = useCallback(async () => {
     if (!uid || loadingMore || items.length === 0) return;
     setLoadingMore(true);
-    const cursor = items[items.length - 1].created_at;
-    const { data } = await baseQuery().lt('created_at', cursor).limit(pageSize);
-    const rows = (data ?? []) as AppNotification[];
-    setItems(prev => {
-      const seen = new Set(prev.map(p => p.id));
-      return [...prev, ...rows.filter(r => !seen.has(r.id))];
-    });
-    setHasMore(rows.length === pageSize);
-    setLoadingMore(false);
+    try {
+      const cursor = items[items.length - 1].created_at;
+      const data = await memberData(
+        baseQuery().lt('created_at', cursor).limit(pageSize),
+        'Load more notifications',
+      );
+      const rows = (data ?? []) as AppNotification[];
+      setItems(prev => mergeUniqueById(prev, rows));
+      setHasMore(rows.length === pageSize);
+    } catch (loadError) {
+      toast.error(memberErrorMessage(loadError));
+    } finally {
+      setLoadingMore(false);
+    }
   }, [uid, items, baseQuery, pageSize, loadingMore]);
 
   useEffect(() => { setLoading(true); void load(); }, [load]);
@@ -84,18 +100,20 @@ export function useNotifications({ pageSize = 30, unreadOnly = false }: UseNotif
     const ch = sb
       .channel(`notifications-${uid}-${unreadOnly ? 'u' : 'a'}-${channelIdRef.current}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` },
-        (p: any) => {
+        (p: { new: AppNotification }) => {
           const row = p.new as AppNotification;
           if (unreadOnly && row.read_at) return;
           setItems(prev => (prev.some(x => x.id === row.id) ? prev : [row, ...prev]));
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${uid}` },
-        (p: any) => {
+        (p: { new: AppNotification }) => {
           const row = p.new as AppNotification;
-          setItems(prev => prev.map(x => (x.id === row.id ? row : x)));
+          setItems(prev => unreadOnly && row.read_at
+            ? prev.filter(x => x.id !== row.id)
+            : prev.map(x => (x.id === row.id ? row : x)));
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'notifications' },
-        (p: any) => setItems(prev => prev.filter(x => x.id !== p.old?.id)))
+        (p: { old?: { id?: string } }) => setItems(prev => prev.filter(x => x.id !== p.old?.id)))
       .subscribe();
     return () => { sb.removeChannel(ch); };
   }, [uid, unreadOnly]);
@@ -104,21 +122,47 @@ export function useNotifications({ pageSize = 30, unreadOnly = false }: UseNotif
 
   const markRead = useCallback(async (id: string) => {
     const now = new Date().toISOString();
-    setItems(prev => prev.map(n => (n.id === id && !n.read_at ? { ...n, read_at: now } : n)));
-    await sb.from('notifications').update({ read_at: now }).eq('id', id).is('read_at', null);
-  }, []);
+    const snapshot = items;
+    setItems(prev => unreadOnly
+      ? prev.filter(n => n.id !== id)
+      : prev.map(n => (n.id === id && !n.read_at ? { ...n, read_at: now } : n)));
+    try {
+      await memberData(
+        sb.from('notifications').update({ read_at: now }).eq('id', id).is('read_at', null).select('id'),
+        'Mark notification read',
+      );
+    } catch (updateError) {
+      setItems(snapshot);
+      toast.error(memberErrorMessage(updateError));
+    }
+  }, [items, unreadOnly]);
 
   const markAllRead = useCallback(async () => {
     if (!uid) return;
     const now = new Date().toISOString();
-    setItems(prev => prev.map(n => (n.read_at ? n : { ...n, read_at: now })));
-    await sb.from('notifications').update({ read_at: now }).eq('user_id', uid).is('read_at', null);
-  }, [uid]);
+    const snapshot = items;
+    setItems(prev => unreadOnly ? [] : prev.map(n => (n.read_at ? n : { ...n, read_at: now })));
+    try {
+      await memberData(
+        sb.from('notifications').update({ read_at: now }).eq('user_id', uid).is('read_at', null).select('id'),
+        'Mark all notifications read',
+      );
+    } catch (updateError) {
+      setItems(snapshot);
+      toast.error(memberErrorMessage(updateError));
+    }
+  }, [items, uid, unreadOnly]);
 
   const dismiss = useCallback(async (id: string) => {
+    const snapshot = items;
     setItems(prev => prev.filter(n => n.id !== id));
-    await sb.from('notifications').delete().eq('id', id);
-  }, []);
+    try {
+      await memberData(sb.from('notifications').delete().eq('id', id).select('id'), 'Dismiss notification');
+    } catch (deleteError) {
+      setItems(snapshot);
+      toast.error(memberErrorMessage(deleteError));
+    }
+  }, [items]);
 
-  return { items, unreadCount, loading, loadingMore, hasMore, loadMore, markRead, markAllRead, dismiss, refresh: load };
+  return { items, unreadCount, loading, loadingMore, hasMore, error, loadMore, markRead, markAllRead, dismiss, refresh: load };
 }

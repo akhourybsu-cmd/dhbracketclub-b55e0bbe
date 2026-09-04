@@ -63,7 +63,7 @@ export default function CelebrationsPage() {
   const futureOrTodayUpcoming = upcoming.filter(c => c.daysAway >= 0);
 
   return (
-    <div className="member-page">
+    <div className="member-page lg:max-w-5xl lg:mx-auto" aria-busy={assetsLoading || settingsLoading}>
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
@@ -123,14 +123,14 @@ export default function CelebrationsPage() {
       {today.length > 0 && (
         <section className="mb-5">
           <SectionHeader icon={<PartyPopper className="w-3 h-3" />} label="Today" />
-          <div className="space-y-2">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
             {today.map(c => <TodayRow key={`${c.kind}-${c.id}`} celebration={c} />)}
           </div>
         </section>
       )}
 
       {/* Tab strip */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5 mb-4 scrollbar-none">
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5 mb-4 scrollbar-none" role="tablist" aria-label="Celebration filters">
         {([
           { id: 'all',        label: 'Upcoming', count: futureOrTodayUpcoming.length },
           { id: 'birthdays',  label: 'Birthdays', count: birthdays.length },
@@ -142,6 +142,8 @@ export default function CelebrationsPage() {
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => setTab(t.id)}
               className={cn(
                 'flex-shrink-0 px-3.5 min-h-11 rounded-xl text-[11px] font-bold flex items-center gap-1 transition',
@@ -279,7 +281,7 @@ function UpcomingList({ items }: { items: UpcomingCelebration[] }) {
     return <EmptyBlock label="Nothing on the horizon — add a birthday or milestone above." />;
   }
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
       {items.map((c, idx) => {
         const isBirthday = c.kind === 'birthday';
         return (
@@ -340,7 +342,7 @@ function BirthdaysList({
   );
 
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
       {sorted.map(b => {
         const age = b.show_age ? computeAge(b.birth_year, b.birth_month, b.birth_day) : null;
         const isMine = myBirthday?.id === b.id;
@@ -407,7 +409,7 @@ function MilestonesList({
   }
   const sorted = [...milestones].sort((a, b) => a.milestone_date.localeCompare(b.milestone_date));
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
       {sorted.map(m => {
         const canEdit = isAdmin || m.created_by === myUserId;
         return (
@@ -481,7 +483,7 @@ function PastList({ milestones }: { milestones: ClubMilestone[] }) {
   }
   const sorted = [...milestones].sort((a, b) => b.milestone_date.localeCompare(a.milestone_date));
   return (
-    <ul className="space-y-1.5">
+    <ul className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
       {sorted.map(m => (
         <li
           key={m.id}

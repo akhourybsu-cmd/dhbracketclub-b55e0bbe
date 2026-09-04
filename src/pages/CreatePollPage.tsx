@@ -10,6 +10,7 @@ import { MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAISuggestions } from '@/hooks/useAISuggestions';
 import AISuggestions from '@/components/AISuggestions';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 export default function CreatePollPage() {
   const { user } = useAuth();
@@ -54,9 +55,11 @@ export default function CreatePollPage() {
     }
 
     setLoading(true);
+    let competitionId: string | null = null;
+    let pollId: string | null = null;
     try {
       // Create competition
-      const { data: comp, error: compErr } = await supabase
+      const comp = await memberData(supabase
         .from('competitions')
         .insert({
           type: 'poll',
@@ -64,11 +67,11 @@ export default function CreatePollPage() {
           created_by: user.id,
         })
         .select()
-        .single();
-      if (compErr) throw compErr;
+        .single(), 'Create poll competition');
+      competitionId = comp.id;
 
       // Create poll
-      const { data: poll, error: pollErr } = await supabase
+      const poll = await memberData(supabase
         .from('polls')
         .insert({
           competition_id: comp.id,
@@ -77,8 +80,8 @@ export default function CreatePollPage() {
           poll_type: 'single',
         })
         .select()
-        .single();
-      if (pollErr) throw pollErr;
+        .single(), 'Create poll');
+      pollId = poll.id;
 
       // Create options
       const optionRows = validOptions.map((label, i) => ({
@@ -86,20 +89,19 @@ export default function CreatePollPage() {
         label,
         position: i,
       }));
-      const { error: optErr } = await supabase.from('poll_options').insert(optionRows);
-      if (optErr) throw optErr;
+      await memberData(supabase.from('poll_options').insert(optionRows).select('id'), 'Create poll options');
 
       // Activity feed
-      await supabase.from('activity_feed').insert({
+      void memberData(supabase.from('activity_feed').insert({
         actor_user_id: user.id,
         event_type: 'poll_created',
         target_type: 'poll',
         target_id: poll.id,
         metadata: { question: question.trim() },
-      });
+      }).select('id'), 'Log poll creation').catch(() => {});
 
       // Fire-and-forget push notification
-      supabase.functions.invoke('send-push-notification', {
+      void supabase.functions.invoke('send-push-notification', {
         body: {
           type: 'poll',
           title: '📊 New Poll',
@@ -111,15 +113,22 @@ export default function CreatePollPage() {
 
       toast.success('Poll created!');
       navigate(`/polls/${poll.id}`);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create poll');
+    } catch (createError) {
+      if (pollId) {
+        await memberData(supabase.from('poll_options').delete().eq('poll_id', pollId).select('id'), 'Roll back poll options').catch(() => {});
+        await memberData(supabase.from('polls').delete().eq('id', pollId).select('id'), 'Roll back poll').catch(() => {});
+      }
+      if (competitionId) {
+        await memberData(supabase.from('competitions').delete().eq('id', competitionId).select('id'), 'Roll back poll competition').catch(() => {});
+      }
+      toast.error(memberErrorMessage(createError));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="member-page max-w-md mx-auto">
+    <div className="member-page max-w-3xl mx-auto" aria-busy={loading || aiLoading}>
       <Link to="/polls" className="back-link">
         <ArrowLeft /> Back to Polls
       </Link>
@@ -141,8 +150,9 @@ export default function CreatePollPage() {
       <motion.form onSubmit={handleCreate} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
         <div className="glass-card p-5 space-y-4">
           <div>
-            <label className="form-label">Question</label>
+            <label htmlFor="poll-question" className="form-label">Question</label>
             <Input
+              id="poll-question"
               required
               value={question}
               onChange={e => setQuestion(e.target.value)}
@@ -174,6 +184,7 @@ export default function CreatePollPage() {
                   borderColor: 'hsl(var(--warning) / 0.3)',
                 }} />
                 <Input
+                  aria-label={`Option ${idx + 1}`}
                   value={opt}
                   onChange={e => updateOption(idx, e.target.value)}
                   placeholder={`Option ${idx + 1}`}

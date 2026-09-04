@@ -52,4 +52,30 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Keep the always-needed framework and data client in stable,
+        // cacheable files. Route code can change without invalidating these
+        // larger dependencies, and the app entry stays quick to parse.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@supabase") || id.includes("/realtime-js/") || id.includes("/postgrest-js/") || id.includes("/gotrue-js/") || id.includes("/storage-js/")) {
+            return "vendor-supabase";
+          }
+          if (
+            id.includes("/react/") ||
+            id.includes("/react-dom/") ||
+            id.includes("/react-router") ||
+            id.includes("/scheduler/") ||
+            id.includes("framer-motion") ||
+            id.includes("@tanstack/react-query")
+          ) {
+            return "vendor-framework";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
 }));

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +22,8 @@ import SoundSettingsCard from '@/components/profile/SoundSettingsCard';
 import { ProfileCelebrationsSection } from '@/components/celebrations/ProfileCelebrationsSection';
 import { ProfileReadshiftSection } from '@/components/readshift/ProfileReadshiftSection';
 import LinkedAccounts from '@/components/profile/LinkedAccounts';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
@@ -38,17 +40,24 @@ export default function ProfilePage() {
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const [stats, setStats] = useState({ polls: 0, rankings: 0, events: 0, messages: 0, drafts: 0, draftPoints: 0, draftWins: 0 });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-    const fetchProfile = async () => {
-      const [{ data: profile }, { data: pollVotes }, { data: rankSubs }, { data: rsvps }, { data: activity }, { data: draftResultsData }] = await Promise.all([
-        supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(),
-        supabase.from('poll_votes').select('id').eq('user_id', user.id),
-        supabase.from('ranking_submissions').select('id').eq('user_id', user.id),
-        supabase.from('event_rsvps').select('id').eq('user_id', user.id).eq('status', 'going'),
-        supabase.from('activity_feed').select('*, profiles:actor_user_id(display_name)').eq('actor_user_id', user.id).order('created_at', { ascending: false }).limit(5),
-        supabase.from('draft_results' as any).select('points_awarded, rank').eq('user_id', user.id),
+  const fetchProfile = useCallback(async () => {
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const [profile, pollVotes, rankSubs, rsvps, activity, draftResultsData] = await Promise.all([
+        memberData(supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).single(), 'Load profile'),
+        memberData(supabase.from('poll_votes').select('id').eq('user_id', user.id), 'Load poll stats').catch(() => []),
+        memberData(supabase.from('ranking_submissions').select('id').eq('user_id', user.id), 'Load ranking stats').catch(() => []),
+        memberData(supabase.from('event_rsvps').select('id').eq('user_id', user.id).eq('status', 'going'), 'Load event stats').catch(() => []),
+        memberData(supabase.from('activity_feed').select('*, profiles:actor_user_id(display_name)').eq('actor_user_id', user.id).order('created_at', { ascending: false }).limit(5), 'Load recent activity').catch(() => []),
+        memberData((supabase.from('draft_results' as any) as any).select('points_awarded, rank').eq('user_id', user.id), 'Load draft stats').catch(() => []),
       ]);
       if (profile) {
         setDisplayName(profile.display_name);
@@ -66,10 +75,15 @@ export default function ProfilePage() {
         draftPoints: totalDraftPts,
         draftWins,
       });
-      if (activity) setRecentActivity(activity);
-    };
-    fetchProfile();
+      setRecentActivity(activity ?? []);
+    } catch (loadError) {
+      setProfileError(memberErrorMessage(loadError));
+    } finally {
+      setProfileLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => { void fetchProfile(); }, [fetchProfile]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,20 +136,28 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user) return;
     setLoading(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: displayName })
-      .eq('id', user.id);
-
-    if (error) {
-      toast.error(error.message);
-      play('error');
-    } else {
+    try {
+      await memberData(
+        supabase.from('profiles').update({ display_name: displayName }).eq('id', user.id).select('id'),
+        'Update profile',
+      );
       toast.success('Profile updated!');
       play('success');
+    } catch (saveError) {
+      toast.error(memberErrorMessage(saveError));
+      play('error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  if (profileLoading) {
+    return <div className="member-page max-w-md lg:max-w-5xl mx-auto" aria-busy="true"><div className="glass-card h-48 skeleton-shimmer" /></div>;
+  }
+
+  if (profileError) {
+    return <div className="member-page max-w-md lg:max-w-3xl mx-auto"><MemberLoadError message={profileError} onRetry={() => void fetchProfile()} /></div>;
+  }
 
   const ACTIVITY_ICONS: Record<string, { icon: any; color: string }> = {
     ranking_created: { icon: BarChart3, color: 'accent' },
@@ -181,6 +203,7 @@ export default function ProfilePage() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
+            aria-label="Change profile photo"
             className="relative w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center text-2xl font-extrabold text-primary group btn-press"
             style={{
               background: avatarUrl
@@ -220,8 +243,8 @@ export default function ProfilePage() {
 
         <div className="relative z-10 space-y-4">
           <div>
-            <label className="form-label">Display Name</label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="form-input" />
+            <label htmlFor="profile-display-name" className="form-label">Display Name</label>
+            <Input id="profile-display-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="form-input" />
           </div>
 
           <Button onClick={handleSave} className="w-full h-11 font-bold rounded-xl btn-press text-[13px]" disabled={loading}>
@@ -253,11 +276,11 @@ export default function ProfilePage() {
               </p>
             </div>
             {isClubAdmin && (
-              <Link to="/club/settings">
-                <Button size="sm" variant="ghost" className="h-11 px-3 gap-1.5 text-[11px] font-bold rounded-xl">
+              <Button asChild size="sm" variant="ghost" className="h-11 px-3 gap-1.5 text-[11px] font-bold rounded-xl">
+                <Link to="/club/settings">
                   <Settings className="w-3.5 h-3.5" /> Manage
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
           {isPlatformOwner && (
@@ -280,9 +303,9 @@ export default function ProfilePage() {
         <div className="glass-card p-5 mb-4">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 mb-3">Your Club</h3>
           <p className="text-[12px] text-muted-foreground mb-3">You're not in a club yet.</p>
-          <Link to="/club/request">
-            <Button size="sm" className="w-full h-11 font-bold rounded-xl btn-press text-[12px]">Request a club</Button>
-          </Link>
+          <Button asChild size="sm" className="w-full h-11 font-bold rounded-xl btn-press text-[12px]">
+            <Link to="/club/request">Request a club</Link>
+          </Button>
         </div>
       )}
 

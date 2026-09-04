@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,9 @@ import { FileText, Plus, MessageSquare, Pin, Heart, ChevronRight, X } from 'luci
 import { formatDistanceToNow } from 'date-fns';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { logActivity } from '@/lib/activityLogger';
+import { toast } from 'sonner';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
 
 type Post = {
   id: string;
@@ -29,50 +32,60 @@ export default function PostsPage() {
   const { play } = useSoundEffect();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: '', content: '' });
+  const [creating, setCreating] = useState(false);
 
-  useEffect(() => { fetchPosts(); }, []);
+  const fetchPosts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await memberData(supabase
+        .from('posts')
+        .select('*, profiles:user_id(display_name)')
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false }), 'discussions');
 
-  const fetchPosts = async () => {
-    const { data } = await supabase
-      .from('posts')
-      .select('*, profiles:user_id(display_name)')
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    if (data) {
-      // Get comment counts
-      const postIds = data.map(p => p.id);
-      let countMap = new Map<string, number>();
-      if (postIds.length > 0) {
-        const { data: comments } = await supabase
-          .from('post_comments')
-          .select('post_id')
-          .in('post_id', postIds);
-        if (comments) {
-          comments.forEach(c => countMap.set(c.post_id, (countMap.get(c.post_id) || 0) + 1));
+      if (data) {
+        const postIds = data.map(p => p.id);
+        const countMap = new Map<string, number>();
+        if (postIds.length > 0) {
+          const comments = await memberData(supabase
+            .from('post_comments')
+            .select('post_id')
+            .in('post_id', postIds), 'discussion replies');
+          comments?.forEach(c => countMap.set(c.post_id, (countMap.get(c.post_id) || 0) + 1));
         }
+        setPosts(data.map(p => ({ ...p, comments_count: countMap.get(p.id) || 0 })));
       }
-      setPosts(data.map(p => ({ ...p, comments_count: countMap.get(p.id) || 0 })));
+    } catch (cause) {
+      setError(memberErrorMessage(cause));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => { void fetchPosts(); }, [fetchPosts]);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.content.trim() || !user) return;
-    play('success');
-    const { data, error } = await supabase.from('posts').insert({
-      user_id: user.id,
-      title: form.title.trim(),
-      content: form.content.trim(),
-    }).select().single();
-
-    if (data) {
-      await logActivity(user.id, { event_type: 'post_created', target_type: 'post', target_id: data.id, metadata: { title: data.title } });
+    setCreating(true);
+    try {
+      const data = await memberData(supabase.from('posts').insert({
+        user_id: user.id,
+        title: form.title.trim(),
+        content: form.content.trim(),
+      }).select().single(), 'create discussion');
+      play('success');
+      void logActivity(user.id, { event_type: 'post_created', target_type: 'post', target_id: data.id, metadata: { title: data.title } }).catch(() => {});
       setShowCreate(false);
       setForm({ title: '', content: '' });
       navigate(`/posts/${data.id}`);
+    } catch {
+      toast.error('Couldn’t create the discussion. Please try again.');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -101,9 +114,11 @@ export default function PostsPage() {
                   <h3 className="text-sm font-bold">New Discussion</h3>
                   <button onClick={() => setShowCreate(false)} className="w-11 h-11 -m-2 rounded-xl hover:bg-muted/50 flex items-center justify-center" aria-label="Close new discussion"><X className="w-4 h-4" /></button>
                 </div>
-                <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="h-11 text-sm rounded-xl" />
-                <Textarea placeholder="What's on your mind?" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} className="text-sm min-h-[100px]" />
-                <Button onClick={handleCreate} disabled={!form.title.trim() || !form.content.trim()} className="w-full h-11 rounded-xl text-xs font-bold">Post Discussion</Button>
+                <Input aria-label="Discussion title" placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="h-11 text-sm rounded-xl" />
+                <Textarea aria-label="Discussion message" placeholder="What's on your mind?" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} className="text-sm min-h-[100px]" />
+                <Button onClick={handleCreate} disabled={creating || !form.title.trim() || !form.content.trim()} className="w-full h-11 rounded-xl text-xs font-bold">
+                  {creating ? 'Posting…' : 'Post Discussion'}
+                </Button>
               </div>
             </motion.div>
           )}
@@ -126,7 +141,7 @@ export default function PostsPage() {
         )}
 
         {/* Posts list */}
-        {!loading && (
+        {!loading && !error && (
         <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
           {posts.map((post, i) => (
             <motion.div key={post.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
@@ -161,7 +176,9 @@ export default function PostsPage() {
         </div>
         )}
 
-        {posts.length === 0 && !loading && (
+        {error && !loading && <MemberLoadError message={error} onRetry={() => void fetchPosts()} />}
+
+        {posts.length === 0 && !loading && !error && (
           <div className="empty-state">
             <div className="empty-state-icon"><FileText /></div>
             <p className="empty-state-title">No discussions yet</p>

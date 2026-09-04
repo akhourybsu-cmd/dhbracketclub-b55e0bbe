@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, prefer-const */
-import { useEffect, useState } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useActivityFeedUpdates } from '@/hooks/useRealtimeSubscription';
 import { Stagger, StaggerItem } from '@/components/motion/Stagger';
+import { MemberLoadError } from '@/components/member/MemberLoadError';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 const FEED_ICONS: Record<string, { icon: any; color: string }> = {
   ranking_created: { icon: BarChart3, color: 'accent' },
@@ -58,29 +60,46 @@ export default function FeedPage() {
   const [activity, setActivity] = useState<any[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    const [{ data: actData }, { data: postData }] = await Promise.all([
-      supabase.from('activity_feed').select('*, profiles:actor_user_id(display_name)').order('created_at', { ascending: false }).limit(30),
-      supabase.from('posts').select('*, profiles:user_id(display_name)').order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).limit(20),
-    ]);
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [actData, postData] = await Promise.all([
+        memberData(
+          supabase.from('activity_feed').select('*, profiles:actor_user_id(display_name)').order('created_at', { ascending: false }).limit(30),
+          'Load activity feed',
+        ),
+        memberData(
+          supabase.from('posts').select('*, profiles:user_id(display_name)').order('is_pinned', { ascending: false }).order('created_at', { ascending: false }).limit(20),
+          'Load discussions',
+        ),
+      ]);
 
-    if (actData) setActivity(actData);
-    if (postData) {
-      const postIds = postData.map(p => p.id);
-      let countMap = new Map<string, number>();
+      const activities = actData ?? [];
+      const discussions = postData ?? [];
+      setActivity(activities);
+      const postIds = discussions.map(p => p.id);
+      const countMap = new Map<string, number>();
       if (postIds.length > 0) {
-        const { data: comments } = await supabase.from('post_comments').select('post_id').in('post_id', postIds);
-        if (comments) comments.forEach(c => countMap.set(c.post_id, (countMap.get(c.post_id) || 0) + 1));
+        const comments = (await memberData(
+          supabase.from('post_comments').select('post_id').in('post_id', postIds),
+          'Load discussion replies',
+        )) ?? [];
+        comments.forEach(c => countMap.set(c.post_id, (countMap.get(c.post_id) || 0) + 1));
       }
-      setPosts(postData.map(p => ({ ...p, comments_count: countMap.get(p.id) || 0 })));
+      setPosts(discussions.map(p => ({ ...p, comments_count: countMap.get(p.id) || 0 })));
+    } catch (loadError) {
+      setError(memberErrorMessage(loadError));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
-  useActivityFeedUpdates(() => { fetchData(); });
+  useActivityFeedUpdates(() => { void fetchData(); });
 
   const getLink = (item: any) => {
     if (!item.target_id) return null;
@@ -98,7 +117,7 @@ export default function FeedPage() {
   const pinnedPosts = posts.filter(p => p.is_pinned);
 
   return (
-    <div className="member-page">
+    <div className="member-page" aria-busy={loading}>
       <div>
         <div className="page-toolbar">
           <div className="page-header mb-0">
@@ -108,12 +127,14 @@ export default function FeedPage() {
               <p className="page-header-subtitle">Activity & discussions</p>
             </div>
           </div>
-          <Link to="/posts/create">
-            <Button size="sm" className="page-action gap-1.5 text-xs">
+          <Button asChild size="sm" className="page-action gap-1.5 text-xs">
+            <Link to="/posts/create">
               <Plus className="w-3.5 h-3.5" /> Post
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
+
+        {error && !loading && <MemberLoadError message={error} onRetry={() => void fetchData()} />}
 
         {/* Skeleton loading */}
         {loading && (
@@ -160,7 +181,7 @@ export default function FeedPage() {
             The Activity stream is high-volume realtime micro-events;
             it naturally belongs in a sidebar. Discussions are the
             bigger content cards and stay in the primary column. */}
-        <div className="flex flex-col gap-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start">
+        {!error && <div className="flex flex-col gap-0 lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start">
           <div className="min-w-0">
 
         {/* Pinned posts */}
@@ -264,17 +285,17 @@ export default function FeedPage() {
               </div>
               <p className="text-sm font-semibold text-foreground/70 mb-1">No activity yet</p>
               <p className="text-xs text-muted-foreground/60 mb-4">Start a discussion or create something to get the feed going</p>
-              <Link to="/posts/create">
-                <Button size="sm" variant="outline" className="h-11 gap-1.5 text-xs rounded-xl">
+              <Button asChild size="sm" variant="outline" className="h-11 gap-1.5 text-xs rounded-xl">
+                <Link to="/posts/create">
                   <Plus className="w-3.5 h-3.5" /> Start a Discussion
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           )}
         </div>
         )}
           </div>{/* /lg right column — Activity */}
-        </div>{/* /lg 2-col grid */}
+        </div>}{/* /lg 2-col grid */}
       </div>
     </div>
   );

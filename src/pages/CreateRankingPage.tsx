@@ -12,6 +12,7 @@ import { useAISuggestions } from '@/hooks/useAISuggestions';
 import AISuggestions from '@/components/AISuggestions';
 import { useEnrichRanking } from '@/hooks/useItemEnrichments';
 import { notify } from '@/lib/notify';
+import { memberData, memberErrorMessage } from '@/lib/memberData';
 
 export default function CreateRankingPage() {
   const { user } = useAuth();
@@ -58,9 +59,11 @@ export default function CreateRankingPage() {
     }
 
     setLoading(true);
+    let competitionId: string | null = null;
+    let rankingId: string | null = null;
     try {
       // Create competition
-      const { data: comp, error: compErr } = await supabase
+      const comp = await memberData(supabase
         .from('competitions')
         .insert({
           type: 'ranking',
@@ -69,11 +72,11 @@ export default function CreateRankingPage() {
           created_by: user.id,
         })
         .select()
-        .single();
-      if (compErr) throw compErr;
+        .single(), 'Create ranking competition');
+      competitionId = comp.id;
 
       // Create ranking
-      const { data: ranking, error: rankErr } = await supabase
+      const ranking = await memberData(supabase
         .from('rankings')
         .insert({
           competition_id: comp.id,
@@ -82,8 +85,8 @@ export default function CreateRankingPage() {
           item_count: validItems.length,
         })
         .select()
-        .single();
-      if (rankErr) throw rankErr;
+        .single(), 'Create ranking');
+      rankingId = ranking.id;
 
       // Create items
       const itemRows = validItems.map((label, i) => ({
@@ -91,24 +94,23 @@ export default function CreateRankingPage() {
         label,
         position: i,
       }));
-      const { error: itemErr } = await supabase.from('ranking_items').insert(itemRows);
-      if (itemErr) throw itemErr;
+      await memberData(supabase.from('ranking_items').insert(itemRows).select('id'), 'Create ranking items');
 
       // Log activity
-      await supabase.from('activity_feed').insert({
+      void memberData(supabase.from('activity_feed').insert({
         actor_user_id: user.id,
         event_type: 'ranking_created',
         target_type: 'ranking',
         target_id: ranking.id,
         metadata: { topic: topic.trim() },
-      });
+      }).select('id'), 'Log ranking creation').catch(() => {});
 
       toast.success('Ranking created!');
       // Trigger enrichment in background (fire-and-forget)
-      enrichRanking(ranking.id);
+      void enrichRanking(ranking.id);
 
       // Broadcast new ranking to the club (server excludes the creator)
-      notify({
+      void notify({
         type: 'rankings',
         title: 'New ranking to vote on',
         message: topic.trim(),
@@ -118,15 +120,22 @@ export default function CreateRankingPage() {
       });
 
       navigate(`/rankings/${ranking.id}`);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create ranking');
+    } catch (createError) {
+      if (rankingId) {
+        await memberData(supabase.from('ranking_items').delete().eq('ranking_id', rankingId).select('id'), 'Roll back ranking items').catch(() => {});
+        await memberData(supabase.from('rankings').delete().eq('id', rankingId).select('id'), 'Roll back ranking').catch(() => {});
+      }
+      if (competitionId) {
+        await memberData(supabase.from('competitions').delete().eq('id', competitionId).select('id'), 'Roll back ranking competition').catch(() => {});
+      }
+      toast.error(memberErrorMessage(createError));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="member-page max-w-md mx-auto">
+    <div className="member-page max-w-3xl mx-auto" aria-busy={loading || aiLoading}>
       <Link to="/rankings" className="back-link">
         <ArrowLeft /> Back to Rankings
       </Link>
@@ -144,8 +153,9 @@ export default function CreateRankingPage() {
       <motion.form onSubmit={handleCreate} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
         <div className="glass-card p-5 space-y-4">
           <div>
-            <label className="form-label">Topic</label>
+            <label htmlFor="ranking-topic" className="form-label">Topic</label>
             <Input
+              id="ranking-topic"
               required
               value={topic}
               onChange={e => setTopic(e.target.value)}
@@ -155,8 +165,9 @@ export default function CreateRankingPage() {
             />
           </div>
           <div>
-            <label className="form-label">Description <span className="normal-case font-normal tracking-normal">(optional)</span></label>
+            <label htmlFor="ranking-description" className="form-label">Description <span className="normal-case font-normal tracking-normal">(optional)</span></label>
             <Input
+              id="ranking-description"
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="What are we ranking?"
@@ -185,6 +196,7 @@ export default function CreateRankingPage() {
               <div key={idx} className="flex items-center gap-2">
                 <span className="text-[10px] font-mono font-bold text-muted-foreground/70 w-5 text-right flex-shrink-0">{idx + 1}</span>
                 <Input
+                  aria-label={`Item ${idx + 1}`}
                   value={item}
                   onChange={e => updateItem(idx, e.target.value)}
                   placeholder={`Item ${idx + 1}`}
