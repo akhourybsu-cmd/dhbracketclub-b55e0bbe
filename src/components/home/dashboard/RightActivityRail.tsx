@@ -13,6 +13,7 @@
 import { Link } from 'react-router-dom';
 import { Users, Trophy, Activity, CalendarDays, Circle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 
 /* ─── Shared data shapes ────────────────────────────────────────── */
@@ -95,12 +96,7 @@ function RailCard({
 }: { title: string; footerHref?: string; footerLabel?: string; children: React.ReactNode }) {
   return (
     <section
-      className="rounded-2xl overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, hsl(218 30% 8% / 0.7), hsl(218 40% 5% / 0.85))',
-        border: '1px solid hsl(var(--border) / 0.45)',
-        boxShadow: 'inset 0 1px 0 hsl(0 0% 100% / 0.04)',
-      }}
+      className="home-dashboard-panel rounded-2xl overflow-hidden"
     >
       <div className="px-4 py-2.5 border-b border-border/25">
         <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground/65">
@@ -194,10 +190,10 @@ function ActiveNowCard({ members, accent, loading }: { members: ActiveMember[]; 
                   <span
                     className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2"
                     style={{
-                      background: m.online ? `hsl(${accent})` : 'hsl(218 15% 35%)',
-                      ['--tw-ring-color' as any]: 'hsl(218 40% 5%)',
+                      background: m.online ? `hsl(${accent})` : 'hsl(var(--muted-foreground) / 0.5)',
+                      '--tw-ring-color': 'hsl(var(--home-avatar-ring))',
                       boxShadow: m.online ? `0 0 6px hsl(${accent} / 0.7)` : 'none',
-                    }}
+                    } as CSSProperties}
                   />
                 </div>
                 <p className="text-[12px] font-bold truncate flex-1">{m.name}</p>
@@ -263,10 +259,10 @@ function UpcomingCard({ items, loading }: { items: UpcomingItem[]; loading?: boo
 /* ─── D. Club Stats ────────────────────────────────────────────── */
 
 function ClubStatsCard({ stats, accent }: { stats: ClubStats; accent: string }) {
-  const cells: { label: string; value: number; icon: LucideIcon }[] = [
-    { label: 'Members',      value: stats.members,      icon: Users    },
-    { label: 'Active Now',   value: stats.activeNow,    icon: Activity },
-    { label: 'Competitions', value: stats.competitions, icon: Trophy   },
+  const cells: { label: string; value: number; icon: LucideIcon; to: string }[] = [
+    { label: 'Members',      value: stats.members,      icon: Users,    to: '/members' },
+    { label: 'Active Now',   value: stats.activeNow,    icon: Activity, to: '/members' },
+    { label: 'Competitions', value: stats.competitions, icon: Trophy,   to: '/compete' },
   ];
   return (
     <RailCard title="Club Snapshot">
@@ -274,12 +270,14 @@ function ClubStatsCard({ stats, accent }: { stats: ClubStats; accent: string }) 
         {cells.map(c => {
           const Icon = c.icon;
           return (
-            <div
+            <Link
               key={c.label}
-              className="rounded-xl p-2.5 text-center"
+              to={c.to}
+              aria-label={`${c.value} ${c.label}`}
+              className="rounded-xl p-2.5 text-center transition hover:bg-muted/45 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
               style={{
-                background: 'hsl(218 30% 6% / 0.5)',
-                border: '1px solid hsl(var(--border) / 0.3)',
+                background: 'hsl(var(--home-panel-muted) / 0.72)',
+                border: '1px solid hsl(var(--home-panel-border) / 0.48)',
               }}
             >
               <Icon className="w-4 h-4 mx-auto mb-1" style={{ color: `hsl(${accent})` }} />
@@ -287,7 +285,7 @@ function ClubStatsCard({ stats, accent }: { stats: ClubStats; accent: string }) 
               <p className="text-[9px] uppercase tracking-wider text-muted-foreground/55 font-bold mt-1">
                 {c.label}
               </p>
-            </div>
+            </Link>
           );
         })}
       </div>

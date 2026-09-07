@@ -29,7 +29,7 @@ function greetingFor(hour: number): string {
 export function HomeHero({ club, displayName, pendingCount, now = new Date() }: Props) {
   const accent = club?.accent_color ?? '152 72% 46%';
   const weekday = WEEKDAY[now.getDay()];
-  const firstName = displayName?.split(' ')[0];
+  const firstName = displayName.trim().split(/\s+/)[0];
   const greeting = greetingFor(now.getHours());
 
   return (
@@ -75,7 +75,7 @@ export function HomeHero({ club, displayName, pendingCount, now = new Date() }: 
             style={{
               background: `hsl(${accent} / 0.13)`,
               border: `1px solid hsl(${accent} / 0.24)`,
-              color: `hsl(${accent})`,
+              color: 'hsl(var(--primary))',
             }}
           >
             {pendingCount} now

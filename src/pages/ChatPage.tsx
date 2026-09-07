@@ -204,6 +204,16 @@ export default function ChatPage() {
   const pendingJumpRef = useRef<string | null>(null);
   const pendingContextRef = useRef<string | null>(null);
   useEffect(() => {
+    const requestedSearch = searchParams.get('search');
+    if (requestedSearch !== 'all' && requestedSearch !== 'channel') return;
+    setSearchScope(requestedSearch);
+    setShowSearch(true);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('search');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     const chId = searchParams.get('channel');
     if (!chId || channels.length === 0) return;
     const target = channels.find(c => c.id === chId);

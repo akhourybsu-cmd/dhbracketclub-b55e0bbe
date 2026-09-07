@@ -19,6 +19,7 @@ import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import type { Club } from '@/contexts/ClubContext';
 import type { NextAction } from '@/lib/home/nextAction';
+import { getAccentTextColor } from '@/lib/colorContrast';
 import { DhShield } from './svg/DhShield';
 
 interface Props {
@@ -41,6 +42,7 @@ interface ChipDef {
 
 export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId }: Props) {
   const accent = club?.accent_color ?? '152 72% 46%';
+  const accentText = getAccentTextColor(accent);
   const pendingAction = actions[0] ?? null;
 
   const scrollToActivity = () => {
@@ -57,8 +59,9 @@ export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId 
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         className="relative overflow-hidden rounded-xl mb-4 flex items-center gap-3 px-3.5 py-2.5"
         style={{
-          background: `linear-gradient(90deg, hsl(${accent} / 0.10), hsl(218 40% 5% / 0.6))`,
+          background: `linear-gradient(90deg, hsl(${accent} / 0.10), hsl(var(--home-panel-strong) / 0.9))`,
           border: `1px solid hsl(${accent} / 0.24)`,
+          boxShadow: 'var(--home-panel-shadow)',
         }}
       >
         <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: `hsl(${accent})` }} />
@@ -68,8 +71,8 @@ export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId 
         <button
           type="button"
           onClick={scrollToActivity}
-          className="text-[11.5px] font-extrabold whitespace-nowrap hover:opacity-80 transition-opacity"
-          style={{ color: `hsl(${accent})` }}
+          className="text-[11.5px] font-extrabold whitespace-nowrap hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-md"
+          style={{ color: 'hsl(var(--home-accent-ink))' }}
         >
           Recent activity →
         </button>
@@ -106,10 +109,10 @@ export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId 
       style={{
         background: `
           radial-gradient(ellipse 80% 60% at 0% 50%, hsl(${accent} / 0.10), transparent 60%),
-          linear-gradient(180deg, hsl(218 30% 8% / 0.85), hsl(218 40% 5% / 0.92))
+          linear-gradient(180deg, hsl(var(--home-panel) / 0.98), hsl(var(--home-panel-strong) / 0.98))
         `,
         border: `1px solid hsl(${accent} / 0.32)`,
-        boxShadow: `0 16px 48px -16px hsl(${accent} / 0.35), inset 0 1px 0 hsl(${accent} / 0.18)`,
+        boxShadow: `0 16px 48px -22px hsl(${accent} / 0.32), var(--home-panel-shadow)`,
       }}
     >
       <div
@@ -130,7 +133,7 @@ export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId 
           <HeadIcon className="w-3.5 h-3.5" style={{ color: `hsl(${accent})` }} />
           <span
             className="text-[10px] font-extrabold uppercase tracking-[0.22em]"
-            style={{ color: `hsl(${accent})` }}
+            style={{ color: 'hsl(var(--home-accent-ink))' }}
           >
             {pendingAction.tag ?? 'Needs you'}
           </span>
@@ -145,10 +148,10 @@ export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId 
 
         <Link
           to={pendingAction.to}
-          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg mt-3 text-[12.5px] font-extrabold active:scale-95 transition"
+          className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl mt-3 text-[12.5px] font-extrabold active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           style={{
             background: `linear-gradient(135deg, hsl(${accent}), hsl(${accent} / 0.85))`,
-            color: 'hsl(218 50% 6%)',
+            color: accentText,
           }}
         >
           Go now <ArrowRight className="w-3.5 h-3.5" />
@@ -184,10 +187,10 @@ export function ClubPulseCard({ club, actions, installedSlugs, activityAnchorId 
               </>
             );
 
-            const classes = "flex items-center gap-2.5 rounded-xl p-2 transition-colors hover:bg-card/80 active:scale-[0.98]";
+            const classes = "flex items-center gap-2.5 rounded-xl p-2.5 transition hover:-translate-y-0.5 hover:border-primary/30 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45";
             const style = {
-              background: 'hsl(218 30% 6% / 0.5)',
-              border: '1px solid hsl(var(--border) / 0.4)',
+              background: 'hsl(var(--home-panel-muted) / 0.72)',
+              border: '1px solid hsl(var(--home-panel-border) / 0.58)',
               opacity: isInstalled ? 1 : 0.6,
             } as const;
 

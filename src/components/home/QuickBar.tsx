@@ -14,7 +14,7 @@ import { motion } from 'framer-motion';
 import {
   Bookmark, TrendingUp, Lock, Trophy,
   MessageSquareText, CalendarDays, ScrollText, Newspaper, MessageCircle,
-  BarChart3, FileText, Link2, BookMarked, Pencil,
+  BarChart3, FileText, Link2, BookMarked, BookOpen, Pencil,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { InstalledAsset } from '@/types/assets';
@@ -39,6 +39,7 @@ const META: Record<string, TileMeta> = {
   'brackets':       { to: '/brackets',       icon: Trophy,           tint: '210 80% 60%' },
   'lockbox':        { to: '/lockbox',        icon: Lock,             tint: '0 80% 60%' },
   'readshift':      { to: '/readshift',      icon: BookMarked,       tint: '25 90% 60%' },
+  'narrative-rpg':  { to: '/narrative',      icon: BookOpen,         tint: '270 70% 65%' },
   'chat':           { to: '/chat',           icon: MessageSquareText, tint: '195 80% 65%' },
   'events':         { to: '/events',         icon: CalendarDays,     tint: '38 100% 60%' },
   'lore':           { to: '/lore',           icon: ScrollText,       tint: '270 70% 65%' },
@@ -47,6 +48,14 @@ const META: Record<string, TileMeta> = {
   'rankings':       { to: '/rankings',       icon: BarChart3,        tint: '195 80% 60%' },
   'posts':          { to: '/posts',          icon: FileText,         tint: '195 80% 65%' },
   'shared-media':   { to: '/shared',         icon: Link2,            tint: '195 80% 65%' },
+};
+
+// Some long-lived clubs can still carry the Narrative asset's pre-release
+// slug in persisted QuickBar data. Keep those shortcuts useful instead of
+// silently sending members to the app root.
+const LEGACY_SLUGS: Record<string, keyof typeof META> = {
+  narrative: 'narrative-rpg',
+  'narrative rpg': 'narrative-rpg',
 };
 
 interface Props {
@@ -99,7 +108,10 @@ export function QuickBar({ pinned, accent, onEditClick }: Props) {
  * tile, with the app's accent color reserved for the emblem/icon ONLY.
  */
 function QuickTile({ slug, name, fallbackAccent }: { slug: string; name: string; fallbackAccent: string }) {
-  const meta = META[slug];
+  const canonicalSlug = META[slug]
+    ? slug
+    : LEGACY_SLUGS[slug] ?? LEGACY_SLUGS[name.trim().toLowerCase()] ?? slug;
+  const meta = META[canonicalSlug];
   const tint = meta?.tint ?? fallbackAccent;
   const Icon = meta?.icon;
 

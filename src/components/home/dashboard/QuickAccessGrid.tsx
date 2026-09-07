@@ -117,7 +117,7 @@ export function QuickAccessGrid({ installedSlugs, status }: Props) {
       <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground/60 mb-2 px-1">
         Quick Access
       </p>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 2xl:grid-cols-6 gap-2.5">
         {tiles.map((t, i) => {
           const Icon = t.icon;
           return (
@@ -130,26 +130,26 @@ export function QuickAccessGrid({ installedSlugs, status }: Props) {
               <Link
                 to={t.to}
                 aria-label={`${t.label} — ${t.status}`}
-                className="group block"
+                className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
-                <Surface variant="tile" accent={t.tint}>
-                  <div className="p-3.5 lg:p-2.5 flex flex-col gap-2 lg:gap-1.5 min-h-[112px] lg:min-h-[80px]">
+                <Surface variant="tile" accent={t.tint} className="transition duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/25 group-hover:shadow-[var(--shadow-card)]">
+                  <div className="p-3.5 flex flex-col gap-2 min-h-[104px] lg:min-h-[92px]">
                     <div className="flex items-center justify-between">
                       <div
-                        className="w-9 h-9 lg:w-7 lg:h-7 rounded-lg flex items-center justify-center"
+                        className="w-9 h-9 rounded-xl flex items-center justify-center"
                         style={{
                           background: `hsl(${t.tint} / 0.16)`,
                           border: `1px solid hsl(${t.tint} / 0.32)`,
                           color: `hsl(${t.tint})`,
                         }}
                       >
-                        <Icon className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+                        <Icon className="w-4 h-4" />
                       </div>
                       <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground/80 group-hover:translate-x-0.5 transition-all" />
                     </div>
                     <div className="mt-auto">
                       <p className="text-[13px] font-extrabold tracking-tight leading-tight">{t.label}</p>
-                      <p className="text-[10.5px] text-muted-foreground/70 leading-tight mt-0.5 truncate">
+                      <p className="text-[10.5px] text-muted-foreground/80 leading-tight mt-0.5 line-clamp-1">
                         {t.status}
                       </p>
                     </div>

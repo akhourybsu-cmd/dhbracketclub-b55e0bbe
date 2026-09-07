@@ -15,7 +15,7 @@
 
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle, Bookmark, CalendarDays, ScrollText, FileText, BookOpen } from 'lucide-react';
+import { MessageCircle, Bookmark, CalendarDays, ScrollText, FileText, BookOpen, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface Action {
@@ -57,17 +57,27 @@ export function StartSomethingMenu({ accent, installedSlugs, onClose }: Props) {
       exit={{ opacity: 0, y: -8, scale: 0.98 }}
       transition={{ type: 'spring', damping: 22, stiffness: 320 }}
       onClick={(e) => e.stopPropagation()}
-      className="relative w-full max-w-md rounded-2xl p-3.5"
+      className="home-dashboard-panel relative w-full max-w-md rounded-2xl p-3.5"
       style={{
-        background: 'linear-gradient(180deg, hsl(218 30% 8% / 0.95), hsl(218 40% 5% / 0.96))',
         border: `1px solid hsl(${accent} / 0.35)`,
         boxShadow: `0 24px 60px -16px hsl(${accent} / 0.45), inset 0 1px 0 hsl(${accent} / 0.18)`,
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="start-something-title"
     >
-      <div className="flex items-center gap-1.5 mb-3 px-1">
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.22em]" style={{ color: `hsl(${accent})` }}>
+      <div className="flex items-center justify-between gap-3 mb-3 px-1">
+        <span id="start-something-title" className="text-[10px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(var(--home-accent-ink))' }}>
           Start Something
         </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close create menu"
+          className="w-9 h-9 -mr-1 rounded-xl inline-flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/55 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {available.length === 0 ? (
@@ -94,7 +104,7 @@ export function StartSomethingMenu({ accent, installedSlugs, onClose }: Props) {
                 key={a.slug}
                 type="button"
                 onClick={() => { onClose(); navigate(a.to); }}
-                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors active:scale-[0.99]"
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-muted/35 hover:-translate-y-px active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45"
                 style={{
                   background: `linear-gradient(135deg, hsl(${a.tint} / 0.12), hsl(${a.tint} / 0.04))`,
                   border: `1px solid hsl(${a.tint} / 0.25)`,

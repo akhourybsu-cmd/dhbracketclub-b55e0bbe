@@ -13,19 +13,18 @@
 // primary CTAs move into the ClubPulseCard chips instead.
 
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Plus, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Activity, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dhMonogram from '@/assets/dh-monogram.png';
 import type { Club } from '@/contexts/ClubContext';
+import { getAccentTextColor } from '@/lib/colorContrast';
 import { StartSomethingMenu } from './StartSomethingMenu';
 
 interface Props {
   club: Club | null;
   displayName: string;
   avatarUrl: string | null;
-  /** Total of pending actions surfaced as a small notification dot. */
-  notificationCount?: number;
   /** Slugs of installed assets so the StartSomethingMenu only offers
    *  options the club has actually enabled. */
   installedSlugs: Set<string>;
@@ -39,18 +38,28 @@ const WEEKDAY_GREETING = (h: number) => {
   return 'Late night';
 };
 
-export function HomeHeader({ club, displayName, avatarUrl, notificationCount = 0, installedSlugs }: Props) {
+export function HomeHeader({ club, displayName, avatarUrl, installedSlugs }: Props) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const firstName = displayName?.split(' ')[0] || '';
+  const firstName = displayName.trim().split(/\s+/)[0] || '';
   const greeting = WEEKDAY_GREETING(new Date().getHours());
   const accent = club?.accent_color ?? '152 72% 46%';
+  const accentText = getAccentTextColor(accent);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [menuOpen]);
 
   return (
-    <header className="flex items-center justify-between gap-3 pb-3 mb-1 border-b border-border/30">
+    <header className="flex items-center justify-between gap-4 pb-4 mb-1 border-b border-border/45">
       {/* Title block */}
       <div className="min-w-0 flex-1">
-        <h1 className="text-2xl lg:text-[26px] font-extrabold tracking-tight leading-none truncate">
+        <h1 className="text-2xl lg:text-[28px] font-extrabold tracking-[-0.035em] leading-none truncate">
           {club?.name ?? 'DH Club'}
         </h1>
         <p className="text-[12px] text-muted-foreground/80 mt-1 leading-snug truncate">
@@ -61,39 +70,27 @@ export function HomeHeader({ club, displayName, avatarUrl, notificationCount = 0
 
       {/* Action group — full set on lg+, condensed on mobile */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* Search — routes to chat which has the search dialog wired */}
+        {/* Search opens Chat directly in its all-channel search view. */}
         <button
           type="button"
-          onClick={() => navigate('/chat')}
-          aria-label="Search"
-          className="hidden sm:inline-flex w-10 h-10 rounded-full items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-muted/40 active:scale-95 transition"
-          title="Search messages + activity"
+          onClick={() => navigate('/chat?search=all')}
+          aria-label="Search chat"
+          className="hidden sm:inline-flex w-10 h-10 rounded-xl items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-muted/55 active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          title="Search all chat"
         >
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Notifications — badge ties to total unread / pending count */}
+        {/* The global shell already owns notifications. This shortcut is
+            intentionally Activity so the two controls are never ambiguous. */}
         <button
           type="button"
           onClick={() => navigate('/feed')}
-          aria-label={notificationCount > 0 ? `Notifications: ${notificationCount}` : 'Notifications'}
-          className="relative w-10 h-10 rounded-full inline-flex items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-muted/40 active:scale-95 transition"
-          title="Notifications"
+          aria-label="View club activity"
+          className="relative w-10 h-10 rounded-xl inline-flex items-center justify-center text-muted-foreground/80 hover:text-foreground hover:bg-muted/55 active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          title="Club activity"
         >
-          <Bell className="w-4 h-4" />
-          {notificationCount > 0 && (
-            <span
-              aria-hidden
-              className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full inline-flex items-center justify-center text-[10px] font-extrabold tabular-nums"
-              style={{
-                background: `hsl(${accent})`,
-                color: 'hsl(218 50% 6%)',
-                boxShadow: `0 0 8px hsl(${accent} / 0.6), 0 0 0 2px hsl(var(--background))`,
-              }}
-            >
-              {notificationCount > 9 ? '9+' : notificationCount}
-            </span>
-          )}
+          <Activity className="w-4 h-4" />
         </button>
 
         {/* Single global Create button — opens the creation menu
@@ -104,10 +101,10 @@ export function HomeHeader({ club, displayName, avatarUrl, notificationCount = 0
           type="button"
           onClick={() => setMenuOpen(true)}
           aria-label="Create"
-          className="h-9 px-3.5 rounded-lg inline-flex items-center gap-1.5 text-[12.5px] font-extrabold active:scale-95 transition"
+          className="h-10 px-4 rounded-xl inline-flex items-center gap-1.5 text-[12.5px] font-extrabold active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           style={{
             background: `linear-gradient(135deg, hsl(${accent}), hsl(${accent} / 0.85))`,
-            color: 'hsl(218 50% 6%)',
+            color: accentText,
             boxShadow: `0 0 18px -4px hsl(${accent} / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.2)`,
           }}
         >
@@ -120,7 +117,7 @@ export function HomeHeader({ club, displayName, avatarUrl, notificationCount = 0
         <Link
           to="/profile"
           aria-label="Profile"
-          className="ml-1 w-10 h-10 rounded-full overflow-hidden inline-flex items-center justify-center flex-shrink-0 border border-border/40 hover:border-border/70 transition"
+          className="ml-1 w-10 h-10 rounded-full overflow-hidden inline-flex items-center justify-center flex-shrink-0 border border-border/55 hover:border-primary/55 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           style={{
             background: avatarUrl ? 'transparent' : `linear-gradient(135deg, hsl(${accent} / 0.25), hsl(${accent} / 0.05))`,
             color: `hsl(${accent})`,
@@ -146,6 +143,7 @@ export function HomeHeader({ club, displayName, avatarUrl, notificationCount = 0
             transition={{ duration: 0.15 }}
             className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4"
             onClick={() => setMenuOpen(false)}
+            role="presentation"
           >
             <div
               className="fixed inset-0 bg-background/70 backdrop-blur-sm"

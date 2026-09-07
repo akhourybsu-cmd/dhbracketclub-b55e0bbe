@@ -306,6 +306,45 @@
     --chat-incoming: 150 12% 91%;       /* tinted gray, clearly distinct from soft-white cards */
   }
 
+  /* Home command center -------------------------------------------------
+   * The desktop Home used to force a nested `.dark` theme, which left its
+   * white heading floating on the light page canvas. These local tokens let
+   * the command center keep its cinematic depth in dark mode while becoming
+   * a crisp, paper-and-ink dashboard in light mode. */
+  .home-dashboard {
+    --home-panel: 160 9% 11%;
+    --home-panel-strong: 160 11% 7%;
+    --home-panel-muted: 160 8% 14%;
+    --home-panel-border: 160 9% 24%;
+    --home-panel-highlight: 0 0% 100%;
+    --home-accent-ink: var(--home-accent, 152 72% 46%);
+    --home-avatar-ring: var(--background);
+    --home-panel-shadow: 0 1px 0 hsl(0 0% 100% / 0.035) inset,
+                         0 12px 34px -24px hsl(160 80% 2% / 0.9);
+  }
+
+  .light .home-dashboard {
+    --home-panel: 150 8% 99%;
+    --home-panel-strong: 150 16% 95%;
+    --home-panel-muted: 150 12% 93%;
+    --home-panel-border: 150 14% 72%;
+    --home-panel-highlight: 0 0% 100%;
+    --home-accent-ink: var(--primary);
+    --home-avatar-ring: var(--card);
+    --home-panel-shadow: 0 1px 2px hsl(160 25% 10% / 0.05),
+                         0 12px 30px -22px hsl(160 25% 10% / 0.32);
+  }
+
+  .home-dashboard-panel {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--home-panel) / 0.98),
+      hsl(var(--home-panel-strong) / 0.98)
+    );
+    border: 1px solid hsl(var(--home-panel-border) / 0.72);
+    box-shadow: var(--home-panel-shadow);
+  }
+
   * {
     @apply border-border;
   }

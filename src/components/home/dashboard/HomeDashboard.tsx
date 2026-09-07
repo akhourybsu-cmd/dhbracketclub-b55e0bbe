@@ -18,7 +18,7 @@
 // from `DashboardPage`, so we never double-query. Side-effect ownership
 // stays with the page.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import {
   Bookmark, Trophy, CalendarDays, ScrollText, Newspaper, MessageCircle,
   BarChart3, Activity as ActivityIcon, FileText,
@@ -52,6 +52,11 @@ interface StandingsEntry {
   user_id: string;
   display_name?: string | null;
   avatar_url?: string | null;
+}
+interface PresenceMeta {
+  user_id?: unknown;
+  display_name?: unknown;
+  avatar_url?: unknown;
 }
 
 interface Props {
@@ -116,12 +121,14 @@ export function HomeDashboard({
         .on('presence', { event: 'sync' }, () => {
           try {
             const state = channel!.presenceState();
-            const flat = Object.values(state).flat().map((p: any) => ({
-              id: p.user_id as string,
-              name: (p.display_name as string) ?? 'Member',
-              avatar_url: (p.avatar_url as string | null) ?? null,
+            const flat = Object.values(state).flat().map((record) => {
+              const p = record as PresenceMeta;
+              return {
+              id: typeof p.user_id === 'string' ? p.user_id : '',
+              name: typeof p.display_name === 'string' ? p.display_name : 'Member',
+              avatar_url: typeof p.avatar_url === 'string' ? p.avatar_url : null,
               online: true,
-            }));
+            }; }).filter(member => member.id);
             const seen = new Set<string>();
             setOnline(flat.filter(u => seen.has(u.id) ? false : (seen.add(u.id), true)));
           } catch { /* swallow */ }
@@ -133,23 +140,27 @@ export function HomeDashboard({
           }
         });
     } catch { /* swallow */ }
-    return () => { if (channel) try { supabase.removeChannel(channel); } catch {} };
+    return () => {
+      if (!channel) return;
+      try { supabase.removeChannel(channel); } catch { /* channel already closed */ }
+    };
   }, [user, displayName, avatarUrl, club?.id]);
 
   useEffect(() => {
     if (!club?.id) return;
     let cancelled = false;
-    try {
-      const q = (supabase as any)
-        .from('club_members')
-        .select('user_id', { count: 'exact', head: true })
-        .eq('club_id', club.id);
-      // Guard against shape drift / table absence.
-      Promise.resolve(q).then(
-        (res: any) => { if (!cancelled) setMemberCount(res?.count ?? 0); },
-        () => { /* swallow */ },
-      );
-    } catch { /* swallow */ }
+    const loadMemberCount = async () => {
+      try {
+        const { count } = await supabase
+          .from('club_members')
+          .select('user_id', { count: 'exact', head: true })
+          .eq('club_id', club.id);
+        if (!cancelled) setMemberCount(count ?? 0);
+      } catch {
+        if (!cancelled) setMemberCount(0);
+      }
+    };
+    void loadMemberCount();
     return () => { cancelled = true; };
   }, [club?.id]);
 
@@ -235,11 +246,14 @@ export function HomeDashboard({
     ? (season.name ?? (season.season_number ? `Season ${season.season_number}` : 'Active Season'))
     : '';
   const safeStandings = Array.isArray(standings) ? standings : [];
-  const participants = safeStandings.slice(0, 8).map(s => ({
-    user_id: s.user_id,
-    display_name: s.display_name,
-    avatar_url: s.avatar_url,
-  }));
+  const participants = safeStandings
+    .filter(s => !!s.avatar_url || !!s.display_name)
+    .slice(0, 8)
+    .map(s => ({
+      user_id: s.user_id,
+      display_name: s.display_name,
+      avatar_url: s.avatar_url,
+    }));
 
   const stats: ClubStats = {
     members: memberCount,
@@ -254,18 +268,14 @@ export function HomeDashboard({
 
   /* ─── Render ────────────────────────────────────────────────── */
   return (
-    // The desktop command center is a bespoke dark "midnight" surface
-    // (navy cards, light text). Its card text inherits `color`, so under the
-    // app's light theme it went dark-on-navy and became unreadable. Pin this
-    // subtree to the dark token scope + re-set the inherited foreground so the
-    // command center renders as its intended dark design in BOTH app themes.
-    // (Nesting `.dark` inside the app's dark mode is a no-op — no regression.)
-    <div className="dark text-foreground pb-8">
+    <div
+      className="home-dashboard text-foreground pb-8"
+      style={{ '--home-accent': accent } as CSSProperties}
+    >
       <HomeHeader
         club={club}
         displayName={displayName}
         avatarUrl={avatarUrl}
-        notificationCount={pendingActions.length}
         installedSlugs={installedSlugs}
       />
 

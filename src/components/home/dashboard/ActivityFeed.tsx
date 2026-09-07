@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 // DH Club Home — Today in Dry Horse activity feed
 //
 // Central feed card with filter tabs (All / Games / Social / Events).
@@ -68,12 +69,7 @@ export function ActivityFeed({ rows, loading = false, anchorId = 'home-activity'
   return (
     <section
       id={anchorId}
-      className="rounded-2xl mb-6"
-      style={{
-        background: 'linear-gradient(180deg, hsl(218 30% 8% / 0.7), hsl(218 40% 5% / 0.85))',
-        border: '1px solid hsl(var(--border) / 0.45)',
-        boxShadow: 'inset 0 1px 0 hsl(0 0% 100% / 0.04)',
-      }}
+      className="home-dashboard-panel rounded-2xl mb-6 overflow-hidden"
       aria-label="Today in the club"
     >
       {/* Header */}
@@ -90,7 +86,7 @@ export function ActivityFeed({ rows, loading = false, anchorId = 'home-activity'
                 type="button"
                 onClick={() => setFilter(t.key)}
                 className={cn(
-                  'px-2.5 h-7 rounded-md text-[10.5px] font-bold tracking-tight transition-colors',
+                  'px-2.5 h-7 rounded-md text-[10.5px] font-bold tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45',
                   active
                     ? 'bg-foreground/12 text-foreground'
                     : 'text-muted-foreground/65 hover:text-foreground/80',
@@ -145,7 +141,7 @@ export function ActivityFeed({ rows, loading = false, anchorId = 'home-activity'
 function FeedRowEl({ row }: { row: FeedRow }) {
   const Icon = row.icon;
   const inner = (
-    <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/20 transition-colors group">
+    <div className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl hover:bg-muted/35 transition-colors group">
       {/* Icon chip */}
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"

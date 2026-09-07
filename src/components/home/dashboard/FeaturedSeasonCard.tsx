@@ -16,7 +16,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, LayoutGrid } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import { HorseKnight } from './svg/HorseKnight';
+import { getAccentTextColor } from '@/lib/colorContrast';
 
 interface ParticipantAvatar {
   user_id: string;
@@ -47,6 +49,7 @@ export function FeaturedSeasonCard({
     : 0;
   const displayedAvatars = participants.slice(0, 6);
   const extraAvatars = Math.max(0, participants.length - displayedAvatars.length);
+  const accentText = getAccentTextColor(accent);
 
   // Routes — fall back to the drafts list if no seasonId so the
   // buttons still navigate somewhere useful.
@@ -62,10 +65,10 @@ export function FeaturedSeasonCard({
       style={{
         background: `
           radial-gradient(ellipse 80% 60% at 0% 30%, hsl(${accent} / 0.12), transparent 65%),
-          linear-gradient(180deg, hsl(218 30% 8% / 0.85), hsl(218 40% 5% / 0.92))
+          linear-gradient(180deg, hsl(var(--home-panel) / 0.98), hsl(var(--home-panel-strong) / 0.98))
         `,
         border: `1px solid hsl(${accent} / 0.32)`,
-        boxShadow: `0 12px 40px -14px hsl(${accent} / 0.35), inset 0 1px 0 hsl(${accent} / 0.15)`,
+        boxShadow: `0 12px 40px -20px hsl(${accent} / 0.32), var(--home-panel-shadow)`,
       }}
       aria-label={`Featured — Draft Arena ${seasonName}`}
     >
@@ -83,7 +86,7 @@ export function FeaturedSeasonCard({
         {/* Eyebrow */}
         <p
           className="text-[10px] font-extrabold uppercase tracking-[0.22em] mb-1.5"
-          style={{ color: `hsl(${accent})` }}
+          style={{ color: 'hsl(var(--home-accent-ink))' }}
         >
           Draft Arena
         </p>
@@ -123,8 +126,8 @@ export function FeaturedSeasonCard({
                 style={{
                   background: p.avatar_url ? 'transparent' : `linear-gradient(135deg, hsl(${accent} / 0.25), hsl(${accent} / 0.08))`,
                   color: `hsl(${accent})`,
-                  ['--tw-ring-color' as any]: 'hsl(218 40% 5%)',
-                }}
+                  '--tw-ring-color': 'hsl(var(--home-avatar-ring))',
+                } as CSSProperties}
                 title={p.display_name ?? 'Participant'}
               >
                 {p.avatar_url ? (
@@ -138,11 +141,11 @@ export function FeaturedSeasonCard({
               <div
                 className="w-7 h-7 rounded-full inline-flex items-center justify-center text-[9.5px] font-extrabold ring-2"
                 style={{
-                  background: 'hsl(218 30% 10%)',
-                  color: `hsl(${accent})`,
-                  ['--tw-ring-color' as any]: 'hsl(218 40% 5%)',
+                  background: 'hsl(var(--home-panel-muted))',
+                  color: 'hsl(var(--home-accent-ink))',
+                  '--tw-ring-color': 'hsl(var(--home-avatar-ring))',
                   border: `1px solid hsl(${accent} / 0.35)`,
-                }}
+                } as CSSProperties}
               >
                 +{extraAvatars}
               </div>
@@ -154,10 +157,10 @@ export function FeaturedSeasonCard({
         <div className="flex flex-wrap gap-2 mt-4">
           <Link
             to={openSeasonUrl}
-            className="h-10 px-4 rounded-lg inline-flex items-center gap-1.5 text-[12.5px] font-extrabold active:scale-95 transition"
+            className="h-10 px-4 rounded-xl inline-flex items-center gap-1.5 text-[12.5px] font-extrabold active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             style={{
               background: `linear-gradient(135deg, hsl(${accent}), hsl(${accent} / 0.85))`,
-              color: 'hsl(218 50% 6%)',
+              color: accentText,
               boxShadow: `0 0 18px -4px hsl(${accent} / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.2)`,
             }}
           >
@@ -165,7 +168,7 @@ export function FeaturedSeasonCard({
           </Link>
           <Link
             to={viewBoardUrl}
-            className="h-10 px-3.5 rounded-lg inline-flex items-center gap-1.5 text-[12.5px] font-bold border border-border/40 bg-card/40 hover:bg-card/60 hover:border-border/60 active:scale-95 transition"
+            className="h-10 px-3.5 rounded-xl inline-flex items-center gap-1.5 text-[12.5px] font-bold border border-border/55 bg-card/70 hover:bg-muted/70 hover:border-primary/30 active:scale-95 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <LayoutGrid className="w-3.5 h-3.5" /> View Board
           </Link>
