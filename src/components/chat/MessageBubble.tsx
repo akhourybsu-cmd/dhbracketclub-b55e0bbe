@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
   Pin, Reply, Trash2, Pencil, Check, X, MessageSquare, Loader2, Flag, SmilePlus, Copy,
+  Share2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ import { ChatImageLightbox } from './ChatImageLightbox';
 import { EmojiPicker } from './EmojiPicker';
 import { isPrivateAttachmentUrl, isImageAttachmentUrl } from '@/lib/chatAttachments';
 import { isDraftInviteMessage } from '@/lib/draftInvite';
+import { buildChatMessagePermalink, chatMessagePreview } from '@/lib/chatExperience';
 
 /* ═══ URL auto-linking + inline image preview ═══ */
 const URL_RE = /((?:https?|lovable-private):\/\/[^\s<]+)/g;
@@ -398,18 +400,23 @@ function MessageBubbleInner({
     const overlay = overlayRef.current;
     const bubble = bubbleWrapperRef.current;
     if (!overlay || !bubble) return;
-    const ov = overlay.getBoundingClientRect();
+    // offsetWidth/offsetHeight are unaffected by Framer Motion's opening scale.
+    // Measuring getBoundingClientRect() here used the initial 0.9 transform,
+    // so the fully animated menu could drift beyond the viewport and overlap
+    // its message on narrow phones.
+    const overlayWidth = overlay.offsetWidth;
+    const overlayHeight = overlay.offsetHeight;
     const bb = bubble.getBoundingClientRect();
     const margin = 8;
-    const placeBelow = bb.top < HEADER_OFFSET + ov.height + margin;
+    const placeBelow = bb.top < HEADER_OFFSET + overlayHeight + margin;
     // Anchor on the user's side (own → right edge, others → left edge)
-    let left = isOwn ? bb.right - ov.width : bb.left;
+    let left = isOwn ? bb.right - overlayWidth : bb.left;
     // Clamp horizontally to viewport
-    const maxLeft = window.innerWidth - ov.width - margin;
+    const maxLeft = window.innerWidth - overlayWidth - margin;
     left = Math.max(margin, Math.min(left, maxLeft));
     const top = placeBelow
-      ? Math.min(bb.bottom + margin, window.innerHeight - ov.height - margin)
-      : Math.max(margin, bb.top - ov.height - margin);
+      ? Math.min(bb.bottom + margin, window.innerHeight - overlayHeight - margin)
+      : Math.max(margin, bb.top - overlayHeight - margin);
     setOverlayPos({ left, top });
   }, [showOverlay, isOwn]);
 
@@ -458,6 +465,33 @@ function MessageBubbleInner({
     }
   }, [msg.content, setShowOverlay]);
 
+  const handleShare = useCallback(async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setShowOverlay(false);
+    const permalink = buildChatMessagePermalink(window.location.origin, msg.channel_id, msg.id);
+    const author = msg.profiles?.display_name || 'A club member';
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `Message from ${author}`,
+          text: chatMessagePreview(msg.content, 180),
+          url: permalink,
+        });
+        return;
+      }
+      await navigator.clipboard.writeText(permalink);
+      toast.success('Message link copied');
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
+      try {
+        await navigator.clipboard.writeText(permalink);
+        toast.success('Message link copied');
+      } catch {
+        toast.error('Could not share message');
+      }
+    }
+  }, [msg.channel_id, msg.content, msg.id, msg.profiles?.display_name, setShowOverlay]);
+
   const confirmDelete = () => {
     onDeleteMessage(msg.id);
     setShowDeleteConfirm(false);
@@ -467,7 +501,7 @@ function MessageBubbleInner({
   const confirmReport = async () => {
     if (reporting) return;
     setReporting(true);
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from('message_reports')
       .insert({ message_id: msg.id, reporter_id: currentUserId, reason: 'flagged_by_member' });
     setReporting(false);
@@ -535,7 +569,7 @@ function MessageBubbleInner({
         onTap={(e) => {
           // Ignore taps that originated on interactive children (links, buttons, images)
           const target = e.target as HTMLElement;
-          if (target.closest('a, button, textarea, input')) return;
+          if (target.closest('a, button, textarea, input, audio, video')) return;
           handleTap();
         }}
       >
@@ -765,7 +799,7 @@ function MessageBubbleInner({
                 onClick={(e) => e.stopPropagation()}
                 onTap={(e) => e.stopPropagation?.()}
                 role="menu"
-                className="fixed z-[60] flex items-center gap-0.5 px-1.5 py-1 bg-background/95 backdrop-blur-lg border border-border/20 shadow-lg rounded-xl overflow-x-auto"
+                className="fixed z-[60] flex flex-col gap-1.5 rounded-2xl border border-border/25 bg-background/95 p-1.5 shadow-xl backdrop-blur-xl"
                 style={{
                   left: overlayPos?.left ?? 0,
                   top: overlayPos?.top ?? 0,
@@ -774,79 +808,92 @@ function MessageBubbleInner({
                   scrollbarWidth: 'none',
                 }}
               >
-                {QUICK_EMOJIS.map(emoji => (
-                  <button
-                    key={emoji}
-                    onClick={(e) => handleReaction(emoji, e)}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/50 text-base transition-colors active:scale-90 flex-shrink-0"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowOverlay(false); setShowReactPicker(true); }}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/50 transition-colors active:scale-90 flex-shrink-0"
-                  title="More reactions"
-                  aria-label="More reactions"
-                >
-                  <SmilePlus className="w-4 h-4 text-muted-foreground/70" />
-                </button>
-                <div className="w-px h-5 bg-border/20 mx-0.5 flex-shrink-0" />
-                <button
-                  onClick={(e) => { e.stopPropagation(); onReply(msg); setShowOverlay(false); }}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/50 transition-colors active:scale-90 flex-shrink-0"
-                  title="Reply"
-                  aria-label="Reply"
-                >
-                  <Reply className="w-3.5 h-3.5 text-muted-foreground/70" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onTogglePin(msg); setShowOverlay(false); }}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/50 transition-colors active:scale-90 flex-shrink-0"
-                  title={msg.is_pinned ? 'Unpin' : 'Pin'}
-                  aria-label={msg.is_pinned ? 'Unpin' : 'Pin'}
-                >
-                  <Pin className="w-3.5 h-3.5 text-muted-foreground/70" />
-                </button>
-                {stripAttachmentUrls(msg.content) && (
-                  <button
-                    onClick={handleCopy}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/50 transition-colors active:scale-90 flex-shrink-0"
-                    title="Copy text"
-                    aria-label="Copy text"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-muted-foreground/70" />
-                  </button>
-                )}
-                {isOwn ? (
-                  <>
+                <div className="flex items-center gap-0.5" aria-label="Quick reactions">
+                  {QUICK_EMOJIS.map(emoji => (
                     <button
-                      onClick={(e) => { e.stopPropagation(); onStartEditing(msg); setShowOverlay(false); }}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/50 transition-colors active:scale-90 flex-shrink-0"
-                      title="Edit"
-                      aria-label="Edit message"
+                      key={emoji}
+                      onClick={(e) => handleReaction(emoji, e)}
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-base transition-colors hover:bg-muted/50 active:scale-90"
+                      aria-label={`React with ${emoji}`}
                     >
-                      <Pencil className="w-3.5 h-3.5 text-muted-foreground/70" />
+                      {emoji}
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); setShowOverlay(false); }}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-destructive/10 transition-colors active:scale-90 flex-shrink-0"
-                      title="Delete"
-                      aria-label="Delete message"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </button>
-                  </>
-                ) : (
+                  ))}
                   <button
-                    onClick={(e) => { e.stopPropagation(); setShowReportConfirm(true); setShowOverlay(false); }}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-destructive/10 transition-colors active:scale-90 flex-shrink-0"
-                    title="Report"
-                    aria-label="Report message"
+                    onClick={(e) => { e.stopPropagation(); setShowOverlay(false); setShowReactPicker(true); }}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-muted/50 active:scale-90"
+                    title="More reactions"
+                    aria-label="More reactions"
                   >
-                    <Flag className="w-3.5 h-3.5 text-muted-foreground/70" />
+                    <SmilePlus className="h-4 w-4 text-muted-foreground/70" />
                   </button>
-                )}
+                </div>
+                <div className="h-px bg-border/20" />
+                <div className="flex items-center justify-end gap-0.5" aria-label="Message actions">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onReply(msg); setShowOverlay(false); }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-muted/50 active:scale-90"
+                    title="Reply"
+                    aria-label="Reply"
+                  >
+                    <Reply className="h-4 w-4 text-muted-foreground/75" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onTogglePin(msg); setShowOverlay(false); }}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-muted/50 active:scale-90"
+                    title={msg.is_pinned ? 'Unpin' : 'Pin'}
+                    aria-label={msg.is_pinned ? 'Unpin' : 'Pin'}
+                  >
+                    <Pin className="h-4 w-4 text-muted-foreground/75" />
+                  </button>
+                  {stripAttachmentUrls(msg.content) && (
+                    <button
+                      onClick={handleCopy}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-muted/50 active:scale-90"
+                      title="Copy text"
+                      aria-label="Copy text"
+                    >
+                      <Copy className="h-4 w-4 text-muted-foreground/75" />
+                    </button>
+                  )}
+                  <button
+                    onClick={handleShare}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-muted/50 active:scale-90"
+                    title="Share message"
+                    aria-label="Share message"
+                  >
+                    <Share2 className="h-4 w-4 text-muted-foreground/75" />
+                  </button>
+                  {isOwn ? (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onStartEditing(msg); setShowOverlay(false); }}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-muted/50 active:scale-90"
+                        title="Edit"
+                        aria-label="Edit message"
+                      >
+                        <Pencil className="h-4 w-4 text-muted-foreground/75" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); setShowOverlay(false); }}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-destructive/10 active:scale-90"
+                        title="Delete"
+                        aria-label="Delete message"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowReportConfirm(true); setShowOverlay(false); }}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl transition-colors hover:bg-destructive/10 active:scale-90"
+                      title="Report"
+                      aria-label="Report message"
+                    >
+                      <Flag className="h-4 w-4 text-muted-foreground/75" />
+                    </button>
+                  )}
+                </div>
               </motion.div>
             </Fragment>
           )}
@@ -898,6 +945,7 @@ export const MessageBubble = memo(MessageBubbleInner, (prev, next) => {
     prev.msg.edited_at === next.msg.edited_at &&
     prev.msg.is_pinned === next.msg.is_pinned &&
     prev.msg.reactions === next.msg.reactions &&
+    prev.msg.reply_to === next.msg.reply_to &&
     prev.msg.reply_count === next.msg.reply_count &&
     prev.msg._optimistic === next.msg._optimistic &&
     prev.isOwn === next.isOwn &&
@@ -905,6 +953,7 @@ export const MessageBubble = memo(MessageBubbleInner, (prev, next) => {
     prev.nextSameAuthor === next.nextSameAuthor &&
     prev.editingMessageId === next.editingMessageId &&
     prev.editContent === next.editContent &&
-    prev.isOverlayOpen === next.isOverlayOpen
+    prev.isOverlayOpen === next.isOverlayOpen &&
+    prev.isAuthorOnline === next.isAuthorOnline
   );
 });

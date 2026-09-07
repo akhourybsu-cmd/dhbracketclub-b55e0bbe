@@ -184,7 +184,7 @@ export function MessageList({
         messagesEndRef.current?.scrollIntoView();
       });
     }
-  }, [scrollToBottomTrigger]);
+  }, [autoScroll, scrollToBottomTrigger]);
 
   // Passive scroll handler
   const rafRef = useRef<number | null>(null);
@@ -347,6 +347,7 @@ export function MessageList({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 10 }}
             onClick={scrollToBottom}
+            aria-label={newMsgCount > 0 ? `Jump to ${newMsgCount} new message${newMsgCount === 1 ? '' : 's'}` : 'Jump to latest message'}
             // 44×44 on mobile (HIG floating-action minimum), tighter
             // 40×40 on lg+ since pointer-precision is higher on desktop.
             className="sticky bottom-3 ml-auto mr-3 w-11 h-11 lg:w-10 lg:h-10 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors z-20"
@@ -354,7 +355,7 @@ export function MessageList({
           >
             <ChevronDown className="w-5 h-5" />
             {newMsgCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-1">
+              <span aria-live="polite" className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-1">
                 {newMsgCount}
               </span>
             )}

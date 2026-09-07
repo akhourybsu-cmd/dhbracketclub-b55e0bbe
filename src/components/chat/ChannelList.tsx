@@ -1,6 +1,6 @@
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
-import { Hash, Plus, Settings, GripVertical, FolderPlus, Menu, ChevronDown } from 'lucide-react';
+import { AtSign, Hash, Plus, Settings, GripVertical, FolderPlus, Menu, ChevronDown, Search, X } from 'lucide-react';
 import { useNavDrawer } from '@/contexts/NavDrawerContext';
 import { cn } from '@/lib/utils';
 import { format, isToday, isYesterday, differenceInDays } from 'date-fns';
@@ -10,6 +10,7 @@ import type { Channel, Category, ChannelMeta } from './types';
 import { CHANNEL_EMOJI } from './types';
 import { getChannelTypeMeta } from './channelTypeMeta';
 import { StatusPill } from '@/components/ui/status-pill';
+import { chatMessagePreview } from '@/lib/chatExperience';
 
 interface ChannelListProps {
   channels: Channel[];
@@ -18,11 +19,13 @@ interface ChannelListProps {
   selectedChannel: Channel | null;
   currentUserId?: string;
   isAdmin?: boolean;
+  clubName?: string;
+  onlineCount?: number;
   loading: boolean;
   onSelectChannel: (ch: Channel) => void;
   onCreateChannel: (name: string, categoryId: string) => void;
   onEditChannel?: (channelId: string, newName: string) => void;
-  onReorderChannels?: (categoryId: string, reordered: Channel[]) => void;
+  onReorderChannels?: (categoryId: string | null, reordered: Channel[]) => void;
   onOpenSettings?: (channel: Channel) => void;
   onCreateCategory?: (name: string) => void;
 }
@@ -49,30 +52,20 @@ interface ChannelRowProps {
 const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId, isAdmin, reorderEnabled, onSelect, onOpenSettings }: ChannelRowProps) {
   const dragControls = useDragControls();
   const lastIsMine = !!currentUserId && meta?.lastAuthorId === currentUserId;
-  // Hard guard: never show unread when the latest message is from the current user
-  const isUnread = !!meta?.unread && !lastIsMine;
+  // Unread state is calculated from the member's read timestamp, not from the
+  // newest author. This preserves an older unread badge if the member posts
+  // from another device before opening the channel here.
+  const isUnread = !!meta?.unread;
   const typeMeta = getChannelTypeMeta(ch.channel_type);
   const TypeIcon = typeMeta.icon;
   const isElevated = ch.channel_type === 'announcements' || ch.channel_type === 'admin_only';
   const emoji = (ch.icon && ch.icon !== 'hash') ? ch.icon : CHANNEL_EMOJI[ch.name];
   const hasPreview = !!meta?.lastMessage;
 
-  // Truncate the last message — strip image-only URLs for cleaner preview
-  let previewText = meta?.lastMessage || '';
-  let isPhotoOnly = false;
-  if (previewText) {
-    const lines = previewText.split('\n').filter(l => l.trim());
-    const firstTextLine = lines.find(l => !/^(?:https?|lovable-private):\/\/\S+$/.test(l.trim()));
-    if (firstTextLine) {
-      previewText = firstTextLine;
-    } else if (lines.length > 0) {
-      previewText = 'Photo';
-      isPhotoOnly = true;
-    } else {
-      previewText = '';
-    }
-  }
+  const previewText = meta?.lastMessage ? chatMessagePreview(meta.lastMessage, 90) : '';
   const previewPrefix = lastIsMine ? 'You' : (meta?.lastAuthor || '');
+  const unreadCount = isUnread ? Math.max(1, meta?.unreadCount || 0) : 0;
+  const mentionCount = isUnread ? Math.max(0, meta?.mentionCount || 0) : 0;
 
   return (
     <Reorder.Item
@@ -164,14 +157,22 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
                 isUnread ? "text-foreground/85 font-medium" : "text-muted-foreground/65",
               )}>
                 {previewPrefix && <span className={cn("font-semibold", isUnread ? "text-foreground/90" : "text-foreground/60")}>{previewPrefix}: </span>}
-                {isPhotoOnly ? (lastIsMine ? 'sent a photo' : 'sent a photo') : previewText}
+                {previewText}
               </p>
             ) : (
               <p className="text-[11px] text-muted-foreground/45 truncate flex-1 italic">
                 {ch.description || 'No messages yet'}
               </p>
             )}
-            {isUnread && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+            {mentionCount > 0 ? (
+              <span className="inline-flex h-[18px] min-w-[24px] flex-shrink-0 items-center justify-center gap-0.5 rounded-full bg-destructive px-1 text-[9px] font-extrabold text-destructive-foreground shadow-sm">
+                <AtSign className="h-2.5 w-2.5" />{mentionCount > 99 ? '99+' : mentionCount}
+              </span>
+            ) : unreadCount > 0 ? (
+              <span className="inline-flex h-[18px] min-w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-extrabold text-primary-foreground">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -237,6 +238,7 @@ function writeCollapsedCategories(s: Set<string>) {
 
 export function ChannelList({
   channels, categories, channelMeta, selectedChannel, currentUserId, isAdmin,
+  clubName, onlineCount = 0,
   loading, onSelectChannel, onCreateChannel, onReorderChannels,
   onOpenSettings, onCreateCategory,
 }: ChannelListProps) {
@@ -246,6 +248,7 @@ export function ChannelList({
   const [newChannelCategory, setNewChannelCategory] = useState('');
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [channelQuery, setChannelQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(readCollapsedCategories);
 
   // Persist collapse state on change.
@@ -273,19 +276,32 @@ export function ChannelList({
     });
   }, []);
 
-  // Sort channels within each category by most recent activity (unread/recent on top), preserving fallback to position
-  const groupedChannels = useMemo(() => categories.map(cat => {
-    const chs = channels.filter(ch => ch.category_id === cat.id);
-    const sorted = [...chs].sort((a, b) => {
-      const ma = channelMeta.get(a.id);
-      const mb = channelMeta.get(b.id);
-      const ta = ma?.lastMessageAt ? new Date(ma.lastMessageAt).getTime() : 0;
-      const tb = mb?.lastMessageAt ? new Date(mb.lastMessageAt).getTime() : 0;
-      if (ta !== tb) return tb - ta;
-      return a.position - b.position;
-    });
-    return { ...cat, channels: sorted };
-  }), [categories, channels, channelMeta]);
+  // Discord-like channel order is stable and admin-controlled. Activity is
+  // communicated with badges instead of reshuffling the navigation beneath a
+  // member's pointer. Include uncategorized channels so "No category" never
+  // makes a channel disappear from the UI.
+  const groupedChannels = useMemo(() => {
+    const needle = channelQuery.trim().toLowerCase();
+    const visible = channels.filter(channel =>
+      !needle || channel.name.toLowerCase().includes(needle) || channel.description?.toLowerCase().includes(needle),
+    );
+    const sortByPosition = (a: Channel, b: Channel) => a.position - b.position || a.name.localeCompare(b.name);
+    const groups = categories.map(category => ({
+      ...category,
+      reorderCategoryId: category.id as string | null,
+      channels: visible.filter(channel => channel.category_id === category.id).sort(sortByPosition),
+    }));
+    const uncategorized = visible.filter(channel => !channel.category_id || !categories.some(category => category.id === channel.category_id)).sort(sortByPosition);
+    if (uncategorized.length > 0) {
+      groups.push({ id: '__uncategorized__', name: 'Channels', position: Number.MAX_SAFE_INTEGER, reorderCategoryId: null, channels: uncategorized });
+    }
+    return groups;
+  }, [categories, channels, channelQuery]);
+
+  const unreadTotal = useMemo(() => channels.reduce((total, channel) => {
+    const meta = channelMeta.get(channel.id);
+    return total + (meta?.unread ? Math.max(1, meta.unreadCount || 0) : 0);
+  }, 0), [channels, channelMeta]);
 
   const handleCreate = () => {
     if (!newChannelName.trim()) return;
@@ -325,7 +341,9 @@ export function ChannelList({
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-[17px] sm:text-lg font-extrabold tracking-tight leading-tight">Chat</h1>
-            <p className="text-[10.5px] text-muted-foreground/55 font-medium leading-none mt-0.5">DH conversations</p>
+            <p className="text-[10.5px] text-muted-foreground/55 font-medium leading-none mt-0.5 truncate">
+              {clubName || 'Club conversations'} · {onlineCount} online
+            </p>
           </div>
           {isAdmin && (
             <div className="flex items-center gap-1">
@@ -339,6 +357,31 @@ export function ChannelList({
               </Button>
             </div>
           )}
+        </div>
+
+        <div className="relative mb-3 px-1">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/45" />
+          <Input
+            value={channelQuery}
+            onChange={event => setChannelQuery(event.target.value)}
+            placeholder="Find a channel"
+            aria-label="Find a channel"
+            className="h-9 rounded-xl border-border/15 bg-muted/20 pl-9 pr-9 text-xs"
+          />
+          {channelQuery ? (
+            <button
+              type="button"
+              onClick={() => setChannelQuery('')}
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground/55 hover:bg-muted/40"
+              aria-label="Clear channel search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : unreadTotal > 0 ? (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-primary/12 px-1.5 py-0.5 text-[9px] font-extrabold text-primary">
+              {unreadTotal} new
+            </span>
+          ) : null}
         </div>
 
         {/* New Category inline form */}
@@ -383,8 +426,7 @@ export function ChannelList({
             // collapsed category can show "you have things to read."
             const unreadInGroup = group.channels.reduce((n, ch) => {
               const m = channelMeta.get(ch.id);
-              const lastIsMine = !!currentUserId && m?.lastAuthorId === currentUserId;
-              return n + (m?.unread && !lastIsMine ? 1 : 0);
+              return n + (m?.unread ? Math.max(1, m.unreadCount || 0) : 0);
             }, 0);
             return (
               <div key={group.id}>
@@ -428,7 +470,7 @@ export function ChannelList({
                       <Reorder.Group
                         axis="y"
                         values={group.channels}
-                        onReorder={(newOrder) => onReorderChannels?.(group.id, newOrder)}
+                        onReorder={(newOrder) => onReorderChannels?.(group.reorderCategoryId, newOrder)}
                         className="space-y-0.5"
                       >
                         {group.channels.map((ch) => (
@@ -452,6 +494,13 @@ export function ChannelList({
             );
           })}
         </div>
+
+        {channelQuery && groupedChannels.every(group => group.channels.length === 0) && (
+          <div className="px-4 py-12 text-center">
+            <Search className="mx-auto mb-2 h-7 w-7 text-muted-foreground/25" />
+            <p className="text-xs font-semibold text-muted-foreground/65">No matching channels</p>
+          </div>
+        )}
 
         {loading && channels.length === 0 && (
           <div className="space-y-1">

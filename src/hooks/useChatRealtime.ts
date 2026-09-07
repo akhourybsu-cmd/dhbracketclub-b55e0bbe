@@ -3,6 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Message } from '@/components/chat/types';
 import type { MentionMember } from '@/components/chat/MessageComposer';
 
+type RealtimeMessage = Omit<Message, 'profiles' | 'reply_count' | 'reactions' | 'reply_to' | '_optimistic'>;
+type RealtimeReaction = { message_id: string; emoji: string; user_id: string };
+type ReplyReference = {
+  id: string;
+  content: string;
+  user_id: string;
+  profiles?: { display_name: string } | null;
+};
+
 interface UseChatRealtimeOptions {
   channelId: string | undefined;
   userId: string | undefined;
@@ -36,7 +45,7 @@ export function useChatRealtime({
       .channel(`chat-${channelId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` },
         async (payload) => {
-          const newMsg = payload.new as any;
+          const newMsg = payload.new as RealtimeMessage;
           // Legacy thread children (parent_message_id set) never appear in the
           // channel timeline — the fetch excludes them and inline replies use
           // reply_to_id instead. Ignore them here too.
@@ -46,7 +55,9 @@ export function useChatRealtime({
               if (prev.some(m => m.id === newMsg.id)) return prev;
               const hasOptimistic = prev.some(m => m._optimistic && m.content === newMsg.content);
               if (hasOptimistic) {
-                return prev.map(m => m._optimistic && m.content === newMsg.content ? { ...newMsg, profiles: m.profiles, reply_count: 0, reactions: [], reply_to: (m as any).reply_to ?? null } : m);
+                return prev.map(m => m._optimistic && m.content === newMsg.content
+                  ? { ...newMsg, profiles: m.profiles, reply_count: 0, reactions: [], reply_to: m.reply_to ?? null }
+                  : m);
               }
               return prev;
             });
@@ -64,14 +75,17 @@ export function useChatRealtime({
               .select('id, content, user_id, profiles:user_id(display_name)')
               .eq('id', newMsg.reply_to_id)
               .maybeSingle();
-            if (ref) replyTo = { id: (ref as any).id, content: (ref as any).content, user_id: (ref as any).user_id, display_name: (ref as any).profiles?.display_name };
+            if (ref) {
+              const reply = ref as unknown as ReplyReference;
+              replyTo = { id: reply.id, content: reply.content, user_id: reply.user_id, display_name: reply.profiles?.display_name };
+            }
           }
           setMessages(prev => [...prev, { ...newMsg, profiles, reply_count: 0, reactions: [], reply_to: replyTo }]);
           play('ping');
         })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` },
         (payload) => {
-          const updated = payload.new as any;
+          const updated = payload.new as Pick<Message, 'id' | 'content' | 'edited_at' | 'is_pinned'>;
           setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, content: updated.content, edited_at: updated.edited_at, is_pinned: updated.is_pinned } : m));
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' },
@@ -80,7 +94,7 @@ export function useChatRealtime({
         })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_reactions' },
         (payload) => {
-          const r = payload.new as any;
+          const r = payload.new as RealtimeReaction;
           // Echo dedup: if THIS user just optimistically added this
           // reaction, the count has already been bumped locally. The
           // realtime event is the server echo of our action — consume
@@ -91,20 +105,18 @@ export function useChatRealtime({
           }
           setMessages(prev => prev.map(m => {
             if (m.id !== r.message_id) return m;
-            const reactions = [...(m.reactions || [])];
-            const existing = reactions.find(rx => rx.emoji === r.emoji);
-            if (existing) {
-              existing.count++;
-              if (r.user_id === userId) existing.user_reacted = true;
-            } else {
-              reactions.push({ emoji: r.emoji, count: 1, user_reacted: r.user_id === userId });
-            }
+            const existing = (m.reactions || []).find(rx => rx.emoji === r.emoji);
+            const reactions = existing
+              ? (m.reactions || []).map(rx => rx.emoji === r.emoji
+                ? { ...rx, count: rx.count + 1, user_reacted: r.user_id === userId ? true : rx.user_reacted }
+                : rx)
+              : [...(m.reactions || []), { emoji: r.emoji, count: 1, user_reacted: r.user_id === userId }];
             return { ...m, reactions };
           }));
         })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'message_reactions' },
         (payload) => {
-          const r = payload.old as any;
+          const r = payload.old as RealtimeReaction;
           // Echo dedup mirror of the INSERT case — skip the apply
           // when the DELETE is our own optimistic un-react.
           if (r.user_id === userId && reactionEchoRef?.current?.has(`${r.message_id}:${r.emoji}:remove`)) {
@@ -113,20 +125,19 @@ export function useChatRealtime({
           }
           setMessages(prev => prev.map(m => {
             if (m.id !== r.message_id) return m;
-            let reactions = [...(m.reactions || [])];
-            const existing = reactions.find(rx => rx.emoji === r.emoji);
-            if (existing) {
-              existing.count--;
-              if (r.user_id === userId) existing.user_reacted = false;
-              if (existing.count <= 0) reactions = reactions.filter(rx => rx.emoji !== r.emoji);
-            }
+            const existing = (m.reactions || []).find(rx => rx.emoji === r.emoji);
+            const reactions = existing && existing.count > 1
+              ? (m.reactions || []).map(rx => rx.emoji === r.emoji
+                ? { ...rx, count: rx.count - 1, user_reacted: r.user_id === userId ? false : rx.user_reacted }
+                : rx)
+              : (m.reactions || []).filter(rx => rx.emoji !== r.emoji);
             return { ...m, reactions };
           }));
         })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [channelId, userId, play, setMessages]);
+  }, [channelId, userId, play, reactionEchoRef, setMessages]);
 }
 
 export function useChatTyping(
@@ -137,7 +148,7 @@ export function useChatTyping(
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingBroadcast = useRef(0);
-  const presenceRef = useRef<any>(null);
+  const presenceRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!channelId || !userId) return;
@@ -152,7 +163,7 @@ export function useChatTyping(
         const typing: string[] = [];
         for (const [uid, presences] of Object.entries(state)) {
           if (uid === userId) continue;
-          const p = (presences as any[])?.[0];
+          const p = (presences as Array<{ typing?: boolean; name?: string }>)?.[0];
           if (p?.typing && p?.name) typing.push(p.name);
         }
         setTypingUsers(typing);
@@ -162,6 +173,10 @@ export function useChatTyping(
     presenceRef.current = presenceChannel;
 
     return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
       supabase.removeChannel(presenceChannel);
       presenceRef.current = null;
     };
@@ -170,17 +185,17 @@ export function useChatTyping(
   const broadcastTyping = useCallback(() => {
     if (!presenceRef.current || !userId) return;
     const now = Date.now();
-    if (now - lastTypingBroadcast.current < 2000) return;
-    lastTypingBroadcast.current = now;
-
-    presenceRef.current.track({
-      typing: true,
-      name: displayName || 'Someone',
-    });
+    if (now - lastTypingBroadcast.current >= 2000) {
+      lastTypingBroadcast.current = now;
+      void presenceRef.current.track({
+        typing: true,
+        name: displayName || 'Someone',
+      });
+    }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      presenceRef.current?.track({ typing: false, name: '' });
+      void presenceRef.current?.track({ typing: false, name: '' });
     }, 3000);
   }, [userId, displayName]);
 

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
-import { Send, Plus, Image, Camera, X, Loader2, ImagePlay, Paperclip, FileText, Smile } from 'lucide-react';
+import { Send, Plus, Image, Camera, X, Loader2, ImagePlay, Paperclip, FileText, Smile, Type, Bold, Italic, Strikethrough, Code2, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { UserAvatar } from './UserAvatar';
@@ -10,11 +10,13 @@ import { buildPrivateAttachmentUrl } from '@/lib/chatAttachments';
 import { GifPicker } from './GifPicker';
 import { EmojiPicker } from './EmojiPicker';
 import { isGifProviderConfigured } from '@/lib/gifProvider';
+import { SLASH_COMMAND_NAMES } from '@/lib/chatSlashCommands';
 
 export interface MentionMember {
   id: string;
   display_name: string;
   avatar_url: string | null;
+  role?: 'admin' | 'member';
 }
 
 export interface MessageComposerHandle {
@@ -33,6 +35,21 @@ export interface PendingFile {
 }
 
 const MAX_ATTACHMENTS = 4;
+
+const FORMAT_ACTIONS = [
+  { label: 'Bold', icon: Bold, before: '**', after: '**', placeholder: 'bold text' },
+  { label: 'Italic', icon: Italic, before: '*', after: '*', placeholder: 'italic text' },
+  { label: 'Strikethrough', icon: Strikethrough, before: '~~', after: '~~', placeholder: 'struck text' },
+  { label: 'Inline code', icon: Code2, before: '`', after: '`', placeholder: 'code' },
+  { label: 'Spoiler', icon: EyeOff, before: '||', after: '||', placeholder: 'spoiler' },
+] as const;
+
+const SLASH_COMMAND_HINTS: Record<string, string> = {
+  shrug: 'Add a shrug to your message',
+  tableflip: 'Flip the table',
+  unflip: 'Put the table back',
+  me: 'Write an action in italics',
+};
 
 interface MessageComposerProps {
   value: string;
@@ -64,6 +81,8 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
     const [showAttachMenu, setShowAttachMenu] = useState(false);
     const [showGifPicker, setShowGifPicker] = useState(false);
     const [showEmoji, setShowEmoji] = useState(false);
+    const [showFormatting, setShowFormatting] = useState(false);
+    const [commandIndex, setCommandIndex] = useState(0);
     const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
     const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
     const [uploading, setUploading] = useState(false);
@@ -94,16 +113,17 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
     }, [autoFocus]);
 
     useEffect(() => {
-      if (!showAttachMenu && !showEmoji) return;
+      if (!showAttachMenu && !showEmoji && !showFormatting) return;
       const handler = (e: MouseEvent) => {
         if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
           setShowAttachMenu(false);
           setShowEmoji(false);
+          setShowFormatting(false);
         }
       };
       document.addEventListener('mousedown', handler);
       return () => document.removeEventListener('mousedown', handler);
-    }, [showAttachMenu, showEmoji]);
+    }, [showAttachMenu, showEmoji, showFormatting]);
 
     const detectMention = useCallback(() => {
       const el = textareaRef.current;
@@ -154,6 +174,32 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
         el.focus();
       });
     }, [value, onChange]);
+
+    const wrapSelection = useCallback((before: string, after: string, placeholder: string) => {
+      const el = textareaRef.current;
+      const start = el?.selectionStart ?? value.length;
+      const end = el?.selectionEnd ?? value.length;
+      const selected = value.slice(start, end) || placeholder;
+      const next = `${value.slice(0, start)}${before}${selected}${after}${value.slice(end)}`;
+      onChange(next);
+      requestAnimationFrame(() => {
+        if (!el) return;
+        el.focus();
+        el.selectionStart = start + before.length;
+        el.selectionEnd = start + before.length + selected.length;
+      });
+    }, [onChange, value]);
+
+    const slashQuery = value.startsWith('/') && !/\s/.test(value.slice(1)) ? value.slice(1).toLowerCase() : null;
+    const matchingCommands = slashQuery === null
+      ? []
+      : SLASH_COMMAND_NAMES.filter(name => name.startsWith(slashQuery)).slice(0, 5);
+
+    const insertSlashCommand = useCallback((name: string) => {
+      onChange(`/${name} `);
+      setCommandIndex(0);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    }, [onChange]);
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -381,6 +427,15 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
         if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(filteredMembers[mentionIndex]); return; }
         if (e.key === 'Escape') { e.preventDefault(); setMentionQuery(null); return; }
       }
+      if (matchingCommands.length > 0) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); setCommandIndex(prev => (prev + 1) % matchingCommands.length); return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); setCommandIndex(prev => (prev - 1 + matchingCommands.length) % matchingCommands.length); return; }
+        if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertSlashCommand(matchingCommands[commandIndex]); return; }
+        if (e.key === 'Escape') { e.preventDefault(); onChange(''); setCommandIndex(0); return; }
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); wrapSelection('**', '**', 'bold text'); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'i') { e.preventDefault(); wrapSelection('*', '*', 'italic text'); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') { e.preventDefault(); wrapSelection('`', '`', 'code'); return; }
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
     };
 
@@ -420,6 +475,39 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
             >
               <Paperclip className="w-5 h-5 text-primary" />
               <span className="text-[12px] font-semibold text-primary">Drop to attach</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Discoverable formatting controls for the markdown features the
+            renderer already supports. Keyboard shortcuts mirror common chat
+            and editor conventions. */}
+        <AnimatePresence initial={false}>
+          {showFormatting && (
+            <motion.div
+              initial={{ height: 0, opacity: 0, y: 4 }}
+              animate={{ height: 'auto', opacity: 1, y: 0 }}
+              exit={{ height: 0, opacity: 0, y: 4 }}
+              className="mb-1.5 overflow-hidden"
+            >
+              <div className="flex items-center gap-1 rounded-xl border border-border/15 bg-muted/15 p-1">
+                {FORMAT_ACTIONS.map(action => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.label}
+                      type="button"
+                      onClick={() => wrapSelection(action.before, action.after, action.placeholder)}
+                      className="flex h-9 min-w-9 flex-1 items-center justify-center rounded-lg text-muted-foreground/65 transition-colors hover:bg-background hover:text-foreground"
+                      title={action.label}
+                      aria-label={action.label}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </button>
+                  );
+                })}
+                <span className="hidden px-2 text-[9px] font-medium text-muted-foreground/45 sm:block">Shift + Enter for a new line</span>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -549,6 +637,13 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                         <span className="font-medium">GIF</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => { setShowAttachMenu(false); setShowFormatting(true); }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-foreground/80 transition-colors hover:bg-muted/40 sm:hidden"
+                    >
+                      <Type className="h-4 w-4 text-primary/70" />
+                      <span className="font-medium">Formatting</span>
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -561,6 +656,29 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
           <input ref={docInputRef} type="file" accept={FILE_ACCEPT} multiple className="hidden" onChange={e => { handleDocsSelected(e.target.files); e.target.value = ''; }} />
 
           <div className="flex-1 relative">
+            {/* Slash-command suggestions */}
+            {matchingCommands.length > 0 && mentionQuery === null && (
+              <div className="absolute bottom-full left-0 right-0 z-50 mb-1 overflow-hidden rounded-xl border border-border/20 bg-popover/95 shadow-xl backdrop-blur-lg">
+                <div className="border-b border-border/10 px-3 py-2 text-[9px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground/55">
+                  Commands
+                </div>
+                {matchingCommands.map((name, index) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onMouseDown={event => { event.preventDefault(); insertSlashCommand(name); }}
+                    className={cn(
+                      'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
+                      index === commandIndex ? 'bg-primary/10' : 'hover:bg-muted/35',
+                    )}
+                  >
+                    <span className="rounded-md bg-muted/40 px-1.5 py-1 font-mono text-[11px] font-bold text-primary">/{name}</span>
+                    <span className="truncate text-[11px] text-muted-foreground/70">{SLASH_COMMAND_HINTS[name]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Mention autocomplete dropdown */}
             {mentionQuery !== null && filteredMembers.length > 0 && (
               <div ref={dropdownRef} className="absolute bottom-full left-0 right-0 mb-1 bg-popover/90 backdrop-blur-lg border border-border/20 rounded-xl shadow-xl z-50 overflow-hidden max-h-[200px] overflow-y-auto">
@@ -597,6 +715,22 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
               style={{ minHeight: compact ? 36 : 44, maxHeight: compact ? 96 : 120, lineHeight: 1.4 }}
             />
           </div>
+
+          {/* Formatting toggle */}
+          {!compact && (
+            <button
+              onClick={() => { setShowFormatting(value => !value); setShowAttachMenu(false); setShowEmoji(false); }}
+              aria-label="Formatting options"
+              aria-expanded={showFormatting}
+              type="button"
+              className={cn(
+                'hidden h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-all duration-150 active:scale-90 sm:flex',
+                showFormatting ? 'bg-primary/15 text-primary' : 'text-muted-foreground/60 hover:bg-muted/30 hover:text-foreground/80',
+              )}
+            >
+              <Type className="h-[19px] w-[19px]" />
+            </button>
+          )}
 
           {/* Emoji picker button */}
           {!compact && (

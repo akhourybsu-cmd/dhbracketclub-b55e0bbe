@@ -3,16 +3,14 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { Hash, ChevronLeft, Pin, Search, X, Link2, Settings, Menu, Lock, MoreVertical, Bell, Reply } from 'lucide-react';
+import { Hash, ChevronLeft, Pin, Search, X, Link2, Settings, Lock, MoreVertical, Bell, Reply, UsersRound, Loader2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { getChannelTypeMeta } from '@/components/chat/channelTypeMeta';
 import { StatusPill } from '@/components/ui/status-pill';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useNavDrawer } from '@/contexts/NavDrawerContext';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -21,6 +19,8 @@ import { MessageList } from '@/components/chat/MessageList';
 import { MessageComposer, type MessageComposerHandle, type MentionMember } from '@/components/chat/MessageComposer';
 import { UserAvatar } from '@/components/chat/UserAvatar';
 import { ChannelSettingsDialog } from '@/components/chat/ChannelSettingsDialog';
+import { ChatMembersPanel } from '@/components/chat/ChatMembersPanel';
+import { ChatSearchPanel, type ChatSearchScope } from '@/components/chat/ChatSearchPanel';
 import { CHANNEL_EMOJI } from '@/components/chat/types';
 import type { Channel, Category, ChannelMeta, Message } from '@/components/chat/types';
 
@@ -33,6 +33,7 @@ import { MobileIconButton } from '@/components/mobile/MobileIconButton';
 import { HYDRATE_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { MemberLoadError } from '@/components/member/MemberLoadError';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { messageMentionsDisplayName } from '@/lib/chatExperience';
 
 const CHAT_DRAFT_PREFIX = 'dh_chat_draft_v1';
 
@@ -53,7 +54,6 @@ export default function ChatPage() {
   const { user } = useAuth();
   const { isClubAdmin, club } = useClub();
   const navigate = useNavigate();
-  const { setOpen: setNavDrawerOpen } = useNavDrawer();
   const composerRef = useRef<MessageComposerHandle>(null);
 
   // Dynamic viewport height to handle mobile keyboard
@@ -121,11 +121,21 @@ export default function ChatPage() {
   // Pinned
   const [showPinned, setShowPinned] = useState(false);
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
+  const [pinnedLoading, setPinnedLoading] = useState(false);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [searchResults, setSearchResults] = useState<Message[] | null>(null);
+  const [searchScope, setSearchScope] = useState<ChatSearchScope>('channel');
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Discord-style member rail. It opens by default only when the viewport has
+  // enough room for three useful columns; the explicit toggle is remembered
+  // for the rest of the session through component state.
+  const [showMembers, setShowMembers] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px)').matches,
+  );
 
   // Members for @mention autocomplete
   const [members, setMembers] = useState<MentionMember[]>([]);
@@ -144,7 +154,7 @@ export default function ChatPage() {
 
   // ═══ HOOKS ═══
   const {
-    messages, setMessages, hasMore, loadingMore, error: messageError, fetchMessages, loadOlderMessages,
+    messages, setMessages, hasMore, loadingMore, error: messageError, fetchMessages, fetchMessagesAround, loadOlderMessages,
   } = useChatMessages(user?.id);
 
   // Shared echo set so optimistic reaction toggles (useChatActions)
@@ -192,6 +202,7 @@ export default function ChatPage() {
   // Open the target channel, then jump to the message once its list loads.
   const [searchParams, setSearchParams] = useSearchParams();
   const pendingJumpRef = useRef<string | null>(null);
+  const pendingContextRef = useRef<string | null>(null);
   useEffect(() => {
     const chId = searchParams.get('channel');
     if (!chId || channels.length === 0) return;
@@ -199,7 +210,9 @@ export default function ChatPage() {
     if (target) {
       if (target.id !== selectedChannelRef.current?.id) setSelectedChannel(target);
       setShowChannelList(false);
-      pendingJumpRef.current = searchParams.get('message');
+      const messageId = searchParams.get('message');
+      pendingJumpRef.current = messageId;
+      pendingContextRef.current = messageId;
     }
     setSearchParams({}, { replace: true });
   }, [channels, searchParams, setSearchParams]);
@@ -227,7 +240,7 @@ export default function ChatPage() {
               .is('parent_message_id', null)
               .in('channel_id', chIds)
               .order('created_at', { ascending: false })
-              .limit(200),
+              .limit(500),
             'Load chat previews',
           )
         : [];
@@ -244,26 +257,35 @@ export default function ChatPage() {
       } catch {}
 
       const meta = new Map<string, ChannelMeta>();
-      const seenChannels = new Set<string>();
+      const mentionName = currentDisplayName || user.user_metadata?.display_name || user.email?.split('@')[0] || '';
       if (lastMsgs) {
         lastMsgs.forEach((m: any) => {
-          if (!seenChannels.has(m.channel_id)) {
-            seenChannels.add(m.channel_id);
-            const lastRead = readStatesMap.get(m.channel_id);
-            const fromMe = m.user_id === user.id;
-            // Unread ONLY when latest message is from someone else AND is newer than last_read_at
-            const isUnread = !fromMe && (!lastRead || new Date(m.created_at) > new Date(lastRead));
+          const lastRead = readStatesMap.get(m.channel_id);
+          const fromMe = m.user_id === user.id;
+          const isUnread = !fromMe && (!lastRead || new Date(m.created_at) > new Date(lastRead));
+          const existing = meta.get(m.channel_id);
+          if (!existing) {
             meta.set(m.channel_id, {
               lastMessage: m.content,
               lastMessageAt: m.created_at,
               lastAuthor: m.profiles?.display_name || '',
               lastAuthorId: m.user_id,
-              unread: isUnread,
+              unread: false,
+              unreadCount: 0,
+              mentionCount: 0,
             });
+          }
+          if (isUnread) {
+            const next = meta.get(m.channel_id)!;
+            next.unread = true;
+            next.unreadCount = (next.unreadCount || 0) + 1;
+            if (messageMentionsDisplayName(m.content, mentionName)) {
+              next.mentionCount = (next.mentionCount || 0) + 1;
+            }
           }
         });
       }
-      chIds.forEach((id: string) => { if (!meta.has(id)) meta.set(id, { unread: false }); });
+      chIds.forEach((id: string) => { if (!meta.has(id)) meta.set(id, { unread: false, unreadCount: 0, mentionCount: 0 }); });
       setChannelMeta(meta);
 
       // Only auto-select on initial load (no channel selected yet).
@@ -294,7 +316,7 @@ export default function ChatPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, isClubAdmin]);
+  }, [user, isClubAdmin, currentDisplayName]);
 
   useEffect(() => { fetchChannels(); }, [fetchChannels]);
 
@@ -315,27 +337,42 @@ export default function ChatPage() {
           const { data: prof } = await supabase.from('profiles').select('display_name').eq('id', m.user_id).maybeSingle();
           authorName = prof?.display_name || '';
         }
+        const isViewing = selectedIdRef.current === m.channel_id;
+        const fromMe = m.user_id === user.id;
+        if (isViewing && !fromMe) {
+          void supabase
+            .from('channel_read_states')
+            .update({ last_read_at: m.created_at })
+            .eq('channel_id', m.channel_id)
+            .eq('user_id', user.id);
+        }
         setChannelMeta(prev => {
           const next = new Map(prev);
           const existing = next.get(m.channel_id) || { unread: false };
-          const isViewing = selectedIdRef.current === m.channel_id;
-          const fromMe = m.user_id === user.id;
           next.set(m.channel_id, {
             ...existing,
             lastMessage: m.content,
             lastMessageAt: m.created_at,
             lastAuthor: authorName,
             lastAuthorId: m.user_id,
-            // Never unread for self-sent or actively-viewed channels.
-            // Self-sent messages also clear any prior unread state for this user.
-            unread: fromMe ? false : (isViewing ? false : true),
+            // The active channel is read immediately. A message sent from this
+            // account on another device must not erase older unread items here.
+            unread: isViewing ? false : (fromMe ? existing.unread : true),
+            unreadCount: isViewing
+              ? 0
+              : fromMe ? (existing.unreadCount || 0) : (existing.unreadCount || 0) + 1,
+            mentionCount: isViewing
+              ? 0
+              : fromMe
+                ? (existing.mentionCount || 0)
+                : (existing.mentionCount || 0) + (messageMentionsDisplayName(m.content, currentDisplayName || user.user_metadata?.display_name || user.email?.split('@')[0]) ? 1 : 0),
           });
           return next;
         });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [user]);
+  }, [user, currentDisplayName]);
   useEffect(() => {
     if (!user || !club?.id) return;
     (async () => {
@@ -343,17 +380,33 @@ export default function ChatPage() {
         const memberRows = await memberData(
           supabase
             .from('club_members')
-            .select('user_id, profiles:user_id(id, display_name, avatar_url)')
+            .select('user_id, role')
             .eq('club_id', club.id),
           'Load chat members',
         );
-        const list = memberRows
-          .map((r: any) => r.profiles)
-          .filter((p: any) => p && p.id && p.display_name);
-        setMembers(list.map((p: any) => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url })));
-        const me = list.find((p: any) => p.id === user.id);
+        const memberIds = memberRows.map(row => row.user_id);
+        const profileRows = memberIds.length > 0
+          ? await memberData(
+              supabase.from('profiles').select('id, display_name, avatar_url').in('id', memberIds),
+              'Load chat member profiles',
+            )
+          : [];
+        const roles = new Map(memberRows.map(row => [row.user_id, row.role]));
+        const list = profileRows
+          .filter(profile => profile.id && profile.display_name)
+          .map(profile => ({
+            id: profile.id,
+            display_name: profile.display_name,
+            avatar_url: profile.avatar_url,
+            role: roles.get(profile.id) === 'admin' ? 'admin' as const : 'member' as const,
+          }));
+        setMembers(list);
+        const me = list.find(profile => profile.id === user.id);
         if (me) setCurrentDisplayName(me.display_name);
-      } catch {}
+      } catch (memberError) {
+        console.error('[ChatPage] member rail hydrate failed', memberError);
+        setMembers([]);
+      }
     })();
   }, [user, club?.id]);
 
@@ -361,7 +414,13 @@ export default function ChatPage() {
   useEffect(() => {
     if (!selectedChannel || !user) return;
 
-    fetchMessages(selectedChannel.id).then(async () => {
+    const targetMessageId = pendingContextRef.current;
+    pendingContextRef.current = null;
+    const loadMessages = targetMessageId
+      ? fetchMessagesAround(selectedChannel.id, targetMessageId).then(found => found ? undefined : fetchMessages(selectedChannel.id))
+      : fetchMessages(selectedChannel.id);
+
+    loadMessages.then(async () => {
       // Capture lastReadAt BEFORE updating read state
       try {
         const sb = supabase as any;
@@ -381,7 +440,7 @@ export default function ChatPage() {
       setChannelMeta(prev => {
         const next = new Map(prev);
         const m = next.get(selectedChannel.id);
-        if (m) next.set(selectedChannel.id, { ...m, unread: false });
+        if (m) next.set(selectedChannel.id, { ...m, unread: false, unreadCount: 0, mentionCount: 0 });
         return next;
       });
 
@@ -392,7 +451,7 @@ export default function ChatPage() {
         setTimeout(() => setJumpSignal(prev => ({ id, n: (prev?.n ?? 0) + 1 })), 120);
       }
     });
-  }, [fetchMessages, selectedChannel, user]);
+  }, [fetchMessages, fetchMessagesAround, selectedChannel, user]);
 
   const handleLoadMore = useCallback(() => {
     if (selectedChannel) loadOlderMessages(selectedChannel.id);
@@ -484,7 +543,8 @@ export default function ChatPage() {
   };
 
   const handleTogglePin = useCallback(async (msg: Message) => {
-    await togglePin(msg);
+    const changed = await togglePin(msg);
+    if (!changed) return;
     if (showPinned) {
       if (msg.is_pinned) {
         setPinnedMessages(prev => prev.filter(m => m.id !== msg.id));
@@ -497,6 +557,7 @@ export default function ChatPage() {
   const loadPinnedMessages = async () => {
     if (!selectedChannel) return;
     setShowPinned(true);
+    setPinnedLoading(true);
     try {
       const data = await memberData(
         supabase
@@ -511,6 +572,8 @@ export default function ChatPage() {
     } catch (loadError) {
       setShowPinned(false);
       toast.error(memberErrorMessage(loadError));
+    } finally {
+      setPinnedLoading(false);
     }
   };
 
@@ -590,9 +653,10 @@ export default function ChatPage() {
     }
   };
 
-  const handleReorderChannels = async (categoryId: string, reordered: Channel[]) => {
+  const handleReorderChannels = async (categoryId: string | null, reordered: Channel[]) => {
     setChannels(prev => {
-      const others = prev.filter(ch => ch.category_id !== categoryId);
+      const inCategory = (channel: Channel) => categoryId === null ? !channel.category_id : channel.category_id === categoryId;
+      const others = prev.filter(ch => !inCategory(ch));
       const updated = reordered.map((ch, i) => ({ ...ch, position: i }));
       return [...others, ...updated].sort((a, b) => a.position - b.position);
     });
@@ -628,7 +692,7 @@ export default function ChatPage() {
     setChannelMeta(prev => {
       const next = new Map(prev);
       const m = next.get(ch.id);
-      if (m?.unread) next.set(ch.id, { ...m, unread: false });
+      if (m?.unread) next.set(ch.id, { ...m, unread: false, unreadCount: 0, mentionCount: 0 });
       return next;
     });
     setShowChannelList(false);
@@ -637,6 +701,43 @@ export default function ChatPage() {
     if (isDesktop) {
       setTimeout(() => composerRef.current?.focus(), 200);
     }
+  };
+
+  const jumpToPinnedMessage = async (messageId: string) => {
+    if (!selectedChannel) return;
+    setShowPinned(false);
+    const available = messages.some(message => message.id === messageId)
+      || await fetchMessagesAround(selectedChannel.id, messageId);
+    if (!available) {
+      toast.error('Could not load that pinned message');
+      return;
+    }
+    setTimeout(() => setJumpSignal(previous => ({ id: messageId, n: (previous?.n ?? 0) + 1 })), 80);
+  };
+
+  const openSearchResult = async (message: Message) => {
+    const targetChannel = channels.find(channel => channel.id === message.channel_id);
+    if (!targetChannel) {
+      toast.error('That channel is no longer available');
+      return;
+    }
+
+    setShowSearch(false);
+    setSearchQuery('');
+    setSearchResults(null);
+    if (targetChannel.id !== selectedChannel?.id) {
+      pendingContextRef.current = message.id;
+      pendingJumpRef.current = message.id;
+      selectChannel(targetChannel);
+      return;
+    }
+
+    const found = await fetchMessagesAround(targetChannel.id, message.id);
+    if (!found) {
+      toast.error('Could not load that message');
+      return;
+    }
+    setTimeout(() => setJumpSignal(previous => ({ id: message.id, n: (previous?.n ?? 0) + 1 })), 80);
   };
 
   // A message draft survives channel switches, route changes, and accidental
@@ -648,35 +749,67 @@ export default function ChatPage() {
 
   /* ═══ DB-SIDE SEARCH ═══ */
   useEffect(() => {
-    if (!showSearch || !searchQuery.trim() || !selectedChannel) {
+    if (!showSearch || searchQuery.trim().length < 2 || !selectedChannel) {
       setSearchResults(null);
+      setSearchLoading(false);
       return;
     }
     let cancelled = false;
+    setSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
+        let query = supabase
+          .from('messages')
+          .select('*, profiles:user_id(display_name, avatar_url)')
+          .is('parent_message_id', null)
+          .ilike('content', `%${searchQuery.trim()}%`)
+          .order('created_at', { ascending: false })
+          .limit(75);
+
+        if (searchScope === 'channel') {
+          query = query.eq('channel_id', selectedChannel.id);
+        } else {
+          const visibleChannelIds = channels.map(channel => channel.id);
+          if (visibleChannelIds.length === 0) {
+            if (!cancelled) setSearchResults([]);
+            return;
+          }
+          query = query.in('channel_id', visibleChannelIds);
+        }
         const data = await memberData(
-          supabase
-            .from('messages')
-            .select('*, profiles:user_id(display_name, avatar_url)')
-            .eq('channel_id', selectedChannel.id)
-            .is('parent_message_id', null)
-            .ilike('content', `%${searchQuery}%`)
-            .order('created_at', { ascending: true })
-            .limit(50),
+          query,
           'Search messages',
         );
         if (!cancelled) setSearchResults((data ?? []).map(m => ({ ...m, reply_count: 0, reactions: [] })));
       } catch {
         if (!cancelled) setSearchResults([]);
+      } finally {
+        if (!cancelled) setSearchLoading(false);
       }
-    }, 300);
+    }, 250);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [searchQuery, showSearch, selectedChannel]);
+  }, [channels, searchQuery, searchScope, showSearch, selectedChannel]);
+
+  // Fast search from anywhere in Chat. Escape closes transient panels before
+  // it can bubble into browser/PWA chrome.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setShowPinned(false);
+        setShowMembers(false);
+        setShowSearch(true);
+      } else if (event.key === 'Escape' && (showSearch || showPinned || showMembers)) {
+        setShowSearch(false);
+        setShowPinned(false);
+        setShowMembers(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showMembers, showPinned, showSearch]);
 
   const pinnedCount = useMemo(() => messages.filter(m => m.is_pinned).length, [messages]);
-  const showSidePanel = showPinned;
-
   const channelType = selectedChannel?.channel_type || 'general';
   const postPermission = selectedChannel?.post_permission || 'all';
   const isAnnouncement = channelType === 'announcements';
@@ -712,6 +845,8 @@ export default function ChatPage() {
             channelMeta={channelMeta}
             selectedChannel={selectedChannel}
             currentUserId={user?.id}
+            clubName={club?.name}
+            onlineCount={onlineIds.size}
             isAdmin={isClubAdmin}
             loading={loading}
             onSelectChannel={selectChannel}
@@ -740,6 +875,9 @@ export default function ChatPage() {
           channelMeta={channelMeta}
           selectedChannel={selectedChannel}
           currentUserId={user?.id}
+          clubName={club?.name}
+          onlineCount={onlineIds.size}
+          isAdmin={isClubAdmin}
           loading={loading}
           onSelectChannel={selectChannel}
           onCreateChannel={handleCreateChannel}
@@ -767,7 +905,7 @@ export default function ChatPage() {
             paddingRight: 'max(0.625rem, env(safe-area-inset-right, 0px))',
           }}
         >
-          <MobileIconButton onClick={() => { setShowChannelList(true); setShowPinned(false); }} aria-label="Back to channels" className="-ml-1 lg:hidden">
+          <MobileIconButton onClick={() => { setShowChannelList(true); setShowPinned(false); setShowMembers(false); setShowSearch(false); }} aria-label="Back to channels" className="-ml-1 lg:hidden">
             <ChevronLeft className="w-5 h-5 text-foreground/70" />
           </MobileIconButton>
           <div
@@ -796,20 +934,24 @@ export default function ChatPage() {
                 </StatusPill>
               )}
             </div>
-            {selectedChannel?.description && <p className="text-[11px] text-muted-foreground/75 truncate leading-tight mt-0.5">{selectedChannel.description}</p>}
+            <p className="text-[11px] text-muted-foreground/75 truncate leading-tight mt-0.5">
+              {selectedChannel?.description || `${onlineIds.size} online · ${members.length} members`}
+            </p>
           </div>
           {/* Desktop: individual buttons */}
-          <button onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); setSearchResults(null); }} className={cn("hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showSearch ? "bg-primary/15 text-primary" : "hover:bg-muted/50 text-muted-foreground/70")} title="Search messages" aria-label="Search messages" aria-pressed={showSearch}>
+          <button onClick={() => { const next = !showSearch; setShowSearch(next); setShowPinned(false); setShowMembers(false); if (!next) { setSearchQuery(''); setSearchResults(null); } }} className={cn("hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showSearch ? "bg-primary/15 text-primary" : "hover:bg-muted/50 text-muted-foreground/70")} title="Search messages (Ctrl+K)" aria-label="Search messages" aria-pressed={showSearch}>
             <Search className="w-[18px] h-[18px]" />
           </button>
           <button onClick={() => navigate('/shared')} className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/50 text-muted-foreground/70 transition-colors" title="Shared Media" aria-label="Open shared media">
             <Link2 className="w-[18px] h-[18px]" />
           </button>
-          {pinnedCount > 0 && (
-            <button onClick={loadPinnedMessages} className={cn("hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showPinned ? "bg-premium-warm/15 text-premium-warm" : "hover:bg-muted/50 text-muted-foreground/70")} title="Pinned messages" aria-label="Open pinned messages" aria-pressed={showPinned}>
+          <button onClick={() => { setShowSearch(false); setShowMembers(false); void loadPinnedMessages(); }} className={cn("relative hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showPinned ? "bg-premium-warm/15 text-premium-warm" : "hover:bg-muted/50 text-muted-foreground/70")} title="Pinned messages" aria-label="Open pinned messages" aria-pressed={showPinned}>
               <Pin className="w-[18px] h-[18px]" />
-            </button>
-          )}
+            {pinnedCount > 0 && <span className="absolute right-1.5 top-1.5 min-w-3 rounded-full bg-premium-warm px-1 text-center text-[8px] font-black leading-3 text-background">{pinnedCount}</span>}
+          </button>
+          <button onClick={() => { setShowMembers(!showMembers); setShowSearch(false); setShowPinned(false); }} className={cn("hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl transition-colors", showMembers ? "bg-primary/15 text-primary" : "hover:bg-muted/50 text-muted-foreground/70")} title="Member list" aria-label="Toggle member list" aria-pressed={showMembers}>
+            <UsersRound className="w-[18px] h-[18px]" />
+          </button>
           {selectedChannel && (
             <button onClick={() => setSettingsChannel(selectedChannel)} className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-xl hover:bg-muted/50 text-muted-foreground/70 transition-colors" title="Channel Settings" aria-label="Channel settings">
               <Settings className="w-[18px] h-[18px]" />
@@ -824,14 +966,15 @@ export default function ChatPage() {
               </MobileIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={() => { setShowSearch(true); setSearchQuery(''); setSearchResults(null); }}>
+              <DropdownMenuItem onClick={() => { setShowSearch(true); setShowPinned(false); setShowMembers(false); setSearchQuery(''); setSearchResults(null); }}>
                 <Search className="w-4 h-4 mr-2" /> Search messages
               </DropdownMenuItem>
-              {pinnedCount > 0 && (
-                <DropdownMenuItem onClick={loadPinnedMessages}>
-                  <Pin className="w-4 h-4 mr-2" /> Pinned ({pinnedCount})
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={() => { setShowSearch(false); setShowMembers(false); void loadPinnedMessages(); }}>
+                <Pin className="w-4 h-4 mr-2" /> Pinned{pinnedCount > 0 ? ` (${pinnedCount})` : ''}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setShowMembers(true); setShowSearch(false); setShowPinned(false); }}>
+                <UsersRound className="w-4 h-4 mr-2" /> Members ({members.length})
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/shared')}>
                 <Link2 className="w-4 h-4 mr-2" /> Shared media
               </DropdownMenuItem>
@@ -845,30 +988,24 @@ export default function ChatPage() {
           </DropdownMenu>
         </div>
 
-        {/* Search bar */}
-        {showSearch && (
-          <div className="border-b border-border/5 flex-shrink-0 px-4 sm:px-5 py-2 space-y-1">
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search messages..."
-              aria-label="Search messages"
-              // Mobile: h-9 (36px) so it's comfortable to focus with a
-              // thumb without misfiring on the surrounding border.
-              // Desktop: original h-8 keeps the header compact.
-              className="h-9 lg:h-8 text-xs bg-muted/20 border-border/25 rounded-lg"
-              autoFocus
-            />
-            {searchResults && searchResults.length > 0 && (
-              <p className="text-[10px] text-muted-foreground/60 font-medium px-1">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</p>
-            )}
-          </div>
-        )}
-
         <div className="flex flex-1 min-h-0">
-          {/* Message area — hide on mobile when thread/pinned is open */}
-          <div className={cn("flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden", showSidePanel && "hidden lg:flex")}>
-            {showPinned ? (
+          {/* Keep the member rail beside the timeline on wide screens and
+              give it the full content pane on smaller screens. */}
+          <div className={cn("flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden", showMembers && "hidden xl:flex")}>
+            {showSearch && selectedChannel ? (
+              <ChatSearchPanel
+                query={searchQuery}
+                onQueryChange={setSearchQuery}
+                scope={searchScope}
+                onScopeChange={setSearchScope}
+                currentChannel={selectedChannel}
+                channels={channels}
+                results={searchResults ?? []}
+                loading={searchLoading}
+                onSelectResult={message => void openSearchResult(message)}
+                onClose={() => { setShowSearch(false); setSearchQuery(''); setSearchResults(null); }}
+              />
+            ) : showPinned ? (
               <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold flex items-center gap-1.5">
@@ -879,11 +1016,15 @@ export default function ChatPage() {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {pinnedMessages.map(msg => (
+                  {pinnedLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-10 text-xs font-medium text-muted-foreground/60" role="status">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading pinned messages
+                    </div>
+                  ) : pinnedMessages.map(msg => (
                     <div key={msg.id} className="glass-card relative overflow-hidden">
                       <button
                         type="button"
-                        onClick={() => jumpToMessage(msg.id)}
+                        onClick={() => void jumpToPinnedMessage(msg.id)}
                         className="w-full p-3.5 pr-14 text-left hover:bg-muted/10 transition-colors btn-press"
                         title="Jump to message"
                       >
@@ -905,12 +1046,12 @@ export default function ChatPage() {
                       </button>
                     </div>
                   ))}
-                  {pinnedMessages.length === 0 && <p className="text-xs text-muted-foreground/70 text-center py-8">No pinned messages</p>}
+                  {!pinnedLoading && pinnedMessages.length === 0 && <p className="text-xs text-muted-foreground/70 text-center py-8">No pinned messages in this channel</p>}
                 </div>
               </div>
             ) : (
               <>
-                {messageError && !searchResults ? (
+                {messageError ? (
                   <div className="flex flex-1 items-center justify-center overflow-y-auto p-4">
                     <div className="w-full max-w-md">
                       <MemberLoadError
@@ -922,7 +1063,7 @@ export default function ChatPage() {
                   </div>
                 ) : <MessageList
                   key={selectedChannel?.id || 'none'}
-                  messages={searchResults || messages}
+                  messages={messages}
                   selectedChannel={selectedChannel}
                   userId={user?.id}
                   currentDisplayName={currentDisplayName}
@@ -939,15 +1080,14 @@ export default function ChatPage() {
                   onEditContentChange={setEditContent}
                   onCancelEdit={cancelEdit}
                   jumpSignal={jumpSignal}
-                  onLoadMore={searchResults ? undefined : handleLoadMore}
-                  hasMore={searchResults ? false : hasMore}
+                  onLoadMore={handleLoadMore}
+                  hasMore={hasMore}
                   loadingMore={loadingMore}
-                  isSearchActive={!!searchResults}
+                  isSearchActive={false}
                   lastReadAt={lastReadAt}
                   scrollToBottomTrigger={scrollToBottomTrigger}
                 />}
-                {!searchResults && (
-                  <div className="flex-shrink-0 border-t border-border/15 z-10">
+                <div className="flex-shrink-0 border-t border-border/15 z-10">
                     <AnimatePresence>
                       {typingUsers.length > 0 && (
                         <motion.div
@@ -1051,10 +1191,19 @@ export default function ChatPage() {
                       )}
                     </AnimatePresence>
                   </div>
-                )}
               </>
             )}
           </div>
+          {showMembers && (
+            <div className="w-full min-w-0 border-l border-border/20 xl:w-[248px] xl:flex-shrink-0">
+              <ChatMembersPanel
+                members={members}
+                onlineUserIds={onlineIds}
+                currentUserId={user?.id}
+                onClose={() => setShowMembers(false)}
+              />
+            </div>
+          )}
         </div>
       </div>
       {settingsChannel && (

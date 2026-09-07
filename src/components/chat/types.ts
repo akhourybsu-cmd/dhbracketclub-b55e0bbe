@@ -49,6 +49,10 @@ export type ChannelMeta = {
   lastAuthor?: string;
   lastAuthorId?: string;
   unread: boolean;
+  /** Best-effort count from the recent-message window loaded for the sidebar. */
+  unreadCount?: number;
+  /** Unread messages in that window that explicitly mention the current member. */
+  mentionCount?: number;
 };
 
 // Trimmed to 6 (iMessage-style tapback count) so the action overlay

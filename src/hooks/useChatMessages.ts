@@ -124,6 +124,73 @@ export function useChatMessages(userId: string | undefined) {
     }
   }, [userId, enrichMessages]);
 
+  /**
+   * Load a focused window around one message. This makes notification and
+   * search deep links reliable even when the target is older than the newest
+   * 50-message page.
+   */
+  const fetchMessagesAround = useCallback(async (channelId: string, messageId: string): Promise<boolean> => {
+    if (!userId) return false;
+    activeChannelRef.current = channelId;
+    setError(null);
+
+    try {
+      const { data: target } = await withTimeout(
+        supabase
+          .from('messages')
+          .select('*, profiles:user_id(display_name, avatar_url)')
+          .eq('channel_id', channelId)
+          .eq('id', messageId)
+          .is('parent_message_id', null)
+          .maybeSingle(),
+        QUERY_TIMEOUT_MS,
+        'chat target message',
+      );
+      if (!target || activeChannelRef.current !== channelId) return false;
+
+      const [{ data: older }, { data: newer }] = await withTimeout(
+        Promise.all([
+          withTimeout(
+            supabase
+              .from('messages')
+              .select('*, profiles:user_id(display_name, avatar_url)')
+              .eq('channel_id', channelId)
+              .is('parent_message_id', null)
+              .lt('created_at', target.created_at)
+              .order('created_at', { ascending: false })
+              .limit(24),
+            QUERY_TIMEOUT_MS,
+            'chat context before',
+          ),
+          withTimeout(
+            supabase
+              .from('messages')
+              .select('*, profiles:user_id(display_name, avatar_url)')
+              .eq('channel_id', channelId)
+              .is('parent_message_id', null)
+              .gt('created_at', target.created_at)
+              .order('created_at', { ascending: true })
+              .limit(25),
+            QUERY_TIMEOUT_MS,
+            'chat context after',
+          ),
+        ]),
+        HYDRATE_TIMEOUT_MS,
+        'chat message context',
+      );
+
+      if (activeChannelRef.current !== channelId) return false;
+      const raw = [...(older || [])].reverse().concat([target], newer || []);
+      setMessages(await enrichMessages(raw));
+      setHasMore((older || []).length === 24);
+      return true;
+    } catch (fetchError) {
+      console.error('[useChatMessages] focused fetch failed', fetchError);
+      if (activeChannelRef.current === channelId) setError(memberErrorMessage(fetchError));
+      return false;
+    }
+  }, [userId, enrichMessages]);
+
   const loadOlderMessages = useCallback((channelId: string) => {
     if (loadingMore || !hasMore || messages.length === 0) return;
     setLoadingMore(true);
@@ -137,6 +204,7 @@ export function useChatMessages(userId: string | undefined) {
     loadingMore,
     error,
     fetchMessages,
+    fetchMessagesAround,
     loadOlderMessages,
   };
 }

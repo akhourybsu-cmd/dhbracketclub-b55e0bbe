@@ -48,19 +48,19 @@ export function useChatActions(userId: string | undefined, opts: UseChatActionsO
     setMessages(prev => prev.map(m => {
       if (m.id !== messageId) return m;
       const reactions = [...(m.reactions || [])];
-      const existing = reactions.find(rx => rx.emoji === emoji);
+      const existingIndex = reactions.findIndex(rx => rx.emoji === emoji);
+      const existing = existingIndex >= 0 ? reactions[existingIndex] : undefined;
       if (existing?.user_reacted) {
         action = 'removed';
-        existing.count--;
-        existing.user_reacted = false;
+        const updated = { ...existing, count: existing.count - 1, user_reacted: false };
+        reactions[existingIndex] = updated;
         return {
           ...m,
-          reactions: existing.count <= 0 ? reactions.filter(rx => rx.emoji !== emoji) : reactions,
+          reactions: updated.count <= 0 ? reactions.filter(rx => rx.emoji !== emoji) : reactions,
         };
       } else if (existing) {
         action = 'added';
-        existing.count++;
-        existing.user_reacted = true;
+        reactions[existingIndex] = { ...existing, count: existing.count + 1, user_reacted: true };
         return { ...m, reactions };
       } else {
         action = 'added';
@@ -132,22 +132,40 @@ export function useChatActions(userId: string | undefined, opts: UseChatActionsO
     }
   }, [userId, play, applyOptimisticToggle, reactionEchoRef]);
 
-  const togglePin = useCallback(async (msg: Message) => {
-    if (!userId) return;
+  const togglePin = useCallback(async (msg: Message): Promise<boolean> => {
+    if (!userId) return false;
     play('tap');
     const wasPinned = msg.is_pinned;
+    setMessages?.(prev => prev.map(message => message.id === msg.id ? { ...message, is_pinned: !wasPinned } : message));
     const { error } = await supabase.rpc('toggle_message_pin', { p_message_id: msg.id });
     if (error) {
+      setMessages?.(prev => prev.map(message => message.id === msg.id ? { ...message, is_pinned: wasPinned } : message));
       toast.error('Failed to pin message');
+      return false;
     } else {
       toast.success(wasPinned ? 'Unpinned' : 'Pinned');
+      return true;
     }
-  }, [userId, play]);
+  }, [userId, play, setMessages]);
 
   const deleteMessage = useCallback(async (msgId: string) => {
-    // DB cascades handle replies and reactions automatically
-    await supabase.from('messages').delete().eq('id', msgId);
-  }, []);
+    // DB cascades handle legacy thread replies and reactions automatically.
+    // Remove in the same frame, then restore in chronological order on error.
+    let removed: Message | undefined;
+    setMessages?.(prev => {
+      removed = prev.find(message => message.id === msgId);
+      return prev.filter(message => message.id !== msgId);
+    });
+    const { error } = await supabase.from('messages').delete().eq('id', msgId);
+    if (!error) return;
+    if (removed) {
+      const restore = removed;
+      setMessages?.(prev => prev.some(message => message.id === msgId)
+        ? prev
+        : [...prev, restore].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
+    }
+    toast.error('Could not delete message');
+  }, [setMessages]);
 
   const startEditing = useCallback((msg: Message) => {
     setEditingMessageId(msg.id);
@@ -157,11 +175,27 @@ export function useChatActions(userId: string | undefined, opts: UseChatActionsO
   const handleSaveEdit = useCallback(async (msgId: string, content: string) => {
     if (!content.trim()) return;
     play('tap');
-    await supabase.from('messages').update({ content: content.trim(), edited_at: new Date().toISOString() }).eq('id', msgId);
+    const nextContent = content.trim();
+    let previous: Message | undefined;
+    const editedAt = new Date().toISOString();
+    setMessages?.(prev => prev.map(message => {
+      if (message.id !== msgId) return message;
+      previous = message;
+      return { ...message, content: nextContent, edited_at: editedAt };
+    }));
+    const { error } = await supabase.from('messages').update({ content: nextContent, edited_at: editedAt }).eq('id', msgId);
+    if (error) {
+      if (previous) {
+        const restore = previous;
+        setMessages?.(prev => prev.map(message => message.id === msgId ? restore : message));
+      }
+      toast.error('Could not edit message');
+      return;
+    }
     setEditingMessageId(null);
     setEditContent('');
     toast.success('Message edited');
-  }, [play]);
+  }, [play, setMessages]);
 
   const cancelEdit = useCallback(() => {
     setEditingMessageId(null);
