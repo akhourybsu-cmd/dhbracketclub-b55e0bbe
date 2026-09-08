@@ -7,7 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+    'authorization, x-client-info, apikey, content-type, x-cron-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 type SyncBody = {
@@ -21,33 +21,32 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    const cronSecret = Deno.env.get('CRON_SHARED_SECRET');
+    const isTrustedCron = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret;
+    if (!isTrustedCron && !authHeader?.startsWith('Bearer ')) {
       return json({ error: 'Unauthorized' }, 401);
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
+      supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
-    const userId = userData.user.id;
+    if (!isTrustedCron) {
+      const token = authHeader!.replace('Bearer ', '');
+      const { data: userData, error: userErr } = await admin.auth.getUser(token);
+      if (userErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
 
-    // Admin-only
-    const { data: roleRow } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('role', 'admin')
-      .maybeSingle();
-    if (!roleRow) return json({ error: 'Forbidden' }, 403);
+      const { data: roleRow } = await admin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userData.user.id)
+        .in('role', ['admin', 'owner'])
+        .limit(1)
+        .maybeSingle();
+      if (!roleRow) return json({ error: 'Forbidden' }, 403);
+    }
 
     const body: SyncBody = await req.json().catch(() => ({}));
     const seasontype = body.seasontype ?? 2;
@@ -96,7 +95,7 @@ Deno.serve(async (req) => {
 
     const { data: existingWeek } = await admin
       .from('nfl_weeks')
-      .select('id, status')
+      .select('id, status, featured_game_id')
       .eq('season_id', season.id)
       .eq('week_number', body.week_number)
       .maybeSingle();
@@ -136,6 +135,7 @@ Deno.serve(async (req) => {
     let upserts = 0;
     let finals = 0;
     let skipped = 0;
+    const missingTeams = new Set<string>();
 
     for (const ev of events) {
       const comp = ev?.competitions?.[0];
@@ -147,7 +147,12 @@ Deno.serve(async (req) => {
 
       const homeId = teamByEspnId.get(String(homeC.team?.id));
       const awayId = teamByEspnId.get(String(awayC.team?.id));
-      if (!homeId || !awayId) { skipped++; continue; }
+      if (!homeId || !awayId) {
+        skipped++;
+        if (!homeId) missingTeams.add(`${homeC.team?.abbreviation ?? homeC.team?.displayName ?? 'Unknown'} (${homeC.team?.id ?? '?'})`);
+        if (!awayId) missingTeams.add(`${awayC.team?.abbreviation ?? awayC.team?.displayName ?? 'Unknown'} (${awayC.team?.id ?? '?'})`);
+        continue;
+      }
 
       const stateRaw = comp.status?.type?.state ?? ev.status?.type?.state;
       const completed = comp.status?.type?.completed ?? ev.status?.type?.completed;
@@ -157,8 +162,11 @@ Deno.serve(async (req) => {
       // games stuck on 'scheduled' even mid-broadcast.
       const status = completed ? 'final' : stateRaw === 'in' ? 'live' : 'scheduled';
 
-      const homeScore = homeC.score != null ? Number(homeC.score) : null;
-      const awayScore = awayC.score != null ? Number(awayC.score) : null;
+      // ESPN represents not-yet-started scores as the string "0". Keep those
+      // as null so admin controls and viewers never mistake a future 0–0 for
+      // a real result.
+      const homeScore = status === 'scheduled' ? null : homeC.score != null ? Number(homeC.score) : null;
+      const awayScore = status === 'scheduled' ? null : awayC.score != null ? Number(awayC.score) : null;
       const winnerId =
         status === 'final' && homeScore != null && awayScore != null
           ? homeScore > awayScore
@@ -191,7 +199,8 @@ Deno.serve(async (req) => {
             winner_team_id: winnerId,
           })
           .eq('id', existingGame.id);
-        if (!updErr) upserts++;
+        if (updErr) throw updErr;
+        upserts++;
       } else {
         const { error: insErr } = await admin.from('nfl_games').insert({
           season_id: season.id,
@@ -206,18 +215,44 @@ Deno.serve(async (req) => {
           external_id: externalId,
           external_provider: 'espn',
         });
-        if (!insErr) upserts++;
+        if (insErr) throw insErr;
+        upserts++;
       }
       if (status === 'final') finals++;
     }
 
-    // If any games are final, kick off scoring
+    // Pick a sensible tiebreaker automatically (latest kickoff), but never
+    // overwrite a commissioner's explicit choice.
+    if (!existingWeek?.featured_game_id) {
+      const { data: latestGame } = await admin
+        .from('nfl_games')
+        .select('id')
+        .eq('week_id', weekId)
+        .order('kickoff_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestGame?.id) {
+        const { error } = await admin.from('nfl_weeks').update({ featured_game_id: latestGame.id }).eq('id', weekId);
+        if (error) throw error;
+      }
+    }
+
+    // If any games are final, score with the same verified user context or
+    // protected cron secret that authorized this sync.
     let scored: any = null;
     if (finals > 0) {
-      const { data: scoreRes } = await admin.functions.invoke('score-nfl-week', {
-        body: { week_id: weekId },
+      const scoreResponse = await fetch(`${supabaseUrl}/functions/v1/score-nfl-week`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isTrustedCron
+            ? { 'x-cron-secret': cronSecret! }
+            : { Authorization: authHeader! }),
+        },
+        body: JSON.stringify({ week_id: weekId }),
       });
-      scored = scoreRes;
+      scored = await scoreResponse.json().catch(() => null);
+      if (!scoreResponse.ok) throw new Error(scored?.error || `Scoring failed: ${scoreResponse.status}`);
     }
 
     return json({
@@ -227,6 +262,7 @@ Deno.serve(async (req) => {
       upserts,
       finals,
       skipped,
+      missing_teams: [...missingTeams],
       scored,
     });
   } catch (e) {

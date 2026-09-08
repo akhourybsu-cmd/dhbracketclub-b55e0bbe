@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Info, Lock, Trophy, Star, Zap } from 'lucide-react';
+import { Info, Lock, Trophy, Star, Zap, Users } from 'lucide-react';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { PickemShell } from '@/components/pickem/PickemShell';
+import { useActiveSeason } from '@/hooks/usePickem';
 
 export default function PickemRulesPage() {
+  const { season } = useActiveSeason();
+  const lockMinutes = season?.pick_lock_minutes ?? 10;
   return (
     <PickemShell>
     <div className="space-y-4 pb-6">
@@ -29,7 +32,9 @@ export default function PickemRulesPage() {
         { icon: <Zap className="w-4 h-4 text-success" />, title: 'Scoring',
           body: <>Each correct pick = <strong>1 point</strong>. No spreads, no confidence, no wagers — just winners.</> },
         { icon: <Lock className="w-4 h-4 text-muted-foreground" />, title: 'Locking',
-          body: <>Each game locks at its <strong>own kickoff time</strong>. You can change your pick anytime before then. After kickoff, your pick is final.</> },
+          body: <>The entire weekly card locks <strong>{lockMinutes} minute{lockMinutes === 1 ? '' : 's'} before the first kickoff</strong>. You can change picks until that cutoff; after it, the card is final.</> },
+        { icon: <Users className="w-4 h-4 text-primary" />, title: 'Club Consensus',
+          body: <>Everyone else’s choices stay private while picks are open. Once the card locks, each matchup reveals your club’s pick percentages.</> },
         { icon: <Star className="w-4 h-4 text-gold" />, title: 'Tiebreaker',
           body: <>Each week has a featured game. Predict the <strong>total combined points</strong> of that game. Your prediction is used to break weekly ties (closest wins).</> },
         { icon: <Trophy className="w-4 h-4 text-gold" />, title: 'Standings',

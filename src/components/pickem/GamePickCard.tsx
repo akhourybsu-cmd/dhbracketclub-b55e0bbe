@@ -1,10 +1,10 @@
-import { Lock, Check, X, Tv } from 'lucide-react';
+import { Lock, Check, X, Tv, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { TeamLogo } from './TeamLogo';
-import type { NflGame, NflPick, NflTeamRecord } from '@/hooks/usePickem';
+import type { NflGame, NflPick, NflPickInsight, NflTeamRecord } from '@/hooks/usePickem';
 import { isGameLocked } from '@/hooks/usePickem';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 
@@ -17,6 +17,8 @@ type Props = {
   cardLocked?: boolean;
   /** Optional season-records map (team_id → record) for displaying W-L + recent form. */
   records?: Map<string, NflTeamRecord>;
+  /** Club-wide picks, revealed by RLS only after the week freezes. */
+  insight?: NflPickInsight;
 };
 
 /** Compact season record + recent-form chip. */
@@ -51,7 +53,7 @@ function TeamRecordRow({ record }: { record?: NflTeamRecord }) {
   );
 }
 
-export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocked, records }: Props) {
+export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocked, records, insight }: Props) {
   const { play } = useSoundEffect();
   const locked = weekLocked ?? isGameLocked(game);
   const blocked = locked || cardLocked;
@@ -82,6 +84,9 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
     const wasCorrect = isFinal && selected && pick?.is_correct === true;
     const wasWrong = isFinal && selected && pick?.is_correct === false;
     const showSweep = sweptSide === side && selected && !isFinal;
+    const clubPct = insight?.total_picks
+      ? Math.round(((insight.team_counts[teamId] ?? 0) / insight.total_picks) * 100)
+      : null;
 
     return (
       <motion.button
@@ -111,7 +116,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
             size={38}
             className={cn(
               'transition-all',
-              selected && !isFinal && 'ring-2 ring-gold/60 ring-offset-1 ring-offset-card',
+              selected && !isFinal && 'scale-105 drop-shadow-[0_0_6px_hsl(var(--gold)/0.35)]',
               locked && !selected && 'grayscale opacity-70',
             )}
           />
@@ -137,6 +142,11 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
             <div className="mt-0.5">
               <TeamRecordRow record={records.get(teamId)} />
             </div>
+          )}
+          {clubPct !== null && (
+            <p className="mt-1 text-[9px] font-extrabold text-primary flex items-center gap-1 tabular-nums">
+              <Users className="w-2.5 h-2.5" /> {clubPct}% of club
+            </p>
           )}
         </div>
         <div className="flex flex-col items-end gap-0.5">
@@ -173,7 +183,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
             <span className="w-1.5 h-1.5 rounded-full bg-live animate-pulse" /> Live
           </span>
         ) : locked ? (
-          <span className="pk-stamp pk-stamp-locked"><Lock className="w-2.5 h-2.5" /> Locked</span>
+          <span className="pk-stamp pk-stamp-locked"><Lock className="w-2.5 h-2.5" /> Picks revealed</span>
         ) : cardLocked ? (
           <span className="pk-stamp pk-stamp-locked"><Lock className="w-2.5 h-2.5" /> Card locked</span>
         ) : (

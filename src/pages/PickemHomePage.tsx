@@ -8,13 +8,12 @@ import { format, differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   useActiveSeason, useCurrentWeek, useWeekGames, useMyWeekPicks,
-  useSeasonStandings, useSeasonWeeks, deriveWeekStatus, isGameLocked,
+  useSeasonStandings, useSeasonWeeks, deriveWeekStatus, useWeekLock, usePickemAdmin,
 } from '@/hooks/usePickem';
 import { WeekStatusPill } from '@/components/pickem/WeekStatusPill';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { PickemShell } from '@/components/pickem/PickemShell';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 /* ──────────── Compact split-cell countdown for the scoreboard ──────────── */
 function CountdownCells({ target }: { target: string | Date }) {
@@ -54,20 +53,14 @@ export default function PickemHomePage() {
   const { picks } = useMyWeekPicks(week?.id);
   const { weeks } = useSeasonWeeks(season?.id);
   const { standings } = useSeasonStandings(season?.id);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    (supabase as any).from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()
-      .then(({ data }: any) => setIsAdmin(!!data));
-  }, [user]);
+  const { isAdmin } = usePickemAdmin();
 
   const me = standings.find((s) => s.user_id === user?.id);
   const totalGames = games.length;
   const pickedCount = picks.length;
   const remaining = Math.max(0, totalGames - pickedCount);
-  const weekStatus = week ? (totalGames > 0 ? deriveWeekStatus(games) : week.status) : 'upcoming';
-  const nextLockGame = games.find((g) => !isGameLocked(g));
+  const { lockAt, locked: weekLocked, now } = useWeekLock(games, season);
+  const weekStatus = week ? (totalGames > 0 ? deriveWeekStatus(games, week.status, now) : week.status) : 'upcoming';
   const recentScored = weeks.filter((w) => w.status === 'scored').slice(-3).reverse();
 
   const isPreseasonInaugural = season && season.status === 'upcoming' && totalGames === 0;
@@ -124,7 +117,7 @@ export default function PickemHomePage() {
             </h1>
             <p className="text-[12px] text-white/70 mt-1 max-w-[34ch] leading-snug">
               {isPreseasonInaugural
-                ? 'Season HQ is live. Picks open at kickoff — track standings, history, and bragging rights all year.'
+                ? 'Season HQ is live. Weekly cards open before kickoff — track standings, history, and bragging rights all year.'
                 : week
                   ? `${week.label} · ${remaining > 0 ? `${remaining} pick${remaining === 1 ? '' : 's'} to lock` : 'Card complete'}`
                   : 'Weekly slate drops once the schedule syncs.'}
@@ -165,10 +158,10 @@ export default function PickemHomePage() {
                     style={{ boxShadow: '0 0 10px hsl(var(--gold) / 0.65)' }}
                   />
                 </div>
-                {nextLockGame && (
+                {lockAt && !weekLocked && (
                   <p className="text-[10px] text-white/55 mt-2 flex items-center gap-1">
                     <Flame className="w-3 h-3 text-gold" />
-                    Next lock {format(new Date(nextLockGame.kickoff_at), 'EEE h:mm a')}
+                    Picks freeze {format(lockAt, 'EEE h:mm a')}
                   </p>
                 )}
               </div>

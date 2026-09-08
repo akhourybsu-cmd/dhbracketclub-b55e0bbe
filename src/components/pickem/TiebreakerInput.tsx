@@ -4,21 +4,20 @@ import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { TeamLogo } from './TeamLogo';
 import type { NflGame } from '@/hooks/usePickem';
-import { isGameLocked } from '@/hooks/usePickem';
 
 type Props = {
   game?: NflGame;
   predicted?: number | null;
   actual?: number | null;
   onChange: (value: number) => void;
+  locked?: boolean;
 };
 
-export function TiebreakerInput({ game, predicted, actual, onChange }: Props) {
+export function TiebreakerInput({ game, predicted, actual, onChange, locked = false }: Props) {
   const [value, setValue] = useState<string>(predicted?.toString() ?? '');
   useEffect(() => { setValue(predicted?.toString() ?? ''); }, [predicted]);
 
   if (!game) return null;
-  const locked = isGameLocked(game);
 
   return (
     <div
@@ -72,6 +71,9 @@ export function TiebreakerInput({ game, predicted, actual, onChange }: Props) {
           Actual total: <span className="font-extrabold text-foreground tabular-nums">{actual}</span>
           {predicted != null && <> · Off by <span className="font-extrabold tabular-nums">{Math.abs(actual - predicted)}</span></>}
         </p>
+      )}
+      {actual == null && predicted != null && (
+        <p className="text-[10px] mt-2 font-bold text-success">Saved · {predicted} total points</p>
       )}
     </div>
   );

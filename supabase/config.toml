@@ -21,6 +21,14 @@ verify_jwt = false
 [functions.pickem-week-reminder]
 verify_jwt = false
 
+# Both functions validate an admin JWT or x-cron-secret internally. Disabling
+# gateway verification lets the protected reminder cron refresh and score live games.
+[functions.sync-nfl-week]
+verify_jwt = false
+
+[functions.score-nfl-week]
+verify_jwt = false
+
 [functions.celebrations-daily]
 verify_jwt = false
 

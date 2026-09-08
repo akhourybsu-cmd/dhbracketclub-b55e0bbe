@@ -64,6 +64,12 @@ export type NflPick = {
   points_awarded: number;
 };
 
+export type NflPickInsight = {
+  game_id: string;
+  total_picks: number;
+  team_counts: Record<string, number>;
+};
+
 export type NflWeeklyStanding = {
   id: string;
   user_id: string;
@@ -102,6 +108,39 @@ export type NflTeamRecord = {
   recent_form: string | null;
 };
 
+/** Platform admins and owners can see commissioner-only Pick'em controls. */
+export function usePickemAdmin() {
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) {
+      setIsAdmin(false);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    (supabase as any)
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'owner'])
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }: any) => {
+        if (!cancelled) {
+          setIsAdmin(!!data);
+          setLoading(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [user]);
+
+  return { isAdmin, loading };
+}
+
 /* Active season */
 export function useActiveSeason() {
   const [season, setSeason] = useState<NflSeason | null>(null);
@@ -125,6 +164,7 @@ export function useActiveSeason() {
     const { data: upcoming } = await (supabase as any)
       .from('nfl_seasons')
       .select('*')
+      .eq('status', 'upcoming')
       .order('year', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -284,6 +324,45 @@ export function useMyTiebreaker(weekId?: string) {
   return { tiebreaker, refetch };
 }
 
+/**
+ * Club pick totals become visible only after the server-side week lock.
+ * The matching RLS policy still protects unrevealed picks if a client clock
+ * is wrong or this query is called early.
+ */
+export function useWeekPickInsights(weekId?: string, revealed = false) {
+  const [insights, setInsights] = useState<Map<string, NflPickInsight>>(new Map());
+  const [loading, setLoading] = useState(false);
+
+  const refetch = useCallback(async () => {
+    if (!weekId || !revealed) {
+      setInsights(new Map());
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from('nfl_picks')
+      .select('game_id, picked_team_id')
+      .eq('week_id', weekId);
+    const next = new Map<string, NflPickInsight>();
+    for (const row of data || []) {
+      const current = next.get(row.game_id) ?? {
+        game_id: row.game_id,
+        total_picks: 0,
+        team_counts: {},
+      };
+      current.total_picks += 1;
+      current.team_counts[row.picked_team_id] = (current.team_counts[row.picked_team_id] ?? 0) + 1;
+      next.set(row.game_id, current);
+    }
+    setInsights(next);
+    setLoading(false);
+  }, [weekId, revealed]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+  return { insights, loading, refetch };
+}
+
 /* Save / upsert a pick */
 export async function savePick(args: {
   user_id: string; game_id: string; week_id: string; season_id: string; picked_team_id: string;
@@ -408,10 +487,14 @@ export function useSeasonTeamRecords(seasonId?: string) {
 }
 
 /* Helpers */
-export function deriveWeekStatus(games: NflGame[]): NflWeek['status'] {
+export function deriveWeekStatus(
+  games: NflGame[],
+  persistedStatus?: NflWeek['status'],
+  nowMs = Date.now(),
+): NflWeek['status'] {
+  if (persistedStatus === 'scored') return 'scored';
   if (games.length === 0) return 'upcoming';
-  const now = Date.now();
-  const kicked = games.filter((g) => new Date(g.kickoff_at).getTime() <= now || g.status !== 'scheduled');
+  const kicked = games.filter((g) => new Date(g.kickoff_at).getTime() <= nowMs || g.status !== 'scheduled');
   const finals = games.filter((g) => g.status === 'final');
   if (kicked.length === 0) return 'open';
   if (finals.length === games.length) return 'closed';
@@ -431,19 +514,36 @@ export function weekLockAt(games: NflGame[], season?: NflSeason | null): Date | 
 }
 
 /** True once the entire week's pick window has closed. */
-export function isWeekLocked(games: NflGame[], season?: NflSeason | null): boolean {
+export function isWeekLocked(games: NflGame[], season?: NflSeason | null, nowMs = Date.now()): boolean {
   const lock = weekLockAt(games, season);
   if (!lock) return false;
-  if (Date.now() >= lock.getTime()) return true;
+  if (nowMs >= lock.getTime()) return true;
   // Defensive: if any game has already kicked, the week is locked regardless.
   return games.some((g) => g.status !== 'scheduled');
 }
 
 /** Back-compat: per-game lock derived from the week-level lock. */
-export function isGameLocked(game: NflGame, games?: NflGame[], season?: NflSeason | null): boolean {
+export function isGameLocked(game: NflGame, games?: NflGame[], season?: NflSeason | null, nowMs = Date.now()): boolean {
   if (game.status !== 'scheduled') return true;
-  if (games && games.length) return isWeekLocked(games, season);
-  return new Date(game.kickoff_at).getTime() <= Date.now();
+  if (games && games.length) return isWeekLocked(games, season, nowMs);
+  return new Date(game.kickoff_at).getTime() <= nowMs;
+}
+
+/** Keeps lock-dependent controls honest when the cutoff passes while a page is open. */
+export function useWeekLock(games: NflGame[], season?: NflSeason | null) {
+  const [now, setNow] = useState(() => Date.now());
+  const lockAt = weekLockAt(games, season);
+  const lockAtMs = lockAt?.getTime() ?? null;
+
+  useEffect(() => {
+    if (!lockAtMs || now >= lockAtMs) return;
+    const remaining = lockAtMs - now;
+    const delay = Math.max(1_000, Math.min(15_000, remaining + 50));
+    const id = window.setTimeout(() => setNow(Date.now()), delay);
+    return () => window.clearTimeout(id);
+  }, [lockAtMs, now]);
+
+  return { lockAt, locked: isWeekLocked(games, season, now), now };
 }
 
 /** Delete a single pick (tap-to-unselect). */
@@ -491,8 +591,10 @@ export function filterVisibleWeeks(
 /** Lightweight count-of-games-per-week for visibility filtering. */
 export function useSeasonWeekGameCounts(seasonId?: string) {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!seasonId) { setCounts({}); return; }
+    if (!seasonId) { setCounts({}); setLoading(false); return; }
+    setLoading(true);
     (supabase as any)
       .from('nfl_games')
       .select('week_id')
@@ -501,9 +603,10 @@ export function useSeasonWeekGameCounts(seasonId?: string) {
         const acc: Record<string, number> = {};
         for (const row of data || []) acc[row.week_id] = (acc[row.week_id] ?? 0) + 1;
         setCounts(acc);
+        setLoading(false);
       });
   }, [seasonId]);
-  return counts;
+  return { counts, loading };
 }
 
 /** Personal "lock my card" guard — localStorage only, per (user, week). */

@@ -2458,8 +2458,8 @@
     linear-gradient(180deg, hsl(160 35% 7%) 0%, hsl(158 45% 4%) 55%, hsl(160 50% 3%) 100%);
   color: hsl(0 0% 100%);
 }
-/* Force white-ish text inside any turf surface so light theme can't wash it out */
-.pk-turf, .pk-turf * { color: inherit; }
+/* Turf establishes a light foreground; descendants keep their semantic accent colors. */
+.pk-turf { color: hsl(0 0% 100%); }
 
 /* Yard-line texture overlay (chalk hashes) */
 .pk-yardlines::before {
@@ -3929,6 +3929,39 @@
 .light .pk-mode [class*="bg-black/"] { background-color: hsl(160 30% 96% / 0.85) !important; }
 .light .pk-mode .bg-white\/10,
 .light .pk-mode .bg-white\/20 { background-color: hsl(160 30% 14% / 0.06) !important; }
+
+/* Branded turf stays a dark broadcast surface in daylight mode. Restrict the
+   light-theme text remap so hero copy and scoreboard tracks remain legible. */
+.light .pk-mode .pk-turf .text-white,
+.light .pk-mode .pk-turf [class*="text-white/"] { color: hsl(0 0% 100%) !important; }
+.light .pk-mode .pk-turf [class*="bg-black/"] { background-color: hsl(0 0% 0% / 0.48) !important; }
+
+/* Supporting cards become crisp daylight score sheets instead of retaining
+   dark surfaces with dark remapped text. */
+.light .pk-mode .pk-scorebug,
+.light .pk-mode .pk-tile {
+  background: linear-gradient(180deg, hsl(150 10% 99%), hsl(150 24% 95%)) !important;
+  border-color: hsl(152 35% 56% / 0.42) !important;
+  color: hsl(160 30% 12%) !important;
+  box-shadow:
+    inset 0 1px 0 hsl(0 0% 100%),
+    0 6px 18px hsl(160 30% 20% / 0.10) !important;
+}
+.light .pk-mode .pk-tile::before {
+  background:
+    radial-gradient(ellipse 80% 50% at 0% 0%, hsl(152 72% 46% / 0.10), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, hsl(45 95% 55% / 0.09), transparent 60%);
+}
+.light .pk-mode .pk-chip {
+  background: hsl(150 10% 99% / 0.9);
+  border-color: hsl(152 35% 56% / 0.36);
+  color: hsl(160 30% 18% / 0.88);
+}
+.light .pk-mode .pk-chip-gold {
+  color: hsl(38 88% 34%);
+  background: hsl(45 95% 55% / 0.12);
+  border-color: hsl(38 88% 40% / 0.32);
+}
 
 /* ─── DRAFT ARENA — Daylight Coliseum (parchment + champagne gold) ── */
 .light .da-mode {

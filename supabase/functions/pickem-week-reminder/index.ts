@@ -1,4 +1,4 @@
-// Cron-invoked: every 30 min. While an NFL week is open, broadcasts:
+// Cron-invoked: every 30 min. Refreshes the active NFL week, then broadcasts:
 //   - "Week N open" once per week
 //   - "Picks lock in 1 hour" once before the lock cutoff
 // Dedupes via notification_sent_log.
@@ -41,25 +41,46 @@ Deno.serve(async (req) => {
 
   let sent = 0;
 
+  // Keep the active slate and scores current before evaluating notifications.
+  // sync-nfl-week performs its own matching cron-secret validation.
+  const { data: activeSeason } = await supabase
+    .from('nfl_seasons')
+    .select('id, year, current_week, pick_lock_minutes')
+    .eq('status', 'active')
+    .order('year', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  let syncResult: unknown = null;
+  if (activeSeason) {
+    syncResult = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-nfl-week`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-cron-secret': expected },
+      body: JSON.stringify({ season_year: activeSeason.year, week_number: activeSeason.current_week, seasontype: 2 }),
+    }).then((response) => response.json()).catch((error) => ({ error: String(error) }));
+  }
+
   // 1) Week-open broadcast
-  const { data: openWeeks } = await supabase
-    .from("nfl_weeks")
-    .select("id, week_number, status")
-    .in("status", ["open", "partially_locked"]);
+  const { data: openWeeks } = activeSeason
+    ? await supabase
+      .from("nfl_weeks")
+      .select("id, week_number, status, season_id")
+      .eq('season_id', activeSeason.id)
+      .in("status", ["open", "partially_locked"])
+    : { data: [] };
 
   for (const w of openWeeks || []) {
     if (!(await dedupe(w.id, "open"))) {
       const r = await broadcast(
         `NFL Pick'em — Week ${w.week_number}`,
         "Picks are open. Lock yours in before kickoff.",
-        `/pickem/week/${w.id}`,
+        `/pickem/week/${w.week_number}`,
         `dh-pickem-${w.id}-open`,
       );
       sent += r?.sent || 0;
       await logSent(w.id, "open");
     }
 
-    // 2) T-1h before first kickoff
+    // 2) T-1h before the configured weekly lock cutoff
     const { data: firstGame } = await supabase
       .from("nfl_games")
       .select("kickoff_at")
@@ -69,14 +90,15 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!firstGame?.kickoff_at) continue;
 
-    const kickoffMs = new Date(firstGame.kickoff_at).getTime();
-    const targetMs = kickoffMs - 60 * 60_000;
+    const lockMinutes = activeSeason?.id === w.season_id ? (activeSeason.pick_lock_minutes ?? 10) : 10;
+    const lockMs = new Date(firstGame.kickoff_at).getTime() - lockMinutes * 60_000;
+    const targetMs = lockMs - 60 * 60_000;
     if (Math.abs(targetMs - Date.now()) <= WINDOW_MIN * 60_000) {
       if (!(await dedupe(w.id, "1h"))) {
         const r = await broadcast(
           `Week ${w.week_number} picks lock soon`,
-          "Kickoff is in 1 hour. Get your picks in.",
-          `/pickem/week/${w.id}`,
+          "Your weekly card freezes in 1 hour. Finish your picks and tiebreaker.",
+          `/pickem/week/${w.week_number}`,
           `dh-pickem-${w.id}-1h`,
         );
         sent += r?.sent || 0;
@@ -85,7 +107,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, sent }), {
+  return new Response(JSON.stringify({ ok: true, sent, sync: syncResult }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

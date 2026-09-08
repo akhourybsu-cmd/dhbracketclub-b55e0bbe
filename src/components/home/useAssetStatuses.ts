@@ -168,8 +168,8 @@ async function loadPickemStatus(userId: string): Promise<AssetStatus | null> {
       (supabase as any).from('nfl_picks').select('id', { count: 'exact', head: true }).eq('week_id', week.id).eq('user_id', userId),
     ]);
     const remaining = Math.max(0, (total ?? 0) - (mine ?? 0));
-    if (remaining > 0) return { text: `${remaining} pick`, tone: 'urgent' };
-    if ((total ?? 0) > 0) return { text: 'Locked', tone: 'info' };
+    if (remaining > 0) return { text: `${remaining} pick${remaining === 1 ? '' : 's'}`, tone: 'urgent' };
+    if ((total ?? 0) > 0) return { text: 'Card complete', tone: 'info' };
     return null;
   } catch { return null; }
 }

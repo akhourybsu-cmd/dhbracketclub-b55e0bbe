@@ -1,164 +1,241 @@
-// Edge function: score a single NFL week and recompute season standings
-// Idempotent — safe to run multiple times.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Score one NFL week and rebuild weekly + season standings.
+// Safe to run repeatedly from an authorized admin or the protected NFL cron.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+};
+
+type PickRow = {
+  id: string;
+  club_id: string;
+  user_id: string;
+  game_id: string;
+  picked_team_id: string;
+  is_correct: boolean | null;
+};
+
+type StandingRow = {
+  club_id: string;
+  user_id: string;
+  rank?: number;
+  [key: string]: unknown;
 };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const admin = createClient(supabaseUrl, serviceKey);
 
-    // Auth: must be admin
-    const authHeader = req.headers.get('Authorization') || '';
-    const jwt = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(jwt);
-    if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const { data: roleRow } = await supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
-    if (!roleRow) {
-      return new Response(JSON.stringify({ error: 'Admin only' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const cronSecret = Deno.env.get('CRON_SHARED_SECRET');
+    const isTrustedCron = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret;
+    if (!isTrustedCron) {
+      const authHeader = req.headers.get('Authorization') || '';
+      const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+      const { data: { user }, error: userError } = await admin.auth.getUser(jwt);
+      if (userError || !user) return json({ error: 'Unauthorized' }, 401);
 
-    const { week_id } = await req.json();
-    if (!week_id) {
-      return new Response(JSON.stringify({ error: 'week_id required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const { data: role } = await admin
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['admin', 'owner'])
+        .limit(1)
+        .maybeSingle();
+      if (!role) return json({ error: 'Admin only' }, 403);
     }
 
-    // Fetch week, games, picks, tiebreakers
-    const { data: week } = await supabase.from('nfl_weeks').select('*').eq('id', week_id).single();
-    if (!week) throw new Error('Week not found');
-    const { data: games } = await supabase.from('nfl_games').select('*').eq('week_id', week_id);
-    const { data: picks } = await supabase.from('nfl_picks').select('*').eq('week_id', week_id);
-    const { data: tbs } = await supabase.from('nfl_tiebreakers').select('*').eq('week_id', week_id);
+    const { week_id: weekId } = await req.json().catch(() => ({}));
+    if (!weekId) return json({ error: 'week_id required' }, 400);
 
-    if (!games || !picks) throw new Error('Missing data');
+    const { data: week, error: weekError } = await admin
+      .from('nfl_weeks')
+      .select('*')
+      .eq('id', weekId)
+      .single();
+    if (weekError || !week) return json({ error: 'Week not found' }, 404);
 
-    const finalGames = games.filter((g: any) => g.status === 'final' && g.winner_team_id);
-    const featured = games.find((g: any) => g.id === week.featured_game_id);
-    const featuredFinal = featured && featured.status === 'final';
-    const featuredTotal = featuredFinal ? (featured.away_score ?? 0) + (featured.home_score ?? 0) : null;
+    const [gamesResult, picksResult, tiebreakersResult] = await Promise.all([
+      admin.from('nfl_games').select('*').eq('week_id', weekId),
+      admin.from('nfl_picks').select('*').eq('week_id', weekId),
+      admin.from('nfl_tiebreakers').select('*').eq('week_id', weekId),
+    ]);
+    if (gamesResult.error) throw gamesResult.error;
+    if (picksResult.error) throw picksResult.error;
+    if (tiebreakersResult.error) throw tiebreakersResult.error;
 
-    // 1. Score every pick whose game is final
-    const pickUpdates: any[] = [];
-    for (const p of picks) {
-      const game = finalGames.find((g: any) => g.id === p.game_id);
-      if (!game) continue;
-      const correct = p.picked_team_id === game.winner_team_id;
-      pickUpdates.push({ ...p, is_correct: correct, points_awarded: correct ? 1 : 0 });
+    const games = gamesResult.data || [];
+    const picks = (picksResult.data || []) as PickRow[];
+    const tiebreakers = tiebreakersResult.data || [];
+    const finalById = new Map(
+      games
+        .filter((game: any) => game.status === 'final')
+        .map((game: any) => [game.id, game]),
+    );
+
+    // Score in memory first so this same invocation calculates fresh standings.
+    const scoredPicks = picks.map((pick) => {
+      const game: any = finalById.get(pick.game_id);
+      if (!game) return pick;
+      return { ...pick, is_correct: !!game.winner_team_id && game.winner_team_id === pick.picked_team_id };
+    });
+    const changedPicks = scoredPicks.filter((pick, index) => pick.is_correct !== picks[index].is_correct);
+    const finalPicks = scoredPicks.filter((pick) => finalById.has(pick.game_id));
+    const pickWriteResults = await Promise.all(finalPicks.map((pick) =>
+      admin.from('nfl_picks').update({
+        is_correct: pick.is_correct,
+        points_awarded: pick.is_correct ? 1 : 0,
+      }).eq('id', pick.id)
+    ));
+    const pickWriteError = pickWriteResults.find((result) => result.error)?.error;
+    if (pickWriteError) throw pickWriteError;
+
+    const featured: any = games.find((game: any) => game.id === week.featured_game_id);
+    const featuredTotal = featured?.status === 'final'
+      ? Number(featured.away_score ?? 0) + Number(featured.home_score ?? 0)
+      : null;
+    const scoredTiebreakers = tiebreakers.map((entry: any) => ({
+      ...entry,
+      delta: featuredTotal == null ? entry.delta : Math.abs(featuredTotal - entry.predicted_total),
+    }));
+    if (featuredTotal != null) {
+      const tbResults = await Promise.all(scoredTiebreakers.map((entry: any) =>
+        admin.from('nfl_tiebreakers').update({
+          actual_total: featuredTotal,
+          delta: entry.delta,
+        }).eq('id', entry.id)
+      ));
+      const tbError = tbResults.find((result) => result.error)?.error;
+      if (tbError) throw tbError;
     }
-    if (pickUpdates.length > 0) {
-      // Bulk update via individual upserts (safe for unique key)
-      for (const u of pickUpdates) {
-        await supabase.from('nfl_picks').update({
-          is_correct: u.is_correct, points_awarded: u.points_awarded,
-        }).eq('id', u.id);
-      }
-    }
 
-    // 2. Update tiebreakers
-    if (featuredFinal && featuredTotal != null) {
-      for (const tb of tbs || []) {
-        const delta = Math.abs(featuredTotal - tb.predicted_total);
-        await supabase.from('nfl_tiebreakers').update({
-          actual_total: featuredTotal, delta,
-        }).eq('id', tb.id);
-      }
-    }
+    const weeklyByClub = new Map<string, StandingRow[]>();
+    const entrants = new Map<string, { clubId: string; userId: string }>();
+    for (const pick of scoredPicks) entrants.set(`${pick.club_id}:${pick.user_id}`, { clubId: pick.club_id, userId: pick.user_id });
+    for (const entry of scoredTiebreakers) entrants.set(`${entry.club_id}:${entry.user_id}`, { clubId: entry.club_id, userId: entry.user_id });
 
-    // 3. Build weekly standings: aggregate per-user
-    const userIds = new Set<string>(picks.map((p: any) => p.user_id));
-    const weeklyRows: any[] = [];
-    for (const uid of userIds) {
-      const userPicks = picks.filter((p: any) => p.user_id === uid);
-      const correct = userPicks.filter((p: any) => p.is_correct === true).length;
-      const totalScored = userPicks.filter((p: any) => p.is_correct !== null).length;
-      const acc = totalScored > 0 ? correct / totalScored : 0;
-      const tb = (tbs || []).find((t: any) => t.user_id === uid);
-      weeklyRows.push({
-        user_id: uid, week_id, season_id: week.season_id,
-        correct_picks: correct, total_picks: totalScored, accuracy: acc,
+    for (const { clubId, userId } of entrants.values()) {
+      const userPicks = scoredPicks.filter((pick) => pick.club_id === clubId && pick.user_id === userId);
+      const completed = userPicks.filter((pick) => pick.is_correct !== null);
+      const correct = completed.filter((pick) => pick.is_correct === true).length;
+      const tb = scoredTiebreakers.find((entry: any) => entry.club_id === clubId && entry.user_id === userId);
+      const row: StandingRow = {
+        club_id: clubId,
+        user_id: userId,
+        week_id: weekId,
+        season_id: week.season_id,
+        correct_picks: correct,
+        total_picks: completed.length,
+        accuracy: completed.length ? correct / completed.length : 0,
         tiebreak_delta: tb?.delta ?? null,
-      });
+      };
+      weeklyByClub.set(clubId, [...(weeklyByClub.get(clubId) || []), row]);
     }
-    // Sort to assign rank: correct desc → tiebreak_delta asc (nulls last)
-    weeklyRows.sort((a, b) => {
-      if (b.correct_picks !== a.correct_picks) return b.correct_picks - a.correct_picks;
-      const ad = a.tiebreak_delta ?? Infinity;
-      const bd = b.tiebreak_delta ?? Infinity;
-      return ad - bd;
-    });
-    weeklyRows.forEach((r, i) => { r.rank = i + 1; });
 
-    // Upsert weekly standings
+    const weeklyRows: StandingRow[] = [];
+    for (const rows of weeklyByClub.values()) {
+      rows.sort((a: any, b: any) =>
+        (b.correct_picks - a.correct_picks)
+        || ((a.tiebreak_delta ?? Infinity) - (b.tiebreak_delta ?? Infinity))
+      );
+      assignCompetitionRanks(rows, (row: any) => `${row.correct_picks}|${row.tiebreak_delta ?? 'null'}`);
+      weeklyRows.push(...rows);
+    }
     for (const row of weeklyRows) {
-      await supabase.from('nfl_weekly_standings').upsert(row, { onConflict: 'user_id,week_id' });
+      const { error } = await admin.from('nfl_weekly_standings').upsert(row, { onConflict: 'user_id,week_id' });
+      if (error) throw error;
     }
 
-    // 4. Mark week scored if all games are final
-    const allFinal = games.length > 0 && games.every((g: any) => g.status === 'final');
+    const allFinal = games.length > 0 && games.every((game: any) => game.status === 'final');
     if (allFinal) {
-      await supabase.from('nfl_weeks').update({ status: 'scored' }).eq('id', week_id);
+      const { error } = await admin.from('nfl_weeks').update({ status: 'scored' }).eq('id', weekId);
+      if (error) throw error;
+      const { error: advanceError } = await admin
+        .from('nfl_seasons')
+        .update({ current_week: week.week_number + 1 })
+        .eq('id', week.season_id)
+        .eq('current_week', week.week_number)
+        .lt('current_week', 18);
+      if (advanceError) throw advanceError;
     }
 
-    // 5. Recompute season standings for ALL users in season
-    const { data: allSeasonPicks } = await supabase.from('nfl_picks').select('user_id, is_correct').eq('season_id', week.season_id);
-    const { data: allWeekly } = await supabase.from('nfl_weekly_standings').select('*').eq('season_id', week.season_id);
+    const [seasonPicksResult, seasonWeeklyResult] = await Promise.all([
+      admin.from('nfl_picks').select('club_id, user_id, is_correct').eq('season_id', week.season_id),
+      admin.from('nfl_weekly_standings').select('*').eq('season_id', week.season_id),
+    ]);
+    if (seasonPicksResult.error) throw seasonPicksResult.error;
+    if (seasonWeeklyResult.error) throw seasonWeeklyResult.error;
 
-    const seasonUsers = new Set<string>((allSeasonPicks || []).map((p: any) => p.user_id));
-    const seasonRows: any[] = [];
-    for (const uid of seasonUsers) {
-      const ps = (allSeasonPicks || []).filter((p: any) => p.user_id === uid);
-      const correct = ps.filter((p: any) => p.is_correct === true).length;
-      const totalScored = ps.filter((p: any) => p.is_correct !== null).length;
-      const ws = (allWeekly || []).filter((w: any) => w.user_id === uid);
-      const wins = ws.filter((w: any) => w.rank === 1).length;
-      const ranks = ws.map((w: any) => w.rank).filter((r: any) => r != null);
-      const avgRank = ranks.length > 0 ? ranks.reduce((a: number, b: number) => a + b, 0) / ranks.length : null;
-      seasonRows.push({
-        user_id: uid, season_id: week.season_id,
-        total_correct: correct, total_picked: totalScored,
-        accuracy: totalScored > 0 ? correct / totalScored : 0,
-        weekly_wins: wins, avg_weekly_rank: avgRank,
-      });
+    const seasonPicks = seasonPicksResult.data || [];
+    const allWeekly = seasonWeeklyResult.data || [];
+    const seasonByClub = new Map<string, StandingRow[]>();
+    const seasonEntrants = new Map<string, { clubId: string; userId: string }>();
+    for (const pick of seasonPicks) seasonEntrants.set(`${pick.club_id}:${pick.user_id}`, { clubId: pick.club_id, userId: pick.user_id });
+
+    for (const { clubId, userId } of seasonEntrants.values()) {
+      const completed = seasonPicks.filter((pick: any) => pick.club_id === clubId && pick.user_id === userId && pick.is_correct !== null);
+      const correct = completed.filter((pick: any) => pick.is_correct === true).length;
+      const weekly = allWeekly.filter((row: any) => row.club_id === clubId && row.user_id === userId && row.total_picks > 0);
+      const ranks = weekly.map((row: any) => row.rank).filter((rank: any) => rank != null);
+      const row: StandingRow = {
+        club_id: clubId,
+        user_id: userId,
+        season_id: week.season_id,
+        total_correct: correct,
+        total_picked: completed.length,
+        accuracy: completed.length ? correct / completed.length : 0,
+        weekly_wins: weekly.filter((entry: any) => entry.rank === 1).length,
+        avg_weekly_rank: ranks.length ? ranks.reduce((sum: number, rank: number) => sum + rank, 0) / ranks.length : null,
+      };
+      seasonByClub.set(clubId, [...(seasonByClub.get(clubId) || []), row]);
     }
-    // Rank: total_correct desc → avg_weekly_rank asc (nulls last) → weekly_wins desc
-    seasonRows.sort((a, b) => {
-      if (b.total_correct !== a.total_correct) return b.total_correct - a.total_correct;
-      const ar = a.avg_weekly_rank ?? Infinity;
-      const br = b.avg_weekly_rank ?? Infinity;
-      if (ar !== br) return ar - br;
-      return b.weekly_wins - a.weekly_wins;
-    });
-    seasonRows.forEach((r, i) => { r.rank = i + 1; });
 
+    const seasonRows: StandingRow[] = [];
+    for (const rows of seasonByClub.values()) {
+      rows.sort((a: any, b: any) =>
+        (b.total_correct - a.total_correct)
+        || ((a.avg_weekly_rank ?? Infinity) - (b.avg_weekly_rank ?? Infinity))
+        || (b.weekly_wins - a.weekly_wins)
+      );
+      assignCompetitionRanks(rows, (row: any) => `${row.total_correct}|${row.avg_weekly_rank ?? 'null'}|${row.weekly_wins}`);
+      seasonRows.push(...rows);
+    }
     for (const row of seasonRows) {
-      await supabase.from('nfl_season_standings').upsert(row, { onConflict: 'user_id,season_id' });
+      const { error } = await admin.from('nfl_season_standings').upsert(row, { onConflict: 'user_id,season_id' });
+      if (error) throw error;
     }
 
-    return new Response(JSON.stringify({
+    return json({
       ok: true,
-      scored_picks: pickUpdates.length,
+      scored_picks: changedPicks.length,
       scored_users: weeklyRows.length,
+      scored_clubs: weeklyByClub.size,
       week_status: allFinal ? 'scored' : week.status,
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  } catch (e) {
-    console.error('score-nfl-week error', e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+  } catch (error) {
+    console.error('score-nfl-week error', error);
+    return json({ error: (error as Error).message }, 500);
   }
 });
+
+function assignCompetitionRanks(rows: StandingRow[], signature: (row: StandingRow) => string) {
+  let prior = '';
+  let rank = 0;
+  rows.forEach((row, index) => {
+    const current = signature(row);
+    if (index === 0 || current !== prior) rank = index + 1;
+    row.rank = rank;
+    prior = current;
+  });
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}

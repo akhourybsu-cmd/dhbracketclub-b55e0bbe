@@ -14,6 +14,9 @@ export default function PickemStandingsPage() {
 
   const top3 = standings.slice(0, 3);
   const rest = standings.slice(3);
+  const me = standings.find((standing) => standing.user_id === user?.id);
+  const leader = standings[0];
+  const gamesBack = me && leader ? Math.max(0, leader.total_correct - me.total_correct) : 0;
 
   return (
     <PickemShell>
@@ -38,6 +41,20 @@ export default function PickemStandingsPage() {
           </div>
         </TurfBackdrop>
       </motion.div>
+
+      {me && (
+        <div className="glass-card p-3.5">
+          <div className="flex items-center justify-between gap-3 mb-2.5">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Your Season Pulse</p>
+            <span className="text-[11px] font-extrabold text-gold">#{me.rank ?? '–'} overall</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <PulseStat label="Accuracy" value={`${Math.round((me.accuracy || 0) * 100)}%`} />
+            <PulseStat label="From lead" value={gamesBack === 0 ? 'Leader' : `${gamesBack} back`} />
+            <PulseStat label="Week wins" value={String(me.weekly_wins)} />
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="glass-card p-6">
@@ -149,5 +166,14 @@ function Podium({ standing, place, isMe, height, featured }: {
       </p>
       <p className="text-[8px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground/70 mt-0.5">correct</p>
     </motion.div>
+  );
+}
+
+function PulseStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border/30 bg-muted/20 px-2 py-2.5 text-center">
+      <p className="text-[13px] font-extrabold tabular-nums">{value}</p>
+      <p className="text-[8px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mt-0.5">{label}</p>
+    </div>
   );
 }

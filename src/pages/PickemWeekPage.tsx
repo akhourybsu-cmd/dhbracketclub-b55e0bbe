@@ -1,13 +1,13 @@
 import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ListChecks, ArrowRight, CalendarOff, Flame } from 'lucide-react';
+import { ChevronLeft, ListChecks, ArrowRight, CalendarOff, Flame, Share2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   useActiveSeason, useSeasonWeeks, useWeekGames, useMyWeekPicks, useMyTiebreaker,
-  useSeasonTeamRecords,
-  savePick, saveTiebreaker, deleteMyPick, deriveWeekStatus, isWeekLocked, weekLockAt, useCardLock,
+  useSeasonTeamRecords, useWeekPickInsights, useWeekLock, usePickemAdmin, useSeasonWeekGameCounts,
+  savePick, saveTiebreaker, deleteMyPick, deriveWeekStatus, useCardLock, filterVisibleWeeks,
 } from '@/hooks/usePickem';
 import { GamePickCard } from '@/components/pickem/GamePickCard';
 import { TiebreakerInput } from '@/components/pickem/TiebreakerInput';
@@ -23,31 +23,38 @@ export default function PickemWeekPage() {
   const num = parseInt(weekNumber || '1', 10);
   const { user } = useAuth();
 
-  const { season } = useActiveSeason();
-  const { weeks } = useSeasonWeeks(season?.id);
-  const week = useMemo(() => weeks.find((w) => w.week_number === num), [weeks, num]);
-  const { games, refetch: refetchGames } = useWeekGames(week?.id);
+  const { season, loading: seasonLoading } = useActiveSeason();
+  const { weeks, loading: weeksLoading } = useSeasonWeeks(season?.id);
+  const { counts: weekGameCounts, loading: countsLoading } = useSeasonWeekGameCounts(season?.id);
+  const { isAdmin, loading: adminLoading } = usePickemAdmin();
+  const visibleWeeks = useMemo(
+    () => filterVisibleWeeks(weeks, season, weekGameCounts, isAdmin),
+    [weeks, season, weekGameCounts, isAdmin],
+  );
+  const week = useMemo(() => visibleWeeks.find((w) => w.week_number === num), [visibleWeeks, num]);
+  const { games, loading: gamesLoading } = useWeekGames(week?.id);
   const { picks, refetch: refetchPicks } = useMyWeekPicks(week?.id);
   const { tiebreaker, refetch: refetchTb } = useMyTiebreaker(week?.id);
   const { records: teamRecords } = useSeasonTeamRecords(season?.id);
   const [savingId, setSavingId] = useState<string | null>(null);
   const { locked: cardLocked, setLocked: setCardLocked } = useCardLock(user?.id, week?.id);
 
+  const { lockAt: lockMoment, locked: weekLocked, now } = useWeekLock(games, season);
+  const { insights: pickInsights } = useWeekPickInsights(week?.id, weekLocked);
   const featured = games.find((g) => g.id === week?.featured_game_id);
-  const weekStatus = week ? (games.length > 0 ? deriveWeekStatus(games) : week.status) : 'upcoming';
+  const weekStatus = week ? (games.length > 0 ? deriveWeekStatus(games, week.status, now) : week.status) : 'upcoming';
   const pickedCount = picks.length;
   const totalGames = games.length;
   const remaining = Math.max(0, totalGames - pickedCount);
-  const weekLocked = isWeekLocked(games, season);
-  const lockMoment = weekLockAt(games, season);
   const slipStatus: 'open' | 'partial' | 'complete' | 'locked' =
     weekLocked ? 'locked'
     : remaining === 0 ? 'complete'
     : weekStatus === 'partially_locked' ? 'partial'
     : 'open';
 
-  const nextOpen = games.find((g) => g.status === 'scheduled' && new Date(g.kickoff_at).getTime() > Date.now());
   const interactionsBlocked = weekLocked || cardLocked;
+  const tiebreakerRequired = !!featured;
+  const tiebreakerReady = !tiebreakerRequired || tiebreaker?.predicted_total != null;
 
   async function handlePick(gameId: string, teamId: string) {
     if (!user || !week || !season) return;
@@ -89,7 +96,7 @@ export default function PickemWeekPage() {
   }
 
   async function handleTiebreakerSave(value: number) {
-    if (!user || !week || !season) return;
+    if (!user || !week || !season || weekLocked || cardLocked) return;
     try {
       await saveTiebreaker({
         user_id: user.id,
@@ -101,6 +108,36 @@ export default function PickemWeekPage() {
     } catch (e: any) {
       toast.error(e.message || 'Could not save tiebreaker');
     }
+  }
+
+  async function shareCard() {
+    const lines = games.map((game) => {
+      const pick = picks.find((item) => item.game_id === game.id);
+      const team = pick?.picked_team_id === game.away_team_id ? game.away_team : pick?.picked_team_id === game.home_team_id ? game.home_team : null;
+      return `${game.away_team?.abbr ?? 'Away'} @ ${game.home_team?.abbr ?? 'Home'} — ${team?.abbr ?? 'No pick'}`;
+    });
+    const tb = featured && tiebreaker?.predicted_total != null ? `\nTiebreaker: ${tiebreaker.predicted_total} total points` : '';
+    const text = `${week?.label ?? 'NFL Pick’em'} picks\n${lines.join('\n')}${tb}`;
+    try {
+      if (navigator.share) await navigator.share({ title: `${week?.label ?? 'NFL'} Pick’em`, text });
+      else {
+        await navigator.clipboard.writeText(text);
+        toast.success('Pick card copied');
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') toast.error('Could not share this card');
+    }
+  }
+
+  if (seasonLoading || adminLoading || (season && (weeksLoading || countsLoading))) {
+    return (
+      <PickemShell>
+        <div className="space-y-3">
+          <div className="h-28 rounded-2xl skeleton-shimmer" />
+          {[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-2xl skeleton-shimmer" />)}
+        </div>
+      </PickemShell>
+    );
   }
 
   if (!season || !week) {
@@ -155,17 +192,17 @@ export default function PickemWeekPage() {
           </div>
         )}
 
-        {nextOpen && (
+        {lockMoment && !weekLocked && (
           <p className="text-[11px] text-white/70 mt-2.5 flex items-center gap-1.5">
             <Flame className="w-3 h-3 text-gold" />
-            Next lock: <span className="font-bold text-white">
-              <KickoffCountdown target={nextOpen.kickoff_at} compact />
+            Picks freeze in <span className="font-bold text-white">
+              <KickoffCountdown target={lockMoment} compact />
             </span>
           </p>
         )}
       </TurfBackdrop>
 
-      <WeekNavigator weeks={weeks} currentWeek={week.week_number} basePath="/pickem/week" />
+      <WeekNavigator weeks={visibleWeeks} currentWeek={week.week_number} basePath="/pickem/week" />
 
       {weekStatus === 'scored' && (
         <Link to={`/pickem/week/${week.week_number}/results`}>
@@ -177,8 +214,24 @@ export default function PickemWeekPage() {
         </Link>
       )}
 
+      {weekLocked && picks.length > 0 && (
+        <button
+          type="button"
+          onClick={shareCard}
+          className="w-full glass-card p-3 flex items-center gap-2 hover:bg-muted/30 transition-colors btn-press text-left"
+        >
+          <Share2 className="w-4 h-4 text-primary" />
+          <span className="text-[12px] font-extrabold flex-1">Share My Pick Card</span>
+          <span className="text-[10px] text-muted-foreground">Picks are revealed</span>
+        </button>
+      )}
+
       {/* ─────────── Game Slate ─────────── */}
-      {games.length === 0 ? (
+      {gamesLoading ? (
+        <div className="space-y-2">
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-2xl skeleton-shimmer" />)}
+        </div>
+      ) : games.length === 0 ? (
         <div className="space-y-2">
           <div className="glass-card p-7 text-center">
             <CalendarOff className="w-7 h-7 mx-auto mb-2 text-muted-foreground/50 pk-pulse" />
@@ -220,6 +273,7 @@ export default function PickemWeekPage() {
                   game={game}
                   pick={myPick}
                   records={teamRecords}
+                  insight={pickInsights.get(game.id)}
                   onPick={(teamId) => handlePick(game.id, teamId)}
                   saving={savingId === game.id}
                   weekLocked={weekLocked}
@@ -235,6 +289,7 @@ export default function PickemWeekPage() {
               predicted={tiebreaker?.predicted_total}
               actual={tiebreaker?.actual_total}
               onChange={handleTiebreakerSave}
+              locked={weekLocked || cardLocked}
             />
           )}
         </motion.div>
@@ -250,6 +305,8 @@ export default function PickemWeekPage() {
           cardLocked={cardLocked}
           onToggleCardLock={() => setCardLocked(!cardLocked)}
           weekLockAt={lockMoment}
+          tiebreakerRequired={tiebreakerRequired}
+          tiebreakerReady={tiebreakerReady}
         />
       )}
     </div>

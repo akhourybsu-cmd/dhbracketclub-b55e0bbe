@@ -2,17 +2,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Shield, Plus, Save, Loader2, Calculator, RefreshCw, Download, Settings2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useActiveSeason, useSeasonWeeks, useTeams, useWeekGames } from '@/hooks/usePickem';
+import { useActiveSeason, usePickemAdmin, useSeasonWeeks, useTeams, useWeekGames } from '@/hooks/usePickem';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 
 export default function PickemAdminPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { isAdmin, loading: adminLoading } = usePickemAdmin();
   const { season, refetch: refetchSeason } = useActiveSeason();
   const { weeks, refetch: refetchWeeks } = useSeasonWeeks(season?.id);
   const { teams } = useTeams();
@@ -23,24 +21,44 @@ export default function PickemAdminPage() {
   const [syncingWeek, setSyncingWeek] = useState(false);
   const [importingSeason, setImportingSeason] = useState(false);
   const [importProgress, setImportProgress] = useState<{ done: number; total: number } | null>(null);
+  const [newSeasonYear, setNewSeasonYear] = useState(String(new Date().getFullYear()));
 
   useEffect(() => {
-    if (!user) return;
-    (supabase as any).from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()
-      .then(({ data }: any) => {
-        if (!data) { setIsAdmin(false); navigate('/pickem'); }
-        else setIsAdmin(true);
-      });
-  }, [user, navigate]);
+    if (!adminLoading && !isAdmin) navigate('/pickem');
+  }, [adminLoading, isAdmin, navigate]);
 
-  if (isAdmin === null) return <div className="p-6 text-center text-xs text-muted-foreground">Checking access…</div>;
+  if (adminLoading || !isAdmin) return <div className="p-6 text-center text-xs text-muted-foreground">Checking access…</div>;
 
   // Activate season helper
   async function activateSeason() {
     if (!season) return;
+    const { error: closeError } = await (supabase as any)
+      .from('nfl_seasons')
+      .update({ status: 'complete' })
+      .eq('status', 'active')
+      .neq('id', season.id);
+    if (closeError) return toast.error(closeError.message);
     const { error } = await (supabase as any).from('nfl_seasons').update({ status: 'active' }).eq('id', season.id);
     if (error) return toast.error(error.message);
     toast.success('Season activated');
+    refetchSeason();
+  }
+
+  async function createSeason() {
+    const year = Number.parseInt(newSeasonYear, 10);
+    if (!Number.isInteger(year) || year < 2020 || year > 2100) return toast.error('Enter a valid NFL season year');
+    const starts = new Date(`${year}-09-01T00:00:00-04:00`);
+    const ends = new Date(`${year + 1}-02-20T23:59:59-05:00`);
+    const { error } = await (supabase as any).from('nfl_seasons').insert({
+      year,
+      name: `${year} NFL Pick’em`,
+      status: 'upcoming',
+      current_week: 1,
+      starts_at: starts.toISOString(),
+      ends_at: ends.toISOString(),
+    });
+    if (error) return toast.error(error.message);
+    toast.success(`${year} season created`);
     refetchSeason();
   }
 
@@ -65,13 +83,6 @@ export default function PickemAdminPage() {
     });
     if (error) return toast.error(error.message);
     toast.success(`Week ${next} added`);
-    refetchWeeks();
-  }
-
-  async function setWeekStatus(id: string, status: string) {
-    const { error } = await (supabase as any).from('nfl_weeks').update({ status }).eq('id', id);
-    if (error) return toast.error(error.message);
-    toast.success('Week status updated');
     refetchWeeks();
   }
 
@@ -135,7 +146,9 @@ export default function PickemAdminPage() {
         body: { season_year: season.year, week_number: weekNumber },
       });
       if (error) throw error;
-      toast.success(`Week ${weekNumber}: ${data?.upserts ?? 0} games synced${data?.finals ? `, ${data.finals} final` : ''}`);
+      const missing = data?.missing_teams?.length ?? 0;
+      if (missing > 0) toast.warning(`Week ${weekNumber} synced, but ${missing} team mapping${missing === 1 ? ' is' : 's are'} missing`);
+      else toast.success(`Week ${weekNumber}: ${data?.upserts ?? 0} games synced${data?.finals ? `, ${data.finals} final` : ''}`);
       refetchWeeks();
       refetchGames();
     } catch (e: any) {
@@ -195,6 +208,26 @@ export default function PickemAdminPage() {
         </div>
       </div>
 
+      {!season && (
+        <div className="glass-card p-4 space-y-3">
+          <div>
+            <h2 className="font-extrabold text-[13px]">Create NFL season</h2>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Start with an upcoming season, then import the official ESPN slate.</p>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min={2020}
+              max={2100}
+              value={newSeasonYear}
+              onChange={(event) => setNewSeasonYear(event.target.value)}
+              aria-label="NFL season year"
+            />
+            <Button onClick={createSeason}><Plus className="w-3.5 h-3.5 mr-1" /> Create</Button>
+          </div>
+        </div>
+      )}
+
       {/* Season */}
       {season && (
         <div className="glass-card p-4 space-y-3">
@@ -208,7 +241,7 @@ export default function PickemAdminPage() {
           </div>
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary">ESPN Schedule Sync</p>
-            <p className="text-[11px] text-muted-foreground">Pulls schedule + live/final scores from ESPN. Idempotent — safe to re-run.</p>
+            <p className="text-[11px] text-muted-foreground">Pulls the schedule and scores from ESPN, auto-selects a tiebreaker, and refreshes every 30 minutes while active.</p>
             <Button
               size="sm"
               variant="outline"
@@ -243,14 +276,9 @@ export default function PickemAdminPage() {
                   <p className="text-[12px] font-bold">{w.label}</p>
                   <p className="text-[10px] text-muted-foreground">{w.status}</p>
                 </button>
-                <select className="text-[10px] bg-muted rounded px-1 py-0.5" value={w.status}
-                  onChange={(e) => setWeekStatus(w.id, e.target.value)}>
-                  <option value="upcoming">upcoming</option>
-                  <option value="open">open</option>
-                  <option value="partially_locked">partially_locked</option>
-                  <option value="closed">closed</option>
-                  <option value="scored">scored</option>
-                </select>
+                <span className="text-[9px] font-extrabold uppercase tracking-wider rounded-full bg-muted/40 border border-border/30 px-2 py-1 text-muted-foreground">
+                  {w.status.replace('_', ' ')}
+                </span>
                 <Button size="sm" variant="ghost" onClick={() => setCurrentWeek(w.week_number)}>Current</Button>
               </div>
             </div>
@@ -330,6 +358,12 @@ export default function PickemAdminPage() {
 function GameAdminRow({ game, onSaveFinal, onDelete }: { game: any; onSaveFinal: (id: string, a: number, h: number) => void; onDelete: (id: string) => void }) {
   const [away, setAway] = useState(game.away_score?.toString() ?? '');
   const [home, setHome] = useState(game.home_score?.toString() ?? '');
+  const scoresReady = away !== '' && home !== '' && Number(away) >= 0 && Number(home) >= 0;
+
+  useEffect(() => {
+    setAway(game.away_score?.toString() ?? '');
+    setHome(game.home_score?.toString() ?? '');
+  }, [game.away_score, game.home_score]);
 
   return (
     <div className="rounded-lg bg-card/40 border border-border/30 p-2 flex items-center gap-2">
@@ -339,7 +373,13 @@ function GameAdminRow({ game, onSaveFinal, onDelete }: { game: any; onSaveFinal:
       </div>
       <Input type="number" className="w-14 h-8 text-center" placeholder="A" value={away} onChange={(e) => setAway(e.target.value)} />
       <Input type="number" className="w-14 h-8 text-center" placeholder="H" value={home} onChange={(e) => setHome(e.target.value)} />
-      <Button size="sm" variant="outline" onClick={() => onSaveFinal(game.id, parseInt(away || '0', 10), parseInt(home || '0', 10))}>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={!scoresReady}
+        aria-label={`Save final score for ${game.away_team?.abbr} at ${game.home_team?.abbr}`}
+        onClick={() => onSaveFinal(game.id, parseInt(away, 10), parseInt(home, 10))}
+      >
         <Save className="w-3 h-3" />
       </Button>
       <Button size="sm" variant="ghost" onClick={() => onDelete(game.id)} className="text-destructive">×</Button>

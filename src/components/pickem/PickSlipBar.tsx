@@ -15,6 +15,8 @@ export function PickSlipBar({
   cardLocked = false,
   onToggleCardLock,
   weekLockAt,
+  tiebreakerRequired = false,
+  tiebreakerReady = true,
 }: {
   picked: number;
   total: number;
@@ -23,6 +25,8 @@ export function PickSlipBar({
   cardLocked?: boolean;
   onToggleCardLock?: () => void;
   weekLockAt?: Date | null;
+  tiebreakerRequired?: boolean;
+  tiebreakerReady?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -35,11 +39,13 @@ export function PickSlipBar({
   if (total === 0) return null;
 
   const pct = Math.round((picked / total) * 100);
-  const allDone = remaining === 0;
+  const allGamesDone = remaining === 0;
+  const allDone = allGamesDone && tiebreakerReady;
 
   const label =
     status === 'locked' ? 'All picks locked'
     : cardLocked ? 'Card locked'
+    : allGamesDone && !tiebreakerReady ? 'Add your tiebreaker'
     : allDone ? 'Your card is complete'
     : `${remaining} pick${remaining === 1 ? '' : 's'} remaining`;
 
@@ -164,6 +170,7 @@ export function PickSlipBar({
                 <strong className="text-white">Tap a team to pick — tap again to unselect.</strong>{' '}
                 Lock your card to prevent accidental changes. You can unlock anytime before picks freeze
                 {weekLockAt ? ` (${weekLockAt.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}).` : '.'}
+                {tiebreakerRequired && !tiebreakerReady ? ' Your featured-game tiebreaker is still missing.' : ''}
               </p>
             </motion.div>
           )}
