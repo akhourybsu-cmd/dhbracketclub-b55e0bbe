@@ -655,7 +655,7 @@ function MessageBubbleInner({
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSaveEdit(msg.id, editContent); }
                         if (e.key === 'Escape') onCancelEdit();
                       }}
-                      className="flex-1 resize-none text-[13px] bg-background/30 border border-border/25 rounded-lg px-2 py-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                      className="chat-mobile-input flex-1 resize-none text-[13px] bg-background/30 border border-border/25 rounded-lg px-2 py-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20"
                       rows={1}
                       autoFocus
                       style={{ minHeight: 28, maxHeight: 120 }}
@@ -670,7 +670,7 @@ function MessageBubbleInner({
                 ) : (
                   <div>
                     <p className={cn(
-                      "text-[13px] leading-[1.55] break-words whitespace-pre-wrap",
+                      "chat-message-copy text-[13px] leading-[1.55] break-words whitespace-pre-wrap",
                       (((imageUrls.length > 0 || fileUrls.length > 0) && !stripAttachmentUrls(msg.content)) || isDraftInviteMessage(msg.content)) && "hidden"
                     )}>
                       {renderContent(stripAttachmentUrls(msg.content), currentUserId, currentDisplayName)}

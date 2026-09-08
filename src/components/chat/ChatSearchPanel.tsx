@@ -64,7 +64,7 @@ export function ChatSearchPanel({
                 placeholder="Search messages"
                 aria-label="Search messages"
                 autoFocus
-                className="h-11 rounded-xl border-border/25 bg-muted/25 pl-10 pr-10 text-sm"
+                className="chat-mobile-input h-11 rounded-xl border-border/25 bg-muted/25 pl-10 pr-10 text-sm"
               />
               {query && (
                 <button

@@ -138,7 +138,7 @@ export function GifPicker({ open, onClose, onSelect, accent = '152 72% 46%' }: P
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search…"
-              className="h-9 pl-8 text-sm bg-muted/25 border-border/30"
+              className="chat-mobile-input h-9 pl-8 text-sm bg-muted/25 border-border/30"
               aria-label="Search GIFs"
             />
           </div>

@@ -381,6 +381,52 @@
     overflow-x: hidden;
   }
 
+  /* Chat owns the visible viewport and scrolls only its timeline/panels.
+   * Locking the document prevents iOS keyboard focus from panning the body
+   * behind the composer. */
+  html.chat-viewport-active,
+  body.chat-viewport-active {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .chat-viewport {
+    width: 100%;
+    max-width: 100%;
+    overscroll-behavior: none;
+    --chat-composer-safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .chat-viewport[data-keyboard-open='true'] {
+    --chat-composer-safe-bottom: 0px;
+  }
+
+  .chat-composer {
+    padding-bottom: calc(0.375rem + var(--chat-composer-safe-bottom)) !important;
+    scrollbar-width: none;
+  }
+
+  .chat-composer::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-message-copy {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  @media (max-width: 639px) {
+    /* iOS zooms focused controls below 16px, which changes the visual
+     * viewport mid-composition and makes chat appear to jump/overlap. */
+    .chat-mobile-input {
+      font-size: 16px !important;
+    }
+
+    .chat-viewport[data-keyboard-open='true'] .chat-composer-textarea {
+      max-height: 72px !important;
+    }
+  }
+
   /* ═══ Ambient charcoal-glass wash (dark mode only) ═══
    * Soft radial wash on the body itself — adds depth above the flat
    * background color without brightening the canvas. */

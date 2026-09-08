@@ -319,8 +319,12 @@ export function ChannelList({
 
   return (
     <div
-      className="px-3 pt-2 pb-6 lg:pb-4 lg:px-4"
-      style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
+      className="px-3 pb-6 lg:pb-4 lg:px-4"
+      style={{
+        touchAction: 'pan-y',
+        WebkitOverflowScrolling: 'touch',
+        paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
+      }}
     >
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         {/* Header — slim treatment to match the rest of the app's
@@ -366,7 +370,7 @@ export function ChannelList({
             onChange={event => setChannelQuery(event.target.value)}
             placeholder="Find a channel"
             aria-label="Find a channel"
-            className="h-9 rounded-xl border-border/15 bg-muted/20 pl-9 pr-9 text-xs"
+            className="chat-mobile-input h-9 rounded-xl border-border/15 bg-muted/20 pl-9 pr-9 text-xs"
           />
           {channelQuery ? (
             <button
@@ -390,7 +394,7 @@ export function ChannelList({
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-4">
               <div className="glass-card p-4 space-y-3">
                 <h3 className="text-xs font-bold">New Category</h3>
-                <Input placeholder="Category name" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="h-9 text-sm" />
+                <Input placeholder="Category name" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="chat-mobile-input h-9 text-sm" />
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleCreateCat} disabled={!newCategoryName.trim()} className="flex-1 h-11 text-xs font-bold">Create</Button>
                   <Button size="sm" variant="ghost" onClick={() => setShowNewCategory(false)} className="h-11 text-xs">Cancel</Button>
@@ -405,8 +409,8 @@ export function ChannelList({
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-4">
               <div className="glass-card p-4 space-y-3">
                 <h3 className="text-xs font-bold">New Channel</h3>
-                <Input placeholder="channel-name" value={newChannelName} onChange={e => setNewChannelName(e.target.value)} className="h-9 text-sm" />
-                <select value={newChannelCategory} onChange={e => setNewChannelCategory(e.target.value)} className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
+                <Input placeholder="channel-name" value={newChannelName} onChange={e => setNewChannelName(e.target.value)} className="chat-mobile-input h-9 text-sm" />
+                <select value={newChannelCategory} onChange={e => setNewChannelCategory(e.target.value)} className="chat-mobile-input w-full h-9 rounded-md border border-input bg-background px-3 text-sm">
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 <div className="flex gap-2">

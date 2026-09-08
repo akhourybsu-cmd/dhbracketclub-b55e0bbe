@@ -93,7 +93,7 @@ export function ChatMembersPanel({ members, onlineUserIds, currentUserId, onClos
             onChange={event => setQuery(event.target.value)}
             placeholder="Find a member"
             aria-label="Find a member"
-            className="h-9 rounded-xl border-border/20 bg-muted/20 pl-9 pr-8 text-xs"
+            className="chat-mobile-input h-9 rounded-xl border-border/20 bg-muted/20 pl-9 pr-8 text-xs"
           />
           {query && (
             <button

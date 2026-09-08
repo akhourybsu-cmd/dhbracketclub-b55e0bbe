@@ -34,6 +34,7 @@ import { HYDRATE_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { MemberLoadError } from '@/components/member/MemberLoadError';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
 import { messageMentionsDisplayName } from '@/lib/chatExperience';
+import { useChatViewport } from '@/hooks/useChatViewport';
 
 const CHAT_DRAFT_PREFIX = 'dh_chat_draft_v1';
 
@@ -56,8 +57,8 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const composerRef = useRef<MessageComposerHandle>(null);
 
-  // Dynamic viewport height to handle mobile keyboard
-  const [chatHeight, setChatHeight] = useState<string>('calc(100dvh - env(safe-area-inset-top, 0px))');
+  // One viewport authority for iOS Safari/WebViews and Android keyboard modes.
+  const { height: chatHeight, keyboardOpen } = useChatViewport();
   const [scrollToBottomTrigger, setScrollToBottomTrigger] = useState(0);
   const [jumpSignal, setJumpSignal] = useState<{ id: string; n: number } | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -76,36 +77,8 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const isDesktop = () => window.matchMedia('(min-width: 1024px)').matches;
-
-    const update = () => {
-      requestAnimationFrame(() => {
-        const viewportHeight = vv.height + vv.offsetTop;
-        const keyboardInset = Math.max(0, window.innerHeight - viewportHeight);
-        // Bottom nav is gone; only reserve space for safe-area when keyboard closed.
-        const mobileBottomOffset = 0;
-        const nextHeight = isDesktop()
-          ? viewportHeight
-          : Math.max(220, viewportHeight - mobileBottomOffset);
-
-        setChatHeight(`${nextHeight}px`);
-        setScrollToBottomTrigger(c => c + 1);
-      });
-    };
-
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    window.addEventListener('resize', update);
-
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
-  }, []);
+    setScrollToBottomTrigger(count => count + 1);
+  }, [chatHeight]);
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -836,7 +809,7 @@ export default function ChatPage() {
 
   if (channelError && channels.length === 0) {
     return (
-      <div className="member-page flex items-center justify-center px-4" style={{ height: chatHeight }}>
+      <div className="chat-viewport member-page flex min-h-0 min-w-0 items-center justify-center overflow-hidden px-4" data-keyboard-open={keyboardOpen} style={{ height: chatHeight }}>
         <div className="w-full max-w-md">
           <MemberLoadError message={channelError} onRetry={() => void fetchChannels()} />
         </div>
@@ -847,8 +820,8 @@ export default function ChatPage() {
   /* ═══ CHANNEL LIST VIEW (mobile only — desktop uses sidebar) ═══ */
   if (showChannelList) {
     return (
-      <div className="flex overflow-hidden" style={{ height: chatHeight }}>
-        <div className="w-full lg:w-[260px] lg:border-r lg:border-border/25 flex-shrink-0 overflow-y-auto">
+      <div className="chat-viewport flex min-h-0 min-w-0 overflow-hidden" data-keyboard-open={keyboardOpen} style={{ height: chatHeight }}>
+        <div className="w-full min-w-0 lg:w-[260px] lg:border-r lg:border-border/25 flex-shrink-0 overflow-y-auto overscroll-contain">
           <ChannelList
             channels={channels}
             categories={categories}
@@ -876,7 +849,7 @@ export default function ChatPage() {
 
   /* ═══ MESSAGE VIEW ═══ */
   return (
-    <div className="flex overflow-hidden" style={{ height: chatHeight }}>
+    <div className="chat-viewport flex min-h-0 min-w-0 overflow-hidden" data-keyboard-open={keyboardOpen} style={{ height: chatHeight }}>
       {/* Desktop sidebar */}
       <div className="hidden lg:block w-[260px] border-r border-border/25 flex-shrink-0 overflow-y-auto">
         <ChannelList

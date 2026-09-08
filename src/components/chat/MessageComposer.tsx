@@ -455,7 +455,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative flex flex-col bg-background w-full lg:max-w-[792px] lg:mx-auto",
+          "chat-composer relative flex max-h-[min(55dvh,22rem)] w-full flex-col overflow-y-auto overscroll-contain bg-background lg:mx-auto lg:max-w-[792px]",
           compact ? "px-3 pt-1.5 pb-1.5" : "px-2.5 sm:px-3 pt-1.5"
         )}
         style={{
@@ -551,7 +551,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
               exit={{ height: 0, opacity: 0 }}
               className="mb-2"
             >
-              <div className="flex flex-col gap-1.5">
+              <div className="flex max-h-32 flex-col gap-1.5 overflow-y-auto overscroll-contain">
                 {pendingFiles.map((f, i) => (
                   <div key={i} className="relative flex items-center gap-2.5 rounded-xl bg-muted/10 border border-border/10 pl-2.5 pr-8 py-2">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -708,7 +708,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
               placeholder={placeholder || 'Message'}
               rows={1}
               className={cn(
-                "w-full resize-none bg-muted/30 border border-border/20 rounded-[20px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30 transition-colors duration-150 placeholder:text-muted-foreground/45",
+                "chat-mobile-input chat-composer-textarea w-full resize-none bg-muted/30 border border-border/20 rounded-[20px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/30 transition-colors duration-150 placeholder:text-muted-foreground/45",
                 compact ? "text-xs pl-3.5 pr-3.5 py-2" : "text-[15px] pl-4 pr-4 py-2.5"
               )}
               autoComplete="off"
@@ -754,7 +754,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    className="absolute bottom-full right-0 mb-2 z-50"
+                    className="absolute bottom-full -right-[3.15rem] mb-2 z-50 sm:right-0"
                   >
                     <EmojiPicker onSelect={(emoji) => insertAtCursor(emoji)} />
                   </motion.div>

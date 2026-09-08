@@ -219,7 +219,7 @@ export function ChannelSettingsDialog({ channel, categories, open, isAdmin, onOp
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="channel-name"
-                    className="h-10 text-sm"
+                    className="chat-mobile-input h-10 text-sm"
                   />
                 </div>
 
@@ -230,7 +230,7 @@ export function ChannelSettingsDialog({ channel, categories, open, isAdmin, onOp
                     value={description}
                     onChange={e => setDescription(e.target.value)}
                     placeholder="What's this channel about?"
-                    className="text-sm resize-none min-h-[60px]"
+                    className="chat-mobile-input text-sm resize-none min-h-[60px]"
                     rows={2}
                   />
                 </div>
@@ -268,7 +268,7 @@ export function ChannelSettingsDialog({ channel, categories, open, isAdmin, onOp
                   <select
                     value={categoryId}
                     onChange={e => setCategoryId(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    className="chat-mobile-input w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                   >
                     <option value="">No category</option>
                     {categories.map(c => (

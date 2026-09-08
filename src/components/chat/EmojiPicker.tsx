@@ -111,7 +111,7 @@ export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void })
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search emoji"
-            className="w-full h-8 pl-8 pr-2 rounded-lg bg-muted/40 border border-border/20 text-[13px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30 placeholder:text-muted-foreground/45"
+            className="chat-mobile-input w-full h-8 pl-8 pr-2 rounded-lg bg-muted/40 border border-border/20 text-[13px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30 placeholder:text-muted-foreground/45"
           />
         </div>
       </div>

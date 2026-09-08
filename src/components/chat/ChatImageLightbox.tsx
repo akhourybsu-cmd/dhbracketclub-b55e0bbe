@@ -66,7 +66,12 @@ export function ChatImageLightbox({ urls, index, onClose }: Props) {
       animate={{ opacity: 1 }}
       className="fixed inset-0 z-[100] bg-black/92 backdrop-blur-sm flex items-center justify-center"
       onClick={onClose}
-      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      style={{
+        paddingTop: 'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+      }}
     >
       <button
         onClick={onClose}
@@ -118,6 +123,7 @@ export function ChatImageLightbox({ urls, index, onClose }: Props) {
         <motion.div
           key={current}
           className="flex items-center justify-center max-w-[92vw] max-h-[86vh]"
+          style={{ maxWidth: '92dvw', maxHeight: '86dvh' }}
           drag={total > 1 ? 'x' : false}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.2}
@@ -136,6 +142,7 @@ export function ChatImageLightbox({ urls, index, onClose }: Props) {
               src={currentUrl}
               alt=""
               className="max-w-[92vw] max-h-[86vh] object-contain rounded-lg select-none"
+              style={{ maxWidth: '92dvw', maxHeight: '86dvh' }}
               draggable={false}
             />
           ) : isLoading ? (
