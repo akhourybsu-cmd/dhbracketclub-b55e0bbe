@@ -4,7 +4,7 @@ import { ABILITIES } from '@/lib/nexus/abilities';
 import { ENEMIES } from '@/lib/nexus/enemies';
 import { TOWERS, TOWER_LIST, towerDamageAt, towerRangeAt, towerSellValue, towerUpgradeCost } from '@/lib/nexus/towers';
 import { GRID_COLS, GRID_ROWS, getGridLayout } from '@/lib/nexus/grid';
-import { AbilityKind, BattleEvent, BattleState, TargetMode, TowerKind } from '@/lib/nexus/types';
+import { AbilityKind, BattleEvent, BattleState, MissionDef, TargetMode, TowerKind } from '@/lib/nexus/types';
 import { cn } from '@/lib/utils';
 import { Heart, ChevronUp, X, Crosshair } from 'lucide-react';
 import { TowerIcon } from './TowerIcon';
@@ -28,6 +28,7 @@ const TOWER_SHORT: Record<TowerKind, string> = {
 
 interface Props {
   state: BattleState;
+  mission: MissionDef;
   selectedTowerKind: TowerKind | null;
   selectedTowerId: string | null;
   onSelectKind: (k: TowerKind | null) => void;
@@ -64,6 +65,35 @@ function jaggedPath(sx: number, sy: number, tx: number, ty: number, seed: number
   return pts.join(' ');
 }
 
+/** Compact damage telemetry at the impact point. It is intentionally small so
+ *  busy waves still read cleanly, while heavy Rail/Mortar hits feel weighty. */
+function DamageNumber({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
+  const tx = ((ev.to.x + 0.5) / GRID_COLS) * 100;
+  const ty = ((ev.to.y + 0.5) / GRID_ROWS) * 100;
+  const heavy = ev.damage >= 45;
+  return (
+    <motion.span
+      aria-hidden
+      className="absolute z-20 -translate-x-1/2 pointer-events-none font-black tabular-nums"
+      initial={{ opacity: 0, y: 2, scale: 0.75 }}
+      animate={{ opacity: [0, 1, 1, 0], y: -15, scale: heavy ? 1.08 : 1 }}
+      transition={{ duration: 0.62, ease: 'easeOut', times: [0, 0.12, 0.7, 1] }}
+      style={{
+        left: `${tx}%`,
+        top: `${ty}%`,
+        color: heavy ? 'hsl(var(--nx-amber))' : 'hsl(0 0% 100% / 0.88)',
+        fontSize: heavy ? 10 : 8,
+        lineHeight: 1,
+        textShadow: heavy
+          ? '0 0 6px hsl(var(--nx-amber)), 0 1px 2px hsl(0 0% 0%)'
+          : '0 1px 2px hsl(0 0% 0%), 0 0 4px hsl(var(--nx-cyan) / 0.7)',
+      }}
+    >
+      −{ev.damage}
+    </motion.span>
+  );
+}
+
 /**
  * Per-tower muzzle→impact visual. Each weapon reads as a DIFFERENT kind of
  * attack, not just a recolored beam:
@@ -94,6 +124,7 @@ function ShotEffect({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
           transition={{ duration: 0.35, ease: 'easeOut' }}
           style={{ left: `${tx}%`, top: `${ty}%`, width: 14, height: 14, transform: 'translate(-50%,-50%)',
             background: 'radial-gradient(circle, hsl(190 100% 92%), hsl(200 95% 75% / 0.5) 55%, transparent 75%)' }} />
+        <DamageNumber ev={ev} />
       </>
     );
   }
@@ -115,6 +146,7 @@ function ShotEffect({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
           transition={{ duration: 0.25, ease: 'easeOut' }}
           style={{ left: `${tx}%`, top: `${ty}%`, width: 11, height: 11, transform: 'translate(-50%,-50%)',
             background: 'radial-gradient(circle, hsl(265 90% 85%), transparent 70%)' }} />
+        <DamageNumber ev={ev} />
       </>
     );
   }
@@ -140,6 +172,7 @@ function ShotEffect({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
           style={{ left: `${tx}%`, top: `${ty}%`, width: 18, height: 18, transform: 'translate(-50%,-50%)',
             background: 'radial-gradient(circle, hsl(38 100% 80%), hsl(30 95% 60% / 0.5) 50%, transparent 75%)',
             boxShadow: '0 0 14px hsl(38 95% 60% / 0.8)' }} />
+        <DamageNumber ev={ev} />
       </>
     );
   }
@@ -164,6 +197,7 @@ function ShotEffect({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
               style={{ width: 2.5, height: 2.5, transform: 'translate(-50%,-50%)', background: '#6ee7b7', boxShadow: '0 0 5px #34d399' }} />
           );
         })}
+        <DamageNumber ev={ev} />
       </>
     );
   }
@@ -186,6 +220,7 @@ function ShotEffect({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
           initial={{ opacity: 0.8, scale: 0.3 }} animate={{ opacity: 0, scale: 1.9 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.45, delay: 0.22, ease: 'easeOut' }}
           style={{ left: `${tx}%`, top: `${ty}%`, width: 22, height: 22, transform: 'translate(-50%,-50%)', border: '1.5px solid hsl(350 90% 70% / 0.8)', borderRadius: '50%' }} />
+        <DamageNumber ev={ev} />
       </>
     );
   }
@@ -207,12 +242,13 @@ function ShotEffect({ ev }: { ev: Extract<BattleEvent, { type: 'shot' }> }) {
         transition={{ duration: 0.22, delay: 0.12, ease: 'easeOut' }}
         style={{ left: `${tx}%`, top: `${ty}%`, width: 10, height: 10, transform: 'translate(-50%,-50%)',
           background: 'radial-gradient(circle, #a5f3fc, transparent 70%)' }} />
+      <DamageNumber ev={ev} />
     </>
   );
 }
 
 export function NexusBattleScreen({
-  state, selectedTowerKind, selectedTowerId,
+  state, mission, selectedTowerKind, selectedTowerId,
   onSelectKind, onPlace, onSelectTower, onUpgrade, onSell, onSetPriority, onCastAbility, onStartWave,
 }: Props) {
   // Layout-aware grid helpers — every render reads the path/build tiles for
@@ -232,12 +268,38 @@ export function NexusBattleScreen({
   const selectedTower = selectedTowerId ? state.towers.find(t => t.id === selectedTowerId) : null;
   const hpPctBase = state.baseHp / state.baseHpMax;
   const hpColor = hpPctBase > 0.5 ? 'hsl(150 80% 60%)' : hpPctBase > 0.25 ? 'hsl(38 95% 60%)' : 'hsl(350 85% 62%)';
+  const intelWaveIndex = state.status === 'pre'
+    ? 0
+    : state.status === 'between'
+      ? Math.min(state.waveIndex + 1, mission.waves.length - 1)
+      : Math.max(0, state.waveIndex);
+  const intelWave = mission.waves[intelWaveIndex];
+  const threatKinds = Array.from(new Set(intelWave?.spawns.map(spawn => spawn.enemy) ?? []));
+  const queuedContacts = state.spawnQueues.reduce((total, queue) => total + queue.remaining, 0);
+  const contacts = state.enemies.length + queuedContacts;
+  const furthestContact = state.enemies.reduce(
+    (furthest, enemy) => Math.max(furthest, (enemy.pathIndex + enemy.progress) / Math.max(1, layout.PATH.length - 1)),
+    0,
+  );
+  const hasAirDefense = state.towers.some(tower => TOWERS[tower.kind].canHitAir);
+  const hasStealthDetection = state.towers.some(tower => tower.kind === 'rail');
+  const needsAirDefense = threatKinds.some(kind => ENEMIES[kind].flying) && !hasAirDefense;
+  const needsStealthDetection = threatKinds.some(kind => ENEMIES[kind].stealth) && !hasStealthDetection;
+  const breachRisk = furthestContact >= 0.72;
+  const tacticalAlert = breachRisk
+    ? 'CORE BREACH RISK'
+    : needsStealthDetection
+      ? 'RAIL DETECTION REQUIRED'
+      : needsAirDefense
+        ? 'ANTI-AIR REQUIRED'
+        : null;
+  const bossWave = intelWave?.spawns.some(spawn => spawn.enemy === 'boss') ?? false;
 
   return (
-    <div className="flex flex-col h-full w-full max-w-md mx-auto select-none">
+    <div className="nx-battle-shell relative flex flex-col h-full w-full max-w-md mx-auto select-none">
       {/* ───── Unified command HUD rail ───── */}
       <div
-        className="relative px-3 py-2"
+        className="nx-battle-hud relative px-3 py-2"
         style={{
           background:
             'linear-gradient(180deg, hsl(var(--nx-panel) / 0.96), hsl(var(--nx-panel) / 0.55))',
@@ -311,12 +373,47 @@ export function NexusBattleScreen({
             </div>
           </div>
         </div>
+
+        {/* Live threat telemetry: concise enough for a phone, informative
+            enough that players can make a counter-build before tapping rush. */}
+        <div className="mt-1.5 flex items-center gap-1.5 min-w-0" aria-live="polite">
+          <span
+            className="nx-title shrink-0 text-[7px] px-1.5 py-1 nx-clip-sm"
+            style={{
+              color: contacts > 0 ? 'hsl(var(--nx-rose))' : 'hsl(var(--nx-cyan))',
+              background: contacts > 0 ? 'hsl(var(--nx-rose) / 0.11)' : 'hsl(var(--nx-cyan) / 0.08)',
+              border: `1px solid ${contacts > 0 ? 'hsl(var(--nx-rose) / 0.35)' : 'hsl(var(--nx-cyan) / 0.24)'}`,
+            }}
+          >
+            {state.status === 'pre' || state.status === 'between' ? 'NEXT' : 'CONTACTS'} · {contacts || intelWave?.spawns.reduce((sum, spawn) => sum + spawn.count, 0) || 0}
+          </span>
+          <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+            {threatKinds.slice(0, 5).map(kind => {
+              const def = ENEMIES[kind];
+              const accent = getEnemyAccent(kind);
+              return (
+                <span
+                  key={kind}
+                  title={def.name}
+                  className="inline-flex items-center gap-1 shrink-0 text-[7px] font-black px-1.5 py-1 nx-clip-sm"
+                  style={{ color: accent.edge, background: accent.glow.replace('0.7)', '0.12)').replace('0.65)', '0.12)').replace('0.55)', '0.12)').replace('0.75)', '0.12)').replace('0.8)', '0.12)').replace('0.85)', '0.12)'), border: `1px solid ${accent.glow}` }}
+                >
+                  <EnemyMarker kind={kind} size={10} />
+                  <span className="hidden min-[390px]:inline nx-title">{def.name}</span>
+                </span>
+              );
+            })}
+          </div>
+          <span className="ml-auto nx-title text-[7px] shrink-0" style={{ color: bossWave ? 'hsl(var(--nx-rose))' : 'hsl(0 0% 100% / 0.48)' }}>
+            {bossWave ? '☠ BOSS WAVE' : state.status === 'in_wave' ? `${Math.round(furthestContact * 100)}% ADVANCE` : `W${String(intelWaveIndex + 1).padStart(2, '0')} INTEL`}
+          </span>
+        </div>
       </div>
 
       {/* ───── Battle grid ───── */}
-      <div className="relative flex-1 flex items-center justify-center p-2 overflow-hidden">
+      <div className="nx-battle-field relative flex-1 flex items-center justify-center p-2 overflow-hidden">
         <div
-          className="relative grid w-full max-w-[420px] overflow-hidden nx-clip"
+          className="nx-battle-grid relative grid overflow-hidden nx-clip"
           style={{
             gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
             gridTemplateRows: `repeat(${GRID_ROWS}, 1fr)`,
@@ -338,6 +435,51 @@ export function NexusBattleScreen({
               backgroundSize: `${100 / GRID_COLS}% ${100 / GRID_ROWS}%`,
             }}
           />
+
+          <AnimatePresence>
+            {tacticalAlert && (
+              <motion.div
+                key={tacticalAlert}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="nx-threat-alert absolute z-30 top-2 left-1/2 -translate-x-1/2 pointer-events-none nx-clip-sm px-2 py-1 flex items-center gap-1.5 whitespace-nowrap"
+                style={{
+                  background: breachRisk ? 'hsl(350 65% 12% / 0.94)' : 'hsl(38 55% 10% / 0.94)',
+                  border: `1px solid ${breachRisk ? 'hsl(var(--nx-rose) / 0.72)' : 'hsl(var(--nx-amber) / 0.62)'}`,
+                  color: breachRisk ? 'hsl(350 95% 78%)' : 'hsl(38 100% 75%)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'currentColor', boxShadow: '0 0 6px currentColor' }} />
+                <span className="nx-title text-[8px] tracking-[0.18em]">{tacticalAlert}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Wave arrival card gives every engagement a readable beat. */}
+          <AnimatePresence>
+            {state.status === 'in_wave' && state.waveTimeMs <= 1100 && (
+              <motion.div
+                key={`wave-callout-${state.waveIndex}`}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: [0, 1, 1, 0], scale: [0.92, 1, 1, 1.03] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.05, times: [0, 0.16, 0.76, 1], ease: 'easeOut' }}
+                className="absolute z-30 top-[42%] left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center whitespace-nowrap"
+              >
+                <div
+                  className="nx-title text-[9px] tracking-[0.3em]"
+                  style={{ color: bossWave ? 'hsl(var(--nx-rose))' : 'hsl(var(--nx-cyan))', textShadow: '0 0 10px currentColor' }}
+                >
+                  {bossWave ? '☠ PRIORITY THREAT' : 'HOSTILES INBOUND'}
+                </div>
+                <div className="text-2xl font-black tracking-tight mt-0.5" style={{ color: 'hsl(0 0% 100%)', textShadow: '0 2px 12px hsl(218 80% 2%)' }}>
+                  WAVE · {String(state.waveIndex + 1).padStart(2, '0')}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Energy corridor (path) — SVG glow + scan dashes + arrows */}
           <svg
@@ -499,7 +641,10 @@ export function NexusBattleScreen({
 
                 {/* Placed tower */}
                 {placed && (
-                  <div
+                  <motion.div
+                    initial={{ scale: 0.72, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 24 }}
                     className={cn(
                       'absolute inset-[3px] rounded-md flex items-center justify-center',
                       selectedTowerId === placed.id && 'ring-2',
@@ -524,7 +669,7 @@ export function NexusBattleScreen({
                     >
                       L{placed.level}
                     </span>
-                  </div>
+                  </motion.div>
                 )}
               </button>
             );
@@ -587,6 +732,31 @@ export function NexusBattleScreen({
                         boxShadow: '0 0 6px hsl(200 95% 70% / 0.7), inset 0 0 4px hsl(200 95% 80% / 0.4)',
                       }}
                     />
+                  )}
+
+                  {/* Combat states stay legible without opening a details panel. */}
+                  {def.heal && (
+                    <span
+                      aria-hidden
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full nx-healer-aura"
+                      style={{ width: size + 14, height: size + 14, border: '1px solid hsl(150 90% 70% / 0.55)', boxShadow: '0 0 10px hsl(150 80% 55% / 0.38)' }}
+                    />
+                  )}
+                  {e.slowMs > 0 && (
+                    <span
+                      aria-hidden
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full nx-status-orbit"
+                      style={{ width: size + 5, height: size + 5, border: '1px dotted hsl(200 100% 82% / 0.9)' }}
+                    />
+                  )}
+                  {e.stunnedMs > 0 && (
+                    <span
+                      aria-hidden
+                      className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-black"
+                      style={{ color: 'hsl(48 100% 70%)', textShadow: '0 0 5px hsl(48 100% 55%)' }}
+                    >
+                      ⚡
+                    </span>
                   )}
 
                   {/* Airborne shadow — reads flyers as hovering above the lane */}
@@ -737,27 +907,11 @@ export function NexusBattleScreen({
           </AnimatePresence>
         </div>
 
-        {/* Start wave / status overlay */}
-        {(state.status === 'pre' || state.status === 'between') && (
-          <button
-            onClick={onStartWave}
-            className="absolute bottom-3 left-3 right-3 nx-clip-sm py-3 font-black text-sm active:scale-95 transition nx-title"
-            style={{
-              background: 'linear-gradient(180deg, hsl(150 80% 55%), hsl(150 80% 42%))',
-              color: 'hsl(150 30% 8%)',
-              boxShadow: '0 0 18px hsl(150 80% 55% / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.35)',
-            }}
-          >
-            {state.status === 'pre'
-              ? `▶  DEPLOY WAVE 01 / ${String(state.totalWaves).padStart(2, '0')}`
-              : `▶  WAVE ${String(state.waveIndex + 2).padStart(2, '0')} / ${String(state.totalWaves).padStart(2, '0')}  ·  ${Math.ceil(state.betweenWaveMs / 1000)}s  ·  TAP TO RUSH`}
-          </button>
-        )}
       </div>
 
       {/* ───── Selected tower panel ───── */}
       {selectedTower && (
-        <div className="px-3 pb-2 space-y-1.5">
+        <div className="nx-selected-panel px-3 pb-2 space-y-1.5">
           <div
             className="nx-clip-sm p-2 flex items-center gap-2"
             style={{
@@ -848,15 +1002,41 @@ export function NexusBattleScreen({
 
       {/* ───── Command deck: tower cards + ability bar ───── */}
       <div
-        className="relative px-2 pb-2 pt-1.5"
+        className="nx-command-deck relative px-2 pb-2 pt-1.5"
         style={{
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
           background: 'linear-gradient(180deg, hsl(var(--nx-panel) / 0.55), hsl(var(--nx-panel) / 0.97))',
           borderTop: '1px solid hsl(var(--nx-cyan) / 0.3)',
           boxShadow: '0 -1px 0 hsl(var(--nx-cyan) / 0.18), 0 -8px 16px -10px hsl(var(--nx-cyan) / 0.3)',
         }}
       >
+        {/* Launch control lives in the command deck instead of covering the
+            final grid row and Nexus core. */}
+        {(state.status === 'pre' || state.status === 'between') && (
+          <button
+            onClick={onStartWave}
+            className="w-full mb-2 nx-clip-sm py-2.5 font-black text-xs active:scale-[0.98] transition nx-title"
+            style={{
+              background: 'linear-gradient(180deg, hsl(150 80% 55%), hsl(150 80% 42%))',
+              color: 'hsl(150 30% 8%)',
+              boxShadow: '0 0 18px hsl(150 80% 55% / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.35)',
+            }}
+          >
+            <span className="hidden min-[390px]:inline">
+              {state.status === 'pre'
+                ? `▶  DEPLOY WAVE 01 / ${String(state.totalWaves).padStart(2, '0')}`
+                : `▶  WAVE ${String(state.waveIndex + 2).padStart(2, '0')} / ${String(state.totalWaves).padStart(2, '0')}  ·  ${Math.ceil(state.betweenWaveMs / 1000)}s  ·  TAP TO RUSH`}
+            </span>
+            <span className="min-[390px]:hidden">
+              {state.status === 'pre'
+                ? '▶  DEPLOY WAVE 01'
+                : `▶  RUSH WAVE ${String(state.waveIndex + 2).padStart(2, '0')} · ${Math.ceil(state.betweenWaveMs / 1000)}s`}
+            </span>
+          </button>
+        )}
+
         {/* Tower cards — distinct framed slots with letter badge + icon */}
-        <div className="grid grid-cols-4 gap-1.5 mb-2">
+        <div className="nx-command-strip nx-tower-strip flex gap-1.5 mb-2 overflow-x-auto pb-0.5">
           {TOWER_LIST.map((def) => {
             const kind = def.kind;
             const selected = selectedTowerKind === kind;
@@ -868,8 +1048,10 @@ export function NexusBattleScreen({
               <button
                 key={kind}
                 onClick={() => { onSelectKind(selected ? null : kind); onSelectTower(null); }}
+                aria-label={`${def.name}, ${def.cost} energy${affordable ? '' : ', unavailable'}`}
+                aria-pressed={selected}
                 className={cn(
-                  'relative min-h-[78px] nx-clip-sm flex flex-col items-stretch justify-between p-1.5 transition active:scale-[0.97]',
+                  'nx-command-card relative min-w-[72px] w-[72px] min-h-[66px] nx-clip-sm flex flex-col items-stretch justify-between p-1.5 transition active:scale-[0.97]',
                   !affordable && 'opacity-55',
                 )}
                 style={{
@@ -937,7 +1119,7 @@ export function NexusBattleScreen({
         </div>
 
         {/* Ability bar — compact dials, scales to any number of abilities */}
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="nx-command-strip nx-ability-strip flex gap-1.5 overflow-x-auto">
           {state.abilities.map((a) => {
             const def = ABILITIES[a.kind];
             const ready = a.cooldownMs <= 0;
@@ -949,7 +1131,7 @@ export function NexusBattleScreen({
                 key={a.kind}
                 onClick={() => ready && onCastAbility(a.kind)}
                 disabled={!ready}
-                className="relative nx-clip-sm flex items-center gap-2 px-2 py-1.5 active:scale-[0.97] transition"
+                className="nx-command-card relative min-w-[136px] flex-1 nx-clip-sm flex items-center gap-2 px-2 py-1.5 active:scale-[0.97] transition"
                 style={{
                   background: 'linear-gradient(180deg, hsl(218 50% 9%), hsl(218 55% 5%))',
                   border: `1px solid ${ready ? 'hsl(var(--nx-amber) / 0.55)' : 'hsl(var(--nx-cyan) / 0.28)'}`,

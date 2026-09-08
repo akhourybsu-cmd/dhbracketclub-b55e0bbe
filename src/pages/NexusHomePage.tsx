@@ -21,7 +21,7 @@ export default function NexusHomePage() {
   const overall = Math.round(overallPct * 100);
 
   return (
-    <div className="max-w-md mx-auto pb-6">
+    <div className="max-w-[600px] mx-auto pb-6">
       {/* ───── Operative rank + overall completion ───── */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}

@@ -293,7 +293,10 @@ export const MISSIONS: MissionDef[] = [
     id: 11,
     name: 'Onslaught',
     sector: 'Inner Belt',
-    startEnergy: 300,
+    // The short Funnel path plus Supply Drought's +15% tower costs made the
+    // Wave-2 stealth + air check unwinnable even for the optimizer profile.
+    // This funds one deliberate counter-build without softening later waves.
+    startEnergy: 340,
     baseHp: 30,
     rewardCores: 150,
     modifierIds: ['supply_drought', 'mixed_assault'],

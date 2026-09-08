@@ -25,7 +25,7 @@ export default function NexusMissionsPage() {
   const sectorPct = campaign.length > 0 ? Math.round((cleared / campaign.length) * 100) : 0;
 
   return (
-    <div className="max-w-md mx-auto pb-6 px-1">
+    <div className="max-w-[600px] mx-auto pb-6 px-1">
       {/* Sector header — tactical deployment screen feel */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}

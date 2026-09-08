@@ -13,12 +13,12 @@
 
 import { initBattle, tick, startWave, placeTower, upgradeTower, castAbility } from './engine';
 import { ENDLESS_MISSION, ENDLESS_MISSION_ID } from './endless';
-import { BUILD_TILES, PATH, distanceCells } from './grid';
+import { distanceCells, getGridLayout, type PathVariantId } from './grid';
 import { TOWERS, TOWER_KINDS } from './towers';
 import { ENEMIES } from './enemies';
 import { ABILITY_KINDS } from './abilities';
 import {
-  AbilityKind, BattleState, EnemyKind, TowerKind,
+  AbilityKind, BattleState, EnemyKind, MissionDef, TowerKind,
 } from './types';
 
 // ─── Strategy profiles ──────────────────────────────────────────────────────
@@ -252,17 +252,28 @@ type BotAction =
 interface PolicyCtx {
   state: BattleState;
   rng: () => number;
+  mission: MissionDef;
+}
+
+function incomingThreats({ state, mission }: PolicyCtx): Set<EnemyKind> {
+  const waveIndex = state.status === 'pre'
+    ? 0
+    : state.status === 'between'
+      ? Math.min(state.waveIndex + 1, mission.waves.length - 1)
+      : Math.max(0, state.waveIndex);
+  return new Set(mission.waves[waveIndex]?.spawns.map(spawn => spawn.enemy) ?? []);
 }
 
 // Score build tiles by proximity to path — towers near the most path cells
 // (within plausible range) get the highest score. Returns sorted desc.
 const tileScoreCache = new Map<string, number>();
-function scoreTile(col: number, row: number, range: number): number {
-  const key = `${col},${row},${range.toFixed(1)}`;
+function scoreTile(col: number, row: number, range: number, variantId?: PathVariantId | string): number {
+  const layout = getGridLayout(variantId);
+  const key = `${layout.variantId}:${col},${row},${range.toFixed(1)}`;
   const cached = tileScoreCache.get(key);
   if (cached != null) return cached;
   let s = 0;
-  for (const p of PATH) {
+  for (const p of layout.PATH) {
     const d = distanceCells(col + 0.5, row + 0.5, p.col + 0.5, p.row + 0.5);
     if (d <= range) s += 1 + Math.max(0, range - d) * 0.2;
   }
@@ -271,12 +282,13 @@ function scoreTile(col: number, row: number, range: number): number {
 }
 
 function bestEmptyTile(state: BattleState, range: number, rng: () => number, jitter = 0): { col: number; row: number } | null {
+  const layout = getGridLayout(state.pathVariantId);
   const occupied = new Set(state.towers.map(t => `${t.cell.col},${t.cell.row}`));
-  const candidates = BUILD_TILES.filter(t => !occupied.has(`${t.col},${t.row}`));
+  const candidates = layout.BUILD_TILES.filter(t => !occupied.has(`${t.col},${t.row}`));
   if (!candidates.length) return null;
   const scored = candidates.map(t => ({
     t,
-    s: scoreTile(t.col, t.row, range) + (jitter ? rng() * jitter : 0),
+    s: scoreTile(t.col, t.row, range, layout.variantId) + (jitter ? rng() * jitter : 0),
   })).sort((a, b) => b.s - a.s);
   return { col: scored[0].t.col, row: scored[0].t.row };
 }
@@ -314,13 +326,20 @@ function pickBalanced(ctx: PolicyCtx): BotAction[] {
   const { state, rng } = ctx;
   const acts: BotAction[] = [];
   const builds = state.towerBuilds;
+  const threats = incomingThreats(ctx);
   // Composition target: 3 pulse, 2 cryo, 2 arc, 1 rail before doubling up.
   const target: Array<[TowerKind, number]> = [
     ['pulse', 3], ['cryo', 2], ['arc', 2], ['rail', 1],
   ];
   let nextPick: TowerKind | null = null;
-  for (const [k, n] of target) {
-    if (builds[k] < n) { nextPick = k; break; }
+  // Competent players respond to explicit mission intel before following their
+  // generic build order. This keeps stealth/air missions representative.
+  if (threats.has('stealth') && builds.rail < 1) nextPick = 'rail';
+  else if (threats.has('flyer') && builds.flak + builds.rail < 1) nextPick = 'flak';
+  else {
+    for (const [k, n] of target) {
+      if (builds[k] < n) { nextPick = k; break; }
+    }
   }
   if (!nextPick) {
     // doubled-up phase: prefer rail then cryo
@@ -350,8 +369,11 @@ function pickOptimizer(ctx: PolicyCtx): BotAction[] {
   const acts: BotAction[] = [];
   // Open with cryo+pulse stack near choke, then add rail by wave 4.
   const builds = state.towerBuilds;
+  const threats = incomingThreats(ctx);
   let nextPick: TowerKind | null = null;
-  if (builds.cryo < 1) nextPick = 'cryo';
+  if (threats.has('stealth') && builds.rail < 1) nextPick = 'rail';
+  else if (threats.has('flyer') && builds.flak + builds.rail < 1) nextPick = 'flak';
+  else if (builds.cryo < 1) nextPick = 'cryo';
   else if (builds.pulse < 2) nextPick = 'pulse';
   else if (builds.rail < 1 && state.waveIndex >= 2) nextPick = 'rail';
   else if (builds.arc < 2) nextPick = 'arc';
@@ -425,7 +447,7 @@ function applyMisclick(
 ): Extract<BotAction, { kind: 'place' }> {
   if (rate <= 0 || rng() >= rate) return action;
   const occupied = new Set(state.towers.map(t => `${t.cell.col},${t.cell.row}`));
-  const neighbors = BUILD_TILES.filter(t => {
+  const neighbors = getGridLayout(state.pathVariantId).BUILD_TILES.filter(t => {
     const dc = Math.abs(t.col - action.col);
     const dr = Math.abs(t.row - action.row);
     return (dc + dr) > 0 && dc <= 1 && dr <= 1 && !occupied.has(`${t.col},${t.row}`);
@@ -435,7 +457,15 @@ function applyMisclick(
   return { ...action, col: pick.col, row: pick.row };
 }
 
-export function runOne(strategy: StrategyId, seed: number): SimRunResult {
+/** Run any mission through the same deterministic player-model harness used
+ *  for Endless. Keeping campaign and endgame on one engine lets balance tests
+ *  catch an impossible mission before it reaches players. */
+export function runMission(
+  strategy: StrategyId,
+  seed: number,
+  mission: MissionDef,
+  options: { pathVariantId?: PathVariantId } = {},
+): SimRunResult {
   const rng = mulberry32(seed);
 
   // Resolve to a base policy + optional human profile.
@@ -449,10 +479,10 @@ export function runOne(strategy: StrategyId, seed: number): SimRunResult {
   // Default loadout: both abilities, no boost. This mirrors the actual default
   // selection for endless runs.
   const abilities: AbilityKind[] = ['orbital', 'emp'];
-  let state = initBattle(ENDLESS_MISSION_ID, abilities, { mission: ENDLESS_MISSION });
+  let state = initBattle(mission.id, abilities, { mission, pathVariantId: options.pathVariantId });
 
   // Auto-start the first wave (humans tap "begin"; bots start immediately).
-  state = startWave(state, ENDLESS_MISSION);
+  state = startWave(state, mission);
   let lastDecisionAt = 0;
   let nextDecisionDelay = 0; // extra "thinking time" before next decision tick
   let abandoned = false;
@@ -490,7 +520,7 @@ export function runOne(strategy: StrategyId, seed: number): SimRunResult {
       const shouldSkip = profile ? rng() < profile.skipTickRate : false;
 
       if (!shouldSkip) {
-        let actions = POLICIES[basePolicy]({ state, rng });
+        let actions = POLICIES[basePolicy]({ state, rng, mission });
 
         if (profile) {
           // Hoarding bias — drop tower placements during "calm" periods
@@ -529,7 +559,7 @@ export function runOne(strategy: StrategyId, seed: number): SimRunResult {
       }
     }
 
-    state = tick(state, ENDLESS_MISSION);
+    state = tick(state, mission);
   }
 
   // Compute per-tower damage attribution
@@ -571,6 +601,11 @@ export function runOne(strategy: StrategyId, seed: number): SimRunResult {
   };
 }
 
+/** Backwards-compatible Endless entry point used by the simulator UI. */
+export function runOne(strategy: StrategyId, seed: number): SimRunResult {
+  return runMission(strategy, seed, ENDLESS_MISSION);
+}
+
 // ─── Mirror of submit_operation_contribution formula ────────────────────────
 const KILL_CAP = 600;
 const SCORE_SOFT_CAP = 60_000;
@@ -584,7 +619,7 @@ export function computeContributionPoints(args: {
   let s = args.score <= SCORE_SOFT_CAP
     ? args.score / 100
     : (SCORE_SOFT_CAP / 100) + (args.score - SCORE_SOFT_CAP) / 400;
-  let w = args.waves * 20;
+  const w = args.waves * 20;
   let b = args.bossDamage <= BOSS_SOFT_CAP
     ? args.bossDamage / 50
     : (BOSS_SOFT_CAP / 50) + (args.bossDamage - BOSS_SOFT_CAP) / 200;

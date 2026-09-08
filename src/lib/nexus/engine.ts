@@ -15,7 +15,9 @@ import {
 
 const TICK_MS = 100; // 10 ticks/sec
 const BETWEEN_WAVE_MS = 5000;
-const EVENT_TTL_MS = 350;
+// Keep events alive long enough for the longest impact animation (mortar and
+// abilities run for ~600ms). The old 350ms window clipped premium FX midway.
+const EVENT_TTL_MS = 700;
 
 let idCounter = 0;
 const nextId = (p: string) => `${p}_${++idCounter}_${Date.now().toString(36).slice(-3)}`;
@@ -284,7 +286,14 @@ export function tick(state: BattleState, mission: MissionDef): BattleState {
     const primary = pickPrimary(visible, t, pathToXY);
 
     const primaryPos = pathToXY(primary.pathIndex, primary.progress);
-    s.events.push({ type: 'shot', from: { col: t.cell.col, row: t.cell.row }, to: primaryPos, tower: t.kind, t: s.elapsedMs });
+    s.events.push({
+      type: 'shot',
+      from: { col: t.cell.col, row: t.cell.row },
+      to: primaryPos,
+      tower: t.kind,
+      damage,
+      t: s.elapsedMs,
+    });
 
     if (t.kind === 'cryo') {
       // AoE slow + small damage around primary

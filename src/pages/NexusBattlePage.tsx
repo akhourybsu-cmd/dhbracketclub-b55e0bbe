@@ -59,7 +59,7 @@ export default function NexusBattlePage() {
       setState(saved.state);
       setPaused(true); // start paused so the player isn't blindsided
       // Surface a small confirmation that progress was restored.
-      try { toast.message('Run restored — tap ▶ to resume'); } catch {}
+      try { toast.message('Run restored — tap ▶ to resume'); } catch { /* optional UI feedback */ }
       return;
     }
     const boost = pendingBoost
@@ -281,6 +281,9 @@ export default function NexusBattlePage() {
         let opSummary: OpSummary | null = null;
         if (endless && user) {
           try {
+            // nexus_operations ships through a newer migration than the
+            // generated client schema currently bundled with this app.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const { data: op } = await (supabase as any)
               .from('nexus_operations')
               .select('id')
@@ -330,11 +333,11 @@ export default function NexusBattlePage() {
                 toast.message(res.error ?? 'Run did not count toward Operation');
               }
             }
-          } catch (e: any) {
+          } catch (e: unknown) {
             opSummary = {
               operationId: null, pointsAwarded: 0, phase: 0,
               status: 'error', duplicate: false,
-              error: e?.message ?? 'Network error',
+              error: e instanceof Error ? e.message : 'Network error',
             };
           }
         }
@@ -368,7 +371,7 @@ export default function NexusBattlePage() {
             boostCode: state.boostCode ?? null,
             endlessRewards,
           }));
-        } catch {}
+        } catch { /* session storage is optional in private browsing */ }
       };
 
       finalize();
@@ -430,10 +433,10 @@ export default function NexusBattlePage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-background flex flex-col z-30">
+    <div className="fixed inset-x-0 top-0 h-[100dvh] overflow-hidden bg-background flex flex-col z-30 overscroll-none">
       {/* Mission header — bracketed command frame */}
       <div
-        className="relative px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2"
+        className="nx-battle-page-header relative px-3 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 w-full max-w-[960px] mx-auto"
         style={{
           background:
             'linear-gradient(180deg, hsl(218 60% 6% / 0.92), hsl(218 50% 4% / 0.4))',
@@ -553,7 +556,7 @@ export default function NexusBattlePage() {
           if (mods.length === 0) return null;
           return (
             <div
-              className="mt-1.5 -mx-1 px-1 flex items-center gap-1 overflow-x-auto"
+              className="nx-mission-modifiers mt-1.5 -mx-1 px-1 flex items-center gap-1 overflow-x-auto"
               style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
               aria-label="Mission modifiers"
             >
@@ -590,6 +593,7 @@ export default function NexusBattlePage() {
       >
         <NexusBattleScreen
           state={state}
+          mission={mission}
           selectedTowerKind={selectedKind}
           selectedTowerId={selectedTowerId}
           onSelectKind={setSelectedKind}

@@ -50,7 +50,7 @@ export default function NexusLoadoutPage() {
     : baseBriefing;
 
   return (
-    <div className="max-w-md mx-auto pb-6 px-1">
+    <div className="max-w-[600px] mx-auto pb-6 px-1">
       {briefing && (
         <div className="mt-1 mb-3">
           <MissionBriefingCard

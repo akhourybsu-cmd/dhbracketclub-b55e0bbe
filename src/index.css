@@ -2470,6 +2470,130 @@
   animation: nx-reactor 1.8s ease-in-out infinite;
 }
 
+/* ─── Responsive battle stage ──────────────────────────────────────
+   The battlefield is height-constrained first so short phones never crop the
+   bottom rows. Controls stay in two compact horizontal rails on touch screens;
+   wide displays promote the field and command deck into a proper two-column
+   tactical console instead of stretching the phone layout. */
+.nx-mode .nx-battle-shell {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nx-mode .nx-battle-field {
+  min-height: 0;
+}
+
+.nx-mode .nx-battle-grid {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 540px;
+  aspect-ratio: 7 / 9;
+  isolation: isolate;
+}
+
+/* A restrained scanner pass gives the board depth without masking targets. */
+@keyframes nx-battle-sweep {
+  0% { transform: translateY(-115%); opacity: 0; }
+  12%, 72% { opacity: 0.42; }
+  100% { transform: translateY(115%); opacity: 0; }
+}
+.nx-mode .nx-battle-grid::after {
+  content: '';
+  position: absolute;
+  z-index: 18;
+  inset: -30% 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 43%, hsl(var(--nx-cyan) / 0.09) 49%, hsl(var(--nx-cyan) / 0.18) 50%, hsl(var(--nx-cyan) / 0.07) 52%, transparent 58%);
+  animation: nx-battle-sweep 6.5s linear infinite;
+  mix-blend-mode: screen;
+}
+
+.nx-mode .nx-command-strip {
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.nx-mode .nx-command-strip::-webkit-scrollbar { display: none; }
+.nx-mode .nx-command-card { scroll-snap-align: start; }
+
+@keyframes nx-threat-alert {
+  0%, 100% { opacity: 0.78; box-shadow: 0 0 8px hsl(var(--nx-rose) / 0.25); }
+  50% { opacity: 1; box-shadow: 0 0 16px hsl(var(--nx-rose) / 0.55); }
+}
+.nx-mode .nx-threat-alert { animation: nx-threat-alert 1.2s ease-in-out infinite; }
+
+@keyframes nx-status-orbit {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.nx-mode .nx-status-orbit { animation: nx-status-orbit 2.2s linear infinite; }
+
+@keyframes nx-healer-aura {
+  0%, 100% { opacity: 0.42; transform: translate(-50%, -50%) scale(0.92); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.08); }
+}
+.nx-mode .nx-healer-aura { animation: nx-healer-aura 1.4s ease-in-out infinite; }
+
+@media (max-height: 700px) {
+  .nx-mode .nx-battle-page-header { padding-bottom: 0.3rem !important; }
+  .nx-mode .nx-mission-modifiers { display: none !important; }
+  .nx-mode .nx-battle-hud { padding-top: 0.35rem !important; padding-bottom: 0.35rem !important; }
+  .nx-mode .nx-command-deck { padding-top: 0.3rem !important; }
+  .nx-mode .nx-command-card { min-height: 56px !important; }
+}
+
+@media (min-width: 800px) and (min-height: 640px) {
+  .nx-mode .nx-battle-shell {
+    display: grid;
+    grid-template-columns: minmax(420px, 560px) minmax(320px, 370px);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 14px;
+    max-width: 960px;
+    padding: 12px 14px 14px;
+  }
+  .nx-mode .nx-battle-hud {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    border: 1px solid hsl(var(--nx-panel-edge) / 0.55);
+  }
+  .nx-mode .nx-battle-field {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    padding: 12px 0 0;
+  }
+  .nx-mode .nx-battle-grid { max-height: 100%; }
+  .nx-mode .nx-selected-panel {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 12px 0 0;
+  }
+  .nx-mode .nx-command-deck {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: end;
+    border: 1px solid hsl(var(--nx-panel-edge) / 0.45);
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  }
+  .nx-mode .nx-tower-strip {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    overflow: visible !important;
+  }
+  .nx-mode .nx-ability-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible !important;
+  }
+  .nx-mode .nx-tower-strip .nx-command-card,
+  .nx-mode .nx-ability-strip .nx-command-card {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+}
+
 /* Sigil rarity shimmers — used for epic/legendary sigil chips and avatar rings. */
 @keyframes nx-sigil-epic {
   0%, 100% { box-shadow: 0 0 0 2px hsl(280 85% 65%), 0 0 6px hsl(280 85% 65% / 0.45); }
@@ -2484,7 +2608,11 @@
   .nx-mode .nx-pulse-dot,
   .nx-mode .nx-scan-bar::after,
   .nx-mode .nx-hardpoint,
-  .nx-mode .nx-reactor-glow { animation: none !important; }
+  .nx-mode .nx-reactor-glow,
+  .nx-mode .nx-battle-grid::after,
+  .nx-mode .nx-threat-alert,
+  .nx-mode .nx-status-orbit,
+  .nx-mode .nx-healer-aura { animation: none !important; }
   [style*="nx-sigil-epic"], [style*="nx-sigil-legendary"] { animation: none !important; }
 }
 
@@ -3890,45 +4018,55 @@
    each module's identity. Scoped strictly so dark mode is untouched.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── NEXUS DEFENSE — Daylight Command (steel + ice cyan) ───────── */
+/* ─── NEXUS DEFENSE — immersive command console ──────────────────
+   Nexus is a self-contained game surface, not ordinary app chrome. Keep its
+   battlefield and hard-coded tactical panels dark in either app theme; the
+   previous daylight override mixed dark panel gradients with dark foreground
+   tokens, making mission briefings and loadouts unreadable in light mode. */
 .light .nx-mode {
-  --background: 205 35% 96%;
-  --card: 205 14% 99%;           /* soft off-white with cool cyan hint, less brilliant */
-  --popover: 205 14% 99%;
-  --muted: 205 25% 92%;
-  --border: 200 35% 78%;
-  --input: 205 14% 99%;          /* match card */
-  --secondary: 205 25% 90%;
-  --foreground: 215 40% 14%;
-  --card-foreground: 215 40% 14%;
-  --popover-foreground: 215 40% 14%;
-  --secondary-foreground: 215 40% 14%;
-  --muted-foreground: 215 20% 38%;
-  color: hsl(215 40% 14%);
+  --background: 218 45% 5%;
+  --card: 218 35% 9%;
+  --popover: 218 38% 10%;
+  --muted: 218 30% 14%;
+  --border: 200 40% 20%;
+  --input: 200 40% 20%;
+  --secondary: 218 30% 12%;
+  --foreground: 0 0% 100%;
+  --card-foreground: 0 0% 100%;
+  --popover-foreground: 0 0% 100%;
+  --secondary-foreground: 0 0% 100%;
+  --muted-foreground: 200 18% 78%;
+  color: hsl(0 0% 100%);
 }
-.light .nx-mode .text-muted-foreground { color: hsl(215 20% 38%); }
+.light .nx-mode .text-muted-foreground { color: hsl(200 18% 78%); }
 .light .nx-mode::before {
   background:
-    radial-gradient(ellipse 90% 55% at 50% 0%, hsl(188 92% 56% / 0.12), transparent 60%),
-    radial-gradient(ellipse 70% 40% at 100% 100%, hsl(230 75% 62% / 0.08), transparent 65%),
-    linear-gradient(180deg, hsl(205 35% 97%), hsl(205 30% 93%));
+    radial-gradient(ellipse 70% 45% at 80% 0%, hsl(var(--nx-cyan) / 0.12), transparent 60%),
+    radial-gradient(ellipse 60% 35% at 10% 5%, hsl(var(--nx-indigo) / 0.14), transparent 65%),
+    radial-gradient(ellipse 100% 55% at 50% 115%, hsl(var(--nx-teal) / 0.08), transparent 70%),
+    linear-gradient(180deg, hsl(var(--nx-deep)), hsl(220 50% 3%));
 }
 .light .nx-mode::after {
-  background-image:
-    repeating-linear-gradient(90deg, transparent 0, transparent 56px, hsl(215 40% 20% / 0.05) 56px, hsl(215 40% 20% / 0.05) 57px);
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 2px,
+    hsl(var(--nx-cyan) / 0.025) 2px,
+    hsl(var(--nx-cyan) / 0.025) 3px
+  );
 }
 .light .nx-mode .nx-panel {
-  background: linear-gradient(180deg, hsl(205 14% 99% / 0.97), hsl(205 30% 96% / 0.97)) !important;
-  border-color: hsl(200 50% 60% / 0.45) !important;
-  color: hsl(215 40% 14%) !important;
-  box-shadow: 0 1px 0 hsl(205 14% 99%) inset, 0 6px 20px hsl(215 40% 20% / 0.08) !important;
+  background: linear-gradient(180deg, hsl(var(--nx-panel) / 0.92), hsl(var(--nx-panel) / 0.78)) !important;
+  border-color: hsl(var(--nx-panel-edge) / 0.55) !important;
+  color: hsl(0 0% 100%) !important;
+  box-shadow: inset 0 1px 0 hsl(var(--nx-cyan) / 0.08), 0 8px 24px -16px hsl(var(--nx-cyan) / 0.4) !important;
 }
 .light .nx-mode .text-white,
-.light .nx-mode [class*="text-white/"] { color: hsl(215 40% 14%) !important; }
+.light .nx-mode [class*="text-white/"] { color: hsl(0 0% 100%) !important; }
 .light .nx-mode .bg-black,
-.light .nx-mode [class*="bg-black/"] { background-color: hsl(215 40% 96% / 0.85) !important; }
+.light .nx-mode [class*="bg-black/"] { background-color: hsl(0 0% 0% / 0.85) !important; }
 .light .nx-mode .bg-white\/10,
-.light .nx-mode .bg-white\/20 { background-color: hsl(215 40% 14% / 0.06) !important; }
+.light .nx-mode .bg-white\/20 { background-color: hsl(0 0% 100% / 0.1) !important; }
 
 /* ─── PICK'EM — Daylight Stadium (chalk + turf) ─────────────────── */
 .light .pk-mode {

@@ -194,7 +194,7 @@ export interface BattleState {
 }
 
 export type BattleEvent =
-  | { type: 'shot'; from: { col: number; row: number }; to: { x: number; y: number }; tower: TowerKind; t: number }
+  | { type: 'shot'; from: { col: number; row: number }; to: { x: number; y: number }; tower: TowerKind; damage: number; t: number }
   | { type: 'leak'; t: number }
   | { type: 'ability'; ability: AbilityKind; t: number }
   | { type: 'kill'; at: { x: number; y: number }; t: number };
