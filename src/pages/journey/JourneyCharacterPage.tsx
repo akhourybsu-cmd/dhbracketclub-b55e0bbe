@@ -6,6 +6,7 @@ import { useJourneyLibrary } from '@/hooks/useJourneyLibrary';
 import { useJourneyRun } from '@/hooks/useJourneyRun';
 import { useJourneyWorld } from '@/hooks/useJourneyWorld';
 import { EMPTY_RUN_STATE } from '@/lib/journey/types';
+import { AgencyCompass } from '@/components/journey/AgencyCompass';
 
 /** Hero sheet for the active run: stats, health, inventory, bonds. */
 export default function JourneyCharacterPage() {
@@ -59,6 +60,8 @@ export default function JourneyCharacterPage() {
           <span>Level {s.level}</span><span>{s.xp} XP</span><span>{s.gold} gold</span>
         </div>
       </section>
+
+      <AgencyCompass state={s} />
 
       <Panel title="Inventory" icon={Package} empty="You carry nothing of note." show={inventory.length > 0}>
         <ul className="space-y-2.5">

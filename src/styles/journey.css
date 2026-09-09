@@ -207,6 +207,120 @@
 .jy-choice-major { border-left-color: hsl(var(--jy-blood)); }
 .jy-choice-skill { border-left-color: hsl(var(--jy-arcane)); }
 .jy-choice-secret { border-left-color: hsl(var(--jy-forest)); }
+.jy-choice-intent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.35rem;
+  color: hsl(var(--jy-gold));
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.jy-choice-intent svg { width: 0.75rem; height: 0.75rem; }
+.jy-choice-impact {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid hsl(var(--jy-border-subtle) / 0.7);
+  color: hsl(var(--jy-text-muted));
+  font-size: 0.7rem;
+  line-height: 1.45;
+}
+.jy-choice-impact svg { width: 0.8rem; height: 0.8rem; flex: 0 0 auto; margin-top: 0.1rem; color: hsl(var(--jy-gold) / 0.8); }
+
+/* ── Agency and decision memory ───────────────────────────────── */
+.jy-chip-agency { border-color: hsl(var(--jy-arcane) / 0.55); color: hsl(205 48% 76%); }
+.jy-decision-impact {
+  position: relative;
+  display: flex;
+  gap: 0.8rem;
+  margin: 0 0 1rem;
+  padding: 0.9rem;
+  overflow: hidden;
+  border: 1px solid hsl(var(--jy-gold) / 0.38);
+  border-radius: 5px;
+  background:
+    linear-gradient(100deg, hsl(var(--jy-gold) / 0.11), transparent 44%),
+    hsl(var(--jy-bg-surface) / 0.95);
+  box-shadow: 0 16px 36px -30px hsl(0 0% 0% / 0.95);
+}
+.jy-decision-impact::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: hsl(var(--jy-gold));
+}
+.jy-decision-impact-icon,
+.jy-agency-seal {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid hsl(var(--jy-gold) / 0.42);
+  border-radius: 50%;
+  color: hsl(var(--jy-gold));
+  background: hsl(var(--jy-bg-primary) / 0.8);
+}
+.jy-decision-impact-icon svg,
+.jy-agency-seal svg { width: 0.95rem; height: 0.95rem; }
+.jy-icon-button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  color: hsl(var(--jy-text-muted));
+}
+.jy-icon-button:hover { color: hsl(var(--jy-text-primary)); background: hsl(var(--jy-bg-elevated)); }
+.jy-icon-button:focus-visible { outline: 2px solid hsl(var(--jy-gold)); outline-offset: 2px; }
+.jy-icon-button svg { width: 0.9rem; height: 0.9rem; }
+.jy-decision-impact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.65rem;
+  color: hsl(var(--jy-gold));
+  font-size: 0.7rem;
+}
+.jy-decision-impact-link:hover { text-decoration: underline; }
+.jy-decision-impact-link svg { width: 0.75rem; height: 0.75rem; }
+.jy-agency-compass {
+  background:
+    radial-gradient(75% 120% at 100% 0%, hsl(var(--jy-arcane) / 0.1), transparent 70%),
+    hsl(var(--jy-bg-surface) / 0.92);
+}
+.jy-agency-track > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: hsl(var(--jy-text-secondary));
+  font-size: 0.72rem;
+}
+.jy-agency-track strong { color: hsl(var(--jy-gold)); }
+.jy-agency-track-bar {
+  display: block;
+  height: 3px;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: hsl(var(--jy-border-subtle));
+}
+.jy-agency-track-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, hsl(var(--jy-arcane)), hsl(var(--jy-gold)));
+  transition: width 300ms ease;
+}
+.jy-decision-record { border-left: 2px solid hsl(var(--jy-gold) / 0.45); }
 
 /* ── Adventure layer ─────────────────────────────────────────── */
 .jy-adventure-hud {
@@ -410,11 +524,14 @@
   .jy-encounter-meter-wide { grid-column: 1 / -1; }
   .jy-action { padding: 0.72rem; }
   .jy-action-icon { display: none; }
+  .jy-decision-impact { gap: 0.6rem; padding: 0.75rem; }
+  .jy-decision-impact-icon { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .jy-exposure-critical { animation: none; }
   .jy-progress-track span,
+  .jy-agency-track-bar i,
   .jy-action { transition: none; }
 }
 

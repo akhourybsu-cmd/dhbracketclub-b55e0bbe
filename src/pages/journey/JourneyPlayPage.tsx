@@ -13,6 +13,8 @@ import { useJourneyRun } from '@/hooks/useJourneyRun';
 import { useJourneyEnding } from '@/hooks/useJourneyEnding';
 import { EndingScreen } from '@/components/journey/EndingScreen';
 import { AdventureEncounter } from '@/components/journey/AdventureEncounter';
+import { AgencyCompass } from '@/components/journey/AgencyCompass';
+import { DecisionImpact } from '@/components/journey/DecisionImpact';
 import { exposureBand } from '@/lib/journey/adventure';
 
 /**
@@ -24,7 +26,8 @@ export default function JourneyPlayPage() {
   const { runId } = useParams<{ runId: string }>();
   const {
     run, campaign, scene, chapterTitle, locationName, blocks, choices, encounter, state,
-    loading, busy, error, notices, clearNotices, refresh, chooseChoice, resolveEncounterAction, advance,
+    loading, busy, error, notices, lastDecisionImpact, clearNotices, clearDecisionImpact,
+    refresh, chooseChoice, resolveEncounterAction, advance,
   } = useJourneyRun(runId);
   const topRef = useRef<HTMLDivElement>(null);
   const { reducedMotion } = useJourneySettings();
@@ -140,9 +143,14 @@ export default function JourneyPlayPage() {
         {activeQuestCount > 0 && (
           <span className="jy-chip"><ScrollText className="h-3 w-3" aria-hidden /> {activeQuestCount} active {activeQuestCount === 1 ? 'quest' : 'quests'}</span>
         )}
+        <AgencyCompass state={state} compact />
         {state.gold > 0 && <span className="jy-chip"><Coins className="h-3 w-3" aria-hidden /> {state.gold}</span>}
         {run.is_test_run && <span className="jy-chip jy-chip-blood">Test run</span>}
       </div>
+
+      {lastDecisionImpact && (
+        <DecisionImpact impact={lastDecisionImpact} onDismiss={clearDecisionImpact} />
+      )}
 
       {hasArt && (
         <figure className="jy-scene-banner jy-fade-in" key={scene?.scene_key}>

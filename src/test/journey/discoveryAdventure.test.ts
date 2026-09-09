@@ -27,6 +27,8 @@ interface BalanceAction {
   setback_progress?: number;
   costly_damage?: number;
   setback_damage?: number;
+  requirements?: unknown;
+  locked_hint?: string;
 }
 
 interface BalanceEncounter {
@@ -78,7 +80,9 @@ function simulateEncounter(encounter: BalanceEncounter, seed: number): boolean {
   let focus = encounter.max_focus;
   let health = 20;
   for (let round = 1; round <= encounter.max_rounds; round += 1) {
-    const usable = encounter.actions.filter((action) => action.focus_cost <= focus);
+    // Keep the baseline balance test honest: earned approaches are only
+    // available after earlier story decisions and should not inflate every run.
+    const usable = encounter.actions.filter((action) => !action.requirements && action.focus_cost <= focus);
     const action = [...usable].sort((a, b) => actionValue(b) - actionValue(a))[0];
     focus -= action.focus_cost;
     const die = Math.floor(random() * 20) + 1;
@@ -117,6 +121,57 @@ describe('The Discovery Below adventure layer', () => {
       expect(new Set(encounter.actions.map((action) => action.action_key)).size).toBe(encounter.actions.length);
       encounter.actions.forEach((action) => expect(action.difficulty).toBeGreaterThanOrEqual(10));
     });
+  });
+
+  it('turns every authored decision into a visible identity and consequence signal', () => {
+    const scenes = campaign.scenes ?? [];
+    const choices = scenes.flatMap((scene) => scene.choices ?? []);
+
+    expect(scenes).toHaveLength(21);
+    expect(choices).toHaveLength(47);
+    choices.forEach((choice) => {
+      expect(choice.tags?.filter((tag) => tag.startsWith('path:'))).toHaveLength(1);
+      expect(choice.tags?.some((tag) => tag.startsWith('impact:'))).toBe(true);
+      expect(choice.tags?.filter((tag) => tag.startsWith('outcome:'))).toHaveLength(1);
+    });
+
+    const agency = campaign.campaign.config?.agency as {
+      paths: Array<{ key: string; variable: string }>;
+    };
+    expect(agency.paths.map((path) => path.key)).toEqual(['guardian', 'seeker', 'defiant', 'maker']);
+    expect(agency.paths.every((path) => campaign.variables?.some((variable) => variable.variable_key === path.variable))).toBe(true);
+  });
+
+  it('replaces passive transitions with decisions and a three-way late-game branch', () => {
+    for (const sceneKey of ['S06A', 'S06B', 'S10A', 'S10B', 'S10C']) {
+      expect(campaign.scenes.find((scene) => scene.scene_key === sceneKey)?.choices).toHaveLength(3);
+    }
+
+    const stormScene = campaign.scenes.find((scene) => scene.scene_key === 'S11')!;
+    expect(stormScene.choices?.map((choice) => choice.next_scene_key)).toEqual(['S11A', 'S11B', 'S11C']);
+    for (const branch of ['S11A', 'S11B', 'S11C']) {
+      const scene = campaign.scenes.find((candidate) => candidate.scene_key === branch)!;
+      expect(scene.auto_next_scene_key).toBe('S12');
+      expect(scene.blocks?.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('rewards prior exploration with enforceable encounter approaches', () => {
+    const encounters = authoredEncounters();
+    const earned = Object.entries(encounters).flatMap(([sceneKey, encounter]) =>
+      encounter.actions
+        .filter((action) => action.requirements)
+        .map((action) => ({ sceneKey, action })),
+    );
+
+    expect(earned.map(({ sceneKey, action }) => `${sceneKey}:${action.action_key}`)).toEqual([
+      'S05:answer_with_the_fragment',
+      'S09:call_the_witness',
+      'S13:move_as_one_crew',
+      'S14:lay_the_copper_path',
+      'S14:chalk_the_missing_arc',
+    ]);
+    earned.forEach(({ action }) => expect(action.locked_hint).toBeTruthy());
   });
 
   it('keeps every challenge winnable without making outcomes automatic', () => {

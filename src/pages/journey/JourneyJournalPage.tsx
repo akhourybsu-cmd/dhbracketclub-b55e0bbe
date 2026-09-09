@@ -7,8 +7,17 @@ import { useJourneyRun } from '@/hooks/useJourneyRun';
 import { useJourneyWorld } from '@/hooks/useJourneyWorld';
 import { NoRun } from './JourneyCharacterPage';
 import type { QuestState } from '@/lib/journey/types';
+import { parseDecisionImpact } from '@/lib/journey/agency';
+import type { Json } from '@/integrations/supabase/types';
 
-interface HistoryRow { id: string; choice_key: string; scene_key: string; choice_text_snapshot: string | null; created_at: string }
+interface HistoryRow {
+  id: string;
+  choice_key: string | null;
+  scene_key: string;
+  choice_text_snapshot: string | null;
+  created_at: string;
+  metadata: Json;
+}
 
 /** Quest log + the record of decisions already made. */
 export default function JourneyJournalPage() {
@@ -23,8 +32,8 @@ export default function JourneyJournalPage() {
     if (!run) return;
     let cancelled = false;
     (async () => {
-      const h = await (supabase as any).from('journey_run_choice_history')
-        .select('id,choice_key,scene_key,choice_text_snapshot,created_at')
+      const h = await supabase.from('journey_run_choice_history')
+        .select('id,choice_key,scene_key,choice_text_snapshot,created_at,metadata')
         .eq('run_id', run.id).order('created_at', { ascending: false }).limit(200);
       if (cancelled) return;
       setHistory((h?.data ?? []) as HistoryRow[]);
@@ -112,14 +121,24 @@ export default function JourneyJournalPage() {
         <section className="mt-4 space-y-2">
           {history.length === 0 ? (
             <EmptyNote text="No decisions recorded yet." />
-          ) : history.map((h) => (
-            <div key={h.id} className="jy-panel p-3">
-              <p className="jy-secondary text-sm">{h.choice_text_snapshot ?? h.choice_key}</p>
-              <p className="jy-muted mt-1 text-xs">
-                {h.scene_key} · {new Date(h.created_at).toLocaleString()}
-              </p>
-            </div>
-          ))}
+          ) : history.map((h) => {
+            const impact = parseDecisionImpact(h.metadata);
+            return (
+              <div key={h.id} className="jy-panel jy-decision-record p-3">
+                {impact?.path_label && <span className="jy-chip jy-chip-gold mb-2 inline-flex">{impact.path_label} path</span>}
+                <p className="jy-secondary text-sm">{h.choice_text_snapshot ?? h.choice_key}</p>
+                {impact?.outcome_text && <p className="jy-prose mt-2 text-sm">{impact.outcome_text}</p>}
+                {impact && impact.impact.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {impact.impact.map((item) => <span key={item} className="jy-chip">{item}</span>)}
+                  </div>
+                )}
+                <p className="jy-muted mt-2 text-xs">
+                  {h.scene_key} · {new Date(h.created_at).toLocaleString()}
+                </p>
+              </div>
+            );
+          })}
         </section>
       )}
     </JourneyLayout>

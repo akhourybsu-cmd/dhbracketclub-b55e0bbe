@@ -5,9 +5,9 @@
     "subtitle": "A Fulminary Prologue",
     "description": "Theron, an elven Edenite miner, learns that the stone his city sells has been holding something down. A branching prologue of family, industry and restrained horror beneath Sturmvale.",
     "status": "draft",
-    "version": 2,
+    "version": 3,
     "author": "Fulminary Prologue Campaign Bible",
-    "estimated_length": "90–120 minutes",
+    "estimated_length": "110–150 minutes",
     "minimum_level": 1,
     "recommended_level": 1,
     "starting_scene_key": "S01",
@@ -40,6 +40,16 @@
         "eden_tower_insight_seeded",
         "threat_moves_east"
       ],
+      "agency": {
+        "version": 1,
+        "explanation": "Important choices strengthen one of four role-playing paths. Paths alter reactions and unlock approaches without imposing a morality score.",
+        "paths": [
+          { "key": "guardian", "label": "Guardian", "variable": "PATH_GUARDIAN", "description": "Protect people and preserve relationships." },
+          { "key": "seeker", "label": "Seeker", "variable": "PATH_SEEKER", "description": "Pursue evidence and uncomfortable truth." },
+          { "key": "defiant", "label": "Defiant", "variable": "PATH_DEFIANT", "description": "Challenge authority and reject convenient silence." },
+          { "key": "maker", "label": "Maker", "variable": "PATH_MAKER", "description": "Prepare, improvise, and solve through craft." }
+        ]
+      },
       "adventure": {
         "version": 1,
         "label": "Crownvein Expedition",
@@ -165,6 +175,21 @@
                 "costly_progress": 2,
                 "costly_damage": 2,
                 "setback_damage": 4
+              },
+              {
+                "action_key": "answer_with_the_fragment",
+                "label": "Answer with the dark-thread fragment",
+                "description": "Use the sample you preserved at the western face as a tuning weight against the chamber's false voice.",
+                "stat": "wits",
+                "difficulty": 11,
+                "risk": "bold",
+                "focus_cost": 0,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 1,
+                "setback_damage": 3,
+                "requirements": { "type": "has_item", "key": "dark_thread_fragment", "value": 1 },
+                "locked_hint": "Preserve the dark-thread fragment at the western face"
               }
             ]
           },
@@ -290,6 +315,21 @@
                 "costly_progress": 2,
                 "costly_damage": 2,
                 "setback_damage": 4
+              },
+              {
+                "action_key": "call_the_witness",
+                "label": "Put the rescued miner on record",
+                "description": "Give the chamber a living witness the Commission must either hear or openly silence.",
+                "stat": "resolve",
+                "difficulty": 10,
+                "risk": "bold",
+                "focus_cost": 0,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 1,
+                "setback_damage": 2,
+                "requirements": { "type": "variable_equals", "key": "WITNESS_AVAILABLE", "value": "true" },
+                "locked_hint": "Rescue someone who saw the chamber move"
               }
             ]
           },
@@ -367,6 +407,21 @@
                 "success_progress": 2,
                 "costly_progress": 1,
                 "setback_damage": 2
+              },
+              {
+                "action_key": "move_as_one_crew",
+                "label": "Move as one prepared crew",
+                "description": "Use the warning you gave at the bell: assigned partners, memorized routes, and no one chasing a borrowed voice alone.",
+                "stat": "resolve",
+                "difficulty": 10,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 1,
+                "setback_damage": 2,
+                "requirements": { "type": "variable_equals", "key": "CREW_PREPAREDNESS", "value": "high" },
+                "locked_hint": "Warn and organize the Crownvein crew"
               }
             ]
           },
@@ -435,7 +490,24 @@
                 "success_progress": 3,
                 "costly_progress": 2,
                 "costly_damage": 1,
-                "setback_damage": 4
+                "setback_damage": 4,
+                "requirements": { "type": "has_item", "key": "grounding_coil", "value": 1 },
+                "locked_hint": "Complete Timinny's grounding coil"
+              },
+              {
+                "action_key": "chalk_the_missing_arc",
+                "label": "Chalk the missing arc",
+                "description": "Use the resonance chalk to sketch the absent part of the barrier and give the current a remembered route.",
+                "stat": "wits",
+                "difficulty": 11,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 1,
+                "setback_damage": 2,
+                "requirements": { "type": "has_item", "key": "resonance_chalk", "value": 1 },
+                "locked_hint": "Map the impossible chamber successfully"
               },
               {
                 "action_key": "become_the_ground",
@@ -787,6 +859,36 @@
       "default_value": "true"
     },
     {
+      "variable_key": "PATH_GUARDIAN",
+      "label": "Guardian path",
+      "value_type": "integer",
+      "default_value": 0
+    },
+    {
+      "variable_key": "PATH_SEEKER",
+      "label": "Seeker path",
+      "value_type": "integer",
+      "default_value": 0
+    },
+    {
+      "variable_key": "PATH_DEFIANT",
+      "label": "Defiant path",
+      "value_type": "integer",
+      "default_value": 0
+    },
+    {
+      "variable_key": "PATH_MAKER",
+      "label": "Maker path",
+      "value_type": "integer",
+      "default_value": 0
+    },
+    {
+      "variable_key": "STORM_PRIORITY",
+      "label": "Storm priority",
+      "value_type": "string",
+      "default_value": "unset"
+    },
+    {
       "variable_key": "LAST_ENCOUNTER_OUTCOME",
       "label": "Latest challenge outcome",
       "value_type": "string",
@@ -947,6 +1049,31 @@
             "type": "variable_equals",
             "key": "PROOF_STATE",
             "value": "strong_notes"
+          },
+          {
+            "type": "variable_equals",
+            "key": "PROOF_STATE",
+            "value": "witness_statement"
+          },
+          {
+            "type": "variable_equals",
+            "key": "PROOF_STATE",
+            "value": "official_chain"
+          },
+          {
+            "type": "variable_equals",
+            "key": "PROOF_STATE",
+            "value": "crew_witness_chain"
+          },
+          {
+            "type": "variable_equals",
+            "key": "PROOF_STATE",
+            "value": "distributed_record"
+          },
+          {
+            "type": "variable_equals",
+            "key": "PROOF_STATE",
+            "value": "field_rubbing"
           },
           {
             "type": "variable_equals",
@@ -1144,6 +1271,31 @@
           "type": "set_variable",
           "key": "THERON_SURVIVES",
           "value": "true"
+        },
+        {
+          "type": "set_variable",
+          "key": "PATH_GUARDIAN",
+          "value": 0
+        },
+        {
+          "type": "set_variable",
+          "key": "PATH_SEEKER",
+          "value": 0
+        },
+        {
+          "type": "set_variable",
+          "key": "PATH_DEFIANT",
+          "value": 0
+        },
+        {
+          "type": "set_variable",
+          "key": "PATH_MAKER",
+          "value": 0
+        },
+        {
+          "type": "set_variable",
+          "key": "STORM_PRIORITY",
+          "value": "unset"
         },
         {
           "type": "visit_location",
@@ -1354,6 +1506,12 @@
           "choice_style": "compassionate",
           "display_order": 1,
           "next_scene_key": "S02",
+          "tags": [
+            "path:guardian",
+            "impact:Reassure Bethella",
+            "impact:Define Theron's family voice",
+            "outcome:Theron gives Bethella a promise he is not certain the mine will let him keep."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -1369,6 +1527,12 @@
           "choice_style": "dialogue",
           "display_order": 2,
           "next_scene_key": "S02",
+          "tags": [
+            "path:defiant",
+            "impact:Deflect fear with humor",
+            "impact:Define Theron's family voice",
+            "outcome:The joke buys a breath of normality. Bethella hears the worry beneath it anyway."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -1384,6 +1548,12 @@
           "choice_style": "dialogue",
           "display_order": 3,
           "next_scene_key": "S02",
+          "tags": [
+            "path:seeker",
+            "impact:Share the warning early",
+            "impact:Define Theron's family voice",
+            "outcome:Theron names the danger before he understands it. Bethella treats the warning as real."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -1834,6 +2004,12 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S03",
+          "tags": [
+            "path:seeker",
+            "impact:Win Timinny's confidence",
+            "impact:Make the secret experiment shared",
+            "outcome:Timinny receives the whole truth and begins treating Theron as a partner rather than a source."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -1856,6 +2032,12 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S03",
+          "tags": [
+            "path:guardian",
+            "impact:Limit Timinny's risk",
+            "impact:Keep part of the experiment hidden",
+            "outcome:Theron gives Timinny enough truth to continue and keeps the most dangerous part of it for himself."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -1877,6 +2059,12 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S03",
+          "tags": [
+            "path:defiant",
+            "impact:Keep control of the secret",
+            "impact:Make Timinny more guarded",
+            "outcome:Theron refuses the question. Timinny continues the experiment, but no longer assumes they are taking the same risk."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -2375,6 +2563,12 @@
           "choice_style": "standard",
           "display_order": 1,
           "next_scene_key": "S04",
+          "tags": [
+            "path:guardian",
+            "impact:Avoid escalating Varrik",
+            "impact:Leave the warning unspoken",
+            "outcome:Theron swallows the warning. Varrik hears obedience and nothing else."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -2390,6 +2584,12 @@
           "choice_style": "investigative",
           "display_order": 2,
           "next_scene_key": "S04",
+          "tags": [
+            "path:seeker",
+            "impact:Put the vibration on record",
+            "impact:Make Varrik alert despite his hostility",
+            "outcome:Varrik rejects Theron's conclusion, but the warning lodges beside every vibration he feels afterward."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -2405,6 +2605,12 @@
           "choice_style": "dialogue",
           "display_order": 3,
           "next_scene_key": "S04",
+          "tags": [
+            "path:defiant",
+            "impact:Challenge Varrik publicly",
+            "impact:Make the conflict personal",
+            "outcome:The crew hides its laughter. Varrik does not, and he remembers exactly who caused it."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -2625,6 +2831,13 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S05",
+          "tags": [
+            "path:guardian",
+            "impact:Save Pell",
+            "impact:Leave physical evidence behind",
+            "impact:Open a living-witness route",
+            "outcome:Theron chooses the bleeding miner. Pell reaches safety, while the fragment and fissure disappear into the emergency."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S04_resolved",
@@ -2663,6 +2876,13 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S05",
+          "tags": [
+            "path:seeker",
+            "impact:Gain a dark-thread fragment",
+            "impact:Increase exposure",
+            "impact:Leave Pell critically injured",
+            "outcome:Theron preserves the impossible sample. Behind him, other hands reach Pell later than his could have."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S04_resolved",
@@ -2701,6 +2921,13 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S05",
+          "tags": [
+            "path:maker",
+            "impact:Map the moving fissure",
+            "impact:Increase exposure",
+            "impact:Alert the mine to structural danger",
+            "outcome:The marking spike taps without a hand on it. Theron leaves with a route no ordinary survey could have found."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S04_resolved",
@@ -2921,6 +3148,13 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S06A",
+          "tags": [
+            "path:guardian",
+            "impact:Rescue the trapped miner",
+            "impact:Lose most visible chamber proof",
+            "impact:Create a living witness",
+            "outcome:Theron follows the honest airflow and reaches the miner before the chamber can finish closing around him."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S05_resolved",
@@ -2948,6 +3182,13 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S06B",
+          "tags": [
+            "path:seeker",
+            "impact:Secure strong barrier notes",
+            "impact:Increase exposure",
+            "impact:The trapped miner pays for the delay",
+            "outcome:Theron stays with the pattern long enough to understand part of the seal. The cry behind him changes while he is drawing."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S05_resolved",
@@ -2985,7 +3226,6 @@
       "title": "The Living Route",
       "location_key": "unmapped_chamber",
       "display_order": 6,
-      "auto_next_scene_key": "S07",
       "tags": [
         "branch",
         "rescue"
@@ -3060,6 +3300,62 @@
             "speaker_name": "Theron"
           }
         }
+      ],
+      "choices": [
+        {
+          "choice_key": "living_route_carry",
+          "choice_text": "Put the miner's arm over your shoulders and carry him every step to daylight.",
+          "short_label": "Carry him out",
+          "description": "Do not ask an injured man to spend strength proving what happened.",
+          "display_order": 1,
+          "next_scene_key": "S07",
+          "effects": [
+            { "type": "increase_relationship", "key": "trapped_miner", "value": 2 },
+            { "type": "set_variable", "key": "RESCUE_STATE", "value": "protected_witness" }
+          ],
+          "tags": [
+            "path:guardian",
+            "impact:Protect the rescued miner",
+            "impact:Strengthen a future witness",
+            "outcome:Theron carries the miner into daylight. The man will remember that he was treated as a life before he was treated as evidence."
+          ]
+        },
+        {
+          "choice_key": "living_route_testimony",
+          "choice_text": "Make him repeat exactly what he saw before shock can soften the memory.",
+          "short_label": "Secure testimony",
+          "description": "Turn a terrifying memory into a record the Commission cannot dismiss as easily.",
+          "display_order": 2,
+          "next_scene_key": "S07",
+          "effects": [
+            { "type": "set_variable", "key": "PROOF_STATE", "value": "witness_statement" },
+            { "type": "increase_relationship", "key": "trapped_miner", "value": 1 }
+          ],
+          "tags": [
+            "path:seeker",
+            "impact:Strengthen your evidence",
+            "impact:Shape the Commission hearing",
+            "outcome:The miner repeats the impossible detail three times. By the third, it has become testimony instead of panic."
+          ]
+        },
+        {
+          "choice_key": "living_route_mark_exit",
+          "choice_text": "Mark the cold-air route and sketch the surviving edges of the chamber before leaving.",
+          "short_label": "Prepare a return",
+          "description": "Trade a few dangerous minutes for a route and geometry you may need later.",
+          "display_order": 3,
+          "next_scene_key": "S07",
+          "effects": [
+            { "type": "set_variable", "key": "SEAL_PREPARATION", "value": "medium" },
+            { "type": "set_variable", "key": "PROOF_STATE", "value": "field_rubbing" }
+          ],
+          "tags": [
+            "path:maker",
+            "impact:Improve seal preparation",
+            "impact:Preserve the chamber's geometry",
+            "outcome:Theron leaves a return mark no ordinary collapse should erase and carries a rough geometry into the next argument."
+          ]
+        }
       ]
     },
     {
@@ -3068,7 +3364,6 @@
       "title": "The Hollow Pattern",
       "location_key": "unmapped_chamber",
       "display_order": 7,
-      "auto_next_scene_key": "S07",
       "tags": [
         "branch",
         "investigation"
@@ -3135,6 +3430,62 @@
           "block_type": "narration",
           "display_order": 6,
           "content": "Theron has no answer that helps."
+        }
+      ],
+      "choices": [
+        {
+          "choice_key": "hollow_route_confess",
+          "choice_text": "Tell the miner the truth: you chose the pattern before you chose him.",
+          "short_label": "Own the choice",
+          "description": "Honesty cannot restore his leg, but it can refuse the easier lie.",
+          "display_order": 1,
+          "next_scene_key": "S07",
+          "effects": [
+            { "type": "set_variable", "key": "THERON_GUILT", "value": "owned" },
+            { "type": "increase_relationship", "key": "trapped_miner", "value": 1 }
+          ],
+          "tags": [
+            "path:guardian",
+            "impact:Change Theron's guilt",
+            "impact:Repair part of a damaged bond",
+            "outcome:The miner does not forgive Theron. He does stop wondering whether the darkness invented the abandonment."
+          ]
+        },
+        {
+          "choice_key": "hollow_route_guard_notes",
+          "choice_text": "Seal Timinny's notebook inside your coat and memorize the most important curve.",
+          "short_label": "Guard the proof",
+          "description": "Make certain the injury was not paid for with evidence that can still be lost.",
+          "display_order": 2,
+          "next_scene_key": "S07",
+          "effects": [
+            { "type": "set_variable", "key": "PROOF_STATE", "value": "strong_notes" },
+            { "type": "unlock_codex", "key": "barrier_geometry" }
+          ],
+          "tags": [
+            "path:seeker",
+            "impact:Preserve strong proof",
+            "impact:Deepen barrier knowledge",
+            "outcome:The notebook survives beneath Theron's coat. The curve in his memory refuses to become an ordinary circle."
+          ]
+        },
+        {
+          "choice_key": "hollow_route_break_echo",
+          "choice_text": "Crush the smallest resonant splinter until the borrowed voice loses its hold.",
+          "short_label": "Break the echo",
+          "description": "Sacrifice a piece of evidence to reduce the thing's purchase on your thoughts.",
+          "display_order": 3,
+          "next_scene_key": "S07",
+          "effects": [
+            { "type": "decrement_variable", "key": "EXPOSURE", "value": 1 },
+            { "type": "set_variable", "key": "THERON_GUILT", "value": "weaponized" }
+          ],
+          "tags": [
+            "path:defiant",
+            "impact:Reduce supernatural exposure",
+            "impact:Give up part of the evidence",
+            "outcome:The splinter breaks with a sound like an unfinished name. For the first time since the chamber, Theron's thoughts are entirely his own."
+          ]
         }
       ]
     },
@@ -3277,6 +3628,12 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S08",
+          "tags": [
+            "path:guardian",
+            "impact:Shield Edran from the worst truth",
+            "impact:Make his trust guarded",
+            "outcome:Theron gives Edran the geometry and keeps the voice. Edran notices the shape of what has been withheld."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -3293,6 +3650,12 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S08",
+          "tags": [
+            "path:seeker",
+            "impact:Share the supernatural evidence",
+            "impact:Preserve Edran's trust",
+            "outcome:Edran hears exactly how his voice was used below. Fear enters the room, but secrecy leaves it."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -3309,6 +3672,12 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S08",
+          "tags": [
+            "path:defiant",
+            "impact:Confess every hidden experiment",
+            "impact:Win Edran's full confidence",
+            "outcome:Theron lays every secret on the table. Edran is angry, frightened, and finally working from the whole map."
+          ],
           "effects": [
             {
               "type": "set_variable",
@@ -3596,6 +3965,12 @@
           "choice_style": "standard",
           "display_order": 1,
           "next_scene_key": "S09",
+          "tags": [
+            "path:guardian",
+            "impact:End the dangerous experiment safely",
+            "impact:Carry only a partial record",
+            "outcome:Theron breaks the circuit before it can take more from Timinny. The safe reading is incomplete, but both men remain standing."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S08_resolved",
@@ -3616,6 +3991,12 @@
           "choice_style": "investigative",
           "display_order": 2,
           "next_scene_key": "S09",
+          "tags": [
+            "path:maker",
+            "impact:Complete the grounding record",
+            "impact:Increase exposure",
+            "outcome:Theron holds the contact through one final pulse. Timinny captures the complete return path, and the charge leaves something behind."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S08_resolved",
@@ -4002,6 +4383,13 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S10A",
+          "tags": [
+            "path:seeker",
+            "impact:Enter Commission custody",
+            "impact:Improve official standing",
+            "impact:Leave the crew unprepared",
+            "outcome:Theron accepts the Commission's process and its watch. His evidence receives a hearing; Crownvein receives no warning yet."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S09_resolved",
@@ -4034,6 +4422,13 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S10B",
+          "tags": [
+            "path:guardian",
+            "impact:Warn the Crownvein crews",
+            "impact:Trigger a detention order",
+            "impact:Advance the rescue quest",
+            "outcome:Theron abandons the room and gives the warning to the people who must survive it. The Commission answers with guards."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S09_resolved",
@@ -4071,6 +4466,13 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S10C",
+          "tags": [
+            "path:defiant",
+            "impact:Become a fugitive",
+            "impact:Improve seal preparation",
+            "impact:Leave the crew unprepared",
+            "outcome:Theron refuses to spend another minute making truth acceptable to the Commission. He leaves to make it useful."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S09_resolved",
@@ -4108,7 +4510,6 @@
       "title": "Under Watch",
       "location_key": "emc_hearing_chamber",
       "display_order": 11,
-      "auto_next_scene_key": "S11",
       "tags": [
         "branch"
       ],
@@ -4193,6 +4594,62 @@
             "speaker_name": "Official"
           }
         }
+      ],
+      "choices": [
+        {
+          "choice_key": "watch_accept_transfer",
+          "choice_text": "Accept the escort—but make the official carry Edran's survey into the mine.",
+          "short_label": "Use the procedure",
+          "description": "Let the Commission believe it is still in control while putting your evidence inside its chain of custody.",
+          "display_order": 1,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "PROOF_STATE", "value": "official_chain" },
+            { "type": "increase_faction_reputation", "key": "emc", "value": 1 }
+          ],
+          "tags": [
+            "path:seeker",
+            "impact:Put evidence in official custody",
+            "impact:Improve Commission standing",
+            "outcome:Theron enters the transport under guard. Edran's survey enters beside him under an official seal no clerk can later pretend not to recognize."
+          ]
+        },
+        {
+          "choice_key": "watch_free_recorder",
+          "choice_text": "Slip Timinny's recorder to Edran and tell him to take it to the eastern grounding point.",
+          "short_label": "Move the device",
+          "description": "Risk the record to place a working instrument where the city may soon need it.",
+          "display_order": 2,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "SEAL_PREPARATION", "value": "high" },
+            { "type": "increase_relationship", "key": "edran", "value": 1 }
+          ],
+          "tags": [
+            "path:maker",
+            "impact:Improve seal preparation",
+            "impact:Trust Edran with the plan",
+            "outcome:The recorder leaves beneath Edran's coat while the official is still explaining transport protocol. The plan now exists outside the Commission room."
+          ]
+        },
+        {
+          "choice_key": "watch_break_custody",
+          "choice_text": "Jam the side door with a survey spike and leave before the escort can form.",
+          "short_label": "Break custody",
+          "description": "Give up the Commission's protection and take responsibility for reaching Crownvein yourself.",
+          "display_order": 3,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "AUTHORITY_STANCE", "value": "fugitive" },
+            { "type": "decrease_faction_reputation", "key": "emc", "value": 1 }
+          ],
+          "tags": [
+            "path:defiant",
+            "impact:Become a Commission fugitive",
+            "impact:Reach the streets without an escort",
+            "outcome:The spike bends, the latch holds, and Theron is halfway into the rain before procedure discovers it has been left behind."
+          ]
+        }
       ]
     },
     {
@@ -4201,7 +4658,6 @@
       "title": "The Bell Without Leave",
       "location_key": "crownvein_staging",
       "display_order": 12,
-      "auto_next_scene_key": "S11",
       "tags": [
         "branch"
       ],
@@ -4271,6 +4727,62 @@
             "value": "hostile_alert"
           }
         }
+      ],
+      "choices": [
+        {
+          "choice_key": "bell_assign_partners",
+          "choice_text": "Spend your head start assigning partners, shelters, and names to every lower-cut team.",
+          "short_label": "Prepare the crew",
+          "description": "Make survival specific before the guards turn the warning into a debate.",
+          "display_order": 1,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "CREW_PREPAREDNESS", "value": "high" },
+            { "type": "increase_faction_reputation", "key": "crownvein_crew", "value": 1 }
+          ],
+          "tags": [
+            "path:guardian",
+            "impact:Maximize crew preparedness",
+            "impact:Strengthen the miners' trust",
+            "outcome:By the time the guards reach the bell, every lower-cut miner has a partner and a route. Panic has become a plan."
+          ]
+        },
+        {
+          "choice_key": "bell_bind_varrik",
+          "choice_text": "Make Varrik repeat the shutdown order where the whole shift can hear him.",
+          "short_label": "Create a witness chain",
+          "description": "Turn a hostile foreman into a public part of the record.",
+          "display_order": 2,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "PROOF_STATE", "value": "crew_witness_chain" },
+            { "type": "set_variable", "key": "VARRIK_STANCE", "value": "hostile_alert" }
+          ],
+          "tags": [
+            "path:seeker",
+            "impact:Create a crew witness chain",
+            "impact:Force Varrik to acknowledge the danger",
+            "outcome:Varrik repeats the order through clenched teeth. Forty miners hear him choose caution, and that fact cannot be put back inside his mouth."
+          ]
+        },
+        {
+          "choice_key": "bell_take_segments",
+          "choice_text": "Open the restricted store and take every intact Edenite segment the crew can carry.",
+          "short_label": "Take the material",
+          "description": "Break Commission custody now so the mine has something to rebuild with later.",
+          "display_order": 3,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "SEAL_PREPARATION", "value": "medium" },
+            { "type": "set_variable", "key": "AUTHORITY_STANCE", "value": "fugitive" }
+          ],
+          "tags": [
+            "path:defiant",
+            "impact:Improve seal preparation",
+            "impact:Violate Commission custody",
+            "outcome:The restricted-store lock lasts one hammer strike. The crew carries out enough intact Edenite to make disobedience useful."
+          ]
+        }
       ]
     },
     {
@@ -4279,7 +4791,6 @@
       "title": "Back Through the Rain",
       "location_key": "timinny_workshop",
       "display_order": 13,
-      "auto_next_scene_key": "S11",
       "tags": [
         "branch"
       ],
@@ -4369,6 +4880,62 @@
             "value": "guarded"
           }
         }
+      ],
+      "choices": [
+        {
+          "choice_key": "rain_finish_ground",
+          "choice_text": "Use the remaining minutes to finish Timinny's grounding harness.",
+          "short_label": "Finish the device",
+          "description": "Trust the warning already given and make one piece of the solution reliable.",
+          "display_order": 1,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "SEAL_PREPARATION", "value": "complete" },
+            { "type": "increase_relationship", "key": "timinny", "value": 1 }
+          ],
+          "tags": [
+            "path:maker",
+            "impact:Complete seal preparation",
+            "impact:Strengthen Timinny's trust",
+            "outcome:The last copper return closes cleanly. What began as an argument made of scrap becomes a tool Theron is willing to carry underground."
+          ]
+        },
+        {
+          "choice_key": "rain_copy_record",
+          "choice_text": "Split the maps and experiment record into three waterproof packets.",
+          "short_label": "Protect the truth",
+          "description": "Accept less equipment in exchange for evidence no single arrest or collapse can erase.",
+          "display_order": 2,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "PROOF_STATE", "value": "distributed_record" },
+            { "type": "increase_relationship", "key": "edran", "value": 1 }
+          ],
+          "tags": [
+            "path:seeker",
+            "impact:Create redundant evidence",
+            "impact:Trade away some preparation time",
+            "outcome:Edran takes one packet, Timinny hides another, and Theron seals the third beneath his shirt. The truth no longer has a single throat to cut."
+          ]
+        },
+        {
+          "choice_key": "rain_warn_shift",
+          "choice_text": "Send Edran through the workers' alleys with names, routes, and the warning the Commission refused to issue.",
+          "short_label": "Warn the crew quietly",
+          "description": "Divide your group and preparation to give Crownvein's families time to act.",
+          "display_order": 3,
+          "next_scene_key": "S11",
+          "effects": [
+            { "type": "set_variable", "key": "CREW_PREPAREDNESS", "value": "medium" },
+            { "type": "increase_faction_reputation", "key": "crownvein_crew", "value": 1 }
+          ],
+          "tags": [
+            "path:guardian",
+            "impact:Improve crew preparedness",
+            "impact:Send Edran into the storm",
+            "outcome:Edran vanishes into the workers' alleys carrying a warning measured in names instead of statistics. Doors begin opening ahead of the storm."
+          ]
+        }
       ]
     },
     {
@@ -4377,7 +4944,6 @@
       "title": "Sturmvale Bends",
       "location_key": "sturmvale_streets",
       "display_order": 14,
-      "auto_next_scene_key": "S12",
       "tags": [
         "storm",
         "family"
@@ -4387,16 +4953,6 @@
         {
           "type": "visit_location",
           "key": "sturmvale_streets"
-        },
-        {
-          "type": "set_variable",
-          "key": "BETHELLA_STATE",
-          "value": "sheltered"
-        },
-        {
-          "type": "set_variable",
-          "key": "TIMINNY_STATE",
-          "value": "endangered"
         }
       ],
       "blocks": [
@@ -4520,8 +5076,134 @@
         {
           "block_type": "narration",
           "display_order": 13,
-          "content": "Theron gets Bethella into shelter. The door holds. Whatever else this night takes, it does not take her."
+          "content": "The eastern shelter, Timinny's failing housing, and Crownvein's blue-lit road pull in three directions. Theron has time to choose one."
         }
+      ],
+      "choices": [
+        {
+          "choice_key": "storm_carry_bethella",
+          "choice_text": "Carry Bethella to the eastern shelter yourself. The mine can wait for one promise kept.",
+          "short_label": "Stay with Bethella",
+          "description": "Guarantee your mother's safety, but reach Crownvein after the first wave of the storm.",
+          "display_order": 1,
+          "next_scene_key": "S11A",
+          "major_decision": true,
+          "effects": [
+            { "type": "set_variable", "key": "BETHELLA_STATE", "value": "secured_by_theron" },
+            { "type": "set_variable", "key": "TIMINNY_STATE", "value": "endangered" },
+            { "type": "set_variable", "key": "STORM_PRIORITY", "value": "family" },
+            { "type": "increase_relationship", "key": "bethella", "value": 2 }
+          ],
+          "tags": [
+            "path:guardian",
+            "impact:Guarantee Bethella's safety",
+            "impact:Arrive later at Crownvein",
+            "outcome:Theron chooses the weight in his arms over the disaster on the horizon. Bethella reaches shelter because he carries her there."
+          ]
+        },
+        {
+          "choice_key": "storm_stabilize_timinny",
+          "choice_text": "Trust Edran with Bethella and keep Timinny's treatment housing alive long enough to finish the ground.",
+          "short_label": "Save the apparatus",
+          "description": "Protect both engineer and equipment while placing your mother's route in Edran's hands.",
+          "display_order": 2,
+          "next_scene_key": "S11B",
+          "major_decision": true,
+          "effects": [
+            { "type": "set_variable", "key": "BETHELLA_STATE", "value": "sheltered_by_edran" },
+            { "type": "set_variable", "key": "TIMINNY_STATE", "value": "stabilized" },
+            { "type": "set_variable", "key": "SEAL_PREPARATION", "value": "complete" },
+            { "type": "set_variable", "key": "STORM_PRIORITY", "value": "grounding" },
+            { "type": "increase_relationship", "key": "timinny", "value": 2 }
+          ],
+          "tags": [
+            "path:maker",
+            "impact:Stabilize Timinny",
+            "impact:Complete the grounding plan",
+            "impact:Trust Edran with Bethella",
+            "outcome:Edran takes Bethella east. Theron turns toward the failing machine and makes the solution survive the storm."
+          ]
+        },
+        {
+          "choice_key": "storm_run_for_crownvein",
+          "choice_text": "Send Bethella and Timinny to shelter together. Take Edran's map and run for Crownvein before the next discharge.",
+          "short_label": "Reach the breach first",
+          "description": "Leave the people you love to protect one another so you can confront the source before it worsens.",
+          "display_order": 3,
+          "next_scene_key": "S11C",
+          "major_decision": true,
+          "effects": [
+            { "type": "set_variable", "key": "BETHELLA_STATE", "value": "sheltered" },
+            { "type": "set_variable", "key": "TIMINNY_STATE", "value": "sheltered" },
+            { "type": "set_variable", "key": "CREW_PREPAREDNESS", "value": "high" },
+            { "type": "set_variable", "key": "STORM_PRIORITY", "value": "breach" },
+            { "type": "increase_relationship", "key": "edran", "value": 1 }
+          ],
+          "tags": [
+            "path:defiant",
+            "impact:Reach Crownvein before the next discharge",
+            "impact:Improve crew preparedness",
+            "impact:Entrust family to one another",
+            "outcome:Theron places the map inside his coat and runs toward the blue horizon. Behind him, his family closes ranks without waiting for permission."
+          ]
+        }
+      ]
+    },
+    {
+      "scene_key": "S11A",
+      "chapter_key": "CH4",
+      "title": "A Promise Kept",
+      "subtitle": "The family road",
+      "location_key": "sturmvale_streets",
+      "display_order": 15,
+      "auto_next_scene_key": "S12",
+      "tags": ["branch", "family", "consequence"],
+      "author_notes": "Agency branch: Theron personally secures Bethella before the descent.",
+      "entry_conditions": { "type": "variable_equals", "key": "STORM_PRIORITY", "value": "family" },
+      "blocks": [
+        { "block_type": "narration", "display_order": 1, "content": "Theron carries Bethella through streets that bend a finger's width each time the ground flashes." },
+        { "block_type": "dialogue", "display_order": 2, "content": "You always did mistake worry for a debt.", "metadata": { "speaker_key": "bethella", "speaker_name": "Bethella" } },
+        { "block_type": "dialogue", "display_order": 3, "content": "Tonight I can afford to pay one.", "metadata": { "speaker_key": "theron", "speaker_name": "Theron" } },
+        { "block_type": "narration", "display_order": 4, "content": "He waits until the shelter door closes and hears Bethella strike it twice from inside—the family signal for safe." },
+        { "block_type": "narration", "display_order": 5, "content": "Crownvein discharges again before Theron reaches the mine road. The delay is real. So is the promise he did not break." }
+      ]
+    },
+    {
+      "scene_key": "S11B",
+      "chapter_key": "CH4",
+      "title": "The Grounding Run",
+      "subtitle": "The maker's road",
+      "location_key": "sturmvale_streets",
+      "display_order": 16,
+      "auto_next_scene_key": "S12",
+      "tags": ["branch", "grounding", "consequence"],
+      "author_notes": "Agency branch: Theron saves Timinny and completes the grounding preparation.",
+      "entry_conditions": { "type": "variable_equals", "key": "STORM_PRIORITY", "value": "grounding" },
+      "blocks": [
+        { "block_type": "narration", "display_order": 1, "content": "Theron braces Timinny's chair beneath a stone awning while charge crawls over every exposed copper lead." },
+        { "block_type": "dialogue", "display_order": 2, "content": "The treatment relay or the grounding return. I cannot keep both closed.", "metadata": { "speaker_key": "timinny", "speaker_name": "Timinny" } },
+        { "block_type": "dialogue", "display_order": 3, "content": "Then stop treating them as two circuits.", "metadata": { "speaker_key": "theron", "speaker_name": "Theron" } },
+        { "block_type": "narration", "display_order": 4, "content": "Theron bridges the housings through an Edenite clasp. Timinny's breath evens as the grounding coil takes a clean blue charge." },
+        { "block_type": "dialogue", "display_order": 5, "content": "That is either brilliant or medically insulting. Bring it back so I can decide.", "metadata": { "speaker_key": "timinny", "speaker_name": "Timinny" } }
+      ]
+    },
+    {
+      "scene_key": "S11C",
+      "chapter_key": "CH4",
+      "title": "Before the Sirens",
+      "subtitle": "The breach road",
+      "location_key": "crownvein_staging",
+      "display_order": 17,
+      "auto_next_scene_key": "S12",
+      "tags": ["branch", "mine", "consequence"],
+      "author_notes": "Agency branch: Theron reaches Crownvein early and turns warning into preparation.",
+      "entry_conditions": { "type": "variable_equals", "key": "STORM_PRIORITY", "value": "breach" },
+      "blocks": [
+        { "block_type": "narration", "display_order": 1, "content": "Theron reaches Crownvein before the city sirens find their rhythm. The staging yard is still deciding whether the blue light is weather." },
+        { "block_type": "dialogue", "display_order": 2, "content": "Pairs. Chalk your partner's name inside your cuff. If a familiar voice calls from an empty shaft, you do not answer it alone.", "metadata": { "speaker_key": "theron", "speaker_name": "Theron" } },
+        { "block_type": "narration", "display_order": 3, "content": "The miners obey because Theron gives them verbs instead of reassurance: pair, mark, brace, wait." },
+        { "block_type": "dialogue", "display_order": 4, "content": "You are giving orders in my yard.", "metadata": { "speaker_key": "varrik", "speaker_name": "Varrik" } },
+        { "block_type": "dialogue", "display_order": 5, "content": "Then arrive in time to improve them.", "metadata": { "speaker_key": "theron", "speaker_name": "Theron" } }
       ]
     },
     {
@@ -4529,7 +5211,7 @@
       "chapter_key": "CH4",
       "title": "The Descent Against Orders",
       "location_key": "crownvein_entrance",
-      "display_order": 15,
+      "display_order": 18,
       "tags": [
         "incursion",
         "mine"
@@ -4635,6 +5317,24 @@
         {
           "block_type": "narration",
           "display_order": 11,
+          "content": "Two knocks sound from the shelter relay: Edran's confirmation that Bethella is safe. Theron lets himself hear it once, then turns toward the descent.",
+          "conditions": { "type": "variable_equals", "key": "STORM_PRIORITY", "value": "family" }
+        },
+        {
+          "block_type": "narration",
+          "display_order": 11,
+          "content": "The completed grounding harness hums against Theron's ribs. Timinny's survival and the working circuit have become the same advantage.",
+          "conditions": { "type": "variable_equals", "key": "STORM_PRIORITY", "value": "grounding" }
+        },
+        {
+          "block_type": "narration",
+          "display_order": 11,
+          "content": "The Crownvein crews are already paired and marked. Theron's choice to run ahead has converted the first minutes of disaster into preparation.",
+          "conditions": { "type": "variable_equals", "key": "STORM_PRIORITY", "value": "breach" }
+        },
+        {
+          "block_type": "narration",
+          "display_order": 12,
           "content": "The route splits: trapped crew in the lower gallery, broken ring segments near the breach, and an unstable grounding path through the upper supports."
         }
       ],
@@ -4646,6 +5346,12 @@
           "display_order": 1,
           "next_scene_key": "S13",
           "hidden_when_unavailable": true,
+          "tags": [
+            "path:guardian",
+            "impact:Descend with Varrik as an ally",
+            "impact:Prepared crews open a coordinated route",
+            "outcome:Varrik falls into step beside Theron. The alliance is late, hostile, and real enough to carry underground."
+          ],
           "requirements": {
             "type": "variable_equals",
             "key": "CREW_PREPAREDNESS",
@@ -4667,6 +5373,12 @@
           "display_order": 2,
           "next_scene_key": "S13",
           "hidden_when_unavailable": true,
+          "tags": [
+            "path:defiant",
+            "impact:Enter the incursion without Varrik",
+            "impact:Face a less coordinated descent",
+            "outcome:Theron takes the split route without waiting for Varrik's certainty. The mine closes behind him one decision at a time."
+          ],
           "requirements": {
             "type": "not",
             "conditions": [
@@ -4694,7 +5406,7 @@
       "scene_type": "combat",
       "title": "The First Incursion",
       "location_key": "crownvein_entrance",
-      "display_order": 16,
+      "display_order": 19,
       "tags": [
         "climax",
         "choice"
@@ -4730,6 +5442,13 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S14",
+          "tags": [
+            "path:guardian",
+            "impact:Evacuate the trapped crews",
+            "impact:Let physical proof collapse",
+            "impact:Leave the seal in critical condition",
+            "outcome:Theron spends the remaining route on people. The lower gallery empties while the best surviving proof disappears behind it."
+          ],
           "requirements": {
             "type": "flag_exists",
             "key": "encounter_S13_resolved",
@@ -4762,6 +5481,13 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S14",
+          "tags": [
+            "path:seeker",
+            "impact:Stabilize the broken Edenite ring",
+            "impact:Delegate the rescue",
+            "impact:Use evidence earned earlier",
+            "outcome:Theron returns preserved knowledge to the barrier. Every seated fragment takes a corridor away from the incursion."
+          ],
           "requirements": {
             "type": "all",
             "conditions": [
@@ -4811,6 +5537,13 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S14",
+          "tags": [
+            "path:maker",
+            "impact:Complete the surface ground",
+            "impact:Delay the rescue",
+            "impact:Increase exposure",
+            "outcome:Theron carries Timinny's work over the failing supports. The current gains a route upward, and the dark gains another moment inside him."
+          ],
           "requirements": {
             "type": "all",
             "conditions": [
@@ -4859,7 +5592,7 @@
       "scene_type": "combat",
       "title": "The Seal That Was Taken",
       "location_key": "central_breach_chamber",
-      "display_order": 17,
+      "display_order": 20,
       "tags": [
         "climax",
         "seal",
@@ -5187,6 +5920,12 @@
           "display_order": 1,
           "next_scene_key": "S15",
           "hidden_when_unavailable": true,
+          "tags": [
+            "path:guardian",
+            "impact:Varrik survives wounded",
+            "impact:His testimony enters the record",
+            "outcome:Theron wakes to ordinary rain and Varrik's ragged breathing. The man who gave the order has survived to answer for it."
+          ],
           "requirements": {
             "type": "all",
             "conditions": [
@@ -5223,6 +5962,12 @@
           "display_order": 2,
           "next_scene_key": "S15",
           "hidden_when_unavailable": true,
+          "tags": [
+            "path:guardian",
+            "impact:Varrik dies holding the gate",
+            "impact:The survivors inherit his final order",
+            "outcome:Theron wakes to ordinary rain and an empty place where Varrik's argument should have been. The surviving miners carry the last order instead."
+          ],
           "requirements": {
             "type": "all",
             "conditions": [
@@ -5269,7 +6014,7 @@
       "chapter_key": "CH5",
       "title": "Thunder Moving East",
       "location_key": "western_overlook",
-      "display_order": 18,
+      "display_order": 21,
       "is_terminal": true,
       "ending_key": "legacy_saboteur",
       "tags": [
@@ -5817,6 +6562,18 @@
         },
         {
           "block_type": "system_message",
+          "display_order": 53,
+          "content": "Theron carried Bethella to shelter himself. She remembers the promise he chose to keep.",
+          "conditions": { "type": "variable_equals", "key": "BETHELLA_STATE", "value": "secured_by_theron" }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 53,
+          "content": "Theron trusted Edran with Bethella's life. Both reached the eastern shelter.",
+          "conditions": { "type": "variable_equals", "key": "BETHELLA_STATE", "value": "sheltered_by_edran" }
+        },
+        {
+          "block_type": "system_message",
           "display_order": 54,
           "content": "Timinny was caught in the open streets when the charge climbed the walls, and reached shelter on his own wheels.",
           "conditions": {
@@ -5824,6 +6581,18 @@
             "key": "TIMINNY_STATE",
             "value": "endangered"
           }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 54,
+          "content": "Theron stabilized Timinny's treatment housing and carried a completed grounding plan into Crownvein.",
+          "conditions": { "type": "variable_equals", "key": "TIMINNY_STATE", "value": "stabilized" }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 54,
+          "content": "Timinny sheltered with Bethella. Theron trusted them to keep one another alive while he ran for the breach.",
+          "conditions": { "type": "variable_equals", "key": "TIMINNY_STATE", "value": "sheltered" }
         },
         {
           "block_type": "system_message",
@@ -5907,6 +6676,12 @@
         },
         {
           "block_type": "system_message",
+          "display_order": 62,
+          "content": "Part of the crew received Theron's warning. Preparation saved lives, but not every gallery heard in time.",
+          "conditions": { "type": "variable_equals", "key": "CREW_PREPAREDNESS", "value": "medium" }
+        },
+        {
+          "block_type": "system_message",
           "display_order": 63,
           "content": "Theron's measured notes survive.",
           "conditions": {
@@ -5934,6 +6709,36 @@
             "key": "PROOF_STATE",
             "value": "destroyed_by_collapse"
           }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 65,
+          "content": "A rescued miner's repeated statement survives as evidence instead of rumor.",
+          "conditions": { "type": "variable_equals", "key": "PROOF_STATE", "value": "witness_statement" }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 65,
+          "content": "Theron's field rubbing preserves the shape of a chamber the collapse erased.",
+          "conditions": { "type": "variable_equals", "key": "PROOF_STATE", "value": "field_rubbing" }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 65,
+          "content": "The evidence entered official custody before the disaster. The Commission cannot deny receiving it.",
+          "conditions": { "type": "variable_equals", "key": "PROOF_STATE", "value": "official_chain" }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 65,
+          "content": "Forty miners remember the shutdown order in the same words.",
+          "conditions": { "type": "variable_equals", "key": "PROOF_STATE", "value": "crew_witness_chain" }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 65,
+          "content": "Three copies of the record survive in three different hands.",
+          "conditions": { "type": "variable_equals", "key": "PROOF_STATE", "value": "distributed_record" }
         },
         {
           "block_type": "system_message",
@@ -6018,6 +6823,30 @@
         {
           "block_type": "system_message",
           "display_order": 74,
+          "content": "Theron became a Guardian: the kind of hero who measures victory by who is still there to argue afterward.",
+          "conditions": { "type": "variable_minimum", "key": "PATH_GUARDIAN", "value": 3 }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 74,
+          "content": "Theron became a Seeker: the kind of hero who carries an unwelcome truth farther than fear can bury it.",
+          "conditions": { "type": "variable_minimum", "key": "PATH_SEEKER", "value": 3 }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 74,
+          "content": "Theron became Defiant: the kind of hero who refuses to let authority decide which dangers are permitted to be real.",
+          "conditions": { "type": "variable_minimum", "key": "PATH_DEFIANT", "value": 3 }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 74,
+          "content": "Theron became a Maker: the kind of hero who builds an answer while everyone else is still defining the problem.",
+          "conditions": { "type": "variable_minimum", "key": "PATH_MAKER", "value": 3 }
+        },
+        {
+          "block_type": "system_message",
+          "display_order": 75,
           "content": "The Commission's record will say the disaster was contained. Far to the east, the land has not read the record.",
           "conditions": {
             "type": "variable_equals",

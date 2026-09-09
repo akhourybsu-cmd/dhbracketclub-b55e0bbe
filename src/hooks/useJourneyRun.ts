@@ -16,8 +16,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { withTimeout, QUERY_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { EMPTY_RUN_STATE } from '@/lib/journey/types';
+import { parseDecisionImpact } from '@/lib/journey/agency';
 import type {
-  CampaignSummary, RuntimeBlock, RuntimeChoice, RuntimeEncounterPayload, RuntimeScene, RunRow, RunState,
+  CampaignSummary, JourneyDecisionImpact, RuntimeBlock, RuntimeChoice, RuntimeEncounterPayload, RuntimeScene, RunRow, RunState,
 } from '@/lib/journey/types';
 
 export interface JourneyRunView {
@@ -34,7 +35,9 @@ export interface JourneyRunView {
   busy: boolean;
   error: string | null;
   notices: string[];
+  lastDecisionImpact: JourneyDecisionImpact | null;
   clearNotices: () => void;
+  clearDecisionImpact: () => void;
   refresh: () => Promise<void>;
   chooseChoice: (choiceKey: string) => Promise<boolean>;
   resolveEncounterAction: (actionKey: string) => Promise<boolean>;
@@ -55,7 +58,7 @@ interface RuntimePayload {
 
 interface JourneyRpcError { message: string }
 interface JourneyRpcResult<T> { data: T | null; error: JourneyRpcError | null }
-interface JourneyMutationPayload { notices?: unknown }
+interface JourneyMutationPayload { notices?: unknown; decision_impact?: unknown }
 
 const journeyRpc = <T,>(
   functionName: string,
@@ -73,6 +76,7 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notices, setNotices] = useState<string[]>([]);
+  const [lastDecisionImpact, setLastDecisionImpact] = useState<JourneyDecisionImpact | null>(null);
   const inFlight = useRef(false);
 
   const load = useCallback(async () => {
@@ -114,6 +118,8 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
         ? data.notices.filter((notice): notice is string => typeof notice === 'string' && notice.length > 0)
         : [];
       setNotices(nextNotices);
+      const decisionImpact = parseDecisionImpact(data?.decision_impact);
+      if (decisionImpact) setLastDecisionImpact(decisionImpact);
       // The scene payload (blocks, choices, availability) is always rebuilt
       // server-side so nothing stale survives a transition.
       await load();
@@ -148,6 +154,9 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
     return mutate(() => journeyRpc<JourneyMutationPayload>('journey_advance_scene', { _run_id: run.id }));
   }, [run, mutate]);
 
+  const clearNotices = useCallback(() => setNotices([]), []);
+  const clearDecisionImpact = useCallback(() => setLastDecisionImpact(null), []);
+
   return {
     run,
     campaign: payload?.campaign ?? null,
@@ -158,8 +167,9 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
     choices: payload?.choices ?? [],
     encounter: payload?.encounter ?? null,
     state,
-    loading, busy, error, notices,
-    clearNotices: () => setNotices([]),
+    loading, busy, error, notices, lastDecisionImpact,
+    clearNotices,
+    clearDecisionImpact,
     refresh: load,
     chooseChoice,
     resolveEncounterAction,

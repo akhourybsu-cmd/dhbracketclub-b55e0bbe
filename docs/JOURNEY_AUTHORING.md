@@ -132,6 +132,46 @@ to `auto_next_scene_key`. Rules the validator enforces:
 - a routing node may not be `is_terminal`
 - blocks and choices on a routing node are dead content (warning)
 
+## Agency paths and visible consequences
+
+Campaigns can opt into the player-agency layer by declaring identity paths in
+`campaign.config.agency`. Each path points at an integer campaign variable that
+the engine increments whenever the player makes a tagged choice.
+
+```jsonc
+"agency": {
+  "version": 1,
+  "paths": [
+    { "key": "guardian", "label": "Guardian", "variable": "PATH_GUARDIAN" },
+    { "key": "seeker", "label": "Seeker", "variable": "PATH_SEEKER" },
+    { "key": "defiant", "label": "Defiant", "variable": "PATH_DEFIANT" },
+    { "key": "maker", "label": "Maker", "variable": "PATH_MAKER" }
+  ]
+}
+```
+
+Every choice in an agency-enabled campaign must carry exactly one `path:` tag,
+at least one `impact:` tag, and exactly one `outcome:` tag. These tags power the
+pre-choice forecast, the immediate consequence card, the character identity
+tracker, and the permanent decision journal.
+
+The current player identity display supports the `guardian`, `seeker`,
+`defiant`, and `maker` path keys.
+
+```jsonc
+"tags": [
+  "path:guardian",
+  "impact:Bethella trusts you",
+  "impact:Family route opened",
+  "outcome:Bethella remembers who stayed beside her."
+]
+```
+
+Write `impact:` tags as concise, spoiler-safe consequences. Use `outcome:` for
+one complete sentence explaining what changed. The validator blocks publishing
+when the agency contract is incomplete or references an undeclared path
+variable.
+
 ## Entry conditions and fallback
 
 `entry_conditions` are evaluated **as the scene is entered**. If they are not
@@ -207,6 +247,8 @@ and sets `encounter_<SCENE_KEY>_resolved` when the challenge ends.
             "difficulty": 11,
             "risk": "measured", // measured|bold|desperate
             "focus_cost": 0,
+            "requirements": { "type": "has_item", "key": "survey_coil" },
+            "locked_hint": "Recover the survey coil earlier in the descent.",
             "success_progress": 2,
             "costly_progress": 1,
             "costly_damage": 1,
@@ -225,6 +267,13 @@ anything lower is a setback. A natural 20 adds one progress. `focus_cost`
 spends the encounter's limited Focus, so every encounter should include at
 least one zero-cost action. Encounters fail forward: reaching the round limit
 applies failure effects and opens the story instead of trapping the run.
+
+Encounter approaches may use the same `requirements` grammar as choices. The
+server evaluates the requirement before rolling and exposes only an
+`available` flag to the client, so a locked action cannot be invoked manually.
+Always pair a gated approach with a spoiler-safe `locked_hint`; the player sees
+the disabled option and understands which earlier kind of preparation would
+have made it available.
 
 To make the challenge mandatory before its authored consequence choices, add
 this requirement to those choices:

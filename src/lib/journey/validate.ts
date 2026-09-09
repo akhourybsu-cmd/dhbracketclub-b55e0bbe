@@ -36,7 +36,11 @@ export interface ValidationResult {
   };
 }
 
-interface AuthoredEncounterAction extends RuntimeEncounterAction {
+const SUPPORTED_AGENCY_PATHS = new Set(['guardian', 'seeker', 'defiant', 'maker']);
+
+interface AuthoredEncounterAction extends Omit<RuntimeEncounterAction, 'available' | 'locked_hint'> {
+  requirements?: Requirement | Requirement[] | null;
+  locked_hint?: string;
   success_effects?: Effect[];
   costly_effects?: Effect[];
   setback_effects?: Effect[];
@@ -128,6 +132,9 @@ export function validateCampaign(pkg: CampaignPackage): ValidationResult {
   };
   const adventure = pkg.campaign?.config?.adventure as { encounters?: Record<string, AuthoredEncounter> } | undefined;
   const encounters = adventure?.encounters ?? {};
+  const agency = pkg.campaign?.config?.agency as {
+    paths?: Array<{ key?: string; variable?: string; label?: string }>;
+  } | undefined;
 
   // Flags and choice keys are declared implicitly by effects.
   const allChoices = scenes.flatMap((s) => (s.choices ?? []).map((c) => ({ scene: s, choice: c })));
@@ -167,6 +174,34 @@ export function validateCampaign(pkg: CampaignPackage): ValidationResult {
       perScene.set(scene.scene_key, bucket);
     }
   });
+
+  if (agency) {
+    const allowedPaths = new Set((agency.paths ?? []).map((path) => path.key).filter(Boolean));
+    (agency.paths ?? []).forEach((path) => {
+      if (!path.key || !path.label || !path.variable) {
+        add('error', 'agency_bad_path', 'Every agency path needs a key, label and variable.');
+      } else if (!SUPPORTED_AGENCY_PATHS.has(path.key)) {
+        add('error', 'agency_bad_path', `Agency path "${path.key}" is not supported by the player identity system.`);
+      } else if (!known.variable.has(path.variable)) {
+        add('error', 'agency_missing_variable', `Agency path "${path.key}" references undefined variable "${path.variable}".`);
+      }
+    });
+    allChoices.forEach(({ scene, choice }) => {
+      const tags = choice.tags ?? [];
+      const paths = tags.filter((tag) => tag.startsWith('path:')).map((tag) => tag.slice(5));
+      const impacts = tags.filter((tag) => tag.startsWith('impact:') && tag.length > 7);
+      const outcomes = tags.filter((tag) => tag.startsWith('outcome:') && tag.length > 8);
+      if (paths.length !== 1 || !allowedPaths.has(paths[0])) {
+        add('error', 'agency_choice_path', `Choice "${choice.choice_key}" needs exactly one valid path tag.`, scene.scene_key, choice.choice_key);
+      }
+      if (impacts.length === 0) {
+        add('error', 'agency_choice_impact', `Choice "${choice.choice_key}" needs at least one impact tag.`, scene.scene_key, choice.choice_key);
+      }
+      if (outcomes.length !== 1) {
+        add('error', 'agency_choice_outcome', `Choice "${choice.choice_key}" needs exactly one outcome tag.`, scene.scene_key, choice.choice_key);
+      }
+    });
+  }
 
   const checkRefs = (
     reqs: Requirement[], fx: Effect[], scene_key?: string, choice_key?: string,
@@ -229,6 +264,10 @@ export function validateCampaign(pkg: CampaignPackage): ValidationResult {
       if (!['measured', 'bold', 'desperate'].includes(action.risk)) {
         add('error', 'encounter_bad_risk', `Approach "${action.action_key}" has an invalid risk.`, sceneKey);
       }
+      if (action.requirements && !action.locked_hint) {
+        add('warning', 'encounter_missing_locked_hint', `Locked approach "${action.action_key}" should explain how to unlock it.`, sceneKey);
+      }
+      checkRefs(flatten(action.requirements), [], sceneKey, action.action_key);
       checkRefs([], action.success_effects ?? [], sceneKey, action.action_key);
       checkRefs([], action.costly_effects ?? [], sceneKey, action.action_key);
       checkRefs([], action.setback_effects ?? [], sceneKey, action.action_key);

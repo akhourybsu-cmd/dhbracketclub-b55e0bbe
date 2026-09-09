@@ -138,6 +138,11 @@ export interface ChoiceDef {
   once_only?: boolean;
   requirements?: Requirement | Requirement[] | null;
   effects?: Effect[];
+  /**
+   * Optional agency metadata is encoded in tags so it survives the existing
+   * Studio import/export pipeline:
+   * `path:guardian`, `impact:Protect the crew`, `outcome:They remember.`
+   */
   tags?: string[];
   author_notes?: string;
 }
@@ -319,6 +324,18 @@ export interface RuntimeChoice {
   major_decision: boolean;
   available: boolean;
   locked_hint: string | null;
+  /** Role-playing direction communicated before committing the choice. */
+  intent: string | null;
+  /** Spoiler-safe, authored signals about which parts of the story may move. */
+  impact_preview: string[];
+}
+
+export interface JourneyDecisionImpact {
+  choice_text: string;
+  path: string | null;
+  path_label: string | null;
+  outcome_text: string | null;
+  impact: string[];
 }
 
 /* ── Adventure encounters (spoiler-safe runtime payload) ─────────────── */
@@ -335,6 +352,8 @@ export interface RuntimeEncounterAction {
   difficulty: number;
   risk: AdventureRisk;
   focus_cost: number;
+  available: boolean;
+  locked_hint: string | null;
 }
 
 export interface RuntimeEncounterDefinition {

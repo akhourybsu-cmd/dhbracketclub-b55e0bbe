@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Dices,
   Gauge,
+  Lock,
   ShieldAlert,
   Sparkles,
   Target,
@@ -124,16 +125,18 @@ export function AdventureEncounter({ encounter, state, busy, onAction }: Props) 
             {definition.actions.map((action) => {
               const statScore = Number(state.stats?.[action.stat] ?? 0);
               const lacksFocus = action.focus_cost > focus;
+              const unavailable = action.available === false;
               return (
                 <button
                   key={action.action_key}
                   type="button"
                   className={`jy-action jy-action-${action.risk}`}
-                  disabled={busy || lacksFocus}
+                  disabled={busy || lacksFocus || unavailable}
+                  aria-disabled={lacksFocus || unavailable}
                   onClick={() => onAction(action.action_key)}
                 >
                   <span className="jy-action-icon" aria-hidden>
-                    {action.risk === 'desperate' ? <ShieldAlert /> : action.risk === 'bold' ? <Dices /> : <Target />}
+                    {unavailable ? <Lock /> : action.risk === 'desperate' ? <ShieldAlert /> : action.risk === 'bold' ? <Dices /> : <Target />}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
@@ -145,6 +148,7 @@ export function AdventureEncounter({ encounter, state, busy, onAction }: Props) 
                       <span className="jy-chip">{riskLabels[action.risk]}</span>
                       {action.focus_cost > 0 && <span className="jy-chip jy-chip-gold">{action.focus_cost} Focus</span>}
                       {lacksFocus && <span className="jy-chip jy-chip-blood">Not enough focus</span>}
+                      {unavailable && action.locked_hint && <span className="jy-chip jy-chip-blood">{action.locked_hint}</span>}
                     </span>
                   </span>
                 </button>
