@@ -8,8 +8,6 @@ const RUNE_META: Record<RuneType, { glyph: string; color: string; glow: string; 
   gold:  { glyph: '◈', color: 'hsl(45 90% 56%)',  glow: 'hsl(45 90% 56% / 0.45)', label: 'Guard' },
 };
 
-export const RUNE_VISUAL = RUNE_META;
-
 interface Props {
   type: RuneType;
   selected?: boolean;
@@ -35,21 +33,28 @@ interface Props {
   size?: number;
   onPointerDown?: (e: React.PointerEvent) => void;
   onPointerEnter?: (e: React.PointerEvent) => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  touchAction?: 'none' | 'pan-y';
   dataR: number;
   dataC: number;
 }
 
-export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptionSource, eclipsed, linked, shifting, treasure, hazard, size = 56, onPointerDown, onPointerEnter, dataR, dataC }: Props) {
+export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptionSource, eclipsed, linked, shifting, treasure, hazard, size, onPointerDown, onPointerEnter, onClick, disabled, touchAction = 'none', dataR, dataC }: Props) {
   const meta = RUNE_META[type];
   return (
-    <div
+    <button
+      type="button"
       data-rune-cell={sealed ? undefined : true}
       data-r={dataR}
       data-c={dataC}
       onPointerDown={sealed ? undefined : onPointerDown}
       onPointerEnter={sealed ? undefined : onPointerEnter}
+      onClick={sealed ? undefined : onClick}
+      disabled={disabled || sealed}
+      aria-pressed={selected}
       className={cn(
-        'relative flex items-center justify-center rounded-xl select-none transition-transform',
+        'relative flex appearance-none items-center justify-center rounded-xl select-none transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         !selected && !sealed && 'rd-tile',
         selected && 'scale-110 z-10 border',
         invalid && 'opacity-50',
@@ -59,8 +64,9 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
         shifting && !sealed && 'ring-1 ring-inset ring-primary/40',
       )}
       style={{
-        width: size,
-        height: size,
+        width: size ?? '100%',
+        height: size ?? 'auto',
+        aspectRatio: '1 / 1',
         ...(selected
           ? {
               background: `radial-gradient(circle at 50% 40%, ${meta.color}, ${meta.color} 60%, transparent 100%)`,
@@ -68,7 +74,7 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
               boxShadow: `0 0 22px ${meta.glow}, inset 0 0 10px rgba(255,255,255,0.18)`,
             }
           : {}),
-        touchAction: 'none',
+        touchAction,
         cursor: sealed ? 'not-allowed' : undefined,
       }}
       aria-label={
@@ -107,8 +113,8 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
               textShadow: selected ? '0 1px 4px rgba(0,0,0,0.5)' : undefined,
               // Element-specific halo color. Empty/undefined for
               // selected (the wrapper background does the work).
-              ['--rune-glow' as any]: selected ? undefined : meta.glow,
-            }}
+              '--rune-glow': selected ? undefined : meta.glow,
+            } as React.CSSProperties & { '--rune-glow'?: string }}
           >
             {meta.glyph}
           </span>
@@ -164,6 +170,6 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
           <span className="absolute bottom-0.5 left-0.5 text-[10px] leading-none pointer-events-none" aria-hidden>⚠️</span>
         </>
       )}
-    </div>
+    </button>
   );
 }

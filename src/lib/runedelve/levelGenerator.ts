@@ -257,13 +257,20 @@ function scaleEnemy(base: RosterEntry, level: number) {
 }
 
 // MVP objectives — gradually introduced.
-function objectiveFor(level: number, rng: () => number): { type: ObjectiveType; target: number } {
+function objectiveFor(level: number, turnLimit: number): { type: ObjectiveType; target: number } {
   // Default everywhere: defeat all enemies.
   if (level < 15)  return { type: 'defeat_all', target: 0 };
   // From level 15: occasional survive levels.
   if (level % 13 === 0) return { type: 'survive', target: turnLimitFor(level) };
   // From level 30: occasional score targets.
-  if (level >= 30 && level % 17 === 0) return { type: 'reach_score', target: 600 + level * 12 };
+  if (level >= 30 && level % 17 === 0) {
+    // A run starts with score credit for full HP and remaining turns. The old
+    // linear target sat below that baseline at L34/L51, so those chambers
+    // rendered already complete and the board could never resolve. Every
+    // score objective now requires at least 100 points of active play.
+    const startingScore = 100 * 5 + turnLimit * 50;
+    return { type: 'reach_score', target: Math.max(600 + level * 12, startingScore + 100) };
+  }
   // From chapter 2 (51+): elite levels every ~25.
   if (level >= 51 && level % 25 === 0) return { type: 'defeat_elite', target: 0 };
   return { type: 'defeat_all', target: 0 };
@@ -345,8 +352,8 @@ export function generateLevel(level: number): LevelDefinition {
   const rng = mulberry32(seed);
   const enemyCount = enemyCountFor(level, rng);
   const enemies: Enemy[] = [];
-  const objective = objectiveFor(level, rng);
   const turnLimit = turnLimitFor(level);
+  const objective = objectiveFor(level, turnLimit);
   const mechanics = mechanicsForLevel(level);
   const bossKind = bossKindForLevel(level);
   const isChapterBossLevel = bossKind === 'chapter';
@@ -440,7 +447,7 @@ export function objectiveLabel(o: ObjectiveType): string {
     case 'defeat_all':   return 'Defeat all enemies';
     case 'survive':      return 'Survive every turn';
     case 'reach_score':  return 'Reach the score target';
-    case 'defeat_elite': return 'Defeat the Elite';
+    case 'defeat_elite': return 'Defeat the champion';
   }
 }
 

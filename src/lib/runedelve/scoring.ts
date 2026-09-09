@@ -22,6 +22,21 @@ export interface ScoreBreakdown {
   total: number;
 }
 
+export type LiveScoreInputs = Pick<
+  ScoreInputs,
+  'totalDamage' | 'enemiesDefeated' | 'turnsRemaining' | 'longestChain'
+> & { hp?: number; hpRemaining?: number };
+
+/** Score visible while a run is active, before clear/optional bonuses. */
+export function liveScore(i: LiveScoreInputs): number {
+  const hp = i.hpRemaining ?? i.hp ?? 0;
+  return i.totalDamage
+    + i.enemiesDefeated * 200
+    + Math.max(0, hp) * 5
+    + Math.max(0, i.turnsRemaining) * 50
+    + i.longestChain * 25;
+}
+
 export function calculateScore(i: ScoreInputs): ScoreBreakdown {
   const damage = i.totalDamage;
   const enemiesPts = i.enemiesDefeated * 200;

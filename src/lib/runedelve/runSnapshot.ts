@@ -22,6 +22,8 @@ export interface RunSnapshot {
   savedAt: number;
   grid: RuneType[][];
   combat: CombatState;
+  /** Actual opening turn budget after relic/daily bonuses. */
+  initialTurns?: number;
   seals: string[];
   corruption: { cells: string[]; sources: string[] };
   log: CombatLogEntry[];
@@ -55,6 +57,7 @@ export interface BuildSnapshotInput {
   generationSeed: number;
   grid: RuneType[][];
   combat: CombatState;
+  initialTurns?: number;
   seals: Set<string>;
   corruption: CorruptionState;
   log: CombatLogEntry[];
@@ -81,6 +84,7 @@ export function buildSnapshot(input: BuildSnapshotInput): RunSnapshot {
     savedAt: Date.now(),
     grid: input.grid,
     combat: input.combat,
+    initialTurns: input.initialTurns ?? input.combat.turnsRemaining,
     seals: Array.from(input.seals),
     corruption: {
       cells: Array.from(input.corruption.cells),

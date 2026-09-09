@@ -47,6 +47,24 @@ export interface ChainResolution {
 export const MAX_HP = 100;
 export const MAX_MANA = 3;
 
+/** Base red-chain damage shared by combat and the board's live preview. */
+export function redChainDamage(length: number, cls: HeroClass, level = 1): number {
+  const classMultiplier: Record<HeroClass, number> = {
+    warrior: 1.30,
+    mage: 1.20,
+    rogue: 1.40,
+    cleric: 1.45,
+  };
+  const depthMultiplier = level <= 25
+    ? 1
+    : level <= 50
+      ? 1 + (level - 25) * 0.008
+      : level <= 100
+        ? 1.20 + (level - 50) * 0.008
+        : 1.60 + (level - 100) * 0.010;
+  return Math.round(length * 8 * classMultiplier[cls] * depthMultiplier);
+}
+
 export function initialCombat(enemies: Enemy[], turns: number, opts?: { bonusMaxHp?: number }): CombatState {
   const bonus = Math.max(0, opts?.bonusMaxHp ?? 0);
   const maxHp = MAX_HP + bonus;
@@ -86,22 +104,8 @@ export function applyChain(
   };
   next.longestChain = Math.max(next.longestChain, length);
 
-  // Rebalance v5b — depth scalar pushes harder past L100 to keep deep band
-  // clearable for non-Mage classes. L150 lands at ~2.10×.
-  const depthMul = (() => {
-    if (level <= 25) return 1.00;
-    if (level <= 50) return 1.00 + (level - 25) * 0.008;   // 1.00 → 1.20
-    if (level <= 100) return 1.20 + (level - 50) * 0.008;  // 1.20 → 1.60
-    return 1.60 + (level - 100) * 0.010;                    // 1.60 → 2.10
-  })();
-
   if (type === 'red') {
-    let dmg = length * 8;
-    if (cls === 'warrior') dmg = Math.round(dmg * 1.30);
-    if (cls === 'mage')    dmg = Math.round(dmg * 1.20);
-    if (cls === 'rogue')   dmg = Math.round(dmg * 1.40);
-    if (cls === 'cleric')  dmg = Math.round(dmg * 1.45);
-    dmg = Math.round(dmg * depthMul);
+    let dmg = redChainDamage(length, cls, level);
     if (next.shadowstepActive) {
       dmg = Math.round(dmg * 2);
       next.shadowstepActive = false;

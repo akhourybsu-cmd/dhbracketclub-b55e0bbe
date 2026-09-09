@@ -7,6 +7,8 @@ import { EnemyDeathBurst } from './fx/EnemyDeathBurst';
 interface Props {
   enemies: Enemy[];
   flashId?: string | null;
+  /** First enemy a standard attack chain will hit right now. */
+  primaryTargetId?: string | null;
 }
 
 /** Per-enemy death-burst trigger. Watches an enemy's hp; the first
@@ -30,8 +32,9 @@ function useDeathBurstTrigger(hp: number): number {
 }
 
 /** Per-enemy tile — extracted so each gets its own death-burst hook. */
-function EnemyTile({ e, flashId }: { e: Enemy; flashId?: string | null }) {
+function EnemyTile({ e, flashId, primaryTargetId }: { e: Enemy; flashId?: string | null; primaryTargetId?: string | null }) {
   const dead = e.hp <= 0;
+  const isPrimaryTarget = !dead && e.id === primaryTargetId;
   const deathTrigger = useDeathBurstTrigger(e.hp);
   const pct = Math.max(0, Math.round((e.hp / e.maxHp) * 100));
   const hasIntent = !dead && e.intent != null && e.intentMax != null;
@@ -42,6 +45,7 @@ function EnemyTile({ e, flashId }: { e: Enemy; flashId?: string | null }) {
   return (
     <motion.div
       data-enemy-id={e.id}
+      data-primary-target={isPrimaryTarget ? 'true' : undefined}
       animate={flashId === e.id ? { x: [-3, 3, -2, 2, 0] } : false}
       transition={{ duration: 0.3 }}
       className="flex flex-col items-center gap-0.5 min-w-[64px]"
@@ -144,17 +148,23 @@ function EnemyTile({ e, flashId }: { e: Enemy; flashId?: string | null }) {
           }}
         />
       </div>
-      <div className="text-[9px] font-mono font-bold tabular-nums text-foreground/65 leading-none">
-        {Math.max(0, e.hp)}/{e.maxHp}
+      <div
+        className="flex items-center gap-1 text-[9px] font-mono font-bold tabular-nums text-foreground/65 leading-none"
+        aria-label={`${isPrimaryTarget ? 'Current target. ' : ''}${Math.max(0, e.hp)} of ${e.maxHp} health. ${e.damage} base attack damage${e.role ? `. ${e.role} role` : ''}.`}
+        title={`${e.role ? `${e.role} · ` : ''}${e.damage} base damage`}
+      >
+        {isPrimaryTarget && <span className="text-primary" aria-hidden>▶</span>}
+        <span>{Math.max(0, e.hp)}/{e.maxHp}</span>
+        {!dead && <span className="text-destructive/85">· ⚔{e.damage}</span>}
       </div>
     </motion.div>
   );
 }
 
-export function EnemyDisplay({ enemies, flashId }: Props) {
+export function EnemyDisplay({ enemies, flashId, primaryTargetId }: Props) {
   return (
     <div className="flex items-start justify-center gap-2.5 flex-wrap">
-      {enemies.map(e => <EnemyTile key={e.id} e={e} flashId={flashId} />)}
+      {enemies.map(e => <EnemyTile key={e.id} e={e} flashId={flashId} primaryTargetId={primaryTargetId} />)}
     </div>
   );
 }

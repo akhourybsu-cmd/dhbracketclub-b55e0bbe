@@ -10,8 +10,9 @@ import { useLevel, useMyLevelRun, useSubmitLevelRun, useAdvanceProgress, useMyPr
 import { mulberry32 } from '@/lib/runedelve/prng';
 import { generateBoard, type RuneType, type Enemy } from '@/lib/runedelve/dungeonGenerator';
 import { isValidChain, resolveBoard, type Cell } from '@/lib/runedelve/boardEngine';
-import { applyChain, enemiesAttack, endTurn, initialCombat, isRunOver, useAbility, type CombatState } from '@/lib/runedelve/combatEngine';
+import { applyChain, enemiesAttack, endTurn, initialCombat, redChainDamage, useAbility as activateAbility, type CombatState } from '@/lib/runedelve/combatEngine';
 import { calculateScore, xpForRun } from '@/lib/runedelve/scoring';
+import { evaluateObjective, getObjectiveProgress } from '@/lib/runedelve/objectives';
 import { levelFromXp, newTitleUnlocked, titleForLevel } from '@/lib/runedelve/classConfig';
 import { useLoadout } from '@/hooks/useLoadout';
 import { useEarnShards, useFailureRow, useBumpFailure, useResetFailure, useRuneWallet, useUnlockSlot } from '@/hooks/useRuneShards';
@@ -472,12 +473,14 @@ export default function RuneDelvePlayPage() {
         // that case, which the engine treats as Steady Path.
         setActiveModifier(getModifierById(snap.activeModifierId));
         setModifierOffer(null); // never re-show the picker on a resume
-        // Resumed runs have passed turn 1; sentinel keeps Shrine Ward inert.
-        initialTurnsRef.current = -1;
+        // Restore the real opening budget so turn counts, survive goals, and
+        // speed bonuses remain accurate after an iOS/Android background resume.
+        initialTurnsRef.current = snap.initialTurns
+          ?? Math.max(level.turn_limit, snap.combat.turnsRemaining);
         // Can't prove a resumed run was damage-free — disqualify conservatively.
         tookDamageRef.current = true;
-        const turnNow = level.turn_limit - snap.combat.turnsRemaining + 1;
-        toast(`↩️ Resumed your run (Turn ${turnNow} of ${level.turn_limit})`, { duration: 2200 });
+        const turnNow = Math.max(1, initialTurnsRef.current - snap.combat.turnsRemaining + 1);
+        toast(`↩️ Resumed your run (Turn ${turnNow} of ${initialTurnsRef.current})`, { duration: 2200 });
         return;
       }
     }
@@ -666,6 +669,7 @@ export default function RuneDelvePlayPage() {
       generationSeed: level.generation_seed,
       grid,
       combat,
+      initialTurns: initialTurnsRef.current,
       seals,
       corruption,
       log,
@@ -685,9 +689,9 @@ export default function RuneDelvePlayPage() {
     saveSnapshot(runKey, snap);
   }, [
     runKey, level, grid, combat, seals, corruption, log,
-    lastStandUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
+    lastStandUsed, phoenixUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
     abilityUsedCount, corruptCleansedCount, rngTick, activeRelicsSnapshot,
-    endState,
+    activeModifier?.id, endState,
   ]);
 
   // Final-flush on visibilitychange / pagehide so the OS evicting the
@@ -700,12 +704,12 @@ export default function RuneDelvePlayPage() {
       const snap = buildSnapshot({
         levelNumber: level.level_number,
         generationSeed: level.generation_seed,
-        grid, combat, seals, corruption, log,
+        grid, combat, initialTurns: initialTurnsRef.current, seals, corruption, log,
         lastStandUsed, phoenixUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
         abilityUsedCount, corruptCleansedCount,
         defeatedArchetypes: defeatedArchetypesRef.current,
         wavesSpawned: wavesSpawnedRef.current,
-        rngTick, activeRelicsSnapshot,
+        rngTick, activeRelicsSnapshot, activeModifierId: activeModifier?.id,
       });
       saveSnapshot(runKey, snap);
     };
@@ -718,9 +722,9 @@ export default function RuneDelvePlayPage() {
     };
   }, [
     runKey, level, grid, combat, seals, corruption, log,
-    lastStandUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
+    lastStandUsed, phoenixUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
     abilityUsedCount, corruptCleansedCount, rngTick, activeRelicsSnapshot,
-    endState,
+    activeModifier?.id, endState,
   ]);
 
   // Clear the snapshot whenever the run terminates — defeated, cleared, or
@@ -786,6 +790,7 @@ export default function RuneDelvePlayPage() {
   }
 
   const objType = level.objective_type as ObjectiveType;
+  const activeTurnBudget = Math.max(level.turn_limit, initialTurnsRef.current);
 
   const handleChain = (chain: Cell[]) => {
     if (!isValidChain(grid, chain, seals, eclipse)) return;
@@ -812,7 +817,7 @@ export default function RuneDelvePlayPage() {
       chain.length >= 8 ? 'huge' : chain.length >= 6 ? 'big' : 'normal';
     let fxTarget: FxRect | undefined;
     if (type === 'red') {
-      const firstAlive = combat.enemies.find(e => e.hp > 0);
+      const firstAlive = filterTargetable(bossRule, combat.enemies)[0];
       if (firstAlive) fxTarget = findEnemyRect(firstAlive.id);
     } else if (type === 'green') {
       fxTarget = findHudRect('hp');
@@ -1007,9 +1012,12 @@ export default function RuneDelvePlayPage() {
       const bonusLen = chainMods.effectiveLengthBonus;
       next.longestChain = Math.max(next.longestChain, chain.length + bonusLen);
       if (type === 'red') {
-        // 8 dmg per rune base, scaled by warrior passive (matches applyChain).
-        const perRune = hero.class === 'warrior' ? Math.round(8 * 1.25) : 8;
-        const extra = perRune * bonusLen;
+        // Match the engine's class + campaign-depth curve exactly.
+        const extra = Math.max(
+          0,
+          redChainDamage(chain.length + bonusLen, hero.class, level.level_number)
+            - redChainDamage(chain.length, hero.class, level.level_number),
+        );
         const target = next.enemies.find(e => e.hp > 0)
           ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
         if (target) {
@@ -1698,7 +1706,7 @@ export default function RuneDelvePlayPage() {
     setCombat(postWave);
     pushLogs(turnLogs);
 
-    const status = checkObjective(postWave, level.turn_limit, objType, level.objective_target, secondaryObjective);
+    const status = evaluateObjective(postWave, activeTurnBudget, objType, level.objective_target);
     if (status.over) void finalize(postWave, status.cleared);
   };
 
@@ -1717,7 +1725,7 @@ export default function RuneDelvePlayPage() {
       rdSfx(`ability.cast.${hero.class}` as any);
       if (hero.class === 'warrior') triggerCamShake(8);
     }
-    const { next, ok } = useAbility(combat, hero.class, bossRule, activeMasteries, level.level_number, effectiveCost);
+    const { next, ok } = activateAbility(combat, hero.class, bossRule, activeMasteries, level.level_number, effectiveCost);
     if (!ok) {
       toast.info('Ability not ready — fill mana orbs first.');
       return;
@@ -1826,7 +1834,7 @@ export default function RuneDelvePlayPage() {
     }
     setCombat(postWave);
     pushLogs(turnLogs);
-    const status = checkObjective(postWave, level.turn_limit, objType, level.objective_target, secondaryObjective);
+    const status = evaluateObjective(postWave, activeTurnBudget, objType, level.objective_target);
     if (status.over) void finalize(postWave, status.cleared);
   };
 
@@ -1870,12 +1878,12 @@ export default function RuneDelvePlayPage() {
         }
       }
     }
-    const turnsUsed = level.turn_limit - final.turnsRemaining;
+    const turnsUsed = Math.max(0, activeTurnBudget - final.turnsRemaining);
     const relicsForFinal = activeRelicsSnapshot ?? activeRelics;
     // Optional Layered-Goal bonus (Band 4): met = extra score + shards. It is a
-    // pure reward now, never a clear requirement (see checkObjective).
+    // pure reward now, never a clear requirement (see evaluateObjective).
     const secondaryMetThisRun = !!(cleared && secondaryObjective
-      && secondaryMet(secondaryObjective, final, level.turn_limit));
+      && secondaryMet(secondaryObjective, final, activeTurnBudget));
     const rawBreakdown = calculateScore({
       totalDamage: final.totalDamage,
       enemiesDefeated: final.enemiesDefeated,
@@ -2217,10 +2225,12 @@ export default function RuneDelvePlayPage() {
     }
   }
 
-  const status = checkObjective(combat, level.turn_limit, objType, level.objective_target, secondaryObjective);
+  const status = evaluateObjective(combat, activeTurnBudget, objType, level.objective_target);
+  const objectiveProgress = getObjectiveProgress(combat, activeTurnBudget, objType, level.objective_target);
+  const primaryTargetId = filterTargetable(bossRule, combat.enemies)[0]?.id ?? null;
   const turnDisplay = Math.min(
-    level.turn_limit,
-    Math.max(1, level.turn_limit - combat.turnsRemaining + (status.over ? 0 : 1)),
+    activeTurnBudget,
+    Math.max(1, activeTurnBudget - combat.turnsRemaining + (status.over ? 0 : 1)),
   );
 
   const equippedCount = [loadout?.slot_1, loadout?.slot_2, loadout?.slot_3].filter(Boolean).length;
@@ -2246,45 +2256,52 @@ export default function RuneDelvePlayPage() {
         flavor={phaseFlashMeta.flavor}
       />
       {/* Compact combined HUD: turn counter + objective on a single row */}
-      <div
-        className="rd-carved rounded-xl px-3 py-2 flex items-center gap-2"
-        style={{ borderRadius: '0.75rem' }}
-      >
-        <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-primary px-1.5 py-0.5 rounded bg-primary/20 shrink-0">
-          L{level.level_number}
-        </span>
-        <span className="text-[11px] font-extrabold tabular-nums text-foreground/95 shrink-0">
-          T{turnDisplay}/{level.turn_limit}
-        </span>
-        <span className="h-3 w-px bg-foreground/15 shrink-0" />
-        <span className="text-[11px] font-bold flex-1 min-w-0 truncate text-foreground/95">
-          {objectiveLabel(objType)}
-          {objType === 'reach_score' && (
-            <span className="text-foreground/60"> · {level.objective_target.toLocaleString()}</span>
-          )}
-        </span>
-        {existingRun && (
-          <span className="text-[10px] font-mono font-extrabold tabular-nums text-foreground/70 shrink-0">
-            ★{existingRun.score.toLocaleString()}
+      <div className="rd-carved rounded-xl px-3 py-2 space-y-1.5" style={{ borderRadius: '0.75rem' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-primary px-1.5 py-0.5 rounded bg-primary/20 shrink-0">
+            L{level.level_number}
           </span>
-        )}
-        {equippedCount > 0 && (
-          <Link
-            to="/rune-delve/armory"
-            aria-label={`${equippedCount} relics equipped`}
-            className="inline-flex items-center gap-0.5 px-1.5 h-6 rounded-full text-[10px] font-extrabold tabular-nums btn-press shrink-0"
-            style={{ background: 'hsl(var(--primary) / 0.18)', color: 'hsl(var(--primary))' }}
+          <span className="text-[11px] font-extrabold tabular-nums text-foreground/95 shrink-0">
+            T{turnDisplay}/{activeTurnBudget}
+          </span>
+          <span className="h-3 w-px bg-foreground/15 shrink-0" />
+          <span className="text-[11px] font-bold flex-1 min-w-0 truncate text-foreground/95">
+            {objectiveLabel(objType)}
+          </span>
+          {existingRun && (
+            <span className="text-[10px] font-mono font-extrabold tabular-nums text-foreground/70 shrink-0">
+              ★{existingRun.score.toLocaleString()}
+            </span>
+          )}
+          {equippedCount > 0 && (
+            <Link
+              to="/rune-delve/armory"
+              aria-label={`${equippedCount} relics equipped`}
+              className="inline-flex items-center gap-0.5 px-1.5 h-6 rounded-full text-[10px] font-extrabold tabular-nums btn-press shrink-0"
+              style={{ background: 'hsl(var(--primary) / 0.18)', color: 'hsl(var(--primary))' }}
+            >
+              🛡️{equippedCount}
+            </Link>
+          )}
+          <button
+            onClick={() => setHelpOpen(true)}
+            aria-label="How to play"
+            className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center text-foreground/70 hover:text-primary btn-press shrink-0"
           >
-            🛡️{equippedCount}
-          </Link>
-        )}
-        <button
-          onClick={() => setHelpOpen(true)}
-          aria-label="How to play"
-          className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center text-foreground/70 hover:text-primary btn-press shrink-0"
-        >
-          <HelpCircle className="w-4 h-4" />
-        </button>
+            <HelpCircle className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2" aria-label={`${objectiveLabel(objType)}: ${objectiveProgress.text}`}>
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-300"
+              style={{ width: `${objectiveProgress.percent}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-[9px] font-extrabold tabular-nums text-foreground/65">
+            {objectiveProgress.text}
+          </span>
+        </div>
       </div>
 
       {/* Active mechanics strip — only when this level uses any mechanic */}
@@ -2292,7 +2309,7 @@ export default function RuneDelvePlayPage() {
 
       {/* Layered Goals — secondary objective pill (Band 4). */}
       {secondaryObjective && (() => {
-        const met = secondaryMet(secondaryObjective, combat, level.turn_limit);
+        const met = secondaryMet(secondaryObjective, combat, activeTurnBudget);
         return (
           <div
             className="glass-card px-3 py-2 flex items-center gap-2"
@@ -2326,7 +2343,7 @@ export default function RuneDelvePlayPage() {
           <span className="text-[11px] font-semibold flex-1 min-w-0 leading-snug">{getBossRule(bossRule).rule}</span>
         </div>
       )}
-      <EnemyDisplay enemies={combat.enemies} flashId={flashId} />
+      <EnemyDisplay enemies={combat.enemies} flashId={flashId} primaryTargetId={primaryTargetId} />
       <HeroStatusBar state={combat} cls={hero.class} onAbility={handleAbility} manaCost={abilityManaCost} />
 
       <RuneBoard
@@ -2344,10 +2361,9 @@ export default function RuneDelvePlayPage() {
         effectOverride={{
           // Class-aware previews. Tier bonus shows when chain hits 6+.
           red: (n) => {
-            const base = n * 8;
-            const cls = hero.class === 'warrior' ? Math.round(base * 1.25) : base;
+            const base = redChainDamage(n, hero.class, level.level_number);
             const tier = n >= 8 ? 1.4 : n >= 7 ? 1.3 : n >= 6 ? 1.2 : 1;
-            const total = Math.round(cls * tier);
+            const total = Math.round(base * tier);
             return tier > 1 ? `${total} dmg ⚡` : `${total} dmg`;
           },
           blue: (n) => {
@@ -2523,48 +2539,4 @@ export default function RuneDelvePlayPage() {
       )}
     </div>
   );
-}
-
-// Objective-aware end check. Layered goals (Band 4) are a TRUE OPTIONAL BONUS:
-// satisfying the PRIMARY objective clears the level, and the secondary just pays
-// out extra score + shards at finalize (see `secondaryMet` in the reward path).
-// It is intentionally NOT a hidden fail condition — the HUD labels it "Bonus".
-function checkObjective(
-  state: CombatState,
-  maxTurns: number,
-  type: ObjectiveType,
-  target: number,
-  secondary: SecondaryObjective | null,
-) {
-  // Identity wrap — the secondary no longer gates the clear. Kept as a seam so
-  // the branch structure below stays readable; `secondary`/`maxTurns` are still
-  // in the signature because callers pass them and finalize reads the bonus.
-  const wrap = (r: { over: boolean; cleared: boolean }) => r;
-  void secondary; void maxTurns;
-  const base = isRunOver(state);
-  if (type === 'survive') {
-    // Defeat is defeat (HP gone). Surviving the full turn budget = clear.
-    // ALSO: if the player happens to wipe every enemy, that's a clear too —
-    // otherwise the run drags on with nothing to do.
-    if (state.hp <= 0) return { over: true, cleared: false };
-    if (state.enemies.every(e => e.hp <= 0)) return wrap({ over: true, cleared: true });
-    if (state.turnsRemaining <= 0) return wrap({ over: true, cleared: true });
-    return { over: false, cleared: false };
-  }
-  if (type === 'reach_score') {
-    // Use the same shape as calculateScore (without clear/secondary/rogue
-    // bonuses, which only apply at finalize time). Keeps the in-play check
-    // honest with the score the player actually sees on the results screen.
-    const liveScore =
-      state.totalDamage +
-      state.enemiesDefeated * 200 +
-      Math.max(0, state.hp) * 5 +
-      Math.max(0, state.turnsRemaining) * 50 +
-      state.longestChain * 25;
-    if (liveScore >= target) {
-      return wrap({ over: true, cleared: true });
-    }
-    return wrap(base);
-  }
-  return wrap(base);
 }

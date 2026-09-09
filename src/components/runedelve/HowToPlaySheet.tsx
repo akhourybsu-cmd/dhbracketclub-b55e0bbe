@@ -33,16 +33,17 @@ export function HowToPlaySheet({ open, onOpenChange, heroClass }: Props) {
           <div className="space-y-5 pt-2">
             {/* Goal */}
             <Section title="🎯 Goal">
-              <p>Progress through a shared <b>level-based campaign</b>. Each level has its own objective — defeat all enemies, survive a set number of turns, reach a target score, or take down an elite. Clear a level to unlock the next one.</p>
+              <p>Progress through a shared <b>level-based campaign</b>. Each level has its own objective — defeat all enemies, survive a set number of turns, reach a target score, or take down a champion. The objective bar shows exactly how close you are. Clear a level to unlock the next one.</p>
               <p className="mt-1.5">Every player faces the <b>same level</b> with the same board, enemies, and turn limit — your score is what sets you apart.</p>
             </Section>
 
             {/* Controls */}
             <Section title="✋ Controls">
               <ul className="space-y-1.5 list-disc pl-4">
-                <li><b>Drag</b> through 3+ runes of the same color.</li>
+                <li>Choose <b>Drag</b> for one continuous gesture or <b>Tap</b> to build a chain one rune at a time.</li>
                 <li>Runes connect in <b>any of 8 directions</b> — including diagonals.</li>
-                <li><b>Release</b> to resolve the chain. Drag back over the previous rune to undo a step.</li>
+                <li>In Drag mode, <b>release</b> to resolve. In Tap mode, press <b>Resolve</b>. Choose the previous rune to undo a step.</li>
+                <li>Keyboard players can focus runes, press Enter or Space to select them, then use Resolve.</li>
                 <li>Longer chains hit harder, heal more, and charge faster.</li>
               </ul>
             </Section>
@@ -86,6 +87,7 @@ export function HowToPlaySheet({ open, onOpenChange, heroClass }: Props) {
             <Section title="⚔️ Combat Flow">
               <ol className="space-y-1.5 list-decimal pl-4">
                 <li>You chain runes — your turn resolves.</li>
+                <li>The <b>▶ marker</b> shows which enemy an Attack chain will hit; ⚔ shows its base damage.</li>
                 <li>Living enemies counter-attack (Guard reduces damage).</li>
                 <li>Turn counter ticks down by 1.</li>
                 <li>Run ends when all enemies fall, your HP hits 0, or turns reach 0.</li>

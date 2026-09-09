@@ -11,8 +11,7 @@ import {
   initialCombat,
   applyChain,
   enemiesAttack,
-  isRunOver,
-  useAbility,
+  useAbility as activateAbility,
   endTurn,
   spawnWave,
   MAX_HP,
@@ -21,6 +20,7 @@ import {
 import { generateLevel, type LevelDefinition } from './levelGenerator';
 import type { HeroClass } from './classConfig';
 import type { BossRuleId } from './bossRules';
+import { evaluateObjective } from './objectives';
 
 // ─── Per-run telemetry ──────────────────────────────────────────────────────
 export interface SimRunResult {
@@ -185,7 +185,12 @@ function runOne(level: LevelDefinition, cls: HeroClass, runSeed: number): SimRun
 
   let safety = level.turn_limit * 4 + 12; // hard cap so a degenerate board can't loop forever
   while (safety-- > 0) {
-    const verdict = isRunOver(state);
+    const verdict = evaluateObjective(
+      state,
+      level.turn_limit,
+      level.objective_type,
+      level.objective_target,
+    );
     if (verdict.over) {
       return finalize(state, verdict.cleared);
     }
@@ -194,8 +199,21 @@ function runOne(level: LevelDefinition, cls: HeroClass, runSeed: number): SimRun
     // prioritises Sanctuary on heal-pressure, but no longer hoards mana
     // when at full HP — the shield component is valuable on every cast.
     if (state.mana >= 3 && state.enemies.some(e => e.hp > 0)) {
-      const r = useAbility(state, cls, bossRule, [], level.level_number);
+      const r = activateAbility(state, cls, bossRule, [], level.level_number);
       if (r.ok) state = r.next;
+      const afterAbility = evaluateObjective(
+        state,
+        level.turn_limit,
+        level.objective_type,
+        level.objective_target,
+      );
+      if (afterAbility.over && !(
+        state.enemies.every(e => e.hp <= 0)
+        && waves.length > 0
+        && !waveSpawned
+      )) {
+        return finalize(state, afterAbility.cleared);
+      }
     }
 
     const chain = pickBestChain(grid, state, cls);

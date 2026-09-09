@@ -2470,6 +2470,22 @@
   animation: nx-reactor 1.8s ease-in-out infinite;
 }
 
+/* The play board stays generous on phones, then tightens on short desktop
+   viewports so enemies, hero, all 25 runes, and combat stats fit together. */
+.rd-mode .rd-play-board {
+  max-width: 350px;
+}
+@media (max-width: 767px) and (max-height: 700px) {
+  .rd-mode .rd-play-board {
+    max-width: 270px;
+  }
+}
+@media (min-width: 768px) and (min-height: 600px) and (max-height: 800px) {
+  .rd-mode .rd-play-board {
+    max-width: 270px;
+  }
+}
+
 /* ─── Responsive battle stage ──────────────────────────────────────
    The battlefield is height-constrained first so short phones never crop the
    bottom rows. Controls stay in two compact horizontal rails on touch screens;
