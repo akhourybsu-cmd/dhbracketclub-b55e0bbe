@@ -5,9 +5,9 @@
     "subtitle": "A Fulminary Prologue",
     "description": "Theron, an elven Edenite miner, learns that the stone his city sells has been holding something down. A branching prologue of family, industry and restrained horror beneath Sturmvale.",
     "status": "draft",
-    "version": 1,
+    "version": 2,
     "author": "Fulminary Prologue Campaign Bible",
-    "estimated_length": "75–105 minutes",
+    "estimated_length": "90–120 minutes",
     "minimum_level": 1,
     "recommended_level": 1,
     "starting_scene_key": "S01",
@@ -39,7 +39,422 @@
         "theron_survives",
         "eden_tower_insight_seeded",
         "threat_moves_east"
-      ]
+      ],
+      "adventure": {
+        "version": 1,
+        "label": "Crownvein Expedition",
+        "encounters": {
+          "S04": {
+            "encounter_key": "fractured_extraction_face",
+            "kind": "hazard",
+            "title": "The Face Comes Apart",
+            "objective": "Stabilize the western cut long enough to choose what can still be saved.",
+            "stakes": "Every failed approach costs health. Four rounds of danger pass before the collapse decides for you.",
+            "target_progress": 4,
+            "max_rounds": 4,
+            "max_focus": 2,
+            "success_text": "You read the collapse before it finishes happening. The crew has seconds—and seconds are enough.",
+            "failure_text": "The face wins the argument. You crawl clear carrying injuries, incomplete answers, and no clean version of what happened.",
+            "success_effects": [
+              { "type": "gain_xp", "value": 20 },
+              { "type": "increase_faction_reputation", "key": "crownvein_crew", "value": 1, "notice": "The Crownvein crew will remember this." },
+              { "type": "unlock_codex", "key": "edenite_fracture", "notice": "Field notes added: Edenite Fracture" }
+            ],
+            "failure_effects": [
+              { "type": "gain_xp", "value": 8 },
+              { "type": "increment_variable", "key": "EXPOSURE", "value": 1, "notice": "The dark resonance follows you." }
+            ],
+            "actions": [
+              {
+                "action_key": "read_the_stress",
+                "label": "Read the stress lines",
+                "description": "Trust years underground and predict which brace fails next.",
+                "stat": "wits",
+                "difficulty": 11,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 2
+              },
+              {
+                "action_key": "haul_pell_clear",
+                "label": "Haul Pell out of the cut",
+                "description": "Trade position for speed and put your body between the miner and the falling face.",
+                "stat": "might",
+                "difficulty": 13,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 3,
+                "costly_progress": 1,
+                "costly_damage": 1,
+                "setback_damage": 4
+              },
+              {
+                "action_key": "thread_the_rails",
+                "label": "Thread the moving rails",
+                "description": "Slip through the machinery and reach the emergency release before the track twists shut.",
+                "stat": "finesse",
+                "difficulty": 12,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 3
+              }
+            ]
+          },
+          "S05": {
+            "encounter_key": "room_without_entrance",
+            "kind": "investigation",
+            "title": "The Borrowed Voice",
+            "objective": "Map the chamber while something beneath it tries to make you answer.",
+            "stakes": "The room rewards attention and punishes recognition. Exposure rises when it gets inside your guard.",
+            "target_progress": 5,
+            "max_rounds": 4,
+            "max_focus": 2,
+            "success_text": "The impossible geometry resolves into a pattern: not a prison wall, but a seal whose pieces have been sold away.",
+            "failure_text": "You leave with only fragments of the pattern—and the certainty that the voice now knows which memories open you fastest.",
+            "success_effects": [
+              { "type": "gain_xp", "value": 25 },
+              { "type": "add_item", "key": "resonance_chalk", "value": 1, "notice": "Resonance chalk added to your satchel." },
+              { "type": "unlock_trait", "key": "stone_listener", "notice": "Trait learned: Stone Listener" },
+              { "type": "unlock_codex", "key": "barrier_geometry", "notice": "Field notes added: Barrier Geometry" }
+            ],
+            "failure_effects": [
+              { "type": "gain_xp", "value": 10 },
+              { "type": "increment_variable", "key": "EXPOSURE", "value": 2, "notice": "The borrowed voice leaves an echo behind." }
+            ],
+            "actions": [
+              {
+                "action_key": "follow_the_air",
+                "label": "Follow the air, not the voice",
+                "description": "Use dust, breath, and pressure to find the chamber's honest shape.",
+                "stat": "wits",
+                "difficulty": 11,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 1
+              },
+              {
+                "action_key": "answer_with_silence",
+                "label": "Answer it with silence",
+                "description": "Hold to what you know of Edran and refuse the thing wearing his voice.",
+                "stat": "resolve",
+                "difficulty": 12,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 2
+              },
+              {
+                "action_key": "cross_the_black_line",
+                "label": "Cross the black boundary",
+                "description": "Risk direct contact to take a complete rubbing before the scorched veins shift.",
+                "stat": "finesse",
+                "difficulty": 14,
+                "risk": "desperate",
+                "focus_cost": 1,
+                "roll_bonus": 2,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 2,
+                "setback_damage": 4
+              }
+            ]
+          },
+          "S08": {
+            "encounter_key": "grounding_the_storm",
+            "kind": "investigation",
+            "title": "Ground the Impossible",
+            "objective": "Complete Timinny's circuit without letting the charged fragment complete one through you.",
+            "stakes": "Careful work yields a tool for the final descent. A failed experiment leaves only theory and additional exposure.",
+            "target_progress": 4,
+            "max_rounds": 4,
+            "max_focus": 2,
+            "success_text": "The current crosses copper, stone, and earth in a repeatable sequence. Timinny has a device; you have a method.",
+            "failure_text": "The apparatus burns out before the final reading. The principle is sound, but you will descend without a finished ground.",
+            "success_effects": [
+              { "type": "gain_xp", "value": 25 },
+              { "type": "add_item", "key": "grounding_coil", "value": 1, "notice": "Timinny's grounding coil added to your equipment." },
+              { "type": "unlock_codex", "key": "grounding_principle", "notice": "Field notes added: Grounding Principle" }
+            ],
+            "failure_effects": [
+              { "type": "gain_xp", "value": 10 },
+              { "type": "increment_variable", "key": "EXPOSURE", "value": 1, "notice": "Residual charge settles into the stormscar." }
+            ],
+            "actions": [
+              {
+                "action_key": "calculate_the_return",
+                "label": "Calculate the return path",
+                "description": "Rebuild the circuit from the behavior you saw below, not the rules it should obey.",
+                "stat": "wits",
+                "difficulty": 11,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 1
+              },
+              {
+                "action_key": "hold_the_contact",
+                "label": "Hold the live contact",
+                "description": "Keep the fragment in circuit while Timinny captures a full reading.",
+                "stat": "resolve",
+                "difficulty": 13,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 2,
+                "setback_damage": 4
+              },
+              {
+                "action_key": "work_the_micro_leads",
+                "label": "Work the hair-thin leads",
+                "description": "Adjust Timinny's copper contacts between pulses without breaking the circuit.",
+                "stat": "finesse",
+                "difficulty": 12,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 3
+              }
+            ]
+          },
+          "S09": {
+            "encounter_key": "commission_hearing",
+            "kind": "social",
+            "title": "Make the Record Hold",
+            "objective": "Force the Commission to confront evidence it has already decided is inconvenient.",
+            "stakes": "This is a contest over credibility, not truth. Failure costs health as strain and hardens the Commission's response.",
+            "target_progress": 5,
+            "max_rounds": 4,
+            "max_focus": 2,
+            "success_text": "For one dangerous minute the chamber stops treating you like a miner who wandered into policy and starts treating you like a witness.",
+            "failure_text": "The commissioners convert every warning into a procedural flaw. You keep the truth, but lose the room.",
+            "success_effects": [
+              { "type": "gain_xp", "value": 30 },
+              { "type": "increase_faction_reputation", "key": "high_council", "value": 1, "notice": "Your warning reaches someone beyond the Commission." },
+              { "type": "unlock_codex", "key": "commission_record", "notice": "Record added: The Crownvein Hearing" }
+            ],
+            "failure_effects": [
+              { "type": "gain_xp", "value": 12 },
+              { "type": "decrease_faction_reputation", "key": "emc", "value": 1, "notice": "The Commission marks Theron as disruptive." }
+            ],
+            "actions": [
+              {
+                "action_key": "lay_out_the_sequence",
+                "label": "Lay out the sequence",
+                "description": "Give them times, cuts, pressure changes, and the exact order in which stone answered thunder.",
+                "stat": "wits",
+                "difficulty": 12,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 1
+              },
+              {
+                "action_key": "name_the_cost",
+                "label": "Name the human cost",
+                "description": "Refuse their abstractions and make every commissioner picture the crew still on the western face.",
+                "stat": "resolve",
+                "difficulty": 12,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 3,
+                "costly_progress": 1,
+                "costly_damage": 1,
+                "setback_damage": 3
+              },
+              {
+                "action_key": "turn_orsiks_words",
+                "label": "Turn Orsik's words against him",
+                "description": "Use the Commissioner's own definitions of custody and structural duty to trap the dismissal on record.",
+                "stat": "finesse",
+                "difficulty": 14,
+                "risk": "desperate",
+                "focus_cost": 1,
+                "roll_bonus": 2,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 2,
+                "setback_damage": 4
+              }
+            ]
+          },
+          "S13": {
+            "encounter_key": "first_incursion",
+            "kind": "combat",
+            "title": "The Mine Turns Hostile",
+            "objective": "Reach the central descent while the broken galleries rearrange around the incursion.",
+            "stakes": "The enemy is pressure, falling stone, and a thing that learns voices. Survive five exchanges and keep the route open.",
+            "target_progress": 6,
+            "max_rounds": 5,
+            "max_focus": 3,
+            "success_text": "You do not defeat what came through. You deny it the shape of a victory and reach the broken seal ahead of the collapse.",
+            "failure_text": "The mine takes blood and time from you. The route remains barely possible, but someone else pays for the delay.",
+            "success_effects": [
+              { "type": "gain_xp", "value": 40 },
+              { "type": "unlock_trait", "key": "incursion_survivor", "notice": "Trait learned: Incursion Survivor" },
+              { "type": "increase_faction_reputation", "key": "crownvein_crew", "value": 1 },
+              { "type": "unlock_codex", "key": "borrowed_voices", "notice": "Field notes added: Borrowed Voices" }
+            ],
+            "failure_effects": [
+              { "type": "gain_xp", "value": 18 },
+              { "type": "set_variable", "key": "THERON_INJURY", "value": "deep_cut", "notice": "Theron is badly wounded." },
+              { "type": "increment_variable", "key": "EXPOSURE", "value": 1 }
+            ],
+            "actions": [
+              {
+                "action_key": "call_the_safe_line",
+                "label": "Call the safe line",
+                "description": "Read load, echo, and crew movement to keep everyone on ground that still exists.",
+                "stat": "wits",
+                "difficulty": 12,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 2
+              },
+              {
+                "action_key": "hold_the_gallery",
+                "label": "Hold the lower gallery",
+                "description": "Brace the failing support while the crew crosses beneath your shoulders.",
+                "stat": "might",
+                "difficulty": 13,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 2,
+                "setback_damage": 4
+              },
+              {
+                "action_key": "cross_between_flashes",
+                "label": "Cross between lightning strikes",
+                "description": "Move on the darkness between pulses and carry a grounding line across the open shaft.",
+                "stat": "finesse",
+                "difficulty": 14,
+                "risk": "desperate",
+                "focus_cost": 1,
+                "roll_bonus": 2,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 2,
+                "setback_damage": 5
+              },
+              {
+                "action_key": "deny_the_voice",
+                "label": "Deny the familiar voice",
+                "description": "Keep moving when the dark calls from behind in Bethella's voice.",
+                "stat": "resolve",
+                "difficulty": 12,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 2
+              }
+            ]
+          },
+          "S14": {
+            "encounter_key": "rebuild_the_seal",
+            "kind": "ritual",
+            "title": "Reconstruct the Edenite Seal",
+            "objective": "Restore a working circuit from a barrier the city has spent generations dismantling.",
+            "stakes": "This is the decisive challenge. Progress must outrun the breach; failure still closes the chamber, but at a far greater personal cost.",
+            "target_progress": 7,
+            "max_rounds": 5,
+            "max_focus": 3,
+            "success_text": "The last shard seats. Edenite answers Edenite, lightning finds earth, and the emptiness below is forced back behind a shape it remembers.",
+            "failure_text": "The improvised seal closes by consuming every margin you left it—blood, memory, and the unbroken parts of your body. It holds. Barely.",
+            "success_effects": [
+              { "type": "gain_xp", "value": 60 },
+              { "type": "unlock_ability", "key": "edenite_grounding", "notice": "Ability learned: Edenite Grounding" },
+              { "type": "unlock_trait", "key": "sealwright", "notice": "Trait learned: Sealwright" },
+              { "type": "unlock_codex", "key": "edenite_seal", "notice": "Field notes completed: The Edenite Seal" },
+              { "type": "complete_quest", "key": "what_the_stone_holds", "step": "restore_seal", "notice": "Main quest completed: What the Stone Holds" },
+              { "type": "set_variable", "key": "SEAL_STATE", "value": "restored_clean" }
+            ],
+            "failure_effects": [
+              { "type": "gain_xp", "value": 25 },
+              { "type": "increment_variable", "key": "EXPOSURE", "value": 2 },
+              { "type": "complete_quest", "key": "what_the_stone_holds", "step": "restore_seal", "notice": "Main quest completed—at a cost." },
+              { "type": "set_variable", "key": "THERON_INJURY", "value": "stormscar_severe", "notice": "The seal takes its price from Theron." },
+              { "type": "set_variable", "key": "SEAL_STATE", "value": "restored_costly" }
+            ],
+            "actions": [
+              {
+                "action_key": "rebuild_the_geometry",
+                "label": "Rebuild Edran's geometry",
+                "description": "Translate his impossible curve into placements the shattered chamber can still accept.",
+                "stat": "wits",
+                "difficulty": 13,
+                "risk": "measured",
+                "focus_cost": 0,
+                "success_progress": 2,
+                "costly_progress": 1,
+                "setback_damage": 2
+              },
+              {
+                "action_key": "drive_the_keystone",
+                "label": "Drive the keystone home",
+                "description": "Force a fractured Edenite segment into the last physical gap while the chamber convulses.",
+                "stat": "might",
+                "difficulty": 14,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 1,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 2,
+                "setback_damage": 5
+              },
+              {
+                "action_key": "lay_the_copper_path",
+                "label": "Lay Timinny's copper path",
+                "description": "Use the grounding coil to bridge the broken arc while lightning walks the chamber.",
+                "stat": "finesse",
+                "difficulty": 13,
+                "risk": "bold",
+                "focus_cost": 1,
+                "roll_bonus": 2,
+                "success_progress": 3,
+                "costly_progress": 2,
+                "costly_damage": 1,
+                "setback_damage": 4
+              },
+              {
+                "action_key": "become_the_ground",
+                "label": "Become the ground",
+                "description": "Hold the circuit closed through your own body long enough for the ancient pattern to remember itself.",
+                "stat": "resolve",
+                "difficulty": 15,
+                "risk": "desperate",
+                "focus_cost": 2,
+                "roll_bonus": 3,
+                "success_progress": 4,
+                "costly_progress": 3,
+                "costly_damage": 3,
+                "setback_damage": 6
+              }
+            ]
+          }
+        }
+      }
     }
   },
   "acts": [
@@ -370,6 +785,131 @@
       "label": "Theron survives",
       "value_type": "string",
       "default_value": "true"
+    },
+    {
+      "variable_key": "LAST_ENCOUNTER_OUTCOME",
+      "label": "Latest challenge outcome",
+      "value_type": "string",
+      "default_value": "active"
+    }
+  ],
+  "items": [
+    {
+      "item_key": "resonance_chalk",
+      "name": "Resonance Chalk",
+      "description": "Survey chalk mixed with a dusting of dark-thread Edenite. It records vibrations that ordinary markings miss.",
+      "item_type": "field_tool",
+      "rarity": "uncommon",
+      "quest_item": true
+    },
+    {
+      "item_key": "grounding_coil",
+      "name": "Timinny's Grounding Coil",
+      "description": "A hand-wound copper coil built to carry Edenite charge into earth without completing the path through its operator.",
+      "item_type": "equipment",
+      "rarity": "rare",
+      "quest_item": true
+    },
+    {
+      "item_key": "dark_thread_fragment",
+      "name": "Dark-Thread Fragment",
+      "description": "A wrapped sliver of Edenite crossed by a black inclusion that seems to interrupt its glow.",
+      "item_type": "evidence",
+      "rarity": "uncommon",
+      "quest_item": true
+    }
+  ],
+  "quests": [
+    {
+      "quest_key": "what_the_stone_holds",
+      "title": "What the Stone Holds",
+      "description": "Learn why Crownvein's Edenite behaves like part of a larger structure—and what continued extraction is waking below Sturmvale.",
+      "quest_type": "main",
+      "objectives": [
+        { "key": "inspect_new_cut", "text": "Inspect the impossible behavior at the western face." },
+        { "key": "map_chamber", "text": "Map the room without an entrance." },
+        { "key": "test_grounding", "text": "Prove Timinny's grounding theory." },
+        { "key": "warn_commission", "text": "Put the danger before the Commission." },
+        { "key": "survive_incursion", "text": "Reach the central breach during the incursion." },
+        { "key": "restore_seal", "text": "Reconstruct the Edenite seal." }
+      ]
+    },
+    {
+      "quest_key": "no_one_left_below",
+      "title": "No One Left Below",
+      "description": "Keep Crownvein's miners alive while the institution above decides what their lives are worth.",
+      "quest_type": "side",
+      "objectives": [
+        { "key": "pell", "text": "Get Pell clear of the fractured western face." },
+        { "key": "trapped_miner", "text": "Reach the miner pinned in the unmapped chamber." },
+        { "key": "prepare_crew", "text": "Give the crew enough warning to survive the descent." }
+      ]
+    }
+  ],
+  "codex": [
+    {
+      "codex_key": "edenite_fracture",
+      "title": "Edenite Fracture",
+      "category": "Field Notes",
+      "body": "Fresh Edenite does not merely carry storm charge. Under stress it redirects force along boundaries that resemble deliberate joins rather than natural crystal faults.",
+      "display_order": 1
+    },
+    {
+      "codex_key": "barrier_geometry",
+      "title": "Barrier Geometry",
+      "category": "Discovery",
+      "body": "The black chamber is bounded by an incomplete circular network. Intact Edenite ends every scorched vein. The extracted mineral was part of the boundary itself.",
+      "display_order": 2
+    },
+    {
+      "codex_key": "grounding_principle",
+      "title": "The Grounding Principle",
+      "category": "Engineering",
+      "body": "Edenite charge can be redirected through a sequenced copper-and-stone circuit. The current seeks continuity before it seeks the shortest path.",
+      "display_order": 3
+    },
+    {
+      "codex_key": "commission_record",
+      "title": "The Crownvein Hearing",
+      "category": "Record",
+      "body": "Theron's warning entered the EMC record as an allegation of structural discontinuity, anomalous conduction, and unsafe extraction. Its language was narrowed, but it existed.",
+      "display_order": 4
+    },
+    {
+      "codex_key": "borrowed_voices",
+      "title": "Borrowed Voices",
+      "category": "Threat",
+      "body": "The presence below does not imitate voices at random. It selects familiar speech, imperfectly understood but precisely timed, to pull listeners off safe routes.",
+      "display_order": 5
+    },
+    {
+      "codex_key": "edenite_seal",
+      "title": "The Edenite Seal",
+      "category": "Discovery",
+      "body": "Sturmvale's mineral wealth was a distributed containment system. Buildings, treatments, and exports did not consume a resource; they dismantled a lock.",
+      "display_order": 6
+    }
+  ],
+  "enemies": [
+    {
+      "enemy_key": "hollow_echo",
+      "name": "Hollow Echo",
+      "description": "A pressure in the dark that borrows trusted voices and turns hesitation into distance.",
+      "max_health": 12,
+      "armor": 1,
+      "attack": 3,
+      "abilities": ["Borrowed Voice", "False Footing"],
+      "metadata": { "threat_type": "psychological", "never_fully_seen": true }
+    },
+    {
+      "enemy_key": "breach_pressure",
+      "name": "Breach Pressure",
+      "description": "Not a creature but an advancing failure of stone, charge, and geometry.",
+      "max_health": 18,
+      "armor": 2,
+      "attack": 4,
+      "abilities": ["Gallery Fold", "Storm Conduction"],
+      "metadata": { "threat_type": "environmental" }
     }
   ],
   "endings": [
@@ -608,6 +1148,24 @@
         {
           "type": "visit_location",
           "key": "bethella_home"
+        },
+        {
+          "type": "increase_stat",
+          "key": "wits",
+          "value": 1,
+          "notice": "Theron's years reading stone sharpen his Wits."
+        },
+        {
+          "type": "increase_stat",
+          "key": "resolve",
+          "value": 1,
+          "notice": "Theron's loyalty steels his Resolve."
+        },
+        {
+          "type": "start_quest",
+          "key": "what_the_stone_holds",
+          "step": "inspect_new_cut",
+          "notice": "Main quest begun: What the Stone Holds"
         }
       ],
       "blocks": [
@@ -1350,6 +1908,12 @@
         {
           "type": "visit_location",
           "key": "crownvein_staging"
+        },
+        {
+          "type": "advance_quest",
+          "key": "what_the_stone_holds",
+          "step": "inspect_new_cut",
+          "notice": "Quest updated: Inspect the new cut"
         }
       ],
       "blocks": [
@@ -1854,6 +2418,7 @@
     {
       "scene_key": "S04",
       "chapter_key": "CH1",
+      "scene_type": "exploration",
       "title": "The Last Ordinary Shift",
       "subtitle": "The western extraction face",
       "location_key": "crownvein_western_face",
@@ -1868,6 +2433,12 @@
         {
           "type": "visit_location",
           "key": "crownvein_western_face"
+        },
+        {
+          "type": "start_quest",
+          "key": "no_one_left_below",
+          "step": "pell",
+          "notice": "Side quest begun: No One Left Below"
         }
       ],
       "blocks": [
@@ -2054,6 +2625,11 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S05",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S04_resolved",
+            "label": "Resolve the collapsing extraction face first"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -2069,6 +2645,12 @@
               "type": "set_variable",
               "key": "MINE_ALERT",
               "value": "uneasy"
+            },
+            {
+              "type": "advance_quest",
+              "key": "no_one_left_below",
+              "step": "trapped_miner",
+              "notice": "Pell is clear. Someone is still trapped below."
             }
           ]
         },
@@ -2081,6 +2663,11 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S05",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S04_resolved",
+            "label": "Resolve the collapsing extraction face first"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -2096,6 +2683,12 @@
               "type": "increment_variable",
               "key": "EXPOSURE",
               "value": 1
+            },
+            {
+              "type": "add_item",
+              "key": "dark_thread_fragment",
+              "value": 1,
+              "notice": "Dark-Thread Fragment acquired"
             }
           ]
         },
@@ -2108,6 +2701,11 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S05",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S04_resolved",
+            "label": "Resolve the collapsing extraction face first"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -2131,6 +2729,7 @@
     {
       "scene_key": "S05",
       "chapter_key": "CH2",
+      "scene_type": "exploration",
       "title": "A Room Without an Entrance",
       "subtitle": "Beneath Crownvein",
       "location_key": "unmapped_chamber",
@@ -2145,6 +2744,12 @@
         {
           "type": "visit_location",
           "key": "unmapped_chamber"
+        },
+        {
+          "type": "advance_quest",
+          "key": "what_the_stone_holds",
+          "step": "map_chamber",
+          "notice": "Quest updated: Map the impossible chamber"
         }
       ],
       "blocks": [
@@ -2316,11 +2921,22 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S06A",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S05_resolved",
+            "label": "Confront the borrowed voice first"
+          },
           "effects": [
             {
               "type": "set_variable",
               "key": "RESCUE_STATE",
               "value": "early_rescue"
+            },
+            {
+              "type": "complete_quest",
+              "key": "no_one_left_below",
+              "step": "trapped_miner",
+              "notice": "Side quest completed: No One Left Below"
             }
           ]
         },
@@ -2332,6 +2948,11 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S06B",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S05_resolved",
+            "label": "Confront the borrowed voice first"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -2347,6 +2968,12 @@
               "type": "increment_variable",
               "key": "EXPOSURE",
               "value": 1
+            },
+            {
+              "type": "fail_quest",
+              "key": "no_one_left_below",
+              "step": "trapped_miner",
+              "notice": "The trapped miner could not wait."
             }
           ]
         }
@@ -2700,6 +3327,7 @@
     {
       "scene_key": "S08",
       "chapter_key": "CH3",
+      "scene_type": "exploration",
       "title": "Grounding the Storm",
       "subtitle": "Timinny's workshop, heavy rain",
       "location_key": "timinny_workshop",
@@ -2709,6 +3337,14 @@
         "presence"
       ],
       "author_notes": "Fixed event: Timinny helps prove grounding. Opens with the C04 payoff and Bethella's question from S07. visual_brief: The workshop during heavy rain; Edran's ring map beneath a circular arrangement of Edenite fragments and copper contacts; Timinny directing from his chair; dark motion inside one fragment; electrical light bending through the ring. ASSET UNRESOLVED.",
+      "entry_effects": [
+        {
+          "type": "advance_quest",
+          "key": "what_the_stone_holds",
+          "step": "test_grounding",
+          "notice": "Quest updated: Test the grounding theory"
+        }
+      ],
       "blocks": [
         {
           "block_type": "dialogue",
@@ -2960,6 +3596,11 @@
           "choice_style": "standard",
           "display_order": 1,
           "next_scene_key": "S09",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S08_resolved",
+            "label": "Finish the grounding experiment first"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -2975,6 +3616,11 @@
           "choice_style": "investigative",
           "display_order": 2,
           "next_scene_key": "S09",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S08_resolved",
+            "label": "Finish the grounding experiment first"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -2993,6 +3639,7 @@
     {
       "scene_key": "S09",
       "chapter_key": "CH3",
+      "scene_type": "dialogue",
       "title": "A Miner Before the Commission",
       "subtitle": "EMC hearing chamber",
       "location_key": "emc_hearing_chamber",
@@ -3006,6 +3653,12 @@
         {
           "type": "visit_location",
           "key": "emc_hearing_chamber"
+        },
+        {
+          "type": "advance_quest",
+          "key": "what_the_stone_holds",
+          "step": "warn_commission",
+          "notice": "Quest updated: Warn the Commission"
         }
       ],
       "blocks": [
@@ -3349,6 +4002,11 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S10A",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S09_resolved",
+            "label": "Make your case before choosing a response"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -3359,6 +4017,12 @@
               "type": "set_variable",
               "key": "CREW_PREPAREDNESS",
               "value": "low"
+            },
+            {
+              "type": "increase_faction_reputation",
+              "key": "emc",
+              "value": 1,
+              "notice": "The Commission accepts your cooperation—for now."
             }
           ]
         },
@@ -3370,6 +4034,11 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S10B",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S09_resolved",
+            "label": "Make your case before choosing a response"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -3380,6 +4049,17 @@
               "type": "set_variable",
               "key": "CREW_PREPAREDNESS",
               "value": "medium"
+            },
+            {
+              "type": "increase_faction_reputation",
+              "key": "crownvein_crew",
+              "value": 2,
+              "notice": "The miners hear the warning the Commission withheld."
+            },
+            {
+              "type": "advance_quest",
+              "key": "no_one_left_below",
+              "step": "prepare_crew"
             }
           ]
         },
@@ -3391,6 +4071,11 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S10C",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S09_resolved",
+            "label": "Make your case before choosing a response"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -3406,6 +4091,12 @@
               "type": "set_variable",
               "key": "SEAL_PREPARATION",
               "value": "high"
+            },
+            {
+              "type": "decrease_faction_reputation",
+              "key": "emc",
+              "value": 1,
+              "notice": "The Commission marks your defiance."
             }
           ]
         }
@@ -4000,6 +4691,7 @@
     {
       "scene_key": "S13",
       "chapter_key": "CH4",
+      "scene_type": "combat",
       "title": "The First Incursion",
       "location_key": "crownvein_entrance",
       "display_order": 16,
@@ -4008,6 +4700,14 @@
         "choice"
       ],
       "author_notes": "Fixed event: climax priority selected. visual_brief: split Crownvein galleries — a folding lower gallery, a broken luminous arc near the breach, and failing central supports strung with copper. ASSET UNRESOLVED.",
+      "entry_effects": [
+        {
+          "type": "advance_quest",
+          "key": "what_the_stone_holds",
+          "step": "survive_incursion",
+          "notice": "Quest updated: Survive the first incursion"
+        }
+      ],
       "blocks": [
         {
           "block_type": "narration",
@@ -4030,6 +4730,11 @@
           "major_decision": true,
           "display_order": 1,
           "next_scene_key": "S14",
+          "requirements": {
+            "type": "flag_exists",
+            "key": "encounter_S13_resolved",
+            "label": "Survive the incursion before choosing a priority"
+          },
           "effects": [
             {
               "type": "set_variable",
@@ -4057,6 +4762,33 @@
           "major_decision": true,
           "display_order": 2,
           "next_scene_key": "S14",
+          "requirements": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "flag_exists",
+                "key": "encounter_S13_resolved",
+                "label": "Survive the incursion before choosing a priority"
+              },
+              {
+                "type": "any",
+                "conditions": [
+                  {
+                    "type": "has_item",
+                    "key": "dark_thread_fragment",
+                    "value": 1
+                  },
+                  {
+                    "type": "has_item",
+                    "key": "resonance_chalk",
+                    "value": 1
+                  }
+                ],
+                "label": "Requires preserved Edenite evidence"
+              }
+            ]
+          },
+          "locked_hint": "Requires a Dark-Thread Fragment or Resonance Chalk",
           "effects": [
             {
               "type": "set_variable",
@@ -4079,6 +4811,23 @@
           "major_decision": true,
           "display_order": 3,
           "next_scene_key": "S14",
+          "requirements": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "flag_exists",
+                "key": "encounter_S13_resolved",
+                "label": "Survive the incursion before choosing a priority"
+              },
+              {
+                "type": "has_item",
+                "key": "grounding_coil",
+                "value": 1,
+                "label": "Requires Timinny's Grounding Coil"
+              }
+            ]
+          },
+          "locked_hint": "Requires Timinny's Grounding Coil",
           "effects": [
             {
               "type": "set_variable",
@@ -4107,6 +4856,7 @@
     {
       "scene_key": "S14",
       "chapter_key": "CH5",
+      "scene_type": "combat",
       "title": "The Seal That Was Taken",
       "location_key": "central_breach_chamber",
       "display_order": 17,
@@ -4135,6 +4885,12 @@
           "type": "set_variable",
           "key": "THERON_SURVIVES",
           "value": "true"
+        },
+        {
+          "type": "advance_quest",
+          "key": "what_the_stone_holds",
+          "step": "restore_seal",
+          "notice": "Quest updated: Reconstruct the Edenite seal"
         }
       ],
       "blocks": [
@@ -4435,6 +5191,11 @@
             "type": "all",
             "conditions": [
               {
+                "type": "flag_exists",
+                "key": "encounter_S14_resolved",
+                "label": "Reconstruct the Edenite seal first"
+              },
+              {
                 "type": "variable_equals",
                 "key": "VARRIK_STANCE",
                 "value": "cooperative"
@@ -4463,20 +5224,30 @@
           "next_scene_key": "S15",
           "hidden_when_unavailable": true,
           "requirements": {
-            "type": "not",
+            "type": "all",
             "conditions": [
               {
-                "type": "all",
+                "type": "flag_exists",
+                "key": "encounter_S14_resolved",
+                "label": "Reconstruct the Edenite seal first"
+              },
+              {
+                "type": "not",
                 "conditions": [
                   {
-                    "type": "variable_equals",
-                    "key": "VARRIK_STANCE",
-                    "value": "cooperative"
-                  },
-                  {
-                    "type": "variable_equals",
-                    "key": "RESCUE_STATE",
-                    "value": "delegated"
+                    "type": "all",
+                    "conditions": [
+                      {
+                        "type": "variable_equals",
+                        "key": "VARRIK_STANCE",
+                        "value": "cooperative"
+                      },
+                      {
+                        "type": "variable_equals",
+                        "key": "RESCUE_STATE",
+                        "value": "delegated"
+                      }
+                    ]
                   }
                 ]
               }

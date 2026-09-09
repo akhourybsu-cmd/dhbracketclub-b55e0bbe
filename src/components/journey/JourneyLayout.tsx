@@ -40,9 +40,9 @@ export function JourneyLayout({ children, chrome = true }: { children: ReactNode
   // One delegated handler gives every button its fantasy voice: a flourish for
   // story choices, a soft note for everything else.
   const onPressSound = (e: React.MouseEvent) => {
-    const el = (e.target as HTMLElement).closest('.jy-choice, .jy-btn');
+    const el = (e.target as HTMLElement).closest('.jy-choice, .jy-action, .jy-btn');
     if (!el || el.hasAttribute('disabled') || el.getAttribute('aria-disabled') === 'true') return;
-    if (el.classList.contains('jy-choice')) playSelect();
+    if (el.classList.contains('jy-choice') || el.classList.contains('jy-action')) playSelect();
     else playSoft();
   };
 

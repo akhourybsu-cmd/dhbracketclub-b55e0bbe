@@ -321,6 +321,69 @@ export interface RuntimeChoice {
   locked_hint: string | null;
 }
 
+/* ── Adventure encounters (spoiler-safe runtime payload) ─────────────── */
+
+export type AdventureRisk = 'measured' | 'bold' | 'desperate';
+export type AdventureOutcome = 'active' | 'victory' | 'defeat' | 'escaped' | 'resolved';
+export type AdventureRollResult = 'success' | 'costly' | 'setback';
+
+export interface RuntimeEncounterAction {
+  action_key: string;
+  label: string;
+  description: string;
+  stat: string;
+  difficulty: number;
+  risk: AdventureRisk;
+  focus_cost: number;
+}
+
+export interface RuntimeEncounterDefinition {
+  encounter_key: string;
+  kind: 'hazard' | 'investigation' | 'social' | 'combat' | 'ritual';
+  title: string;
+  objective: string;
+  stakes: string;
+  target_progress: number;
+  max_rounds: number;
+  max_focus: number;
+  success_text?: string;
+  failure_text?: string;
+  actions: RuntimeEncounterAction[];
+}
+
+export interface RuntimeEncounterRoll {
+  action_key: string;
+  action_label: string;
+  stat: string;
+  die: number;
+  stat_score: number;
+  bonus: number;
+  total: number;
+  difficulty: number;
+  result: AdventureRollResult;
+  progress_gained: number;
+  damage: number;
+  at?: string;
+}
+
+export interface RuntimeEncounterSession {
+  status: AdventureOutcome;
+  round: number;
+  player_state: {
+    progress: number;
+    focus: number;
+    last_result?: RuntimeEncounterRoll;
+  };
+  log: RuntimeEncounterRoll[];
+}
+
+export interface RuntimeEncounterPayload {
+  definition: RuntimeEncounterDefinition;
+  session: RuntimeEncounterSession;
+  resolved: boolean;
+  outcome: AdventureOutcome;
+}
+
 /* ── World metadata (journey_get_world) ───────────────────────── */
 
 export interface WorldCodexEntry { codex_key: string; title: string; category: string | null; body: string | null; image?: string | null }

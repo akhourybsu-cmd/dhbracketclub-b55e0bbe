@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Heart, Coins } from 'lucide-react';
+import { Heart, Coins, ShieldAlert, Sparkles, ScrollText } from 'lucide-react';
 import { JourneyLayout, JourneyError, JourneySkeleton } from '@/components/journey/JourneyLayout';
 import { SceneBlocks } from '@/components/journey/SceneBlocks';
 import { ChoiceList } from '@/components/journey/ChoiceList';
@@ -12,6 +12,8 @@ import { loadReadPos, saveReadPos, type ReadPos } from '@/lib/journey/progress';
 import { useJourneyRun } from '@/hooks/useJourneyRun';
 import { useJourneyEnding } from '@/hooks/useJourneyEnding';
 import { EndingScreen } from '@/components/journey/EndingScreen';
+import { AdventureEncounter } from '@/components/journey/AdventureEncounter';
+import { exposureBand } from '@/lib/journey/adventure';
 
 /**
  * The reading surface. A scene narrates in panels — a change of place or time
@@ -21,8 +23,8 @@ import { EndingScreen } from '@/components/journey/EndingScreen';
 export default function JourneyPlayPage() {
   const { runId } = useParams<{ runId: string }>();
   const {
-    run, campaign, scene, chapterTitle, locationName, blocks, choices, state,
-    loading, busy, error, notices, clearNotices, refresh, chooseChoice, advance,
+    run, campaign, scene, chapterTitle, locationName, blocks, choices, encounter, state,
+    loading, busy, error, notices, clearNotices, refresh, chooseChoice, resolveEncounterAction, advance,
   } = useJourneyRun(runId);
   const topRef = useRef<HTMLDivElement>(null);
   const { reducedMotion } = useJourneySettings();
@@ -114,6 +116,8 @@ export default function JourneyPlayPage() {
   }
 
   const hasArt = isImageUrl(scene?.background_asset);
+  const exposure = exposureBand(state);
+  const activeQuestCount = Object.values(state.quests ?? {}).filter((quest) => quest.status === 'active').length;
 
   return (
     <JourneyLayout>
@@ -127,10 +131,16 @@ export default function JourneyPlayPage() {
         <ChapterInterstitial title={chapterCurtain} onDone={() => setChapterCurtain(null)} />
       )}
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="jy-adventure-hud mb-4" aria-label="Journey status">
         <span className="jy-chip"><Heart className="h-3 w-3" aria-hidden /> {state.health}/{state.max_health}</span>
-        <span className="jy-chip">Level {state.level}</span>
-        <span className="jy-chip"><Coins className="h-3 w-3" aria-hidden /> {state.gold}</span>
+        <span className="jy-chip"><Sparkles className="h-3 w-3" aria-hidden /> Level {state.level} · {state.xp} XP</span>
+        <span className={`jy-chip jy-exposure-${exposure.band}`} title={`${exposure.value} exposure`}>
+          <ShieldAlert className="h-3 w-3" aria-hidden /> {exposure.label}
+        </span>
+        {activeQuestCount > 0 && (
+          <span className="jy-chip"><ScrollText className="h-3 w-3" aria-hidden /> {activeQuestCount} active {activeQuestCount === 1 ? 'quest' : 'quests'}</span>
+        )}
+        {state.gold > 0 && <span className="jy-chip"><Coins className="h-3 w-3" aria-hidden /> {state.gold}</span>}
         {run.is_test_run && <span className="jy-chip jy-chip-blood">Test run</span>}
       </div>
 
@@ -158,9 +168,20 @@ export default function JourneyPlayPage() {
             onDone={() => setTold(true)}
           />
 
+          {told && encounter && (
+            <div className="jy-fade-in mt-8">
+              <AdventureEncounter
+                encounter={encounter}
+                state={state}
+                busy={busy}
+                onAction={(actionKey) => { void resolveEncounterAction(actionKey); }}
+              />
+            </div>
+          )}
+
           {ended ? (
             told && <EndingScreen payload={ending} loading={endingLoading} campaignTitle={campaign?.title} />
-          ) : choices.length > 0 ? (
+          ) : encounter && !encounter.resolved ? null : choices.length > 0 ? (
             told && <div className="jy-fade-in"><ChoiceList choices={choices} busy={busy} onChoose={chooseChoice} /></div>
           ) : scene?.has_auto_next ? (
             told && (

@@ -82,6 +82,44 @@
 .jy-muted { color: hsl(var(--jy-text-muted)); }
 .jy-secondary { color: hsl(var(--jy-text-secondary)); }
 
+/* ── Reading rhythm ──────────────────────────────────────────── */
+.jy-scrollback {
+  border: 1px solid hsl(var(--jy-border-subtle));
+  border-radius: 4px;
+  background: hsl(var(--jy-bg-surface) / 0.45);
+  color: hsl(var(--jy-text-secondary));
+  font-size: 0.78rem;
+  padding: 0.65rem 0.8rem;
+}
+.jy-scrollback summary {
+  cursor: pointer;
+  color: hsl(var(--jy-text-muted));
+  letter-spacing: 0.06em;
+}
+.jy-scrollback[open] { padding-bottom: 1rem; }
+.jy-passage-progress {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  color: hsl(var(--jy-text-muted));
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.jy-passage-progress > div {
+  display: flex;
+  gap: 3px;
+}
+.jy-passage-progress i {
+  display: block;
+  flex: 1;
+  height: 2px;
+  border-radius: 999px;
+  background: hsl(var(--jy-border-subtle));
+}
+.jy-passage-progress i.is-read { background: hsl(var(--jy-gold) / 0.85); }
+
 /* Reader text-size preference */
 .jy-text-sm  { --jy-reading-size: 0.9375rem; }
 .jy-text-md  { --jy-reading-size: 1.0625rem; }
@@ -169,6 +207,216 @@
 .jy-choice-major { border-left-color: hsl(var(--jy-blood)); }
 .jy-choice-skill { border-left-color: hsl(var(--jy-arcane)); }
 .jy-choice-secret { border-left-color: hsl(var(--jy-forest)); }
+
+/* ── Adventure layer ─────────────────────────────────────────── */
+.jy-adventure-hud {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  padding: 1px 0 0.2rem;
+}
+.jy-adventure-hud::-webkit-scrollbar { display: none; }
+.jy-adventure-hud > * { flex: 0 0 auto; }
+.jy-exposure-steady { border-color: hsl(var(--jy-forest) / 0.55); }
+.jy-exposure-strained { border-color: hsl(var(--jy-gold) / 0.65); color: hsl(41 55% 73%); }
+.jy-exposure-dangerous,
+.jy-exposure-critical { border-color: hsl(var(--jy-blood) / 0.8); color: hsl(3 60% 72%); }
+.jy-exposure-critical { animation: jy-danger-pulse 1.8s ease-in-out infinite; }
+
+.jy-encounter {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid hsl(var(--jy-gold) / 0.38);
+  border-radius: 6px;
+  padding: clamp(1rem, 4vw, 1.35rem);
+  background:
+    radial-gradient(80% 55% at 100% 0%, hsl(var(--jy-gold) / 0.1), transparent 70%),
+    linear-gradient(155deg, hsl(var(--jy-bg-elevated)), hsl(var(--jy-bg-primary)) 78%);
+  box-shadow: 0 24px 60px -38px hsl(0 0% 0% / 0.95);
+}
+.jy-encounter::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.09;
+  background-image: linear-gradient(90deg, transparent 49%, hsl(var(--jy-gold)) 50%, transparent 51%);
+  background-size: 26px 100%;
+  mask-image: linear-gradient(180deg, black, transparent 44%);
+}
+.jy-encounter-victory { border-color: hsl(var(--jy-forest) / 0.75); }
+.jy-encounter-defeat { border-color: hsl(var(--jy-blood) / 0.75); }
+.jy-encounter-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.jy-encounter-seal {
+  display: grid;
+  place-items: center;
+  width: 2.65rem;
+  height: 2.65rem;
+  flex: 0 0 auto;
+  border: 1px solid hsl(var(--jy-gold) / 0.45);
+  border-radius: 50%;
+  color: hsl(var(--jy-gold));
+  background: hsl(var(--jy-bg-primary) / 0.75);
+}
+.jy-encounter-seal svg { width: 1.15rem; height: 1.15rem; }
+.jy-encounter-seal.is-resolved { border-color: hsl(var(--jy-forest)); color: hsl(150 38% 62%); }
+.jy-encounter-meters {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(5rem, 0.7fr) minmax(5rem, 0.7fr);
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+.jy-encounter-meter {
+  min-width: 0;
+  border: 1px solid hsl(var(--jy-border-subtle));
+  border-radius: 4px;
+  background: hsl(var(--jy-bg-primary) / 0.65);
+  padding: 0.55rem 0.65rem;
+}
+.jy-encounter-meter > span,
+.jy-encounter-meter > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: hsl(var(--jy-text-muted));
+  font-size: 0.67rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.jy-encounter-meter strong { color: hsl(var(--jy-text-primary)); font-size: 0.8rem; }
+.jy-encounter-meter:not(.jy-encounter-meter-wide) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+}
+.jy-progress-track {
+  height: 4px;
+  overflow: hidden;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: hsl(var(--jy-border-subtle));
+}
+.jy-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, hsl(var(--jy-forest)), hsl(var(--jy-gold)));
+  transition: width 420ms ease;
+}
+.jy-encounter-stakes {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  color: hsl(var(--jy-text-secondary));
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+.jy-encounter-stakes svg { flex: 0 0 auto; margin-top: 0.15rem; color: hsl(var(--jy-blood)); }
+.jy-action {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 4.75rem;
+  padding: 0.8rem;
+  text-align: left;
+  color: hsl(var(--jy-text-primary));
+  border: 1px solid hsl(var(--jy-border-subtle));
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: hsl(var(--jy-bg-primary) / 0.6);
+  transition: transform 120ms ease, border-color 160ms ease, background 160ms ease;
+}
+.jy-action-measured { border-left-color: hsl(var(--jy-forest)); }
+.jy-action-bold { border-left-color: hsl(var(--jy-gold)); }
+.jy-action-desperate { border-left-color: hsl(var(--jy-blood)); }
+.jy-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: hsl(var(--jy-gold) / 0.7);
+  background: hsl(var(--jy-bg-elevated));
+}
+.jy-action:focus-visible { outline: 2px solid hsl(var(--jy-gold)); outline-offset: 2px; }
+.jy-action:disabled { cursor: not-allowed; opacity: 0.48; }
+.jy-action-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  border: 1px solid hsl(var(--jy-border-subtle));
+  border-radius: 50%;
+  color: hsl(var(--jy-gold));
+  background: hsl(var(--jy-bg-surface));
+}
+.jy-action-icon svg { width: 0.9rem; height: 0.9rem; }
+.jy-action-check { color: hsl(var(--jy-text-secondary)); font-size: 0.72rem; white-space: nowrap; }
+.jy-roll-result {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  border: 1px solid hsl(var(--jy-border-subtle));
+  border-radius: 4px;
+  padding: 0.7rem;
+  background: hsl(var(--jy-bg-primary) / 0.72);
+}
+.jy-roll-success { border-color: hsl(var(--jy-forest) / 0.7); }
+.jy-roll-costly { border-color: hsl(var(--jy-gold) / 0.65); }
+.jy-roll-setback { border-color: hsl(var(--jy-blood) / 0.72); }
+.jy-roll-die {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  color: hsl(var(--jy-bg-primary));
+  font-family: var(--jy-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  clip-path: polygon(50% 0%, 95% 24%, 95% 76%, 50% 100%, 5% 76%, 5% 24%);
+  background: hsl(var(--jy-gold));
+}
+.jy-encounter-resolution {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--jy-border-subtle));
+}
+.jy-encounter-resolution > svg { flex: 0 0 auto; color: hsl(var(--jy-gold)); }
+
+@keyframes jy-danger-pulse {
+  50% { box-shadow: 0 0 0 3px hsl(var(--jy-blood) / 0.12); }
+}
+
+@media (max-width: 520px) {
+  .jy-encounter-meters { grid-template-columns: 1fr 1fr; }
+  .jy-encounter-meter-wide { grid-column: 1 / -1; }
+  .jy-action { padding: 0.72rem; }
+  .jy-action-icon { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jy-exposure-critical { animation: none; }
+  .jy-progress-track span,
+  .jy-action { transition: none; }
+}
 
 /* The option the reader chose — kept on screen, marked, no longer interactive. */
 .jy-choice-chosen {

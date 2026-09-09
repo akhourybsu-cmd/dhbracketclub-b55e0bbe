@@ -172,6 +172,71 @@ Add `"notice": "..."` to surface a player-facing line when the effect fires.
 `might` `finesse` `wits` `resolve` all start at 2; health 20/20; level 1; gold 0.
 Override per-campaign in `campaign.config` or via `entry_effects` on the first scene.
 
+## Adventure encounters
+
+Pivotal scenes can interrupt the reading flow with a server-authoritative RPG
+challenge. Definitions live under `campaign.config.adventure.encounters`, keyed
+by scene key, so they are captured in the same immutable release as the story.
+The database rolls the d20, applies strain and rewards, persists every result,
+and sets `encounter_<SCENE_KEY>_resolved` when the challenge ends.
+
+```jsonc
+"config": {
+  "adventure": {
+    "version": 1,
+    "encounters": {
+      "mine_04": {
+        "encounter_key": "failing_gallery",
+        "kind": "hazard", // hazard|investigation|social|combat|ritual
+        "title": "The Gallery Fails",
+        "objective": "Get the crew across before the supports fold.",
+        "stakes": "Four rounds before the collapse decides for you.",
+        "target_progress": 5,
+        "max_rounds": 4,
+        "max_focus": 2,
+        "success_text": "The last miner clears the fall.",
+        "failure_text": "You escape, but the delay leaves a cost.",
+        "success_effects": [{ "type": "gain_xp", "value": 25 }],
+        "failure_effects": [{ "type": "damage_player", "value": 2 }],
+        "actions": [
+          {
+            "action_key": "read_stress",
+            "label": "Read the stress lines",
+            "description": "Predict which brace gives way next.",
+            "stat": "wits",
+            "difficulty": 11,
+            "risk": "measured", // measured|bold|desperate
+            "focus_cost": 0,
+            "success_progress": 2,
+            "costly_progress": 1,
+            "costly_damage": 1,
+            "setback_damage": 2
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+Roll resolution is `1d20 + stat + roll_bonus` against `difficulty`. Meeting the
+target is a clean success; missing it by three or fewer is progress with a cost;
+anything lower is a setback. A natural 20 adds one progress. `focus_cost`
+spends the encounter's limited Focus, so every encounter should include at
+least one zero-cost action. Encounters fail forward: reaching the round limit
+applies failure effects and opens the story instead of trapping the run.
+
+To make the challenge mandatory before its authored consequence choices, add
+this requirement to those choices:
+
+```json
+{
+  "type": "flag_exists",
+  "key": "encounter_mine_04_resolved",
+  "label": "Resolve the failing gallery first"
+}
+```
+
 ## Endings and epilogues
 
 When a run reaches a terminal scene the engine resolves the ending by

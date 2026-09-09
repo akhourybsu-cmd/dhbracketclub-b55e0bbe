@@ -52,6 +52,7 @@ const RUN_TABLES = [
 const ENGINE_RPCS: [string, Record<string, unknown>][] = [
   ['journey_get_runtime_scene', { _run_id: '00000000-0000-0000-0000-000000000000' }],
   ['journey_execute_choice', { _run_id: '00000000-0000-0000-0000-000000000000', _scene_key: 'a', _choice_key: 'b' }],
+  ['journey_resolve_encounter_action', { _run_id: '00000000-0000-0000-0000-000000000000', _scene_key: 'a', _action_key: 'b' }],
   ['journey_advance_scene', { _run_id: '00000000-0000-0000-0000-000000000000' }],
   ['journey_get_world', { _run_id: '00000000-0000-0000-0000-000000000000' }],
   ['journey_get_ending', { _run_id: '00000000-0000-0000-0000-000000000000' }],
@@ -69,7 +70,7 @@ beforeAll(() => {
 
 describe('journey content is not readable anonymously', () => {
   it.each(CONTENT_TABLES)('%s returns no rows', async (table) => {
-    const { data, error } = await anon.from(table as any).select('*').limit(5);
+    const { data, error } = await anon.from(table).select('*').limit(5);
     if (error) {
       expect(error.code ?? error.message).toBeTruthy(); // blocked outright is also fine
       return;
@@ -80,7 +81,7 @@ describe('journey content is not readable anonymously', () => {
 
 describe('run state is not readable or writable anonymously', () => {
   it.each(RUN_TABLES)('%s returns no rows', async (table) => {
-    const { data, error } = await anon.from(table as any).select('*').limit(5);
+    const { data, error } = await anon.from(table).select('*').limit(5);
     if (error) return;
     expect(data ?? []).toHaveLength(0);
   });
@@ -89,7 +90,7 @@ describe('run state is not readable or writable anonymously', () => {
     // An UPDATE filtered by RLS simply matches nothing, so assert that no row
     // came back as well as accepting an outright policy error.
     const { data, error } = await anon
-      .from('journey_campaign_runs' as any)
+      .from('journey_campaign_runs')
       .update({ state: { gold: 999999 } })
       .neq('id', '00000000-0000-0000-0000-000000000000')
       .select('id');
@@ -98,7 +99,7 @@ describe('run state is not readable or writable anonymously', () => {
   });
 
   it('rejects inserting fabricated choice history', async () => {
-    const { error } = await anon.from('journey_run_choice_history' as any).insert({
+    const { error } = await anon.from('journey_run_choice_history').insert({
       run_id: '00000000-0000-0000-0000-000000000000',
       scene_key: 'a',
       choice_key: 'b',
@@ -109,7 +110,7 @@ describe('run state is not readable or writable anonymously', () => {
 
 describe('engine RPCs require a session', () => {
   it.each(ENGINE_RPCS)('%s is rejected for anon', async (fn, args) => {
-    const { data, error } = await anon.rpc(fn as any, args as any);
+    const { data, error } = await anon.rpc(fn, args);
     // Either EXECUTE is revoked for anon, or the function raises on auth.uid() = null.
     if (!error) {
       // A permitted-but-empty response is only acceptable if it carries no content.

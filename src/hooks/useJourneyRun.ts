@@ -17,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { withTimeout, QUERY_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { EMPTY_RUN_STATE } from '@/lib/journey/types';
 import type {
-  CampaignSummary, RuntimeBlock, RuntimeChoice, RuntimeScene, RunRow, RunState,
+  CampaignSummary, RuntimeBlock, RuntimeChoice, RuntimeEncounterPayload, RuntimeScene, RunRow, RunState,
 } from '@/lib/journey/types';
 
 export interface JourneyRunView {
@@ -28,6 +28,7 @@ export interface JourneyRunView {
   locationName: string | null;
   blocks: RuntimeBlock[];
   choices: RuntimeChoice[];
+  encounter: RuntimeEncounterPayload | null;
   state: RunState;
   loading: boolean;
   busy: boolean;
@@ -36,6 +37,7 @@ export interface JourneyRunView {
   clearNotices: () => void;
   refresh: () => Promise<void>;
   chooseChoice: (choiceKey: string) => Promise<boolean>;
+  resolveEncounterAction: (actionKey: string) => Promise<boolean>;
   /** Follow an authored automatic transition ("Continue"). */
   advance: () => Promise<boolean>;
 }
@@ -48,7 +50,22 @@ interface RuntimePayload {
   location_name: string | null;
   blocks: RuntimeBlock[];
   choices: RuntimeChoice[];
+  encounter: RuntimeEncounterPayload | null;
 }
+
+interface JourneyRpcError { message: string }
+interface JourneyRpcResult<T> { data: T | null; error: JourneyRpcError | null }
+interface JourneyMutationPayload { notices?: unknown }
+
+const journeyRpc = <T,>(
+  functionName: string,
+  args: Record<string, string>,
+): PromiseLike<JourneyRpcResult<T>> => (
+  supabase.rpc as unknown as (
+    name: string,
+    params: Record<string, string>,
+  ) => PromiseLike<JourneyRpcResult<T>>
+)(functionName, args);
 
 export function useJourneyRun(runId: string | undefined): JourneyRunView {
   const [payload, setPayload] = useState<RuntimePayload | null>(null);
@@ -62,8 +79,8 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
     if (!runId) { setLoading(false); return; }
     setError(null);
     try {
-      const { data, error: rpcErr } = await withTimeout<any>(
-        (supabase as any).rpc('journey_get_runtime_scene', { _run_id: runId }),
+      const { data, error: rpcErr } = await withTimeout<JourneyRpcResult<RuntimePayload>>(
+        journeyRpc<RuntimePayload>('journey_get_runtime_scene', { _run_id: runId }),
         QUERY_TIMEOUT_MS, 'journey runtime scene',
       );
       if (rpcErr) throw new Error(rpcErr.message);
@@ -85,7 +102,7 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
     [run?.state],
   );
 
-  const mutate = useCallback(async (fn: () => Promise<any>) => {
+  const mutate = useCallback(async (fn: () => PromiseLike<JourneyRpcResult<JourneyMutationPayload>>) => {
     if (inFlight.current) return false;
     inFlight.current = true;
     setBusy(true);
@@ -93,7 +110,10 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
     try {
       const { data, error: rpcErr } = await fn();
       if (rpcErr) throw new Error(rpcErr.message);
-      setNotices(((data?.notices ?? []) as string[]).filter(Boolean));
+      const nextNotices = Array.isArray(data?.notices)
+        ? data.notices.filter((notice): notice is string => typeof notice === 'string' && notice.length > 0)
+        : [];
+      setNotices(nextNotices);
       // The scene payload (blocks, choices, availability) is always rebuilt
       // server-side so nothing stale survives a transition.
       await load();
@@ -109,14 +129,23 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
 
   const chooseChoice = useCallback(async (choiceKey: string) => {
     if (!run?.current_scene_key) return false;
-    return mutate(() => (supabase as any).rpc('journey_execute_choice', {
+    return mutate(() => journeyRpc<JourneyMutationPayload>('journey_execute_choice', {
       _run_id: run.id, _scene_key: run.current_scene_key, _choice_key: choiceKey,
+    }));
+  }, [run, mutate]);
+
+  const resolveEncounterAction = useCallback(async (actionKey: string) => {
+    if (!run?.current_scene_key) return false;
+    return mutate(() => journeyRpc<JourneyMutationPayload>('journey_resolve_encounter_action', {
+      _run_id: run.id,
+      _scene_key: run.current_scene_key,
+      _action_key: actionKey,
     }));
   }, [run, mutate]);
 
   const advance = useCallback(async () => {
     if (!run) return false;
-    return mutate(() => (supabase as any).rpc('journey_advance_scene', { _run_id: run.id }));
+    return mutate(() => journeyRpc<JourneyMutationPayload>('journey_advance_scene', { _run_id: run.id }));
   }, [run, mutate]);
 
   return {
@@ -127,11 +156,13 @@ export function useJourneyRun(runId: string | undefined): JourneyRunView {
     locationName: payload?.location_name ?? null,
     blocks: payload?.blocks ?? [],
     choices: payload?.choices ?? [],
+    encounter: payload?.encounter ?? null,
     state,
     loading, busy, error, notices,
     clearNotices: () => setNotices([]),
     refresh: load,
     chooseChoice,
+    resolveEncounterAction,
     advance,
   };
 }

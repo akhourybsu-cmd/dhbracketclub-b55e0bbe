@@ -4,16 +4,27 @@ import type { RuntimeBlock } from '@/lib/journey/types';
 import { DialogueBlock } from './DialogueBlock';
 import { Instant, Typewriter } from './Typewriter';
 
-/** Split a scene's blocks into panels at every `divider` — each divider marks a
- *  change of place or time, so it becomes a "Continue" break rather than a rule. */
+const MAX_BEATS_PER_PANEL = 8;
+
+/** Split a scene at authored dividers and into readable passages. Discovery
+ *  Below carries novella-length scenes; keeping each passage compact gives the
+ *  dialogue rhythm and gives the player regular moments to act or pause. */
 function splitPanels(blocks: RuntimeBlock[]): RuntimeBlock[][] {
   const panels: RuntimeBlock[][] = [];
   let cur: RuntimeBlock[] = [];
+  const flush = () => {
+    if (cur.length > 0) panels.push(cur);
+    cur = [];
+  };
   for (const b of blocks) {
-    if (b.block_type === 'divider') { panels.push(cur); cur = []; }
-    else cur.push(b);
+    if (b.block_type === 'divider') {
+      flush();
+      continue;
+    }
+    cur.push(b);
+    if (cur.length >= MAX_BEATS_PER_PANEL) flush();
   }
-  panels.push(cur);
+  flush();
   const nonEmpty = panels.filter((p) => p.length > 0);
   return nonEmpty.length ? nonEmpty : [[]];
 }
@@ -58,6 +69,15 @@ export function SceneBlocks({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks]);
 
+  const cur = panels[panel] ?? [];
+  const panelComplete = revealed >= cur.length;
+  const isLast = panel >= panels.length - 1;
+
+  // Only the FINAL panel finishing tells the scene it's done (choices follow).
+  useEffect(() => {
+    if (!instant && panelComplete && isLast) doneRef.current?.();
+  }, [instant, panelComplete, isLast]);
+
   // A finished scene shown as scrollback: every block at once, no typing, no breaks.
   if (instant) {
     return (
@@ -71,13 +91,6 @@ export function SceneBlocks({
     );
   }
 
-  const cur = panels[panel] ?? [];
-  const panelComplete = revealed >= cur.length;
-  const isLast = panel >= panels.length - 1;
-
-  // Only the FINAL panel finishing tells the scene it's done (choices follow).
-  useEffect(() => { if (panelComplete && isLast) doneRef.current?.(); }, [panelComplete, isLast]);
-
   const advancePanel = () => {
     setPanel((p) => { const n = p + 1; onPanel?.(n); return n; });
     setRevealed(0);
@@ -87,17 +100,32 @@ export function SceneBlocks({
 
   return (
     <div className="space-y-5">
-      {/* Panels already read — kept as quiet scrollback. */}
-      {panels.slice(0, panel).map((p, idx) => (
-        <div key={`past-${idx}`} className="space-y-5" style={{ opacity: 0.6 }}>
-          {p.map((b, i) => (
-            <Fragment key={`past-${idx}-${i}`}>
-              {renderBlock(b, { active: false, skip: true, onDone: () => {} })}
-            </Fragment>
-          ))}
-          <div className="jy-rule" />
+      {/* Completed passages remain available without forcing a long scroll. */}
+      {panel > 0 && (
+        <details className="jy-scrollback">
+          <summary>Earlier in this scene · {panel} {panel === 1 ? 'passage' : 'passages'}</summary>
+          <div className="mt-4 space-y-5">
+            {panels.slice(0, panel).map((p, idx) => (
+              <div key={`past-${idx}`} className="space-y-5">
+                {p.map((b, i) => (
+                  <Fragment key={`past-${idx}-${i}`}>
+                    {renderBlock(b, { active: false, skip: true, onDone: () => {} })}
+                  </Fragment>
+                ))}
+                {idx < panel - 1 && <div className="jy-rule" />}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {panels.length > 1 && (
+        <div className="jy-passage-progress" aria-label={`Passage ${panel + 1} of ${panels.length}`}>
+          <span>Passage {panel + 1}</span>
+          <div aria-hidden>{panels.map((_, i) => <i key={i} className={i <= panel ? 'is-read' : ''} />)}</div>
+          <span>{panels.length}</span>
         </div>
-      ))}
+      )}
 
       {/* The panel being read now. */}
       <div ref={panelTopRef} className="space-y-5" onClick={() => { if (!panelComplete) setSkip(true); }}>
@@ -117,7 +145,9 @@ export function SceneBlocks({
       )}
       {panelComplete && !isLast && (
         <div className="jy-fade-in mt-6 text-center">
-          <button type="button" className="jy-btn jy-btn-primary" onClick={advancePanel}>Continue</button>
+          <button type="button" className="jy-btn jy-btn-primary" onClick={advancePanel}>
+            Continue the scene · {panel + 2}/{panels.length}
+          </button>
         </div>
       )}
     </div>
@@ -126,8 +156,25 @@ export function SceneBlocks({
 
 interface Beat { active: boolean; skip: boolean; onDone: () => void }
 
+interface BlockMetadata {
+  region?: string;
+  title?: string;
+  name?: string;
+  description?: string;
+  speaker_name?: string;
+  speaker_key?: string;
+  emotion?: string;
+  portrait?: string;
+  portrait_url?: string;
+  src?: string;
+  alt?: string;
+  caption?: string;
+  stat?: string;
+  value?: string | number;
+}
+
 function renderBlock(b: RuntimeBlock, beat: Beat) {
-  const md = (b.metadata ?? {}) as Record<string, any>;
+  const md = (b.metadata ?? {}) as BlockMetadata;
   switch (b.block_type) {
     case 'location_intro':
       return (
@@ -242,7 +289,8 @@ function renderBlock(b: RuntimeBlock, beat: Beat) {
 /** Narration: paragraphs typed in sequence. */
 function Paragraphs({ paras, beat }: { paras: string[]; beat: Beat }) {
   const [index, setIndex] = useState(0);
-  useEffect(() => { setIndex(0); }, [paras.join('\u0000')]);
+  const paragraphKey = paras.join('\u0000');
+  useEffect(() => { setIndex(0); }, [paragraphKey]);
   const shown = beat.skip ? paras.length - 1 : index;
 
   return (

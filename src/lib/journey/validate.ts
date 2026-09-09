@@ -4,7 +4,14 @@
 // structural problems before publishing. Errors block publishing; warnings and
 // info do not.
 
-import type { CampaignPackage, Requirement, Effect, SceneDef } from './types';
+import type {
+  CampaignPackage,
+  Requirement,
+  Effect,
+  SceneDef,
+  RuntimeEncounterAction,
+  RuntimeEncounterDefinition,
+} from './types';
 import { isGroup } from './types';
 
 export type Severity = 'error' | 'warning' | 'info';
@@ -27,6 +34,19 @@ export interface ValidationResult {
     scenes: number; choices: number; blocks: number; endings: number;
     reachable: number; unreachable: string[]; deadEnds: string[];
   };
+}
+
+interface AuthoredEncounterAction extends RuntimeEncounterAction {
+  success_effects?: Effect[];
+  costly_effects?: Effect[];
+  setback_effects?: Effect[];
+}
+
+interface AuthoredEncounter extends Omit<RuntimeEncounterDefinition, 'actions'> {
+  resolved_flag?: string;
+  success_effects?: Effect[];
+  failure_effects?: Effect[];
+  actions: AuthoredEncounterAction[];
 }
 
 function flatten(req: Requirement | Requirement[] | null | undefined): Requirement[] {
@@ -106,6 +126,8 @@ export function validateCampaign(pkg: CampaignPackage): ValidationResult {
     faction: new Set((pkg.factions ?? []).map((f) => f.faction_key)),
     choice: new Set<string>(),
   };
+  const adventure = pkg.campaign?.config?.adventure as { encounters?: Record<string, AuthoredEncounter> } | undefined;
+  const encounters = adventure?.encounters ?? {};
 
   // Flags and choice keys are declared implicitly by effects.
   const allChoices = scenes.flatMap((s) => (s.choices ?? []).map((c) => ({ scene: s, choice: c })));
@@ -115,6 +137,16 @@ export function validateCampaign(pkg: CampaignPackage): ValidationResult {
   });
   scenes.forEach((s) => collectEffects(s.entry_effects));
   allChoices.forEach(({ choice }) => collectEffects(choice.effects));
+  Object.entries(encounters).forEach(([sceneKey, encounter]) => {
+    known.flag.add(encounter.resolved_flag || `encounter_${sceneKey}_resolved`);
+    collectEffects(encounter.success_effects);
+    collectEffects(encounter.failure_effects);
+    (encounter.actions ?? []).forEach((action) => {
+      collectEffects(action.success_effects);
+      collectEffects(action.costly_effects);
+      collectEffects(action.setback_effects);
+    });
+  });
 
   // Choice keys must be unique WITHIN a scene (the runtime resolves a choice by
   // scene_key + choice_key), not across the whole campaign — reusing
@@ -159,6 +191,49 @@ export function validateCampaign(pkg: CampaignPackage): ValidationResult {
       if (bucket && !e.key) add('error', 'effect_missing_key', `Effect "${e.type}" has no key.`, scene_key, choice_key);
     });
   };
+
+  // Adventure encounters are stored in campaign config so immutable releases
+  // pin their rules with the authored scene graph. Validate that free-form
+  // config as strictly as ordinary choices before Studio allows publishing.
+  Object.entries(encounters).forEach(([sceneKey, encounter]) => {
+    if (!sceneKeys.has(sceneKey)) {
+      add('error', 'encounter_missing_scene', `Adventure encounter references missing scene "${sceneKey}".`, sceneKey);
+    }
+    if (!encounter.encounter_key || !encounter.title || !encounter.objective) {
+      add('error', 'encounter_missing_identity', `Adventure encounter in "${sceneKey}" needs a key, title and objective.`, sceneKey);
+    }
+    if (!Number.isFinite(encounter.target_progress) || encounter.target_progress < 1) {
+      add('error', 'encounter_bad_progress', `Adventure encounter in "${sceneKey}" needs positive target_progress.`, sceneKey);
+    }
+    if (!Number.isFinite(encounter.max_rounds) || encounter.max_rounds < 1) {
+      add('error', 'encounter_bad_rounds', `Adventure encounter in "${sceneKey}" needs positive max_rounds.`, sceneKey);
+    }
+    if (!(encounter.actions ?? []).length) {
+      add('error', 'encounter_no_actions', `Adventure encounter in "${sceneKey}" has no approaches.`, sceneKey);
+    }
+
+    checkRefs([], encounter.success_effects ?? [], sceneKey);
+    checkRefs([], encounter.failure_effects ?? [], sceneKey);
+    const actionKeys = new Set<string>();
+    (encounter.actions ?? []).forEach((action) => {
+      if (!action.action_key || actionKeys.has(action.action_key)) {
+        add('error', 'encounter_bad_action_key', `Encounter in "${sceneKey}" has a missing or duplicate action key.`, sceneKey);
+      }
+      actionKeys.add(action.action_key);
+      if (!['might', 'finesse', 'wits', 'resolve'].includes(action.stat)) {
+        add('error', 'encounter_bad_stat', `Approach "${action.action_key}" uses unknown stat "${action.stat}".`, sceneKey);
+      }
+      if (!Number.isFinite(action.difficulty) || action.difficulty < 5 || action.difficulty > 30) {
+        add('error', 'encounter_bad_difficulty', `Approach "${action.action_key}" has an invalid difficulty.`, sceneKey);
+      }
+      if (!['measured', 'bold', 'desperate'].includes(action.risk)) {
+        add('error', 'encounter_bad_risk', `Approach "${action.action_key}" has an invalid risk.`, sceneKey);
+      }
+      checkRefs([], action.success_effects ?? [], sceneKey, action.action_key);
+      checkRefs([], action.costly_effects ?? [], sceneKey, action.action_key);
+      checkRefs([], action.setback_effects ?? [], sceneKey, action.action_key);
+    });
+  });
 
   // Scene-level checks
   const outgoing = new Map<string, string[]>();
