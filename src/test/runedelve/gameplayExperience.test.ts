@@ -143,6 +143,27 @@ describe('Rune Delve · combat clarity and campaign integrity', () => {
     }
   });
 
+  it('reports only mana and shield duration that were actually gained', () => {
+    const foe = enemy({ hp: 5_000, maxHp: 5_000 });
+    const cappedMana = applyChain(
+      combat({ enemies: [foe], mana: 2 }),
+      'blue',
+      5,
+      'mage',
+    );
+    expect(cappedMana.next.mana).toBe(3);
+    expect(cappedMana.resolution.manaGained).toBe(1);
+
+    const stackedGuard = applyChain(
+      combat({ enemies: [foe], shieldTurns: 4 }),
+      'gold',
+      3,
+      'warrior',
+    );
+    expect(stackedGuard.next.shieldTurns).toBe(5);
+    expect(stackedGuard.resolution.guardGained).toBe(1);
+  });
+
   it('gives Rogue long red chains the advertised combat payoff', () => {
     const shortPerRune = redChainDamage(4, 'rogue', 50) / 4;
     const longPerRune = redChainDamage(5, 'rogue', 50) / 5;

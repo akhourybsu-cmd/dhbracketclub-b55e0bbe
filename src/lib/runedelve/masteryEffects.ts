@@ -23,7 +23,7 @@ export function getMasteryAbilityManaCost(active: MasteryId[], baseCost: number)
   return active.includes('mage_t4_mana_cap') ? Math.max(1, baseCost - 1) : baseCost;
 }
 
-/** Per-chapter HP bonus (Warrior T2). Caller multiplies by chapter index. */
+/** Per-chapter HP bonus (Warrior T2). Caller multiplies by chapters cleared. */
 export function getMasteryHpPerChapter(active: MasteryId[]): number {
   return active.includes('warrior_t2_chapter_hp') ? 1 : 0;
 }

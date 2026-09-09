@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { HeroClass } from '@/lib/runedelve/classConfig';
 
 export interface RuneWallet {
   user_id: string;
@@ -104,23 +105,25 @@ export function useUnlockSlot() {
 // Failure tracker — drives diminishing-returns curve. Resets on clear.
 export interface FailureRow {
   level_number: number;
+  hero_class: HeroClass;
   failure_count: number;
   last_awarded_at: string;
 }
 
-export function useFailureRow(levelNumber: number | null) {
+export function useFailureRow(levelNumber: number | null, heroClass: HeroClass | undefined) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['rune-delve-failure', user?.id, levelNumber],
-    enabled: !!user && levelNumber != null,
+    queryKey: ['rune-delve-failure', user?.id, heroClass, levelNumber],
+    enabled: !!user && !!heroClass && levelNumber != null,
     staleTime: 0,
     queryFn: async (): Promise<FailureRow | null> => {
-      if (!user || levelNumber == null) return null;
+      if (!user || !heroClass || levelNumber == null) return null;
       const { data } = await supabase
         .from('rune_delve_failure_rewards')
-        .select('level_number, failure_count, last_awarded_at')
+        .select('level_number, hero_class, failure_count, last_awarded_at')
         .eq('user_id', user.id)
         .eq('level_number', levelNumber)
+        .eq('hero_class', heroClass)
         .maybeSingle();
       return data as FailureRow | null;
     },
@@ -131,13 +134,14 @@ export function useBumpFailure() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (levelNumber: number): Promise<number> => {
+    mutationFn: async ({ levelNumber, heroClass }: { levelNumber: number; heroClass: HeroClass }): Promise<number> => {
       if (!user) throw new Error('Not authenticated');
       const { data: existing } = await supabase
         .from('rune_delve_failure_rewards')
         .select('*')
         .eq('user_id', user.id)
         .eq('level_number', levelNumber)
+        .eq('hero_class', heroClass)
         .maybeSingle();
       const next = (existing?.failure_count ?? 0) + 1;
       const { error } = await supabase
@@ -145,14 +149,15 @@ export function useBumpFailure() {
         .upsert({
           user_id: user.id,
           level_number: levelNumber,
+          hero_class: heroClass,
           failure_count: next,
           last_awarded_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,level_number' });
+        }, { onConflict: 'user_id,level_number,hero_class' });
       if (error) throw error;
       return next;
     },
-    onSuccess: (_, levelNumber) => {
-      qc.invalidateQueries({ queryKey: ['rune-delve-failure', user?.id, levelNumber] });
+    onSuccess: (_, { levelNumber, heroClass }) => {
+      qc.invalidateQueries({ queryKey: ['rune-delve-failure', user?.id, heroClass, levelNumber] });
     },
   });
 }
@@ -161,7 +166,7 @@ export function useResetFailure() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (levelNumber: number) => {
+    mutationFn: async ({ levelNumber, heroClass }: { levelNumber: number; heroClass: HeroClass }) => {
       if (!user) throw new Error('Not authenticated');
       // Just zero it — don't delete, so we keep timestamps for analytics later.
       await supabase
@@ -169,12 +174,13 @@ export function useResetFailure() {
         .upsert({
           user_id: user.id,
           level_number: levelNumber,
+          hero_class: heroClass,
           failure_count: 0,
           last_awarded_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,level_number' });
+        }, { onConflict: 'user_id,level_number,hero_class' });
     },
-    onSuccess: (_, levelNumber) => {
-      qc.invalidateQueries({ queryKey: ['rune-delve-failure', user?.id, levelNumber] });
+    onSuccess: (_, { levelNumber, heroClass }) => {
+      qc.invalidateQueries({ queryKey: ['rune-delve-failure', user?.id, heroClass, levelNumber] });
     },
   });
 }

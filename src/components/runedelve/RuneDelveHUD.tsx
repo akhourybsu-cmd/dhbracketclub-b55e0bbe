@@ -24,7 +24,7 @@ export function RuneDelveHUD() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: hero } = useRuneDelveHero();
-  const { data: progress } = useMyProgress();
+  const { data: progress } = useMyProgress(hero?.class);
   const { data: wallet } = useRuneWallet();
   const [exitOpen, setExitOpen] = useState(false);
   const [codexOpen, setCodexOpen] = useState(false);

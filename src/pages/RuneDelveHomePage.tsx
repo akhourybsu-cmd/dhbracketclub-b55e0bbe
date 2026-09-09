@@ -40,7 +40,7 @@ export default function RuneDelveHomePage() {
   useAmbientMusic({ enabled: true, volume: 0.05, fadeInSec: 3.5, fadeOutSec: 1.2 });
   const { data: hero, isLoading: heroLoading } = useRuneDelveHero();
   const { data: classTracks } = useAllClassProgress();
-  const { data: progress } = useMyProgress();
+  const { data: progress } = useMyProgress(hero?.class);
   const { data: leaderboard } = useCampaignLeaderboard();
   const { data: wallet } = useRuneWallet();
   const { data: loadout } = useLoadout(hero?.class);

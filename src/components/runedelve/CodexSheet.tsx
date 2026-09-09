@@ -24,7 +24,7 @@ interface Props {
 export function CodexSheet({ open, onOpenChange, defaultTab = 'mechanics' }: Props) {
   useSheetSfx(open);
   const { data: hero } = useRuneDelveHero();
-  const { data: progress } = useMyProgress();
+  const { data: progress } = useMyProgress(hero?.class);
   const { data: classTracks } = useAllClassProgress();
   const today = useTodayDaily();
   const { data: streak } = useMyDailyStreak();

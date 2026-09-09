@@ -26,9 +26,9 @@ export default function RuneDelveResultsPage() {
   const levelNumber = Math.max(1, parseInt(levelParam ?? '1', 10) || 1);
 
   const { data: level } = useLevel(levelNumber);
-  const { data: run, isLoading: runLoading, isFetching: runFetching, refetch: refetchRun } = useMyLevelRun(level?.id, levelNumber);
   const { data: hero } = useRuneDelveHero();
-  const { data: progress } = useMyProgress();
+  const { data: run, isLoading: runLoading, isFetching: runFetching, refetch: refetchRun } = useMyLevelRun(level?.id, levelNumber, hero?.class);
+  const { data: progress } = useMyProgress(hero?.class);
   const { data: topRuns } = useLevelBestScores(level?.id);
   const { data: wallet } = useRuneWallet();
   const { data: loadout } = useLoadout(hero?.class);
@@ -52,14 +52,14 @@ export default function RuneDelveResultsPage() {
   // and reset the short "loading grace" window so the empty state never flashes
   // before the post-submit retry has a chance to land.
   useEffect(() => {
-    if (!level?.id || level.id.startsWith('transient-')) return;
+    if (!level?.id || level.id.startsWith('transient-') || !hero?.class) return;
     queryClient.invalidateQueries({ queryKey: ['rune-delve-level-run', level.id] });
     queryClient.invalidateQueries({ queryKey: ['rune-delve-progress'] });
     setGraceElapsed(false);
     const t = setTimeout(() => setGraceElapsed(true), 1800);
     // Pull (and consume) the improvement payload — only if it's recent.
     try {
-      const key = `rd-improvements-${levelNumber}`;
+      const key = `rd-improvements-${hero.class}-${levelNumber}`;
       const raw = sessionStorage.getItem(key);
       if (raw) {
         const parsed = JSON.parse(raw);
@@ -70,7 +70,7 @@ export default function RuneDelveResultsPage() {
       }
     } catch { /* sessionStorage may be unavailable */ }
     return () => clearTimeout(t);
-  }, [level?.id, queryClient, levelNumber]);
+  }, [level?.id, queryClient, levelNumber, hero?.class]);
 
   const { play: rdSfx } = useRuneDelveSfx();
 
@@ -262,7 +262,7 @@ export default function RuneDelveResultsPage() {
       <div className="glass-card p-3">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-bold text-[12px] flex items-center gap-1.5">
-            <Trophy className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} /> Personal Best Tracker
+            <Trophy className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} /> {hero ? `${getClass(hero.class).name} Best` : 'Class Best'}
           </h3>
           {(run as any).attempts > 1 && (
             <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">

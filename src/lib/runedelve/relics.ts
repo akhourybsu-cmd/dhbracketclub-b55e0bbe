@@ -133,7 +133,9 @@ export const RANK_EFFECTS: Record<string, RankTable> = {
   desperate_surge:   [1.25, 1.30, 1.36, 1.42, 1.50],
 
   // Mana (flat — integer breakpoints)
-  aether_spark:      [2,    3,    3,    4,    5   ],
+  // Values above the 3-mana cap convert to opening shield turns, so every
+  // rank remains a real upgrade instead of silently wasting overflow.
+  aether_spark:      [2,    3,    4,    5,    6   ],
   sapphire_flow:     [1,    1,    2,    2,    3   ],
   first_light:       [1,    1,    2,    2,    3   ], // free uses
 
@@ -224,7 +226,9 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
 
     // Mana
     case 'aether_spark':
-      return `Start each run with ${Math.round(v)} mana.`;
+      return v <= 3
+        ? `Start each run with ${Math.round(v)} mana.`
+        : `Start at full mana; ${Math.round(v - 3)} overflow becomes shield turn${v - 3 === 1 ? '' : 's'}.`;
     case 'sapphire_flow':
       return `Blue chains grant +${Math.round(v)} mana on chains of 4+.`;
     case 'first_light': {

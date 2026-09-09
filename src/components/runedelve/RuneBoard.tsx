@@ -30,10 +30,9 @@ interface Props {
   linkedCells?: Set<string>;
   /** Column index that drifts each turn (Shifting Runes mechanic). -1 = none. */
   shiftingColumn?: number;
-  /** Optional per-rune effect override (keyed by RuneType). When present,
-   *  replaces the default static preview so it can reflect class multipliers
-   *  (Warrior 1.25× red, Mage 2 mana on blue, Cleric 1.5× green) and chain
-   *  tier bonuses (chain 6/7/8+). */
+  /** Optional per-rune effect override (keyed by RuneType). Rune Delve uses
+   *  this to show the current class, mastery, relic-rank, resource-cap, run
+   *  modifier, and chain-tier result before the player commits the chain. */
   effectOverride?: Partial<Record<RuneType, (n: number) => string>>;
   /** Treasure cells from the chamber's layout — chaining through them
    *  pays bonus score + shards. Rendered as a gold sparkle overlay. */

@@ -1,7 +1,7 @@
 // Per-run snapshot persistence for Rune Delve so backgrounding the WebView
 // (especially on iOS PWAs) doesn't wipe live combat state.
 //
-// We serialize to sessionStorage under a per-user + per-level key, with
+// We serialize to sessionStorage under a per-user + per-class + per-level key, with
 // JSON-safe conversions for Set / Map. Runs are tied to a level's
 // `generation_seed` so a re-seed (admin reseed, schema change) safely bails
 // to a fresh board instead of restoring stale state.
@@ -12,7 +12,9 @@ import type { CorruptionState } from './corruptedTiles';
 import type { ActiveRelics } from './relicEffects';
 import type { CombatLogEntry } from '@/components/runedelve/CombatLog';
 
-export const SNAPSHOT_VERSION = 1;
+// v2 rejects snapshots created before run initialization waited for the full
+// loadout/relic/mastery build, preventing an accidentally empty build restore.
+export const SNAPSHOT_VERSION = 2;
 export const SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
 
 export interface RunSnapshot {
@@ -48,8 +50,8 @@ export interface RunSnapshot {
   activeModifierId?: string;
 }
 
-export function snapshotKey(userId: string, levelId: string): string {
-  return `rd-run:${userId}:${levelId}`;
+export function snapshotKey(userId: string, levelId: string, heroClass: string): string {
+  return `rd-run:${userId}:${heroClass}:${levelId}`;
 }
 
 export interface BuildSnapshotInput {
@@ -118,6 +120,25 @@ export function saveSnapshot(key: string, snapshot: RunSnapshot): void {
   }
 }
 
+export function ensureUniqueCombatLogIds(
+  log: CombatLogEntry[],
+  snapshotNonce: number,
+): CombatLogEntry[] {
+  const seenLogIds = new Set<string>();
+  return log.map((entry, index) => {
+    const originalId = typeof entry.id === 'string' && entry.id.length > 0
+      ? entry.id
+      : 'log';
+    let repairedId = originalId;
+    if (seenLogIds.has(repairedId)) {
+      repairedId = `${originalId}-${snapshotNonce}-${index}`;
+      while (seenLogIds.has(repairedId)) repairedId += '-r';
+    }
+    seenLogIds.add(repairedId);
+    return repairedId === entry.id ? entry : { ...entry, id: repairedId };
+  });
+}
+
 export function loadSnapshot(
   key: string,
   expectedSeed: number,
@@ -129,6 +150,15 @@ export function loadSnapshot(
     if (!parsed || parsed.version !== SNAPSHOT_VERSION) return null;
     if (parsed.generationSeed !== expectedSeed) return null;
     if (Date.now() - parsed.savedAt > SNAPSHOT_MAX_AGE_MS) return null;
+
+    // Older hot-reloaded sessions could persist repeated short ids such as
+    // `l-1`. Framer Motion requires stable, unique keys for every animated
+    // chronicle row, so repair only collisions while preserving valid ids.
+    parsed.log = ensureUniqueCombatLogIds(
+      Array.isArray(parsed.log) ? parsed.log : [],
+      parsed.savedAt,
+    );
+
     return parsed;
   } catch {
     return null;

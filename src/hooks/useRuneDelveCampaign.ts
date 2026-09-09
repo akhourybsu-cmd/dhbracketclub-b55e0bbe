@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { generateLevel, chapterFor, type LevelDefinition } from '@/lib/runedelve/levelGenerator';
+import type { HeroClass } from '@/lib/runedelve/classConfig';
 
 /**
  * Self-heal legacy `rune_delve_levels` rows that were persisted before the
@@ -59,6 +60,8 @@ export interface RuneDelveLevel {
 export interface RuneDelveProgress {
   id: string;
   user_id: string;
+  /** Present on per-class campaign rows; absent on the aggregate leaderboard row. */
+  class?: HeroClass;
   highest_unlocked_level: number;
   highest_completed_level: number;
   total_levels_cleared: number;
@@ -177,29 +180,76 @@ export function useLevelWindow(start: number, count: number) {
   });
 }
 
-// Per-player progress. Auto-creates row on first read.
-export function useMyProgress() {
+// Per-class campaign progress. Each class starts at Level 1 and restores its
+// own unlock position when selected. The legacy per-user progress row remains
+// the aggregate leaderboard record and is used as a pre-migration fallback.
+export function useMyProgress(heroClass: HeroClass | undefined) {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useQuery({
-    queryKey: ['rune-delve-progress', user?.id],
-    enabled: !!user,
+    queryKey: ['rune-delve-progress', user?.id, heroClass],
+    enabled: !!user && !!heroClass,
     staleTime: 30_000,
     queryFn: async (): Promise<RuneDelveProgress | null> => {
-      if (!user) return null;
-      const { data: existing } = await supabase
-        .from('rune_delve_progress')
+      if (!user || !heroClass) return null;
+      const { data: classRow, error: classError } = await supabase
+        .from('rune_delve_class_progress')
         .select('*')
         .eq('user_id', user.id)
+        .eq('class', heroClass)
         .maybeSingle();
-      if (existing) return existing as RuneDelveProgress;
-      const { data: created } = await supabase
-        .from('rune_delve_progress')
-        .insert({ user_id: user.id })
+      if (classError) throw classError;
+
+      // Once the migration is applied these fields are always numeric. Until
+      // then, fall back to the legacy aggregate so a staged deployment remains
+      // playable while the SQL is being applied.
+      if (classRow && typeof classRow.highest_unlocked_level === 'number') {
+        return classRow as unknown as RuneDelveProgress;
+      }
+
+      const [{ data: legacy }, { data: activeHero }] = await Promise.all([
+        supabase
+          .from('rune_delve_progress')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('rune_delve_heroes')
+          .select('class')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
+      if (classRow) {
+        // On the old schema only the currently active class can inherit the
+        // shared campaign. Inactive classes must still preview as fresh L1.
+        const legacyBelongsToClass = activeHero?.class === heroClass;
+        return {
+          id: classRow.id,
+          user_id: user.id,
+          class: heroClass,
+          highest_unlocked_level: legacyBelongsToClass ? (legacy?.highest_unlocked_level ?? 1) : 1,
+          highest_completed_level: legacyBelongsToClass ? (legacy?.highest_completed_level ?? 0) : 0,
+          total_levels_cleared: legacyBelongsToClass ? (legacy?.total_levels_cleared ?? 0) : 0,
+          current_chapter: legacyBelongsToClass ? (legacy?.current_chapter ?? 1) : 1,
+        };
+      }
+
+      const { data: created, error } = await supabase
+        .from('rune_delve_class_progress')
+        .insert({ user_id: user.id, class: heroClass })
         .select()
         .single();
-      qc.invalidateQueries({ queryKey: ['rune-delve-progress-leaderboard'] });
-      return created as RuneDelveProgress;
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['rune-delve-class-progress', user.id] });
+      return {
+        id: created.id,
+        user_id: user.id,
+        class: heroClass,
+        highest_unlocked_level: created.highest_unlocked_level ?? 1,
+        highest_completed_level: created.highest_completed_level ?? 0,
+        total_levels_cleared: created.total_levels_cleared ?? 0,
+        current_chapter: created.current_chapter ?? 1,
+      };
     },
   });
 }
@@ -209,22 +259,27 @@ export function useMyProgress() {
 // submitted a run for this level (sessionStorage signal) we briefly poll until
 // the row appears — this eliminates the post-submit race that left users
 // staring at "No run yet" until they cleared their cache.
-export function useMyLevelRun(levelId: string | undefined, levelNumber?: number) {
+export function useMyLevelRun(
+  levelId: string | undefined,
+  levelNumber: number | undefined,
+  heroClass: HeroClass | undefined,
+) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['rune-delve-level-run', levelId, user?.id],
-    enabled: !!user && !!levelId && !levelId.startsWith('transient-'),
+    queryKey: ['rune-delve-level-run', levelId, user?.id, heroClass],
+    enabled: !!user && !!heroClass && !!levelId && !levelId.startsWith('transient-'),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      if (!user || !levelId) return null;
+      if (!user || !heroClass || !levelId) return null;
       const fetchOnce = async () => {
         const { data } = await supabase
           .from('rune_delve_runs')
           .select('*')
           .eq('user_id', user.id)
           .eq('level_id', levelId)
+          .eq('hero_class', heroClass)
           .maybeSingle();
         return data ?? null;
       };
@@ -236,7 +291,7 @@ export function useMyLevelRun(levelId: string | undefined, levelNumber?: number)
       let justSubmitted = false;
       try {
         if (typeof levelNumber === 'number' && typeof sessionStorage !== 'undefined') {
-          const key = `rd-just-submitted-${levelNumber}`;
+          const key = `rd-just-submitted-${heroClass}-${levelNumber}`;
           const ts = sessionStorage.getItem(key);
           if (ts && Date.now() - parseInt(ts, 10) < 15_000) {
             justSubmitted = true;
@@ -252,7 +307,7 @@ export function useMyLevelRun(levelId: string | undefined, levelNumber?: number)
         if (row) {
           try {
             if (typeof levelNumber === 'number') {
-              sessionStorage.removeItem(`rd-just-submitted-${levelNumber}`);
+              sessionStorage.removeItem(`rd-just-submitted-${heroClass}-${levelNumber}`);
             }
           } catch { /* noop */ }
           return row;
@@ -297,6 +352,7 @@ export function useSubmitLevelRun() {
         .select('*')
         .eq('user_id', user.id)
         .eq('level_id', params.level_id)
+        .eq('hero_class', params.hero_class)
         .maybeSingle();
 
       const prevScore = existing?.score ?? 0;
@@ -358,6 +414,7 @@ export function useSubmitLevelRun() {
           .select('*')
           .eq('user_id', user.id)
           .eq('level_id', params.level_id)
+          .eq('hero_class', params.hero_class)
           .maybeSingle();
         return data ?? null;
       };
@@ -421,6 +478,27 @@ export function useSubmitLevelRun() {
                 .maybeSingle();
               if (updErr) throw updErr;
               row = upd ?? (await refetch());
+            } else {
+              // Deployment bridge: before the class-specific unique index is
+              // applied, the legacy (user, level) row blocks this class's
+              // insert. Reuse that one row so saves remain functional during
+              // the brief code/SQL rollout window.
+              const { data: legacy } = await (supabase as any)
+                .from('rune_delve_runs')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('level_id', params.level_id)
+                .maybeSingle();
+              if (legacy) {
+                const { data: upd, error: updErr } = await (supabase as any)
+                  .from('rune_delve_runs')
+                  .update({ ...merged, hero_class: params.hero_class })
+                  .eq('id', legacy.id)
+                  .select()
+                  .maybeSingle();
+                if (updErr) throw updErr;
+                row = upd ?? null;
+              }
             }
           } else {
             throw error;
@@ -452,49 +530,107 @@ export function useAdvanceProgress() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (clearedLevel: number) => {
+    mutationFn: async ({ clearedLevel, heroClass }: { clearedLevel: number; heroClass: HeroClass }) => {
       if (!user) throw new Error('Not authenticated');
-      const { data: existing } = await supabase
+      const { data: classExisting, error: classReadError } = await supabase
+        .from('rune_delve_class_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('class', heroClass)
+        .maybeSingle();
+      if (classReadError) throw classReadError;
+
+      let classCampaignReady = classExisting == null
+        || typeof classExisting.highest_unlocked_level === 'number';
+      const classCompleted = classCampaignReady ? (classExisting?.highest_completed_level ?? 0) : 0;
+      const classUnlocked = classCampaignReady ? (classExisting?.highest_unlocked_level ?? 1) : 1;
+      const classTotal = classCampaignReady ? (classExisting?.total_levels_cleared ?? 0) : 0;
+      const isNewClassClear = clearedLevel > classCompleted;
+      const classPayload = {
+        highest_unlocked_level: Math.max(classUnlocked, clearedLevel + 1),
+        highest_completed_level: Math.max(classCompleted, clearedLevel),
+        total_levels_cleared: classTotal + (isNewClassClear ? 1 : 0),
+        current_chapter: chapterFor(Math.max(classUnlocked, clearedLevel + 1)),
+      };
+
+      let savedClass: RuneDelveProgress | null = null;
+      if (classCampaignReady) {
+        if (classExisting) {
+          const { data, error } = await supabase
+            .from('rune_delve_class_progress')
+            .update(classPayload)
+            .eq('user_id', user.id)
+            .eq('class', heroClass)
+            .select()
+            .single();
+          if (error) throw error;
+          savedClass = data as unknown as RuneDelveProgress;
+        } else {
+          const { data, error } = await supabase
+            .from('rune_delve_class_progress')
+            .insert({ user_id: user.id, class: heroClass, ...classPayload })
+            .select()
+            .single();
+          if (error) {
+            // Staged-deploy bridge: the old schema rejects the new campaign
+            // fields. Keep global progression working until the SQL is applied.
+            const message = String(error.message ?? '').toLowerCase();
+            if (error.code === 'PGRST204' || message.includes('highest_unlocked_level')) {
+              classCampaignReady = false;
+            } else {
+              throw error;
+            }
+          } else {
+            savedClass = data as unknown as RuneDelveProgress;
+          }
+        }
+      }
+
+      // Keep the original per-user row as an aggregate leaderboard record:
+      // furthest depth across all classes + total first-clears across builds.
+      const { data: globalExisting } = await supabase
         .from('rune_delve_progress')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
-      const current: RuneDelveProgress = existing ?? {
-        id: '',
-        user_id: user.id,
-        highest_unlocked_level: 1,
-        highest_completed_level: 0,
-        total_levels_cleared: 0,
-        current_chapter: 1,
+      const globalCompleted = globalExisting?.highest_completed_level ?? 0;
+      const globalUnlocked = globalExisting?.highest_unlocked_level ?? 1;
+      const globalTotal = globalExisting?.total_levels_cleared ?? 0;
+      const countsAsNew = classCampaignReady ? isNewClassClear : clearedLevel > globalCompleted;
+      const aggregatePayload = {
+        highest_unlocked_level: Math.max(globalUnlocked, clearedLevel + 1),
+        highest_completed_level: Math.max(globalCompleted, clearedLevel),
+        total_levels_cleared: globalTotal + (countsAsNew ? 1 : 0),
+        current_chapter: chapterFor(Math.max(globalUnlocked, clearedLevel + 1)),
       };
-      const isNewClear = clearedLevel > current.highest_completed_level;
-      const newCompleted = Math.max(current.highest_completed_level, clearedLevel);
-      const newUnlocked = Math.max(current.highest_unlocked_level, clearedLevel + 1);
-      const newTotal = current.total_levels_cleared + (isNewClear ? 1 : 0);
-      const payload = {
-        highest_unlocked_level: newUnlocked,
-        highest_completed_level: newCompleted,
-        total_levels_cleared: newTotal,
-        current_chapter: chapterFor(newUnlocked),
-      };
-      if (existing) {
-        const { data } = await supabase
+      if (globalExisting) {
+        const { error } = await supabase
           .from('rune_delve_progress')
-          .update(payload)
-          .eq('user_id', user.id)
-          .select()
-          .single();
-        return data;
+          .update(aggregatePayload)
+          .eq('user_id', user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('rune_delve_progress')
+          .insert({ user_id: user.id, ...aggregatePayload });
+        if (error) throw error;
       }
-      const { data } = await supabase
-        .from('rune_delve_progress')
-        .insert({ user_id: user.id, ...payload })
-        .select()
-        .single();
-      return data;
+
+      // Before the migration, class campaign columns do not exist. Returning
+      // the aggregate preserves legacy behavior until the provided SQL lands.
+      return savedClass ?? {
+        id: globalExisting?.id ?? '',
+        user_id: user.id,
+        class: heroClass,
+        highest_unlocked_level: aggregatePayload.highest_unlocked_level,
+        highest_completed_level: aggregatePayload.highest_completed_level,
+        total_levels_cleared: aggregatePayload.total_levels_cleared,
+        current_chapter: aggregatePayload.current_chapter,
+      } as RuneDelveProgress;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['rune-delve-progress'] });
+      qc.invalidateQueries({ queryKey: ['rune-delve-class-progress', user?.id] });
       qc.invalidateQueries({ queryKey: ['rune-delve-progress-leaderboard'] });
     },
   });

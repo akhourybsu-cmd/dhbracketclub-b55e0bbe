@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { FxEntry } from '@/hooks/useFxQueue';
 import { RuneChainFx } from './RuneChainFx';
 import { AbilityFx } from './AbilityFx';
@@ -17,6 +17,15 @@ interface Props {
 export function FxLayer({ queue, onComplete }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const reducedMotion = useReducedMotion();
+
+  // Combat stays responsive for players who disable animation: consume queued
+  // effects immediately instead of leaving invisible entries waiting on an
+  // animation callback that will never fire.
+  useEffect(() => {
+    if (!reducedMotion) return;
+    queue.forEach(fx => onComplete(fx.id));
+  }, [onComplete, queue, reducedMotion]);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -41,7 +50,7 @@ export function FxLayer({ queue, onComplete }: Props) {
       style={{ zIndex: 30 }}
     >
       <AnimatePresence>
-        {rect && queue.map(fx =>
+        {!reducedMotion && rect && queue.map(fx =>
           fx.kind === 'rune' ? (
             <RuneChainFx key={fx.id} fx={fx} containerRect={rect} onDone={() => onComplete(fx.id)} />
           ) : (

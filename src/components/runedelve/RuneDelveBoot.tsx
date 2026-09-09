@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useRuneDelveHero } from '@/hooks/useRuneDelveHero';
 import { useMyProgress } from '@/hooks/useRuneDelveCampaign';
 import { chapterFor, chapterMeta } from '@/lib/runedelve/levelGenerator';
@@ -34,9 +34,10 @@ export function RuneDelveBoot() {
   const [flavorIdx, setFlavorIdx] = useState(0);
   const { play } = useRuneDelveSfx();
   const playedReady = useRef(false);
+  const reducedMotion = useReducedMotion();
 
   const { data: hero } = useRuneDelveHero();
-  const { data: progressData } = useMyProgress();
+  const { data: progressData } = useMyProgress(hero?.class);
 
   const chapter = progressData ? chapterFor(progressData.highest_unlocked_level) : 1;
   const meta = chapterMeta(chapter);
@@ -49,13 +50,22 @@ export function RuneDelveBoot() {
     let played = false;
     try {
       played = sessionStorage.getItem(BOOT_FLAG) === '1';
-    } catch {}
+    } catch { /* session storage is optional */ }
     if (played) return;
+
+    // Respect the OS/browser motion preference by skipping the cinematic
+    // entirely. The game remains immediately usable and does not replay it.
+    if (reducedMotion) {
+      try {
+        sessionStorage.setItem(BOOT_FLAG, '1');
+      } catch { /* session storage is optional */ }
+      return;
+    }
 
     setShow(true);
     try {
       sessionStorage.setItem(BOOT_FLAG, '1');
-    } catch {}
+    } catch { /* session storage is optional */ }
 
     // Boot drone — long, slow rising tone synced to the bar fill.
     play('boot.charge', { skipHaptic: true });
@@ -81,7 +91,7 @@ export function RuneDelveBoot() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [play]);
+  }, [play, reducedMotion]);
 
   return (
     <AnimatePresence>

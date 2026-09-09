@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Flame, Trophy, Lock, Sparkles, Check } from 'lucide-react';
+import { Flame, Trophy, Lock, Sparkles, Check } from 'lucide-react';
 import { useRuneDelveHero, useUpdateHero } from '@/hooks/useRuneDelveHero';
 import {
   useAllClassProgress,
@@ -16,6 +16,11 @@ import {
 } from '@/lib/runedelve/classConfig';
 import { MASTERY_TIERS, nextMasteryFor } from '@/lib/runedelve/classMastery';
 import { ClassBadge } from '@/components/runedelve/ClassBadge';
+import { CharacterPowerPanel } from '@/components/runedelve/CharacterPowerPanel';
+import { useLoadout } from '@/hooks/useLoadout';
+import { useRelicCollection } from '@/hooks/useRelicCollection';
+import { useMyProgress } from '@/hooks/useRuneDelveCampaign';
+import { buildCharacterSheet } from '@/lib/runedelve/characterStats';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -23,6 +28,9 @@ import { cn } from '@/lib/utils';
 export default function RuneDelveHeroPage() {
   const { data: hero } = useRuneDelveHero();
   const { data: tracks } = useAllClassProgress();
+  const { data: loadout } = useLoadout(hero?.class);
+  const { data: ownedRelics } = useRelicCollection();
+  const { data: campaignProgress } = useMyProgress(hero?.class);
   const updateHero = useUpdateHero();
   const ensureClass = useEnsureClassProgress();
 
@@ -43,6 +51,17 @@ export default function RuneDelveHeroPage() {
   const cls = getClass(hero.class);
   const title = activeTrack?.cosmetic_title ?? titleForLevel(activeLevel, hero.class);
   const ladder = titleLadderFor(hero.class);
+  const rankById = new Map((ownedRelics ?? []).map(r => [r.relic_id, r.rank ?? 1]));
+  const campaignLevel = activeTrack?.highest_unlocked_level
+    ?? campaignProgress?.highest_unlocked_level
+    ?? 1;
+  const characterSheet = buildCharacterSheet({
+    cls: hero.class,
+    classLevel: activeLevel,
+    campaignLevel,
+    slots: [loadout?.slot_1, loadout?.slot_2, loadout?.slot_3],
+    rankById,
+  });
 
   const saveName = async () => {
     const trimmed = name.trim();
@@ -133,12 +152,8 @@ export default function RuneDelveHeroPage() {
         </div>
       </div>
 
-      {/* ── Active class — passive + ability ─────────────────────────── */}
-      <div className="glass-card p-4">
-        <h3 className="font-rd-display font-extrabold text-[14px] mb-2 tracking-wide">Active class · {cls.name}</h3>
-        <p className="text-[12px] text-foreground/85 mb-1"><span className="font-extrabold text-foreground">Passive:</span> {cls.passive}</p>
-        <p className="text-[12px] text-foreground/85"><span className="font-extrabold text-foreground">Ability:</span> {cls.abilityName} — {cls.abilityDesc}</p>
-      </div>
+      {/* Exact, rank-aware snapshot of the values combat will use. */}
+      <CharacterPowerPanel sheet={characterSheet} />
 
       {/* ── Class Masteries — perks unlocked by leveling this class ──── */}
       {(() => {
@@ -214,7 +229,7 @@ export default function RuneDelveHeroPage() {
           <Sparkles className="w-3.5 h-3.5 text-primary" /> Class Progression
         </h3>
         <p className="text-[11px] text-foreground/75">
-          Each class keeps its own level and titles. Switching loads that class's saved progress — nothing is wiped.
+          Each class keeps its own XP, campaign unlocks, best runs, failure help, titles, and relic loadout. A new class starts at Level 1; switching back restores everything.
         </p>
         <div className="space-y-2 mt-1">
           {CLASS_LIST.map(c => {
@@ -225,6 +240,9 @@ export default function RuneDelveHeroPage() {
             const tXp = track?.xp ?? 0;
             const xpInfo = levelFromXp(tXp);
             const pct = Math.round((xpInfo.intoLevel / xpInfo.needed) * 100);
+            const tCampaign = track?.highest_unlocked_level
+              ?? (isActive ? campaignProgress?.highest_unlocked_level : 1)
+              ?? 1;
             return (
               <button
                 key={c.id}
@@ -258,6 +276,7 @@ export default function RuneDelveHeroPage() {
                   </div>
                   <p className="text-[9px] font-mono text-muted-foreground tabular-nums mt-0.5">
                     {xpInfo.intoLevel}/{xpInfo.needed} XP
+                    {` · Campaign L${tCampaign}`}
                     {track && track.lifetime_runs > 0 && ` · ${track.lifetime_runs} runs`}
                   </p>
                 </div>
@@ -317,7 +336,8 @@ export default function RuneDelveHeroPage() {
         const target = getClass(confirmSwitch);
         const targetTrack = trackByClass.get(confirmSwitch);
         const targetLevel = targetTrack?.level ?? 1;
-        const fresh = !targetTrack || targetTrack.xp === 0;
+        const targetCampaign = targetTrack?.highest_unlocked_level ?? 1;
+        const fresh = (!targetTrack || targetTrack.xp === 0) && targetCampaign <= 1;
         return (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center px-6 backdrop-blur-md bg-background/70 animate-in fade-in"
@@ -330,8 +350,8 @@ export default function RuneDelveHeroPage() {
                   <p className="font-extrabold text-[15px]">Switch to {target.name}?</p>
                   <p className="text-[11px] text-muted-foreground">
                     {fresh
-                      ? 'Fresh class — starts at Lv 1.'
-                      : `Loads your saved progress · Lv ${targetLevel}.`}
+                      ? 'Fresh class — Lv 1 and Campaign L1.'
+                      : `Restores Lv ${targetLevel} · Campaign L${targetCampaign}.`}
                   </p>
                 </div>
               </div>

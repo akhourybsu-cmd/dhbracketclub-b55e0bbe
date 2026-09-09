@@ -18,6 +18,10 @@ export interface ClassProgress {
   cosmetic_title: string | null;
   lifetime_runs: number;
   lifetime_score: number;
+  highest_unlocked_level: number;
+  highest_completed_level: number;
+  total_levels_cleared: number;
+  current_chapter: number;
 }
 
 export function useAllClassProgress() {

@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Lock, Check, ChevronRight, Crown, Sparkles } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRuneDelveHero } from '@/hooks/useRuneDelveHero';
 import { useMyProgress, useLevelWindow } from '@/hooks/useRuneDelveCampaign';
 import { PathVariantPicker } from '@/components/runedelve/PathVariantPicker';
 import { readLastPathChoice, writeLastPathChoice } from '@/lib/runedelve/pathVariants';
@@ -17,12 +18,15 @@ import {
 import { mechanicsForLevel, introMechanicForLevel, getMechanic, type MechanicId } from '@/lib/runedelve/mechanics';
 import { getLayoutForLevel } from '@/lib/runedelve/chamberAssignment';
 import { DungeonPathPreview } from '@/components/runedelve/DungeonPathPreview';
+import { ClassBadge } from '@/components/runedelve/ClassBadge';
+import { getClass } from '@/lib/runedelve/classConfig';
 import { cn } from '@/lib/utils';
 
 export default function RuneDelveLevelMapPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: progress } = useMyProgress();
+  const { data: hero } = useRuneDelveHero();
+  const { data: progress } = useMyProgress(hero?.class);
   // R2 — milestone path picker. When the player taps an unlocked
   // milestone level (every 10th), this opens instead of navigating
   // straight to the play page. Picker writes the choice to local
@@ -50,6 +54,11 @@ export default function RuneDelveLevelMapPage() {
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           <span className="font-rd-display px-2 py-0.5 rounded-md text-[9px] font-extrabold bg-primary/20 text-primary tracking-[0.18em]">CHAPTER {chapter}</span>
           <span className="text-[10px] font-extrabold text-foreground/75 uppercase tracking-wider">L{start}–{start + 49}</span>
+          {hero && (
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-wider text-foreground/75">
+              <ClassBadge cls={hero.class} size="sm" /> {getClass(hero.class).name} track
+            </span>
+          )}
         </div>
         <h1 className="rd-title text-xl tracking-wide leading-tight text-foreground">{meta.name}</h1>
         <p className="text-[12px] text-foreground/75 mb-2.5 italic">{meta.subtitle}</p>

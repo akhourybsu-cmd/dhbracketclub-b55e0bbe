@@ -8263,10 +8263,14 @@ export type Database = {
           club_id: string
           cosmetic_title: string | null
           created_at: string
+          current_chapter: number
+          highest_completed_level: number
+          highest_unlocked_level: number
           id: string
           level: number
           lifetime_runs: number
           lifetime_score: number
+          total_levels_cleared: number
           updated_at: string
           user_id: string
           xp: number
@@ -8276,10 +8280,14 @@ export type Database = {
           club_id?: string
           cosmetic_title?: string | null
           created_at?: string
+          current_chapter?: number
+          highest_completed_level?: number
+          highest_unlocked_level?: number
           id?: string
           level?: number
           lifetime_runs?: number
           lifetime_score?: number
+          total_levels_cleared?: number
           updated_at?: string
           user_id: string
           xp?: number
@@ -8289,10 +8297,14 @@ export type Database = {
           club_id?: string
           cosmetic_title?: string | null
           created_at?: string
+          current_chapter?: number
+          highest_completed_level?: number
+          highest_unlocked_level?: number
           id?: string
           level?: number
           lifetime_runs?: number
           lifetime_score?: number
+          total_levels_cleared?: number
           updated_at?: string
           user_id?: string
           xp?: number
@@ -8435,6 +8447,7 @@ export type Database = {
         Row: {
           club_id: string
           failure_count: number
+          hero_class: string
           id: string
           last_awarded_at: string
           level_number: number
@@ -8443,6 +8456,7 @@ export type Database = {
         Insert: {
           club_id?: string
           failure_count?: number
+          hero_class: string
           id?: string
           last_awarded_at?: string
           level_number: number
@@ -8451,6 +8465,7 @@ export type Database = {
         Update: {
           club_id?: string
           failure_count?: number
+          hero_class?: string
           id?: string
           last_awarded_at?: string
           level_number?: number

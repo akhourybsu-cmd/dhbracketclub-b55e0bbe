@@ -16,6 +16,9 @@ import { RelicCard } from '@/components/runedelve/RelicCard';
 import { ShardBalance } from '@/components/runedelve/ShardBalance';
 import { cn } from '@/lib/utils';
 import { useRuneDelveSfx } from '@/hooks/useRuneDelveSfx';
+import { useMyProgress } from '@/hooks/useRuneDelveCampaign';
+import { buildCharacterSheet } from '@/lib/runedelve/characterStats';
+import { CharacterPowerPanel } from '@/components/runedelve/CharacterPowerPanel';
 
 export default function RuneDelveArmoryPage() {
   const { data: hero } = useRuneDelveHero();
@@ -52,6 +55,7 @@ export default function RuneDelveArmoryPage() {
   const [activeClass, setActiveClass] = useState<HeroClass | null>(null);
   const cls = activeClass ?? hero?.class ?? 'warrior';
   const { data: loadout } = useLoadout(cls);
+  const { data: campaignProgress } = useMyProgress(cls);
 
   const slotsUnlocked = wallet?.slots_unlocked ?? 2;
   const ownedIds = useMemo(() => new Set((owned ?? []).map(o => o.relic_id)), [owned]);
@@ -70,6 +74,14 @@ export default function RuneDelveArmoryPage() {
     loadout?.slot_2 ?? null,
     loadout?.slot_3 ?? null,
   ];
+  const classTrack = tracks?.find(t => t.class === cls);
+  const characterSheet = buildCharacterSheet({
+    cls,
+    classLevel: classTrack?.level ?? (hero?.class === cls ? hero.level : 1),
+    campaignLevel: classTrack?.highest_unlocked_level ?? campaignProgress?.highest_unlocked_level ?? 1,
+    slots: equipped,
+    rankById,
+  });
 
   const equip = async (relicId: string) => {
     if (equipped.includes(relicId)) {
@@ -176,6 +188,12 @@ export default function RuneDelveArmoryPage() {
           </p>
         )}
       </div>
+
+      {/* Live min-max preview: updates as relics are equipped or removed. */}
+      <CharacterPowerPanel sheet={characterSheet} compact />
+      <p className="-mt-2 px-1 text-[10px] text-muted-foreground text-center">
+        Stats update with this loadout. Switch your active class on the <Link to="/rune-delve/hero" className="font-bold text-primary">Hero screen</Link> for its complete effect ledger.
+      </p>
 
       {/* Owned relics */}
       <div className="space-y-2">

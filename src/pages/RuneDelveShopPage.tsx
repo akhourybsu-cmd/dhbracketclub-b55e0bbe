@@ -29,8 +29,8 @@ const CATS: (RelicCategory | 'all')[] = ['all', 'offense', 'mana', 'survival', '
 export default function RuneDelveShopPage() {
   const { data: wallet } = useRuneWallet();
   const { data: owned } = useRelicCollection();
-  const { data: progress } = useMyProgress();
   const { data: hero } = useRuneDelveHero();
+  const { data: progress } = useMyProgress(hero?.class);
   const spend = useSpendShards();
   const earn = useEarnShards();
   const unlock = useUnlockRelic();

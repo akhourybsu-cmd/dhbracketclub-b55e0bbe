@@ -47,6 +47,14 @@ export interface ChainResolution {
 export const MAX_HP = 100;
 export const MAX_MANA = 3;
 
+/** Shared campaign-depth scalar for rune and ability power. */
+export function campaignPowerMultiplier(level = 1): number {
+  if (level <= 25) return 1;
+  if (level <= 50) return 1 + (level - 25) * 0.008;
+  if (level <= 100) return 1.20 + (level - 50) * 0.008;
+  return 1.60 + (level - 100) * 0.010;
+}
+
 /** Base red-chain damage shared by combat and the board's live preview. */
 export function redChainDamage(length: number, cls: HeroClass, level = 1): number {
   const classMultiplier: Record<HeroClass, number> = {
@@ -55,13 +63,7 @@ export function redChainDamage(length: number, cls: HeroClass, level = 1): numbe
     rogue: 1.40,
     cleric: 1.45,
   };
-  const depthMultiplier = level <= 25
-    ? 1
-    : level <= 50
-      ? 1 + (level - 25) * 0.008
-      : level <= 100
-        ? 1.20 + (level - 50) * 0.008
-        : 1.60 + (level - 100) * 0.010;
+  const depthMultiplier = campaignPowerMultiplier(level);
   // Rogue's score-only passive left it roughly 20–30 clear-rate points behind
   // the other classes because most campaign goals care about combat, not the
   // final leaderboard total. Long red chains now deliver the same +15% payoff
@@ -137,8 +139,10 @@ export function applyChain(
     let mana = 1;
     if (cls === 'mage') mana = 2;
     if (length >= 5) mana += 1;
+    const manaBefore = next.mana;
     next.mana = Math.min(MAX_MANA, next.mana + mana);
-    resolution.manaGained = mana;
+    // Report what entered the pool, not theoretical power lost to the cap.
+    resolution.manaGained = next.mana - manaBefore;
   } else if (type === 'green') {
     let heal = length * 6;
     if (cls === 'cleric') heal = Math.round(heal * 1.5);
@@ -146,8 +150,10 @@ export function applyChain(
     next.hp += applied;
     resolution.hpHealed = applied;
   } else if (type === 'gold') {
+    const shieldBefore = next.shieldTurns;
     next.shieldTurns = Math.max(next.shieldTurns, 1) + Math.floor(length / 3);
-    resolution.guardGained = next.shieldTurns;
+    // Existing shield duration is not newly gained guard.
+    resolution.guardGained = next.shieldTurns - shieldBefore;
   }
 
   if (cls === 'rogue' && length >= rogueBonusThreshold) {
@@ -346,12 +352,7 @@ export function useAbility(
   const targetable = filterTargetable(bossRule, next.enemies);
   const targetableIds = new Set(targetable.map(e => e.id));
   // Mirror the chain-damage depth scalar so abilities scale with the campaign.
-  const depthMul = (() => {
-    if (level <= 25) return 1.00;
-    if (level <= 50) return 1.00 + (level - 25) * 0.008;
-    if (level <= 100) return 1.20 + (level - 50) * 0.008;
-    return 1.60 + (level - 100) * 0.010;
-  })();
+  const depthMul = campaignPowerMultiplier(level);
   if (cls === 'warrior') {
     // Cleave: 40 dmg to all targetable enemies (50 with Honed Cleave T3).
     const cleaveDmg = Math.round((getMasteryCleaveDamage(activeMasteries) ?? 40) * depthMul);

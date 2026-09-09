@@ -158,10 +158,11 @@ const RUNE_LABEL: Record<RuneType, string> = {
   gold: 'Radiant',
 };
 
-// Module-level monotonic counter for log entry IDs. Stable, sortable, and
-// avoids a Math.random() inside every setState updater.
+// Timestamp + module counter stays unique across mobile reload/resume. A bare
+// counter restarted at l-1 after reload and collided with restored log rows,
+// which caused React to duplicate or omit animated entries.
 let logSeq = 0;
-const nextLogId = () => `l-${++logSeq}`;
+const nextLogId = () => `l-${Date.now()}-${++logSeq}`;
 
 export default function RuneDelvePlayPage() {
   const navigate = useNavigate();
@@ -178,16 +179,16 @@ export default function RuneDelvePlayPage() {
 
   const { user } = useAuth();
   const { data: hero } = useRuneDelveHero();
-  const { data: progress } = useMyProgress();
+  const { data: progress } = useMyProgress(hero?.class);
   const { data: level } = useLevel(levelNumber);
-  const { data: existingRun } = useMyLevelRun(level?.id);
-  const { data: classTracks } = useAllClassProgress();
+  const { data: existingRun } = useMyLevelRun(level?.id, levelNumber, hero?.class);
+  const { data: classTracks, isLoading: classTracksLoading } = useAllClassProgress();
   const submit = useSubmitLevelRun();
   const advance = useAdvanceProgress();
   const updateHero = useUpdateHero();
   const updateClass = useUpdateClassProgress();
-  const { data: loadout } = useLoadout(hero?.class);
-  const { data: ownedRelics } = useRelicCollection();
+  const { data: loadout, isLoading: loadoutLoading } = useLoadout(hero?.class);
+  const { data: ownedRelics, isLoading: ownedRelicsLoading } = useRelicCollection();
   const unlockRelic = useUnlockRelic();
   // R7: a relic dropped on this clear (if any). Surfaced in the
   // endState card so the player sees the find.
@@ -198,7 +199,7 @@ export default function RuneDelvePlayPage() {
   // on every state change without re-firing past ones.
   const bossPhasesRef = useRef<Map<string, BossPhaseIndex>>(new Map());
   const { data: wallet } = useRuneWallet();
-  const { data: failureRow } = useFailureRow(level?.level_number ?? null);
+  const { data: failureRow } = useFailureRow(level?.level_number ?? null, hero?.class);
   const earnShards = useEarnShards();
   const recordDefeats = useRecordDefeats();
   const bumpFailure = useBumpFailure();
@@ -431,15 +432,16 @@ export default function RuneDelvePlayPage() {
   const runKey = useMemo(() => {
     if (!user?.id || !level?.id) return null;
     if (level.id.startsWith('transient-')) return null;
-    return snapshotKey(user.id, level.id);
-  }, [user?.id, level?.id]);
+    if (!hero?.class) return null;
+    return snapshotKey(user.id, level.id, hero.class);
+  }, [user?.id, level?.id, hero?.class]);
 
   // Build deterministic state. Snapshots `activeRelics` once at run-start so
   // mid-run relic toggles or rank changes can never reset the board.
   // ALSO: prefer rehydrating an in-progress run from sessionStorage so
   // backgrounding the WebView (iOS PWA) doesn't wipe player progress.
   useEffect(() => {
-    if (!level || !hero) return;
+    if (!level || !hero || classTracksLoading || loadoutLoading || ownedRelicsLoading) return;
     const relics = activeRelics; // snapshot
 
     // ── Rehydrate path ──────────────────────────────────────────────────
@@ -566,18 +568,22 @@ export default function RuneDelvePlayPage() {
     // Foreseer's Lens (+ turns/level — suppressed by Fogged) and Void Pact.
     const bonusTurns = foggedActive ? 0 : getForeseerBonusTurns(relics);
     const dailyTurnDelta = isDailyMode ? dailyTurnLimitDelta(dailyMods) : 0;
-    // Mastery: Warrior T2 — +1 max HP per chapter cleared (chapters are 1..N
-    // where the first chapter is 1, so this also nudges chapter-1 by +1).
+    // Mastery: Warrior T2 — +1 max HP per chapter already cleared. Chapter 1
+    // therefore grants 0; entering chapters 2 and 3 grants +1 and +2.
     const chapterIdx = chapterFor(level.level_number);
-    const chapterHpBonus = getMasteryHpPerChapter(activeMasteries) * Math.max(0, chapterIdx);
+    const chapterHpBonus = getMasteryHpPerChapter(activeMasteries) * Math.max(0, chapterIdx - 1);
     const initial = initialCombat(
       enemies,
       Math.max(3, level.turn_limit + bonusTurns + dailyTurnDelta),
       { bonusMaxHp: chapterHpBonus },
     );
     // Mastery: starting mana bonus (Mage T1) layered on top of relic effects.
-    initial.mana = Math.min(MAX_MANA, initial.mana + getStartingMana(relics) + getMasteryStartingMana(activeMasteries));
-    initial.shieldTurns = Math.max(initial.shieldTurns, getStartingShieldTurns(relics));
+    const openingManaPower = getStartingMana(relics) + getMasteryStartingMana(activeMasteries);
+    initial.mana = Math.min(MAX_MANA, initial.mana + openingManaPower);
+    // Aether Spark ranks above the mana cap convert overflow into a visible,
+    // useful opening shield. This also makes the relic compose with Mage T1.
+    const manaOverflowShield = Math.max(0, openingManaPower - MAX_MANA);
+    initial.shieldTurns = Math.max(initial.shieldTurns, getStartingShieldTurns(relics)) + manaOverflowShield;
     const voidCost = getVoidPactHpCost(relics);
     if (voidCost > 0) {
       initial.maxHp = Math.max(10, initial.maxHp - voidCost);
@@ -661,7 +667,11 @@ export default function RuneDelvePlayPage() {
     setLog([{ id: nextLogId(), kind: 'info', text: `You enter Level ${level.level_number}. The runes hum.` }]);
     // NOTE: `activeRelics` intentionally OMITTED from deps — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level, hero, sealedTilesActive, telegraphActive, corruptionActive, shiftingActive, linkedPairsActive, eclipseActive, runKey, isDailyMode]);
+  }, [
+    level, hero, sealedTilesActive, telegraphActive, corruptionActive,
+    shiftingActive, linkedPairsActive, eclipseActive, runKey, isDailyMode,
+    classTracksLoading, loadoutLoading, ownedRelicsLoading,
+  ]);
 
   // ── Persist snapshot on every meaningful state change ─────────────────
   // Skipped while there's no live run, after end-state, or when we don't
@@ -996,8 +1006,9 @@ export default function RuneDelvePlayPage() {
     }
     // Mana / heal / shield bonuses.
     if (chainMods.bonusManaFlat > 0) {
+      const manaBefore = next.mana;
       next.mana = Math.min(MAX_MANA, next.mana + chainMods.bonusManaFlat);
-      resolution.manaGained += chainMods.bonusManaFlat;
+      resolution.manaGained += next.mana - manaBefore;
     }
     if (chainMods.bonusHealFlat > 0) {
       const heal = Math.min(chainMods.bonusHealFlat, next.maxHp - next.hp);
@@ -2000,7 +2011,7 @@ export default function RuneDelvePlayPage() {
         // "No run yet" empty state if Postgrest hasn't caught up.
         try {
           sessionStorage.setItem(
-            `rd-just-submitted-${level.level_number}`,
+            `rd-just-submitted-${hero.class}-${level.level_number}`,
             String(Date.now()),
           );
         } catch { /* sessionStorage may be unavailable */ }
@@ -2028,7 +2039,7 @@ export default function RuneDelvePlayPage() {
         // already been merged (and thus doesn't reveal what changed).
         try {
           sessionStorage.setItem(
-            `rd-improvements-${level.level_number}`,
+            `rd-improvements-${hero.class}-${level.level_number}`,
             JSON.stringify({
               ts: Date.now(),
               wasNewBest: serverWasNewBest,
@@ -2052,7 +2063,9 @@ export default function RuneDelvePlayPage() {
           improvedHp,
           firstClear,
         } : prev);
-        if (cleared) await advance.mutateAsync(level.level_number);
+        if (cleared) {
+          await advance.mutateAsync({ clearedLevel: level.level_number, heroClass: hero.class });
+        }
       }
       // Hero + class progression.
       //   • Lifetime totals (runs, score) and the daily streak advance on
@@ -2129,9 +2142,9 @@ export default function RuneDelvePlayPage() {
       try {
         if (shardsAwarded > 0) await earnShards.mutateAsync(shardsAwarded);
         if (cleared) {
-          await resetFailure.mutateAsync(level.level_number);
+          await resetFailure.mutateAsync({ levelNumber: level.level_number, heroClass: hero.class });
         } else {
-          await bumpFailure.mutateAsync(level.level_number);
+          await bumpFailure.mutateAsync({ levelNumber: level.level_number, heroClass: hero.class });
         }
         // Auto-unlock 3rd slot when ANY class hits the threshold.
         const tracks = classTracks ?? [];
@@ -2239,6 +2252,110 @@ export default function RuneDelvePlayPage() {
   );
 
   const equippedCount = [loadout?.slot_1, loadout?.slot_2, loadout?.slot_3].filter(Boolean).length;
+
+  // Live, build-aware chain estimates. Red is marked approximate because
+  // enemy armor and target HP can reduce applied damage; resource previews
+  // show the exact amount that can enter the hero's current pools.
+  const previewRelics = activeRelicsSnapshot ?? activeRelics;
+  const previewModsFor = (chainType: RuneType, length: number) => {
+    const previewTarget = filterTargetable(bossRule, combat.enemies)[0]
+      ?? combat.enemies.find(enemy => enemy.hp > 0);
+    return computeChainMods(previewRelics, {
+      chainType,
+      length,
+      redChainCountSoFar: chainType === 'red' ? redChainCount + 1 : 0,
+      isFirstChainOfRun: chainCountTotal === 0,
+      hpRatio: combat.hp / Math.max(1, combat.maxHp),
+      enemyHpRatioBeforeHit: previewTarget
+        ? previewTarget.hp / Math.max(1, previewTarget.maxHp)
+        : 1,
+      chainNumberThisRun: chainCountTotal + 1,
+    });
+  };
+
+  const redPreview = (length: number) => {
+    const relicMods = previewModsFor('red', length);
+    const runMods = resolveEffect(activeModifier);
+    let damage = redChainDamage(length, hero.class, level.level_number);
+    if (combat.shadowstepActive) damage = Math.round(damage * 2);
+    damage = Math.round(damage * runMods.redDamageMult);
+    damage = Math.round(damage * relicMods.bonusDamageMult);
+    if (relicMods.effectiveLengthBonus > 0) {
+      damage += Math.max(
+        0,
+        redChainDamage(length + relicMods.effectiveLengthBonus, hero.class, level.level_number)
+          - redChainDamage(length, hero.class, level.level_number),
+      );
+    }
+    const tierMult = length >= 8 ? 1.4 : length >= 7 ? 1.3 : length >= 6 ? 1.2 : 1;
+    damage = Math.round(damage * tierMult);
+    let masteryMult = getMasteryChainDamageMult(activeMasteries, 'red');
+    if (isLastStandActive(activeMasteries, combat.hp, combat.maxHp)) masteryMult *= 1.5;
+    masteryMult *= getMasteryOpeningCritMult(activeMasteries, chainsThisFight);
+    damage = Math.round(damage * masteryMult);
+    if (relicMods.echoMult > 0) damage += Math.round(damage * relicMods.echoMult);
+    const critChance = getMasteryChainCritChance(activeMasteries, length);
+    return `≈${damage} dmg${critChance > 0 ? ` · ${Math.round(critChance * 100)}% crit` : ''}${tierMult > 1 ? ' ⚡' : ''}`;
+  };
+
+  const bluePreview = (length: number) => {
+    const relicMods = previewModsFor('blue', length);
+    let mana = combat.mana;
+    let gained = 0;
+    const addMana = (amount: number) => {
+      const before = mana;
+      mana = Math.min(MAX_MANA, mana + amount);
+      gained += mana - before;
+    };
+    addMana((hero.class === 'mage' ? 2 : 1) + (length >= 5 ? 1 : 0));
+    addMana(relicMods.bonusManaFlat);
+    if (length < 5 && length + relicMods.effectiveLengthBonus >= 5) addMana(1);
+    if (relicMods.echoMult > 0 && gained > 0) {
+      addMana(Math.max(1, Math.round(gained * relicMods.echoMult)));
+    }
+    const heal = Math.min(
+      combat.maxHp - combat.hp,
+      getMasteryBlueChainHeal(activeMasteries)
+        + getMasteryOpeningHeal(activeMasteries, chainsThisFight),
+    );
+    const manaText = gained > 0 ? `+${gained} orb${gained === 1 ? '' : 's'}` : 'Mana full';
+    return heal > 0 ? `${manaText} · +${heal} HP` : manaText;
+  };
+
+  const greenPreview = (length: number) => {
+    const relicMods = previewModsFor('green', length);
+    const runMods = resolveEffect(activeModifier);
+    let hp = combat.hp;
+    let healed = 0;
+    const addHeal = (amount: number) => {
+      const applied = Math.min(Math.max(0, amount), combat.maxHp - hp);
+      hp += applied;
+      healed += applied;
+    };
+    const base = hero.class === 'cleric' ? Math.round(length * 6 * 1.5) : length * 6;
+    addHeal(Math.round(base * runMods.healMult));
+    addHeal(relicMods.bonusHealFlat);
+    if (relicMods.effectiveLengthBonus > 0) {
+      addHeal((hero.class === 'cleric' ? 9 : 6) * relicMods.effectiveLengthBonus);
+    }
+    addHeal(getMasteryOpeningHeal(activeMasteries, chainsThisFight));
+    if (relicMods.echoMult > 0 && healed > 0) addHeal(Math.round(healed * relicMods.echoMult));
+    return healed > 0 ? `+${healed} HP` : 'HP full';
+  };
+
+  const goldPreview = (length: number) => {
+    const relicMods = previewModsFor('gold', length);
+    const runMods = resolveEffect(activeModifier);
+    let gained = Math.max(combat.shieldTurns, 1) + Math.floor(length / 3) - combat.shieldTurns;
+    gained = Math.max(0, Math.round(gained * runMods.shieldMult));
+    gained += relicMods.bonusShieldTurns;
+    if (relicMods.effectiveLengthBonus > 0) {
+      gained += Math.floor((length + relicMods.effectiveLengthBonus) / 3) - Math.floor(length / 3);
+    }
+    if (gained > 0) gained += getMasteryShieldBonus(activeMasteries);
+    if (relicMods.echoMult > 0 && gained > 0) gained += Math.max(1, Math.round(gained * relicMods.echoMult));
+    return `+${gained} shield turn${gained === 1 ? '' : 's'}`;
+  };
 
   return (
     <div ref={playRootRef} className="space-y-2 pb-2 relative">
@@ -2364,23 +2481,10 @@ export default function RuneDelvePlayPage() {
         treasureCells={layoutZones.treasure}
         hazardCells={layoutZones.hazard}
         effectOverride={{
-          // Class-aware previews. Tier bonus shows when chain hits 6+.
-          red: (n) => {
-            const base = redChainDamage(n, hero.class, level.level_number);
-            const tier = n >= 8 ? 1.4 : n >= 7 ? 1.3 : n >= 6 ? 1.2 : 1;
-            const total = Math.round(base * tier);
-            return tier > 1 ? `${total} dmg ⚡` : `${total} dmg`;
-          },
-          blue: (n) => {
-            let mana = hero.class === 'mage' ? 2 : 1;
-            if (n >= 5) mana += 1;
-            return `+${mana} orb${mana > 1 ? 's' : ''}`;
-          },
-          green: (n) => {
-            const base = n * 6;
-            const heal = hero.class === 'cleric' ? Math.round(base * 1.5) : base;
-            return `+${heal} HP`;
-          },
+          red: redPreview,
+          blue: bluePreview,
+          green: greenPreview,
+          gold: goldPreview,
         }}
       />
 
