@@ -7,7 +7,7 @@
 // stat readouts framed as scroll lines, not HUD lozenges.
 
 import { motion } from 'framer-motion';
-import { Sparkles, Skull, Gem, DoorOpen, ScrollText } from 'lucide-react';
+import { Grid3X3, ShieldCheck, Skull, Gem, ScrollText } from 'lucide-react';
 import { RuneLayoutPreview } from './RuneLayoutPreview';
 import type { RuneLayout } from '@/lib/runedelve/runeLayouts';
 import { RuneStatBadge } from './RuneStatBadge';
@@ -24,7 +24,6 @@ interface Props {
 
 export function DelveBriefingCard({ layout, levelNumber, title, showStrategy = true }: Props) {
   const accent = `hsl(${layout.preview.accent})`;
-  const accentSoft = `hsl(${layout.preview.accent} / 0.20)`;
   const accentBorder = `hsl(${layout.preview.accent} / 0.45)`;
 
   return (
@@ -105,8 +104,8 @@ export function DelveBriefingCard({ layout, levelNumber, title, showStrategy = t
 
           {/* Chamber stat scroll */}
           <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-            <RuneStatBadge icon={DoorOpen} label="Entries" value={layout.preview.entryPoints} accent={accent} />
-            <RuneStatBadge icon={Sparkles} label="Runes"   value={layout.preview.runeSlots}   accent={accent} />
+            <RuneStatBadge icon={Grid3X3} label="Board" value="5×5" accent={accent} />
+            <RuneStatBadge icon={ShieldCheck} label="Plain" value={25 - layout.preview.hazardZones - layout.preview.treasureZones} accent={accent} />
             <RuneStatBadge icon={Skull}    label="Hazards" value={layout.preview.hazardZones} accent={accent} tone="danger" />
             <RuneStatBadge icon={Gem}      label="Treasure" value={layout.preview.treasureZones} accent={accent} tone="treasure" />
           </div>

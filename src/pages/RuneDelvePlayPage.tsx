@@ -644,6 +644,11 @@ export default function RuneDelvePlayPage() {
     if (!activeModifier) {
       if (lockedMod) {
         setActiveModifier(lockedMod);
+      } else if (level.level_number <= 10) {
+        // Keep the opening ten-level tutorial focused on chaining, classes,
+        // and objectives. Optional risk/reward rules unlock after the player
+        // has cleared the first mini-boss.
+        setActiveModifier(STEADY_PATH);
       } else {
         setModifierOffer(pickModifierOffer());
       }

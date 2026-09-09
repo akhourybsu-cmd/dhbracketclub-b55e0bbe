@@ -32,7 +32,7 @@ export function MechanicBanner({ mechanics }: Props) {
     >
       <div className="flex items-center gap-2">
         <span className="text-[9px] font-extrabold uppercase tracking-wider text-primary px-1.5 py-0.5 rounded bg-primary/15">
-          Active
+          {items.length === 1 ? 'Rule' : '2 Rules'}
         </span>
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
           {items.map(m => (

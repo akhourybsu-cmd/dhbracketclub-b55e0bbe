@@ -53,8 +53,8 @@ export function MechanicIntroSheet({ open, onOpenChange, mechanicId, bossRuleId,
             <p className="text-[11px] uppercase tracking-wider font-extrabold text-primary mb-1">Tip</p>
             <p className="text-[12px] text-foreground/80 leading-snug">
               {showBoss
-                ? 'Read the rule before you commit a chain. Bosses bend one rule each — adapt to the gimmick.'
-                : "From now on this mechanic can appear on later levels — sometimes mixed with what you've already learned."}
+                ? 'Read the rule banner before your first chain. Boss chambers have no hidden rules.'
+                : m?.tip}
             </p>
           </div>
           <button

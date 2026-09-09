@@ -55,11 +55,11 @@ export function RunModifierPicker({ offer, onPick, onSkip }: Props) {
               color: 'hsl(45 95% 60%)',
             }}>
             <Sparkles className="w-3 h-3" />
-            <span className="text-[9.5px] font-extrabold uppercase tracking-[0.22em]">Chamber Boon</span>
+            <span className="text-[9.5px] font-extrabold uppercase tracking-[0.22em]">Optional Chamber Rule</span>
           </div>
           <h2 className="text-xl font-extrabold tracking-tight">Pick your edge.</h2>
           <p className="text-[12px] text-muted-foreground/75 mt-1 leading-snug">
-            Each chamber offers three boons. Pick one — or take the steady path.
+            Each choice has a trade-off. Steady Path adds no extra rule.
           </p>
         </motion.div>
 
@@ -125,9 +125,9 @@ export function RunModifierPicker({ offer, onPick, onSkip }: Props) {
           <button
             type="button"
             onClick={onSkip}
-            className="text-[11.5px] font-bold text-muted-foreground/60 hover:text-foreground/80 transition-colors px-4 py-2 rounded-lg active:bg-muted/30"
+            className="w-full text-[11.5px] font-extrabold text-foreground/80 hover:text-foreground transition-colors px-4 py-3 rounded-xl border border-border/45 bg-card/30 active:bg-muted/30"
           >
-            Take the Steady Path
+            ◇ Steady Path · No bonus, no penalty
           </button>
         </motion.div>
       </div>

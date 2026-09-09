@@ -11,9 +11,10 @@
 import { simulateBand, type SimAggregate } from './simulator';
 import { generateLevel } from './levelGenerator';
 import { CLASS_LIST, getClass, type HeroClass } from './classConfig';
-import { MASTERY_TIERS, MASTERY_UNLOCK_LEVELS } from './classMastery';
+import { MASTERY_TIERS } from './classMastery';
 import { bossKindForLevel, bossRuleForLevel, BOSS_RULES, type BossKind } from './bossRules';
-import { mechanicsForLevel, type MechanicId } from './mechanics';
+import type { MechanicId } from './mechanics';
+import { getLayoutForLevel } from './chamberAssignment';
 import { RELIC_CATALOG } from './relics';
 import { xpForRun } from './scoring';
 
@@ -87,7 +88,8 @@ export interface BalanceReport {
     name: string;
     summary: string;
     unlockLevel: number;
-    deltaWinPct: number; // sim clear-rate at unlock level vs. tier-1-only baseline (proxy)
+    /** Reserved until the simulator can run with/without this exact mastery. */
+    deltaWinPct: number;
     verdict: 'underpowered' | 'balanced' | 'overpowered' | 'situational';
   }>;
   bosses: Array<{
@@ -225,7 +227,7 @@ export async function buildBalanceReport(opts: BuildOpts): Promise<BalanceReport
       bestClass,
       worstClass,
       bossKind: bossKindForLevel(lvl),
-      mechanics: mechanicsForLevel(lvl),
+      mechanics: def.modifiers.mechanics ?? [],
     });
   }
 
@@ -273,22 +275,17 @@ export async function buildBalanceReport(opts: BuildOpts): Promise<BalanceReport
     };
   });
 
-  // ─── Mastery effectiveness (proxy — no per-mastery sim) ──────────────────
+  // ─── Mastery catalog ─────────────────────────────────────────────────────
+  // The headless simulator currently runs base classes and does not activate
+  // hero mastery loadouts. Comparing adjacent generated levels is NOT a valid
+  // measurement of a mastery, so keep this section explicitly neutral rather
+  // than producing false buff/nerf recommendations.
   const masteries: BalanceReport['masteries'] = [];
   for (const cls of classes) {
     for (const tier of MASTERY_TIERS[cls]) {
-      const ul = MASTERY_UNLOCK_LEVELS[tier.tier];
-      const before = simByClass[cls].get(ul - 1)?.clearRate ?? simByClass[cls].get(ul)?.clearRate ?? 0;
-      const after = simByClass[cls].get(ul + 1)?.clearRate ?? simByClass[cls].get(ul)?.clearRate ?? 0;
-      const delta = after - before;
-      let verdict: 'underpowered' | 'balanced' | 'overpowered' | 'situational';
-      if (Math.abs(delta) < 0.03) verdict = 'situational';
-      else if (delta > 0.20) verdict = 'overpowered';
-      else if (delta > 0.05) verdict = 'balanced';
-      else verdict = 'underpowered';
       masteries.push({
         cls, tier: tier.tier, name: tier.name, summary: tier.summary,
-        unlockLevel: tier.unlockLevel, deltaWinPct: delta, verdict,
+        unlockLevel: tier.unlockLevel, deltaWinPct: 0, verdict: 'situational',
       });
     }
   }
@@ -346,8 +343,17 @@ export async function buildBalanceReport(opts: BuildOpts): Promise<BalanceReport
   const mechMap = new Map<MechanicId, { levels: number[] }>();
   const stacking: number[] = [];
   for (let lvl = startLevel; lvl <= endLevel; lvl++) {
-    const ms = mechanicsForLevel(lvl);
-    if (ms.length >= 3) stacking.push(lvl);
+    const def = generateLevel(lvl);
+    const ms = def.modifiers.mechanics ?? [];
+    const layout = getLayoutForLevel(lvl);
+    // Count what the player must actually read: campaign rules (Layered Goals
+    // counts through its generated bonus), a boss rule, and one chamber-zone
+    // rule. Optional run modifiers are player-chosen and excluded here.
+    const campaignRules = ms.filter(m => m !== 'multi_objective').length;
+    const bonusRule = def.modifiers.secondary_objective ? 1 : 0;
+    const bossRule = def.modifiers.boss_rule ? 1 : 0;
+    const zoneRule = layout.preview.hazardZones > 0 || layout.preview.treasureZones > 0 ? 1 : 0;
+    if (campaignRules + bonusRule + bossRule + zoneRule > 3) stacking.push(lvl);
     for (const m of ms) {
       if (!mechMap.has(m)) mechMap.set(m, { levels: [] });
       mechMap.get(m)!.levels.push(lvl);
@@ -373,7 +379,7 @@ export async function buildBalanceReport(opts: BuildOpts): Promise<BalanceReport
   });
   const relicTiers: Record<string, number> = {};
   for (const r of RELIC_CATALOG) {
-    const tier = String((r as any).tier ?? 'unknown');
+    const tier = String(r.tier);
     relicTiers[tier] = (relicTiers[tier] || 0) + 1;
   }
   const economy = { xpCurve, relicCount: RELIC_CATALOG.length, relicTiers };
@@ -421,9 +427,6 @@ export async function buildBalanceReport(opts: BuildOpts): Promise<BalanceReport
   }
 
   const quickWins: string[] = [];
-  for (const m of masteries.filter(x => x.verdict === 'underpowered').slice(0, 5)) {
-    quickWins.push(`Strengthen ${m.name} (${m.cls} T${m.tier}) — sim shows no measurable clear-rate lift at unlock.`);
-  }
   for (const b of bosses.filter(x => x.verdict === 'pushover').slice(0, 3)) {
     quickWins.push(`Tighten boss L${b.level} — ${(b.avgClearAcrossClasses * 100).toFixed(0)}% clear is too high for a boss beat.`);
   }
@@ -465,34 +468,14 @@ export async function buildBalanceReport(opts: BuildOpts): Promise<BalanceReport
     });
   }
 
-  for (const m of masteries.filter(x => x.verdict === 'underpowered')) {
-    recommendations.push({
-      priority: 'P2',
-      area: `Mastery — ${m.cls} T${m.tier}`,
-      file: 'src/lib/runedelve/masteryEffects.ts',
-      finding: `${m.name} shows ${(m.deltaWinPct * 100).toFixed(1)}% clear-rate lift at unlock — below the 5% threshold.`,
-      suggestion: 'Strengthen the effect magnitude, lower the unlock cost, or rework into a more impactful trigger.',
-    });
-  }
-
-  for (const m of masteries.filter(x => x.verdict === 'overpowered')) {
-    recommendations.push({
-      priority: 'P1',
-      area: `Mastery — ${m.cls} T${m.tier}`,
-      file: 'src/lib/runedelve/masteryEffects.ts',
-      finding: `${m.name} produces ${(m.deltaWinPct * 100).toFixed(1)}% clear-rate jump — likely overtuned.`,
-      suggestion: 'Trim magnitude by ~30% or add an internal cooldown so it can\'t carry every fight.',
-    });
-  }
-
   const mechMechanics = mechanics.filter(m => m.stackingHotspots.length);
   if (mechMechanics.length) {
     recommendations.push({
       priority: 'P1',
       area: 'Mechanic stacking',
       file: 'src/lib/runedelve/mechanics.ts',
-      finding: `${stacking.length} levels stack 3+ mechanics simultaneously (e.g., L${stacking.slice(0, 3).join(', L')}).`,
-      suggestion: 'Cap simultaneous mechanics at 2 outside chapter beats — the cognitive load + interaction maths is brutal.',
+      finding: `${stacking.length} levels exceed the three-rule readability budget (e.g., L${stacking.slice(0, 3).join(', L')}).`,
+      suggestion: 'Remove a remix rule or optional goal so each encounter has at most three visible decision layers.',
     });
   }
 
@@ -585,11 +568,12 @@ export function reportToMarkdown(r: BalanceReport): string {
     lines.push('');
   }
 
-  lines.push(`## 4. Mastery Effectiveness`);
-  lines.push(`| Class | Tier | Name | Δ Clear | Verdict |`);
-  lines.push(`|:---|:---:|:---|---:|:---|`);
+  lines.push(`## 4. Mastery Catalog`);
+  lines.push(`_Base-class simulation does not activate mastery loadouts, so no causal effectiveness score is claimed._`);
+  lines.push(`| Class | Tier | Name | Unlock |`);
+  lines.push(`|:---|:---:|:---|---:|`);
   for (const m of r.masteries) {
-    lines.push(`| ${m.cls} | T${m.tier} | ${m.name} | ${(m.deltaWinPct * 100).toFixed(1)}% | ${m.verdict} |`);
+    lines.push(`| ${m.cls} | T${m.tier} | ${m.name} | L${m.unlockLevel} |`);
   }
   lines.push('');
 
@@ -610,7 +594,7 @@ export function reportToMarkdown(r: BalanceReport): string {
   lines.push('');
 
   lines.push(`## 7. Mechanics Layer`);
-  lines.push(`| Mechanic | First Used | Levels | Δ Clear vs baseline | Stacking Hotspots |`);
+  lines.push(`| Mechanic | First Used | Levels | Contextual clear delta | Rule-overload hotspots |`);
   lines.push(`|:---|---:|---:|---:|:---|`);
   for (const m of r.mechanics) {
     lines.push(`| ${m.mechanic} | L${m.introLevel} | ${m.levels.length} | ${(m.avgClearImpact * 100).toFixed(1)}% | ${m.stackingHotspots.length ? m.stackingHotspots.join(', ') : '—'} |`);

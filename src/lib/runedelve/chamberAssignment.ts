@@ -13,9 +13,9 @@
 //   4. Mechanic-introduction levels                → Spiral Sanctum / Crystal Archive
 //   5. Otherwise → cycle through path layouts deterministically by level
 //
-// Engine impact: zero. Pure metadata used by Home, Level Map, and Briefing
-// surfaces. The play engine can opt-in later by reading
-// `getLayoutForLevel(n)` and using the chamber zones to drive board state.
+// Engine impact: the selected layout's hazard and treasure counts are mapped
+// onto deterministic 5×5 board cells by `layoutZones.ts`. The illustrated
+// path shape, entries, and rune-slot dots remain presentation metadata only.
 
 import { isMilestoneLevel, isChapterOpener, chapterFor } from './levelGenerator';
 import { introMechanicForLevel } from './mechanics';

@@ -18,23 +18,25 @@ function hydrateLegacy(row: RuneDelveLevel): RuneDelveLevel {
   // caps, boss-slot caps, turn budgets, the Rebalance v6 curve — reach ALL
   // already-seeded rows (not just boss levels) WITHOUT a DB migration. The
   // stored row is never mutated, so run FK history is preserved; only what the
-  // play page reads gets refreshed. Objective + generation_seed + status stay
-  // as the row persisted them, and any custom mechanics/secondary an admin
-  // stored are still honored on top of the generator's deterministic output.
+  // play page reads gets refreshed. The generator owns every gameplay field,
+  // including objectives and mechanic lists, so old seeded rows receive later
+  // balance fixes without a destructive migration.
   const def = generateLevel(row.level_number);
   const storedMods = (row.modifiers ?? {}) as Record<string, unknown>;
   const hasStoredMods = Object.keys(storedMods).length > 0;
   return {
     ...row,
+    chapter: def.chapter,
+    difficulty_tier: def.difficulty_tier,
+    generation_seed: def.generation_seed,
+    board_size: def.board_size,
     enemy_config: def.enemy_config,
     turn_limit: def.turn_limit,
+    objective_type: def.objective_type,
+    objective_target: def.objective_target,
     modifiers: {
       ...(hasStoredMods ? storedMods : {}),
       ...def.modifiers,
-      // Preserve any custom mechanic list the row already carried; the
-      // generator's deterministic output matches for the same level number,
-      // so this is mainly a safety belt for hand-edited rows.
-      mechanics: (storedMods as any)?.mechanics ?? def.modifiers.mechanics,
     },
   };
 }

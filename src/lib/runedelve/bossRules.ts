@@ -60,8 +60,9 @@ const LEGACY_MILESTONES: Record<number, BossRuleId> = {
 //              damage), boss rule attached, spawned as wave 2 by the level
 //              generator so wave 1 acts as a warm-up gauntlet.
 //
-// Levels 130 and 140 are preserved as `chapter` so their hand-picked legacy
-// rules continue to apply.
+// Levels 130 and 140 are preserved as `chapter` encounters so their hand-picked
+// legacy rules continue to apply; the generator gives every chapter-kind beat
+// a dedicated boss wave.
 // ─────────────────────────────────────────────────────────────────────────────
 export type BossKind = 'mini' | 'mid' | 'chapter' | null;
 

@@ -62,7 +62,12 @@ export function redChainDamage(length: number, cls: HeroClass, level = 1): numbe
       : level <= 100
         ? 1.20 + (level - 50) * 0.008
         : 1.60 + (level - 100) * 0.010;
-  return Math.round(length * 8 * classMultiplier[cls] * depthMultiplier);
+  // Rogue's score-only passive left it roughly 20–30 clear-rate points behind
+  // the other classes because most campaign goals care about combat, not the
+  // final leaderboard total. Long red chains now deliver the same +15% payoff
+  // in combat and scoring, reinforcing one clear class identity.
+  const rogueLongChain = cls === 'rogue' && length >= 5 ? 1.15 : 1;
+  return Math.round(length * 8 * classMultiplier[cls] * depthMultiplier * rogueLongChain);
 }
 
 export function initialCombat(enemies: Enemy[], turns: number, opts?: { bonusMaxHp?: number }): CombatState {

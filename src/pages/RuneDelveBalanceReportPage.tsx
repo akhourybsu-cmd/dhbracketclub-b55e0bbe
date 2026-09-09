@@ -400,7 +400,10 @@ function ReportView({ report, elapsed }: { report: BalanceReport; elapsed: strin
       </Section>
 
       {/* Masteries */}
-      <Section icon={Zap} title="Mastery Effectiveness" iconColor="hsl(var(--gold))">
+      <Section icon={Zap} title="Mastery Catalog" iconColor="hsl(var(--gold))">
+        <p className="text-[10px] text-muted-foreground mb-2">
+          The base-class simulator does not activate mastery loadouts, so this report does not infer buffs or nerfs from unrelated adjacent levels.
+        </p>
         <div className="grid sm:grid-cols-2 gap-2">
           {report.masteries.map(m => {
             const colors: Record<typeof m.verdict, string> = {
@@ -418,9 +421,7 @@ function ReportView({ report, elapsed }: { report: BalanceReport; elapsed: strin
                   <span className="text-[9px] uppercase tracking-wider font-bold opacity-80">{m.verdict}</span>
                 </div>
                 <div className="text-[10px] text-muted-foreground">{m.summary}</div>
-                <div className="text-[10px] mt-1 font-mono tabular-nums">
-                  Δ clear @ unlock L{m.unlockLevel}: {(m.deltaWinPct * 100).toFixed(1)}%
-                </div>
+                <div className="text-[10px] mt-1 font-mono tabular-nums">Unlocks at class L{m.unlockLevel}</div>
               </div>
             );
           })}
@@ -490,7 +491,7 @@ function ReportView({ report, elapsed }: { report: BalanceReport; elapsed: strin
             <thead className="bg-muted/30 text-muted-foreground uppercase tracking-wider text-[9px]">
               <tr>
                 <Th>Mechanic</Th><Th right>First</Th><Th right>Used At</Th>
-                <Th right>Δ Clear</Th><Th>Stacking Hotspots</Th>
+                <Th right>Context Δ</Th><Th>Rule Overload</Th>
               </tr>
             </thead>
             <tbody>
@@ -508,6 +509,9 @@ function ReportView({ report, elapsed }: { report: BalanceReport; elapsed: strin
             </tbody>
           </table>
         </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          Context Δ compares the levels where a rule appears with the whole campaign; it is not an isolated mechanic-effect test.
+        </p>
       </Section>
 
       {/* Economy */}

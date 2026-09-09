@@ -1,8 +1,8 @@
 // Layered Goals — Band 4 (levels 101-125).
 //
 // Levels with this mechanic carry a SECONDARY objective in addition to their
-// primary one. Both must be satisfied to clear the level. We keep secondary
-// objectives small and orthogonal to the primary so neither cancels the other:
+// primary one. The primary clears the chamber; the secondary is an optional
+// score + shard bonus. We keep bonus goals small and orthogonal to the primary:
 //
 // • `min_hp`        — finish with at least N HP remaining (encourages defence)
 // • `min_chain`     — make a chain of length ≥ N at least once

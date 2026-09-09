@@ -48,7 +48,7 @@ const HEAVY_STRIKE_BONUS = 14; // flat extra damage on the heavy
 const SHIELD_ARMOR = 4;        // damage reduction granted by shield_self
 const SHIELD_DURATION = 2;     // turns of armor (we just store the value; decay below)
 const HEAL_AMOUNT = 16;        // hp restored to wounded ally
-const MINION_CAP_PER_FIGHT = 2; // total minions a single summoner may add
+const MINION_CAP_PER_FIGHT = 1; // one new target is enough tactical pressure
 
 /**
  * Run one tick of the ability system over the live enemy list. Mutations are

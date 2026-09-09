@@ -134,7 +134,7 @@ function turnLimitFor(level: number): number {
   // full extra wave landed on a +2 budget. Grant BOTH bumps.
   if (kind === 'mini')    return base + 3 + (hasWave ? 3 : 0);
   if (kind === 'mid')     return base + 4;
-  if (kind === 'chapter') return base + 5;
+  if (kind === 'chapter') return base + (level === 150 ? 4 : 5);
   if (hasWave) return base + 3;
   return base;
 }
@@ -193,6 +193,10 @@ function bossHpCap(level: number, kind: BossKind): number {
   // Mid / chapter flagships carry a boss rule + (chapter) a wave, so they get
   // a higher ceiling but still a hard cap.
   const flagCeil = [200, 260, 300, 350][band];
+  if (kind === 'mini' && level >= 60 && level % 20 === 0) {
+    return [160, 190, 210, 225][band];
+  }
+  if (kind === 'chapter' && level === 150) return 400;
   return kind === 'mini' ? miniCeil : flagCeil;
 }
 
@@ -258,18 +262,29 @@ function scaleEnemy(base: RosterEntry, level: number) {
 
 // MVP objectives — gradually introduced.
 function objectiveFor(level: number, turnLimit: number): { type: ObjectiveType; target: number } {
+  // A named boss should always be the thing the player must defeat. This also
+  // prevents cadence overlaps (for example L130 is divisible by 13) from
+  // turning a boss into an optional target on a survive stage.
+  const bossKind = bossKindForLevel(level);
+  if (bossKind === 'mid' || bossKind === 'chapter') {
+    return { type: 'defeat_elite', target: 0 };
+  }
   // Default everywhere: defeat all enemies.
   if (level < 15)  return { type: 'defeat_all', target: 0 };
   // From level 15: occasional survive levels.
   if (level % 13 === 0) return { type: 'survive', target: turnLimitFor(level) };
   // From level 30: occasional score targets.
   if (level >= 30 && level % 17 === 0) {
-    // A run starts with score credit for full HP and remaining turns. The old
-    // linear target sat below that baseline at L34/L51, so those chambers
-    // rendered already complete and the board could never resolve. Every
-    // score objective now requires at least 100 points of active play.
+    // A run starts with score credit for full HP and remaining turns, so every
+    // score objective must sit above that baseline and require active play.
     const startingScore = 100 * 5 + turnLimit * 50;
-    return { type: 'reach_score', target: Math.max(600 + level * 12, startingScore + 100) };
+    // Score is a live total: spending turns and taking damage LOWER it while
+    // damage, kills, and long chains raise it. The old `600 + level × 12`
+    // target eventually outpaced the fixed score economy, creating near-zero
+    // clear walls at L119/L136. Require a consistent amount of net active-play
+    // value instead, with a modest chapter bump.
+    const activePlayGain = 175 + chapterFor(level) * 50;
+    return { type: 'reach_score', target: startingScore + activePlayGain };
   }
   // From chapter 2 (51+): elite levels every ~25.
   if (level >= 51 && level % 25 === 0) return { type: 'defeat_elite', target: 0 };
@@ -310,6 +325,19 @@ function buildEnemy(
     // Rebalance v6 — cap the promoted slot so depth-scaling × boss-boost can't
     // exceed a beatable ceiling. Without this, deep boss levels were 0% clears.
     hp = Math.min(hp, bossHpCap(level, bossKind));
+    // A chapter flagship should never roll a support archetype whose printed
+    // attack is lower than an ordinary late-game mook. Keep the final phase
+    // threatening while preserving high-damage archetypes as rolled.
+    if (bossKind === 'chapter') {
+      const chapterDamageFloor = level <= 50 ? 10 : level <= 100 ? 14 : 18;
+      damage = Math.max(damage, chapterDamageFloor);
+      if (level === 150) {
+        hp = Math.max(hp, 400);
+        damage = Math.max(damage, 20);
+      }
+    } else if (bossKind === 'mini' && level >= 60 && level % 20 === 0) {
+      damage = Math.min(damage, level <= 100 ? 16 : 18);
+    }
   }
   const namePrefix = isFinalBossSlot ? bossNamePrefix(bossKind) : isElite ? 'Elite ' : '';
   return {
@@ -333,8 +361,8 @@ function buildEnemy(
   };
 }
 
-// Levels that get a second wave: chapter beats only, plus every 20 levels
-// from L60 upward (for late-campaign variety).
+// Levels that get a second wave: every chapter-kind boss (including the legacy
+// L130/L140 flagships), plus every 20 levels from L60 upward for variety.
 //
 // Mid-boss levels (25, 75, 125) USED to spawn a wave-2 reinforcement on top
 // of an already 3-enemy fight + a boss rule. Per Monte Carlo this pushed the
@@ -342,7 +370,7 @@ function buildEnemy(
 // wave — the boss promotion + rule already carries the difficulty bump.
 function hasSecondWave(level: number): boolean {
   if (level <= 24) return false;
-  if (level === 50 || level === 100 || level === 150) return true; // chapter bosses
+  if (bossKindForLevel(level) === 'chapter') return true;
   if (level >= 60 && level % 20 === 0) return true;
   return false;
 }
@@ -354,7 +382,13 @@ export function generateLevel(level: number): LevelDefinition {
   const enemies: Enemy[] = [];
   const turnLimit = turnLimitFor(level);
   const objective = objectiveFor(level, turnLimit);
-  const mechanics = mechanicsForLevel(level);
+  // Layered Goals is an optional secondary bonus, so it only exists beside a
+  // straightforward combat objective. Score/survive stages are already focus
+  // encounters and must never advertise a bonus that was not generated.
+  const allowsLayeredGoal = objective.type === 'defeat_all' || objective.type === 'defeat_elite';
+  const mechanics = mechanicsForLevel(level).filter(
+    mechanic => mechanic !== 'multi_objective' || allowsLayeredGoal,
+  );
   const bossKind = bossKindForLevel(level);
   const isChapterBossLevel = bossKind === 'chapter';
 
@@ -365,9 +399,19 @@ export function generateLevel(level: number): LevelDefinition {
   const wave1BossKind: BossKind = isChapterBossLevel ? null : bossKind;
 
   for (let i = 0; i < wave1EnemyCount; i++) {
-    const t = pickTemplate(level, rng);
-    const isElite = objective.type === 'defeat_elite' && i === wave1EnemyCount - 1 && !wave1BossKind;
+    let t = pickTemplate(level, rng);
+    // Only ordinary elite stages promote a wave-1 mook. Chapter bosses use a
+    // mook warm-up followed by the actual priority target in wave 2.
+    const isElite = objective.type === 'defeat_elite' && i === wave1EnemyCount - 1 && bossKind === null;
     const isFinalBossSlot = wave1BossKind != null && i === wave1EnemyCount - 1;
+    // One special ability per wave is enough to create a tactical priority.
+    // Two independent cooldown systems in the same three-enemy room produced
+    // opaque difficulty spikes (notably L105's warder + summoner pairing).
+    if (t.ability && enemies.some(enemy => !!enemy.ability)) {
+      let plainPool = rosterPoolForLevel(level).filter(entry => !entry.ability);
+      if (plainPool.length === 0) plainPool = rosterPoolForLevelAllowingNextChapter(level).filter(entry => !entry.ability);
+      if (plainPool.length > 0) t = plainPool[rngInt(rng, plainPool.length)];
+    }
     enemies.push(buildEnemy(t, level, i, {
       isElite,
       bossKind: isFinalBossSlot ? wave1BossKind : null,
@@ -375,20 +419,58 @@ export function generateLevel(level: number): LevelDefinition {
     }));
   }
 
+  // Procedural variety should not create invisible damage cliffs. Ordinary
+  // deep rooms cap their combined printed attack at 44; bosses and wave fights
+  // keep their authored pressure. Values remain visible on enemy cards.
+  if (level >= 101 && bossKind === null) {
+    const damageBudget = 44;
+    const totalDamage = enemies.reduce((sum, enemy) => sum + enemy.damage, 0);
+    if (totalDamage > damageBudget) {
+      const scale = damageBudget / totalDamage;
+      for (const enemy of enemies) enemy.damage = Math.max(3, Math.floor(enemy.damage * scale));
+    }
+  }
+
+  // Summoners add an extra target. Ordinary defeat-all rooms get the same two
+  // visible recovery turns as an authored reinforcement wave, so the ability
+  // creates urgency without making the original three-enemy HP budget
+  // mathematically dishonest.
+  const encounterTurnLimit = objective.type === 'defeat_all'
+    && bossKind === null
+    && enemies.some(enemy => enemy.ability === 'summon_minion')
+    ? turnLimit + 2
+    : turnLimit;
+
   // Layered Goals (Band 4): only when the multi_objective mechanic is active
   // AND the primary isn't already a stretch target — keep them composable.
   const wantsSecondary = mechanics.includes('multi_objective')
     && (objective.type === 'defeat_all' || objective.type === 'defeat_elite');
-  const secondary = wantsSecondary ? rollSecondaryObjective(seed, level, turnLimit) : null;
+  const secondary = wantsSecondary ? rollSecondaryObjective(seed, level, encounterTurnLimit) : null;
 
   // ── Build optional second wave ───────────────────────────────────────────
   let waves: LevelModifiers['waves'];
   if (hasSecondWave(level)) {
     const waveEnemies: Enemy[] = [];
     if (isChapterBossLevel) {
-      // Wave 2 = the boss alone (single dramatic spawn).
+      // Wave 2 = the boss. Last Stand needs a living guard or its immunity
+      // rule is a no-op, so that specific encounter adds one lighter oathbound
+      // mook before the boss.
+      if (bossRuleForLevel(level) === 'last_stand') {
+        const plainPool = rosterPoolForLevel(level).filter(entry => !entry.ability);
+        const guardTemplate = plainPool.length > 0
+          ? plainPool[rngInt(rng, plainPool.length)]
+          : pickTemplate(level, rng);
+        const guard = buildEnemy(guardTemplate, level, 0, {
+          bossKind: null,
+          idPrefix: 'w2-',
+        });
+        guard.name = `Oathbound ${guard.name}`;
+        guard.hp = Math.max(40, Math.round(guard.hp * 0.65));
+        guard.maxHp = guard.hp;
+        waveEnemies.push(guard);
+      }
       const t = pickTemplate(level, rng);
-      waveEnemies.push(buildEnemy(t, level, 0, {
+      waveEnemies.push(buildEnemy(t, level, waveEnemies.length, {
         bossKind,
         idPrefix: 'w2-',
       }));
@@ -428,7 +510,7 @@ export function generateLevel(level: number): LevelDefinition {
     generation_seed: seed,
     board_size: 5,
     enemy_config: enemies,
-    turn_limit: turnLimit,
+    turn_limit: encounterTurnLimit,
     objective_type: objective.type,
     objective_target: objective.target,
     modifiers: {

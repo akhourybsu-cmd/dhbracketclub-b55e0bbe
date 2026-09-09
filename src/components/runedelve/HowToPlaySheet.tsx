@@ -11,9 +11,9 @@ interface Props {
 }
 
 const RUNES = [
-  { glyph: '⚔', name: 'Red · Attack', color: 'hsl(0 75% 58%)', desc: 'Damages the front enemy. Damage = chain length × 8.' },
-  { glyph: '✦', name: 'Blue · Mana', color: 'hsl(215 75% 60%)', desc: 'Charges your ability meter (3 orbs to cast).' },
-  { glyph: '❀', name: 'Green · Heal', color: 'hsl(140 60% 50%)', desc: 'Restores HP. Heal = chain length × 6.' },
+  { glyph: '⚔', name: 'Red · Attack', color: 'hsl(0 75% 58%)', desc: 'Damages the ▶ target. The board preview shows the exact class- and depth-scaled damage.' },
+  { glyph: '✦', name: 'Blue · Mana', color: 'hsl(215 75% 60%)', desc: 'Charges your ability meter (3 orbs to cast; Mage gains +1 orb).' },
+  { glyph: '❀', name: 'Green · Heal', color: 'hsl(140 60% 50%)', desc: 'Restores chain length × 6 HP; Cleric heals 50% more.' },
   { glyph: '◈', name: 'Gold · Guard', color: 'hsl(45 90% 56%)', desc: 'Adds shield turns that reduce incoming damage by 60%.' },
 ];
 
@@ -34,7 +34,19 @@ export function HowToPlaySheet({ open, onOpenChange, heroClass }: Props) {
             {/* Goal */}
             <Section title="🎯 Goal">
               <p>Progress through a shared <b>level-based campaign</b>. Each level has its own objective — defeat all enemies, survive a set number of turns, reach a target score, or take down a champion. The objective bar shows exactly how close you are. Clear a level to unlock the next one.</p>
+              <p className="mt-1.5">A gold <b>Bonus</b> goal is optional. The main objective still clears the chamber; completing Bonus adds score and shards.</p>
               <p className="mt-1.5">Every player faces the <b>same level</b> with the same board, enemies, and turn limit — your score is what sets you apart.</p>
+            </Section>
+
+            {/* Rules */}
+            <Section title="🧭 Encounter Rules">
+              <ul className="space-y-1.5 list-disc pl-4">
+                <li>Most chambers use <b>one main twist</b>. Occasional remix rooms use two at most.</li>
+                <li>Tap the <b>Rule</b> strip above the board for the exact effect and counterplay.</li>
+                <li>✨ Treasure cells pay <b>+75 score and +5 shards</b>; red hazard cells cost <b>5 HP each</b> (12 HP max per chain).</li>
+                <li><b>Boss Rule</b> chambers replace remix rules with one clearly labeled boss twist.</li>
+                <li>Risk/reward chamber boons begin after Level 10; <b>Steady Path</b> always means no bonus and no penalty.</li>
+              </ul>
             </Section>
 
             {/* Controls */}

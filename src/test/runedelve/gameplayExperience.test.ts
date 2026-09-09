@@ -8,6 +8,8 @@ import { liveScore } from '@/lib/runedelve/scoring';
 import { simulateLevel } from '@/lib/runedelve/simulator';
 import type { HeroClass } from '@/lib/runedelve/classConfig';
 import { buildSnapshot } from '@/lib/runedelve/runSnapshot';
+import { mechanicsForLevel } from '@/lib/runedelve/mechanics';
+import { ALL_LAYOUTS } from '@/lib/runedelve/runeLayouts';
 
 const grid: RuneType[][] = [
   ['red', 'red', 'blue', 'green', 'gold'],
@@ -141,6 +143,12 @@ describe('Rune Delve · combat clarity and campaign integrity', () => {
     }
   });
 
+  it('gives Rogue long red chains the advertised combat payoff', () => {
+    const shortPerRune = redChainDamage(4, 'rogue', 50) / 4;
+    const longPerRune = redChainDamage(5, 'rogue', 50) / 5;
+    expect(longPerRune).toBeGreaterThan(shortPerRune * 1.1);
+  });
+
   it('generates every campaign chamber with valid enemies, objectives, and unique ids', () => {
     for (let levelNumber = 1; levelNumber <= 150; levelNumber += 1) {
       const level = generateLevel(levelNumber);
@@ -159,11 +167,76 @@ describe('Rune Delve · combat clarity and campaign integrity', () => {
       }
       if (level.objective_type === 'reach_score') {
         const startingState = initialCombat(level.enemy_config, level.turn_limit);
+        const startingScore = liveScore(startingState);
         expect(
           evaluateObjective(startingState, level.turn_limit, 'reach_score', level.objective_target).over,
           `level ${levelNumber} must not start at or above its score target`,
         ).toBe(false);
+        expect(level.objective_target - startingScore).toBeGreaterThanOrEqual(225);
+        expect(level.objective_target - startingScore).toBeLessThanOrEqual(325);
       }
+
+      const mechanics = level.modifiers.mechanics ?? [];
+      expect(mechanics.length, `level ${levelNumber} exceeds the two-rule cap`).toBeLessThanOrEqual(2);
+      if (mechanics.includes('multi_objective')) {
+        expect(level.modifiers.secondary_objective, `level ${levelNumber} advertises a missing bonus`).toBeTruthy();
+      }
+      if (level.modifiers.secondary_objective) {
+        expect(mechanics, `level ${levelNumber} hides its bonus rule`).toContain('multi_objective');
+      }
+      if (level.modifiers.boss_rule) {
+        expect(mechanics, `boss level ${levelNumber} should focus on its boss rule`).toHaveLength(0);
+        expect(
+          getPriorityEnemy(allEnemies),
+          `boss-rule level ${levelNumber} must generate an actual boss target`,
+        ).toBeTruthy();
+        if (level.modifiers.boss_kind === 'chapter') {
+          expect(
+            getPriorityEnemy(level.enemy_config),
+            `chapter boss ${levelNumber} warm-up should not contain a fake elite`,
+          ).toBeUndefined();
+          expect(level.modifiers.waves?.length).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('keeps focus encounters simple and endgame remixes varied', () => {
+    for (let level = 1; level <= 150; level += 1) {
+      expect(mechanicsForLevel(level).length).toBeLessThanOrEqual(2);
+    }
+    expect(mechanicsForLevel(125)).toEqual([]);
+    expect(mechanicsForLevel(130)).toEqual([]);
+    expect(new Set([126, 127, 128, 129, 131, 132].flatMap(mechanicsForLevel)).size).toBeGreaterThan(4);
+  });
+
+  it('gives the Last Stand flagship a guard that makes its rule meaningful', () => {
+    const level = generateLevel(130);
+    const bossWave = level.modifiers.waves?.[0]?.enemies ?? [];
+    expect(level.modifiers.boss_rule).toBe('last_stand');
+    expect(bossWave).toHaveLength(2);
+    expect(bossWave[0].name).toMatch(/^Oathbound /);
+    expect(getPriorityEnemy(bossWave)?.id).toBe(bossWave[1].id);
+  });
+
+  it('budgets reinforcement turns for ordinary summoner rooms', () => {
+    const level = generateLevel(106);
+    expect(level.enemy_config.some(foe => foe.ability === 'summon_minion')).toBe(true);
+    expect(level.turn_limit).toBe(17);
+  });
+
+  it('keeps the final boss from rolling support-level threat', () => {
+    const level = generateLevel(150);
+    const boss = getPriorityEnemy(level.modifiers.waves?.[0]?.enemies ?? []);
+    expect(level.turn_limit).toBe(19);
+    expect(boss?.maxHp).toBe(400);
+    expect(boss?.damage).toBeGreaterThanOrEqual(20);
+  });
+
+  it('keeps chamber briefings faithful to fixed board zones', () => {
+    const copy = ALL_LAYOUTS.map(layout => `${layout.briefing} ${layout.recommendedStrategy}`).join(' ').toLowerCase();
+    for (const falsePromise of ['activates twice', 'both branches must hold', 'dim beat', 'false relic', 'one shot']) {
+      expect(copy).not.toContain(falsePromise);
     }
   });
 
@@ -177,7 +250,7 @@ describe('Rune Delve · combat clarity and campaign integrity', () => {
   it('keeps every score-objective chamber achievable through active play', () => {
     for (const level of [34, 51, 68, 85, 102, 119, 136]) {
       const rates = classes.map(heroClass => simulateLevel(level, heroClass, 12, 0x5C0AE).aggregate.clearRate);
-      expect(Math.max(...rates), `score level ${level} clear rates: ${rates.join(', ')}`).toBeGreaterThan(0);
+      expect(Math.min(...rates), `score level ${level} clear rates: ${rates.join(', ')}`).toBeGreaterThan(0);
     }
   }, 30_000);
 });

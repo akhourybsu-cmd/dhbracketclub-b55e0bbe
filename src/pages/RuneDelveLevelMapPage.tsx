@@ -14,7 +14,7 @@ import {
   isChapterOpener,
   type ObjectiveType,
 } from '@/lib/runedelve/levelGenerator';
-import { mechanicsForLevel, introMechanicForLevel, getMechanic } from '@/lib/runedelve/mechanics';
+import { mechanicsForLevel, introMechanicForLevel, getMechanic, type MechanicId } from '@/lib/runedelve/mechanics';
 import { getLayoutForLevel } from '@/lib/runedelve/chamberAssignment';
 import { DungeonPathPreview } from '@/components/runedelve/DungeonPathPreview';
 import { cn } from '@/lib/utils';
@@ -109,7 +109,8 @@ export default function RuneDelveLevelMapPage() {
             const tier = difficultyTierFor(lvl.level_number);
             const milestone = isMilestoneLevel(lvl.level_number);
             const opener = isChapterOpener(lvl.level_number);
-            const lvlMechanics = mechanicsForLevel(lvl.level_number);
+            const lvlMechanics = (lvl.modifiers?.mechanics as MechanicId[] | undefined)
+              ?? mechanicsForLevel(lvl.level_number);
             const newestMechanic = lvlMechanics.length ? getMechanic(lvlMechanics[lvlMechanics.length - 1]) : null;
             const introId = introMechanicForLevel(lvl.level_number);
             const mods = (lvl.modifiers ?? {}) as { secondary_objective?: unknown; boss_rule?: unknown };

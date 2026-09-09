@@ -5,10 +5,9 @@
 //   • a stylised mini-map shape (rendered by <RuneLayoutPreview/> as inline SVG)
 //   • a short briefing line and a longer flavor description
 //   • a category (path / vault / sanctum / boss) so screens can filter/style
-//   • engine-ready zone metadata (entry/exit points, rune slots, hazards,
-//     treasure, locked doors) — these are NOT yet read by the play engine,
-//     but the structure is in place so a future engine pass can consume
-//     them without breaking the data shape.
+//   • preview metadata plus hazard / treasure counts. Hazard and treasure
+//     zones are read by the play engine; entry/exit/rune-slot counts shape the
+//     decorative mini-map only. Locked-zone counts remain reserved metadata.
 //
 // Adding a new layout: append an entry here and (optionally) reference it
 // from chamberAssignment.ts so a band of levels deploys on it.
@@ -29,9 +28,8 @@ export type RuneLayoutId =
 
 /**
  * Canonical shape of a chamber layout's preview metadata. The play engine
- * could later use entryPoints, runeSlots, hazardZones, treasureZones, and
- * lockedZones to drive the actual board layout — for now they're stored
- * for future use and surface on briefing cards.
+ * uses hazardZones and treasureZones on its 5×5 board. The remaining fields
+ * describe the mini-map silhouette and are not additional gameplay rules.
  */
 export interface ChamberPreview {
   /** Path / shape identifier — picked up by RuneLayoutPreview to render the mini-map. */
@@ -74,7 +72,7 @@ export interface RuneLayout {
   /** Longer narrative used on dedicated briefing surfaces. */
   briefing: string;
   category: ChamberCategory;
-  /** 1–5 difficulty modifier — multiplied into the level's existing difficulty tier. */
+  /** 1–5 visual danger rating for layout comparison; not a stat multiplier. */
   difficultyModifier: 1 | 2 | 3 | 4 | 5;
   preview: ChamberPreview;
   /** Tags shown as small chips on briefing cards. */
@@ -89,7 +87,7 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
     name: 'Ancient Gate',
     tagline: 'A torchlit entrance hall — your descent begins here.',
     briefing:
-      'Stone columns bear the marks of forgotten kings. The runes in this chamber are weathered but stable — perfect to test a fresh hero before the deeper corridors open.',
+      'Stone columns bear the marks of forgotten kings. The floor is stable, with no hazard cells and one treasure cell to reward an early detour.',
     category: 'path',
     difficultyModifier: 1,
     preview: {
@@ -104,15 +102,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 1,
       lockedZones: 0,
     },
-    tags: ['Onboarding', 'Single Path', 'Stable'],
-    recommendedStrategy: 'Walk the wards. Linear chains, no surprises.',
+    tags: ['Onboarding', 'Treasure', 'No Hazards'],
+    recommendedStrategy: 'Learn the chain controls, then include the ✨ treasure cell when it fits.',
   },
   split_passage: {
     id: 'split_passage',
     name: 'Split Passage',
     tagline: 'Two corridors fork around a buried shrine.',
     briefing:
-      'A cave-in long ago split this passage in half. Hostiles can press from either branch — keep your runes balanced or one flank will collapse before the other.',
+      'A cave-in split the old path around a buried shrine. On the board, one treasure cell offers a reward while one red hazard cell costs HP when chained.',
     category: 'path',
     difficultyModifier: 2,
     preview: {
@@ -127,15 +125,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 1,
       lockedZones: 0,
     },
-    tags: ['Two Branches', 'Adaptive', 'Mossy'],
-    recommendedStrategy: 'Mirror your runes — both branches must hold.',
+    tags: ['1 Hazard', '1 Treasure', 'Mossy'],
+    recommendedStrategy: 'Take the treasure when your route can avoid the hazard; neither cell is required.',
   },
   spiral_sanctum: {
     id: 'spiral_sanctum',
     name: 'Spiral Sanctum',
     tagline: 'A coiling shrine — long path, slow approach, no shortcuts.',
     briefing:
-      'The original wardens built this sanctum as a meditation spiral. Long path means more rune procs, but a single mistake near the center cascades outward fast.',
+      'The original wardens built this sanctum as a meditation spiral. Two treasure cells reward deliberate routing; one hazard cell punishes a careless shortcut.',
     category: 'sanctum',
     difficultyModifier: 3,
     preview: {
@@ -150,15 +148,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 2,
       lockedZones: 1,
     },
-    tags: ['Long Path', 'Meditative', 'Compounding'],
-    recommendedStrategy: 'Stack chains — distance favors patient runes.',
+    tags: ['1 Hazard', '2 Treasure', 'Sanctum'],
+    recommendedStrategy: 'Favor a clean long chain; detour through treasure only when the color path stays safe.',
   },
   rune_crossroads: {
     id: 'rune_crossroads',
     name: 'Rune Crossroads',
     tagline: 'Four-way intersection where converging lines empower runes.',
     briefing:
-      'Crossroads runes resonate when struck from opposing angles. Place wisely — the center tile activates twice if both axes fire on the same turn.',
+      'Four old roads meet around a cracked rune dais. Two hazard cells and one treasure cell turn the board into a simple risk-versus-reward route.',
     category: 'sanctum',
     difficultyModifier: 3,
     preview: {
@@ -173,15 +171,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 1,
       lockedZones: 0,
     },
-    tags: ['Cross-Axis', 'Resonance', 'Volume'],
-    recommendedStrategy: 'Center-cast: every cross-axis match doubles.',
+    tags: ['2 Hazards', '1 Treasure', 'Crossroads'],
+    recommendedStrategy: 'Route around red hazard cells unless the chain payoff is worth up to 10 HP.',
   },
   cursed_vault: {
     id: 'cursed_vault',
     name: 'Cursed Vault',
     tagline: 'A buried treasury sealed by malformed wards.',
     briefing:
-      'Greedy hands stripped this vault long ago — what remains is bound by curses. Hazard zones mar half the floor; the surviving treasures are worth the wounds.',
+      'Greedy hands stripped this vault long ago. Three treasure cells remain among three red hazard cells, making every detour a visible trade-off.',
     category: 'vault',
     difficultyModifier: 4,
     preview: {
@@ -196,15 +194,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 3,
       lockedZones: 2,
     },
-    tags: ['Hazardous', 'Treasure-Rich', 'Cursed'],
-    recommendedStrategy: 'Cleanse hazards before you go for relics.',
+    tags: ['3 Hazards', '3 Treasure', 'Cursed'],
+    recommendedStrategy: 'Treasure pays per matched cell; hazards persist, so do not route through them by habit.',
   },
   ember_hollow: {
     id: 'ember_hollow',
     name: 'Ember Hollow',
     tagline: 'A magma-warmed cavern lit by drifting embers.',
     briefing:
-      'Heat pulses through this chamber on a slow rhythm. Hazard zones cycle between dim and active — time your matches with the embers and the path opens.',
+      'Heat pulses through this chamber, but its marked zones stay fixed for the fight. Two red hazard cells cost HP; one treasure cell pays extra rewards.',
     category: 'path',
     difficultyModifier: 3,
     preview: {
@@ -219,15 +217,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 1,
       lockedZones: 0,
     },
-    tags: ['Hazard Cycle', 'Tempo', 'Warmlit'],
-    recommendedStrategy: 'Match on the dim beat; the embers will harvest themselves.',
+    tags: ['2 Hazards', '1 Treasure', 'Warmlit'],
+    recommendedStrategy: 'The zones do not cycle—plan around the two fixed hazard cells.',
   },
   crystal_archive: {
     id: 'crystal_archive',
     name: 'Crystal Archive',
     tagline: 'Shelved corridors of resonant glass — every match echoes.',
     briefing:
-      'A cathedral of crystal pillars and lore-shelves. Sound carries unnaturally — even minor chains ring across multiple alcoves, but so do the wraith-screams.',
+      'A cathedral of crystal pillars and lore-shelves. Two treasure cells glint between the stacks, guarded by one clearly marked hazard cell.',
     category: 'sanctum',
     difficultyModifier: 3,
     preview: {
@@ -242,15 +240,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 2,
       lockedZones: 1,
     },
-    tags: ['Resonance', 'Wide Field', 'Lore'],
-    recommendedStrategy: 'Loud chains favor archive shelves — go big.',
+    tags: ['1 Hazard', '2 Treasure', 'Lore'],
+    recommendedStrategy: 'Use the safer treasure route when possible; a longer clean chain is still the priority.',
   },
   forgotten_catacomb: {
     id: 'forgotten_catacomb',
     name: 'Forgotten Catacomb',
     tagline: 'Burial corridors with secret sub-chambers behind sealed doors.',
     briefing:
-      'A network of crypt corridors — most are direct, a few hide beneath sealed doors. Carry the right runes and the locks open mid-run.',
+      'A network of crypt corridors hides two treasure cells among two red hazard cells. The doors shape the chamber art; no secret key is required.',
     category: 'path',
     difficultyModifier: 3,
     preview: {
@@ -265,15 +263,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 2,
       lockedZones: 2,
     },
-    tags: ['Sealed Doors', 'Multi-Exit', 'Crypt'],
-    recommendedStrategy: 'Crack a seal early — the relic inside flips the run.',
+    tags: ['2 Hazards', '2 Treasure', 'Crypt'],
+    recommendedStrategy: 'Read the board marks directly: treasure rewards you, hazards cost HP, and neither blocks chaining.',
   },
   shadow_reliquary: {
     id: 'shadow_reliquary',
     name: 'Shadow Reliquary',
     tagline: 'A ritual circle where the relics watch back.',
     briefing:
-      'Twelve relic alcoves rim a stone circle. Ancient magic still binds them — disturb the wrong one and shadows answer in waves. Disturb the right one and the path narrows toward the prize.',
+      'Relic alcoves rim a shadowed stone circle. Four treasure cells make this the richest board, while two red hazard cells keep greed costly.',
     category: 'vault',
     difficultyModifier: 4,
     preview: {
@@ -288,15 +286,15 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 4,
       lockedZones: 1,
     },
-    tags: ['Relic-Heavy', 'Ritual', 'Shadowed'],
-    recommendedStrategy: 'Identify the false relic; the rest reward you.',
+    tags: ['2 Hazards', '4 Treasure', 'Shadowed'],
+    recommendedStrategy: 'Collect treasure through natural chains; forcing every pickup can spend more HP than it earns.',
   },
   final_seal_chamber: {
     id: 'final_seal_chamber',
     name: 'Final Seal Chamber',
     tagline: 'The boss vault — a single funnel into a sealed core.',
     briefing:
-      'The end of the chapter. Hostiles funnel through three converging corridors into the core where the wardstone waits. Break it and the seal lifts; fail and you start the chapter again.',
+      'The end of the chapter. A boss waits beyond three hazard cells and one treasure cell. The boss banner states the chamber’s only special combat rule.',
     category: 'boss',
     difficultyModifier: 5,
     preview: {
@@ -311,8 +309,8 @@ export const RUNE_LAYOUTS: Record<RuneLayoutId, RuneLayout> = {
       treasureZones: 1,
       lockedZones: 1,
     },
-    tags: ['Boss', 'Funnel', 'Wardstone'],
-    recommendedStrategy: 'Bring your strongest chain — one shot at the seal.',
+    tags: ['Boss', '3 Hazards', '1 Treasure'],
+    recommendedStrategy: 'Read the Boss Rule first, then value survival over a risky treasure detour.',
   },
 };
 
