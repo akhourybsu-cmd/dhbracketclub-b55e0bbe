@@ -9937,8 +9937,6 @@ export type Database = {
         }
         Returns: string
       }
-      forge_monday_bounds: { Args: never; Returns: Record<string, unknown> }
-      forge_notify_final_hours: { Args: never; Returns: undefined }
       finish_draft_grading: {
         Args: {
           _draft_id: string
@@ -9948,6 +9946,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      forge_monday_bounds: { Args: never; Returns: Record<string, unknown> }
+      forge_notify_final_hours: { Args: never; Returns: undefined }
       forge_notify_midweek: { Args: never; Returns: undefined }
       forge_notify_new_weeks: { Args: never; Returns: undefined }
       forge_roll_all: { Args: never; Returns: undefined }
@@ -9971,6 +9971,7 @@ export type Database = {
         Args: { _club: string; _user: string }
         Returns: boolean
       }
+      is_nfl_week_unlocked: { Args: { _week_id: string }; Returns: boolean }
       is_pick_unlocked: { Args: { _game_id: string }; Returns: boolean }
       is_platform_owner: { Args: { _user: string }; Returns: boolean }
       is_pool_admin: {
@@ -9985,6 +9986,10 @@ export type Database = {
         | { Args: { _password: string }; Returns: string }
         | { Args: { _password: string; _user_id: string }; Returns: string }
       journey_advance_scene: { Args: { _run_id: string }; Returns: Json }
+      journey_adventure_encounter_definition: {
+        Args: { _campaign_id: string; _scene_key: string; _version: number }
+        Returns: Json
+      }
       journey_apply_effects: {
         Args: { _effects: Json; _state: Json }
         Returns: Json
@@ -10052,6 +10057,10 @@ export type Database = {
         Args: { _choice_key: string; _run_id: string; _scene_key: string }
         Returns: Json
       }
+      journey_first_tag_value: {
+        Args: { _prefix: string; _tags: Json }
+        Returns: string
+      }
       journey_get_ending: { Args: { _run_id: string }; Returns: Json }
       journey_get_runtime_scene: { Args: { _run_id: string }; Returns: Json }
       journey_get_world: { Args: { _run_id: string }; Returns: Json }
@@ -10062,6 +10071,7 @@ export type Database = {
         Args: { _campaign_id: string; _scene_key: string }
         Returns: Json
       }
+      journey_path_label: { Args: { _path: string }; Returns: string }
       journey_publish_campaign: {
         Args: { _campaign_id: string; _notes?: string }
         Returns: {
@@ -10097,6 +10107,10 @@ export type Database = {
       }
       journey_release_package: {
         Args: { _campaign_id: string; _version: number }
+        Returns: Json
+      }
+      journey_resolve_encounter_action: {
+        Args: { _action_key: string; _run_id: string; _scene_key: string }
         Returns: Json
       }
       journey_resolve_ending: {
@@ -10186,6 +10200,10 @@ export type Database = {
       journey_state_number: {
         Args: { _bucket: string; _key: string; _state: Json }
         Returns: number
+      }
+      journey_tag_values: {
+        Args: { _prefix: string; _tags: Json }
+        Returns: Json
       }
       journey_test_patch_run: {
         Args: { _run_id: string; _scene_key: string; _state_patch: Json }
@@ -10290,6 +10308,10 @@ export type Database = {
         Args: { _week_id: string }
         Returns: undefined
       }
+      replace_draft_results_atomic: {
+        Args: { _draft_id: string; _request_id: string; _results: Json }
+        Returns: undefined
+      }
       rune_delve_earn_shards: {
         Args: { p_amount: number }
         Returns: {
@@ -10325,10 +10347,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      replace_draft_results_atomic: {
-        Args: { _draft_id: string; _request_id: string; _results: Json }
-        Returns: undefined
       }
       set_displayed_sigil: { Args: { _sigil_code: string }; Returns: undefined }
       shares_club_with: { Args: { _a: string; _b: string }; Returns: boolean }
