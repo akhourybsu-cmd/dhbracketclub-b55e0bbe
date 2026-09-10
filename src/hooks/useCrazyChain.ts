@@ -24,6 +24,9 @@ export interface CrazyChainMarket {
   result: boolean | null;
   settled_at: string | null;
   created_at: string;
+  availability_status?: 'verified' | 'review';
+  availability_checked_at?: string | null;
+  availability_note?: string | null;
 }
 
 export interface CrazyChainLeg {

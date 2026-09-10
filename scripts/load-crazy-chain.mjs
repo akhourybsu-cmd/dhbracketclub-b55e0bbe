@@ -29,7 +29,7 @@ try {
   for (const market of preview.markets) byType[market.market_type] = (byType[market.market_type] || 0) + 1;
   console.log(JSON.stringify({
     mode: args.includes('--publish') ? 'publish' : 'preview',
-    year, week: weekNumber, games: preview.gameCount, players: preview.playerCount,
+    year, week: weekNumber, games: preview.gameCount, excludedGames: preview.skippedGames, players: preview.playerCount,
     predictions: preview.markets.length, types: byType, warnings: preview.warnings,
     sample: preview.markets.slice(0, 18).map(market => market.display_text),
   }, null, 2));
@@ -38,7 +38,8 @@ try {
     const { count, error } = await client.from('nfl_chain_markets').select('id', { count: 'exact', head: true })
       .eq('club_id', preview.clubId).eq('week_id', preview.weekId).abortSignal(AbortSignal.timeout(12_000));
     if (error) throw new Error(error.message);
-    console.log(JSON.stringify({ uploaded: result.inserted, previouslyExisting: result.existing, verifiedWeekTotal: count }));
+    console.log(JSON.stringify({ uploaded: result.inserted, previouslyExisting: result.existing, verifiedWeekTotal: count,
+      availabilityRechecked: result.reviewed, paused: result.paused, locksAt: result.lock_at }));
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'NFL board import failed.');

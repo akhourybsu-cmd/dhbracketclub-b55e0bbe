@@ -32,6 +32,10 @@ verify_jwt = false
 [functions.score-nfl-crazy-chain]
 verify_jwt = false
 
+# Validates the existing cron secret or a club-commissioner JWT internally.
+[functions.refresh-nfl-chain-boards]
+verify_jwt = false
+
 [functions.celebrations-daily]
 verify_jwt = false
 

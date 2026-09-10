@@ -8,7 +8,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  useActiveSeason, useWeekGames, useWeekLock,
+  useActiveSeason, useWeekGames,
   type NflGame, type NflSeason,
 } from '@/hooks/usePickem';
 import {
@@ -22,6 +22,8 @@ import { TeamLogo } from '@/components/pickem/TeamLogo';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { Input } from '@/components/ui/input';
 import { chooseChainBoardWeek, useCrazyChainWeeks, type CrazyChainBoardWeek } from '@/hooks/useCrazyChainWeeks';
+import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
+import { chainAvailabilityNote } from '@/lib/nfl/chainAvailability';
 
 export default function CrazyChainPage() {
   const { season, loading: seasonLoading } = useActiveSeason();
@@ -58,7 +60,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
   const { markets, loading: marketsLoading, error: marketsError, refetch: refetchMarkets } = useCrazyChainMarkets(week?.id);
   const { entry, loading: entryLoading, error: entryError, refetch: refetchEntry } = useMyCrazyChainEntry(week?.id);
   const { standings } = useCrazyChainStandings(season?.id);
-  const { lockAt, locked } = useWeekLock(games, season);
+  const { board, migrationReady, lockAt, locked, now, loading: boardLoading, error: boardError, refetch: refetchBoard } = useCrazyChainBoard(week.id, games, season);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -83,7 +85,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
       .sort((a, b) => new Date(a.game?.kickoff_at || 0).getTime() - new Date(b.game?.kickoff_at || 0).getTime());
   }, [gameMap, markets, gameFilter, search]);
 
-  const loading = gamesLoading || marketsLoading || entryLoading;
+  const loading = gamesLoading || marketsLoading || entryLoading || boardLoading;
   const editable = !!week && !locked && entry?.status !== 'won' && entry?.status !== 'lost' && entry?.status !== 'void';
   const currentChain = myStanding?.current_chain || 0;
   const projectedChain = currentChain + selected.size;
@@ -95,6 +97,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
 
   function toggleMarket(market: CrazyChainMarket) {
     if (!editable || market.status !== 'open') return;
+    if (migrationReady && !selected.has(market.id) && chainAvailabilityNote(market, now)) return;
     setSelected(current => {
       const next = new Set(current);
       if (next.has(market.id)) next.delete(market.id);
@@ -166,11 +169,12 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
 
       {loading ? (
         <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-32 rounded-2xl pk-skeleton" />)}</div>
-      ) : marketsError || entryError ? (
+      ) : marketsError || entryError || boardError ? (
         <div className="glass-card p-5 text-center">
           <AlertTriangle className="w-6 h-6 text-gold mx-auto mb-2" />
           <p className="text-[13px] font-extrabold">Crazy Chain is warming up</p>
-          <p className="text-[10px] text-muted-foreground mt-1">{marketsError || entryError}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{marketsError || entryError || boardError?.message}</p>
+          <Button variant="outline" className="mt-3" onClick={() => void Promise.all([refetchBoard(), refetchMarkets(), refetchEntry()])}>Retry</Button>
         </div>
       ) : !season || !week ? (
         <EmptyState title="No active NFL week" detail="Crazy Chain opens with the weekly schedule." />
@@ -178,6 +182,9 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
         <EmptyState title="Predictions are being published" detail="Check back once this week's Crazy Chain board is live." />
       ) : (
         <>
+          {!migrationReady && locked && <p className="rounded-xl border border-gold/30 p-3 text-xs">The remaining-games database update is required to open this catch-up board. Started games remain locked.</p>}
+          {board?.catch_up && <p className="rounded-xl border border-gold/30 bg-gold/5 p-3 text-xs">Catch-up board: {board.game_ids.length} remaining games only. Already-started games are excluded. Your whole card locks at the time below.</p>}
+          <p className="text-xs text-muted-foreground">Custom club targets · {board?.checked_at ? `Availability checked ${format(new Date(board.checked_at), 'MMM d, h:mm a')}` : 'Availability recheck required'}</p>
           <div className="flex items-center justify-between px-0.5">
             <div>
               <p className="pk-section-label">{week.label} Prediction Board</p>
@@ -197,7 +204,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
               <Input aria-label="Search predictions" placeholder="Search a player or team…" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11" />
               <select aria-label="Filter by matchup" value={gameFilter} onChange={event => setGameFilter(event.target.value)} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm">
                 <option value="all">All matchups</option>
-                {games.map(game => <option key={game.id} value={game.id}>{game.away_team?.abbr} @ {game.home_team?.abbr}</option>)}
+                {games.filter(game => markets.some(market => market.game_id === game.id)).map(game => <option key={game.id} value={game.id}>{game.away_team?.abbr} @ {game.home_team?.abbr}</option>)}
               </select>
             </div>
             {groupedMarkets.length === 0 && <p className="text-sm text-muted-foreground p-3">No predictions match these filters.</p>}
@@ -214,18 +221,20 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
                   {gameMarkets.map(market => {
                     const leg = entry?.legs.find(item => item.market_id === market.id);
                     const chosen = selected.has(market.id);
+                    const availabilityNote = migrationReady ? chainAvailabilityNote(market, now) : null;
                     return (
                       <button
                         key={market.id}
                         type="button"
                         onClick={() => toggleMarket(market)}
-                        disabled={!editable || market.status !== 'open'}
+                        disabled={!editable || market.status !== 'open' || (!!availabilityNote && !chosen)}
                         aria-pressed={chosen}
                         className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors ${chosen ? 'bg-emerald-400/[0.08]' : 'hover:bg-white/[0.025]'} disabled:cursor-default`}
                       >
                         <SelectionMark selected={chosen} status={leg?.status} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-extrabold leading-snug">{market.display_text}</p>
+                          {availabilityNote && <p className="text-xs text-gold mt-1">{availabilityNote}{chosen ? ' Saved pick retained; you may remove it before lock.' : ''}</p>}
                           <p className="text-[9px] text-muted-foreground mt-1">
                             {CHAIN_MARKET_LABELS[market.market_type] || market.market_type} · {formatThreshold(market.operator, market.threshold)}
                           </p>
@@ -252,7 +261,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
           <p>• Perfect cards add one link per hit.</p>
           <p>• Any miss resets the active chain.</p>
           <p>• Skipped weeks preserve your chain.</p>
-          <p>• Cards close before the week's first kickoff.</p>
+          <p>• Cards close before the first included game's kickoff.</p>
           <p>• Player results use verified final stats; non-participants are voided by the commissioner.</p>
         </div>
       </div>

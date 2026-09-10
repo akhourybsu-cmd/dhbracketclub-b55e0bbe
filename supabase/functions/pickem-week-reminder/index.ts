@@ -59,6 +59,14 @@ Deno.serve(async (req) => {
     }).then((response) => response.json()).catch((error) => ({ error: String(error) }));
   }
 
+  // Reuse this already-authenticated schedule for Crazy Chain publishing and
+  // availability checks; no new secret or browser-open requirement is introduced.
+  const chainRefreshPromise = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/refresh-nfl-chain-boards`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-cron-secret': expected },
+    body: '{}', signal: AbortSignal.timeout(110_000),
+  }).then(async response => ({ status: response.status, ...await response.json() }))
+    .catch(() => ({ error: 'Crazy Chain refresh timed out or was unavailable' }));
+
   // 1) Week-open broadcast
   const { data: openWeeks } = activeSeason
     ? await supabase
@@ -90,7 +98,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!firstGame?.kickoff_at) continue;
 
-    const lockMinutes = activeSeason?.id === w.season_id ? (activeSeason.pick_lock_minutes ?? 10) : 10;
+    const lockMinutes = activeSeason && activeSeason.id === w.season_id ? (activeSeason.pick_lock_minutes ?? 10) : 10;
     const lockMs = new Date(firstGame.kickoff_at).getTime() - lockMinutes * 60_000;
     const targetMs = lockMs - 60 * 60_000;
     if (Math.abs(targetMs - Date.now()) <= WINDOW_MIN * 60_000) {
@@ -107,7 +115,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, sent, sync: syncResult }), {
+  // Deliver the existing reminders without waiting for the larger roster refresh.
+  const chainRefresh = await chainRefreshPromise;
+  return new Response(JSON.stringify({ ok: true, sent, sync: syncResult, crazy_chain: chainRefresh }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

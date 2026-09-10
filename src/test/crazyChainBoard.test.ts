@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildBoardMarkets, validateBoardSlate, verifiedStarters,
+  buildBoardMarkets, validateBoardSlate, verifiedStarters, verifyPlayerAvailability, uncertainInjury,
   type BoardGame, type BoardTeam, type EspnRoster, type EspnDepthChart, type EspnScoreboard,
 } from '@/lib/nfl/chainBoardData';
+import { chainAvailabilityNote } from '@/lib/nfl/chainAvailability';
 
 const teams: BoardTeam[] = [
   { id: 'home', external_id: '1', external_provider: 'espn', city: 'Home', name: 'Team' },
@@ -27,6 +28,33 @@ const roster: EspnRoster = { team: { id: '1' }, season: { year: 2026 }, athletes
 const depth: EspnDepthChart = { team: { id: '1' }, season: { year: 2026 }, depthchart: [{ positions: { qb: { position: { abbreviation: 'QB' }, athletes: [qb, backup] } } }] };
 
 describe('Crazy Chain weekly import', () => {
+  it('publishes only remaining games, with the configured pre-kickoff cutoff', () => {
+    const past = { ...game, id: 'past', external_id: '99', kickoff_at: '2026-09-09T00:15:00Z', status: 'final' };
+    const slate = { ...scoreboard, events: [...scoreboard.events!, { ...scoreboard.events![0], id: '99', date: past.kickoff_at }] };
+    expect(validateBoardSlate(slate, [past, game], teams, 2026, 2, now, true).map(item => item.id)).toEqual(['game']);
+    expect(() => validateBoardSlate(scoreboard, [game], teams, 2026, 2, Date.parse(game.kickoff_at) - 5*60_000, true, 10)).toThrow('No unstarted games');
+  });
+
+  it('rechecks injuries, roster membership, and starting role for existing predictions', () => {
+    expect(verifyPlayerAvailability(roster, depth, '10', '1', 2026)).toBeNull();
+    expect(verifyPlayerAvailability(roster, depth, '11', '1', 2026)).toContain('Starting role');
+    expect(verifyPlayerAvailability(roster, depth, '404', '1', 2026)).toContain('active roster');
+    expect(verifyPlayerAvailability(roster, depth, '10', '2', 2026)).toContain('verified');
+    const injured = { ...roster, athletes: [{items: [{...qb, injuries: [{status:'Questionable'}]}]}] };
+    expect(verifyPlayerAvailability(injured, depth, '10', '1', 2026)).toContain('paused');
+    expect(uncertainInjury([{status:'IR'}])).toBe(true);
+    expect(uncertainInjury([{status:'Active'}])).toBe(false);
+  });
+
+  it('pauses stale or missing player checks but not team targets', () => {
+    const player = {source_provider:'espn-roster',subject_external_id:'10',availability_status:'verified',availability_checked_at:new Date(now).toISOString()};
+    expect(chainAvailabilityNote(player,now)).toBeNull();
+    expect(chainAvailabilityNote(player,now+25*3600_000)).toContain('expired');
+    expect(chainAvailabilityNote({...player,availability_checked_at:null},now)).toContain('expired');
+    expect(chainAvailabilityNote({...player,availability_status:'review',availability_note:'Out'},now)).toBe('Out');
+    expect(chainAvailabilityNote({...player,subject_external_id:null},now+25*3600_000)).toBeNull();
+  });
+
   it('uses the starting player matched by ID against the current active roster', () => {
     const result = verifiedStarters(roster, depth, '1', 2026);
     expect(result.players).toEqual([{ externalId: '10', name: 'Starting Quarterback', position: 'QB' }]);

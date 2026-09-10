@@ -30,9 +30,10 @@ export function CrazyChainBoardImport({ weekId, onPublished }: { weekId: string;
     setError(null);
     try {
       const result = await publishChainBoard(supabase, preview);
-      toast.success(result.inserted ? `${result.inserted} predictions published for Week ${preview.weekNumber}.` : 'This board is already published.');
+      toast.success(`${result.inserted} new predictions · ${result.reviewed} availability checks · ${result.paused} paused.`);
       setPreview(null);
       void queryClient.invalidateQueries({ queryKey: ['crazy-chain-board-weeks'] });
+      void queryClient.invalidateQueries({ queryKey: ['crazy-chain-board-state'] });
       onPublished();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not publish predictions.');
@@ -44,6 +45,7 @@ export function CrazyChainBoardImport({ weekId, onPublished }: { weekId: string;
       <div className="flex items-center gap-2"><Download className="w-4 h-4 text-gold" /><h2 className="text-[13px] font-extrabold">Load weekly predictions</h2></div>
       <p className="text-xs text-muted-foreground leading-relaxed">Import the week's matchups and available starting quarterbacks, running backs, receivers, and tight ends. Injured or unverified players are skipped. Targets are club challenges, with one target per player statistic.</p>
       <p className="text-xs text-muted-foreground">Game results score automatically. Commissioners verify final player stats and void predictions for players who do not play.</p>
+      <p className="text-xs text-muted-foreground">Only unstarted games are imported. Re-publishing refreshes injury checks without changing existing targets or results. Missing data pauses new player selections, never scores a zero.</p>
       <Button variant="outline" onClick={load} disabled={busy || !weekId} className="w-full min-h-11">
         {busy && !preview ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
         {progress || 'Preview weekly board'}
@@ -53,9 +55,11 @@ export function CrazyChainBoardImport({ weekId, onPublished }: { weekId: string;
         <div className="rounded-xl border border-gold/25 bg-gold/5 p-3 space-y-3">
           <p className="text-sm font-extrabold">Week {preview.weekNumber} · {preview.markets.length} predictions</p>
           <p className="text-xs text-muted-foreground">{preview.gameCount} verified games · {preview.playerCount} players. Existing predictions and saved cards are preserved.</p>
+          {preview.skippedGames > 0 && <p className="text-xs text-gold">{preview.skippedGames} started or locked game(s) excluded.</p>}
+          <p className="text-xs text-muted-foreground">{preview.availability.length} existing player predictions rechecked · {preview.availability.filter(item => !item.verified).length} need review.</p>
           <ul className="space-y-1 text-xs text-muted-foreground">{preview.markets.slice(0, 5).map(market => <li key={market.external_id}>{market.display_text}</li>)}</ul>
           {preview.warnings.length > 0 && <details><summary className="text-xs text-gold cursor-pointer">{preview.warnings.length} availability notes</summary><ul className="mt-2 space-y-1 text-xs text-muted-foreground max-h-40 overflow-y-auto">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
-          <Button onClick={publish} disabled={busy} className="w-full min-h-11 font-bold">{busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Publish Week {preview.weekNumber} board</Button>
+          <Button onClick={publish} disabled={busy} className="w-full min-h-11 font-bold">{busy && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Publish / refresh Week {preview.weekNumber}</Button>
         </div>
       )}
     </section>

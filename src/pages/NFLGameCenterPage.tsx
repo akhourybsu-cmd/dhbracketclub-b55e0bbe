@@ -13,6 +13,8 @@ import {
 import { useCrazyChainMarkets, useCrazyChainStandings, useMyCrazyChainEntry } from '@/hooks/useCrazyChain';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { chooseChainBoardWeek, useCrazyChainWeeks } from '@/hooks/useCrazyChainWeeks';
+import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
+import { chainAvailabilityNote } from '@/lib/nfl/chainAvailability';
 
 export default function NFLGameCenterPage() {
   const { user } = useAuth();
@@ -23,6 +25,8 @@ export default function NFLGameCenterPage() {
   const { lockAt, locked } = useWeekLock(games, season);
   const { weeks: chainWeeks } = useCrazyChainWeeks(season?.id);
   const chainWeek = chooseChainBoardWeek(chainWeeks, 0, season?.current_week);
+  const { games: chainGames } = useWeekGames(chainWeek?.id);
+  const { locked: chainLocked, migrationReady, now } = useCrazyChainBoard(chainWeek?.id, chainGames, season);
   const { markets } = useCrazyChainMarkets(chainWeek?.id);
   const { entry } = useMyCrazyChainEntry(chainWeek?.id);
   const { standings: chainStandings } = useCrazyChainStandings(season?.id);
@@ -33,7 +37,7 @@ export default function NFLGameCenterPage() {
   const myPickem = pickemStandings.find(row => row.user_id === user?.id);
   const finalGames = games.filter(game => game.status === 'final').length;
   const liveGames = games.filter(game => game.status === 'live').length;
-  const openMarkets = markets.filter(market => market.status === 'open').length;
+  const openMarkets = markets.filter(market => market.status === 'open' && (!migrationReady || !chainAvailabilityNote(market, now))).length;
 
   return (
     <div className="space-y-4 pb-7">
@@ -110,7 +114,7 @@ export default function NFLGameCenterPage() {
               ? `${entry.links_risked} link${entry.links_risked === 1 ? '' : 's'} in play`
               : myChain?.current_chain
                 ? `${myChain.current_chain} current chain`
-                : `${openMarkets} predictions open`}
+                : chainLocked ? 'Board locked' : `${openMarkets} predictions open`}
             cta="Build My Chain"
             featured
           />
