@@ -932,6 +932,47 @@ export type Database = {
           },
         ]
       }
+      draft_grading_jobs: {
+        Row: {
+          attempt_count: number
+          completed_at: string | null
+          draft_id: string
+          last_error: string | null
+          request_id: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          completed_at?: string | null
+          draft_id: string
+          last_error?: string | null
+          request_id: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          completed_at?: string | null
+          draft_id?: string
+          last_error?: string | null
+          request_id?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_grading_jobs_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: true
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_participants: {
         Row: {
           club_id: string
@@ -9783,6 +9824,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      apply_draft_pick_regrade_atomic: {
+        Args: {
+          _dispute_id: string
+          _new_explanation: string
+          _new_score: number
+          _pick_id: string
+          _resolution_note: string
+          _resolved_by: string
+          _result_id: string
+        }
+        Returns: undefined
+      }
       apply_mission_draft_live: {
         Args: { _also_update_active_op?: boolean; _draft_id: string }
         Returns: Json
@@ -9794,6 +9847,14 @@ export type Database = {
       award_operation_rewards: {
         Args: { _operation_id: string }
         Returns: Json
+      }
+      begin_draft_grading: {
+        Args: {
+          _draft_id: string
+          _lease_seconds?: number
+          _request_id: string
+        }
+        Returns: boolean
       }
       cancel_club_request: { Args: never; Returns: undefined }
       consume_ai_quota: {
@@ -9878,6 +9939,15 @@ export type Database = {
       }
       forge_monday_bounds: { Args: never; Returns: Record<string, unknown> }
       forge_notify_final_hours: { Args: never; Returns: undefined }
+      finish_draft_grading: {
+        Args: {
+          _draft_id: string
+          _error?: string
+          _request_id: string
+          _status: string
+        }
+        Returns: boolean
+      }
       forge_notify_midweek: { Args: never; Returns: undefined }
       forge_notify_new_weeks: { Args: never; Returns: undefined }
       forge_roll_all: { Args: never; Returns: undefined }
@@ -10255,6 +10325,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      replace_draft_results_atomic: {
+        Args: { _draft_id: string; _request_id: string; _results: Json }
+        Returns: undefined
       }
       set_displayed_sigil: { Args: { _sigil_code: string }; Returns: undefined }
       shares_club_with: { Args: { _a: string; _b: string }; Returns: boolean }

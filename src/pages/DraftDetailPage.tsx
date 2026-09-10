@@ -133,7 +133,17 @@ export default function DraftDetailPage() {
   const [finalsSeriesWins, setFinalsSeriesWins] = useState<Record<string, number>>({});
   const playoffsAdvanced = useRef(false);
 
-  const { results: draftResults, loading: resultsLoading, generating: resultsGenerating, hasResults, generateResults, regenerateResults, fetchResults } = useDraftResults(draftId);
+  const {
+    results: draftResults,
+    loading: resultsLoading,
+    generating: resultsGenerating,
+    hasResults,
+    generationError,
+    resultsVerificationFailed,
+    generateResults,
+    regenerateResults,
+    fetchResults,
+  } = useDraftResults(draftId);
 
   const [autoTriggered, setAutoTriggered] = useState(false);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -218,11 +228,17 @@ export default function DraftDetailPage() {
 
   // Auto-generate report when draft is complete and no results exist (any participant can trigger)
   useEffect(() => {
-    if (draft?.status === 'complete' && !hasResults && !resultsLoading && !resultsGenerating && !autoTriggered && isParticipant) {
+    if (draft?.status === 'complete' && !hasResults && !generationError && !resultsLoading && !resultsGenerating && !autoTriggered && isParticipant) {
       setAutoTriggered(true);
       generateResults();
     }
-  }, [draft?.status, hasResults, resultsLoading, resultsGenerating, autoTriggered, isParticipant, generateResults]);
+  }, [draft?.status, hasResults, generationError, resultsLoading, resultsGenerating, autoTriggered, isParticipant, generateResults]);
+
+  // A failed provider call or rejected payload must return the UI to a real
+  // retry state instead of leaving an endless "Generating" skeleton.
+  useEffect(() => {
+    if (generationError && !resultsGenerating) setAutoTriggered(false);
+  }, [generationError, resultsGenerating]);
 
   // Confetti on first results load
   useEffect(() => {
@@ -511,13 +527,20 @@ export default function DraftDetailPage() {
           target_id: draftId,
           metadata: { topic: draft?.topic },
         });
-        // Auto-generate report immediately
+        // Enrich first, then grade. This ensures the judge sees the same
+        // verified facts that the completed report displays. Both operations
+        // remain detached from the final-pick UI so the pick itself completes
+        // immediately.
         setAutoTriggered(true);
-        generateResults();
-        // Enrich ALL picks in one batched call now that the draft is complete —
-        // replaces the previous per-pick enrichment that fired an AI call on
-        // every single pick. No-ops server-side if the club has AI turned off.
-        enrichDraftPicks(draftId).then(() => fetchEnrichments()).catch(() => {});
+        void (async () => {
+          try {
+            await enrichDraftPicks(draftId);
+            await fetchEnrichments();
+          } catch (enrichmentError) {
+            console.error('Draft enrichment failed before grading (non-fatal):', enrichmentError);
+          }
+          await generateResults();
+        })();
         // Kick off playoff advancement immediately if this is a playoff draft (idempotent)
         if (isPlayoffDraft && season?.id) {
           advancePlayoffs(season.id).catch(err => console.error('advancePlayoffs failed:', err));
@@ -2086,14 +2109,27 @@ export default function DraftDetailPage() {
             <div className="glass-card p-6 mb-5 text-center">
               <Sparkles className="w-8 h-8 text-primary mx-auto mb-2 animate-pulse" />
               <p className="text-[13px] font-bold mb-1">
-                {autoTriggered ? 'Generating Draft Report…' : 'Draft Report'}
+                {autoTriggered ? 'Generating Draft Report…' : generationError ? 'Draft Report Needs Attention' : 'Draft Report'}
               </p>
               <p className="text-[11px] text-muted-foreground/60 mb-3">
-                {autoTriggered ? 'AI is analyzing every pick. This takes a moment.' : 'The report is being prepared.'}
+                {autoTriggered
+                  ? 'AI is analyzing every pick. This takes a moment.'
+                  : generationError || 'The report is ready to be generated.'}
               </p>
               {isParticipant && !autoTriggered && (
-                <Button onClick={() => { setAutoTriggered(true); generateResults(); }} className="rounded-xl font-bold gap-2 btn-press">
-                  <Sparkles className="w-4 h-4" /> Generate Report
+                <Button
+                  onClick={() => {
+                    if (resultsVerificationFailed) {
+                      void fetchResults();
+                      return;
+                    }
+                    setAutoTriggered(true);
+                    void generateResults();
+                  }}
+                  className="rounded-xl font-bold gap-2 btn-press"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {resultsVerificationFailed ? 'Retry Load' : generationError ? 'Retry Report' : 'Generate Report'}
                 </Button>
               )}
               {autoTriggered && (

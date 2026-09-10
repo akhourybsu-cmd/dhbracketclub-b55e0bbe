@@ -101,6 +101,22 @@ describe("Edge function prompts inline the rules", () => {
     expect(withoutRules).not.toMatch(/cohesive collection/i);
     expect(withoutRules).not.toMatch(/rounds out the board/i);
   });
+
+  it("rejects incomplete AI output instead of backfilling zero scores", () => {
+    expect(RATE_DRAFT).toContain("validateDraftGradingResults");
+    expect(RATE_DRAFT).toContain("No scores were changed; please retry");
+    expect(RATE_DRAFT).not.toContain("backfilling empty row");
+    expect(RATE_DRAFT).not.toMatch(/total_score:\s*0/);
+  });
+
+  it("uses server-owned keys, bounded scores, and atomic persistence", () => {
+    expect(RATE_DRAFT).toContain("participant_key");
+    expect(RATE_DRAFT).toContain("pick_key");
+    expect(RATE_DRAFT).toContain("minimum: 1");
+    expect(RATE_DRAFT).toContain("maximum: 10");
+    expect(RATE_DRAFT).toContain("replace_draft_results_atomic");
+    expect(RATE_DRAFT).not.toMatch(/\.from\("draft_results"\)\.delete\(\)\.eq\("draft_id"/);
+  });
 });
 
 /**
