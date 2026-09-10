@@ -12,6 +12,7 @@ import {
 } from '@/hooks/usePickem';
 import { useCrazyChainMarkets, useCrazyChainStandings, useMyCrazyChainEntry } from '@/hooks/useCrazyChain';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
+import { chooseChainBoardWeek, useCrazyChainWeeks } from '@/hooks/useCrazyChainWeeks';
 
 export default function NFLGameCenterPage() {
   const { user } = useAuth();
@@ -20,8 +21,10 @@ export default function NFLGameCenterPage() {
   const { games } = useWeekGames(week?.id);
   const { picks } = useMyWeekPicks(week?.id);
   const { lockAt, locked } = useWeekLock(games, season);
-  const { markets } = useCrazyChainMarkets(week?.id);
-  const { entry } = useMyCrazyChainEntry(week?.id);
+  const { weeks: chainWeeks } = useCrazyChainWeeks(season?.id);
+  const chainWeek = chooseChainBoardWeek(chainWeeks, 0, season?.current_week);
+  const { markets } = useCrazyChainMarkets(chainWeek?.id);
+  const { entry } = useMyCrazyChainEntry(chainWeek?.id);
   const { standings: chainStandings } = useCrazyChainStandings(season?.id);
   const { standings: pickemStandings } = useSeasonStandings(season?.id);
   const { isAdmin } = usePickemAdmin();
@@ -98,9 +101,9 @@ export default function NFLGameCenterPage() {
             cta="Open Pick'em"
           />
           <GameTile
-            to="/nfl/crazy-chain"
+            to={chainWeek ? `/nfl/crazy-chain?week=${chainWeek.week_number}` : '/nfl/crazy-chain'}
             icon={<Zap className="w-5 h-5 text-emerald-300" />}
-            eyebrow="Risk · Reward"
+            eyebrow={chainWeek ? `Week ${chainWeek.week_number} · Crazy Chain` : 'Risk · Reward'}
             title="Crazy Chain"
             description="Stack as many stat predictions as you dare. One miss breaks the chain."
             stat={entry

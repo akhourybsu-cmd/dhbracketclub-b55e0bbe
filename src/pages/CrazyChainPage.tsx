@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertTriangle, Check, ChevronRight, Circle, Clock3, Flame,
@@ -8,8 +8,8 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
-  useActiveSeason, useCurrentWeek, useWeekGames, useWeekLock,
-  type NflGame,
+  useActiveSeason, useWeekGames, useWeekLock,
+  type NflGame, type NflSeason,
 } from '@/hooks/usePickem';
 import {
   saveCrazyChainCard, useCrazyChainMarkets, useCrazyChainStandings,
@@ -20,11 +20,40 @@ import { CHAIN_MARKET_LABELS, formatThreshold } from '@/lib/nfl/crazyChain';
 import { Button } from '@/components/ui/button';
 import { TeamLogo } from '@/components/pickem/TeamLogo';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
+import { Input } from '@/components/ui/input';
+import { chooseChainBoardWeek, useCrazyChainWeeks, type CrazyChainBoardWeek } from '@/hooks/useCrazyChainWeeks';
 
 export default function CrazyChainPage() {
-  const { user } = useAuth();
   const { season, loading: seasonLoading } = useActiveSeason();
-  const { week, loading: weekLoading } = useCurrentWeek(season);
+  const { weeks, loading, error, refetch } = useCrazyChainWeeks(season?.id);
+  const [params, setParams] = useSearchParams();
+  const week = chooseChainBoardWeek(weeks, Number(params.get('week')), season?.current_week);
+  useEffect(() => {
+    if (week && Number(params.get('week')) !== week.week_number) {
+      const next = new URLSearchParams(params);
+      next.set('week', String(week.week_number));
+      setParams(next, { replace: true });
+    }
+  }, [week, params, setParams]);
+
+  if (seasonLoading || (loading && !weeks.length)) return <div className="h-64 rounded-2xl pk-skeleton" />;
+  if (error) return <div className="glass-card p-5 text-center space-y-3"><p role="alert" className="text-sm text-muted-foreground">Could not load Crazy Chain weeks.</p><Button onClick={() => void refetch()}>Retry</Button></div>;
+  if (!season || !week) return <EmptyState title="No active NFL week" detail="Crazy Chain opens with the weekly schedule." />;
+  return (
+    <>
+      <label className="block mb-4 space-y-1.5">
+        <span className="text-xs font-bold text-muted-foreground">Choose your weekly board</span>
+        <select aria-label="Crazy Chain week" value={week.week_number} onChange={event => setParams({ week: event.target.value })} className="w-full min-h-11 rounded-xl border border-input bg-background px-3 text-sm">
+          {weeks.map(item => <option key={item.id} value={item.week_number}>{item.label || `Week ${item.week_number}`} · {item.marketCount ? `${item.marketCount} predictions` : 'Not published yet'}</option>)}
+        </select>
+      </label>
+      <CrazyChainWeek key={week.id} season={season} week={week} />
+    </>
+  );
+}
+
+function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainBoardWeek }) {
+  const { user } = useAuth();
   const { games, loading: gamesLoading } = useWeekGames(week?.id);
   const { markets, loading: marketsLoading, error: marketsError, refetch: refetchMarkets } = useCrazyChainMarkets(week?.id);
   const { entry, loading: entryLoading, error: entryError, refetch: refetchEntry } = useMyCrazyChainEntry(week?.id);
@@ -32,6 +61,8 @@ export default function CrazyChainPage() {
   const { lockAt, locked } = useWeekLock(games, season);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState('');
+  const [gameFilter, setGameFilter] = useState('all');
 
   useEffect(() => {
     setSelected(new Set(entry?.legs.map(leg => leg.market_id) || []));
@@ -42,14 +73,17 @@ export default function CrazyChainPage() {
   const groupedMarkets = useMemo(() => {
     const groups = new Map<string, CrazyChainMarket[]>();
     for (const market of markets) {
+      if (gameFilter !== 'all' && market.game_id !== gameFilter) continue;
+      const game = gameMap.get(market.game_id);
+      if (search.trim() && !`${market.display_text} ${game?.home_team?.abbr} ${game?.away_team?.abbr}`.toLowerCase().includes(search.trim().toLowerCase())) continue;
       groups.set(market.game_id, [...(groups.get(market.game_id) || []), market]);
     }
     return [...groups.entries()]
       .map(([gameId, group]) => ({ game: gameMap.get(gameId), markets: group }))
       .sort((a, b) => new Date(a.game?.kickoff_at || 0).getTime() - new Date(b.game?.kickoff_at || 0).getTime());
-  }, [gameMap, markets]);
+  }, [gameMap, markets, gameFilter, search]);
 
-  const loading = seasonLoading || weekLoading || gamesLoading || marketsLoading || entryLoading;
+  const loading = gamesLoading || marketsLoading || entryLoading;
   const editable = !!week && !locked && entry?.status !== 'won' && entry?.status !== 'lost' && entry?.status !== 'void';
   const currentChain = myStanding?.current_chain || 0;
   const projectedChain = currentChain + selected.size;
@@ -75,7 +109,7 @@ export default function CrazyChainPage() {
     try {
       await saveCrazyChainCard(week.id, [...selected]);
       await Promise.all([refetchEntry(), refetchMarkets()]);
-      toast.success(`Crazy Chain locked with ${selected.size} link${selected.size === 1 ? '' : 's'}!`);
+      toast.success(`Week ${week.week_number} card saved with ${selected.size} link${selected.size === 1 ? '' : 's'}!`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save your chain.');
     } finally {
@@ -151,7 +185,7 @@ export default function CrazyChainPage() {
                 {locked
                   ? 'The weekly board is locked.'
                   : lockAt
-                    ? `Edit until ${format(lockAt, 'EEE h:mm a')}`
+                    ? `Edit until ${format(lockAt, 'EEE, MMM d · h:mm a')}`
                     : 'Choose your risk.'}
               </p>
             </div>
@@ -159,6 +193,14 @@ export default function CrazyChainPage() {
           </div>
 
           <div className="space-y-3">
+            <div className="grid sm:grid-cols-2 gap-2">
+              <Input aria-label="Search predictions" placeholder="Search a player or team…" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11" />
+              <select aria-label="Filter by matchup" value={gameFilter} onChange={event => setGameFilter(event.target.value)} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm">
+                <option value="all">All matchups</option>
+                {games.map(game => <option key={game.id} value={game.id}>{game.away_team?.abbr} @ {game.home_team?.abbr}</option>)}
+              </select>
+            </div>
+            {groupedMarkets.length === 0 && <p className="text-sm text-muted-foreground p-3">No predictions match these filters.</p>}
             {groupedMarkets.map(({ game, markets: gameMarkets }, index) => (
               <motion.section
                 key={gameMarkets[0].game_id}
@@ -210,6 +252,8 @@ export default function CrazyChainPage() {
           <p>• Perfect cards add one link per hit.</p>
           <p>• Any miss resets the active chain.</p>
           <p>• Skipped weeks preserve your chain.</p>
+          <p>• Cards close before the week's first kickoff.</p>
+          <p>• Player results use verified final stats; non-participants are voided by the commissioner.</p>
         </div>
       </div>
 
@@ -219,10 +263,10 @@ export default function CrazyChainPage() {
             initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 90, opacity: 0 }}
             className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]"
           >
-            <div className="max-w-[616px] mx-auto rounded-2xl border border-gold/30 bg-[hsl(160_45%_5%/0.96)] backdrop-blur-xl p-3 shadow-[0_-12px_40px_hsl(160_60%_2%/0.7)] flex items-center gap-3">
+            <div className="max-w-[616px] mx-auto rounded-2xl border border-gold/30 bg-card/95 backdrop-blur-xl p-3 shadow-lg flex items-center gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] uppercase tracking-widest text-white/45 font-black">Your weekly risk</p>
-                <p className="text-[13px] font-black text-white mt-0.5">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black">Your weekly risk</p>
+                <p className="text-[13px] font-black text-foreground mt-0.5">
                   {selected.size} link{selected.size === 1 ? '' : 's'} · Perfect → {projectedChain}
                 </p>
               </div>
@@ -232,7 +276,7 @@ export default function CrazyChainPage() {
                 className="rounded-xl font-black gap-2 bg-gold text-black hover:bg-gold/90"
               >
                 {saving ? <Clock3 className="w-4 h-4 animate-spin" /> : <LockKeyhole className="w-4 h-4" />}
-                {entry ? 'Update Card' : 'Lock Chain'}
+                {entry ? 'Update Card' : 'Save Chain'}
               </Button>
             </div>
           </motion.div>

@@ -16,6 +16,7 @@ import {
   settleCrazyChainMarket, useCrazyChainMarkets, type CrazyChainMarket,
 } from '@/hooks/useCrazyChain';
 import { CHAIN_MARKET_LABELS, formatThreshold, type ChainOperator } from '@/lib/nfl/crazyChain';
+import { CrazyChainBoardImport } from '@/components/pickem/CrazyChainBoardImport';
 
 const MARKET_TYPES = [
   'team_win', 'team_points', 'game_total',
@@ -157,6 +158,7 @@ export default function CrazyChainAdminPage() {
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('score-nfl-crazy-chain', { body: { week_id: weekId } });
       if (invokeError) throw invokeError;
+      if (data?.error || data?.ok === false) throw new Error(data?.error || 'Some predictions could not be settled. Check results and retry.');
       toast.success(`${data?.settled || 0} team/game prediction${data?.settled === 1 ? '' : 's'} settled.`);
       await refetch();
     } catch (scoreError) {
@@ -190,6 +192,8 @@ export default function CrazyChainAdminPage() {
               {weeks.map(week => <option key={week.id} value={week.id}>{week.label}</option>)}
             </select>
           </div>
+
+          <CrazyChainBoardImport key={weekId} weekId={weekId} onPublished={() => { void refetch(); }} />
 
           <div className="glass-card p-4 space-y-3">
             <div className="flex items-center gap-2"><Plus className="w-4 h-4 text-gold" /><p className="text-[12px] font-extrabold">Publish a prediction</p></div>

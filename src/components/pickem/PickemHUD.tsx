@@ -43,7 +43,10 @@ export function PickemHUD() {
 
   // Week chip — derived from URL when on a week page, otherwise current week
   const weekChip = (() => {
-    const urlWeek = params.weekNumber ? parseInt(params.weekNumber, 10) : null;
+    // The commissioner page owns its week picker; do not show a stale season week.
+    if (path.startsWith('/nfl/admin/')) return null;
+    const chainWeek = path === '/nfl/crazy-chain' ? new URLSearchParams(location.search).get('week') : null;
+    const urlWeek = chainWeek ? Number(chainWeek) : params.weekNumber ? parseInt(params.weekNumber, 10) : null;
     if (urlWeek && Number.isFinite(urlWeek)) return `WK ${urlWeek}`;
     if (week?.week_number) return `WK ${week.week_number}`;
     if (season?.status === 'upcoming') return 'PRE';
