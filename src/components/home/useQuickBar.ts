@@ -62,22 +62,23 @@ function defaultSelection(installed: InstalledAsset[]): string[] {
 
 export function useQuickBar(installedAssets: InstalledAsset[]): UseQuickBarReturn {
   const { user } = useAuth();
+  const userId = user?.id;
   const { club } = useClub();
   const [pinnedSlugs, setPinnedSlugs] = useState<string[]>([]);
 
   // Load on mount / when user or club changes. Falls back to defaults the
   // first time a user lands on a club's Home.
   useEffect(() => {
-    if (!user || installedAssets.length === 0) { setPinnedSlugs([]); return; }
-    const stored = readPinned(user.id, club?.id ?? null);
-    if (stored && stored.length > 0) {
+    if (!userId || installedAssets.length === 0) { setPinnedSlugs([]); return; }
+    const stored = readPinned(userId, club?.id ?? null);
+    if (stored !== null) {
       // Filter to slugs still installed — uninstalled assets fall out cleanly.
-      const valid = stored.filter(s => installedAssets.some(ia => ia.asset.slug === s));
-      setPinnedSlugs(valid.length > 0 ? valid : defaultSelection(installedAssets));
+      const valid = [...new Set(stored)].filter(s => installedAssets.some(ia => ia.asset.slug === s)).slice(0,MAX_PINNED);
+      setPinnedSlugs(valid);
     } else {
       setPinnedSlugs(defaultSelection(installedAssets));
     }
-  }, [user?.id, club?.id, installedAssets]);
+  }, [userId, club?.id, installedAssets]);
 
   const persist = useCallback((next: string[]) => {
     if (!user) return;

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, CheckCheck, X, Loader2 } from 'lucide-react';
-import { formatDistanceToNowStrict, isToday, isYesterday } from 'date-fns';
+import { isToday, isYesterday } from 'date-fns';
+import { notificationPath, notificationTime } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { useNotifications, type AppNotification } from '@/hooks/useNotifications';
 import { notifIcon } from '@/components/notifications/meta';
@@ -21,14 +22,15 @@ function bucketOf(iso: string): string {
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('all');
-  const { items, unreadCount, loading, loadingMore, hasMore, error, loadMore, markRead, markAllRead, dismiss, refresh } =
+  const panelId = useId();
+  const { items, unreadCount, loading, loadingMore, hasMore, error, pending, loadMore, markRead, markAllRead, dismiss, refresh } =
     useNotifications({ pageSize: 30, unreadOnly: tab === 'unread' });
 
   // Infinite scroll sentinel.
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el || !hasMore) return;
+    if (!el || !hasMore || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting) void loadMore();
     }, { rootMargin: '200px' });
@@ -47,7 +49,8 @@ export default function NotificationsPage() {
 
   const openItem = (n: AppNotification) => {
     void markRead(n.id);
-    if (n.url) navigate(n.url);
+    const path = notificationPath(n.url);
+    if (path) navigate(path);
   };
 
   return (
@@ -58,12 +61,12 @@ export default function NotificationsPage() {
             <div className="page-header-icon"><Bell className="w-5 h-5" style={{ color: 'hsl(var(--primary))' }} /></div>
             <div>
               <h1 className="page-header-title">Notifications</h1>
-              <p className="page-header-subtitle">{unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}</p>
+              <p className="page-header-subtitle">{loading ? 'Checking your inbox…' : error ? 'Could not refresh' : unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}</p>
             </div>
           </div>
           {unreadCount > 0 && (
             <button
-              onClick={() => void markAllRead()}
+              onClick={() => void markAllRead()} disabled={pending}
               className="page-action inline-flex items-center gap-1.5 bg-muted/50 hover:bg-muted text-[12px] btn-press"
             >
               <CheckCheck className="w-4 h-4" /> Mark all read
@@ -78,17 +81,25 @@ export default function NotificationsPage() {
               key={t}
               onClick={() => setTab(t)}
               role="tab"
+              id={panelId+'-'+t}
+              aria-controls={panelId}
+              tabIndex={tab===t?0:-1}
+              onKeyDown={event=>{
+                const next:Tab|undefined=event.key==='Home'?'all':event.key==='End'?'unread':event.key==='ArrowLeft'||event.key==='ArrowRight'?(t==='all'?'unread':'all'):undefined;
+                if(!next)return;event.preventDefault();setTab(next);document.getElementById(panelId+'-'+next)?.focus();
+              }}
               aria-selected={tab === t}
               className={cn(
                 'px-5 h-11 rounded-xl text-[12px] font-bold capitalize transition-colors',
                 tab === t ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground/70 hover:text-foreground/85',
               )}
             >
-              {t}
+              {t === 'all' ? 'All' : 'Unread'}
             </button>
           ))}
         </div>
 
+        <div role="tabpanel" id={panelId} aria-labelledby={panelId+'-'+tab} tabIndex={0}>
         {error && !loading ? (
           <MemberLoadError message={error} onRetry={() => void refresh()} />
         ) : <LoadingSwap
@@ -120,7 +131,7 @@ export default function NotificationsPage() {
                         key={n.id}
                         className={cn('group flex min-h-[72px] items-start gap-3 px-3.5 py-3 transition-colors hover:bg-muted/20', !n.read_at && 'bg-primary/[0.05]')}
                       >
-                        <button onClick={() => openItem(n)} className="flex items-start gap-3 flex-1 min-w-0 text-left">
+                        <button disabled={pending} onClick={() => openItem(n)} className="flex min-h-11 items-start gap-3 flex-1 min-w-0 text-left">
                           <div
                             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
                             style={{ background: `linear-gradient(135deg, hsl(var(--${color}) / 0.16), hsl(var(--${color}) / 0.04))` }}
@@ -128,17 +139,17 @@ export default function NotificationsPage() {
                             <Icon className="w-4 h-4" style={{ color: `hsl(var(--${color}))` }} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-semibold leading-snug text-foreground/90">{n.title}</p>
-                            {n.body && <p className="text-[11.5px] text-muted-foreground/70 leading-snug line-clamp-2 mt-0.5">{n.body}</p>}
-                            <p className="text-[10px] text-muted-foreground/50 mt-0.5">{formatDistanceToNowStrict(new Date(n.created_at), { addSuffix: true })}</p>
+                            <p className="break-words text-[13px] font-semibold leading-snug text-foreground/90">{n.title}</p>
+                            {n.body && <p className="break-words text-[11.5px] text-muted-foreground/70 leading-snug line-clamp-2 mt-0.5">{n.body}</p>}
+                            <p className="text-[11px] text-muted-foreground mt-1">{notificationTime(n.created_at)}</p>
                           </div>
                         </button>
                         <div className="flex items-center gap-2 flex-shrink-0 pt-1">
                           {!n.read_at && <span className="w-2 h-2 rounded-full bg-primary" role="status" aria-label="Unread" />}
                           <button
-                            onClick={() => void dismiss(n.id)}
+                            onClick={() => void dismiss(n.id)} disabled={pending}
                             className="w-11 h-11 -my-2 -mr-2 rounded-xl flex items-center justify-center text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/40 transition-colors sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
-                            aria-label="Dismiss"
+                            aria-label={'Dismiss ' + n.title}
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -153,9 +164,11 @@ export default function NotificationsPage() {
             <div ref={sentinelRef} className="h-8 flex items-center justify-center">
               {loadingMore && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/50" />}
             </div>
+            {hasMore && <button disabled={loadingMore || pending} onClick={() => void loadMore()} className="min-h-11 w-full rounded-xl border border-border text-sm font-semibold">{loadingMore ? 'Loading…' : 'Load more notifications'}</button>}
           </div>
         )}
         </LoadingSwap>}
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, no-empty */
 import { ReactNode, useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Menu, Settings, Shield, User } from 'lucide-react';
+import { Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -15,7 +15,8 @@ import { AppDrawer } from '@/components/AppDrawer';
 import { NavDrawerProvider, useNavDrawer } from '@/contexts/NavDrawerContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
 import { APP_NAV_SECTIONS, getRouteTitle, isGameShellRoute, isRouteActive, type AppNavSection } from '@/lib/appNavigation';
-import { MobileIconButton } from '@/components/mobile/MobileIconButton';
+import { MobileAppHeader } from '@/components/mobile/MobileAppHeader';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -28,6 +29,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
 function AppLayoutInner({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const desktop = useMediaQuery('(min-width: 1024px)');
   const { play } = useSoundEffect();
   const { user } = useAuth();
   const { club, isClubAdmin, isPlatformOwner, isAppAdmin } = useClub();
@@ -108,52 +110,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const mobileTitle = getRouteTitle(location.pathname);
 
   return (
-    <div
-      className="min-h-[100dvh] bg-background flex flex-col"
-      style={{ paddingTop: showMobileHeader ? 'env(safe-area-inset-top, 0px)' : undefined }}
-    >
-      {/* Mobile top header with hamburger.
-          Calm shell rules:
-          - Hamburger and profile tap targets are both 44×44 (Apple HIG min).
-          - Backdrop blur softened from 20px/180% to 16px/160% so the header
-            feels premium without dominating.
-          - Border opacity reduced to /25 to match the surrounding shell.
-          - Symmetric left/right padding keeps the right-side avatar from
-            feeling cramped against the screen edge or notch safe area. */}
-      {showMobileHeader && (
-        <header
-          className="lg:hidden sticky top-0 z-40 flex items-center gap-2 h-12 border-b border-border/40 bg-card/[0.88] shadow-[0_1px_10px_hsl(var(--background)/0.35)]"
-          style={{
-            backdropFilter: 'blur(16px) saturate(160%)',
-            WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-            paddingLeft: 'max(0.5rem, env(safe-area-inset-left, 0px))',
-            paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
-          }}
-        >
-          <MobileIconButton
-            aria-label="Open navigation menu"
-            onClick={() => { play('tap'); setDrawerOpen(true); }}
-            className="-ml-1"
-          >
-            <Menu className="w-5 h-5 text-foreground/85" />
-          </MobileIconButton>
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {!isDashboard && (
-              <h1 className="text-[15px] font-bold tracking-tight truncate">{mobileTitle}</h1>
-            )}
-          </div>
-          <NotificationBell className="min-w-[44px] min-h-[44px]" />
-          <Link
-            to="/profile"
-            aria-label="Profile"
-            className="rounded-full active:opacity-80 min-w-[44px] min-h-[44px] flex items-center justify-center -mr-1"
-          >
-            <span className="w-9 h-9 rounded-full bg-muted/45 border border-border/35 flex items-center justify-center text-foreground/80">
-              <User className="w-[18px] h-[18px]" />
-            </span>
-          </Link>
-        </header>
-      )}
+    <div className="min-h-[100dvh] bg-background flex flex-col">
+      {showMobileHeader && !desktop && <MobileAppHeader title={isDashboard ? club?.name || 'Home' : mobileTitle}
+        onOpenMenu={() => { play('tap'); setDrawerOpen(true); }} />}
 
       {/* Drawer */}
       <AppDrawer open={drawerOpen} onOpenChange={setDrawerOpen} unreadChatCount={unreadChatCount} />
@@ -192,7 +151,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       </main>
 
       {/* Desktop Sidebar — hidden inside game shells (Rune Delve, Nexus, etc.) */}
-      {!isImmersiveShell && (() => {
+      {!isImmersiveShell && desktop && (() => {
         // Build sections including conditional admin section, filtered by installed assets
         const sections: AppNavSection[] = APP_NAV_SECTIONS.map(sec => ({
           ...sec,
@@ -225,7 +184,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
                   </h1>
                   <p className="text-[8px] text-muted-foreground/70 font-bold uppercase tracking-[0.2em] mt-0.5">Compete With Your Crew</p>
                 </div>
-                <NotificationBell className="w-9 h-9 flex-shrink-0" />
+                <NotificationBell />
               </div>
             </div>
 
