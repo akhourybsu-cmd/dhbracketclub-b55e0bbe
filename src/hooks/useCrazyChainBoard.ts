@@ -8,6 +8,7 @@ import type { NflGame, NflSeason } from '@/hooks/usePickem';
 import { chainGameIsOpen, chainGameLockAt } from '../../supabase/functions/_shared/chainGameRules';
 
 interface BoardState {
+  availability_mode?: 'pick_then_void';
   mode?: 'per_game_48h' | 'per_game_30m'; games?: { game_id: string; lock_at: string; unlocked: boolean }[];
   lock_at: string | null; unlocked: boolean; catch_up: boolean; game_ids: string[];
   checked_at: string | null; warnings: string[];
@@ -34,7 +35,7 @@ export function useCrazyChainBoard(weekId: string | undefined, games: NflGame[],
   const board = query.data?.board;
   const deadlines = games.filter(game => chainGameIsOpen(game,now)).map(chainGameLockAt);
   const lockAt = board?.lock_at ? new Date(board.lock_at) : deadlines.length ? new Date(Math.min(...deadlines)) : null;
-  return { board, migrationReady: query.data?.ready || false,
+  return { board, availabilityReady: board?.availability_mode === 'pick_then_void', migrationReady: query.data?.ready || false,
     pickemMigrationReady: board?.mode === 'per_game_48h' || board?.mode === 'per_game_30m', lockAt, now,
     locked: !!query.error || !query.data?.ready || !board?.unlocked || deadlines.length === 0,
     loading: query.isLoading, error: query.error, refetch: query.refetch };

@@ -3,15 +3,17 @@
 ## Activate this update
 
 Crazy Chain now closes **30 minutes before kickoff**. Weekly Pick’em and its
-featured-game tiebreaker remain at **48 hours**. If the previous per-game SQL is
-already installed, run only [Crazy Chain 30-minute SQL](sql/CRAZY_CHAIN_30_MINUTES.sql).
-Otherwise use the combined file below, which includes this change.
+featured-game tiebreaker remain at **48 hours**. If the previous per-game SQL
+and 30-minute SQL are already installed, run only
+[Player availability SQL](sql/CRAZY_CHAIN_PLAYER_AVAILABILITY.sql) for the new
+advisory-only selection and automatic cancellation behavior. Otherwise use the
+combined file below, which includes all changes.
 
 1. Copy/paste the **entire** [combined SQL file](sql/NFL_PER_GAME_AND_LIVE.sql) into the project's SQL editor.
    It is transactional, rerunnable, and upgrades either the original Crazy Chain
    schema or the later catch-up schema. It preserves picks, leg IDs, and targets.
    This supersedes the previous remaining-games SQL instructions.
-2. Deploy these six Edge Functions from an authenticated Supabase CLI, or through
+2. Deploy these seven Edge Functions from an authenticated Supabase CLI, or through
    the project's Lovable/Supabase deployment workflow:
 
    ~~~sh
@@ -20,17 +22,25 @@ Otherwise use the combined file below, which includes this change.
    supabase functions deploy score-nfl-crazy-chain
    supabase functions deploy sync-nfl-live
    supabase functions deploy refresh-nfl-chain-boards
+   supabase functions deploy refresh-nfl-chain-availability
    supabase functions deploy pickem-week-reminder
    ~~~
 
-3. Preview/publish Weeks 1 and 2 once in **Crazy Chain Control Room** to stamp fresh
-   player availability. Existing markets are not deleted; games inside 30 minutes
+3. Preview/publish Weeks 1 and 2 once in **Crazy Chain Control Room** to refresh
+   player availability advisories (fresh checks are no longer required to pick).
+   Existing markets are not deleted; games inside 30 minutes
    remain visible but cannot receive new picks.
 4. Verify the protected **nfl-live-results** job is active, running every five minutes,
    and its latest run/function logs show success. SQL creates this job by reusing
    the existing protected reminder request when available. If that job does not
    exist, configure a POST to **sync-nfl-live** every five minutes using the existing
    server-side CRON_SHARED_SECRET. Never put credentials in browser code or Git.
+5. Verify the separate **nfl-chain-availability** job runs every five minutes and
+   **refresh-nfl-chain-availability** can read ESPN event summaries. The SQL reuses
+   the protected reminder request for this job too. If absent, configure the same
+   protected POST schedule manually. This job is independent of final-score imports.
+   Inspect function responses for errors and `nfl_games.crazy_chain_availability_checked_at`
+   for recent successful checks on upcoming games. SQL alone cannot deploy the function.
 
 Git push, SQL execution, and server deployment are separate. The UI disables
 per-game writes until the new database mode is confirmed.
@@ -40,7 +50,9 @@ per-game writes until the new database mode is confirmed.
 On September 10, 2026, the deployed **sync-nfl-week** returned HTTP 502 with
 **ESPN fetch failed: 403**. The same official scoreboard was accessible locally.
 Automatic results are **not verified operational** until the deployment environment
-can read that feed and a protected scheduler run succeeds. Running the SQL alone
+can read that feed and a protected scheduler run succeeds. The new availability
+checker is likewise **not verified live**; provider failures preserve picks rather
+than cancelling from incomplete data. Running the SQL alone
 does not fix provider access.
 
 Using the existing commissioner permission, the identity-verified Week 1 opener
@@ -137,10 +149,36 @@ These are custom DH Club challenge thresholds, **not ESPN projections or odds**:
 
 The protected reminder job invokes the publisher: eight-day lookahead, six-hour
 normal cadence, and 30-minute checks within 24 hours before a pick deadline or
-kickoff. Questionable/out/doubtful/reserve/suspended players are not newly
-published. Existing affected players pause for new selections; saved picks are
-not erased or turned into misses. Evidence older than 24 hours pauses new player
-selections in SQL. Stable source IDs prevent duplicate imports or target changes.
+kickoff. Questionable/doubtful starters can be published with advisories. Explicitly
+unavailable starters are omitted without automatically promoting a backup. Already
+published players remain selectable despite uncertain, missing, or stale checks.
+Stable source IDs prevent duplicate imports or target changes.
+
+## Player eligibility cancellations
+
+- Stale checks, questionable/doubtful reports, a missing roster row, and a changed
+  starting role do not block selection and do not cancel a pick.
+- The independent five-minute checker fetches official **event summaries** in the
+  24 hours before kickoff, including the final 30 minutes after selection closes.
+  It verifies event, season, kickoff, home/away teams and athlete identity.
+- Only explicit Out, Inactive, Injured Reserve, Suspended, PUP or NFI reports
+  qualify. Conflicting records, invalid dates or an expected return before game
+  day are left for review. Earlier weeks are not cancelled using today's injury.
+- The service-only database operation requires fresh evidence, rejects changed
+  schedules and post-kickoff writes, and cancels only matching open player targets
+  and pending saved legs. Team targets and other games are untouched.
+- The leg remains in history with its cancellation reason. Voided picks contribute
+  neither a hit nor a miss: remaining picks still need to hit, and fully voided
+  games preserve the chain. IDs and target snapshots are retained.
+- Replacements can be saved only before the original **30-minute** deadline.
+  A cancelled pick is not automatically reinstated if later reports change;
+  commissioners can review explicit corrections. Automatic final scoring preserves
+  eligibility cancellations and commissioner decisions.
+- This is polling, not an instant push feed: publication delays, provider outages,
+  or a report arriving between the last check and kickoff can delay/miss an automatic
+  cancellation. Missing data does not cancel; unresolved participation is reviewed
+  through the existing final-stat/commissioner workflow. Check scheduler and function
+  logs before considering this operational.
 
 ## Optional CLI and tests
 
@@ -150,10 +188,11 @@ DH_NFL_EMAIL / DH_NFL_PASSWORD; .env holds the public app URL/key.
 ~~~sh
 node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 1
 node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 1 --publish
-npx vitest run src/test/crazyChainDeadlineRollout.test.tsx src/test/crazyChainPerGameUi.test.tsx src/test/nflFinalStats.test.ts src/test/crazyChainBoard.test.ts src/test/crazyChain.test.ts src/test/pickem.test.ts
+npx vitest run src/test/chainEligibility.test.ts src/test/crazyChainDeadlineRollout.test.tsx src/test/crazyChainPerGameUi.test.tsx src/test/nflFinalStats.test.ts src/test/crazyChainBoard.test.ts src/test/crazyChain.test.ts src/test/pickem.test.ts
 # Optional isolated PostgreSQL; no live data:
 npm install --no-save --package-lock=false @electric-sql/pglite
 node scripts/test-nfl-per-game-db.mjs --30m
 node scripts/test-nfl-per-game-db.mjs --with-catch-up --30m
 node scripts/test-nfl-per-game-db.mjs --bundle
+node scripts/check-nfl-availability-ui.mjs
 ~~~

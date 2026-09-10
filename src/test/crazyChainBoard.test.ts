@@ -41,16 +41,17 @@ describe('Crazy Chain weekly import', () => {
     expect(verifyPlayerAvailability(roster, depth, '404', '1', 2026)).toContain('active roster');
     expect(verifyPlayerAvailability(roster, depth, '10', '2', 2026)).toContain('verified');
     const injured = { ...roster, athletes: [{items: [{...qb, injuries: [{status:'Questionable'}]}]}] };
-    expect(verifyPlayerAvailability(injured, depth, '10', '1', 2026)).toContain('paused');
+    expect(verifyPlayerAvailability(injured, depth, '10', '1', 2026)).toContain('still select');
     expect(uncertainInjury([{status:'IR'}])).toBe(true);
     expect(uncertainInjury([{status:'Active'}])).toBe(false);
   });
 
-  it('pauses stale or missing player checks but not team targets', () => {
+  it('explains stale or missing player checks without blocking picks or team targets', () => {
     const player = {source_provider:'espn-roster',subject_external_id:'10',availability_status:'verified',availability_checked_at:new Date(now).toISOString()};
     expect(chainAvailabilityNote(player,now)).toBeNull();
-    expect(chainAvailabilityNote(player,now+25*3600_000)).toContain('expired');
-    expect(chainAvailabilityNote({...player,availability_checked_at:null},now)).toContain('expired');
+    expect(chainAvailabilityNote(player,now+25*3600_000)).toContain('still pick');
+    expect(chainAvailabilityNote({...player,availability_checked_at:null},now)).toContain('still pick');
+    expect(chainAvailabilityNote({...player,availability_status:'review',availability_note:'Injury concern; new selections paused.'},now)).not.toContain('paused');
     expect(chainAvailabilityNote({...player,availability_status:'review',availability_note:'Out'},now)).toBe('Out');
     expect(chainAvailabilityNote({...player,subject_external_id:null},now+25*3600_000)).toBeNull();
   });
@@ -61,11 +62,19 @@ describe('Crazy Chain weekly import', () => {
     expect(result.warnings).toEqual([]);
   });
 
-  it('omits an injured starter instead of assuming their backup will play', () => {
+  it('includes a questionable starter with an advisory, without promoting their backup', () => {
     const injured = { ...qb, injuries: [{ status: 'Questionable' }] };
     const result = verifiedStarters({ ...roster, athletes: [{ items: [injured, backup] }] }, depth, '1', 2026);
-    expect(result.players).toEqual([]);
+    expect(result.players.map(player=>player.externalId)).toEqual(['10']);
     expect(result.warnings[0]).toContain('availability uncertain');
+    const board=buildBoardMarkets('club',[game],teams,new Map([['home',result.players]]));
+    expect(board.find(m=>m.subject_external_id==='10')?.availability_note).toContain('still select');
+  });
+
+  it('does not republish a confirmed unavailable starter or replace them with a backup', () => {
+    const result=verifiedStarters({...roster,athletes:[{items:[{...qb,injuries:[{status:'Out'}]},backup]}]},depth,'1',2026);
+    expect(result.players).toEqual([]);
+    expect(result.warnings[0]).toContain('reported unavailable');
   });
 
   it('does not create player predictions from a stale team or season roster', () => {

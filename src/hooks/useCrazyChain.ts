@@ -30,6 +30,7 @@ export interface CrazyChainMarket {
   availability_status?: 'verified' | 'review';
   availability_checked_at?: string | null;
   availability_note?: string | null;
+  void_reason?: string | null;
 }
 
 export interface CrazyChainLeg {
@@ -45,6 +46,7 @@ export interface CrazyChainLeg {
   status: ChainLegStatus;
   actual_value: number | null;
   game_id?: string;
+  void_reason?: string | null;
 }
 
 export interface CrazyChainEntry {

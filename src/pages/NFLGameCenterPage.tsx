@@ -14,7 +14,6 @@ import { useCrazyChainMarkets, useCrazyChainStandings, useMyCrazyChainEntry } fr
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { chooseChainBoardWeek, useCrazyChainWeeks } from '@/hooks/useCrazyChainWeeks';
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
-import { chainAvailabilityNote } from '@/lib/nfl/chainAvailability';
 import { chainGameIsOpen } from '../../supabase/functions/_shared/chainGameRules';
 
 export default function NFLGameCenterPage() {
@@ -38,7 +37,7 @@ export default function NFLGameCenterPage() {
   const myPickem = pickemStandings.find(row => row.user_id === user?.id);
   const finalGames = games.filter(game => game.status === 'final').length;
   const liveGames = games.filter(game => game.status === 'live').length;
-  const openMarkets = markets.filter(market => migrationReady && market.status === 'open' && !chainAvailabilityNote(market, now)
+  const openMarkets = markets.filter(market => migrationReady && market.status === 'open'
     && chainGames.some(game => game.id === market.game_id && chainGameIsOpen(game,now))).length;
 
   return (

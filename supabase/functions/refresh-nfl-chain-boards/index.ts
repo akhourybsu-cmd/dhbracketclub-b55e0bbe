@@ -85,8 +85,8 @@ Deno.serve(async req => {
             if (published.error) throw published.error;
             results.push({club_id:clubId,week:week.week_number,...published.data});
           } catch (error) {
-            // Leave prior data untouched on schedule/provider failures. The save RPC
-            // independently refuses new player selections once evidence is stale.
+            // Leave picks untouched on provider failures. Stale availability is
+            // advisory; a separate pregame job cancels only confirmed absences.
             results.push({club_id:clubId,week:week.week_number,error:error instanceof Error ? error.message : String((error as {message?:string}).message || 'Refresh failed')});
           }
         }

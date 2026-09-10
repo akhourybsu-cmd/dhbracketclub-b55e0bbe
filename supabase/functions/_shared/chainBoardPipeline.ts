@@ -50,7 +50,7 @@ export async function collectChainBoard(input: {
     const team = input.teams.find(item => item.id === market.subject_team_id);
     const note = source && team?.external_id
       ? verifyPlayerAvailability(source.roster, source.depth, market.subject_external_id!, team.external_id, input.year)
-      : 'Player data unavailable; new selections paused until rechecked.';
+      : 'Player data unavailable; selection is allowed while checks continue.';
     return { id: market.id, verified: note === null, note };
   });
   return {

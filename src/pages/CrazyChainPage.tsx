@@ -46,7 +46,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
   const { markets, loading: marketsLoading, error: marketsError, refetch: refreshMarkets } = useCrazyChainMarkets(week.id);
   const { entry, loading: entryLoading, error: entryError, refetch: refreshEntry } = useMyCrazyChainEntry(week.id);
   const { standings, error: standingsError } = useCrazyChainStandings(season.id);
-  const { board, migrationReady, now, loading: boardLoading, error: boardError, refetch: refreshBoard } = useCrazyChainBoard(week.id, games, season);
+  const { board, migrationReady, availabilityReady, now, loading: boardLoading, error: boardError, refetch: refreshBoard } = useCrazyChainBoard(week.id, games, season);
   const { cards, error: cardsError } = useMyCrazyChainGameCards(week.id, undefined, migrationReady);
   const [drafts, setDrafts] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -75,7 +75,10 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
       setDrafts(current => { const next = {...current}; delete next[gameId]; return next; });
       await Promise.all(['crazy-chain-game-cards','crazy-chain-standings','crazy-chain-history'].map(key => cache.invalidateQueries({queryKey:[key]})));
       toast.success(selections.length ? 'Game picks saved. Other games are unchanged.' : 'Picks removed for this game.');
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not save game picks.'); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save game picks.');
+      void Promise.all([refreshMarkets(),refreshEntry()]);
+    }
     finally { setSaving(null); }
   }
   return <div className="space-y-4 pb-8">
@@ -96,9 +99,11 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
     <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs space-y-1">
       <p className="font-bold">Crazy Chain picks lock 30 minutes before kickoff.</p>
       <p className="text-muted-foreground">Final results refresh automatically. Chain steps follow kickoff order; games starting together are checked together. Missing stats stay pending for review.</p>
+      <p className="text-muted-foreground">Availability warnings do not block picks. A player confirmed unavailable before kickoff is automatically cancelled: no link earned, no chain penalty. Questionable or doubtful reports alone do not cancel picks. Replacements must be saved before the same 30-minute deadline.</p>
       <p className="text-muted-foreground">Custom club targets{board?.checked_at ? ' · Availability checked ' + format(new Date(board.checked_at),'MMM d, h:mm a') : ''}</p>
     </div>
     {!loading && !migrationReady && <p role="alert" className="rounded-xl border border-primary/30 p-3 text-sm">The Crazy Chain 30-minute SQL update is required before new picks can be saved. Existing picks are preserved.</p>}
+    {migrationReady && !availabilityReady && <p role="alert" className="rounded-xl border border-primary/30 p-3 text-sm">Install the player availability SQL update and deploy the availability checker to enable advisory-only checks and automatic cancellations.</p>}
     {cardsError && <p role="alert" className="text-sm text-destructive">{cardsError}</p>}
     {error ? <div className="glass-card p-4"><p role="alert" className="text-sm">{error}</p><Button className="mt-2" variant="outline" onClick={() => void Promise.all([refreshGames(),refreshMarkets(),refreshEntry(),refreshBoard()])}><RefreshCw className="w-4 h-4 mr-2" /> Retry</Button></div>
       : loading ? <div className="h-40 rounded-xl pk-skeleton" />
@@ -116,7 +121,8 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
           const saved = savedByGame.get(game.id) || [];
           // Polls update results without replacing unsaved drafts. Expired drafts
           // are never presented as saved picks and cannot be submitted.
-          const selected = open ? drafts[game.id] ?? saved : saved;
+          const selected = open ? (drafts[game.id] ?? saved).filter(id => saved.includes(id) || marketMap.get(id)?.status === 'open') : saved;
+          const activeSelected = selected.filter(id => marketMap.get(id)?.status === 'open').length;
           const changed = selected.length !== saved.length || selected.some(id => !saved.includes(id));
           const rows = markets.filter(m => m.game_id === game.id && (!search.trim() ||
             (m.display_text + ' ' + game.home_team?.abbr + ' ' + game.away_team?.abbr).toLowerCase().includes(search.trim().toLowerCase())));
@@ -125,7 +131,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
           return <section key={game.id} className="glass-card overflow-hidden">
             <GameHeader game={game} open={open} />
             {card && <div className="px-3.5 py-2 bg-muted/30 border-b border-border text-xs flex flex-wrap gap-x-3 gap-y-1">
-              <span className="font-bold">{card.status === 'locked' ? (game.status === 'final' ? 'Awaiting verified stats' : open ? 'Saved · editable' : 'Picks locked') : card.status === 'won' ? 'Perfect game · ' + card.hits + ' hits' : card.status === 'lost' ? 'Game missed' : 'Voided · chain preserved'}</span>
+              <span className="font-bold">{card.voids === card.links_risked ? 'Voided · chain preserved' : card.status === 'locked' ? (game.status === 'final' ? 'Awaiting verified stats' : open ? 'Saved · editable' : 'Picks locked') : card.status === 'won' ? 'Perfect game · ' + card.hits + ' hits' : card.status === 'lost' ? 'Game missed' : 'Voided · chain preserved'}</span>
               <span className="text-muted-foreground">{card.hits} hit · {card.misses} missed · {card.pending} pending{card.voids ? ' · ' + card.voids + ' void' : ''}</span>
             </div>}
             <div className="divide-y divide-border">
@@ -134,24 +140,27 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
                 const chosen = selected.includes(market.id);
                 const note = chainAvailabilityNote(market,now);
                 const result = leg?.status !== 'pending' ? leg?.status : null;
+                const cancelled = market.status === 'void' || result === 'void';
+                const reason = leg?.void_reason || market.void_reason;
                 return <button key={market.id} type="button" aria-pressed={chosen}
-                  disabled={!open || saving !== null || market.status !== 'open' || (!!note && !chosen)}
+                  disabled={!open || saving !== null || market.status !== 'open'}
                   onClick={() => setDrafts(current => ({...current,[game.id]:chosen ? selected.filter(id => id !== market.id) : [...selected,market.id]}))}
                   className={'w-full text-left px-3.5 py-3 flex items-start gap-3 transition-colors disabled:cursor-default ' + (chosen ? 'bg-primary/10' : 'hover:bg-muted/40')}>
                   <span className={'mt-0.5 w-6 h-6 shrink-0 rounded-md border flex items-center justify-center ' + (result === 'miss' ? 'border-destructive text-destructive' : chosen ? 'border-primary text-primary' : 'border-border')}>
-                    {result === 'miss' ? <X className="w-4 h-4" /> : chosen ? <Check className="w-4 h-4" /> : null}
+                    {cancelled ? <X className="w-4 h-4 text-muted-foreground" /> : result === 'miss' ? <X className="w-4 h-4" /> : chosen ? <Check className="w-4 h-4" /> : null}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-semibold leading-snug">{leg?.display_text || market.display_text}</span>
                     <span className="block text-xs text-muted-foreground mt-1">{CHAIN_MARKET_LABELS[market.market_type]} · {formatThreshold(market.operator,market.threshold)}</span>
-                    {note && market.status === 'open' && <span className="block text-xs text-muted-foreground mt-1">{note}{chosen ? ' Existing pick retained.' : ''}</span>}
+                    {note && market.status === 'open' && <span className="block text-xs text-muted-foreground mt-1">{note}</span>}
+                    {cancelled && <span className="block text-xs text-muted-foreground mt-1">{reason || 'Prediction voided; no link earned and no chain penalty.'}</span>}
                   </span>
-                  {result && <span className={'text-xs font-bold shrink-0 ' + (result === 'miss' ? 'text-destructive' : 'text-primary')}>{result}{leg?.actual_value != null ? ' · ' + leg.actual_value : ''}</span>}
+                  {(result || cancelled) && <span className={'text-xs font-bold shrink-0 ' + (result === 'miss' ? 'text-destructive' : 'text-primary')}>{cancelled ? 'Void' : result}{leg?.actual_value != null ? ' · ' + leg.actual_value : ''}</span>}
                 </button>;
               })}
             </div>
             {open ? <div className="p-3 border-t border-border flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">{selected.length} selected{changed ? ' · Unsaved changes' : saved.length ? ' · Saved' : ''}</p>
+              <p className="text-xs text-muted-foreground">{activeSelected} active pick{activeSelected === 1 ? '' : 's'}{changed ? ' · Unsaved changes' : saved.length ? ' · Saved' : ''}</p>
               <Button aria-label={'Save picks for ' + game.away_team?.abbr + ' at ' + game.home_team?.abbr} onClick={() => void saveGame(game.id,selected)} disabled={!changed || saving !== null} className="min-h-11 gap-2">
                 {saving === game.id ? <Clock3 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
                 {selected.length ? 'Save game picks' : 'Remove game picks'}

@@ -39,7 +39,7 @@ try {
       .eq('club_id', preview.clubId).eq('week_id', preview.weekId).abortSignal(AbortSignal.timeout(12_000));
     if (error) throw new Error(error.message);
     console.log(JSON.stringify({ uploaded: result.inserted, previouslyExisting: result.existing, verifiedWeekTotal: count,
-      availabilityRechecked: result.reviewed, paused: result.paused, locksAt: result.lock_at }));
+      availabilityRechecked: result.reviewed, advisories: result.paused, locksAt: result.lock_at }));
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : 'NFL board import failed.');

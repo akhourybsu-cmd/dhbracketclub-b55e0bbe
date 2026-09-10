@@ -30,7 +30,7 @@ export function CrazyChainBoardImport({ weekId, onPublished }: { weekId: string;
     setError(null);
     try {
       const result = await publishChainBoard(supabase, preview);
-      toast.success(`${result.inserted} new predictions · ${result.reviewed} availability checks · ${result.paused} paused.`);
+      toast.success(`${result.inserted} new predictions · ${result.reviewed} availability checks · ${result.paused} advisories.`);
       setPreview(null);
       void queryClient.invalidateQueries({ queryKey: ['crazy-chain-board-weeks'] });
       void queryClient.invalidateQueries({ queryKey: ['crazy-chain-board-state'] });
@@ -43,9 +43,9 @@ export function CrazyChainBoardImport({ weekId, onPublished }: { weekId: string;
   return (
     <section className="glass-card p-4 space-y-3">
       <div className="flex items-center gap-2"><Download className="w-4 h-4 text-gold" /><h2 className="text-[13px] font-extrabold">Load weekly predictions</h2></div>
-      <p className="text-xs text-muted-foreground leading-relaxed">Import the week's matchups and available starting quarterbacks, running backs, receivers, and tight ends. Injured or unverified players are skipped. Targets are club challenges, with one target per player statistic.</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">Import the week's matchups and available starting quarterbacks, running backs, receivers, and tight ends. Questionable or doubtful starters remain selectable with an advisory. Confirmed unavailable or unidentified starters are omitted. Targets are club challenges, with one target per player statistic.</p>
       <p className="text-xs text-muted-foreground">Verified final team and supported player stats score automatically. Commissioners review missing stats and non-participation.</p>
-      <p className="text-xs text-muted-foreground">New predictions require more than 30 minutes before kickoff. Injury checks continue until kickoff without changing saved targets or results. Missing data never scores a zero.</p>
+      <p className="text-xs text-muted-foreground">New predictions require more than 30 minutes before kickoff. The separate pregame checker cancels picks for confirmed absences until kickoff, without a chain penalty. Uncertainty alone leaves picks intact. Missing data never scores a zero.</p>
       <Button variant="outline" onClick={load} disabled={busy || !weekId} className="w-full min-h-11">
         {busy && !preview ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
         {progress || 'Preview weekly board'}

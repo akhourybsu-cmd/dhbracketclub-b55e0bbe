@@ -1,5 +1,7 @@
 // ESPN supplies the schedule and player identities. These thresholds are DH Club
 // challenge targets, not provider projections. Never manufacture a missing starter.
+import { confirmedAbsenceStatus } from './chainEligibility.ts';
+
 export const NFL_DATA_BASE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl';
 
 type Injury = { status?: string; type?: { name?: string; description?: string; abbreviation?: string } };
@@ -29,6 +31,7 @@ export interface BoardPlayer {
   externalId: string;
   name: string;
   position: 'QB' | 'RB' | 'WR' | 'TE';
+  availabilityNote?: string;
 }
 
 export interface BoardTeam {
@@ -80,6 +83,7 @@ export interface BoardMarket {
   display_text: string;
   source_provider: string;
   external_id: string;
+  availability_note?: string | null;
 }
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE'] as const;
@@ -98,7 +102,7 @@ export function verifyPlayerAvailability(roster: EspnRoster, depth: EspnDepthCha
   const slots = (depth.depthchart || []).flatMap(chart => Object.values(chart.positions || {}));
   const starter = slots.map(slot => slot.athletes?.[0]).find(item => String(item?.id) === playerId);
   if (!starter) return 'Starting role needs commissioner review.';
-  if (uncertainInjury([...(player.injuries || []), ...(starter.injuries || [])])) return 'Injury or availability concern; new selections paused.';
+  if (uncertainInjury([...(player.injuries || []), ...(starter.injuries || [])])) return 'Injury or availability concern; you can still select this player.';
   return null;
 }
 
@@ -126,12 +130,14 @@ export function verifiedStarters(roster: EspnRoster, depth: EspnDepthChart, team
       if (!player || !player.displayName || seen.has(String(player.id))) continue;
       if (player.position?.abbreviation !== position || player.status?.type !== 'active') continue;
       const injuries = [...(starter?.injuries || []), ...(player.injuries || [])];
-      if (uncertainInjury(injuries)) {
-        warnings.push(`${player.displayName}: availability uncertain; omitted from new predictions.`);
+      if (injuries.some(injury => confirmedAbsenceStatus(injury))) {
+        warnings.push(`${player.displayName}: reported unavailable; omitted from new predictions.`);
         continue;
       }
+      if (uncertainInjury(injuries)) warnings.push(`${player.displayName}: availability uncertain; selectable with an injury advisory.`);
       seen.add(String(player.id));
-      players.push({ externalId: String(player.id), name: player.displayName, position: position as BoardPlayer['position'] });
+      players.push({ externalId: String(player.id), name: player.displayName, position: position as BoardPlayer['position'],
+        ...(uncertainInjury(injuries) ? { availabilityNote: 'Injury or availability concern; you can still select this player.' } : {}) });
     }
   }
   return { players, warnings };
@@ -189,6 +195,7 @@ export function buildBoardMarkets(clubId: string, games: BoardGame[], teams: Boa
         market_type: type, subject_label: label, subject_team_id: teamId,
         subject_external_id: athleteId, operator: type === 'team_win' ? 'eq' : 'gte', threshold,
         display_text: text, source_provider: 'espn-roster',
+        availability_note: (playersByTeam.get(teamId || '') || []).find(player => player.externalId === athleteId)?.availabilityNote || null,
         external_id: `dh-chain-v1:${game.external_id}:${athleteId || teamId || 'game'}:${type}:${threshold}`,
       });
     };

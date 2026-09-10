@@ -33,13 +33,13 @@ export default function CrazyChainHistoryPage() {
         return <article key={card.entry_id+card.game_id} className="glass-card overflow-hidden">
           <div className="p-3.5 border-b border-border flex items-start justify-between gap-3">
             <div><h2 className="text-sm font-bold">{away} @ {home}</h2><p className="text-xs text-muted-foreground mt-1">Week {card.week_number} · {format(new Date(card.kickoff_at),'MMM d, h:mm a')}</p></div>
-            <div className="text-right text-xs"><p className="font-bold">{card.status==='locked' ? card.game_status==='final' ? 'Stats pending' : 'Awaiting game' : card.status==='won' ? 'Perfect game' : card.status==='lost' ? 'Game missed' : 'Void'}</p>
+            <div className="text-right text-xs"><p className="font-bold">{card.voids===card.links_risked ? 'Voided · chain preserved' : card.status==='locked' ? card.game_status==='final' ? 'Stats pending' : 'Awaiting game' : card.status==='won' ? 'Perfect game' : card.status==='lost' ? 'Game missed' : 'Void'}</p>
               <p className="text-muted-foreground mt-1">{card.hits} hit · {card.misses} miss · {card.pending} pending</p></div>
           </div>
           <div className="divide-y divide-border">{entry?.legs.filter(leg=>leg.game_id===card.game_id).map(leg=>
             <div key={leg.id} className="px-3.5 py-3 flex items-start gap-3 text-xs">
               {leg.status==='hit' ? <Check className="w-4 h-4 shrink-0 text-primary" /> : leg.status==='miss' ? <X className="w-4 h-4 shrink-0 text-destructive" /> : <Clock3 className="w-4 h-4 shrink-0 text-muted-foreground" />}
-              <p className="flex-1 min-w-0">{leg.display_text}</p><span className="text-muted-foreground shrink-0">{leg.status}{leg.actual_value!=null?' · '+leg.actual_value:''}</span>
+              <div className="flex-1 min-w-0"><p>{leg.display_text}</p>{leg.status==='void' && <p className="text-muted-foreground mt-1">{leg.void_reason || 'Voided; no link earned and no chain penalty.'}</p>}</div><span className="text-muted-foreground shrink-0">{leg.status}{leg.actual_value!=null?' · '+leg.actual_value:''}</span>
             </div>)}</div>
         </article>;
       })}

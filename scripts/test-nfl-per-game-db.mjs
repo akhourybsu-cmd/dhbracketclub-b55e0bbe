@@ -2,6 +2,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import { runAvailabilityChecks } from './test-nfl-availability-db.mjs';
 process.on('uncaughtException',error=>{console.error(error.message,error.detail||'',error.where||'',error.query?.slice(Math.max(0,Number(error.position)-150),Number(error.position)+150)||'');process.exit(1);});
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
@@ -41,6 +42,9 @@ insert into nfl_games values
  ('${id(9)}','${id(8)}','${id(7)}','${id(5)}','${id(6)}',now()+interval '3 days','scheduled'),
  ('${id(10)}','${id(8)}','${id(7)}','${id(5)}','${id(6)}',now()+interval '6 days','scheduled');
 alter table nfl_games add column home_score integer,add column away_score integer,add column winner_team_id uuid;
+alter table nfl_games add column external_provider text default 'espn',add column external_id text;
+alter table nfl_teams add column external_provider text default 'espn',add column external_id text;
+update nfl_teams set external_id=case when id='${id(5)}' then '1' else '2' end;
 `);
 for(const file of ['20260907120000_nfl_pickem_integrity_and_privacy.sql','20260910150000_nfl_game_center_crazy_chain.sql',
   ...(process.argv.includes('--with-catch-up')?['20260910180000_crazy_chain_remaining_games.sql']:[]),
@@ -179,4 +183,5 @@ await check('saved snapshots grade independently of market edits',async()=>{
  assert.equal((await db.query('select status from nfl_chain_legs where market_id=$1',[first])).rows[0].status,'hit');
  assert.equal((await standing()).current_chain,4);
 });
+if(thirty) await runAvailabilityChecks({db,id,actor,save,publish,markets,standing,check});
 await db.close();console.log(`${passed} per-game database checks passed.`);
