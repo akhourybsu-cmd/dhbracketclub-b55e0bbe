@@ -8,12 +8,12 @@ const DURATION = 1300;
 const STAGES = [
   'Tuning broadcast feed…',
   'Loading season schedule…',
-  'Pick Center online',
+  'Game Center online',
 ];
 
 /**
- * One-time stadium-light boot intro for the Pick'em standalone shell.
- * Plays once per browser session on first entry into /pickem/*.
+ * One-time stadium-light boot intro for the NFL Game Center standalone shell.
+ * Plays once per browser session on first entry into /nfl/* or /pickem/*.
  * Matches the Nexus / RuneDelve "loading into another app" pattern.
  */
 export function PickemBoot() {
@@ -23,11 +23,11 @@ export function PickemBoot() {
 
   useEffect(() => {
     let played = false;
-    try { played = sessionStorage.getItem(BOOT_FLAG) === '1'; } catch {}
+    try { played = sessionStorage.getItem(BOOT_FLAG) === '1'; } catch { /* Storage can be disabled in privacy mode. */ }
     if (played) return;
 
     setShow(true);
-    try { sessionStorage.setItem(BOOT_FLAG, '1'); } catch {}
+    try { sessionStorage.setItem(BOOT_FLAG, '1'); } catch { /* The intro still works without persistence. */ }
 
     const start = performance.now();
     let raf = 0;
@@ -116,7 +116,7 @@ export function PickemBoot() {
             />
             <img
               src={pickemEmblem}
-              alt="Pick Center"
+              alt="NFL Game Center"
               width={104}
               height={104}
               className="relative w-[104px] h-[104px] object-contain"
@@ -135,7 +135,7 @@ export function PickemBoot() {
               className="text-[10px] font-extrabold uppercase tracking-[0.32em] mb-1.5"
               style={{ color: 'hsl(45 95% 60%)' }}
             >
-              ◆ DH · NFL Pick Center ◆
+              ◆ DH · NFL COMMAND DECK ◆
             </p>
             <h1
               className="text-[26px] font-black leading-none tracking-tight"
@@ -147,7 +147,7 @@ export function PickemBoot() {
                 textShadow: '0 0 24px hsl(45 95% 55% / 0.35)',
               }}
             >
-              Pick Center
+              NFL Game Center
             </h1>
             <p className="text-[10px] font-bold mt-1.5" style={{ color: 'hsl(150 12% 78%)' }}>
               Booting broadcast deck

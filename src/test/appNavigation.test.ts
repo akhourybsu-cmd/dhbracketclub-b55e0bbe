@@ -38,12 +38,15 @@ describe('shared app navigation', () => {
   it('keeps mobile hub context active on nested destinations', () => {
     expect(isMobilePrimaryActive('/events/123', '/club')).toBe(true);
     expect(isMobilePrimaryActive('/brackets', '/compete')).toBe(true);
+    expect(isMobilePrimaryActive('/nfl/crazy-chain', '/compete')).toBe(true);
+    expect(isMobilePrimaryActive('/pickem/week/2', '/compete')).toBe(true);
     expect(isMobilePrimaryActive('/chat', '/club')).toBe(false);
   });
 
   it('identifies immersive game routes without treating community routes as games', () => {
     expect(isGameShellRoute('/nexus/battle/1')).toBe(true);
     expect(isGameShellRoute('/workouts/log')).toBe(true);
+    expect(isGameShellRoute('/nfl/crazy-chain')).toBe(true);
     expect(isGameShellRoute('/chat')).toBe(false);
     expect(isGameShellRoute('/club')).toBe(false);
   });

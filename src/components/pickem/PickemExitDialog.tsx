@@ -4,8 +4,8 @@ import {
 } from '@/components/ui/alert-dialog';
 
 /**
- * "Exit Pick Center?" confirmation. Shown when the user taps the back arrow
- * on the Pick'em hub. Mirrors the Nexus/RuneDelve exit pattern so leaving
+ * "Exit NFL Game Center?" confirmation. Shown when the user taps the back arrow
+ * on the NFL hub. Mirrors the Nexus/RuneDelve exit pattern so leaving
  * the standalone module always feels deliberate.
  */
 export function PickemExitDialog({
@@ -26,15 +26,15 @@ export function PickemExitDialog({
       >
         <AlertDialogHeader>
           <AlertDialogTitle className="text-white text-lg font-black tracking-tight">
-            Exit Pick Center?
+            Exit NFL Game Center?
           </AlertDialogTitle>
           <AlertDialogDescription className="text-white/65 text-sm">
-            You'll head back to DH Club. Your picks are safe — come back anytime to lock more games.
+            You'll head back to DH Club. Your picks and Crazy Chain are safe — come back anytime.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel className="bg-white/5 border-white/15 text-white hover:bg-white/10">
-            Stay in Pick Center
+            Stay in Game Center
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}

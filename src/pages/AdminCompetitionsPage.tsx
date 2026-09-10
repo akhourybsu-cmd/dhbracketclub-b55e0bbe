@@ -9,7 +9,7 @@ export default function AdminCompetitionsPage() {
         Live Modules
       </p>
       <div className="space-y-2 mb-5">
-        <AdminSectionCard to="/pickem/admin" icon={Trophy} label="NFL Pick'em Admin" description="Seasons, weeks, games, scoring" color="gold" />
+        <AdminSectionCard to="/pickem/admin" icon={Trophy} label="NFL Game Center Admin" description="Seasons, weeks, games, scoring, and markets" color="gold" />
         <AdminSectionCard to="/drafts" icon={Bookmark} label="Drafts Hub" description="Manage drafts & league seasons" color="accent" />
       </div>
 

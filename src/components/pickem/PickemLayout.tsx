@@ -3,11 +3,11 @@ import { PickemHUD } from './PickemHUD';
 import { PickemBoot } from './PickemBoot';
 
 /**
- * Full-screen standalone shell for the Pick'em module. Applies the
+ * Full-screen standalone shell for NFL Game Center. Applies the
  * `.pk-mode` skin to the entire viewport, mounts the in-game HUD, and
- * plays the one-time boot overlay on first entry into /pickem/*.
+ * plays the one-time boot overlay on first entry into /nfl/* or /pickem/*.
  *
- * AppLayout hides the DH Club bottom nav and sidebar while any /pickem/*
+ * AppLayout hides the DH Club bottom nav and sidebar while any Game Center
  * route is active, so this shell owns the full viewport — exactly how
  * Nexus Defense and Rune Delve work.
  */

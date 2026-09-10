@@ -6,8 +6,8 @@ import { useActiveSeason, useCurrentWeek } from '@/hooks/usePickem';
 import { PickemExitDialog } from './PickemExitDialog';
 
 /**
- * Sticky in-game HUD for the Pick'em standalone shell.
- * Replaces the DH Club page header while inside /pickem/*.
+ * Sticky in-game HUD for the NFL Game Center standalone shell.
+ * Replaces the DH Club page header throughout /nfl/* and legacy /pickem/*.
  * Mirrors the Nexus / RuneDelve HUD pattern.
  */
 export function PickemHUD() {
@@ -18,20 +18,27 @@ export function PickemHUD() {
   const { week } = useCurrentWeek(season);
   const [exitOpen, setExitOpen] = useState(false);
 
-  const isHub = location.pathname === '/pickem';
-  const isStandings = location.pathname.startsWith('/pickem/standings');
+  const path = location.pathname;
+  const isHub = path === '/nfl';
+  const isChain = path.startsWith('/nfl/crazy-chain');
+  const isStandings = path.startsWith('/pickem/standings') || path === '/nfl/crazy-chain/leaderboard';
 
   // Contextual subtitle per route
   const subtitle = (() => {
-    const p = location.pathname;
-    if (p === '/pickem') return 'Weekly Slate';
+    const p = path;
+    if (p === '/nfl') return 'Scores · Pick’em · Crazy Chain';
+    if (p === '/nfl/crazy-chain') return 'Build Your Weekly Run';
+    if (p === '/nfl/crazy-chain/leaderboard') return 'Chain Leaders';
+    if (p === '/nfl/crazy-chain/history') return 'Your Chain History';
+    if (p.startsWith('/nfl/admin/crazy-chain')) return 'Crazy Chain · Commissioner';
+    if (p === '/pickem') return 'Weekly Pick’em Slate';
     if (p.startsWith('/pickem/week/') && p.endsWith('/results')) return 'Final Recap';
     if (p.startsWith('/pickem/week/')) return 'Lock Your Picks';
     if (p.startsWith('/pickem/standings')) return 'Standings Race';
     if (p.startsWith('/pickem/history')) return 'Pick History';
     if (p.startsWith('/pickem/rules')) return 'Playbook · How to Play';
     if (p.startsWith('/pickem/admin')) return 'Pick Center · Admin';
-    return 'Pick Center';
+    return 'NFL Command Deck';
   })();
 
   // Week chip — derived from URL when on a week page, otherwise current week
@@ -46,10 +53,18 @@ export function PickemHUD() {
   const handleBack = () => {
     if (isHub) {
       setExitOpen(true);
-    } else {
+    } else if (path === '/pickem' || path === '/nfl/crazy-chain' || path.startsWith('/nfl/admin/')) {
+      navigate('/nfl');
+    } else if (path.startsWith('/pickem/')) {
       navigate('/pickem');
+    } else if (isChain) {
+      navigate('/nfl/crazy-chain');
+    } else {
+      navigate('/nfl');
     }
   };
+
+  const standingsPath = isChain ? '/nfl/crazy-chain/leaderboard' : '/pickem/standings';
 
   return (
     <>
@@ -68,13 +83,13 @@ export function PickemHUD() {
           <button
             type="button"
             onClick={handleBack}
-            aria-label={isHub ? 'Exit Pick Center' : 'Back to Pick Center'}
+            aria-label={isHub ? 'Exit NFL Game Center' : 'Back in NFL Game Center'}
             className="w-11 h-11 rounded-xl flex items-center justify-center btn-press text-white/90 active:text-gold"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <Link to="/pickem" className="flex-1 min-w-0 flex items-center gap-2.5 btn-press">
+          <Link to="/nfl" className="flex-1 min-w-0 flex items-center gap-2.5 btn-press">
             <span
               className="relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
               style={{
@@ -98,7 +113,7 @@ export function PickemHUD() {
                 className="text-[12px] font-black uppercase tracking-[0.18em] truncate"
                 style={{ color: 'hsl(45 95% 60%)' }}
               >
-                Pick Center
+                NFL Game Center
               </p>
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/60 truncate">
                 {subtitle}
@@ -121,7 +136,7 @@ export function PickemHUD() {
 
           {!isStandings && !isHub && (
             <Link
-              to="/pickem/standings"
+              to={standingsPath}
               aria-label="Standings"
               className="w-9 h-9 rounded-lg flex items-center justify-center btn-press"
               style={{

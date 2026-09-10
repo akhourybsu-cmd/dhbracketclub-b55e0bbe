@@ -128,21 +128,22 @@ const REGISTRY: Record<string, FeatureOnboarding> = {
 
   'nfl-pickem': {
     featureKey: 'nfl-pickem',
-    displayName: "NFL Pick'em",
-    shortDescription: 'Weekly NFL game predictions.',
+    displayName: 'NFL Game Center',
+    shortDescription: 'Scores, weekly Pick’em, and Crazy Chain.',
     featureType: 'game',
     importance: 'important',
     version: 1,
     iconKey: 'Trophy',
     tags: ['Weekly', 'Sports'],
-    onboardingTitle: "Welcome to NFL Pick'em",
-    onboardingSummary: 'Pick every NFL game each week. Climb your club leaderboard.',
+    onboardingTitle: 'Welcome to NFL Game Center',
+    onboardingSummary: 'Follow the slate, pick every game, and build a season-long Crazy Chain.',
     onboardingSteps: [
       { title: 'Pick before kickoff', body: 'Every game locks at kickoff. Late picks default to no-selection.', iconKey: 'Clock' },
       { title: 'Score moves season-long', body: 'Correct picks score. Wrong picks hurt. The leaderboard updates live.', iconKey: 'TrendingUp' },
-      { title: 'See the sharpest in your club', body: 'Weekly + season standings show who\'s actually good at this.', iconKey: 'Trophy' },
+      { title: 'Build a Crazy Chain', body: 'Choose as many weekly predictions as you want. Hit every leg to add them all; one miss resets the run.', iconKey: 'Link2' },
+      { title: 'See the sharpest in your club', body: 'Pick’em and Crazy Chain leaderboards track two different kinds of NFL mastery.', iconKey: 'Trophy' },
     ],
-    primaryCta: { label: "Open NFL Pick'em", route: '/pickem' },
+    primaryCta: { label: 'Open NFL Game Center', route: '/nfl' },
   },
 
   'brackets': {

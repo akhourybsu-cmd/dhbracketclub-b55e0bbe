@@ -29,6 +29,9 @@ verify_jwt = false
 [functions.score-nfl-week]
 verify_jwt = false
 
+[functions.score-nfl-crazy-chain]
+verify_jwt = false
+
 [functions.celebrations-daily]
 verify_jwt = false
 

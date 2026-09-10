@@ -5837,6 +5837,336 @@ export type Database = {
           },
         ]
       }
+      nfl_chain_entries: {
+        Row: {
+          club_id: string
+          created_at: string
+          hit_legs: number
+          id: string
+          links_risked: number
+          links_won: number
+          locked_at: string
+          missed_legs: number
+          season_id: string
+          settled_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          void_legs: number
+          week_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          hit_legs?: number
+          id?: string
+          links_risked: number
+          links_won?: number
+          locked_at?: string
+          missed_legs?: number
+          season_id: string
+          settled_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          void_legs?: number
+          week_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          hit_legs?: number
+          id?: string
+          links_risked?: number
+          links_won?: number
+          locked_at?: string
+          missed_legs?: number
+          season_id?: string
+          settled_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          void_legs?: number
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfl_chain_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_entries_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_entries_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfl_chain_legs: {
+        Row: {
+          actual_value: number | null
+          created_at: string
+          display_text: string
+          entry_id: string
+          id: string
+          market_id: string
+          market_type: string
+          operator: string
+          position: number
+          settled_at: string | null
+          status: string
+          subject_label: string
+          threshold: number
+        }
+        Insert: {
+          actual_value?: number | null
+          created_at?: string
+          display_text: string
+          entry_id: string
+          id?: string
+          market_id: string
+          market_type: string
+          operator: string
+          position: number
+          settled_at?: string | null
+          status?: string
+          subject_label: string
+          threshold: number
+        }
+        Update: {
+          actual_value?: number | null
+          created_at?: string
+          display_text?: string
+          entry_id?: string
+          id?: string
+          market_id?: string
+          market_type?: string
+          operator?: string
+          position?: number
+          settled_at?: string | null
+          status?: string
+          subject_label?: string
+          threshold?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfl_chain_legs_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_chain_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_legs_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_chain_markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfl_chain_markets: {
+        Row: {
+          actual_value: number | null
+          club_id: string
+          created_at: string
+          created_by: string | null
+          display_text: string
+          external_id: string | null
+          game_id: string
+          id: string
+          market_type: string
+          operator: string
+          result: boolean | null
+          season_id: string
+          settled_at: string | null
+          settled_by: string | null
+          source_provider: string
+          status: string
+          subject_external_id: string | null
+          subject_label: string
+          subject_team_id: string | null
+          threshold: number
+          updated_at: string
+          week_id: string
+        }
+        Insert: {
+          actual_value?: number | null
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          display_text: string
+          external_id?: string | null
+          game_id: string
+          id?: string
+          market_type: string
+          operator?: string
+          result?: boolean | null
+          season_id: string
+          settled_at?: string | null
+          settled_by?: string | null
+          source_provider?: string
+          status?: string
+          subject_external_id?: string | null
+          subject_label: string
+          subject_team_id?: string | null
+          threshold: number
+          updated_at?: string
+          week_id: string
+        }
+        Update: {
+          actual_value?: number | null
+          club_id?: string
+          created_at?: string
+          created_by?: string | null
+          display_text?: string
+          external_id?: string | null
+          game_id?: string
+          id?: string
+          market_type?: string
+          operator?: string
+          result?: boolean | null
+          season_id?: string
+          settled_at?: string | null
+          settled_by?: string | null
+          source_provider?: string
+          status?: string
+          subject_external_id?: string | null
+          subject_label?: string
+          subject_team_id?: string | null
+          threshold?: number
+          updated_at?: string
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfl_chain_markets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_markets_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_markets_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_markets_subject_team_id_fkey"
+            columns: ["subject_team_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_markets_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nfl_chain_standings: {
+        Row: {
+          best_chain: number
+          busted_cards: number
+          club_id: string
+          current_chain: number
+          id: string
+          last_settled_week: number | null
+          longest_card: number
+          perfect_weeks: number
+          rank: number | null
+          season_id: string
+          total_cards: number
+          total_hit_legs: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_chain?: number
+          busted_cards?: number
+          club_id: string
+          current_chain?: number
+          id?: string
+          last_settled_week?: number | null
+          longest_card?: number
+          perfect_weeks?: number
+          rank?: number | null
+          season_id: string
+          total_cards?: number
+          total_hit_legs?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_chain?: number
+          busted_cards?: number
+          club_id?: string
+          current_chain?: number
+          id?: string
+          last_settled_week?: number | null
+          longest_card?: number
+          perfect_weeks?: number
+          rank?: number | null
+          season_id?: string
+          total_cards?: number
+          total_hit_legs?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfl_chain_standings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_standings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_standings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfl_games: {
         Row: {
           away_score: number | null
@@ -9963,6 +10293,22 @@ export type Database = {
       get_bracket_pool_id: { Args: { _bracket_id: string }; Returns: string }
       get_club_password: { Args: { _club_id: string }; Returns: string }
       is_app_admin: { Args: { _user_id: string }; Returns: boolean }
+      rebuild_nfl_chain_standings: {
+        Args: { _club_id: string; _season_id: string }
+        Returns: undefined
+      }
+      save_nfl_chain_card: {
+        Args: { _market_ids: string[]; _week_id: string }
+        Returns: Json
+      }
+      settle_nfl_chain_market: {
+        Args: {
+          _actual_value?: number | null
+          _market_id: string
+          _void?: boolean
+        }
+        Returns: Json
+      }
       is_club_admin: {
         Args: { _club: string; _user: string }
         Returns: boolean

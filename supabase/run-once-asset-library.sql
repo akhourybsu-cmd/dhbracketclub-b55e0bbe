@@ -124,9 +124,9 @@ values
    'Defend the club nexus against endless waves of enemies. Members place towers, coordinate strategy, and earn defense points that roll into the weekly club standings.',
    'Shield', 'games', false, false, 30),
 
-  ('NFL Pick''em',   'nfl-pickem',     'games',
-   'Weekly NFL game predictions',
-   'Members submit picks for NFL games each week before kickoff. Correct picks earn points; wrong ones hurt. A running leaderboard tracks the sharpest analysts in your club all season.',
+  ('NFL Game Center', 'nfl-pickem',    'games',
+   'NFL scores, weekly Pick''em, and Crazy Chain',
+   'Your club''s NFL headquarters: follow the weekly slate, make Pick''em selections, build all-or-nothing Crazy Chains, and chase season records.',
    'Trophy', 'games', false, false, 40),
 
   ('Brackets',       'brackets',       'games',

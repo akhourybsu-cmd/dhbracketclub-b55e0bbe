@@ -209,12 +209,33 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
+    // Keep Crazy Chain settlement attached to the existing score pipeline.
+    // A deployment lag or optional-chain error must never block Pick'em scoring.
+    let crazyChain: unknown = null;
+    try {
+      const chainResponse = await fetch(`${supabaseUrl}/functions/v1/score-nfl-crazy-chain`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+        },
+        body: JSON.stringify({ week_id: weekId }),
+      });
+      crazyChain = await chainResponse.json().catch(() => ({ ok: false, error: `HTTP ${chainResponse.status}` }));
+      if (!chainResponse.ok) console.warn('Crazy Chain scoring was deferred', crazyChain);
+    } catch (chainError) {
+      crazyChain = { ok: false, error: (chainError as Error).message };
+      console.warn('Crazy Chain scoring was deferred', chainError);
+    }
+
     return json({
       ok: true,
       scored_picks: changedPicks.length,
       scored_users: weeklyRows.length,
       scored_clubs: weeklyByClub.size,
       week_status: allFinal ? 'scored' : week.status,
+      crazy_chain: crazyChain,
     });
   } catch (error) {
     console.error('score-nfl-week error', error);

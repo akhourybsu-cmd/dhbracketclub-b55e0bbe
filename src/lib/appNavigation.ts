@@ -72,7 +72,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
       { path: '/drafts', label: 'Draft Arena', icon: Bookmark },
       { path: '/rune-delve', label: 'Rune Delve', icon: Sparkles },
       { path: '/nexus', label: 'Nexus Defense', icon: Shield },
-      { path: '/pickem', label: "NFL Pick'em", icon: Trophy },
+      { path: '/nfl', label: 'NFL Game Center', icon: Trophy },
       { path: '/brackets', label: 'Brackets', icon: BracketsIcon },
       { path: '/portfolio-wars', label: 'Portfolio Wars', icon: TrendingUp },
       { path: '/lockbox', label: 'Lockbox', icon: Lock },
@@ -114,6 +114,8 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/rankings/, 'Rankings'],
   [/^\/shared/, 'Shared Media'],
   [/^\/celebrations/, 'Celebrations'],
+  [/^\/nfl/, 'NFL Game Center'],
+  [/^\/pickem/, 'NFL Game Center'],
   [/^\/brackets/, 'Brackets'],
   [/^\/pools/, 'Pools'],
   [/^\/admin/, 'Admin'],
@@ -145,7 +147,9 @@ export function isMobilePrimaryActive(pathname: string, path: string): boolean {
     return pathname === path || CLUB_LIFE_PREFIXES.some((prefix) => isRouteActive(pathname, prefix));
   }
   if (path === '/compete') {
-    return pathname === path || COMPETE_PREFIXES.some((prefix) => isRouteActive(pathname, prefix));
+    return pathname === path
+      || pathname.startsWith('/pickem')
+      || COMPETE_PREFIXES.some((prefix) => isRouteActive(pathname, prefix));
   }
   return isRouteActive(pathname, path);
 }
@@ -153,6 +157,7 @@ export function isMobilePrimaryActive(pathname: string, path: string): boolean {
 export const GAME_SHELL_PREFIXES = [
   '/rune-delve',
   '/nexus',
+  '/nfl',
   '/pickem',
   '/drafts',
   '/portfolio-wars',

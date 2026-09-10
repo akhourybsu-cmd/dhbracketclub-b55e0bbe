@@ -278,7 +278,7 @@ function DraftArenaEnterBanner({ season, entries, totalDrafts, myUserId }: {
   );
 }
 
-/* ── NFL Pick'em banner ── */
+/* ── NFL Game Center banner ── */
 function PickemCompeteCard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -328,11 +328,11 @@ function PickemCompeteCard() {
     : season.status === 'upcoming' ? 'Season kicks off soon — open to preview the schedule'
     : isLive ? (noPicksYet ? `${weekLabel} · Tap to make your picks (${totalGames} games)` : remaining > 0 ? `${weekLabel} · ${remaining} of ${totalGames} games left to pick` : `${weekLabel} · Locked in — tap to track live scores`)
     : `${season.name} · Tap to view final standings`;
-  const ctaLabel = !season ? 'Open Pick Center' : season.status === 'upcoming' ? 'Preview Season' : isLive ? (allLocked ? 'Track Live' : noPicksYet ? 'Make My Picks' : 'Finish My Picks') : 'View Standings';
+  const ctaLabel = !season ? 'Open Game Center' : season.status === 'upcoming' ? 'Preview Season' : isLive ? (allLocked ? 'Track Live' : noPicksYet ? 'Make My Picks' : 'Finish My Picks') : 'View Game Center';
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-      <Link to="/pickem" className="block">
+      <Link to="/nfl" className="block">
         <div className="relative overflow-hidden rounded-2xl btn-press"
           style={{
             background:
@@ -350,12 +350,12 @@ function PickemCompeteCard() {
             <div className="relative flex-shrink-0">
               <div aria-hidden className="absolute inset-0 rounded-full"
                 style={{ background: 'radial-gradient(circle, hsl(45 95% 55% / 0.5), transparent 65%)', filter: 'blur(10px)', transform: 'scale(1.15)' }} />
-              <img src={pickemEmblem} alt="NFL Pick Center" width={96} height={96} loading="lazy" decoding="async"
+              <img src={pickemEmblem} alt="NFL Game Center" width={96} height={96} loading="lazy" decoding="async"
                 className="relative w-[88px] h-[88px] object-contain drop-shadow-[0_4px_18px_hsl(45_95%_50%/0.55)]" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(45 95% 65%)' }}>◆ NFL Pick'em</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(45 95% 65%)' }}>◆ NFL</span>
                 {loading ? (
                   <span aria-hidden className="inline-block h-2.5 w-10 rounded-full pk-skeleton" />
                 ) : isLive ? (
@@ -364,7 +364,7 @@ function PickemCompeteCard() {
               </div>
               <h2 className="font-extrabold text-[22px] leading-none tracking-tight mb-1.5"
                 style={{ background: 'linear-gradient(180deg, hsl(45 30% 98%), hsl(45 95% 65%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                Pick Center
+                Game Center
               </h2>
               <div className="mb-2.5 h-3.5 flex items-center">
                 {loading ? <span aria-hidden className="inline-block h-2.5 w-44 max-w-full rounded-full pk-skeleton" />

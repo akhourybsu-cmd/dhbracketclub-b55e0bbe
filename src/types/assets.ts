@@ -51,6 +51,7 @@ export const NAV_ASSET_SLUGS: Record<string, string> = {
   '/readshift':       'readshift',
   '/rune-delve':      'rune-delve',
   '/nexus':           'nexus-defense',
+  '/nfl':             'nfl-pickem',
   '/pickem':          'nfl-pickem',
   '/brackets':        'brackets',
   '/portfolio-wars':  'portfolio-wars',

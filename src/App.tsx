@@ -73,6 +73,11 @@ const PickemStandingsPage = lazyWithRetry(() => import("./pages/PickemStandingsP
 const PickemHistoryPage = lazyWithRetry(() => import("./pages/PickemHistoryPage"));
 const PickemRulesPage = lazyWithRetry(() => import("./pages/PickemRulesPage"));
 const PickemAdminPage = lazyWithRetry(() => import("./pages/PickemAdminPage"));
+const NFLGameCenterPage = lazyWithRetry(() => import("./pages/NFLGameCenterPage"));
+const CrazyChainPage = lazyWithRetry(() => import("./pages/CrazyChainPage"));
+const CrazyChainLeaderboardPage = lazyWithRetry(() => import("./pages/CrazyChainLeaderboardPage"));
+const CrazyChainHistoryPage = lazyWithRetry(() => import("./pages/CrazyChainHistoryPage"));
+const CrazyChainAdminPage = lazyWithRetry(() => import("./pages/CrazyChainAdminPage"));
 const RuneDelveHomePage = lazyWithRetry(() => import("./pages/RuneDelveHomePage"));
 const RuneDelveLevelMapPage = lazyWithRetry(() => import("./pages/RuneDelveLevelMapPage"));
 const RuneDelvePlayPage = lazyWithRetry(() => import("./pages/RuneDelvePlayPage"));
@@ -251,7 +256,13 @@ function AnimatedRoutes() {
         <Route path="/readshift/create" element={<ProtectedPage assetSlug="readshift"><ReadshiftLayout><CreateReadshiftPage /></ReadshiftLayout></ProtectedPage>} />
         <Route path="/readshift/:gameId" element={<ProtectedPage assetSlug="readshift"><ReadshiftLayout><ReadshiftGamePage /></ReadshiftLayout></ProtectedPage>} />
 
-        {/* NFL Pick'em module — standalone shell (own boot, HUD, no DH chrome) */}
+        {/* NFL Game Center — Pick'em compatibility routes plus Crazy Chain */}
+        <Route path="/nfl" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><NFLGameCenterPage /></PickemLayout></ProtectedPage>} />
+        <Route path="/nfl/pickem" element={<Navigate to="/pickem" replace />} />
+        <Route path="/nfl/crazy-chain" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><CrazyChainPage /></PickemLayout></ProtectedPage>} />
+        <Route path="/nfl/crazy-chain/leaderboard" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><CrazyChainLeaderboardPage /></PickemLayout></ProtectedPage>} />
+        <Route path="/nfl/crazy-chain/history" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><CrazyChainHistoryPage /></PickemLayout></ProtectedPage>} />
+        <Route path="/nfl/admin/crazy-chain" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><CrazyChainAdminPage /></PickemLayout></ProtectedPage>} />
         <Route path="/pickem" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><PickemHomePage /></PickemLayout></ProtectedPage>} />
         <Route path="/pickem/week/:weekNumber" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><PickemWeekPage /></PickemLayout></ProtectedPage>} />
         <Route path="/pickem/week/:weekNumber/results" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><PickemWeekResultsPage /></PickemLayout></ProtectedPage>} />

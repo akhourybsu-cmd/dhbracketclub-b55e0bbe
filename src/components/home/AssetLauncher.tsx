@@ -49,7 +49,7 @@ const ASSET_META: Record<string, TileMeta> = {
   'draft-arena':    { to: '/drafts',          emblem: draftEmblem,    tint: '45 95% 55%' },
   'rune-delve':     { to: '/rune-delve',      emblem: runedelveEmblem, tint: '152 70% 55%' },
   'nexus-defense':  { to: '/nexus',           emblem: nexusEmblem,    tint: '195 90% 60%' },
-  'nfl-pickem':     { to: '/pickem',          emblem: pickemEmblem,   tint: '0 80% 60%' },
+  'nfl-pickem':     { to: '/nfl',             emblem: pickemEmblem,   tint: '0 80% 60%' },
   'portfolio-wars': { to: '/portfolio-wars',  icon: TrendingUp,       tint: '152 80% 55%' },
   'brackets':       { to: '/brackets',        icon: Trophy,           tint: '210 80% 60%' },
   'lockbox':        { to: '/lockbox',         icon: Lock,             tint: '0 80% 60%' },
