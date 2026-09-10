@@ -49,6 +49,7 @@ export interface BoardGame {
   away_team_id: string;
   kickoff_at: string;
   chain_lock_at?: string | null;
+  crazy_chain_lock_at?: string | null;
   status: string;
 }
 

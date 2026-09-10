@@ -2,6 +2,7 @@
 // commissioner JWT + week_id for an explicit refresh of their own club only.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { collectChainBoard } from '../_shared/chainBoardPipeline.ts';
+import { chainGameLockAt } from '../_shared/chainGameRules.ts';
 
 const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,apikey,content-type,x-client-info,x-cron-secret' };
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...headers, 'Content-Type': 'application/json' } });
@@ -67,7 +68,8 @@ Deno.serve(async req => {
             // Every 6h normally; every 30m within a day of any remaining kickoff.
             const nearKickoff = remaining.some(game => {
               const untilKickoff=Date.parse(game.kickoff_at)-Date.now();
-              return untilKickoff<86400_000 || (untilKickoff>48*3600_000 && untilKickoff<72*3600_000);
+              const untilDeadline=chainGameLockAt(game)-Date.now();
+              return untilKickoff<86400_000 || (untilDeadline>0 && untilDeadline<86400_000);
             });
             const interval = nearKickoff ? 25 * 60_000 : 6 * 3600_000;
             if (scheduled && board.data?.checked_at && Date.now() - Date.parse(board.data.checked_at) < interval) continue;

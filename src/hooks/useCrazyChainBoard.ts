@@ -4,17 +4,17 @@ import { useClub } from '@/contexts/ClubContext';
 import { supabase } from '@/integrations/supabase/client';
 import { withTimeout, QUERY_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { chainRpc } from '@/lib/nfl/chainBoardImport';
-import { useWeekLock, type NflGame, type NflSeason } from '@/hooks/usePickem';
+import type { NflGame, NflSeason } from '@/hooks/usePickem';
+import { chainGameIsOpen, chainGameLockAt } from '../../supabase/functions/_shared/chainGameRules';
 
 interface BoardState {
-  mode?: 'per_game_48h'; games?: { game_id: string; lock_at: string; unlocked: boolean }[];
-  lock_at: string; unlocked: boolean; catch_up: boolean; game_ids: string[];
+  mode?: 'per_game_48h' | 'per_game_30m'; games?: { game_id: string; lock_at: string; unlocked: boolean }[];
+  lock_at: string | null; unlocked: boolean; catch_up: boolean; game_ids: string[];
   checked_at: string | null; warnings: string[];
 }
 
-export function useCrazyChainBoard(weekId: string | undefined, games: NflGame[], season?: NflSeason | null) {
+export function useCrazyChainBoard(weekId: string | undefined, games: NflGame[], _season?: NflSeason | null) {
   const { club } = useClub();
-  const legacy = useWeekLock(games, season);
   const [now, setNow] = useState(Date.now);
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 15_000); return () => window.clearInterval(timer); }, []);
   const query = useQuery({
@@ -28,12 +28,14 @@ export function useCrazyChainBoard(weekId: string | undefined, games: NflGame[],
       if (error && /schema cache|does not exist/.test(error.message)) return { ready: false, board: null };
       if (error) throw new Error(error.message);
       const board = data as unknown as BoardState | null;
-      return { ready: board?.mode === 'per_game_48h', board };
+      return { ready: board?.mode === 'per_game_30m', board };
     },
   });
   const board = query.data?.board;
-  const lockAt = board?.lock_at ? new Date(board.lock_at) : legacy.lockAt;
-  return { board, migrationReady: query.data?.ready || false, lockAt, now,
-    locked: !!query.error || !query.data?.ready || legacy.locked,
+  const deadlines = games.filter(game => chainGameIsOpen(game,now)).map(chainGameLockAt);
+  const lockAt = board?.lock_at ? new Date(board.lock_at) : deadlines.length ? new Date(Math.min(...deadlines)) : null;
+  return { board, migrationReady: query.data?.ready || false,
+    pickemMigrationReady: board?.mode === 'per_game_48h' || board?.mode === 'per_game_30m', lockAt, now,
+    locked: !!query.error || !query.data?.ready || !board?.unlocked || deadlines.length === 0,
     loading: query.isLoading, error: query.error, refetch: query.refetch };
 }

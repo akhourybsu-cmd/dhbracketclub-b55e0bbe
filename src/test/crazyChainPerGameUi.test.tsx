@@ -2,7 +2,7 @@ import {beforeEach,describe,it,expect,vi} from 'vitest';
 import {fireEvent,render,screen,waitFor,cleanup} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
-const state=vi.hoisted(()=>({save:vi.fn().mockResolvedValue({}),ready:true,entry:null as null|{legs:unknown[]},now:Date.parse('2026-09-10T12:00:00Z')}));
+const state=vi.hoisted(()=>({save:vi.fn().mockResolvedValue({}),ready:true,entry:null as null|{legs:unknown[]},now:Date.parse('2026-09-10T19:30:00Z')}));
 const fixtures=vi.hoisted(()=>{
  const team=(id:string)=>({id,abbr:id,city:id,name:id});
  const game=(id:string,kickoff_at:string,status:string)=>({id,week_id:'week',season_id:'season',kickoff_at,status,
@@ -15,14 +15,21 @@ vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({user:{id:'me'}})}));
 vi.mock('@/hooks/usePickem',()=>({useActiveSeason:()=>({season:fixtures.season}),useWeekGames:()=>({games:fixtures.games,refetch:vi.fn()})}));
 vi.mock('@/hooks/useCrazyChainWeeks',()=>({useCrazyChainWeeks:()=>({weeks:fixtures.weeks}),chooseChainBoardWeek:()=>fixtures.weeks[0]}));
 vi.mock('@/hooks/useCrazyChainBoard',()=>({useCrazyChainBoard:()=>({migrationReady:state.ready,now:state.now,
- board:{games:[{game_id:'thursday',unlocked:false},{game_id:'sunday',unlocked:true}]}})}));
+ board:{games:[{game_id:'thursday',unlocked:state.now<Date.parse('2026-09-10T19:30:00Z')},{game_id:'sunday',unlocked:true}]}})}));
 vi.mock('@/hooks/useCrazyChain',()=>({saveCrazyChainGame:state.save,
  useCrazyChainMarkets:()=>({markets:fixtures.markets}),useMyCrazyChainEntry:()=>({entry:state.entry,refetch:vi.fn().mockResolvedValue({})}),
  useCrazyChainStandings:()=>({standings:[]}),useMyCrazyChainGameCards:()=>({cards:[]})}));
 import CrazyChainPage from '@/pages/CrazyChainPage';
 const ui=()=> <QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/nfl/crazy-chain?week=1']}><CrazyChainPage /></MemoryRouter></QueryClientProvider>;
-beforeEach(()=>{cleanup();state.save.mockClear();state.ready=true;state.entry=null;});
+beforeEach(()=>{cleanup();state.save.mockClear();state.ready=true;state.entry=null;state.now=Date.parse('2026-09-10T19:30:00Z');});
 describe('Independent Crazy Chain game controls',()=>{
+ it('lets members select Thursday until exactly 30 minutes before kickoff',()=>{
+  state.now=Date.parse('2026-09-10T19:29:59.999Z');const view=render(ui());
+  expect(screen.getByRole('button',{name:/thursday prediction/})).toBeEnabled();
+  expect(screen.getByText('Crazy Chain picks lock 30 minutes before kickoff.')).toBeInTheDocument();
+  state.now=Date.parse('2026-09-10T19:30:00Z');view.rerender(ui());
+  expect(screen.getByRole('button',{name:/thursday prediction/})).toBeDisabled();
+ });
  it('locks Thursday but saves Sunday selections independently',async()=>{
   render(ui());
   expect(screen.getByRole('button',{name:/thursday prediction/})).toBeDisabled();

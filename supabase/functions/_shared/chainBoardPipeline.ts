@@ -2,7 +2,7 @@ import {
   buildBoardMarkets, fetchNflData, validateBoardSlate, verifiedStarters, verifyPlayerAvailability,
   type BoardGame, type BoardTeam, type BoardPlayer, type EspnDepthChart, type EspnRoster, type EspnScoreboard,
 } from './chainBoardData.ts';
-import { chainGameIsOpen } from './chainGameRules.ts';
+import { chainGameIsOpen, CHAIN_LOCK_MINUTES } from './chainGameRules.ts';
 
 export interface ExistingChainMarket {
   id: string; game_id: string; subject_team_id: string | null; subject_external_id: string | null;
@@ -16,7 +16,7 @@ export async function collectChainBoard(input: {
   const startedAt = Date.now();
   progress?.('Verifying remaining matchups and kickoff times…');
   const scoreboard = await fetchNflData<EspnScoreboard>(`scoreboard?dates=${input.year}&seasontype=2&week=${input.weekNumber}`);
-  // Recheck injuries until kickoff, even after the 48-hour selection deadline.
+  // Recheck injuries until kickoff, even after the 30-minute selection deadline.
   const games = validateBoardSlate(scoreboard, input.games, input.teams, input.year, input.weekNumber, startedAt, true, 0);
   const publishable = games.filter(game => chainGameIsOpen(game, startedAt));
   const teamIds = [...new Set(games.flatMap(game => [game.home_team_id, game.away_team_id]))];
@@ -58,7 +58,7 @@ export async function collectChainBoard(input: {
     gameCount: publishable.length, checkedGameCount: games.length, skippedGames: input.games.length - publishable.length,
     playerCount: [...players.values()].reduce((sum, items) => sum + items.length, 0),
     createdAt: startedAt, warnings: warnings.sort(), availability,
-    gameIds: publishable.map(game => game.id), lockMinutes: 48 * 60,
+    gameIds: publishable.map(game => game.id), lockMinutes: CHAIN_LOCK_MINUTES,
     markets: buildBoardMarkets(input.clubId, publishable, input.teams, players),
   };
 }

@@ -94,11 +94,11 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
       <Link to="/nfl/crazy-chain/history" className="pk-tile p-3 flex items-center gap-2 text-sm"><History className="w-4 h-4 text-primary" /> My game results</Link>
     </div>
     <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs space-y-1">
-      <p className="font-bold">Every game locks 48 hours before kickoff.</p>
+      <p className="font-bold">Crazy Chain picks lock 30 minutes before kickoff.</p>
       <p className="text-muted-foreground">Final results refresh automatically. Chain steps follow kickoff order; games starting together are checked together. Missing stats stay pending for review.</p>
       <p className="text-muted-foreground">Custom club targets{board?.checked_at ? ' · Availability checked ' + format(new Date(board.checked_at),'MMM d, h:mm a') : ''}</p>
     </div>
-    {!loading && !migrationReady && <p role="alert" className="rounded-xl border border-primary/30 p-3 text-sm">The NFL per-game SQL update is required before new picks can be saved. Existing picks are preserved.</p>}
+    {!loading && !migrationReady && <p role="alert" className="rounded-xl border border-primary/30 p-3 text-sm">The Crazy Chain 30-minute SQL update is required before new picks can be saved. Existing picks are preserved.</p>}
     {cardsError && <p role="alert" className="text-sm text-destructive">{cardsError}</p>}
     {error ? <div className="glass-card p-4"><p role="alert" className="text-sm">{error}</p><Button className="mt-2" variant="outline" onClick={() => void Promise.all([refreshGames(),refreshMarkets(),refreshEntry(),refreshBoard()])}><RefreshCw className="w-4 h-4 mr-2" /> Retry</Button></div>
       : loading ? <div className="h-40 rounded-xl pk-skeleton" />
@@ -169,6 +169,6 @@ function GameHeader({game,open}:{game:NflGame;open:boolean}) {
       {game.status !== 'scheduled' && <span className="text-sm font-bold tabular-nums">{game.away_score ?? '—'}–{game.home_score ?? '—'} · {game.status}</span>}
     </div>
     <p className="text-xs text-muted-foreground">Kickoff {format(new Date(game.kickoff_at),'EEE, MMM d · h:mm a')}</p>
-    <p className="text-xs font-semibold">{open ? 'Pick by ' : 'Deadline: '}{format(new Date(chainGameLockAt(game)),'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
+    <p className="text-xs font-semibold">{open ? 'Pick by ' : 'Deadline: '}{format(new Date(chainGameLockAt(game)),'EEE, MMM d · h:mm a')} · 30m before kickoff</p>
   </div>;
 }

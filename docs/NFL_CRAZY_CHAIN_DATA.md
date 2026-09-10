@@ -2,6 +2,11 @@
 
 ## Activate this update
 
+Crazy Chain now closes **30 minutes before kickoff**. Weekly Pick’em and its
+featured-game tiebreaker remain at **48 hours**. If the previous per-game SQL is
+already installed, run only [Crazy Chain 30-minute SQL](sql/CRAZY_CHAIN_30_MINUTES.sql).
+Otherwise use the combined file below, which includes this change.
+
 1. Copy/paste the **entire** [combined SQL file](sql/NFL_PER_GAME_AND_LIVE.sql) into the project's SQL editor.
    It is transactional, rerunnable, and upgrades either the original Crazy Chain
    schema or the later catch-up schema. It preserves picks, leg IDs, and targets.
@@ -19,7 +24,7 @@
    ~~~
 
 3. Preview/publish Weeks 1 and 2 once in **Crazy Chain Control Room** to stamp fresh
-   player availability. Existing markets are not deleted; games inside 48 hours
+   player availability. Existing markets are not deleted; games inside 30 minutes
    remain visible but cannot receive new picks.
 4. Verify the protected **nfl-live-results** job is active, running every five minutes,
    and its latest run/function logs show success. SQL creates this job by reusing
@@ -47,14 +52,19 @@ the old deployed scorer can count provisional leaders as weekly winners.
 
 ## Deadlines — both games
 
-- Every matchup closes exactly **48 elapsed hours before kickoff** (UTC arithmetic;
-  each viewer sees the deadline in their local time). A Thursday 8:15 PM game
-  normally closes Tuesday 8:15 PM; daylight-saving transitions still use 48 hours.
-- Thursday closing does not freeze Sunday/Monday picks. Pick'em saves each team
+- **Crazy Chain:** every matchup closes exactly **30 minutes before kickoff**.
+  A Thursday 8:15 PM game closes Thursday 7:45 PM.
+- **Weekly Pick’em:** still closes **48 hours before kickoff**. The same Thursday
+  game closes Tuesday 8:15 PM. Both use elapsed time, displayed in the viewer’s
+  local timezone.
+- One game closing does not freeze other games. Pick'em saves each team
   selection immediately; Crazy Chain has a **Save game picks** button per matchup.
 - The Pick'em tiebreaker closes 48 hours before its featured game's kickoff.
-- Saved picks from before this rule change are retained, including picks on games
-  that are now inside the 48-hour cutoff. No new picks can be added to those games.
+- Saved picks and target snapshots are retained. Upcoming Crazy Chain games
+  previously inside the 48-hour window reopen if still before their 30-minute
+  deadline. Games already live/final, or inside 30 minutes, stay locked.
+- The database keeps separate frozen cutoffs: legacy `chain_lock_at` is Pick’em’s
+  unchanged 48-hour cutoff; `crazy_chain_lock_at` is Crazy Chain’s 30-minute cutoff.
 - Postponement never reopens a deadline. Earlier rescheduling closes it sooner.
 - Pick'em reveals each matchup's club percentages at its own deadline. Other
   games remain private. Crazy Chain's weekly storage envelope stays private
@@ -111,7 +121,7 @@ later members/weeks are not dropped by the API's row limit.
 
 In the Control Room, choose a week and **Preview weekly board**, then publish.
 Schedule matches and current-season roster/depth-chart identities are verified.
-New predictions are published only for games more than 48 hours away; injury
+New predictions are published only for games more than 30 minutes away; injury
 checks continue for already-published players until kickoff.
 
 These are custom DH Club challenge thresholds, **not ESPN projections or odds**:
@@ -140,10 +150,10 @@ DH_NFL_EMAIL / DH_NFL_PASSWORD; .env holds the public app URL/key.
 ~~~sh
 node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 1
 node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 1 --publish
-npx vitest run src/test/crazyChainPerGameUi.test.tsx src/test/nflFinalStats.test.ts src/test/crazyChainBoard.test.ts src/test/crazyChain.test.ts src/test/pickem.test.ts
+npx vitest run src/test/crazyChainDeadlineRollout.test.tsx src/test/crazyChainPerGameUi.test.tsx src/test/nflFinalStats.test.ts src/test/crazyChainBoard.test.ts src/test/crazyChain.test.ts src/test/pickem.test.ts
 # Optional isolated PostgreSQL; no live data:
 npm install --no-save --package-lock=false @electric-sql/pglite
-node scripts/test-nfl-per-game-db.mjs
-node scripts/test-nfl-per-game-db.mjs --with-catch-up
+node scripts/test-nfl-per-game-db.mjs --30m
+node scripts/test-nfl-per-game-db.mjs --with-catch-up --30m
 node scripts/test-nfl-per-game-db.mjs --bundle
 ~~~

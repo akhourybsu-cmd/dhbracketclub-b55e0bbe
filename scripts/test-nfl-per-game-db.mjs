@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 process.on('uncaughtException',error=>{console.error(error.message,error.detail||'',error.where||'',error.query?.slice(Math.max(0,Number(error.position)-150),Number(error.position)+150)||'');process.exit(1);});
 const db = new PGlite();
 const id = n => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+const thirty=process.argv.includes('--30m') || process.argv.includes('--bundle');
 let passed=0;
 const check=async(name,run)=>{await run();console.log(`PASS ${name}`);passed++;};
 await db.exec(`
@@ -68,19 +69,41 @@ await check('per-game saves preserve other game selections and snapshots',async(
  assert.equal((await db.query('select count(*)::int n from nfl_chain_legs')).rows[0].n,2);
  await assert.rejects(save(9,[later]),/this game only/);
 });
-await check('exact 48-hour cutoff closes Thursday but leaves Sunday editable',async()=>{
- await db.exec(`update nfl_games set kickoff_at=now()+interval '48 hours' where id='${id(9)}'`);
+if(thirty) await check('30-minute migration reopens only Crazy Chain, preserves picks, and is rerunnable',async()=>{
+ await db.exec("update nfl_games set kickoff_at=now()+interval '2 hours' where id='"+id(9)+"'");
+ const prior=(await db.query('select chain_lock_at from nfl_games where id=$1',[id(9)])).rows[0].chain_lock_at;
+ const legs=(await db.query('select id,threshold,display_text from nfl_chain_legs order by id')).rows;
+ const migration=await readFile(new URL('../supabase/migrations/20260910220000_crazy_chain_30_minute_lock.sql',import.meta.url),'utf8');
+ await db.exec(migration);await db.exec(migration);
+ assert.deepEqual((await db.query('select chain_lock_at from nfl_games where id=$1',[id(9)])).rows[0].chain_lock_at,prior);
+ assert.deepEqual((await db.query('select id,threshold,display_text from nfl_chain_legs order by id')).rows,legs);
+ assert.equal((await db.query('select is_pick_unlocked($1) open',[id(9)])).rows[0].open,false);
+ assert.equal((await db.query('select nfl_chain_game_unlocked($1) open',[id(9)])).rows[0].open,true);
+ const board=(await db.query('select get_nfl_chain_board($1) board',[id(8)])).rows[0].board;
+ assert.equal(board.mode,'per_game_30m');assert.equal(board.lock_minutes,30);
+ await save(9,[first]);await publish();
+ await db.query('update nfl_weeks set featured_game_id=$1 where id=$2',[id(9),id(8)]);
+ assert.equal((await db.query('select nfl_tiebreaker_unlocked($1) open',[id(8)])).rows[0].open,false);
+ await db.query('update nfl_weeks set featured_game_id=$1 where id=$2',[id(10),id(8)]);
+ await assert.rejects(db.query('insert into nfl_picks(club_id,user_id,game_id,week_id,season_id,picked_team_id) values($1,$2,$3,$4,$5,$6)',
+  [id(1),id(3),id(9),id(8),id(7),id(5)]),/48 hours/);
+ await db.exec("update nfl_games set kickoff_at=now()+interval '31 minutes' where id='"+id(9)+"'");
+ await save(9,[first]);
+});
+await check('exact game cutoff closes Thursday but leaves Sunday editable',async()=>{
+ await db.exec(`update nfl_games set kickoff_at=now()+interval '${thirty?'30 minutes':'48 hours'}' where id='${id(9)}'`);
  assert.equal((await db.query('select is_pick_unlocked($1) open',[id(9)])).rows[0].open,false);
  assert.equal((await db.query('select is_pick_unlocked($1) open',[id(10)])).rows[0].open,true);
- await assert.rejects(save(9,[]),/48 hours/);
+ await assert.rejects(save(9,[]),thirty?/30 minutes/:/48 hours/);
  await assert.rejects(db.query('select save_nfl_chain_card($1,$2::uuid[])',[id(8),[later]]),/cannot be removed/);
  await save(10,[]); await save(10,[later]);
- await assert.rejects(publish(),/48-hour slate/); await publish([markets[1]]);
+ await assert.rejects(publish(),thirty?/30-minute slate/:/48-hour slate/); await publish([markets[1]]);
 });
 await check('postponement cannot reopen a frozen game; earlier time moves cutoff earlier',async()=>{
- const before=(await db.query('select chain_lock_at from nfl_games where id=$1',[id(9)])).rows[0].chain_lock_at;
+ const column=thirty?'crazy_chain_lock_at':'chain_lock_at';
+ const before=(await db.query('select '+column+' deadline from nfl_games where id=$1',[id(9)])).rows[0].deadline;
  await db.exec(`update nfl_games set kickoff_at=now()+interval '7 days' where id='${id(9)}'`);
- assert.deepEqual((await db.query('select chain_lock_at from nfl_games where id=$1',[id(9)])).rows[0].chain_lock_at,before);
+ assert.deepEqual((await db.query('select '+column+' deadline from nfl_games where id=$1',[id(9)])).rows[0].deadline,before);
  await db.exec(`update nfl_games set kickoff_at=now()-interval '1 day' where id='${id(9)}'`);
 });
 await check('no early settlement, cross-club grading, or missing-value zeroes',async()=>{

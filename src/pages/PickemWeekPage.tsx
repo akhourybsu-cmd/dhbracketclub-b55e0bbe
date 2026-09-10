@@ -40,7 +40,7 @@ export default function PickemWeekPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const { lockAt: lockMoment, locked: weekLocked, now } = useWeekLock(games, season);
-  const { migrationReady } = useCrazyChainBoard(week?.id,games,season);
+  const { pickemMigrationReady: migrationReady } = useCrazyChainBoard(week?.id,games,season);
   const { insights: pickInsights } = useWeekPickInsights(week?.id, games.some(game => isGameLocked(game,undefined,undefined,now)));
   const featured = games.find((g) => g.id === week?.featured_game_id);
   const weekStatus = week ? (games.length > 0 ? deriveWeekStatus(games, week.status, now) : week.status) : 'upcoming';

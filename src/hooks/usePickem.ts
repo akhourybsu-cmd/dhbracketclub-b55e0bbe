@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useQuery } from '@tanstack/react-query';
 import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
-import { chainGameIsOpen, chainGameLockAt } from '../../supabase/functions/_shared/chainGameRules';
+import { pickemGameIsOpen, pickemGameLockAt } from '../../supabase/functions/_shared/chainGameRules';
 
 export type NflTeam = {
   id: string;
@@ -50,6 +50,7 @@ export type NflGame = {
   home_team_id: string;
   kickoff_at: string;
   chain_lock_at?: string | null;
+  crazy_chain_lock_at?: string | null;
   status: 'scheduled' | 'live' | 'final';
   away_score: number | null;
   home_score: number | null;
@@ -366,7 +367,7 @@ export function deriveWeekStatus(
 ): NflWeek['status'] {
   if (persistedStatus === 'scored') return 'scored';
   if (games.length === 0) return 'upcoming';
-  const editable = games.filter((game) => chainGameIsOpen(game, nowMs)).length;
+  const editable = games.filter((game) => pickemGameIsOpen(game, nowMs)).length;
   if (editable === games.length) return 'open';
   return editable === 0 ? 'closed' : 'partially_locked';
 }
@@ -376,17 +377,17 @@ export function deriveWeekStatus(
  * Returns null if there are no games yet.
  */
 export function weekLockAt(games: NflGame[], _season?: NflSeason | null, nowMs = Date.now()): Date | null {
-  const open=games.filter(game=>chainGameIsOpen(game,nowMs)).map(chainGameLockAt);
+  const open=games.filter(game=>pickemGameIsOpen(game,nowMs)).map(pickemGameLockAt);
   if(open.length) return new Date(Math.min(...open));
-  const valid=games.map(chainGameLockAt).filter(Number.isFinite);
+  const valid=games.map(pickemGameLockAt).filter(Number.isFinite);
   return valid.length ? new Date(Math.max(...valid)) : null;
 }
 /** The week closes only when no matchup remains editable. */
 export function isWeekLocked(games: NflGame[], _season?: NflSeason | null, nowMs = Date.now()): boolean {
-  return games.length === 0 || !games.some(game=>chainGameIsOpen(game,nowMs));
+  return games.length === 0 || !games.some(game=>pickemGameIsOpen(game,nowMs));
 }
 export function isGameLocked(game: NflGame, _games?: NflGame[], _season?: NflSeason | null, nowMs = Date.now()): boolean {
-  return !chainGameIsOpen(game,nowMs);
+  return !pickemGameIsOpen(game,nowMs);
 }
 export function useWeekLock(games: NflGame[], season?: NflSeason | null) {
   const [now,setNow]=useState(Date.now);

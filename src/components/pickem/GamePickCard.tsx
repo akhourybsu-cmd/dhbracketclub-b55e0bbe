@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { TeamLogo } from './TeamLogo';
 import type { NflGame, NflPick, NflPickInsight, NflTeamRecord } from '@/hooks/usePickem';
 import { isGameLocked } from '@/hooks/usePickem';
-import { chainGameLockAt } from '../../../supabase/functions/_shared/chainGameRules';
+import { pickemGameLockAt } from '../../../supabase/functions/_shared/chainGameRules';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 
 type Props = {
@@ -169,7 +169,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
 
   return (
     <div className="pk-scorebug p-3">
-      <p className="text-[11px] text-muted-foreground mb-2">{locked ? 'Deadline: ' : 'Pick by '}{format(new Date(chainGameLockAt(game)), 'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
+      <p className="text-[11px] text-muted-foreground mb-2">{locked ? 'Deadline: ' : 'Pick by '}{format(new Date(pickemGameLockAt(game)), 'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
       {/* Scorebug header: time + status (broadcast lower-third) */}
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-1.5">

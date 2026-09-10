@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {finalMarketValue,verifyFinalSummary,parseNflScore,type FinalGame,type FinalSummary,type StatMarket} from '../../supabase/functions/_shared/chainFinalStats';
-import {chainGameIsOpen,chainGameLockAt} from '../../supabase/functions/_shared/chainGameRules';
+import {chainGameIsOpen,chainGameLockAt,pickemGameIsOpen,pickemGameLockAt} from '../../supabase/functions/_shared/chainGameRules';
 import {readAllNflRows} from '../../supabase/functions/_shared/nflReadAll';
 const game:FinalGame={id:'g',external_id:'123',external_provider:'espn',status:'final',home_team_id:'h',away_team_id:'a',home_score:24,away_score:17};
 const teams=new Map([['h','1'],['a','2']]);
@@ -53,7 +53,7 @@ describe('Verified final NFL statistics',()=>{
   expect(finalMarketValue(market,{...game,status:'live'},summary,teams)).toHaveProperty('pending');
  });
 });
-describe('48-hour NFL deadlines',()=>{
+describe('Independent NFL deadlines',()=>{
  it('reads beyond the first page instead of dropping later season results',async()=>{
   const rows=Array.from({length:1250},(_,id)=>({id}));
   const result=await readAllNflRows(async(from,to)=>({data:rows.slice(from,to+1),error:null}));
@@ -62,12 +62,20 @@ describe('48-hour NFL deadlines',()=>{
  });
  it('uses absolute hours across daylight-saving boundaries',()=>{
   const g={kickoff_at:'2026-11-01T18:00:00Z',status:'scheduled'};
-  expect(new Date(chainGameLockAt(g)).toISOString()).toBe('2026-10-30T18:00:00.000Z');
+  expect(new Date(chainGameLockAt(g)).toISOString()).toBe('2026-11-01T17:30:00.000Z');
+  expect(new Date(pickemGameLockAt(g)).toISOString()).toBe('2026-10-30T18:00:00.000Z');
   expect(chainGameIsOpen(g,chainGameLockAt(g)-1)).toBe(true);
   expect(chainGameIsOpen(g,chainGameLockAt(g))).toBe(false);
  });
+ it('keeps same-day Crazy Chain open without reopening Pickem or a started game',()=>{
+  const g={kickoff_at:'2026-09-10T20:00:00Z',chain_lock_at:'2026-09-08T20:00:00Z',status:'scheduled'};
+  expect(chainGameIsOpen(g,Date.parse('2026-09-10T19:29:59.999Z'))).toBe(true);
+  expect(pickemGameIsOpen(g,Date.parse('2026-09-10T19:29:59.999Z'))).toBe(false);
+  expect(chainGameIsOpen(g,Date.parse('2026-09-10T19:30:00Z'))).toBe(false);
+  for(const status of ['live','final']) expect(chainGameIsOpen({...g,status},Date.parse('2026-09-10T18:00:00Z'))).toBe(false);
+ });
  it('fails closed for invalid dates and respects a frozen earlier deadline',()=>{
   expect(chainGameIsOpen({kickoff_at:'bad',status:'scheduled'})).toBe(false);
-  expect(chainGameIsOpen({kickoff_at:'2026-10-01T18:00:00Z',chain_lock_at:'2026-09-01T18:00:00Z',status:'scheduled'},Date.parse('2026-09-02'))).toBe(false);
+  expect(chainGameIsOpen({kickoff_at:'2026-10-01T18:00:00Z',crazy_chain_lock_at:'2026-09-01T18:00:00Z',status:'scheduled'},Date.parse('2026-09-02'))).toBe(false);
  });
 });

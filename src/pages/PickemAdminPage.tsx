@@ -447,7 +447,7 @@ function LeagueSettingsCard({ season, onSaved }: { season: any; onSaved: () => v
 
       <div className="rounded-lg bg-muted/20 p-2.5 space-y-1.5">
         <p className="text-[12px] font-bold">Per-game deadlines · 48 hours</p>
-        <p className="text-[10px] text-muted-foreground leading-snug">Pick’em and Crazy Chain lock each matchup 48 hours before kickoff. The featured-game tiebreaker uses that game’s deadline too.</p>
+        <p className="text-[10px] text-muted-foreground leading-snug">Pick’em locks each matchup and its featured-game tiebreaker 48 hours before kickoff. Crazy Chain has a separate 30-minute cutoff.</p>
       </div>
 
       <Button size="sm" className="w-full" onClick={save} disabled={saving}>

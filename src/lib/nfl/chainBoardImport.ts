@@ -47,6 +47,6 @@ export async function publishChainBoard(client: Client, preview: ChainBoardPrevi
     _checked_at: new Date(preview.createdAt).toISOString(), _warnings: preview.warnings,
   }).abortSignal(AbortSignal.timeout(25_000));
   if (error) throw new Error(/schema cache|does not exist/.test(error.message)
-    ? 'Apply the Crazy Chain remaining-games database update before publishing.' : error.message);
+    ? 'Apply the Crazy Chain 30-minute database update before publishing.' : error.message);
   return data as unknown as { inserted: number; existing: number; reviewed: number; paused: number; lock_at: string };
 }

@@ -45,7 +45,7 @@ export function CrazyChainBoardImport({ weekId, onPublished }: { weekId: string;
       <div className="flex items-center gap-2"><Download className="w-4 h-4 text-gold" /><h2 className="text-[13px] font-extrabold">Load weekly predictions</h2></div>
       <p className="text-xs text-muted-foreground leading-relaxed">Import the week's matchups and available starting quarterbacks, running backs, receivers, and tight ends. Injured or unverified players are skipped. Targets are club challenges, with one target per player statistic.</p>
       <p className="text-xs text-muted-foreground">Verified final team and supported player stats score automatically. Commissioners review missing stats and non-participation.</p>
-      <p className="text-xs text-muted-foreground">New predictions require at least 48 hours before kickoff. Injury checks continue until kickoff without changing saved targets or results. Missing data never scores a zero.</p>
+      <p className="text-xs text-muted-foreground">New predictions require more than 30 minutes before kickoff. Injury checks continue until kickoff without changing saved targets or results. Missing data never scores a zero.</p>
       <Button variant="outline" onClick={load} disabled={busy || !weekId} className="w-full min-h-11">
         {busy && !preview ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
         {progress || 'Preview weekly board'}
