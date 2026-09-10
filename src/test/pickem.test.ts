@@ -3,6 +3,7 @@ import {
   deriveWeekStatus,
   filterVisibleWeeks,
   isWeekLocked,
+  isGameLocked,
   weekLockAt,
   type NflGame,
   type NflSeason,
@@ -53,15 +54,21 @@ function week(number: number, status: NflWeek['status']): NflWeek {
 }
 
 describe('NFL Pick’em rules', () => {
-  it('freezes the whole card at the configured offset before first kickoff', () => {
+  it('locks each matchup exactly 48 hours before kickoff and advances to the next deadline', () => {
     const games = [
       game({ id: 'late', kickoff_at: '2026-09-10T03:00:00.000Z' }),
       game({ id: 'early', kickoff_at: '2026-09-10T00:00:00.000Z' }),
     ];
 
-    expect(weekLockAt(games, season)?.toISOString()).toBe('2026-09-09T23:50:00.000Z');
-    expect(isWeekLocked(games, season, Date.parse('2026-09-09T23:49:59.999Z'))).toBe(false);
-    expect(isWeekLocked(games, season, Date.parse('2026-09-09T23:50:00.000Z'))).toBe(true);
+    const before=Date.parse('2026-09-07T23:59:59.999Z');
+    const firstDeadline=Date.parse('2026-09-08T00:00:00.000Z');
+    expect(weekLockAt(games, season,before)?.toISOString()).toBe('2026-09-08T00:00:00.000Z');
+    expect(isGameLocked(games[1],games,season,before)).toBe(false);
+    expect(isGameLocked(games[1],games,season,firstDeadline)).toBe(true);
+    expect(isGameLocked(games[0],games,season,firstDeadline)).toBe(false);
+    expect(isWeekLocked(games,season,firstDeadline)).toBe(false);
+    expect(weekLockAt(games,season,firstDeadline)?.toISOString()).toBe('2026-09-08T03:00:00.000Z');
+    expect(isWeekLocked(games,season,Date.parse('2026-09-08T03:00:00.000Z'))).toBe(true);
   });
 
   it('locks defensively as soon as a game is reported live', () => {
@@ -74,10 +81,11 @@ describe('NFL Pick’em rules', () => {
     expect(deriveWeekStatus([final], 'closed', Date.parse('2026-09-11T00:00:00.000Z'))).toBe('closed');
   });
 
-  it('derives open and in-progress states from kickoff and provider status', () => {
-    const beforeKickoff = Date.parse('2026-09-09T20:00:00.000Z');
-    expect(deriveWeekStatus([game()], 'upcoming', beforeKickoff)).toBe('open');
-    expect(deriveWeekStatus([game({ status: 'live' })], 'open', beforeKickoff)).toBe('partially_locked');
+  it('derives open, partial, and closed states from per-game deadlines', () => {
+    const beforeDeadline = Date.parse('2026-09-07T20:00:00.000Z');
+    expect(deriveWeekStatus([game()], 'upcoming', beforeDeadline)).toBe('open');
+    expect(deriveWeekStatus([game({ status: 'live' }), game({ id: 'later' })], 'open', beforeDeadline)).toBe('partially_locked');
+    expect(deriveWeekStatus([game()], 'open', Date.parse('2026-09-08T00:00:00.000Z'))).toBe('closed');
   });
 
   it('honors finalized-schedule and visible-window controls', () => {

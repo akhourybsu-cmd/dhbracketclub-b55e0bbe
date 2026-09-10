@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { TeamLogo } from './TeamLogo';
 import type { NflGame, NflPick, NflPickInsight, NflTeamRecord } from '@/hooks/usePickem';
 import { isGameLocked } from '@/hooks/usePickem';
+import { chainGameLockAt } from '../../../supabase/functions/_shared/chainGameRules';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 
 type Props = {
@@ -55,7 +56,7 @@ function TeamRecordRow({ record }: { record?: NflTeamRecord }) {
 
 export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocked, records, insight }: Props) {
   const { play } = useSoundEffect();
-  const locked = weekLocked ?? isGameLocked(game);
+  const locked = isGameLocked(game) || weekLocked === true;
   const blocked = locked || cardLocked;
   const isFinal = game.status === 'final';
   const isLive = game.status === 'live';
@@ -168,6 +169,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
 
   return (
     <div className="pk-scorebug p-3">
+      <p className="text-[11px] text-muted-foreground mb-2">{locked ? 'Deadline: ' : 'Pick by '}{format(new Date(chainGameLockAt(game)), 'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
       {/* Scorebug header: time + status (broadcast lower-third) */}
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-1.5">
@@ -183,7 +185,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
             <span className="w-1.5 h-1.5 rounded-full bg-live animate-pulse" /> Live
           </span>
         ) : locked ? (
-          <span className="pk-stamp pk-stamp-locked"><Lock className="w-2.5 h-2.5" /> Picks revealed</span>
+          <span className="pk-stamp pk-stamp-locked"><Lock className="w-2.5 h-2.5" /> Picks locked</span>
         ) : cardLocked ? (
           <span className="pk-stamp pk-stamp-locked"><Lock className="w-2.5 h-2.5" /> Card locked</span>
         ) : (

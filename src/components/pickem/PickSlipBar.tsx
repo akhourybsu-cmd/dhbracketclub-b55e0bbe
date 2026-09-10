@@ -46,7 +46,7 @@ export function PickSlipBar({
     status === 'locked' ? 'All picks locked'
     : cardLocked ? 'Card locked'
     : allGamesDone && !tiebreakerReady ? 'Add your tiebreaker'
-    : allDone ? 'Your card is complete'
+    : allDone ? (picked < total ? 'All open games picked' : 'Your card is complete')
     : `${remaining} pick${remaining === 1 ? '' : 's'} remaining`;
 
   const accent =
@@ -124,7 +124,7 @@ export function PickSlipBar({
             </div>
             {freezeIn && (
               <p className="text-[10px] text-white/55 mt-1 tabular-nums">
-                Picks freeze in <span className="text-white/85 font-extrabold">{freezeIn}</span>
+                Next game locks in <span className="text-white/85 font-extrabold">{freezeIn}</span>
               </p>
             )}
           </div>
@@ -168,8 +168,7 @@ export function PickSlipBar({
             >
               <p>
                 <strong className="text-white">Tap a team to pick — tap again to unselect.</strong>{' '}
-                Lock your card to prevent accidental changes. You can unlock anytime before picks freeze
-                {weekLockAt ? ` (${weekLockAt.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}).` : '.'}
+                Each matchup saves separately and locks 48 hours before kickoff. Later games remain editable.
                 {tiebreakerRequired && !tiebreakerReady ? ' Your featured-game tiebreaker is still missing.' : ''}
               </p>
             </motion.div>

@@ -3,6 +3,7 @@
 // After sync, if any games are final, invokes score-nfl-week to refresh standings.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { parseNflScore } from '../_shared/chainFinalStats.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,9 +65,12 @@ Deno.serve(async (req) => {
 
     // Fetch ESPN scoreboard for this week
     const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasontype}&week=${body.week_number}&dates=${body.season_year}`;
-    const r = await fetch(espnUrl);
+    const r = await fetch(espnUrl,{signal:AbortSignal.timeout(15_000)});
     if (!r.ok) return json({ error: `ESPN fetch failed: ${r.status}` }, 502);
     const data = await r.json();
+    if (data?.season?.year !== body.season_year || data?.season?.type !== seasontype || data?.week?.number !== body.week_number) {
+      return json({ error: 'ESPN returned a different season or week; no games were changed.' }, 502);
+    }
 
     const events: any[] = data?.events ?? [];
     if (events.length === 0) {
@@ -165,8 +169,13 @@ Deno.serve(async (req) => {
       // ESPN represents not-yet-started scores as the string "0". Keep those
       // as null so admin controls and viewers never mistake a future 0–0 for
       // a real result.
-      const homeScore = status === 'scheduled' ? null : homeC.score != null ? Number(homeC.score) : null;
-      const awayScore = status === 'scheduled' ? null : awayC.score != null ? Number(awayC.score) : null;
+      const homeScore = status === 'scheduled' ? null : parseNflScore(homeC.score);
+      const awayScore = status === 'scheduled' ? null : parseNflScore(awayC.score);
+      if (status !== 'scheduled' && (homeScore === null || awayScore === null)) {
+        skipped++;
+        console.warn('Incomplete scoreboard result; preserving stored game', ev.id);
+        continue;
+      }
       const winnerId =
         status === 'final' && homeScore != null && awayScore != null
           ? homeScore > awayScore
@@ -182,13 +191,15 @@ Deno.serve(async (req) => {
       // Try update first by external_id
       const { data: existingGame } = await admin
         .from('nfl_games')
-        .select('id')
+        .select('id, status')
         .eq('week_id', weekId)
         .eq('external_provider', 'espn')
         .eq('external_id', externalId)
         .maybeSingle();
 
       if (existingGame) {
+        // A transient provider regression must not erase an already-final result.
+        if (existingGame.status === 'final' && status !== 'final') { skipped++; continue; }
         const { error: updErr } = await admin
           .from('nfl_games')
           .update({
@@ -250,6 +261,7 @@ Deno.serve(async (req) => {
             : { Authorization: authHeader! }),
         },
         body: JSON.stringify({ week_id: weekId }),
+        signal: AbortSignal.timeout(110_000),
       });
       scored = await scoreResponse.json().catch(() => null);
       if (!scoreResponse.ok) throw new Error(scored?.error || `Scoring failed: ${scoreResponse.status}`);

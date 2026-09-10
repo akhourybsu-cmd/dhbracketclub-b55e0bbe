@@ -1,6 +1,7 @@
 // Score one NFL week and rebuild weekly + season standings.
 // Safe to run repeatedly from an authorized admin or the protected NFL cron.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { readAllNflRows } from '../_shared/nflReadAll.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,8 +62,8 @@ Deno.serve(async (req) => {
 
     const [gamesResult, picksResult, tiebreakersResult] = await Promise.all([
       admin.from('nfl_games').select('*').eq('week_id', weekId),
-      admin.from('nfl_picks').select('*').eq('week_id', weekId),
-      admin.from('nfl_tiebreakers').select('*').eq('week_id', weekId),
+      readAllNflRows((from,to)=>admin.from('nfl_picks').select('*').eq('week_id', weekId).order('id').range(from,to).abortSignal(AbortSignal.timeout(15_000))),
+      readAllNflRows((from,to)=>admin.from('nfl_tiebreakers').select('*').eq('week_id', weekId).order('id').range(from,to).abortSignal(AbortSignal.timeout(15_000))),
     ]);
     if (gamesResult.error) throw gamesResult.error;
     if (picksResult.error) throw picksResult.error;
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
     const tiebreakers = tiebreakersResult.data || [];
     const finalById = new Map(
       games
-        .filter((game: any) => game.status === 'final')
+        .filter((game: any) => game.status === 'final' && Number.isFinite(game.home_score) && Number.isFinite(game.away_score))
         .map((game: any) => [game.id, game]),
     );
 
@@ -81,7 +82,8 @@ Deno.serve(async (req) => {
     const scoredPicks = picks.map((pick) => {
       const game: any = finalById.get(pick.game_id);
       if (!game) return pick;
-      return { ...pick, is_correct: !!game.winner_team_id && game.winner_team_id === pick.picked_team_id };
+      const winner=game.home_score>game.away_score?game.home_team_id:game.away_score>game.home_score?game.away_team_id:null;
+      return { ...pick, is_correct: !!winner && winner === pick.picked_team_id };
     });
     const changedPicks = scoredPicks.filter((pick, index) => pick.is_correct !== picks[index].is_correct);
     const finalPicks = scoredPicks.filter((pick) => finalById.has(pick.game_id));
@@ -95,8 +97,8 @@ Deno.serve(async (req) => {
     if (pickWriteError) throw pickWriteError;
 
     const featured: any = games.find((game: any) => game.id === week.featured_game_id);
-    const featuredTotal = featured?.status === 'final'
-      ? Number(featured.away_score ?? 0) + Number(featured.home_score ?? 0)
+    const featuredTotal = featured && finalById.has(featured.id)
+      ? Number(featured.away_score) + Number(featured.home_score)
       : null;
     const scoredTiebreakers = tiebreakers.map((entry: any) => ({
       ...entry,
@@ -150,7 +152,7 @@ Deno.serve(async (req) => {
       if (error) throw error;
     }
 
-    const allFinal = games.length > 0 && games.every((game: any) => game.status === 'final');
+    const allFinal = games.length > 0 && games.every((game: any) => finalById.has(game.id));
     if (allFinal) {
       const { error } = await admin.from('nfl_weeks').update({ status: 'scored' }).eq('id', weekId);
       if (error) throw error;
@@ -163,12 +165,15 @@ Deno.serve(async (req) => {
       if (advanceError) throw advanceError;
     }
 
-    const [seasonPicksResult, seasonWeeklyResult] = await Promise.all([
-      admin.from('nfl_picks').select('club_id, user_id, is_correct').eq('season_id', week.season_id),
-      admin.from('nfl_weekly_standings').select('*').eq('season_id', week.season_id),
+    const [seasonPicksResult, seasonWeeklyResult, scoredWeeksResult] = await Promise.all([
+      readAllNflRows((from,to)=>admin.from('nfl_picks').select('club_id, user_id, is_correct').eq('season_id', week.season_id).order('id').range(from,to).abortSignal(AbortSignal.timeout(15_000))),
+      readAllNflRows((from,to)=>admin.from('nfl_weekly_standings').select('*').eq('season_id', week.season_id).order('id').range(from,to).abortSignal(AbortSignal.timeout(15_000))),
+      admin.from('nfl_weeks').select('id').eq('season_id',week.season_id).eq('status','scored'),
     ]);
     if (seasonPicksResult.error) throw seasonPicksResult.error;
     if (seasonWeeklyResult.error) throw seasonWeeklyResult.error;
+    if (scoredWeeksResult.error) throw scoredWeeksResult.error;
+    const scoredWeekIds=new Set((scoredWeeksResult.data || []).map(row=>row.id));
 
     const seasonPicks = seasonPicksResult.data || [];
     const allWeekly = seasonWeeklyResult.data || [];
@@ -179,7 +184,7 @@ Deno.serve(async (req) => {
     for (const { clubId, userId } of seasonEntrants.values()) {
       const completed = seasonPicks.filter((pick: any) => pick.club_id === clubId && pick.user_id === userId && pick.is_correct !== null);
       const correct = completed.filter((pick: any) => pick.is_correct === true).length;
-      const weekly = allWeekly.filter((row: any) => row.club_id === clubId && row.user_id === userId && row.total_picks > 0);
+      const weekly = allWeekly.filter((row: any) => row.club_id === clubId && row.user_id === userId && row.total_picks > 0 && scoredWeekIds.has(row.week_id));
       const ranks = weekly.map((row: any) => row.rank).filter((rank: any) => rank != null);
       const row: StandingRow = {
         club_id: clubId,
@@ -221,6 +226,7 @@ Deno.serve(async (req) => {
           apikey: serviceKey,
         },
         body: JSON.stringify({ week_id: weekId }),
+        signal: AbortSignal.timeout(95_000),
       });
       crazyChain = await chainResponse.json().catch(() => ({ ok: false, error: `HTTP ${chainResponse.status}` }));
       if (!chainResponse.ok) console.warn('Crazy Chain scoring was deferred', crazyChain);

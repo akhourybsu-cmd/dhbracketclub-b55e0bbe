@@ -20,7 +20,7 @@ export function TurfBackdrop({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl pk-turf',
+        'relative overflow-hidden rounded-2xl pk-turf [--gold:45_95%_60%]',
         yardLines && 'pk-yardlines',
         shimmer && 'pk-stadium-shine',
         'border border-[hsl(45_95%_55%/0.30)]',

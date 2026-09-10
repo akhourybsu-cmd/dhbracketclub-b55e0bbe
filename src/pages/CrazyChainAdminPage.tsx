@@ -159,7 +159,7 @@ export default function CrazyChainAdminPage() {
       const { data, error: invokeError } = await supabase.functions.invoke('score-nfl-crazy-chain', { body: { week_id: weekId } });
       if (invokeError) throw invokeError;
       if (data?.error || data?.ok === false) throw new Error(data?.error || 'Some predictions could not be settled. Check results and retry.');
-      toast.success(`${data?.settled || 0} team/game prediction${data?.settled === 1 ? '' : 's'} settled.`);
+      toast.success(`${data?.settled || 0} prediction(s) updated; ${data?.skipped || 0} awaiting verified statistics.`);
       await refetch();
     } catch (scoreError) {
       toast.error(scoreError instanceof Error ? scoreError.message : 'Automatic scoring failed.');
@@ -182,7 +182,7 @@ export default function CrazyChainAdminPage() {
         <>
           <div className="glass-card p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <div><p className="text-[12px] font-extrabold">Prediction board</p><p className="text-[9px] text-muted-foreground">Team markets auto-settle; player stats can be certified manually.</p></div>
+              <div><p className="text-[12px] font-extrabold">Prediction board</p><p className="text-[9px] text-muted-foreground">Verified final team and player stats auto-settle; missing data requires review.</p></div>
               <Button variant="outline" size="sm" onClick={autoScore} disabled={autoScoring || !weekId}>
                 {autoScoring ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Calculator className="w-3.5 h-3.5 mr-1" />} Auto-score
               </Button>

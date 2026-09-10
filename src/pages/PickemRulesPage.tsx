@@ -3,11 +3,8 @@ import { motion } from 'framer-motion';
 import { Info, Lock, Trophy, Star, Zap, Users } from 'lucide-react';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { PickemShell } from '@/components/pickem/PickemShell';
-import { useActiveSeason } from '@/hooks/usePickem';
 
 export default function PickemRulesPage() {
-  const { season } = useActiveSeason();
-  const lockMinutes = season?.pick_lock_minutes ?? 10;
   return (
     <PickemShell>
     <div className="space-y-4 pb-6">
@@ -32,14 +29,15 @@ export default function PickemRulesPage() {
         { icon: <Zap className="w-4 h-4 text-success" />, title: 'Scoring',
           body: <>Each correct pick = <strong>1 point</strong>. No spreads, no confidence, no wagers — just winners.</> },
         { icon: <Lock className="w-4 h-4 text-muted-foreground" />, title: 'Locking',
-          body: <>The entire weekly card locks <strong>{lockMinutes} minute{lockMinutes === 1 ? '' : 's'} before the first kickoff</strong>. You can change picks until that cutoff; after it, the card is final.</> },
+          body: <>Each game locks <strong>48 hours before its own kickoff</strong>. Thursday picks close Tuesday; Sunday picks close Friday at the matching kickoff time. Later games remain editable. A postponement never reopens a closed deadline.</> },
         { icon: <Users className="w-4 h-4 text-primary" />, title: 'Club Consensus',
-          body: <>Everyone else’s choices stay private while picks are open. Once the card locks, each matchup reveals your club’s pick percentages.</> },
+          body: <>Each matchup’s picks stay private until that game’s deadline, then its club percentages are revealed. Other games remain private until their own deadlines.</> },
         { icon: <Star className="w-4 h-4 text-gold" />, title: 'Tiebreaker',
-          body: <>Each week has a featured game. Predict the <strong>total combined points</strong> of that game. Your prediction is used to break weekly ties (closest wins).</> },
+          body: <>Predict the <strong>total combined points</strong> in the featured game. This also closes 48 hours before that game. Closest prediction breaks weekly ties.</> },
         { icon: <Trophy className="w-4 h-4 text-gold" />, title: 'Standings',
           body: <ul className="list-disc list-inside space-y-1">
             <li><strong>Weekly:</strong> Most correct → closest tiebreaker</li>
+            <li>Points and provisional ranks update as each game finishes. Weekly wins are awarded only when the slate is final.</li>
             <li><strong>Season:</strong> Most total correct → best average weekly rank → most weekly wins</li>
           </ul> },
       ].map((s, i) => (

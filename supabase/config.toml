@@ -36,6 +36,9 @@ verify_jwt = false
 [functions.refresh-nfl-chain-boards]
 verify_jwt = false
 
+[functions.sync-nfl-live]
+verify_jwt = false
+
 [functions.celebrations-daily]
 verify_jwt = false
 

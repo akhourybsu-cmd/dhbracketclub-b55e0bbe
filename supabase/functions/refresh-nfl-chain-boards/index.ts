@@ -62,10 +62,13 @@ Deno.serve(async req => {
             ]);
             for (const result of [board,games,existing]) if (result.error) throw result.error;
             const remaining = (games.data || []).filter(game => game.status === 'scheduled'
-              && Date.parse(game.kickoff_at) - (season.pick_lock_minutes ?? 10)*60_000 > Date.now());
+              && Date.parse(game.kickoff_at) > Date.now());
             if (!remaining.length) continue;
             // Every 6h normally; every 30m within a day of any remaining kickoff.
-            const nearKickoff = remaining.some(game => Date.parse(game.kickoff_at) - Date.now() < 86400_000);
+            const nearKickoff = remaining.some(game => {
+              const untilKickoff=Date.parse(game.kickoff_at)-Date.now();
+              return untilKickoff<86400_000 || (untilKickoff>48*3600_000 && untilKickoff<72*3600_000);
+            });
             const interval = nearKickoff ? 25 * 60_000 : 6 * 3600_000;
             if (scheduled && board.data?.checked_at && Date.now() - Date.parse(board.data.checked_at) < interval) continue;
             completed++;

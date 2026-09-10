@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   useActiveSeason, useSeasonWeeks, useWeekGames, useMyWeekPicks, useMyTiebreaker,
   useSeasonTeamRecords, useWeekPickInsights, useWeekLock, usePickemAdmin, useSeasonWeekGameCounts,
-  savePick, saveTiebreaker, deleteMyPick, deriveWeekStatus, useCardLock, filterVisibleWeeks,
+  savePick, saveTiebreaker, deleteMyPick, deriveWeekStatus, isGameLocked, filterVisibleWeeks,
 } from '@/hooks/usePickem';
 import { GamePickCard } from '@/components/pickem/GamePickCard';
 import { TiebreakerInput } from '@/components/pickem/TiebreakerInput';
@@ -17,6 +17,7 @@ import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { KickoffCountdown } from '@/components/pickem/KickoffCountdown';
 import { PickSlipBar } from '@/components/pickem/PickSlipBar';
 import { PickemShell } from '@/components/pickem/PickemShell';
+import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
 
 export default function PickemWeekPage() {
   const { weekNumber } = useParams<{ weekNumber: string }>();
@@ -32,34 +33,35 @@ export default function PickemWeekPage() {
     [weeks, season, weekGameCounts, isAdmin],
   );
   const week = useMemo(() => visibleWeeks.find((w) => w.week_number === num), [visibleWeeks, num]);
-  const { games, loading: gamesLoading } = useWeekGames(week?.id);
+  const { games, loading: gamesLoading, error: gamesError, refetch: refreshGames } = useWeekGames(week?.id);
   const { picks, refetch: refetchPicks } = useMyWeekPicks(week?.id);
   const { tiebreaker, refetch: refetchTb } = useMyTiebreaker(week?.id);
   const { records: teamRecords } = useSeasonTeamRecords(season?.id);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const { locked: cardLocked, setLocked: setCardLocked } = useCardLock(user?.id, week?.id);
 
   const { lockAt: lockMoment, locked: weekLocked, now } = useWeekLock(games, season);
-  const { insights: pickInsights } = useWeekPickInsights(week?.id, weekLocked);
+  const { migrationReady } = useCrazyChainBoard(week?.id,games,season);
+  const { insights: pickInsights } = useWeekPickInsights(week?.id, games.some(game => isGameLocked(game,undefined,undefined,now)));
   const featured = games.find((g) => g.id === week?.featured_game_id);
   const weekStatus = week ? (games.length > 0 ? deriveWeekStatus(games, week.status, now) : week.status) : 'upcoming';
   const pickedCount = picks.length;
   const totalGames = games.length;
-  const remaining = Math.max(0, totalGames - pickedCount);
+  const remaining = games.filter(game => !isGameLocked(game,undefined,undefined,now) && !picks.some(pick => pick.game_id === game.id)).length;
   const slipStatus: 'open' | 'partial' | 'complete' | 'locked' =
     weekLocked ? 'locked'
     : remaining === 0 ? 'complete'
     : weekStatus === 'partially_locked' ? 'partial'
     : 'open';
 
-  const interactionsBlocked = weekLocked || cardLocked;
-  const tiebreakerRequired = !!featured;
+  const interactionsBlocked = !migrationReady || weekLocked;
+  const tiebreakerLocked = !migrationReady || !featured || isGameLocked(featured,undefined,undefined,now);
+  const tiebreakerRequired = !!featured && !tiebreakerLocked;
   const tiebreakerReady = !tiebreakerRequired || tiebreaker?.predicted_total != null;
 
   async function handlePick(gameId: string, teamId: string) {
     if (!user || !week || !season) return;
-    if (interactionsBlocked) {
-      if (cardLocked && !weekLocked) toast('Card locked — unlock to change picks', { duration: 1400 });
+    const game=games.find(item => item.id===gameId);
+    if (interactionsBlocked || !game || isGameLocked(game)) {
       return;
     }
     // Tap-to-unselect: if user taps the team they already picked, delete the pick.
@@ -96,7 +98,7 @@ export default function PickemWeekPage() {
   }
 
   async function handleTiebreakerSave(value: number) {
-    if (!user || !week || !season || weekLocked || cardLocked) return;
+    if (!user || !week || !season || tiebreakerLocked) return;
     try {
       await saveTiebreaker({
         user_id: user.id,
@@ -195,20 +197,24 @@ export default function PickemWeekPage() {
         {lockMoment && !weekLocked && (
           <p className="text-[11px] text-white/70 mt-2.5 flex items-center gap-1.5">
             <Flame className="w-3 h-3 text-gold" />
-            Picks freeze in <span className="font-bold text-white">
+            Next game locks in <span className="font-bold text-white">
               <KickoffCountdown target={lockMoment} compact />
             </span>
           </p>
         )}
       </TurfBackdrop>
 
+      <p className="text-xs text-muted-foreground px-1">Each game locks 48 hours before kickoff. Picks save individually. Results and standings refresh as games finish; later games remain editable.</p>
+      {!migrationReady && <p role="alert" className="glass-card p-3 text-sm">The NFL per-game database update is required to enable the new deadlines. Existing picks remain saved.</p>}
+      {gamesError && <button type="button" onClick={() => void refreshGames()} className="glass-card p-3 w-full text-sm text-destructive">{gamesError} · Retry</button>}
+
       <WeekNavigator weeks={visibleWeeks} currentWeek={week.week_number} basePath="/pickem/week" />
 
-      {weekStatus === 'scored' && (
+      {games.some(game => game.status === 'final') && (
         <Link to={`/pickem/week/${week.week_number}/results`}>
           <div className="glass-card p-3 flex items-center gap-2 hover:bg-muted/30 transition-colors">
             <ListChecks className="w-4 h-4 text-gold" />
-            <p className="text-[12px] font-extrabold flex-1">View Weekly Results</p>
+            <p className="text-[12px] font-extrabold flex-1">{weekStatus === 'scored' ? 'View Weekly Results' : 'View Results So Far'}</p>
             <ArrowRight className="w-4 h-4 text-muted-foreground" />
           </div>
         </Link>
@@ -273,11 +279,10 @@ export default function PickemWeekPage() {
                   game={game}
                   pick={myPick}
                   records={teamRecords}
-                  insight={pickInsights.get(game.id)}
+                  insight={isGameLocked(game,undefined,undefined,now) ? pickInsights.get(game.id) : undefined}
                   onPick={(teamId) => handlePick(game.id, teamId)}
                   saving={savingId === game.id}
-                  weekLocked={weekLocked}
-                  cardLocked={cardLocked}
+                  weekLocked={!migrationReady || isGameLocked(game,undefined,undefined,now)}
                 />
               </motion.div>
             );
@@ -289,7 +294,7 @@ export default function PickemWeekPage() {
               predicted={tiebreaker?.predicted_total}
               actual={tiebreaker?.actual_total}
               onChange={handleTiebreakerSave}
-              locked={weekLocked || cardLocked}
+              locked={tiebreakerLocked}
             />
           )}
         </motion.div>
@@ -302,8 +307,6 @@ export default function PickemWeekPage() {
           total={totalGames}
           remaining={remaining}
           status={slipStatus}
-          cardLocked={cardLocked}
-          onToggleCardLock={() => setCardLocked(!cardLocked)}
           weekLockAt={lockMoment}
           tiebreakerRequired={tiebreakerRequired}
           tiebreakerReady={tiebreakerReady}

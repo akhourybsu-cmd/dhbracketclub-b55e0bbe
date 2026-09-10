@@ -2,6 +2,7 @@ import {
   buildBoardMarkets, fetchNflData, validateBoardSlate, verifiedStarters, verifyPlayerAvailability,
   type BoardGame, type BoardTeam, type BoardPlayer, type EspnDepthChart, type EspnRoster, type EspnScoreboard,
 } from './chainBoardData.ts';
+import { chainGameIsOpen } from './chainGameRules.ts';
 
 export interface ExistingChainMarket {
   id: string; game_id: string; subject_team_id: string | null; subject_external_id: string | null;
@@ -15,7 +16,9 @@ export async function collectChainBoard(input: {
   const startedAt = Date.now();
   progress?.('Verifying remaining matchups and kickoff times…');
   const scoreboard = await fetchNflData<EspnScoreboard>(`scoreboard?dates=${input.year}&seasontype=2&week=${input.weekNumber}`);
-  const games = validateBoardSlate(scoreboard, input.games, input.teams, input.year, input.weekNumber, startedAt, true, input.lockMinutes);
+  // Recheck injuries until kickoff, even after the 48-hour selection deadline.
+  const games = validateBoardSlate(scoreboard, input.games, input.teams, input.year, input.weekNumber, startedAt, true, 0);
+  const publishable = games.filter(game => chainGameIsOpen(game, startedAt));
   const teamIds = [...new Set(games.flatMap(game => [game.home_team_id, game.away_team_id]))];
   const sources = new Map<string, { roster: EspnRoster; depth: EspnDepthChart }>();
   const players = new Map<string, BoardPlayer[]>();
@@ -52,10 +55,10 @@ export async function collectChainBoard(input: {
   });
   return {
     clubId: input.clubId, weekId: input.weekId, weekNumber: input.weekNumber, year: input.year,
-    gameCount: games.length, skippedGames: input.games.length - games.length,
+    gameCount: publishable.length, checkedGameCount: games.length, skippedGames: input.games.length - publishable.length,
     playerCount: [...players.values()].reduce((sum, items) => sum + items.length, 0),
     createdAt: startedAt, warnings: warnings.sort(), availability,
-    gameIds: games.map(game => game.id), lockMinutes: input.lockMinutes,
-    markets: buildBoardMarkets(input.clubId, games, input.teams, players),
+    gameIds: publishable.map(game => game.id), lockMinutes: 48 * 60,
+    markets: buildBoardMarkets(input.clubId, publishable, input.teams, players),
   };
 }

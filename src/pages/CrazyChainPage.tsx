@@ -1,20 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import {
-  AlertTriangle, Check, ChevronRight, Circle, Clock3, Flame,
-  History, Link2, LockKeyhole, ShieldCheck, Trophy, X, Zap,
-} from 'lucide-react';
+import { Check, Clock3, History, Link2, LockKeyhole, RefreshCw, Trophy, X, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import {
-  useActiveSeason, useWeekGames,
-  type NflGame, type NflSeason,
-} from '@/hooks/usePickem';
-import {
-  saveCrazyChainCard, useCrazyChainMarkets, useCrazyChainStandings,
-  useMyCrazyChainEntry, type CrazyChainLeg, type CrazyChainMarket,
-} from '@/hooks/useCrazyChain';
+import { useQueryClient } from '@tanstack/react-query';
+import { useActiveSeason, useWeekGames, type NflGame, type NflSeason } from '@/hooks/usePickem';
+import { saveCrazyChainGame, useCrazyChainMarkets, useCrazyChainStandings, useMyCrazyChainEntry, useMyCrazyChainGameCards } from '@/hooks/useCrazyChain';
 import { useAuth } from '@/contexts/AuthContext';
 import { CHAIN_MARKET_LABELS, formatThreshold } from '@/lib/nfl/crazyChain';
 import { Button } from '@/components/ui/button';
@@ -24,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { chooseChainBoardWeek, useCrazyChainWeeks, type CrazyChainBoardWeek } from '@/hooks/useCrazyChainWeeks';
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
 import { chainAvailabilityNote } from '@/lib/nfl/chainAvailability';
+import { chainGameIsOpen, chainGameLockAt } from '../../supabase/functions/_shared/chainGameRules';
 
 export default function CrazyChainPage() {
   const { season, loading: seasonLoading } = useActiveSeason();
@@ -31,324 +23,152 @@ export default function CrazyChainPage() {
   const [params, setParams] = useSearchParams();
   const week = chooseChainBoardWeek(weeks, Number(params.get('week')), season?.current_week);
   useEffect(() => {
-    if (week && Number(params.get('week')) !== week.week_number) {
-      const next = new URLSearchParams(params);
-      next.set('week', String(week.week_number));
-      setParams(next, { replace: true });
-    }
+    if (week && Number(params.get('week')) !== week.week_number) setParams({ week: String(week.week_number) }, { replace: true });
   }, [week, params, setParams]);
-
   if (seasonLoading || (loading && !weeks.length)) return <div className="h-64 rounded-2xl pk-skeleton" />;
-  if (error) return <div className="glass-card p-5 text-center space-y-3"><p role="alert" className="text-sm text-muted-foreground">Could not load Crazy Chain weeks.</p><Button onClick={() => void refetch()}>Retry</Button></div>;
-  if (!season || !week) return <EmptyState title="No active NFL week" detail="Crazy Chain opens with the weekly schedule." />;
-  return (
-    <>
-      <label className="block mb-4 space-y-1.5">
-        <span className="text-xs font-bold text-muted-foreground">Choose your weekly board</span>
-        <select aria-label="Crazy Chain week" value={week.week_number} onChange={event => setParams({ week: event.target.value })} className="w-full min-h-11 rounded-xl border border-input bg-background px-3 text-sm">
-          {weeks.map(item => <option key={item.id} value={item.week_number}>{item.label || `Week ${item.week_number}`} · {item.marketCount ? `${item.marketCount} predictions` : 'Not published yet'}</option>)}
-        </select>
-      </label>
-      <CrazyChainWeek key={week.id} season={season} week={week} />
-    </>
-  );
+  if (error) return <div className="glass-card p-5"><p role="alert">{error.message}</p><Button onClick={() => void refetch()}>Retry</Button></div>;
+  if (!season || !week) return <p className="glass-card p-5">No active NFL week.</p>;
+  return <div className="member-page">
+    <label className="block mb-4 space-y-1.5">
+      <span className="text-xs font-bold text-muted-foreground">Browse games by week</span>
+      <select aria-label="Crazy Chain week" value={week.week_number} onChange={event => setParams({ week: event.target.value })} className="w-full min-h-11 rounded-xl border border-input bg-background px-3 text-sm">
+        {weeks.map(item => <option key={item.id} value={item.week_number}>{item.label || 'Week ' + item.week_number} · {item.marketCount} predictions</option>)}
+      </select>
+    </label>
+    <CrazyChainWeek key={week.id} season={season} week={week} />
+  </div>;
 }
 
 function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainBoardWeek }) {
   const { user } = useAuth();
-  const { games, loading: gamesLoading } = useWeekGames(week?.id);
-  const { markets, loading: marketsLoading, error: marketsError, refetch: refetchMarkets } = useCrazyChainMarkets(week?.id);
-  const { entry, loading: entryLoading, error: entryError, refetch: refetchEntry } = useMyCrazyChainEntry(week?.id);
-  const { standings } = useCrazyChainStandings(season?.id);
-  const { board, migrationReady, lockAt, locked, now, loading: boardLoading, error: boardError, refetch: refetchBoard } = useCrazyChainBoard(week.id, games, season);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);
+  const cache = useQueryClient();
+  const { games, loading: gamesLoading, error: gamesError, refetch: refreshGames } = useWeekGames(week.id);
+  const { markets, loading: marketsLoading, error: marketsError, refetch: refreshMarkets } = useCrazyChainMarkets(week.id);
+  const { entry, loading: entryLoading, error: entryError, refetch: refreshEntry } = useMyCrazyChainEntry(week.id);
+  const { standings, error: standingsError } = useCrazyChainStandings(season.id);
+  const { board, migrationReady, now, loading: boardLoading, error: boardError, refetch: refreshBoard } = useCrazyChainBoard(week.id, games, season);
+  const { cards, error: cardsError } = useMyCrazyChainGameCards(week.id, undefined, migrationReady);
+  const [drafts, setDrafts] = useState<Record<string, string[]>>({});
+  const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [gameFilter, setGameFilter] = useState('all');
-
-  useEffect(() => {
-    setSelected(new Set(entry?.legs.map(leg => leg.market_id) || []));
-  }, [entry]);
-
-  const myStanding = standings.find(row => row.user_id === user?.id);
-  const gameMap = useMemo(() => new Map(games.map(game => [game.id, game])), [games]);
-  const groupedMarkets = useMemo(() => {
-    const groups = new Map<string, CrazyChainMarket[]>();
-    for (const market of markets) {
-      if (gameFilter !== 'all' && market.game_id !== gameFilter) continue;
-      const game = gameMap.get(market.game_id);
-      if (search.trim() && !`${market.display_text} ${game?.home_team?.abbr} ${game?.away_team?.abbr}`.toLowerCase().includes(search.trim().toLowerCase())) continue;
-      groups.set(market.game_id, [...(groups.get(market.game_id) || []), market]);
+  const mine = standings.find(row => row.user_id === user?.id);
+  const marketMap = useMemo(() => new Map(markets.map(m => [m.id,m])), [markets]);
+  const savedByGame = useMemo(() => {
+    const result = new Map<string,string[]>();
+    for (const leg of entry?.legs || []) {
+      const gameId = marketMap.get(leg.market_id)?.game_id;
+      if (gameId) result.set(gameId,[...(result.get(gameId) || []),leg.market_id]);
     }
-    return [...groups.entries()]
-      .map(([gameId, group]) => ({ game: gameMap.get(gameId), markets: group }))
-      .sort((a, b) => new Date(a.game?.kickoff_at || 0).getTime() - new Date(b.game?.kickoff_at || 0).getTime());
-  }, [gameMap, markets, gameFilter, search]);
-
+    return result;
+  }, [entry,marketMap]);
+  const isOpen = (game: NflGame) => migrationReady && !boardError && chainGameIsOpen(game,now)
+    && board?.games?.find(item => item.game_id === game.id)?.unlocked === true;
   const loading = gamesLoading || marketsLoading || entryLoading || boardLoading;
-  const editable = !!week && !locked && entry?.status !== 'won' && entry?.status !== 'lost' && entry?.status !== 'void';
-  const currentChain = myStanding?.current_chain || 0;
-  const projectedChain = currentChain + selected.size;
-  const changed = useMemo(() => {
-    const saved = new Set(entry?.legs.map(leg => leg.market_id) || []);
-    if (saved.size !== selected.size) return true;
-    return [...selected].some(id => !saved.has(id));
-  }, [entry, selected]);
-
-  function toggleMarket(market: CrazyChainMarket) {
-    if (!editable || market.status !== 'open') return;
-    if (migrationReady && !selected.has(market.id) && chainAvailabilityNote(market, now)) return;
-    setSelected(current => {
-      const next = new Set(current);
-      if (next.has(market.id)) next.delete(market.id);
-      else next.add(market.id);
-      return next;
-    });
-  }
-
-  async function saveCard() {
-    if (!week || selected.size === 0) return toast.error('Choose at least one prediction.');
-    setSaving(true);
+  const error = gamesError || marketsError || entryError || boardError?.message;
+  const visible = games.filter(game => markets.some(m => m.game_id === game.id) && (gameFilter === 'all' || game.id === gameFilter));
+  async function saveGame(gameId: string, selections: string[]) {
+    setSaving(gameId);
     try {
-      await saveCrazyChainCard(week.id, [...selected]);
-      await Promise.all([refetchEntry(), refetchMarkets()]);
-      toast.success(`Week ${week.week_number} card saved with ${selected.size} link${selected.size === 1 ? '' : 's'}!`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save your chain.');
-    } finally {
-      setSaving(false);
-    }
+      await saveCrazyChainGame(gameId,selections);
+      await refreshEntry();
+      setDrafts(current => { const next = {...current}; delete next[gameId]; return next; });
+      await Promise.all(['crazy-chain-game-cards','crazy-chain-standings','crazy-chain-history'].map(key => cache.invalidateQueries({queryKey:[key]})));
+      toast.success(selections.length ? 'Game picks saved. Other games are unchanged.' : 'Picks removed for this game.');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not save game picks.'); }
+    finally { setSaving(null); }
   }
-
-  return (
-    <div className="space-y-4 pb-28">
-      <TurfBackdrop className="p-5 overflow-hidden">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="pk-section-label flex items-center gap-1.5"><Zap className="w-3 h-3 text-gold" /> All or Nothing</p>
-            <h1 className="text-[28px] font-black text-white leading-none mt-2">Crazy Chain</h1>
-            <p className="text-[11px] text-white/65 mt-2 max-w-[38ch] leading-relaxed">
-              Every prediction must hit. A perfect card adds every link; one miss breaks your active chain.
-            </p>
-          </div>
-          <div className="relative w-14 h-14 shrink-0">
-            <div className="absolute inset-0 rounded-full bg-gold/15 blur-lg" />
-            <div className="relative w-full h-full rounded-2xl border border-gold/35 bg-black/25 flex items-center justify-center">
-              <Link2 className="w-7 h-7 text-gold" />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 mt-5">
-          <ChainStat label="Current" value={currentChain} icon={<Flame className="w-3 h-3" />} />
-          <ChainStat label="Best" value={myStanding?.best_chain || 0} icon={<Trophy className="w-3 h-3" />} />
-          <ChainStat label="At Risk" value={selected.size} icon={<Zap className="w-3 h-3" />} />
-        </div>
-
-        <div className="mt-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[8px] uppercase tracking-widest text-white/45 font-black">Perfect-card result</p>
-            <p className="text-[12px] text-white font-extrabold mt-0.5">
-              {currentChain} current + {selected.size} links
-            </p>
-          </div>
-          <p className="text-[24px] font-black text-gold tabular-nums">{projectedChain}</p>
-        </div>
-      </TurfBackdrop>
-
-      <div className="grid grid-cols-2 gap-2">
-        <Link to="/nfl/crazy-chain/leaderboard" className="pk-tile p-3 flex items-center gap-2.5 btn-press">
-          <Trophy className="w-4 h-4 text-gold" />
-          <div><p className="text-[11px] font-extrabold">Leaderboard</p><p className="text-[9px] text-muted-foreground">Club chains</p></div>
-        </Link>
-        <Link to="/nfl/crazy-chain/history" className="pk-tile p-3 flex items-center gap-2.5 btn-press">
-          <History className="w-4 h-4 text-sky-300" />
-          <div><p className="text-[11px] font-extrabold">My History</p><p className="text-[9px] text-muted-foreground">Every card</p></div>
-        </Link>
+  return <div className="space-y-4 pb-8">
+    <TurfBackdrop className="p-5">
+      <p className="pk-section-label flex items-center gap-2"><Zap className="w-3 h-3 text-gold" /> Game by game</p>
+      <h1 className="text-3xl font-black text-white mt-2">Crazy Chain</h1>
+      <p className="text-sm text-white/70 mt-2 max-w-prose">Build a set of predictions for each game. Hit them all to add links; one miss breaks your chain. Later games stay open until their own deadlines.</p>
+      <div className="grid grid-cols-3 gap-2 mt-4">
+        {[['Current',mine?.current_chain || 0],['Best',mine?.best_chain || 0],['Pending picks',entry?.legs.filter(l => l.status === 'pending').length || 0]].map(([label,value]) =>
+          <div key={label} className="rounded-xl bg-black/25 p-3 text-center"><p className="text-2xl font-black text-white tabular-nums">{value}</p><p className="text-[10px] text-white/65">{label}</p></div>)}
       </div>
-
-      {loading ? (
-        <div className="space-y-2">{[1, 2, 3].map(i => <div key={i} className="h-32 rounded-2xl pk-skeleton" />)}</div>
-      ) : marketsError || entryError || boardError ? (
-        <div className="glass-card p-5 text-center">
-          <AlertTriangle className="w-6 h-6 text-gold mx-auto mb-2" />
-          <p className="text-[13px] font-extrabold">Crazy Chain is warming up</p>
-          <p className="text-[10px] text-muted-foreground mt-1">{marketsError || entryError || boardError?.message}</p>
-          <Button variant="outline" className="mt-3" onClick={() => void Promise.all([refetchBoard(), refetchMarkets(), refetchEntry()])}>Retry</Button>
+      {standingsError && <p role="alert" className="text-xs text-white/75 mt-2">Standings could not refresh. Last available totals shown.</p>}
+    </TurfBackdrop>
+    <div className="grid grid-cols-2 gap-2">
+      <Link to="/nfl/crazy-chain/leaderboard" className="pk-tile p-3 flex items-center gap-2 text-sm"><Trophy className="w-4 h-4 text-primary" /> Leaderboard</Link>
+      <Link to="/nfl/crazy-chain/history" className="pk-tile p-3 flex items-center gap-2 text-sm"><History className="w-4 h-4 text-primary" /> My game results</Link>
+    </div>
+    <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs space-y-1">
+      <p className="font-bold">Every game locks 48 hours before kickoff.</p>
+      <p className="text-muted-foreground">Final results refresh automatically. Chain steps follow kickoff order; games starting together are checked together. Missing stats stay pending for review.</p>
+      <p className="text-muted-foreground">Custom club targets{board?.checked_at ? ' · Availability checked ' + format(new Date(board.checked_at),'MMM d, h:mm a') : ''}</p>
+    </div>
+    {!loading && !migrationReady && <p role="alert" className="rounded-xl border border-primary/30 p-3 text-sm">The NFL per-game SQL update is required before new picks can be saved. Existing picks are preserved.</p>}
+    {cardsError && <p role="alert" className="text-sm text-destructive">{cardsError}</p>}
+    {error ? <div className="glass-card p-4"><p role="alert" className="text-sm">{error}</p><Button className="mt-2" variant="outline" onClick={() => void Promise.all([refreshGames(),refreshMarkets(),refreshEntry(),refreshBoard()])}><RefreshCw className="w-4 h-4 mr-2" /> Retry</Button></div>
+      : loading ? <div className="h-40 rounded-xl pk-skeleton" />
+      : <>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <Input aria-label="Search predictions" placeholder="Search a player or team…" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11" />
+          <select aria-label="Filter by matchup" value={gameFilter} onChange={event => setGameFilter(event.target.value)} className="min-h-11 min-w-0 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="all">All matchups</option>
+            {games.filter(g => markets.some(m => m.game_id === g.id)).map(g => <option key={g.id} value={g.id}>{g.away_team?.abbr} @ {g.home_team?.abbr}</option>)}
+          </select>
         </div>
-      ) : !season || !week ? (
-        <EmptyState title="No active NFL week" detail="Crazy Chain opens with the weekly schedule." />
-      ) : markets.length === 0 ? (
-        <EmptyState title="Predictions are being published" detail="Check back once this week's Crazy Chain board is live." />
-      ) : (
-        <>
-          {!migrationReady && locked && <p className="rounded-xl border border-gold/30 p-3 text-xs">The remaining-games database update is required to open this catch-up board. Started games remain locked.</p>}
-          {board?.catch_up && <p className="rounded-xl border border-gold/30 bg-gold/5 p-3 text-xs">Catch-up board: {board.game_ids.length} remaining games only. Already-started games are excluded. Your whole card locks at the time below.</p>}
-          <p className="text-xs text-muted-foreground">Custom club targets · {board?.checked_at ? `Availability checked ${format(new Date(board.checked_at), 'MMM d, h:mm a')}` : 'Availability recheck required'}</p>
-          <div className="flex items-center justify-between px-0.5">
-            <div>
-              <p className="pk-section-label">{week.label} Prediction Board</p>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                {locked
-                  ? 'The weekly board is locked.'
-                  : lockAt
-                    ? `Edit until ${format(lockAt, 'EEE, MMM d · h:mm a')}`
-                    : 'Choose your risk.'}
-              </p>
+        {!visible.length && <p className="glass-card p-5 text-sm text-muted-foreground">No predictions published for these games yet.</p>}
+        {visible.map(game => {
+          const open = isOpen(game);
+          const saved = savedByGame.get(game.id) || [];
+          // Polls update results without replacing unsaved drafts. Expired drafts
+          // are never presented as saved picks and cannot be submitted.
+          const selected = open ? drafts[game.id] ?? saved : saved;
+          const changed = selected.length !== saved.length || selected.some(id => !saved.includes(id));
+          const rows = markets.filter(m => m.game_id === game.id && (!search.trim() ||
+            (m.display_text + ' ' + game.home_team?.abbr + ' ' + game.away_team?.abbr).toLowerCase().includes(search.trim().toLowerCase())));
+          if (!rows.length) return null;
+          const card = cards.find(c => c.game_id === game.id);
+          return <section key={game.id} className="glass-card overflow-hidden">
+            <GameHeader game={game} open={open} />
+            {card && <div className="px-3.5 py-2 bg-muted/30 border-b border-border text-xs flex flex-wrap gap-x-3 gap-y-1">
+              <span className="font-bold">{card.status === 'locked' ? (game.status === 'final' ? 'Awaiting verified stats' : open ? 'Saved · editable' : 'Picks locked') : card.status === 'won' ? 'Perfect game · ' + card.hits + ' hits' : card.status === 'lost' ? 'Game missed' : 'Voided · chain preserved'}</span>
+              <span className="text-muted-foreground">{card.hits} hit · {card.misses} missed · {card.pending} pending{card.voids ? ' · ' + card.voids + ' void' : ''}</span>
+            </div>}
+            <div className="divide-y divide-border">
+              {rows.map(market => {
+                const leg = entry?.legs.find(l => l.market_id === market.id);
+                const chosen = selected.includes(market.id);
+                const note = chainAvailabilityNote(market,now);
+                const result = leg?.status !== 'pending' ? leg?.status : null;
+                return <button key={market.id} type="button" aria-pressed={chosen}
+                  disabled={!open || saving !== null || market.status !== 'open' || (!!note && !chosen)}
+                  onClick={() => setDrafts(current => ({...current,[game.id]:chosen ? selected.filter(id => id !== market.id) : [...selected,market.id]}))}
+                  className={'w-full text-left px-3.5 py-3 flex items-start gap-3 transition-colors disabled:cursor-default ' + (chosen ? 'bg-primary/10' : 'hover:bg-muted/40')}>
+                  <span className={'mt-0.5 w-6 h-6 shrink-0 rounded-md border flex items-center justify-center ' + (result === 'miss' ? 'border-destructive text-destructive' : chosen ? 'border-primary text-primary' : 'border-border')}>
+                    {result === 'miss' ? <X className="w-4 h-4" /> : chosen ? <Check className="w-4 h-4" /> : null}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold leading-snug">{leg?.display_text || market.display_text}</span>
+                    <span className="block text-xs text-muted-foreground mt-1">{CHAIN_MARKET_LABELS[market.market_type]} · {formatThreshold(market.operator,market.threshold)}</span>
+                    {note && market.status === 'open' && <span className="block text-xs text-muted-foreground mt-1">{note}{chosen ? ' Existing pick retained.' : ''}</span>}
+                  </span>
+                  {result && <span className={'text-xs font-bold shrink-0 ' + (result === 'miss' ? 'text-destructive' : 'text-primary')}>{result}{leg?.actual_value != null ? ' · ' + leg.actual_value : ''}</span>}
+                </button>;
+              })}
             </div>
-            {entry && <StatusBadge status={entry.status} />}
-          </div>
-
-          <div className="space-y-3">
-            <div className="grid sm:grid-cols-2 gap-2">
-              <Input aria-label="Search predictions" placeholder="Search a player or team…" value={search} onChange={event => setSearch(event.target.value)} className="min-h-11" />
-              <select aria-label="Filter by matchup" value={gameFilter} onChange={event => setGameFilter(event.target.value)} className="min-h-11 rounded-md border border-input bg-background px-3 text-sm">
-                <option value="all">All matchups</option>
-                {games.filter(game => markets.some(market => market.game_id === game.id)).map(game => <option key={game.id} value={game.id}>{game.away_team?.abbr} @ {game.home_team?.abbr}</option>)}
-              </select>
-            </div>
-            {groupedMarkets.length === 0 && <p className="text-sm text-muted-foreground p-3">No predictions match these filters.</p>}
-            {groupedMarkets.map(({ game, markets: gameMarkets }, index) => (
-              <motion.section
-                key={gameMarkets[0].game_id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(index * 0.04, 0.2) }}
-                className="glass-card overflow-hidden"
-              >
-                <GameHeader game={game} />
-                <div className="divide-y divide-white/5">
-                  {gameMarkets.map(market => {
-                    const leg = entry?.legs.find(item => item.market_id === market.id);
-                    const chosen = selected.has(market.id);
-                    const availabilityNote = migrationReady ? chainAvailabilityNote(market, now) : null;
-                    return (
-                      <button
-                        key={market.id}
-                        type="button"
-                        onClick={() => toggleMarket(market)}
-                        disabled={!editable || market.status !== 'open' || (!!availabilityNote && !chosen)}
-                        aria-pressed={chosen}
-                        className={`w-full text-left px-3.5 py-3 flex items-center gap-3 transition-colors ${chosen ? 'bg-emerald-400/[0.08]' : 'hover:bg-white/[0.025]'} disabled:cursor-default`}
-                      >
-                        <SelectionMark selected={chosen} status={leg?.status} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-extrabold leading-snug">{market.display_text}</p>
-                          {availabilityNote && <p className="text-xs text-gold mt-1">{availabilityNote}{chosen ? ' Saved pick retained; you may remove it before lock.' : ''}</p>}
-                          <p className="text-[9px] text-muted-foreground mt-1">
-                            {CHAIN_MARKET_LABELS[market.market_type] || market.market_type} · {formatThreshold(market.operator, market.threshold)}
-                          </p>
-                        </div>
-                        {leg?.status && leg.status !== 'pending' ? (
-                          <LegResult leg={leg} />
-                        ) : (
-                          <ChevronRight className={`w-4 h-4 shrink-0 ${chosen ? 'text-emerald-300' : 'text-muted-foreground/35'}`} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.section>
-            ))}
-          </div>
-        </>
-      )}
-
-      <div className="glass-card p-4">
-        <p className="text-[11px] font-extrabold flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-300" /> Chain Rules</p>
-        <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2 mt-3 text-[10px] text-muted-foreground">
-          <p>• Every non-void leg must hit.</p>
-          <p>• Perfect cards add one link per hit.</p>
-          <p>• Any miss resets the active chain.</p>
-          <p>• Skipped weeks preserve your chain.</p>
-          <p>• Cards close before the first included game's kickoff.</p>
-          <p>• Player results use verified final stats; non-participants are voided by the commissioner.</p>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {!loading && markets.length > 0 && editable && (
-          <motion.div
-            initial={{ y: 90, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 90, opacity: 0 }}
-            className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]"
-          >
-            <div className="max-w-[616px] mx-auto rounded-2xl border border-gold/30 bg-card/95 backdrop-blur-xl p-3 shadow-lg flex items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-black">Your weekly risk</p>
-                <p className="text-[13px] font-black text-foreground mt-0.5">
-                  {selected.size} link{selected.size === 1 ? '' : 's'} · Perfect → {projectedChain}
-                </p>
-              </div>
-              <Button
-                onClick={saveCard}
-                disabled={saving || selected.size === 0 || (!!entry && !changed)}
-                className="rounded-xl font-black gap-2 bg-gold text-black hover:bg-gold/90"
-              >
-                {saving ? <Clock3 className="w-4 h-4 animate-spin" /> : <LockKeyhole className="w-4 h-4" />}
-                {entry ? 'Update Card' : 'Save Chain'}
+            {open ? <div className="p-3 border-t border-border flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">{selected.length} selected{changed ? ' · Unsaved changes' : saved.length ? ' · Saved' : ''}</p>
+              <Button aria-label={'Save picks for ' + game.away_team?.abbr + ' at ' + game.home_team?.abbr} onClick={() => void saveGame(game.id,selected)} disabled={!changed || saving !== null} className="min-h-11 gap-2">
+                {saving === game.id ? <Clock3 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                {selected.length ? 'Save game picks' : 'Remove game picks'}
               </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div> : <p className="px-3.5 py-2.5 border-t border-border text-xs text-muted-foreground flex items-center gap-2"><LockKeyhole className="w-3.5 h-3.5 shrink-0" />{migrationReady ? 'This game is closed to new picks. Later games have their own deadlines.' : 'Database update required to enable per-game picks.'}</p>}
+          </section>;
+        })}
+      </>}
+  </div>;
+}
+function GameHeader({game,open}:{game:NflGame;open:boolean}) {
+  return <div className="p-3.5 bg-muted/25 border-b border-border space-y-2">
+    <div className="flex items-center gap-2">
+      <TeamLogo team={game.away_team} size={22} /><p className="text-sm font-black flex-1">{game.away_team?.abbr} @ {game.home_team?.abbr}</p><TeamLogo team={game.home_team} size={22} />
+      {game.status !== 'scheduled' && <span className="text-sm font-bold tabular-nums">{game.away_score ?? '—'}–{game.home_score ?? '—'} · {game.status}</span>}
     </div>
-  );
-}
-
-function ChainStat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
-  return (
-    <div className="rounded-xl bg-black/25 border border-white/10 p-2.5 text-center">
-      <p className="text-[18px] font-black text-white tabular-nums">{value}</p>
-      <p className="text-[8px] text-white/50 uppercase tracking-wider font-black flex items-center justify-center gap-1 mt-0.5">{icon}{label}</p>
-    </div>
-  );
-}
-
-function GameHeader({ game }: { game?: NflGame }) {
-  if (!game) return <div className="px-3.5 py-2.5 text-[10px] text-muted-foreground">NFL matchup</div>;
-  return (
-    <div className="px-3.5 py-2.5 bg-black/10 border-b border-white/5 flex items-center gap-2">
-      <TeamLogo team={game.away_team} size={18} />
-      <p className="text-[10px] font-black flex-1 min-w-0 truncate">
-        {game.away_team?.abbr || 'AWAY'} <span className="text-muted-foreground mx-1">@</span> {game.home_team?.abbr || 'HOME'}
-      </p>
-      <TeamLogo team={game.home_team} size={18} />
-      <p className="text-[9px] text-muted-foreground tabular-nums ml-1">{format(new Date(game.kickoff_at), 'EEE h:mm a')}</p>
-    </div>
-  );
-}
-
-function SelectionMark({ selected, status }: { selected: boolean; status?: CrazyChainLeg['status'] }) {
-  if (status === 'hit') return <span className="w-7 h-7 rounded-lg bg-emerald-400/15 border border-emerald-300/35 flex items-center justify-center"><Check className="w-4 h-4 text-emerald-300" /></span>;
-  if (status === 'miss') return <span className="w-7 h-7 rounded-lg bg-red-400/15 border border-red-300/35 flex items-center justify-center"><X className="w-4 h-4 text-red-300" /></span>;
-  if (status === 'void') return <span className="w-7 h-7 rounded-lg bg-white/5 border border-white/15 flex items-center justify-center text-[8px] font-black text-muted-foreground">VOID</span>;
-  return (
-    <span className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors ${selected ? 'bg-emerald-400/15 border-emerald-300/40' : 'bg-white/[0.02] border-white/10'}`}>
-      {selected ? <Check className="w-4 h-4 text-emerald-300" /> : <Circle className="w-3 h-3 text-muted-foreground/35" />}
-    </span>
-  );
-}
-
-function LegResult({ leg }: { leg: CrazyChainLeg }) {
-  const tone = leg.status === 'hit' ? 'text-emerald-300' : leg.status === 'miss' ? 'text-red-300' : 'text-muted-foreground';
-  return <span className={`text-[9px] font-black uppercase ${tone}`}>{leg.status}{leg.actual_value != null ? ` · ${leg.actual_value}` : ''}</span>;
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles = status === 'won'
-    ? 'text-emerald-300 bg-emerald-400/10 border-emerald-300/25'
-    : status === 'lost'
-      ? 'text-red-300 bg-red-400/10 border-red-300/25'
-      : 'text-gold bg-gold/10 border-gold/25';
-  return <span className={`text-[8px] uppercase tracking-widest font-black px-2 py-1 rounded-full border ${styles}`}>{status}</span>;
-}
-
-function EmptyState({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className="glass-card p-7 text-center">
-      <Zap className="w-7 h-7 text-muted-foreground/40 mx-auto mb-2" />
-      <p className="text-[13px] font-extrabold">{title}</p>
-      <p className="text-[10px] text-muted-foreground mt-1">{detail}</p>
-    </div>
-  );
+    <p className="text-xs text-muted-foreground">Kickoff {format(new Date(game.kickoff_at),'EEE, MMM d · h:mm a')}</p>
+    <p className="text-xs font-semibold">{open ? 'Pick by ' : 'Deadline: '}{format(new Date(chainGameLockAt(game)),'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
+  </div>;
 }

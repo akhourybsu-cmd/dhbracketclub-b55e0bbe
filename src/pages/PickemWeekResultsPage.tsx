@@ -22,7 +22,8 @@ export default function PickemWeekResultsPage() {
   const week = useMemo(() => weeks.find((w) => w.week_number === num), [weeks, num]);
   const { games } = useWeekGames(week?.id);
   const { picks } = useMyWeekPicks(week?.id);
-  const { standings } = useWeeklyStandings(week?.id);
+  const { standings, error: standingsError, refetch: refreshStandings } = useWeeklyStandings(week?.id);
+  const allFinal = games.length > 0 && games.every(game => game.status === 'final' && game.home_score != null && game.away_score != null);
 
   const correctCount = picks.filter((p) => p.is_correct === true).length;
   const totalScored = picks.filter((p) => p.is_correct !== null).length;
@@ -30,7 +31,7 @@ export default function PickemWeekResultsPage() {
 
   const meStanding = standings.find((s) => s.user_id === user?.id);
   const myRank = meStanding?.rank ?? null;
-  const podiumed = myRank !== null && myRank >= 1 && myRank <= 3;
+  const podiumed = allFinal && week?.status === 'scored' && myRank !== null && myRank >= 1 && myRank <= 3;
 
   // Trigger confetti once per session per week if user is in top 3
   const firedRef = useRef(false);
@@ -52,7 +53,7 @@ export default function PickemWeekResultsPage() {
       {/* Recap hero — turf */}
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
         <TurfBackdrop className="px-5 py-4">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-gold/95">Final Recap</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-gold/95">{allFinal ? 'Final Recap' : 'Results So Far'}</p>
           <h1 className="text-[26px] font-extrabold tracking-tight leading-tight text-white mt-0.5">
             {week?.label ?? `Week ${num}`}
           </h1>
@@ -62,7 +63,7 @@ export default function PickemWeekResultsPage() {
             <span className="text-[12px] text-white/65 ml-2">({accuracy}%)</span>
             {myRank && (
               <span className="ml-auto text-[12px] font-extrabold text-white/85">
-                Rank <span className="text-gold tabular-nums">#{myRank}</span>
+                {allFinal ? 'Rank' : 'Live rank'} <span className="text-gold tabular-nums">#{myRank}</span>
               </span>
             )}
           </div>
@@ -76,6 +77,8 @@ export default function PickemWeekResultsPage() {
           )}
         </TurfBackdrop>
       </motion.div>
+      <p className="text-xs text-muted-foreground">{games.filter(game=>game.status==='final').length}/{games.length} games final · Updates every 30 seconds. {allFinal ? '' : 'Standings are provisional until the slate is final.'}</p>
+      {standingsError && <button type="button" onClick={()=>void refreshStandings()} className="glass-card p-3 w-full text-sm text-destructive">{standingsError} · Retry</button>}
 
       {/* Per-game results */}
       <div className="space-y-2">

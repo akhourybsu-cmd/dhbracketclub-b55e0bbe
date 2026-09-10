@@ -32,7 +32,7 @@ export function PickemHUD() {
     if (p === '/nfl/crazy-chain/history') return 'Your Chain History';
     if (p.startsWith('/nfl/admin/crazy-chain')) return 'Crazy Chain · Commissioner';
     if (p === '/pickem') return 'Weekly Pick’em Slate';
-    if (p.startsWith('/pickem/week/') && p.endsWith('/results')) return 'Final Recap';
+    if (p.startsWith('/pickem/week/') && p.endsWith('/results')) return 'Results Center';
     if (p.startsWith('/pickem/week/')) return 'Lock Your Picks';
     if (p.startsWith('/pickem/standings')) return 'Standings Race';
     if (p.startsWith('/pickem/history')) return 'Pick History';
@@ -72,7 +72,7 @@ export function PickemHUD() {
   return (
     <>
       <header
-        className="sticky top-0 z-40 w-full border-b backdrop-blur-xl"
+        className="pk-turf sticky top-0 z-40 w-full border-b backdrop-blur-xl"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
           background:

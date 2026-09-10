@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClub } from '@/contexts/ClubContext';
+import { useQuery } from '@tanstack/react-query';
+import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
+import { chainGameIsOpen, chainGameLockAt } from '../../supabase/functions/_shared/chainGameRules';
 
 export type NflTeam = {
   id: string;
@@ -45,6 +49,7 @@ export type NflGame = {
   away_team_id: string;
   home_team_id: string;
   kickoff_at: string;
+  chain_lock_at?: string | null;
   status: 'scheduled' | 'live' | 'final';
   away_score: number | null;
   home_score: number | null;
@@ -193,23 +198,9 @@ export function useTeams() {
 
 /* All weeks for a season */
 export function useSeasonWeeks(seasonId?: string) {
-  const [weeks, setWeeks] = useState<NflWeek[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refetch = useCallback(async () => {
-    if (!seasonId) { setWeeks([]); setLoading(false); return; }
-    setLoading(true);
-    const { data } = await (supabase as any)
-      .from('nfl_weeks')
-      .select('*')
-      .eq('season_id', seasonId)
-      .order('week_number');
-    setWeeks(data || []);
-    setLoading(false);
-  }, [seasonId]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-  return { weeks, loading, refetch };
+  const query=useNflQuery(['weeks',seasonId],!!seasonId,async signal=>
+    nflData(supabase.from('nfl_weeks').select('*').eq('season_id',seasonId!).order('week_number').abortSignal(signal)));
+  return {weeks:(query.data || []) as NflWeek[],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
 }
 
 /* Current week (matches season.current_week) */
@@ -235,132 +226,54 @@ export function useCurrentWeek(season?: NflSeason | null) {
 }
 
 /* Games for a specific week, with team objects joined */
+async function nflData<T>(request: PromiseLike<{data:T;error:{message:string}|null}>): Promise<T> {
+  const {data,error}=await withTimeout(request,QUERY_TIMEOUT_MS,'NFL data');
+  if(error) throw new Error(error.message);
+  return data;
+}
+function useNflQuery<T>(key:(string|undefined)[],enabled:boolean,load:(signal:AbortSignal)=>Promise<T>) {
+  const {club}=useClub();
+  return useQuery({queryKey:['nfl-live',club?.id,...key],enabled:!!club && enabled,retry:1,refetchInterval:30_000,
+    queryFn:({signal})=>withTimeout(load(signal),HYDRATE_TIMEOUT_MS,'NFL refresh')});
+}
 export function useWeekGames(weekId?: string) {
-  const [games, setGames] = useState<NflGame[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refetch = useCallback(async () => {
-    if (!weekId) { setGames([]); setLoading(false); return; }
-    setLoading(true);
-    const [{ data: gamesData }, { data: teamsData }] = await Promise.all([
-      (supabase as any).from('nfl_games').select('*').eq('week_id', weekId).order('kickoff_at'),
-      (supabase as any).from('nfl_teams').select('*'),
+  const query=useNflQuery(['games',weekId],!!weekId,async signal=>{
+    const [games,teams]=await Promise.all([
+      nflData(supabase.from('nfl_games').select('*').eq('week_id',weekId!).order('kickoff_at').abortSignal(signal)),
+      nflData(supabase.from('nfl_teams').select('*').abortSignal(signal)),
     ]);
-    const teamMap = new Map<string, NflTeam>((teamsData || []).map((t: NflTeam) => [t.id, t]));
-    const enriched = (gamesData || []).map((g: NflGame) => ({
-      ...g,
-      away_team: teamMap.get(g.away_team_id),
-      home_team: teamMap.get(g.home_team_id),
-    }));
-    setGames(enriched);
-    setLoading(false);
-  }, [weekId]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-
-  // Realtime: refresh on game updates for this week
-  useEffect(() => {
-    if (!weekId) return;
-    const channel = supabase.channel(`nfl-games-${weekId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'nfl_games', filter: `week_id=eq.${weekId}` },
-        () => refetch())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [weekId, refetch]);
-
-  // Defensive poll while ANY game in the slate is live. Realtime usually
-  // catches DB writes within seconds, but if the websocket drops or a
-  // sync invocation just lands on the server, this guarantees viewers
-  // never sit on stale scores during a live slate.
-  const hasLiveGame = games.some((g) => g.status === 'live');
-  useEffect(() => {
-    if (!weekId || !hasLiveGame) return;
-    const id = window.setInterval(refetch, 30_000);
-    return () => window.clearInterval(id);
-  }, [weekId, hasLiveGame, refetch]);
-
-  return { games, loading, refetch };
+    const teamMap=new Map((teams || []).map(team=>[team.id,team as NflTeam]));
+    return (games || []).map(game=>({...game,away_team:teamMap.get(game.away_team_id),home_team:teamMap.get(game.home_team_id)})) as NflGame[];
+  });
+  return {games:query.data || [],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
 }
 
-/* User's picks for a week */
 export function useMyWeekPicks(weekId?: string) {
-  const { user } = useAuth();
-  const [picks, setPicks] = useState<NflPick[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refetch = useCallback(async () => {
-    if (!weekId || !user) { setPicks([]); setLoading(false); return; }
-    setLoading(true);
-    const { data } = await (supabase as any)
-      .from('nfl_picks')
-      .select('*')
-      .eq('week_id', weekId)
-      .eq('user_id', user.id);
-    setPicks(data || []);
-    setLoading(false);
-  }, [weekId, user]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-  return { picks, loading, refetch };
+  const {user}=useAuth();
+  const query=useNflQuery(['picks',weekId,user?.id],!!weekId && !!user,async signal=>
+    nflData(supabase.from('nfl_picks').select('*').eq('week_id',weekId!).eq('user_id',user!.id).abortSignal(signal)));
+  return {picks:(query.data || []) as NflPick[],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
 }
 
-/* User's tiebreaker for a week */
 export function useMyTiebreaker(weekId?: string) {
-  const { user } = useAuth();
-  const [tiebreaker, setTiebreaker] = useState<any>(null);
-
-  const refetch = useCallback(async () => {
-    if (!weekId || !user) { setTiebreaker(null); return; }
-    const { data } = await (supabase as any)
-      .from('nfl_tiebreakers')
-      .select('*')
-      .eq('week_id', weekId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-    setTiebreaker(data || null);
-  }, [weekId, user]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-  return { tiebreaker, refetch };
+  const {user}=useAuth();
+  const query=useNflQuery(['tiebreaker',weekId,user?.id],!!weekId && !!user,async signal=>
+    nflData(supabase.from('nfl_tiebreakers').select('*').eq('week_id',weekId!).eq('user_id',user!.id).abortSignal(signal).maybeSingle()));
+  return {tiebreaker:query.data || null,refetch:query.refetch};
 }
 
-/**
- * Club pick totals become visible only after the server-side week lock.
- * The matching RLS policy still protects unrevealed picks if a client clock
- * is wrong or this query is called early.
- */
 export function useWeekPickInsights(weekId?: string, revealed = false) {
-  const [insights, setInsights] = useState<Map<string, NflPickInsight>>(new Map());
-  const [loading, setLoading] = useState(false);
-
-  const refetch = useCallback(async () => {
-    if (!weekId || !revealed) {
-      setInsights(new Map());
-      setLoading(false);
-      return;
+  const query=useNflQuery(['insights',weekId],!!weekId && revealed,async signal=>{
+    const rows=await nflData(supabase.from('nfl_picks').select('game_id,picked_team_id').eq('week_id',weekId!).abortSignal(signal));
+    const result=new Map<string,NflPickInsight>();
+    for(const row of rows || []){
+      const current=result.get(row.game_id) || {game_id:row.game_id,total_picks:0,team_counts:{}};
+      current.total_picks++;current.team_counts[row.picked_team_id]=(current.team_counts[row.picked_team_id] || 0)+1;
+      result.set(row.game_id,current);
     }
-    setLoading(true);
-    const { data } = await (supabase as any)
-      .from('nfl_picks')
-      .select('game_id, picked_team_id')
-      .eq('week_id', weekId);
-    const next = new Map<string, NflPickInsight>();
-    for (const row of data || []) {
-      const current = next.get(row.game_id) ?? {
-        game_id: row.game_id,
-        total_picks: 0,
-        team_counts: {},
-      };
-      current.total_picks += 1;
-      current.team_counts[row.picked_team_id] = (current.team_counts[row.picked_team_id] ?? 0) + 1;
-      next.set(row.game_id, current);
-    }
-    setInsights(next);
-    setLoading(false);
-  }, [weekId, revealed]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-  return { insights, loading, refetch };
+    return result;
+  });
+  return {insights:revealed?query.data || new Map<string,NflPickInsight>():new Map<string,NflPickInsight>(),loading:query.isLoading,refetch:query.refetch};
 }
 
 /* Save / upsert a pick */
@@ -390,68 +303,27 @@ export async function saveTiebreaker(args: {
 
 /* Weekly standings (for a week) */
 export function useWeeklyStandings(weekId?: string) {
-  const [standings, setStandings] = useState<NflWeeklyStanding[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refetch = useCallback(async () => {
-    if (!weekId) { setStandings([]); setLoading(false); return; }
-    setLoading(true);
-    const { data } = await (supabase as any)
-      .from('nfl_weekly_standings')
-      .select('*, profiles:user_id(display_name, avatar_url)')
-      .eq('week_id', weekId)
-      .order('rank', { ascending: true, nullsFirst: false });
-    setStandings(data || []);
-    setLoading(false);
-  }, [weekId]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-
-  useEffect(() => {
-    if (!weekId) return;
-    const channel = supabase.channel(`nfl-week-stand-${weekId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'nfl_weekly_standings', filter: `week_id=eq.${weekId}` },
-        () => refetch())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [weekId, refetch]);
-
-  return { standings, loading, refetch };
+  const query=useNflQuery(['weekly-standings',weekId],!!weekId,async signal=>{
+    const rows=await nflData(supabase.from('nfl_weekly_standings').select('*')
+      .eq('week_id',weekId!).order('rank',{ascending:true,nullsFirst:false}).abortSignal(signal));
+    if(!rows?.length) return [];
+    const profiles=await nflData(supabase.from('profiles').select('id,display_name,avatar_url').in('id',rows.map(row=>row.user_id)).abortSignal(signal));
+    return rows.map(row=>({...row,profiles:profiles?.find(profile=>profile.id===row.user_id)}));
+  });
+  return {standings:(query.data || []) as NflWeeklyStanding[],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
 }
 
-/* Season standings */
 export function useSeasonStandings(seasonId?: string) {
-  const [standings, setStandings] = useState<NflSeasonStanding[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const refetch = useCallback(async () => {
-    if (!seasonId) { setStandings([]); setLoading(false); return; }
-    setLoading(true);
-    const { data } = await (supabase as any)
-      .from('nfl_season_standings')
-      .select('*, profiles:user_id(display_name, avatar_url)')
-      .eq('season_id', seasonId)
-      .order('rank', { ascending: true, nullsFirst: false });
-    setStandings(data || []);
-    setLoading(false);
-  }, [seasonId]);
-
-  useEffect(() => { refetch(); }, [refetch]);
-
-  useEffect(() => {
-    if (!seasonId) return;
-    const channel = supabase.channel(`nfl-season-stand-${seasonId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'nfl_season_standings', filter: `season_id=eq.${seasonId}` },
-        () => refetch())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [seasonId, refetch]);
-
-  return { standings, loading, refetch };
+  const query=useNflQuery(['season-standings',seasonId],!!seasonId,async signal=>{
+    const rows=await nflData(supabase.from('nfl_season_standings').select('*')
+      .eq('season_id',seasonId!).order('rank',{ascending:true,nullsFirst:false}).abortSignal(signal));
+    if(!rows?.length) return [];
+    const profiles=await nflData(supabase.from('profiles').select('id,display_name,avatar_url').in('id',rows.map(row=>row.user_id)).abortSignal(signal));
+    return rows.map(row=>({...row,profiles:profiles?.find(profile=>profile.id===row.user_id)}));
+  });
+  return {standings:(query.data || []) as NflSeasonStanding[],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
 }
 
-/* Team records for a season (derived view: nfl_team_records).
-   Returns a Map keyed by team_id for O(1) lookup in render loops. */
 export function useSeasonTeamRecords(seasonId?: string) {
   const [records, setRecords] = useState<Map<string, NflTeamRecord>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -494,62 +366,41 @@ export function deriveWeekStatus(
 ): NflWeek['status'] {
   if (persistedStatus === 'scored') return 'scored';
   if (games.length === 0) return 'upcoming';
-  const kicked = games.filter((g) => new Date(g.kickoff_at).getTime() <= nowMs || g.status !== 'scheduled');
-  const finals = games.filter((g) => g.status === 'final');
-  if (kicked.length === 0) return 'open';
-  if (finals.length === games.length) return 'closed';
-  return 'partially_locked';
+  const editable = games.filter((game) => chainGameIsOpen(game, nowMs)).length;
+  if (editable === games.length) return 'open';
+  return editable === 0 ? 'closed' : 'partially_locked';
 }
 
 /**
- * Returns the moment picks for the entire week freeze:
- * (first scheduled kickoff) − season.pick_lock_minutes.
+ * Returns the next individual game deadline (or the last deadline when closed).
  * Returns null if there are no games yet.
  */
-export function weekLockAt(games: NflGame[], season?: NflSeason | null): Date | null {
-  if (!games.length) return null;
-  const firstMs = Math.min(...games.map((g) => new Date(g.kickoff_at).getTime()));
-  const lockMin = season?.pick_lock_minutes ?? 10;
-  return new Date(firstMs - lockMin * 60_000);
+export function weekLockAt(games: NflGame[], _season?: NflSeason | null, nowMs = Date.now()): Date | null {
+  const open=games.filter(game=>chainGameIsOpen(game,nowMs)).map(chainGameLockAt);
+  if(open.length) return new Date(Math.min(...open));
+  const valid=games.map(chainGameLockAt).filter(Number.isFinite);
+  return valid.length ? new Date(Math.max(...valid)) : null;
 }
-
-/** True once the entire week's pick window has closed. */
-export function isWeekLocked(games: NflGame[], season?: NflSeason | null, nowMs = Date.now()): boolean {
-  const lock = weekLockAt(games, season);
-  if (!lock) return false;
-  if (nowMs >= lock.getTime()) return true;
-  // Defensive: if any game has already kicked, the week is locked regardless.
-  return games.some((g) => g.status !== 'scheduled');
+/** The week closes only when no matchup remains editable. */
+export function isWeekLocked(games: NflGame[], _season?: NflSeason | null, nowMs = Date.now()): boolean {
+  return games.length === 0 || !games.some(game=>chainGameIsOpen(game,nowMs));
 }
-
-/** Back-compat: per-game lock derived from the week-level lock. */
-export function isGameLocked(game: NflGame, games?: NflGame[], season?: NflSeason | null, nowMs = Date.now()): boolean {
-  if (game.status !== 'scheduled') return true;
-  if (games && games.length) return isWeekLocked(games, season, nowMs);
-  return new Date(game.kickoff_at).getTime() <= nowMs;
+export function isGameLocked(game: NflGame, _games?: NflGame[], _season?: NflSeason | null, nowMs = Date.now()): boolean {
+  return !chainGameIsOpen(game,nowMs);
 }
-
-/** Keeps lock-dependent controls honest when the cutoff passes while a page is open. */
 export function useWeekLock(games: NflGame[], season?: NflSeason | null) {
-  const [now, setNow] = useState(() => Date.now());
-  const lockAt = weekLockAt(games, season);
-  const lockAtMs = lockAt?.getTime() ?? null;
-
-  useEffect(() => {
-    if (!lockAtMs || now >= lockAtMs) return;
-    const remaining = lockAtMs - now;
-    const delay = Math.max(1_000, Math.min(15_000, remaining + 50));
-    const id = window.setTimeout(() => setNow(Date.now()), delay);
-    return () => window.clearTimeout(id);
-  }, [lockAtMs, now]);
-
-  return { lockAt, locked: isWeekLocked(games, season, now), now };
+  const [now,setNow]=useState(Date.now);
+  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),1000);return()=>window.clearInterval(timer);},[]);
+  return {lockAt:weekLockAt(games,season,now),locked:isWeekLocked(games,season,now),now};
 }
+
+
 
 /** Delete a single pick (tap-to-unselect). */
 export async function deleteMyPick(pickId: string) {
-  const { error } = await (supabase as any).from('nfl_picks').delete().eq('id', pickId);
+  const { data, error } = await withTimeout(supabase.from('nfl_picks').delete().eq('id', pickId).select('id'),QUERY_TIMEOUT_MS,'Remove pick');
   if (error) throw error;
+  if (!data?.length) throw new Error('This pick could not be removed. The game may have just locked.');
 }
 
 /**

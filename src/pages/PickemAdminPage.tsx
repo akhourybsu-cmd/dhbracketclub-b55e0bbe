@@ -241,7 +241,7 @@ export default function PickemAdminPage() {
           </div>
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary">ESPN Schedule Sync</p>
-            <p className="text-[11px] text-muted-foreground">Pulls the schedule and scores from ESPN, auto-selects a tiebreaker, and refreshes every 30 minutes while active.</p>
+            <p className="text-[11px] text-muted-foreground">Pulls the schedule and scores from ESPN and auto-selects a tiebreaker. The protected live-results job checks every five minutes after deployment.</p>
             <Button
               size="sm"
               variant="outline"
@@ -388,14 +388,12 @@ function GameAdminRow({ game, onSaveFinal, onDelete }: { game: any; onSaveFinal:
 }
 
 function LeagueSettingsCard({ season, onSaved }: { season: any; onSaved: () => void }) {
-  const [lockMin, setLockMin] = useState<string>(String(season.pick_lock_minutes ?? 10));
   const [hideFuture, setHideFuture] = useState<boolean>(!!season.hide_unresolved_future_weeks);
   const [windowN, setWindowN] = useState<string>(season.visible_week_window != null ? String(season.visible_week_window) : '');
   const [requireSched, setRequireSched] = useState<boolean>(season.require_finalized_schedule !== false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setLockMin(String(season.pick_lock_minutes ?? 10));
     setHideFuture(!!season.hide_unresolved_future_weeks);
     setWindowN(season.visible_week_window != null ? String(season.visible_week_window) : '');
     setRequireSched(season.require_finalized_schedule !== false);
@@ -403,12 +401,10 @@ function LeagueSettingsCard({ season, onSaved }: { season: any; onSaved: () => v
 
   async function save() {
     setSaving(true);
-    const lockMinNum = Math.max(0, Math.min(720, parseInt(lockMin || '10', 10) || 10));
     const windowNum = windowN.trim() === '' ? null : Math.max(1, parseInt(windowN, 10) || 1);
     const { error } = await (supabase as any)
       .from('nfl_seasons')
       .update({
-        pick_lock_minutes: lockMinNum,
         hide_unresolved_future_weeks: hideFuture,
         visible_week_window: windowNum,
         require_finalized_schedule: requireSched,
@@ -450,9 +446,8 @@ function LeagueSettingsCard({ season, onSaved }: { season: any; onSaved: () => v
       </div>
 
       <div className="rounded-lg bg-muted/20 p-2.5 space-y-1.5">
-        <p className="text-[12px] font-bold">Lock picks N minutes before first kickoff</p>
-        <p className="text-[10px] text-muted-foreground leading-snug">All picks for the week freeze at this cutoff. Default 10.</p>
-        <Input type="number" min={0} max={720} value={lockMin} onChange={(e) => setLockMin(e.target.value)} className="h-9" />
+        <p className="text-[12px] font-bold">Per-game deadlines · 48 hours</p>
+        <p className="text-[10px] text-muted-foreground leading-snug">Pick’em and Crazy Chain lock each matchup 48 hours before kickoff. The featured-game tiebreaker uses that game’s deadline too.</p>
       </div>
 
       <Button size="sm" className="w-full" onClick={save} disabled={saving}>

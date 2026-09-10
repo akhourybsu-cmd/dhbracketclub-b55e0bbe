@@ -1,110 +1,149 @@
-# Crazy Chain weekly data
+# NFL per-game deadlines and live results
 
-## Load a board
+## Activate this update
 
-In NFL Game Center, open **Crazy Chain Control Room**, choose a week with unstarted games,
-then **Preview weekly board**. Review the counts and availability notes before
-publishing. Members can choose published weeks on the Crazy Chain page and search
-by player/team or filter by matchup.
+1. Copy/paste the **entire** [combined SQL file](sql/NFL_PER_GAME_AND_LIVE.sql) into the project's SQL editor.
+   It is transactional, rerunnable, and upgrades either the original Crazy Chain
+   schema or the later catch-up schema. It preserves picks, leg IDs, and targets.
+   This supersedes the previous remaining-games SQL instructions.
+2. Deploy these six Edge Functions from an authenticated Supabase CLI, or through
+   the project's Lovable/Supabase deployment workflow:
 
-The importer verifies the stored schedule against ESPN's regular-season scoreboard,
-then joins starting depth-chart athletes to the same team's current-season roster
-by player ID. It publishes at most one available QB, RB, WR, and TE per team.
-Questionable, doubtful, out, reserve, and suspended players are skipped. Missing
-rosters produce a warning and team predictions only, never invented players.
+   ~~~sh
+   supabase functions deploy sync-nfl-week
+   supabase functions deploy score-nfl-week
+   supabase functions deploy score-nfl-crazy-chain
+   supabase functions deploy sync-nfl-live
+   supabase functions deploy refresh-nfl-chain-boards
+   supabase functions deploy pickem-week-reminder
+   ~~~
 
-The fixed targets below are DH Club challenges, **not ESPN projections or odds**:
+3. Preview/publish Weeks 1 and 2 once in **Crazy Chain Control Room** to stamp fresh
+   player availability. Existing markets are not deleted; games inside 48 hours
+   remain visible but cannot receive new picks.
+4. Verify the protected **nfl-live-results** job is active, running every five minutes,
+   and its latest run/function logs show success. SQL creates this job by reusing
+   the existing protected reminder request when available. If that job does not
+   exist, configure a POST to **sync-nfl-live** every five minutes using the existing
+   server-side CRON_SHARED_SECRET. Never put credentials in browser code or Git.
 
-| Prediction | Target |
+Git push, SQL execution, and server deployment are separate. The UI disables
+per-game writes until the new database mode is confirmed.
+
+## Live verification / current deployment blocker
+
+On September 10, 2026, the deployed **sync-nfl-week** returned HTTP 502 with
+**ESPN fetch failed: 403**. The same official scoreboard was accessible locally.
+Automatic results are **not verified operational** until the deployment environment
+can read that feed and a protected scheduler run succeeds. Running the SQL alone
+does not fix provider access.
+
+Using the existing commissioner permission, the identity-verified Week 1 opener
+(Seattle 13, New England 10) was imported and the existing scorer processed five
+Pick'em entries. No selections or future games were edited. Until automatic access
+is restored, commissioners can verify official finals, save them in Pick'em Admin,
+then use **Score**. Deploy the new scorer before relying on completed-week wins:
+the old deployed scorer can count provisional leaders as weekly winners.
+
+## Deadlines — both games
+
+- Every matchup closes exactly **48 elapsed hours before kickoff** (UTC arithmetic;
+  each viewer sees the deadline in their local time). A Thursday 8:15 PM game
+  normally closes Tuesday 8:15 PM; daylight-saving transitions still use 48 hours.
+- Thursday closing does not freeze Sunday/Monday picks. Pick'em saves each team
+  selection immediately; Crazy Chain has a **Save game picks** button per matchup.
+- The Pick'em tiebreaker closes 48 hours before its featured game's kickoff.
+- Saved picks from before this rule change are retained, including picks on games
+  that are now inside the 48-hour cutoff. No new picks can be added to those games.
+- Postponement never reopens a deadline. Earlier rescheduling closes it sooner.
+- Pick'em reveals each matchup's club percentages at its own deadline. Other
+  games remain private. Crazy Chain's weekly storage envelope stays private
+  until all its game deadlines pass, avoiding leaks of future selection counts.
+
+## Crazy Chain scoring
+
+Each game is an all-or-nothing set of predictions. All non-void picks must hit to
+add one link per hit. A missed game breaks the chain; skipped/fully voided games
+leave it unchanged. Later games can build a new chain even after an earlier miss.
+
+The chain is reconstructed in **kickoff order**, not whichever provider request
+finishes first. Picks on games starting at exactly the same time form one step:
+all must resolve, and any miss resets that step. This avoids arbitrary game-ID
+ordering affecting rankings. An unresolved earlier step holds later chain credit;
+individual results and hit totals still update, with a pending indicator.
+
+- Repeated result checks never double-credit. Corrected final statistics rebuild
+  the chain and personal best from source results.
+- Saved leg thresholds are immutable snapshots used for grading.
+- Commissioner decisions take precedence over automatic updates.
+- Weekly containers remain for compatibility; the UI and chain standings use
+  game results. Perfect-game counts are separate from legacy perfect-week counts.
+
+## Live data and grading
+
+The lightweight results job checks recent game weeks every **five minutes**,
+including the prior week for late stats/corrections. It does not wait for a whole
+week to end, and does not run the heavier roster importer on every tick.
+Member screens refresh every **30 seconds**, including when a game first goes
+live; unsaved Crazy Chain drafts survive background refreshes.
+
+This is near-live polling, not a play-by-play stream. Latency depends on ESPN
+publishing a final result, scheduler/function availability, and the next refresh.
+
+Automatic grading supports:
+
+- Team winner, team points, combined game points.
+- Passing yards, passing touchdowns, rushing yards, receiving yards, receptions.
+
+Player results require a matching ESPN event ID, season, home/away team IDs, final
+status, final scores, athlete ID, and **named statistic key** in the final box score.
+Explicit numeric zero is valid; absent rows, empty strings, missing categories,
+and malformed values remain pending. Only explicit DNP evidence can auto-void.
+A missing box-score row is not proof of zero or non-participation. Commissioners
+review unresolved statistics and custom unsupported categories (such as anytime TD).
+
+Pick'em awards live points/provisional ranks as each final arrives, but weekly wins
+and average weekly-rank tiebreakers use completed weeks only. Final score fields
+must exist; missing values are not coerced to zero. Season reads are paginated so
+later members/weeks are not dropped by the API's row limit.
+
+## Publishing future Crazy Chain boards
+
+In the Control Room, choose a week and **Preview weekly board**, then publish.
+Schedule matches and current-season roster/depth-chart identities are verified.
+New predictions are published only for games more than 48 hours away; injury
+checks continue for already-published players until kickoff.
+
+These are custom DH Club challenge thresholds, **not ESPN projections or odds**:
+
+| Subject | Targets |
 | --- | --- |
-| Quarterback | 1+ passing touchdown; 200+ passing yards |
-| Running back | 50+ rushing yards |
-| Wide receiver | 50+ receiving yards; 4+ receptions |
-| Tight end | 25+ receiving yards; 3+ receptions |
-| Each team | Win; score 20+ points |
+| Starting QB | 1+ passing TD; 200+ passing yards |
+| Starting RB | 50+ rushing yards |
+| Starting WR | 50+ receiving yards; 4+ catches |
+| Starting TE | 25+ receiving yards; 3+ catches |
+| Each team | Win; 20+ points |
 | Game | 40+ combined points |
 
-## Safety and results
+The protected reminder job invokes the publisher: eight-day lookahead, six-hour
+normal cadence, and 30-minute checks within 24 hours before a pick deadline or
+kickoff. Questionable/out/doubtful/reserve/suspended players are not newly
+published. Existing affected players pause for new selections; saved picks are
+not erased or turned into misses. Evidence older than 24 hours pauses new player
+selections in SQL. Stable source IDs prevent duplicate imports or target changes.
 
-- Only games still scheduled and before their individual cutoff are imported;
-  already-started games are excluded. Mismapped, incomplete, or rescheduled slates
-  are rejected; sync the NFL schedule first when prompted.
-- A new catch-up board locks the entire card before its first **included** kickoff.
-  Its game set and original deadline are frozen at first publication. Refreshing,
-  removing a player, or postponing a game cannot move that deadline later. An
-  earlier schedule change can close it sooner. Existing Pick'em rules are unchanged.
-- Preview expires after 10 minutes. Publishing rechecks the active club and lock.
-- Reimporting adds missing predictions only. Stable source IDs prevent duplicates;
-  existing targets, results, and member cards are not overwritten or removed.
-- Republishing rechecks existing imported players too. Injury concerns, missing
-  roster data, trades, and unverified starting roles pause **new** selections.
-  Checks older than 24 hours also pause new player selections, enforced in SQL.
-  Existing selections and targets remain intact; members can remove uncertain
-  selections before lock. Uncertainty never becomes an automatic miss or zero.
-- Existing NFL result scoring handles team winners, team points, and game totals.
-  **Player-stat predictions still require commissioner verification and settlement
-  from final game statistics.** Void predictions for non-participants; missing
-  provider data is not a zero. Automatic player-stat grading is not implemented.
-- Apply `20260910180000_crazy_chain_remaining_games.sql` **in addition to** the
-  original `20260910150000_nfl_game_center_crazy_chain.sql` migration.
-  The new migration is transactional and rerunnable. It preserves existing data.
-  After applying, preview/publish Weeks 1 and 2 once to record fresh availability.
+## Optional CLI and tests
 
-## Automatic future-week publishing
+Node 22.18+ or 24. Supply an authorized account through process-only
+DH_NFL_EMAIL / DH_NFL_PASSWORD; .env holds the public app URL/key.
 
-Deploy both `refresh-nfl-chain-boards` and the updated `pickem-week-reminder`
-Edge Functions. The existing 30-minute NFL reminder schedule calls the new
-publisher using the existing `CRON_SHARED_SECRET`. No new paid feed is required.
-Do not put that secret in Git, the browser, or SQL text. If the reminder schedule
-is not already running, configure it in the project before claiming automation is live.
-
-The publisher:
-
-- Limits itself to clubs with NFL Game Center installed and enabled.
-- Looks eight days ahead in active/upcoming seasons, based on dates rather than a
-  potentially stale `current_week` setting. It does not fill distant weeks with
-  today's roster assumptions.
-- Refreshes normally every six hours, or every 30-minute scheduler tick within
-  24 hours of any remaining kickoff. It can continue checking later games after
-  the weekly card locks, without adding new predictions or editing saved legs.
-- Records the last successful check and availability warnings on each board.
-  Failures are returned in the reminder's `crazy_chain` result and function logs.
-  Missing source data does not erase the board; stale player selections fail closed.
-- Caps one invocation at four due club/week boards; additional work is deferred.
-
-Deployment commands, from an authenticated Supabase CLI linked to this project:
-
-```sh
-supabase functions deploy refresh-nfl-chain-boards
-supabase functions deploy pickem-week-reminder
-```
-
-SQL application and function deployment are separate from pushing Git commits.
-The importer explicitly reports a missing migration rather than silently bypassing it.
-
-## Optional command-line import
-
-Requires Node 22.18+ or 24 and installed project dependencies. Supply an existing
-club commissioner/admin account through the process environment variables
-`DH_NFL_EMAIL` and `DH_NFL_PASSWORD`. Do not commit credentials or session tokens.
-The existing `.env` provides the app's public Supabase URL and publishable key.
-
-```sh
-# Read-only preview
-node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 2
-
-# Publish missing predictions and read back the stored count
-node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 2 --publish
-```
-
-The command uses the same importer and database permissions as the admin screen.
-It does not use a service-role key or create member picks.
-
-## Local verification
-
-```sh
-npx vitest run src/test/crazyChainBoard.test.ts src/test/crazyChain.test.ts src/test/pickem.test.ts
-# Optional isolated PostgreSQL integration checks, no live data:
+~~~sh
+node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 1
+node --env-file=.env scripts/load-crazy-chain.mjs --year 2026 --week 1 --publish
+npx vitest run src/test/crazyChainPerGameUi.test.tsx src/test/nflFinalStats.test.ts src/test/crazyChainBoard.test.ts src/test/crazyChain.test.ts src/test/pickem.test.ts
+# Optional isolated PostgreSQL; no live data:
 npm install --no-save --package-lock=false @electric-sql/pglite
-node scripts/test-crazy-chain-db.mjs
-```
+node scripts/test-nfl-per-game-db.mjs
+node scripts/test-nfl-per-game-db.mjs --with-catch-up
+node scripts/test-nfl-per-game-db.mjs --bundle
+~~~

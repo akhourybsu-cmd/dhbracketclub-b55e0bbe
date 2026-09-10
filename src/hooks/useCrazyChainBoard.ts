@@ -7,6 +7,7 @@ import { chainRpc } from '@/lib/nfl/chainBoardImport';
 import { useWeekLock, type NflGame, type NflSeason } from '@/hooks/usePickem';
 
 interface BoardState {
+  mode?: 'per_game_48h'; games?: { game_id: string; lock_at: string; unlocked: boolean }[];
   lock_at: string; unlocked: boolean; catch_up: boolean; game_ids: string[];
   checked_at: string | null; warnings: string[];
 }
@@ -22,16 +23,17 @@ export function useCrazyChainBoard(weekId: string | undefined, games: NflGame[],
     queryFn: async ({ signal }) => {
       const { data, error } = await withTimeout(chainRpc(supabase, 'get_nfl_chain_board', { _week_id: weekId! })
         .abortSignal(signal), QUERY_TIMEOUT_MS, 'Crazy Chain board');
-      // Keep existing full-week play working during rollout. A catch-up card stays
-      // locked under the old server rules until the migration is actually applied.
+      // Fail closed during rollout; never offer per-game writes against legacy
+      // whole-week server rules.
       if (error && /schema cache|does not exist/.test(error.message)) return { ready: false, board: null };
       if (error) throw new Error(error.message);
-      return { ready: true, board: data as unknown as BoardState | null };
+      const board = data as unknown as BoardState | null;
+      return { ready: board?.mode === 'per_game_48h', board };
     },
   });
   const board = query.data?.board;
   const lockAt = board?.lock_at ? new Date(board.lock_at) : legacy.lockAt;
   return { board, migrationReady: query.data?.ready || false, lockAt, now,
-    locked: !!query.error || (board ? !board.unlocked || !lockAt || now >= lockAt.getTime() : legacy.locked),
+    locked: !!query.error || !query.data?.ready || legacy.locked,
     loading: query.isLoading, error: query.error, refetch: query.refetch };
 }

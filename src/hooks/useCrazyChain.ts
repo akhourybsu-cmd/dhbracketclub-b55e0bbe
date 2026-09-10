@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
+import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
+import { chainRpc } from '@/lib/nfl/chainBoardImport';
 import type { ChainCardStatus, ChainLegStatus, ChainOperator } from '@/lib/nfl/crazyChain';
 
 export interface CrazyChainMarket {
@@ -41,6 +44,7 @@ export interface CrazyChainLeg {
   threshold: number;
   status: ChainLegStatus;
   actual_value: number | null;
+  game_id?: string;
 }
 
 export interface CrazyChainEntry {
@@ -75,211 +79,74 @@ export interface CrazyChainStanding {
   longest_card: number;
   last_settled_week: number | null;
   rank: number | null;
+  perfect_games?: number;
+  pending_games?: number;
   profiles?: { display_name: string; avatar_url: string | null } | null;
 }
 
-function friendlyChainError(error: unknown): string {
-  const message = error instanceof Error ? error.message : String((error as { message?: unknown })?.message || '');
-  if (/relation .*nfl_chain|schema cache/i.test(message)) {
-    return 'Crazy Chain is waiting for its Game Center database update.';
-  }
-  return message || 'Crazy Chain could not be loaded.';
-}
 
+export interface CrazyChainGameCard {
+  entry_id: string; game_id: string; week_id: string; week_number: number; kickoff_at: string;
+  chain_lock_at: string; status: ChainCardStatus; game_status: string; home_team_id: string; away_team_id: string;
+  links_risked: number; hits: number; misses: number; voids: number; pending: number;
+}
+async function checked<T>(request: PromiseLike<{ data: T; error: { message: string } | null }>): Promise<T> {
+  const result = await withTimeout(request, QUERY_TIMEOUT_MS, 'NFL data');
+  if (result.error) throw new Error(/schema cache|does not exist/.test(result.error.message)
+    ? 'Apply the NFL per-game database update to enable this feature.' : result.error.message);
+  return result.data;
+}
+function useChainQuery<T>(key: (string | undefined)[], enabled: boolean, queryFn: (signal: AbortSignal) => Promise<T>) {
+  return useQuery({ queryKey: key, enabled, retry: 1, refetchInterval: 30_000,
+    queryFn: ({ signal }) => withTimeout(queryFn(signal), HYDRATE_TIMEOUT_MS, 'Crazy Chain refresh') });
+}
 export function useCrazyChainMarkets(weekId?: string) {
   const { club } = useClub();
-  const [markets, setMarkets] = useState<CrazyChainMarket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refetch = useCallback(async () => {
-    if (!weekId || !club) {
-      setMarkets([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data, error: queryError } = await supabase
-      .from('nfl_chain_markets')
-      .select('*')
-      .eq('club_id', club.id)
-      .eq('week_id', weekId)
-      .order('created_at');
-    if (queryError) {
-      setMarkets([]);
-      setError(friendlyChainError(queryError));
-    } else {
-      setMarkets((data || []) as CrazyChainMarket[]);
-      setError(null);
-    }
-    setLoading(false);
-  }, [club, weekId]);
-
-  useEffect(() => { void refetch(); }, [refetch]);
-  return { markets, loading, error, refetch };
+  const query = useChainQuery(['crazy-chain-markets',club?.id,weekId],!!club && !!weekId, async signal =>
+    checked(supabase.from('nfl_chain_markets').select('*').eq('club_id',club!.id).eq('week_id',weekId!).order('created_at').abortSignal(signal)));
+  return { markets: (query.data || []) as CrazyChainMarket[], loading: query.isLoading, error: query.error?.message || null, refetch: query.refetch };
 }
-
 export function useMyCrazyChainEntry(weekId?: string) {
-  const { user } = useAuth();
-  const { club } = useClub();
-  const [entry, setEntry] = useState<CrazyChainEntry | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refetch = useCallback(async () => {
-    if (!weekId || !user || !club) {
-      setEntry(null);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data: entryData, error: entryError } = await supabase
-      .from('nfl_chain_entries')
-      .select('*')
-      .eq('club_id', club.id)
-      .eq('week_id', weekId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (entryError) {
-      setEntry(null);
-      setError(friendlyChainError(entryError));
-      setLoading(false);
-      return;
-    }
-    if (!entryData) {
-      setEntry(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-    const { data: legData, error: legError } = await supabase
-      .from('nfl_chain_legs')
-      .select('*')
-      .eq('entry_id', entryData.id)
-      .order('position');
-    if (legError) {
-      setEntry(null);
-      setError(friendlyChainError(legError));
-    } else {
-      setEntry({ ...entryData, legs: legData || [] } as CrazyChainEntry);
-      setError(null);
-    }
-    setLoading(false);
-  }, [club, user, weekId]);
-
-  useEffect(() => { void refetch(); }, [refetch]);
-  return { entry, loading, error, refetch };
+  const { user } = useAuth(); const { club } = useClub();
+  const query = useChainQuery(['crazy-chain-entry',club?.id,user?.id,weekId],!!club && !!user && !!weekId, async signal =>
+    checked(supabase.from('nfl_chain_entries').select('*, legs:nfl_chain_legs(*)').eq('club_id',club!.id)
+      .eq('week_id',weekId!).eq('user_id',user!.id).abortSignal(signal).maybeSingle()));
+  return { entry: (query.data || null) as CrazyChainEntry | null, loading: query.isLoading, error: query.error?.message || null, refetch: query.refetch };
 }
-
 export function useCrazyChainStandings(seasonId?: string) {
   const { club } = useClub();
-  const [standings, setStandings] = useState<CrazyChainStanding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refetch = useCallback(async () => {
-    if (!seasonId || !club) {
-      setStandings([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data, error: queryError } = await supabase
-      .from('nfl_chain_standings')
-      .select('*, profiles:user_id(display_name, avatar_url)')
-      .eq('club_id', club.id)
-      .eq('season_id', seasonId)
-      .order('rank', { ascending: true, nullsFirst: false });
-    if (queryError) {
-      setStandings([]);
-      setError(friendlyChainError(queryError));
-    } else {
-      setStandings((data || []) as CrazyChainStanding[]);
-      setError(null);
-    }
-    setLoading(false);
-  }, [club, seasonId]);
-
-  useEffect(() => { void refetch(); }, [refetch]);
-  return { standings, loading, error, refetch };
+  const query = useChainQuery(['crazy-chain-standings',club?.id,seasonId],!!club && !!seasonId, async signal =>
+    checked(supabase.from('nfl_chain_standings').select('*, profiles:user_id(display_name, avatar_url)').eq('club_id',club!.id)
+      .eq('season_id',seasonId!).order('rank',{ascending:true,nullsFirst:false}).order('user_id').abortSignal(signal)));
+  return { standings: (query.data || []) as CrazyChainStanding[], loading: query.isLoading,
+    error: query.error?.message || null, refetch: query.refetch, updatedAt: query.dataUpdatedAt };
 }
-
 export function useMyCrazyChainHistory(seasonId?: string) {
-  const { user } = useAuth();
-  const { club } = useClub();
-  const [entries, setEntries] = useState<CrazyChainEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const refetch = useCallback(async () => {
-    if (!seasonId || !user || !club) {
-      setEntries([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const { data: entryData, error: entryError } = await supabase
-      .from('nfl_chain_entries')
-      .select('*')
-      .eq('club_id', club.id)
-      .eq('season_id', seasonId)
-      .eq('user_id', user.id)
-      .order('locked_at', { ascending: false });
-    if (entryError) {
-      setEntries([]);
-      setError(friendlyChainError(entryError));
-      setLoading(false);
-      return;
-    }
-    const rows = (entryData || []) as Omit<CrazyChainEntry, 'legs'>[];
-    const entryIds = rows.map(row => row.id);
-    const weekIds = [...new Set(rows.map(row => row.week_id))];
-    const [legsResponse, weeksResponse] = await Promise.all([
-      entryIds.length
-        ? supabase.from('nfl_chain_legs').select('*').in('entry_id', entryIds).order('position')
-        : Promise.resolve({ data: [], error: null }),
-      weekIds.length
-        ? supabase.from('nfl_weeks').select('id, week_number, label').in('id', weekIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
-    if (legsResponse.error || weeksResponse.error) {
-      setEntries([]);
-      setError(friendlyChainError(legsResponse.error || weeksResponse.error));
-    } else {
-      const weeks = new Map<string, { id: string; week_number: number; label: string | null }>(
-        (weeksResponse.data || []).map(week => [week.id, week]),
-      );
-      const legs = (legsResponse.data || []) as CrazyChainLeg[];
-      setEntries(rows.map(row => ({
-        ...row,
-        legs: legs.filter(leg => leg.entry_id === row.id),
-        week_number: weeks.get(row.week_id)?.week_number,
-        week_label: weeks.get(row.week_id)?.label,
-      })) as CrazyChainEntry[]);
-      setError(null);
-    }
-    setLoading(false);
-  }, [club, seasonId, user]);
-
-  useEffect(() => { void refetch(); }, [refetch]);
-  return { entries, loading, error, refetch };
+  const { user } = useAuth(); const { club } = useClub();
+  const query = useChainQuery(['crazy-chain-history',club?.id,user?.id,seasonId],!!club && !!user && !!seasonId, async signal => {
+    const rows = await checked(supabase.from('nfl_chain_entries').select('*, legs:nfl_chain_legs(*, market:nfl_chain_markets(game_id)), week:nfl_weeks(week_number,label)')
+      .eq('club_id',club!.id).eq('season_id',seasonId!).eq('user_id',user!.id).order('locked_at',{ascending:false}).abortSignal(signal));
+    return (rows || []).map(row => ({...row, legs:row.legs.map(leg=>({...leg,game_id:leg.market?.game_id})),week_number:row.week?.week_number, week_label:row.week?.label})) as CrazyChainEntry[];
+  });
+  return { entries: query.data || [], loading: query.isLoading, error: query.error?.message || null, refetch: query.refetch };
 }
-
+export function useMyCrazyChainGameCards(weekId?: string, seasonId?: string, enabled = true) {
+  const { user } = useAuth(); const { club } = useClub();
+  const query = useChainQuery(['crazy-chain-game-cards',club?.id,user?.id,weekId,seasonId],enabled && !!club && !!user && !!(weekId || seasonId), async signal => {
+    // New security-invoker view; generated types follow database deployment.
+    let request = (supabase as SupabaseClient).from('nfl_chain_game_cards').select('*').eq('club_id',club!.id).eq('user_id',user!.id);
+    if (weekId) request = request.eq('week_id',weekId);
+    if (seasonId) request = request.eq('season_id',seasonId);
+    return await checked(request.order('kickoff_at').abortSignal(signal)) as CrazyChainGameCard[];
+  });
+  return { cards: query.data || [], loading: query.isLoading, error: query.error?.message || null, refetch: query.refetch };
+}
+export async function saveCrazyChainGame(gameId: string, marketIds: string[]) {
+  return checked(chainRpc(supabase,'save_nfl_chain_game',{_game_id:gameId,_market_ids:marketIds}).abortSignal(AbortSignal.timeout(QUERY_TIMEOUT_MS)));
+}
 export async function saveCrazyChainCard(weekId: string, marketIds: string[]) {
-  const { data, error } = await supabase.rpc('save_nfl_chain_card', {
-    _week_id: weekId,
-    _market_ids: marketIds,
-  });
-  if (error) throw error;
-  return data;
+  return checked(supabase.rpc('save_nfl_chain_card',{_week_id:weekId,_market_ids:marketIds}).abortSignal(AbortSignal.timeout(QUERY_TIMEOUT_MS)));
 }
-
 export async function settleCrazyChainMarket(marketId: string, actualValue: number | null, voided = false) {
-  const { data, error } = await supabase.rpc('settle_nfl_chain_market', {
-    _market_id: marketId,
-    _actual_value: actualValue,
-    _void: voided,
-  });
-  if (error) throw error;
-  return data;
+  return checked(supabase.rpc('settle_nfl_chain_market',{_market_id:marketId,_actual_value:actualValue,_void:voided}).abortSignal(AbortSignal.timeout(QUERY_TIMEOUT_MS)));
 }

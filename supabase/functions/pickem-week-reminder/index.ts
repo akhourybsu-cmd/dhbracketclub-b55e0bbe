@@ -88,30 +88,19 @@ Deno.serve(async (req) => {
       await logSent(w.id, "open");
     }
 
-    // 2) T-1h before the configured weekly lock cutoff
-    const { data: firstGame } = await supabase
-      .from("nfl_games")
-      .select("kickoff_at")
-      .eq("week_id", w.id)
-      .order("kickoff_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (!firstGame?.kickoff_at) continue;
-
-    const lockMinutes = activeSeason && activeSeason.id === w.season_id ? (activeSeason.pick_lock_minutes ?? 10) : 10;
-    const lockMs = new Date(firstGame.kickoff_at).getTime() - lockMinutes * 60_000;
-    const targetMs = lockMs - 60 * 60_000;
-    if (Math.abs(targetMs - Date.now()) <= WINDOW_MIN * 60_000) {
-      if (!(await dedupe(w.id, "1h"))) {
-        const r = await broadcast(
-          `Week ${w.week_number} picks lock soon`,
-          "Your weekly card freezes in 1 hour. Finish your picks and tiebreaker.",
-          `/pickem/week/${w.week_number}`,
-          `dh-pickem-${w.id}-1h`,
-        );
-        sent += r?.sent || 0;
-        await logSent(w.id, "1h");
-      }
+    // One reminder per game, one hour before its individual 48-hour cutoff.
+    const {data:games}=await supabase.from('nfl_games').select('id,kickoff_at,chain_lock_at').eq('week_id',w.id).eq('status','scheduled');
+    for(const game of games || []){
+      if(!game.chain_lock_at) continue; // SQL rollout has not completed.
+      const targetMs=Date.parse(game.chain_lock_at)-3600_000;
+      if(Math.abs(targetMs-Date.now())>WINDOW_MIN*60_000 || await dedupe(game.id,'game-48h')) continue;
+      const r=await broadcast(
+        'NFL game picks lock in 1 hour',
+        'The game kicking off '+new Date(game.kickoff_at).toLocaleString('en-US',{timeZone:'America/New_York',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+' ET closes soon. Later games keep their own deadlines.',
+        '/pickem/week/'+w.week_number,'dh-pickem-'+game.id+'-48h',
+      );
+      sent+=r?.sent || 0;
+      await logSent(game.id,'game-48h');
     }
   }
 

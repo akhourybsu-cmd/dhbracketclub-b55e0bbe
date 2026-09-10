@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 export default function PickemStandingsPage() {
   const { user } = useAuth();
   const { season } = useActiveSeason();
-  const { standings, loading } = useSeasonStandings(season?.id);
+  const { standings, loading, error, refetch } = useSeasonStandings(season?.id);
 
   const top3 = standings.slice(0, 3);
   const rest = standings.slice(3);
@@ -41,6 +41,8 @@ export default function PickemStandingsPage() {
           </div>
         </TurfBackdrop>
       </motion.div>
+      <p className="text-xs text-muted-foreground">Points update as each game finishes. Weekly wins and rank tiebreakers use completed weeks only. Refreshes every 30 seconds.</p>
+      {error && <button type="button" onClick={()=>void refetch()} className="glass-card p-3 w-full text-sm text-destructive">{error} · Retry</button>}
 
       {me && (
         <div className="glass-card p-3.5">

@@ -161,7 +161,7 @@ export default function PickemHomePage() {
                 {lockAt && !weekLocked && (
                   <p className="text-[10px] text-white/55 mt-2 flex items-center gap-1">
                     <Flame className="w-3 h-3 text-gold" />
-                    Picks freeze {format(lockAt, 'EEE h:mm a')}
+                    Next game locks {format(lockAt, 'EEE h:mm a')}
                   </p>
                 )}
               </div>

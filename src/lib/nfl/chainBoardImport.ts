@@ -39,7 +39,7 @@ export async function publishChainBoard(client: Client, preview: ChainBoardPrevi
     fetchNflData<EspnScoreboard>(`scoreboard?dates=${preview.year}&seasontype=2&week=${preview.weekNumber}`),
   ]);
   if (games.error || teams.error) throw new Error(games.error?.message || teams.error?.message);
-  const eligible = validateBoardSlate(scoreboard, games.data as BoardGame[], teams.data as BoardTeam[], preview.year, preview.weekNumber, Date.now(), true, preview.lockMinutes);
+  const eligible = validateBoardSlate(scoreboard, games.data as BoardGame[], teams.data as BoardTeam[], preview.year, preview.weekNumber, Date.now(), true, 0);
   if (preview.gameIds.some(id => !eligible.some(game => game.id === id))) throw new Error('A game just locked. Refresh the preview.');
   const { data, error } = await chainRpc(client, 'publish_nfl_chain_board', {
     _week_id: preview.weekId, _club_id: preview.clubId,
