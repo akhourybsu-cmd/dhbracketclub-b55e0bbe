@@ -6065,6 +6065,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "nfl_chain_markets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "nfl_chain_markets_game_id_fkey"
             columns: ["game_id"]
             isOneToOne: false
@@ -6076,6 +6083,13 @@ export type Database = {
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "nfl_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_markets_settled_by_fkey"
+            columns: ["settled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -10293,22 +10307,6 @@ export type Database = {
       get_bracket_pool_id: { Args: { _bracket_id: string }; Returns: string }
       get_club_password: { Args: { _club_id: string }; Returns: string }
       is_app_admin: { Args: { _user_id: string }; Returns: boolean }
-      rebuild_nfl_chain_standings: {
-        Args: { _club_id: string; _season_id: string }
-        Returns: undefined
-      }
-      save_nfl_chain_card: {
-        Args: { _market_ids: string[]; _week_id: string }
-        Returns: Json
-      }
-      settle_nfl_chain_market: {
-        Args: {
-          _actual_value?: number | null
-          _market_id: string
-          _void?: boolean
-        }
-        Returns: Json
-      }
       is_club_admin: {
         Args: { _club: string; _user: string }
         Returns: boolean
@@ -10650,6 +10648,10 @@ export type Database = {
           total: number
         }[]
       }
+      rebuild_nfl_chain_standings: {
+        Args: { _club_id: string; _season_id: string }
+        Returns: undefined
+      }
       recompute_nfl_week_status: {
         Args: { _week_id: string }
         Returns: undefined
@@ -10694,7 +10696,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_nfl_chain_card: {
+        Args: { _market_ids: string[]; _week_id: string }
+        Returns: Json
+      }
       set_displayed_sigil: { Args: { _sigil_code: string }; Returns: undefined }
+      settle_nfl_chain_market: {
+        Args: { _actual_value?: number; _market_id: string; _void?: boolean }
+        Returns: Json
+      }
       shares_club_with: { Args: { _a: string; _b: string }; Returns: boolean }
       submit_operation_contribution: {
         Args: {
