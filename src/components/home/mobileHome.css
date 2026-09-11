@@ -1,0 +1,155 @@
+/* Quiet finishing layer. Scoped to mobile home and its portaled shortcut sheet;
+   no palette overrides, decorative motion, or changes to the desktop dashboard. */
+.mobile-home .home-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-home .home-date::before {
+  content: '';
+  width: 16px;
+  height: 2px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: hsl(var(--primary) / 0.65);
+}
+
+.mobile-home .home-refresh {
+  border-color: hsl(var(--border) / 0.45);
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-premium);
+}
+
+.mobile-home .home-priority {
+  border-color: hsl(var(--primary) / 0.22);
+  background: linear-gradient(120deg, hsl(var(--primary) / 0.07), transparent 72%), hsl(var(--card));
+  box-shadow: var(--shadow-premium);
+}
+
+.mobile-home .home-update-count {
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: hsl(var(--muted) / 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-home .home-action-icon,
+.mobile-home .home-shortcut-icon {
+  border: 1px solid hsl(var(--primary) / 0.12);
+  background: linear-gradient(145deg, hsl(var(--primary) / 0.12), hsl(var(--primary) / 0.04));
+}
+
+.mobile-home .home-action-arrow {
+  border: 1px solid hsl(var(--primary) / 0.13);
+  background: hsl(var(--card) / 0.7);
+}
+
+.mobile-home .home-more {
+  border-color: hsl(var(--primary) / 0.12);
+}
+
+.mobile-home .home-shortcut,
+.mobile-home .home-activity-surface,
+.mobile-home > details {
+  border-color: hsl(var(--border) / 0.42);
+  background: linear-gradient(160deg, hsl(var(--foreground) / 0.018), transparent 60%), hsl(var(--card));
+  box-shadow: var(--shadow-premium);
+}
+
+.mobile-home > details {
+  border-radius: 18px;
+}
+
+.mobile-home > details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mobile-home > details[open] > summary > svg {
+  transform: rotate(180deg);
+}
+
+.mobile-home .home-tabs {
+  border-color: hsl(var(--border) / 0.18);
+  background: hsl(var(--muted) / 0.4);
+}
+
+.mobile-home .home-tab[aria-selected='true'] {
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-premium);
+}
+
+.mobile-home .home-activity-icon {
+  border: 1px solid hsl(var(--border) / 0.2);
+  background: hsl(var(--muted) / 0.55);
+}
+
+.mobile-home .home-activity-list > li + li > a::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 64px;
+  right: 16px;
+  height: 1px;
+  background: hsl(var(--border) / 0.32);
+  pointer-events: none;
+}
+
+.home-shortcut-sheet[role='dialog'] {
+  box-shadow: var(--shadow-elevated);
+}
+
+.home-shortcut-sheet .home-shortcut-editor > div {
+  border-color: hsl(var(--border) / 0.35);
+}
+
+.mobile-home :is(.home-shortcut, .home-action, .home-more, .home-activity-row, .home-tab, .home-quiet-action) {
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease, transform var(--motion-fast) var(--ease-app);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-home :is(.home-disclosure-arrow, details > summary > svg) {
+  transition: transform var(--motion-base) var(--ease-app);
+}
+
+/* Keep keyboard focus visible independently of the surface elevation shadow. */
+.mobile-home :is(a, button, summary, [role='tabpanel']):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+}
+
+.mobile-home :is(.home-action, .home-activity-row, .home-more):focus-visible {
+  outline-offset: -3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .mobile-home .home-shortcut:hover {
+    border-color: hsl(var(--primary) / 0.4);
+    transform: translateY(-1px);
+  }
+  .mobile-home :is(.home-action, .home-more, .home-activity-row, .home-quiet-action):hover {
+    background-color: hsl(var(--primary) / 0.045);
+  }
+}
+
+.mobile-home :is(.home-shortcut, .home-action):active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-home *,
+  .home-shortcut-sheet * {
+    transition: none !important;
+    animation: none !important;
+  }
+  /* Radix Presence needs an animation-end event when a closing sheet exits. */
+  .home-shortcut-sheet[role='dialog'] {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+  }
+  .mobile-home :is(.home-shortcut, .home-action, button):active,
+  .mobile-home .home-shortcut:hover {
+    transform: none;
+  }
+}

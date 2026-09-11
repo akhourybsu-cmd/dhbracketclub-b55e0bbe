@@ -28,8 +28,8 @@ export function NotificationBell({ className }: { className?: string }) {
       </MobileIconButton>
     </PopoverTrigger>
     <PopoverContent align="end" side="bottom" sideOffset={8} collisionPadding={12} aria-label="Notifications"
-      className="z-[70] flex w-[calc(100vw-24px)] max-w-[390px] flex-col overflow-hidden rounded-2xl border-border p-0 shadow-xl"
-      style={{ maxHeight: 'min(36rem, var(--radix-popover-content-available-height))' }}>
+      className="z-[70] flex w-[calc(100vw-24px)] max-w-[390px] flex-col overflow-hidden rounded-[20px] border-border/60 p-0"
+      style={{ maxHeight: 'min(36rem, var(--radix-popover-content-available-height))', boxShadow: 'var(--shadow-elevated)' }}>
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
         <div className="min-w-0 flex-1"><h2 className="text-sm font-bold">Notifications</h2><p className="text-xs text-muted-foreground">{loading ? 'Checking your inbox…' : error ? 'Could not refresh' : unreadCount ? unreadCount + ' unread' : 'You’re up to date'}</p></div>
         <MobileIconButton aria-label="Refresh notifications" onClick={() => void refresh()} disabled={refreshing || pending}><RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} /></MobileIconButton>
