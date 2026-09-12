@@ -8,7 +8,8 @@ Deno.serve(async req=>{
     const url=Deno.env.get('SUPABASE_URL')!;
     const db=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
     // Dates, not current_week, include overtime and late statistics across rollover.
-    const {data,error}=await db.from('nfl_games').select('week_id,nfl_weeks!inner(week_number,nfl_seasons!inner(year))')
+    // Disambiguate: nfl_weeks also references nfl_games via featured_game_id.
+    const {data,error}=await db.from('nfl_games').select('week_id,nfl_weeks!nfl_games_week_id_fkey!inner(week_number,nfl_seasons!inner(year))')
       .gte('kickoff_at',new Date(Date.now()-7*86400_000).toISOString())
       .lte('kickoff_at',new Date(Date.now()+30*60_000).toISOString()).order('kickoff_at',{ascending:false})
       .abortSignal(AbortSignal.timeout(15_000));
