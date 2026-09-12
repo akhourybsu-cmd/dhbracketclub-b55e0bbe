@@ -151,6 +151,7 @@ export default function EventsPage() {
       }).catch(() => {});
 
       setShowCreate(false);
+      setLinkedPollId(null);
       setForm({ title: '', description: '', location: '', starts_at: '', ends_at: '' });
       navigate(`/events/${data.id}`);
     } catch (createError) {
