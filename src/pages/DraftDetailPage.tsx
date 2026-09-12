@@ -1592,7 +1592,7 @@ export default function DraftDetailPage() {
           <div className="lg:min-w-0">
           {pickHistoryCard}
           </div>{/* /lg right column */}
-          </div>{/* /lg 2-col grid wrapper */}
+          </div>
           )}
 
           {/* Bottom-sheet pick composer — regular drafts only (playoffs keep
