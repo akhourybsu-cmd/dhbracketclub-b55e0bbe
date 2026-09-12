@@ -230,9 +230,9 @@ export async function fetchNflData<T>(path: string): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
   try {
-    // ESPN rejects requests without a browser-like UA/Accept pair with 403.
+    // ESPN's edge blocks Deno's default and browser-like User-Agents with 403; a curl UA is accepted.
     const response = await fetch(`${NFL_DATA_BASE}/${path}`, { signal: controller.signal, headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+      'User-Agent': 'curl/8.4.0',
       'Accept': 'application/json, text/plain, */*', 'Referer': 'https://www.espn.com/',
     } });
     if (!response.ok) throw new Error(`NFL data request failed (${response.status}). Try again shortly.`);
