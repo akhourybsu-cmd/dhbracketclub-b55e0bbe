@@ -506,6 +506,7 @@ export default function PollDetailPage() {
           </div>
         )}
       </motion.div>
+      )}
 
       {/* Delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
