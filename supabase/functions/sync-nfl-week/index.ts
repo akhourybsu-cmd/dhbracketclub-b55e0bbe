@@ -65,7 +65,11 @@ Deno.serve(async (req) => {
 
     // Fetch ESPN scoreboard for this week
     const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=${seasontype}&week=${body.week_number}&dates=${body.season_year}`;
-    const r = await fetch(espnUrl,{signal:AbortSignal.timeout(15_000)});
+    // ESPN's edge blocks Deno's default and browser-like User-Agents with 403; a curl UA is accepted.
+    const r = await fetch(espnUrl,{signal:AbortSignal.timeout(15_000),headers:{
+      'User-Agent':'curl/8.4.0',
+      'Accept':'*/*',
+    }});
     if (!r.ok) return json({ error: `ESPN fetch failed: ${r.status}` }, 502);
     const data = await r.json();
     if (data?.season?.year !== body.season_year || data?.season?.type !== seasontype || data?.week?.number !== body.week_number) {

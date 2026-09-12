@@ -7,6 +7,7 @@ import { useActiveSeason, usePickemAdmin, useSeasonWeeks, useTeams, useWeekGames
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { NflCheckButton } from '@/components/pickem/NflCheckButton';
 
 export default function PickemAdminPage() {
   const navigate = useNavigate();
@@ -241,7 +242,14 @@ export default function PickemAdminPage() {
           </div>
           <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary">ESPN Schedule Sync</p>
-            <p className="text-[11px] text-muted-foreground">Pulls the schedule and scores from ESPN and auto-selects a tiebreaker. The protected live-results job checks every five minutes after deployment.</p>
+            <p className="text-[11px] text-muted-foreground">Pulls the schedule and scores from ESPN and auto-selects a tiebreaker. The protected results job runs once a day at midnight Eastern — use Check everything now to update immediately.</p>
+            <NflCheckButton
+              seasonYear={season.year}
+              currentWeek={season.current_week}
+              label="Check everything now"
+              className="w-full"
+              onDone={() => { refetchWeeks(); refetchGames(); }}
+            />
             <Button
               size="sm"
               variant="outline"
