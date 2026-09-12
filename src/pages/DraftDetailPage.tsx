@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +30,7 @@ import { getDerivedDraftTurn } from '@/lib/draftTurn';
 import { getSeasonJoinEligibility } from '@/lib/draft/seasonEligibility';
 import { Confetti } from '@/components/Confetti';
 import { OnTheClockTimer } from '@/components/draft/OnTheClockTimer';
-import { DraftOrderStrip } from '@/components/draft/DraftOrderStrip';
+
 import { PickAnnouncement } from '@/components/draft/PickAnnouncement';
 import { DraftStatsCard } from '@/components/draft/DraftStatsCard';
 import { findMvpPick, findScoringStreaks, computePickTimings, formatDuration } from '@/lib/draftStats';
@@ -67,6 +67,10 @@ import { getPlayoffRoundShort, getPlayoffRoundName } from '@/lib/playoffStyle';
 import { DraftAiContextCard } from '@/components/draft/DraftAiContextCard';
 import { JudgingScopeButton } from '@/components/draft/JudgingScopeButton';
 import { DraftChannelInviteButton } from '@/components/draft/DraftChannelInviteButton';
+import { DraftStatusHeader } from '@/components/draft/DraftStatusHeader';
+import { DraftBoard } from '@/components/draft/DraftBoard';
+import { MakePickSheet } from '@/components/draft/MakePickSheet';
+import { useDraftLastVisit } from '@/hooks/useDraftLastVisit';
 
 interface Participant {
   id: string;
@@ -121,6 +125,8 @@ export default function DraftDetailPage() {
   const [seasonActionBusy, setSeasonActionBusy] = useState(false);
   const [seasonRosterLocked, setSeasonRosterLocked] = useState(false);
   const [seasonJoinEligible, setSeasonJoinEligible] = useState(true);
+  const [showPickSheet, setShowPickSheet] = useState(false);
+  const pickCountWhenSheetOpened = useRef(0);
 
   const { season } = useCurrentSeason();
   const { entries: seasonEntries, refetch: refetchSeasonEntries } = useSeasonEntries(season?.id);
@@ -414,6 +420,33 @@ export default function DraftDetailPage() {
   const isInProgress = draft?.status === 'in_progress';
   const isSetup = draft?.status === 'setup';
   const hasEnrichments = enrichments.size > 0;
+
+  // "Since your last visit" — diff picks against the stored per-draft snapshot
+  const newPickIds = useDraftLastVisit(draftId, user?.id, picks, !loading && isInProgress);
+
+  // How many picks stand between now and the viewer's next turn (snake order)
+  const picksUntilYou = useMemo(() => {
+    if (!user || !isParticipant || isMyTurn || !draft?.num_rounds) return null;
+    const ordered = [...participants].sort((a, b) => a.pick_order - b.pick_order);
+    const n = ordered.length;
+    if (n === 0) return null;
+    for (let p = currentPickNumber; p <= n * draft.num_rounds; p++) {
+      const r = Math.ceil(p / n);
+      const idx = (p - 1) % n;
+      const participant = r % 2 === 1 ? ordered[idx] : ordered[n - 1 - idx];
+      if (participant?.user_id === user.id) return p - currentPickNumber;
+    }
+    return null;
+  }, [participants, currentPickNumber, user, isParticipant, isMyTurn, draft?.num_rounds]);
+
+  // Close the pick sheet once the submitted pick lands via refetch/realtime.
+  // If the AI check holds submission, pick count doesn't change and the
+  // sheet stays open so the user can review the suggestion.
+  useEffect(() => {
+    if (showPickSheet && picks.length > pickCountWhenSheetOpened.current) {
+      setShowPickSheet(false);
+    }
+  }, [picks.length, showPickSheet]);
 
   const handleStartDraft = async () => {
     if (!draftId) return;
@@ -798,6 +831,152 @@ export default function DraftDetailPage() {
   const mvpPick = hasResults ? findMvpPick(draftResults) : null;
   const streaks = hasResults ? findScoringStreaks(draftResults, picks) : new Map();
   const timings = computePickTimings(picks);
+
+  // ── Pick history card (shared by the playoff 2-col layout and the lounge layout) ──
+  const pickHistoryCard = picks.length > 0 ? (
+            <div
+              className="overflow-hidden rounded-2xl"
+              style={
+                isPlayoffDraft
+                  ? {
+                      background: 'linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92))',
+                      border: '1px solid hsl(45 93% 52% / 0.22)',
+                      boxShadow: '0 6px 24px -12px hsl(45 93% 52% / 0.28)',
+                    }
+                  : undefined
+              }
+            >
+              <div
+                className={cn(
+                  'px-4 py-3 flex items-center justify-between gap-2',
+                  !isPlayoffDraft && 'border-b border-border/25',
+                )}
+                style={
+                  isPlayoffDraft
+                    ? { borderBottom: '1px solid hsl(45 93% 52% / 0.18)' }
+                    : undefined
+                }
+              >
+                <div className="flex items-center gap-1.5">
+                  {isPlayoffDraft && (
+                    <Trophy className="w-3 h-3" style={{ color: 'hsl(45 93% 52%)' }} strokeWidth={2.5} />
+                  )}
+                  <p
+                    className="text-[11px] font-extrabold uppercase tracking-[0.18em]"
+                    style={isPlayoffDraft ? { color: 'hsl(45 93% 52%)' } : undefined}
+                  >
+                    {isPlayoffDraft ? 'Battle Timeline' : 'Pick History'}
+                  </p>
+                </div>
+                <span className="font-mono text-[10px] font-extrabold tabular-nums text-muted-foreground/70">
+                  <PickCount value={picks.length} /> {picks.length === 1 ? 'pick' : 'picks'}
+                </span>
+              </div>
+              <div className="relative">
+              <div className="divide-y divide-border/20 max-h-96 overflow-y-auto">
+                <AnimatePresence initial={false}>
+                  {(() => {
+                    const reversed = [...picks].reverse();
+                    const freshIds = freshPickIds;
+                    let lastRound: number | null = null;
+                    const nodes: React.ReactNode[] = [];
+                    reversed.forEach((pick) => {
+                      // Round divider — inserted when round changes top→bottom (newer first).
+                      if (lastRound !== null && pick.round !== lastRound) {
+                        nodes.push(
+                          <div key={`rd-${lastRound}`} className="draft-round-divider">
+                            <span>Round {lastRound}</span>
+                          </div>,
+                        );
+                      }
+                      lastRound = pick.round;
+                      const isEnriching = enrichingPickIds.has(pick.id);
+                      const enrichment = enrichments.get(pick.id);
+                      const isFresh = freshIds.has(pick.id);
+                      nodes.push(
+                        <motion.div
+                          key={pick.id}
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          layout
+                          className={cn(isFresh && 'draft-pick-fresh')}
+                        >
+                          {isEnriching && !enrichment ? (
+                            <EnrichedItemSkeleton compact />
+                          ) : editingPickId === pick.id ? (
+                            <div className="flex items-center gap-2 px-3 py-3 w-full">
+                              <Input
+                                value={editPickText}
+                                onChange={(e) => setEditPickText(e.target.value)}
+                                className="h-10 text-sm flex-1 min-w-0"
+                                autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSavePickEdit(); if (e.key === 'Escape') handleCancelEditPick(); }}
+                              />
+                              <Button size="sm" onClick={handleSavePickEdit} disabled={savingPick || !editPickText.trim()} className="h-10 w-10 p-0 flex-shrink-0">
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <button onClick={handleCancelEditPick} className="h-10 w-10 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-muted/50 transition-colors flex-shrink-0">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <EnrichedItemCard
+                              label={pick.pick_text}
+                              rank={pick.pick_number}
+                              enrichment={enrichment}
+                              showRank
+                              compact={!hasEnrichments}
+                              onImageClick={enrichment && (enrichment.metadata?.image_candidates as any[])?.length > 0
+                                ? () => setImagePickerPick(pick)
+                                : undefined}
+                              actions={
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <span className="text-[10px] text-muted-foreground/60 text-right">
+                                    <span className="block font-medium">{pick.profiles?.display_name}</span>
+                                    <span className="font-mono">Rd {pick.round}</span>
+                                  </span>
+                                  {(canManage || pick.user_id === user?.id) && (
+                                    <div className="flex items-center gap-0.5">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleStartEditPick(pick); }}
+                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-primary active:text-primary active:bg-primary/10 transition-colors"
+                                        title="Edit pick"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setPickToRemove(pick); }}
+                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-destructive active:text-destructive active:bg-destructive/10 transition-colors"
+                                        title="Remove pick"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              }
+                            />
+                          )}
+                        </motion.div>,
+                      );
+                    });
+                    return nodes;
+                  })()}
+                </AnimatePresence>
+              </div>
+              {picks.length > 5 && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-10"
+                  style={{
+                    background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0) 100%)',
+                  }}
+                />
+              )}
+              </div>
+            </div>
+  ) : null;
 
   return (
     // Live-draft view fills the desktop shell (up to 1100px from
@@ -1200,10 +1379,39 @@ export default function DraftDetailPage() {
               instead of being trapped in one column. */}
           <PickAnnouncement pick={announcement} onHide={() => setAnnouncement(null)} />
 
-          {/* Live-draft 2-column layout on lg+:
-                LEFT  (420px, sticky)  — turn hero + pick input + AI suggestion
-                RIGHT (1fr, scrolls)   — pick history
-              Mobile/tablet (<lg) is unchanged — pure single-column stack. */}
+          {/* ── Lounge layout (regular drafts): compact status + board dominate ── */}
+          {!isPlayoffDraft && (
+            <div className="da-lounge">
+              <DraftStatusHeader
+                currentRound={currentRound}
+                numRounds={draft.num_rounds}
+                currentPickNumber={currentPickNumber}
+                totalPicks={participants.length * draft.num_rounds}
+                pickerName={currentPicker?.profiles?.display_name || 'Unknown'}
+                pickerInitials={(currentPicker?.profiles?.display_name || '?').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'}
+                isMyTurn={isMyTurn}
+                picksUntilYou={picksUntilYou}
+                clockStartedAt={picks.length > 0 ? ((picks[picks.length - 1] as any)?.picked_at ?? null) : (draft?.updated_at ?? null)}
+                newPickCount={newPickIds.size}
+                onMakePick={isMyTurn ? () => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); } : undefined}
+              />
+              <div className="mb-4">
+                <DraftBoard
+                  participants={participants}
+                  picks={picks}
+                  currentPickNumber={currentPickNumber}
+                  numRounds={draft.num_rounds}
+                  currentUserId={user?.id}
+                  newPickIds={newPickIds}
+                  enrichments={enrichments}
+                />
+              </div>
+              {pickHistoryCard}
+            </div>
+          )}
+
+          {/* Playoff drafts keep the 2-column war-room layout. */}
+          {isPlayoffDraft && (
           <div className="lg:grid lg:grid-cols-[420px_1fr] lg:gap-5 lg:items-start">
           <div className="lg:sticky lg:top-3">
 
@@ -1279,112 +1487,7 @@ export default function DraftDetailPage() {
 
               </div>
             </motion.div>
-          ) : (
-            <AnimatePresence mode="wait">
-              {(() => {
-            const accent = isMyTurn ? '45 93% 52%' : '152 72% 46%';
-            const pickerName = currentPicker?.profiles?.display_name || 'Unknown';
-            const initials = pickerName.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
-            return (
-              <motion.div
-                key={`hero-${isMyTurn ? 'mine' : pickerName}-${currentPickNumber}`}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 240, damping: 22 }}
-                exit={{ opacity: 0, y: 6, transition: { duration: 0.15 } }}
-                className="relative overflow-hidden rounded-2xl mb-5"
-                style={{
-                  background: `radial-gradient(120% 100% at 50% 0%, hsl(${accent} / 0.16), transparent 65%), hsl(var(--card))`,
-                  border: `1px solid hsl(${accent} / ${isMyTurn ? '0.45' : '0.22'})`,
-                  boxShadow: isMyTurn
-                    ? `0 0 28px -6px hsl(${accent} / 0.45), inset 0 1px 0 hsl(${accent} / 0.2)`
-                    : `0 4px 16px -8px hsl(${accent} / 0.28), inset 0 1px 0 hsl(${accent} / 0.08)`,
-                }}
-              >
-                {/* breathing radial wash */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 pointer-events-none draft-hero-breath"
-                  style={{
-                    background: `radial-gradient(60% 80% at 50% 30%, hsl(${accent} / 0.18), transparent 70%)`,
-                  }}
-                />
-                {/* top edge rule */}
-                <div
-                  aria-hidden
-                  className="absolute inset-x-0 top-0 h-px"
-                  style={{ background: `linear-gradient(90deg, transparent, hsl(${accent} / 0.7), transparent)` }}
-                />
-                <div className="relative z-10 px-4 py-4 flex flex-col items-center text-center">
-                  <div className="flex items-center justify-center gap-1.5 mb-2">
-                    <span
-                      className="inline-flex items-center gap-1 px-1.5 py-[3px] rounded-full text-[9px] font-extrabold uppercase tracking-[0.2em]"
-                      style={{
-                        background: `hsl(${accent} / 0.18)`,
-                        color: `hsl(${accent})`,
-                        border: `1px solid hsl(${accent} / 0.4)`,
-                      }}
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full animate-pulse"
-                        style={{ background: `hsl(${accent})`, boxShadow: `0 0 6px hsl(${accent})` }}
-                      />
-                      On the Clock
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2.5 mb-1">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-extrabold flex-shrink-0"
-                      style={{
-                        background: `linear-gradient(135deg, hsl(${accent} / 0.28), hsl(${accent} / 0.08))`,
-                        color: `hsl(${accent})`,
-                        border: `1px solid hsl(${accent} / 0.4)`,
-                        boxShadow: `0 0 10px hsl(${accent} / 0.3)`,
-                      }}
-                    >
-                      {initials}
-                    </div>
-                    {isMyTurn ? (
-                      <motion.p
-                        initial={{ scale: 0.95, opacity: 0 }}
-                        animate={{ scale: [0.95, 1.04, 1], opacity: 1 }}
-                        transition={{ duration: 0.45, ease: 'easeOut' }}
-                        className="text-[18px] font-extrabold tracking-tight leading-tight"
-                        style={{ color: `hsl(${accent})` }}
-                      >
-                        It's your pick
-                      </motion.p>
-                    ) : (
-                      <p className="text-[16px] font-extrabold tracking-tight leading-tight">
-                        {pickerName}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    Round {currentRound} · Pick #{currentPickNumber}
-                  </p>
-                  <OnTheClockTimer
-                    lastPickAt={picks.length > 0 ? (picks[picks.length - 1] as any)?.picked_at : null}
-                    draftStartedAt={draft?.updated_at}
-                  />
-                </div>
-              </motion.div>
-            );
-              })()}
-            </AnimatePresence>
-          )}
-
-          {/* Snake order preview — lets players see where they sit without
-              counting picks by hand. */}
-          {!isPlayoffDraft && (
-            <DraftOrderStrip
-              participants={participants as any}
-              picksMade={picks.length}
-              currentPickNumber={currentPickNumber}
-              numRounds={draft.num_rounds}
-              currentUserId={user?.id}
-            />
-          )}
+          ) : null}
 
 
 
@@ -1487,164 +1590,30 @@ export default function DraftDetailPage() {
           </div>{/* /lg sticky left column */}
 
           <div className="lg:min-w-0">
-          {/* Pick history — enriched cards */}
-          {picks.length > 0 && (
-            <div
-              className="overflow-hidden rounded-2xl"
-              style={
-                isPlayoffDraft
-                  ? {
-                      background: 'linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92))',
-                      border: '1px solid hsl(45 93% 52% / 0.22)',
-                      boxShadow: '0 6px 24px -12px hsl(45 93% 52% / 0.28)',
-                    }
-                  : undefined
-              }
-            >
-              <div
-                className={cn(
-                  'px-4 py-3 flex items-center justify-between gap-2',
-                  !isPlayoffDraft && 'border-b border-border/25',
-                )}
-                style={
-                  isPlayoffDraft
-                    ? { borderBottom: '1px solid hsl(45 93% 52% / 0.18)' }
-                    : undefined
-                }
-              >
-                <div className="flex items-center gap-1.5">
-                  {isPlayoffDraft && (
-                    <Trophy className="w-3 h-3" style={{ color: 'hsl(45 93% 52%)' }} strokeWidth={2.5} />
-                  )}
-                  <p
-                    className="text-[11px] font-extrabold uppercase tracking-[0.18em]"
-                    style={isPlayoffDraft ? { color: 'hsl(45 93% 52%)' } : undefined}
-                  >
-                    {isPlayoffDraft ? 'Battle Timeline' : 'Pick History'}
-                  </p>
-                </div>
-                <span className="font-mono text-[10px] font-extrabold tabular-nums text-muted-foreground/70">
-                  <PickCount value={picks.length} /> {picks.length === 1 ? 'pick' : 'picks'}
-                </span>
-              </div>
-              {/* Wrap the scrollable list in a positioned container so we
-                  can layer a soft fade-mask at the bottom. The mask is a
-                  pointer-events-none overlay that fades the last few
-                  pixels of content into the card background — gives users
-                  a clear "more below" cue without adding chrome. Only
-                  shown when there are enough picks to actually scroll. */}
-              <div className="relative">
-              <div className="divide-y divide-border/20 max-h-96 overflow-y-auto">
-                <AnimatePresence initial={false}>
-                  {(() => {
-                    const reversed = [...picks].reverse();
-                    const freshIds = freshPickIds;
-                    let lastRound: number | null = null;
-                    const nodes: React.ReactNode[] = [];
-                    reversed.forEach((pick) => {
-                      // Round divider — inserted when round changes top→bottom (newer first).
-                      if (lastRound !== null && pick.round !== lastRound) {
-                        nodes.push(
-                          <div key={`rd-${lastRound}`} className="draft-round-divider">
-                            <span>Round {lastRound}</span>
-                          </div>,
-                        );
-                      }
-                      lastRound = pick.round;
-                      const isEnriching = enrichingPickIds.has(pick.id);
-                      const enrichment = enrichments.get(pick.id);
-                      const isFresh = freshIds.has(pick.id);
-                      nodes.push(
-                        <motion.div
-                          key={pick.id}
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          layout
-                          className={cn(isFresh && 'draft-pick-fresh')}
-                        >
-                          {isEnriching && !enrichment ? (
-                            <EnrichedItemSkeleton compact />
-                          ) : editingPickId === pick.id ? (
-                            <div className="flex items-center gap-2 px-3 py-3 w-full">
-                              <Input
-                                value={editPickText}
-                                onChange={(e) => setEditPickText(e.target.value)}
-                                className="h-10 text-sm flex-1 min-w-0"
-                                autoFocus
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleSavePickEdit(); if (e.key === 'Escape') handleCancelEditPick(); }}
-                              />
-                              <Button size="sm" onClick={handleSavePickEdit} disabled={savingPick || !editPickText.trim()} className="h-10 w-10 p-0 flex-shrink-0">
-                                <Check className="w-4 h-4" />
-                              </Button>
-                              <button onClick={handleCancelEditPick} className="h-10 w-10 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-muted/50 transition-colors flex-shrink-0">
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <EnrichedItemCard
-                              label={pick.pick_text}
-                              rank={pick.pick_number}
-                              enrichment={enrichment}
-                              showRank
-                              compact={!hasEnrichments}
-                              onImageClick={enrichment && (enrichment.metadata?.image_candidates as any[])?.length > 0
-                                ? () => setImagePickerPick(pick)
-                                : undefined}
-                              actions={
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
-                                  <span className="text-[10px] text-muted-foreground/60 text-right">
-                                    <span className="block font-medium">{pick.profiles?.display_name}</span>
-                                    <span className="font-mono">Rd {pick.round}</span>
-                                  </span>
-                                  {(canManage || pick.user_id === user?.id) && (
-                                    <div className="flex items-center gap-0.5">
-                                      {/* Default opacity bumped from /50 → /70 so
-                                          the affordance reads on touch devices
-                                          where there's no hover state to reveal it. */}
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleStartEditPick(pick); }}
-                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-primary active:text-primary active:bg-primary/10 transition-colors"
-                                        title="Edit pick"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setPickToRemove(pick); }}
-                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-destructive active:text-destructive active:bg-destructive/10 transition-colors"
-                                        title="Remove pick"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              }
-                            />
-                          )}
-                        </motion.div>,
-                      );
-                    });
-                    return nodes;
-                  })()}
-                </AnimatePresence>
-              </div>
-              {/* Fade mask — only render when there are enough rows to
-                  actually be cut off (>5 picks at typical row height). */}
-              {picks.length > 5 && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-10"
-                  style={{
-                    background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0) 100%)',
-                  }}
-                />
-              )}
-              </div>{/* /scroll mask wrapper */}
-            </div>
-          )}
+          {pickHistoryCard}
           </div>{/* /lg right column */}
-          </div>{/* /lg 2-col grid wrapper */}
+          </div>
+          )}
+
+          {/* Bottom-sheet pick composer — regular drafts only (playoffs keep
+              the inline composer in the war-room column). */}
+          {!isPlayoffDraft && (
+            <MakePickSheet
+              open={showPickSheet}
+              onClose={() => setShowPickSheet(false)}
+              currentRound={currentRound}
+              currentPickNumber={currentPickNumber}
+              pickText={pickText}
+              onTextChange={(t) => { setPickText(t); setText(t); }}
+              onSubmit={handleMakePick}
+              submitting={submitting}
+              localDuplicate={!!localDuplicate}
+              suggestion={suggestion}
+              onApplyCorrection={(t) => { setPickText(t); setText(t); clearSuggestion(); }}
+              onDismissSuggestion={clearSuggestion}
+              topic={draft.topic}
+            />
+          )}
         </motion.div>
       )}
 

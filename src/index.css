@@ -5053,3 +5053,237 @@
 .fg-boot-title { color: hsl(30 40% 97%); text-shadow: 0 0 22px hsl(24 100% 55% / 0.45); }
 .fg-boot-bar-track { background: hsl(20 40% 14% / 0.8); border: 1px solid hsl(22 90% 55% / 0.18); }
 .fg-boot-bar-fill { background: linear-gradient(90deg, hsl(24 100% 60%), hsl(40 96% 55%)); box-shadow: 0 0 14px hsl(24 100% 55% / 0.7); }
+
+/* ══════════════════════════════════════════════════════════════
+   DRAFT ARENA — PRIVATE CLUB LOUNGE (.da-lounge)
+   Charcoal + selective warm gold. Space Grotesk display / DM Sans body.
+   Gold is an accent, never a wash. No neon, no heavy glow.
+   ══════════════════════════════════════════════════════════════ */
+.da-lounge {
+  --dl-gold: 45 42% 55%;
+  --dl-gold-hi: 45 58% 70%;
+  --dl-surface: 0 0% 7%;
+  --dl-surface-2: 0 0% 9.5%;
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}
+.da-lounge .dl-display,
+.dl-display {
+  font-family: 'Space Grotesk', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.da-lounge .dl-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: hsl(0 0% 55%);
+}
+.da-lounge .dl-card {
+  background: hsl(var(--dl-surface));
+  border: 1px solid hsl(0 0% 100% / 0.06);
+  border-radius: 14px;
+}
+.da-lounge .dl-status {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+  background: hsl(var(--dl-surface) / 0.92);
+}
+.da-lounge .dl-avatar-gold {
+  background: hsl(var(--dl-gold) / 0.14);
+  color: hsl(var(--dl-gold-hi));
+  border: 1px solid hsl(var(--dl-gold) / 0.35);
+}
+.da-lounge .dl-avatar-muted {
+  background: hsl(0 0% 12%);
+  color: hsl(0 0% 70%);
+  border: 1px solid hsl(0 0% 100% / 0.08);
+}
+.da-lounge .dl-new-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 1.4rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: hsl(var(--dl-gold) / 0.12);
+  border: 1px solid hsl(var(--dl-gold) / 0.3);
+  color: hsl(var(--dl-gold-hi));
+}
+.da-lounge .dl-cta,
+.dl-cta.dl-lounge-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.75rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(45 40% 8%);
+  background: hsl(var(--dl-gold));
+  border: 1px solid hsl(var(--dl-gold-hi) / 0.5);
+  transition: filter 150ms ease, transform 80ms ease;
+}
+.da-lounge .dl-cta:hover { filter: brightness(1.08); }
+.da-lounge .dl-cta:active { transform: scale(0.98); }
+.da-lounge .dl-cta:disabled { opacity: 0.45; }
+
+/* ── Draft board ── */
+.da-lounge .dl-no-scrollbar { scrollbar-width: none; }
+.da-lounge .dl-no-scrollbar::-webkit-scrollbar { display: none; }
+
+.da-lounge .dl-round-chip {
+  flex: none;
+  height: 1.75rem;
+  min-width: 2.5rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(0 0% 60%);
+  background: hsl(var(--dl-surface));
+  border: 1px solid hsl(0 0% 100% / 0.07);
+}
+.da-lounge .dl-round-chip-active {
+  color: hsl(var(--dl-gold-hi));
+  border-color: hsl(var(--dl-gold) / 0.4);
+  background: hsl(var(--dl-gold) / 0.08);
+}
+
+.da-lounge .dl-rounds-track {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 0.5rem;
+}
+.da-lounge .dl-round-panel {
+  flex: none;
+  width: 88%;
+  max-width: 340px;
+  scroll-snap-align: center;
+  background: hsl(var(--dl-surface));
+  border: 1px solid hsl(0 0% 100% / 0.06);
+  border-radius: 14px;
+  padding: 0.875rem;
+}
+
+/* Board cells */
+.da-lounge .dl-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 3rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  background: hsl(var(--dl-surface-2));
+  border: 1px solid hsl(0 0% 100% / 0.06);
+  overflow: hidden;
+}
+.da-lounge .dl-cell-img {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 7px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid hsl(0 0% 100% / 0.1);
+}
+.da-lounge .dl-cell-text {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: hsl(0 0% 92%);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-width: 0;
+}
+.da-lounge .dl-cell-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: hsl(0 0% 42%);
+  flex-shrink: 0;
+}
+.da-lounge .dl-cell-empty { color: hsl(0 0% 30%); font-size: 11px; }
+.da-lounge .dl-cell-future { background: transparent; border-style: dashed; border-color: hsl(0 0% 100% / 0.05); }
+.da-lounge .dl-cell-current {
+  background: hsl(var(--dl-gold) / 0.07);
+  border: 1px solid hsl(var(--dl-gold) / 0.45);
+  box-shadow: 0 0 0 1px hsl(var(--dl-gold) / 0.2);
+}
+.da-lounge .dl-cell-current .dl-cell-num { color: hsl(var(--dl-gold-hi)); }
+.da-lounge .dl-cell-clock {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(var(--dl-gold-hi));
+  flex-shrink: 0;
+}
+.da-lounge .dl-cell-you { border-color: hsl(0 0% 100% / 0.14); }
+.da-lounge .dl-cell-new { border-color: hsl(var(--dl-gold) / 0.28); }
+.da-lounge .dl-new-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: hsl(var(--dl-gold));
+}
+
+/* Desktop grid */
+.da-lounge .dl-board-corner { border-bottom: 1px solid hsl(0 0% 100% / 0.06); }
+.da-lounge .dl-board-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.6rem 0.4rem;
+  border-bottom: 1px solid hsl(0 0% 100% / 0.06);
+  border-left: 1px solid hsl(0 0% 100% / 0.04);
+  text-align: center;
+}
+.da-lounge .dl-board-head-you { background: hsl(var(--dl-gold) / 0.04); }
+.da-lounge .dl-board-roundlabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid hsl(0 0% 100% / 0.04);
+}
+.da-lounge .dl-board-cell {
+  padding: 0.25rem;
+  border-bottom: 1px solid hsl(0 0% 100% / 0.04);
+  border-left: 1px solid hsl(0 0% 100% / 0.04);
+  min-width: 0;
+}
+.da-lounge .dl-board-cell .dl-cell { min-height: 3.4rem; flex-direction: column; align-items: flex-start; gap: 0.25rem; padding: 0.4rem; }
+.da-lounge .dl-board-cell .dl-cell-img { width: 100%; height: 3rem; }
+.da-lounge .dl-board-cell .dl-cell-current { align-items: center; justify-content: center; }
+
+/* Bottom sheet */
+.da-lounge.dl-sheet {
+  background: hsl(0 0% 6%);
+  border-top: 1px solid hsl(0 0% 100% / 0.1);
+  border-radius: 20px 20px 0 0;
+  padding: 1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -12px 40px hsl(0 0% 0% / 0.5);
+  max-width: 32rem;
+  margin: 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .da-lounge .dl-rounds-track { scroll-behavior: auto; }
+}
