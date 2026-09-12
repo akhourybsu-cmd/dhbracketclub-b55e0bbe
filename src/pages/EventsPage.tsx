@@ -48,6 +48,25 @@ export default function EventsPage() {
   const [calMonth, setCalMonth] = useState(new Date());
   const [form, setForm] = useState({ title: '', description: '', location: '', starts_at: '', ends_at: '' });
   const [creating, setCreating] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [linkedPollId, setLinkedPollId] = useState<string | null>(null);
+
+  // Prefill the create form when a date poll hands off its winning date.
+  useEffect(() => {
+    const date = searchParams.get('date');
+    const title = searchParams.get('title');
+    const pollId = searchParams.get('pollId');
+    if (!date && !title) return;
+    setForm(f => ({
+      ...f,
+      title: title ?? f.title,
+      starts_at: date ? `${date}T18:00` : f.starts_at,
+    }));
+    if (pollId) setLinkedPollId(pollId);
+    setShowCreate(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
+
 
   const fetchEvents = useCallback(async () => {
     if (!user) {
