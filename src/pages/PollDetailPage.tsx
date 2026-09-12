@@ -354,12 +354,38 @@ export default function PollDetailPage() {
           <div className="stat-card py-2 flex-1">
             <MessageCircle className="w-3 h-3" style={{ color: 'hsl(var(--warning))' }} />
             <span className="stat-value text-xs">{options.length}</span>
-            <span className="stat-label">Options</span>
+            <span className="stat-label">{isDatePoll ? 'Dates' : 'Options'}</span>
           </div>
         </div>
       </motion.div>
 
-      {/* Options / Results */}
+      {isDatePoll ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
+          <div className="glass-card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="section-header mb-0">Your availability</h3>
+              {!isOpen && <span className="status-pill bg-muted text-muted-foreground">Closed</span>}
+            </div>
+            <DateGridPicker
+              mode="vote"
+              disabled={!isOpen}
+              month={dateCandidates[0] ? new Date(dateCandidates[0].slice(0, 4) as unknown as number, Number(dateCandidates[0].slice(5, 7)) - 1, 1) : undefined}
+              candidates={dateCandidates}
+              responses={myResponses}
+              onCycle={handleCycleDate}
+            />
+          </div>
+
+          <AvailabilityResults
+            options={dateOptions}
+            votes={dateVotes}
+            members={members}
+            onCreateEvent={isCreator ? (dateKey, label) => {
+              navigate(`/events?date=${dateKey}&title=${encodeURIComponent(poll.question)}&pollId=${pollId}&label=${encodeURIComponent(label)}`);
+            } : undefined}
+          />
+        </motion.div>
+      ) : (
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="space-y-2 mb-5">
           {options.map((opt, idx) => {
