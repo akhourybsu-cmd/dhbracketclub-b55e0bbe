@@ -388,7 +388,7 @@ export default function PollDetailPage() {
             <DateGridPicker
               mode="vote"
               disabled={!isOpen}
-              month={dateCandidates[0] ? new Date(dateCandidates[0].slice(0, 4) as unknown as number, Number(dateCandidates[0].slice(5, 7)) - 1, 1) : undefined}
+              month={dateCandidates[0] ? fromDateKey(dateCandidates[0]) : undefined}
               candidates={dateCandidates}
               responses={myResponses}
               onCycle={handleCycleDate}
