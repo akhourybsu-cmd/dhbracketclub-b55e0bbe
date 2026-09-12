@@ -194,7 +194,7 @@ function NextDraftCard({ entries, totalDrafts }: { entries: any[]; totalDrafts: 
           <Bookmark className="w-4 h-4" style={{ color: 'hsl(var(--gold))' }} />
           <h3 className="font-bold text-[13px]">{label}</h3>
           {isLive && (
-            <StatusPill variant="live" size="xs" dot pulse>LIVE</StatusPill>
+            <StatusPill variant="live" size="xs" dot pulse>IN PROGRESS</StatusPill>
           )}
           {!isRegularSeasonComplete && (
             <span className="text-[9px] text-muted-foreground/60 ml-auto tabular-nums">
@@ -796,7 +796,7 @@ function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: 
   }
 
   const showOnboarding = season?.status === 'playoffs' && !onboardingDismissed && matches.filter(m => m.status === 'complete').length === 0;
-  const statusPillLabel = season?.status === 'playoffs' ? 'Playoffs Live' : season?.status === 'regular_season' ? 'Regular Season' : 'Off-season';
+  const statusPillLabel = season?.status === 'playoffs' ? 'Playoffs In Progress' : season?.status === 'regular_season' ? 'Regular Season' : 'Off-season';
   const statusPillTone = season?.status === 'playoffs' ? 'gold' : 'muted';
 
   return (
@@ -1158,6 +1158,8 @@ export default function DraftsListPage() {
   // Draft list state
   const [drafts, setDrafts] = useState<any[]>([]);
   const [participantCounts, setParticipantCounts] = useState<Map<string, number>>(new Map());
+  const [draftParticipants, setDraftParticipants] = useState<Map<string, any[]>>(new Map());
+  const [draftPickCounts, setDraftPickCounts] = useState<Map<string, number>>(new Map());
   const [draftWinners, setDraftWinners] = useState<Map<string, { user_id: string; display_name: string }>>(new Map());
   const [myDraftStats, setMyDraftStats] = useState({ totalPoints: 0, wins: 0, draftsRated: 0, podiums: 0, bestFinish: 0, avgScore: 0 });
   const [loading, setLoading] = useState(true);
@@ -1270,9 +1272,11 @@ export default function DraftsListPage() {
             existing.push(p); participantsByDraft.set(p.draft_id, existing);
           });
           setParticipantCounts(counts);
+          setDraftParticipants(participantsByDraft);
         }
         const pickCounts = new Map<string, number>();
         picks.forEach(p => pickCounts.set(p.draft_id, (pickCounts.get(p.draft_id) || 0) + 1));
+        setDraftPickCounts(pickCounts);
         const partCounts = new Map<string, number>();
         if (parts) parts.forEach(p => partCounts.set(p.draft_id, (partCounts.get(p.draft_id) || 0) + 1));
         const fixIds: string[] = [];
@@ -1357,7 +1361,7 @@ export default function DraftsListPage() {
   const visibleDrafts = useMemo(() => {
     const q = draftQuery.trim().toLowerCase();
     return sortedDrafts.filter(d => {
-      if (q && !(d.title || '').toLowerCase().includes(q)) return false;
+      if (q && !(d.topic || d.title || '').toLowerCase().includes(q)) return false;
       if (draftFilter === 'live') return d.status === 'in_progress';
       if (draftFilter === 'complete') return d.status === 'complete';
       if (draftFilter === 'mine') return d.status === 'in_progress' && d.current_pick_user_id === user?.id;
@@ -1389,6 +1393,34 @@ export default function DraftsListPage() {
     const isPlayoff = !!playoffMatch;
     const isLive = d.status === 'in_progress';
     const isMyTurn = isLive && d.current_pick_user_id === user?.id;
+    const made = draftPickCounts.get(d.id) || 0;
+    const roomParticipants = [...(draftParticipants.get(d.id) || [])].sort((a, b) => a.pick_order - b.pick_order);
+    const totalExpected = count * d.num_rounds;
+    const progressLabel = isLive
+      ? `Round ${d.current_round || 1} · Pick ${Math.min(d.current_pick_number || made + 1, totalExpected || made + 1)}/${totalExpected || '—'}`
+      : d.status === 'complete' ? `${made} selections` : `${count} participants`;
+    let picksUntilYou: number | null = null;
+    if (isLive && user?.id && !isMyTurn && count > 0) {
+      const current = d.current_pick_number || made + 1;
+      for (let pickNo = current + 1; pickNo <= totalExpected; pickNo += 1) {
+        const zero = pickNo - 1;
+        const roundIndex = Math.floor(zero / count);
+        const position = zero % count;
+        const participantIndex = roundIndex % 2 === 0 ? position : count - 1 - position;
+        if (roomParticipants[participantIndex]?.user_id === user.id) {
+          picksUntilYou = pickNo - current;
+          break;
+        }
+      }
+    }
+    let newSinceVisit = 0;
+    if (user?.id && typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(`da_last_visit_v1:${user.id}:${d.id}`);
+        const previous = raw ? Number(JSON.parse(raw)?.c || 0) : made;
+        newSinceVisit = Math.max(0, made - previous);
+      } catch { newSinceVisit = 0; }
+    }
     const staggerIdx = Math.min(i, 8);
     // Left-edge accent — drives the visual identity at a glance:
     //   playoff   → bright gold (championship vibe)
@@ -1403,12 +1435,11 @@ export default function DraftsListPage() {
     return (
       <motion.div key={d.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { ...springSnap, delay: staggerIdx * 0.04 } } }}>
         <Link to={`/drafts/${d.id}`} className="block group">
-          <div className={cn('da-glass p-4 hover-lift cursor-pointer relative overflow-hidden transition-transform',
+           <div className={cn('da-glass da-ledger-row p-4 hover-lift cursor-pointer relative overflow-hidden transition-transform',
             isPlayoff && 'arena-edge', isLive && !isPlayoff && 'draft-row-live', isMyTurn && !isPlayoff && 'draft-row-mine')}
             style={isPlayoff ? {
               borderLeft: '3px solid hsl(45 93% 52%)',
-              background: 'linear-gradient(135deg, hsl(45 93% 52% / 0.08), transparent 60%), linear-gradient(180deg, hsl(160 35% 7% / 0.88), hsl(160 50% 4% / 0.94))',
-              boxShadow: '0 0 22px -4px hsl(45 93% 52% / 0.32)',
+               background: 'hsl(var(--card))',
             } : edgeAccent ? {
               borderLeft: `3px solid ${edgeAccent}`,
             } : undefined}>
@@ -1429,12 +1460,12 @@ export default function DraftsListPage() {
                 </div>
                 <div className="min-w-0">
                   {isPlayoff && <div className="mb-0.5"><PlayoffBadge round={playoffMatch!.round} matchNumber={playoffMatch!.match_number} size="xs" /></div>}
-                  <h3 className="font-extrabold text-[15px] tracking-tight leading-tight break-words">{d.topic}</h3>
+                   <h3 className="dl-display font-extrabold text-[15px] leading-tight break-words">{d.topic}</h3>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {isPlayoff ? (
                       <span className="text-[10px] font-bold tracking-wide" style={{ color: 'hsl(45 93% 52%)' }}>{getPlayoffGameLabel(playoffMatch!.round, playoffMatch!.match_number)}</span>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground/70 font-medium">{d.num_rounds} rounds</span>
+                       <span className="text-[10px] text-muted-foreground/75 font-medium">{progressLabel}</span>
                     )}
                     <span className="w-1 h-1 rounded-full bg-gold/25" />
                     <span className="text-[10px] text-muted-foreground/75 flex items-center gap-1 font-medium">
@@ -1469,9 +1500,19 @@ export default function DraftsListPage() {
                     ) : (
                       <p className="text-[10px] font-semibold mt-1" style={{ color: 'hsl(var(--success))' }}>
                         <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle animate-pulse" style={{ background: 'hsl(var(--success))' }} />
-                        {(d as any).current_pick_profiles?.display_name || 'Someone'}'s pick
+                         {(d as any).current_pick_profiles?.display_name || 'Someone'} is choosing
                       </p>
                     )
+                  )}
+                  {isLive && !isMyTurn && picksUntilYou !== null && (
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 mt-1">
+                      {picksUntilYou === 1 ? 'You pick next' : `${picksUntilYou} picks until you`}
+                    </p>
+                  )}
+                  {newSinceVisit > 0 && (
+                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-primary mt-1">
+                      {newSinceVisit} new {newSinceVisit === 1 ? 'pick' : 'picks'} since your visit
+                    </p>
                   )}
                 </div>
               </div>

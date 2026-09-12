@@ -157,7 +157,7 @@ export default function SeasonArchiveDetailPage() {
             </div>
             <Link to="/compete">
               <button className="da-cta" style={{ height: '2rem', fontSize: '10px' }}>
-                View Live
+                View Season
               </button>
             </Link>
           </div>

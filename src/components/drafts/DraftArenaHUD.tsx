@@ -28,7 +28,7 @@ export function DraftArenaHUD() {
     if (path === '/drafts/create') return 'New Draft · Setup';
     if (path === '/drafts/seasons') return 'Seasons · Archive';
     if (path.startsWith('/drafts/seasons/')) return 'Season · Recap';
-    if (path.startsWith('/drafts/')) return 'Live Draft Room';
+    if (path.startsWith('/drafts/')) return 'Draft Room · In Progress';
     return 'Draft Arena';
   })();
 
