@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Activity, ArrowRight, CalendarDays, CheckCircle2, Clock3, Flame,
-  ListChecks, Radio, Shield, Sparkles, Trophy, Users, Zap,
+  ArrowRight, CalendarDays, CheckCircle2, Clock3, Flame,
+  ListChecks, Radio, Shield, Trophy, Users, Zap,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +39,6 @@ export default function NFLGameCenterPage() {
   const myPickem = pickemStandings.find(row => row.user_id === user?.id);
   const finalGames = games.filter(game => game.status === 'final').length;
   const liveGames = games.filter(game => game.status === 'live').length;
-  const scheduledGames = games.filter(game => game.status === 'scheduled');
   const featuredGames = [...games]
     .sort((a, b) => {
       const priority = { live: 0, scheduled: 1, final: 2 };
