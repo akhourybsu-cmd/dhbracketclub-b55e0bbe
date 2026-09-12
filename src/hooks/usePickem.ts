@@ -305,8 +305,11 @@ export async function saveTiebreaker(args: {
 /* Weekly standings (for a week) */
 export function useWeeklyStandings(weekId?: string) {
   const query=useNflQuery(['weekly-standings',weekId],!!weekId,async signal=>{
+    // Ties are common early in a season. Without the trailing sorts, tied rows
+    // came back in arbitrary order and visibly reshuffled on every refresh.
     const rows=await nflData(supabase.from('nfl_weekly_standings').select('*')
-      .eq('week_id',weekId!).order('rank',{ascending:true,nullsFirst:false}).abortSignal(signal));
+      .eq('week_id',weekId!).order('rank',{ascending:true,nullsFirst:false})
+      .order('correct_picks',{ascending:false}).order('user_id').abortSignal(signal));
     if(!rows?.length) return [];
     const profiles=await nflData(supabase.from('profiles').select('id,display_name,avatar_url').in('id',rows.map(row=>row.user_id)).abortSignal(signal));
     return rows.map(row=>({...row,profiles:profiles?.find(profile=>profile.id===row.user_id)}));
@@ -316,8 +319,10 @@ export function useWeeklyStandings(weekId?: string) {
 
 export function useSeasonStandings(seasonId?: string) {
   const query=useNflQuery(['season-standings',seasonId],!!seasonId,async signal=>{
+    // Stable tie ordering so the board does not reshuffle between refreshes.
     const rows=await nflData(supabase.from('nfl_season_standings').select('*')
-      .eq('season_id',seasonId!).order('rank',{ascending:true,nullsFirst:false}).abortSignal(signal));
+      .eq('season_id',seasonId!).order('rank',{ascending:true,nullsFirst:false})
+      .order('total_correct',{ascending:false}).order('user_id').abortSignal(signal));
     if(!rows?.length) return [];
     const profiles=await nflData(supabase.from('profiles').select('id,display_name,avatar_url').in('id',rows.map(row=>row.user_id)).abortSignal(signal));
     return rows.map(row=>({...row,profiles:profiles?.find(profile=>profile.id===row.user_id)}));

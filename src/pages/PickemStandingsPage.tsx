@@ -12,11 +12,22 @@ export default function PickemStandingsPage() {
   const { season } = useActiveSeason();
   const { standings, loading, error, refetch } = useSeasonStandings(season?.id);
 
-  const top3 = standings.slice(0, 3);
-  const rest = standings.slice(3);
   const me = standings.find((standing) => standing.user_id === user?.id);
   const leader = standings[0];
   const gamesBack = me && leader ? Math.max(0, leader.total_correct - me.total_correct) : 0;
+  // Shared ranks are normal before most games are final. Showing a 1-2-3 podium
+  // while everyone is level made the board look broken, so ties get their own
+  // treatment and every rank is labelled "T-#" when it is shared.
+  const sharedRanks = new Map<number, number>();
+  for (const standing of standings) {
+    const rank = standing.rank ?? 0;
+    sharedRanks.set(rank, (sharedRanks.get(rank) ?? 0) + 1);
+  }
+  const rankLabel = (rank?: number | null) =>
+    rank == null ? '–' : `${(sharedRanks.get(rank) ?? 0) > 1 ? 'T-' : ''}${rank}`;
+  const topTied = (sharedRanks.get(1) ?? 0) > 1;
+  const top3 = topTied ? [] : standings.slice(0, 3);
+  const rest = topTied ? standings : standings.slice(3);
 
   return (
     <PickemShell>
@@ -48,7 +59,7 @@ export default function PickemStandingsPage() {
         <div className="glass-card p-3.5">
           <div className="flex items-center justify-between gap-3 mb-2.5">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Your Season Pulse</p>
-            <span className="text-[11px] font-extrabold text-gold">#{me.rank ?? '–'} overall</span>
+            <span className="text-[11px] font-extrabold text-gold">{rankLabel(me.rank)} overall</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <PulseStat label="Accuracy" value={`${Math.round((me.accuracy || 0) * 100)}%`} />
@@ -74,6 +85,18 @@ export default function PickemStandingsPage() {
         </div>
       ) : (
         <>
+          {topTied && (
+            <div className="glass-card p-4 text-center">
+              <Trophy className="w-6 h-6 mx-auto mb-1.5 text-gold" />
+              <p className="text-sm font-extrabold">{sharedRanks.get(1)} tied for the lead</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {leader?.total_picked
+                  ? `Everyone is ${leader.total_correct} of ${leader.total_picked} on finished games. The podium appears once someone pulls ahead.`
+                  : 'The podium appears once the first games finish.'}
+              </p>
+            </div>
+          )}
+
           {/* Podium — 2-1-3 layout */}
           {top3.length >= 1 && (
             <div className="grid grid-cols-3 gap-2 items-end">
@@ -105,13 +128,13 @@ export default function PickemStandingsPage() {
                         'flex items-center gap-3 px-4 py-3.5',
                         isMe && 'bg-gold/5 border-l-2 border-l-gold',
                       )}>
-                      <div className="w-7 text-center text-[12px] font-extrabold tabular-nums text-muted-foreground">
-                        #{rank}
+                      <div className="w-9 text-center text-[12px] font-extrabold tabular-nums text-muted-foreground">
+                        {rankLabel(s.rank ?? rank)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px] font-extrabold truncate">{(s.profiles as any)?.display_name ?? 'Unknown'}</p>
                         <p className="text-[10px] text-muted-foreground tabular-nums">
-                          {s.total_correct}/{s.total_picked} · {Math.round((s.accuracy || 0) * 100)}%
+                          {s.total_correct}/{s.total_picked} finished · {Math.round((s.accuracy || 0) * 100)}%
                           {s.weekly_wins > 0 && <> · {s.weekly_wins}W</>}
                         </p>
                       </div>

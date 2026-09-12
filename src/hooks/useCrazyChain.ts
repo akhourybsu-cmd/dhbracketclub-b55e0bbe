@@ -117,9 +117,34 @@ export function useMyCrazyChainEntry(weekId?: string) {
 }
 export function useCrazyChainStandings(seasonId?: string) {
   const { club } = useClub();
-  const query = useChainQuery(['crazy-chain-standings',club?.id,seasonId],!!club && !!seasonId, async signal =>
-    checked(supabase.from('nfl_chain_standings').select('*, profiles:user_id(display_name, avatar_url)').eq('club_id',club!.id)
-      .eq('season_id',seasonId!).order('rank',{ascending:true,nullsFirst:false}).order('user_id').abortSignal(signal)));
+  const query = useChainQuery(['crazy-chain-standings',club?.id,seasonId],!!club && !!seasonId, async signal => {
+    // The standings table only holds members who have locked a card, so the
+    // board used to hide everyone else. Fill the roster in here so the league
+    // shows every member from day one, with non-players sorted last.
+    const [rows, members] = await Promise.all([
+      checked(supabase.from('nfl_chain_standings').select('*, profiles:user_id(display_name, avatar_url)').eq('club_id',club!.id)
+        .eq('season_id',seasonId!).order('rank',{ascending:true,nullsFirst:false}).order('user_id').abortSignal(signal)),
+      checked(supabase.from('club_members').select('user_id').eq('club_id',club!.id).abortSignal(signal)),
+    ]);
+    const played = new Set((rows || []).map(row => row.user_id));
+    const missing = (members || []).map(member => member.user_id).filter(id => !played.has(id));
+    // club_members has no foreign key to profiles, so names come from a second read.
+    const profiles = missing.length
+      ? await checked(supabase.from('profiles').select('id, display_name, avatar_url').in('id',missing).abortSignal(signal))
+      : [];
+    const idle = missing.map(id => {
+      const profile = (profiles || []).find(row => row.id === id);
+      return {
+        id: `roster-${id}`, user_id: id, season_id: seasonId!,
+        current_chain: 0, best_chain: 0, perfect_weeks: 0, total_hit_legs: 0, total_cards: 0,
+        busted_cards: 0, longest_card: 0, last_settled_week: null, rank: null,
+        perfect_games: 0, pending_games: 0,
+        profiles: profile ? { display_name: profile.display_name, avatar_url: profile.avatar_url } : null,
+      };
+    }) as CrazyChainStanding[];
+    idle.sort((a, b) => (a.profiles?.display_name || '').localeCompare(b.profiles?.display_name || ''));
+    return [...((rows || []) as unknown as CrazyChainStanding[]), ...idle];
+  });
   return { standings: (query.data || []) as CrazyChainStanding[], loading: query.isLoading,
     error: query.error?.message || null, refetch: query.refetch, updatedAt: query.dataUpdatedAt };
 }

@@ -1,7 +1,7 @@
 import { Lock, Check, X, Tv, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { TeamLogo } from './TeamLogo';
 import type { NflGame, NflPick, NflPickInsight, NflTeamRecord } from '@/hooks/usePickem';
@@ -54,30 +54,30 @@ function TeamRecordRow({ record }: { record?: NflTeamRecord }) {
   );
 }
 
-export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocked, records, insight }: Props) {
-  const { play } = useSoundEffect();
-  const locked = isGameLocked(game) || weekLocked === true;
-  const blocked = locked || cardLocked;
-  const isFinal = game.status === 'final';
-  const isLive = game.status === 'live';
+/**
+ * Rendered at module scope on purpose. Declaring this inside GamePickCard made
+ * React see a brand-new component type on every render, so each 30-second data
+ * refresh remounted both buttons and replayed the selection/logo animations —
+ * the "flashing pick icons" players reported.
+ */
+function TeamButton({
+  side, game, pick, records, insight, locked, blocked, saving, isFinal, isLive, sweptSide, onTap,
+}: {
+  side: 'away' | 'home';
+  game: NflGame;
+  pick?: NflPick;
+  records?: Map<string, NflTeamRecord>;
+  insight?: NflPickInsight;
+  locked: boolean;
+  blocked?: boolean;
+  saving?: boolean;
+  isFinal: boolean;
+  isLive: boolean;
+  sweptSide: 'home' | 'away' | null;
+  onTap: (side: 'home' | 'away', teamId: string) => void;
+}) {
   const pickedId = pick?.picked_team_id;
-
-  // Track which side was just tapped — drives the sweep animation
-  const [sweptSide, setSweptSide] = useState<'home' | 'away' | null>(null);
-  const sweepTimerRef = useRef<number | null>(null);
-  useEffect(() => () => { if (sweepTimerRef.current) clearTimeout(sweepTimerRef.current); }, []);
-
-  function handleTap(side: 'home' | 'away', teamId: string) {
-    if (blocked || saving) return;
-    play('tap');
-    setSweptSide(side);
-    if (sweepTimerRef.current) clearTimeout(sweepTimerRef.current);
-    sweepTimerRef.current = window.setTimeout(() => setSweptSide(null), 700);
-    onPick(teamId);
-  }
-
-  const TeamButton = ({ side }: { side: 'away' | 'home' }) => {
-    const team = side === 'away' ? game.away_team : game.home_team;
+  const team = side === 'away' ? game.away_team : game.home_team;
     const teamId = side === 'away' ? game.away_team_id : game.home_team_id;
     const score = side === 'away' ? game.away_score : game.home_score;
     const selected = pickedId === teamId;
@@ -95,7 +95,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
         disabled={blocked || saving}
         whileTap={!blocked && !saving ? { scale: 0.97 } : undefined}
         transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-        onClick={() => handleTap(side, teamId)}
+        onClick={() => onTap(side, teamId)}
         className={cn(
           'flex-1 flex items-center gap-2.5 px-3 min-h-[68px] py-2.5 rounded-xl transition-all duration-150 btn-press',
           'border text-left relative overflow-hidden',
@@ -164,7 +164,32 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
           {wasWrong && <X className="w-3.5 h-3.5 text-destructive" />}
         </div>
       </motion.button>
-    );
+  );
+}
+
+export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocked, records, insight }: Props) {
+  const { play } = useSoundEffect();
+  const locked = isGameLocked(game) || weekLocked === true;
+  const blocked = locked || cardLocked;
+  const isFinal = game.status === 'final';
+  const isLive = game.status === 'live';
+
+  // Track which side was just tapped — drives the sweep animation
+  const [sweptSide, setSweptSide] = useState<'home' | 'away' | null>(null);
+  const sweepTimerRef = useRef<number | null>(null);
+  useEffect(() => () => { if (sweepTimerRef.current) clearTimeout(sweepTimerRef.current); }, []);
+
+  const handleTap = useCallback((side: 'home' | 'away', teamId: string) => {
+    if (blocked || saving) return;
+    play('tap');
+    setSweptSide(side);
+    if (sweepTimerRef.current) clearTimeout(sweepTimerRef.current);
+    sweepTimerRef.current = window.setTimeout(() => setSweptSide(null), 700);
+    onPick(teamId);
+  }, [blocked, saving, play, onPick]);
+
+  const sideProps = {
+    game, pick, records, insight, locked, blocked, saving, isFinal, isLive, sweptSide, onTap: handleTap,
   };
 
   return (
@@ -194,14 +219,14 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
       </div>
 
       <div className="flex items-stretch gap-2">
-        <TeamButton side="away" />
+        <TeamButton side="away" {...sideProps} />
         <div
           className="flex items-center justify-center text-[9px] font-extrabold tracking-[0.18em] text-muted-foreground/60 px-1"
           aria-hidden
         >
           <span className="px-1.5 py-1 rounded-full bg-black/40 border border-white/10">@</span>
         </div>
-        <TeamButton side="home" />
+        <TeamButton side="home" {...sideProps} />
       </div>
     </div>
   );

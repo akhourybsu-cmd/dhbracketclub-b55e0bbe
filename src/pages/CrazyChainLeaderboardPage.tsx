@@ -19,7 +19,7 @@ export default function CrazyChainLeaderboardPage() {
         <h1 className="text-[26px] font-black text-white mt-2">Crazy Chain Leaders</h1>
         <p className="text-[11px] text-white/60 mt-1">Current chains lead the table. Personal best breaks ties.</p>
         <p className="text-xs text-white/65 mt-2">Updates as games resolve · {updatedAt ? 'Refreshed ' + new Date(updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : 'Checking results'}</p>
-        {leader && (
+        {leader?.rank != null && (
           <div className="pk-scoreboard mt-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gold/15 border border-gold/30 flex items-center justify-center"><Crown className="w-5 h-5 text-gold" /></div>
             <div className="flex-1 min-w-0">
@@ -45,6 +45,11 @@ export default function CrazyChainLeaderboardPage() {
         <div className="space-y-2">
           {standings.map((standing, index) => {
             const mine = standing.user_id === user?.id;
+            // Members with no card yet are listed for visibility but never
+            // ranked or medalled, and shared ranks are shown as ties.
+            const idle = standing.rank == null;
+            const shared = !idle && standings.filter(row => row.rank === standing.rank).length > 1;
+            const medal = !idle && !shared && (standing.rank ?? 99) <= 3;
             return (
               <motion.div
                 key={standing.id}
@@ -52,8 +57,8 @@ export default function CrazyChainLeaderboardPage() {
                 transition={{ delay: Math.min(index * 0.035, 0.25) }}
                 className={`glass-card p-3.5 flex items-center gap-3 ${mine ? 'ring-1 ring-gold/35' : ''}`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black tabular-nums ${index === 0 ? 'bg-gold/15 text-gold border border-gold/30' : 'bg-white/5 text-muted-foreground border border-white/10'}`}>
-                  {index < 3 ? <Medal className="w-4 h-4" /> : standing.rank || index + 1}
+                <div className={`w-9 h-8 rounded-lg flex items-center justify-center text-[11px] font-black tabular-nums ${medal && standing.rank === 1 ? 'bg-gold/15 text-gold border border-gold/30' : 'bg-white/5 text-muted-foreground border border-white/10'}`}>
+                  {medal ? <Medal className="w-4 h-4" /> : idle ? '–' : `${shared ? 'T' : ''}${standing.rank}`}
                 </div>
                 <Avatar className="w-9 h-9 border border-white/10">
                   <AvatarImage src={standing.profiles?.avatar_url || undefined} />
@@ -64,7 +69,7 @@ export default function CrazyChainLeaderboardPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-extrabold truncate">{standing.profiles?.display_name || 'Member'}{mine ? ' · You' : ''}</p>
                   <p className="text-[9px] text-muted-foreground mt-0.5 flex items-center gap-2">
-                    <span>Best {standing.best_chain}</span><span>•</span><span>{standing.perfect_games ?? 0} perfect games</span>
+                    {idle ? <span>No chain card yet</span> : <><span>Best {standing.best_chain}</span><span>•</span><span>{standing.perfect_games ?? 0} perfect games</span></>}
                   </p>
                   {!!standing.pending_games && <p className="text-[10px] text-muted-foreground mt-1">{standing.pending_games} locked game(s) awaiting results</p>}
                 </div>
