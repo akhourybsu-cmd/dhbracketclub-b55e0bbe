@@ -86,7 +86,7 @@ export function DraftAiContextCard({
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-3 mb-3"
+        className="da-glass p-3 mb-3"
       >
         <div className="flex items-start gap-2">
           <div

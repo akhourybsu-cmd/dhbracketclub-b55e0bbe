@@ -14,7 +14,7 @@ import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
  */
 export function DraftArenaLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="da-mode da-shell relative min-h-[100dvh]">
+    <div className="da-mode da-lounge da-shell relative min-h-[100dvh]">
       <DraftArenaHUD />
 
       {/* Shell width: mobile-first 640px cap (the original calm phone

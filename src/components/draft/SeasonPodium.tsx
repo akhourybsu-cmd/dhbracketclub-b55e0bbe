@@ -55,8 +55,7 @@ export function SeasonPodium({ champion, runnerUp, thirdPlace, seasonName, compa
         }}
       />
       <div
-        className="relative glass-card border-gold/15 p-5"
-        style={{ boxShadow: '0 0 30px -8px hsl(var(--gold) / 0.35)' }}
+        className="relative da-glass border-gold/15 p-5"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
