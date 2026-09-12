@@ -5287,3 +5287,327 @@
 @media (prefers-reduced-motion: reduce) {
   .da-lounge .dl-rounds-track { scroll-behavior: auto; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DRAFT ARENA — HERITAGE LEDGER
+   Warm black, charcoal, bronze and champagne. This final layer
+   intentionally supersedes the older emerald arena treatment.
+   ══════════════════════════════════════════════════════════════ */
+.da-mode,
+.light .da-mode,
+.da-lounge {
+  --background: 40 10% 6%;
+  --foreground: 39 31% 85%;
+  --card: 40 14% 13%;
+  --card-foreground: 39 31% 85%;
+  --popover: 40 13% 11%;
+  --popover-foreground: 39 31% 85%;
+  --primary: 38 50% 48%;
+  --primary-foreground: 40 18% 7%;
+  --secondary: 40 10% 17%;
+  --secondary-foreground: 39 25% 82%;
+  --muted: 40 9% 18%;
+  --muted-foreground: 38 15% 64%;
+  --border: 38 21% 25%;
+  --input: 38 17% 25%;
+  --gold: 38 50% 48%;
+  --da-gold: 38 50% 48%;
+  --da-gold-bright: 39 52% 68%;
+  --da-ink-on-gold: 40 18% 7%;
+  --dl-gold: 38 50% 48%;
+  --dl-gold-hi: 39 52% 68%;
+  --dl-surface: 40 14% 13%;
+  --dl-surface-2: 40 11% 16%;
+  color: hsl(var(--foreground));
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+.da-shell,
+.light .da-shell {
+  background:
+    linear-gradient(90deg, transparent 0 49.9%, hsl(var(--primary) / 0.025) 50%, transparent 50.1%),
+    linear-gradient(180deg, hsl(40 12% 7%), hsl(var(--background))) !important;
+}
+.da-shell::before,
+.light .da-shell::before {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 63px,
+    hsl(var(--primary) / 0.028) 63px,
+    hsl(var(--primary) / 0.028) 64px
+  ) !important;
+  mask-image: linear-gradient(180deg, black, transparent 92%);
+  -webkit-mask-image: linear-gradient(180deg, black, transparent 92%);
+}
+
+.da-mode h1,
+.da-mode h2,
+.da-mode h3,
+.da-mode .page-header-title,
+.da-mode .stat-value,
+.da-mode .dl-display {
+  font-family: 'Space Grotesk', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+
+.da-mode .da-card,
+.da-mode .da-glass,
+.da-mode .glass-card,
+.light .da-mode .da-card,
+.light .da-mode .da-glass,
+.light .da-mode .glass-card,
+.da-lounge .dl-card,
+.da-lounge .dl-round-panel {
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border) / 0.78) !important;
+  border-radius: 8px !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.035), 0 10px 28px -22px hsl(0 0% 0% / 0.9) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.da-mode .da-subcard,
+.light .da-mode .da-subcard {
+  background: hsl(var(--secondary) / 0.62) !important;
+  border: 1px solid hsl(var(--border) / 0.55) !important;
+  border-radius: 6px !important;
+  color: hsl(var(--foreground)) !important;
+}
+.da-ledger-page { font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; }
+.da-ledger-section { border-top-color: hsl(var(--primary) / 0.42) !important; }
+.da-ledger-row { transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease; }
+.da-ledger-row:hover { border-color: hsl(var(--primary) / 0.42) !important; }
+.da-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem;
+  padding: 0 0.2rem 0.45rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.7);
+}
+.da-ledger-toolbar {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid hsl(var(--border) / 0.72);
+}
+.da-ledger-tabs {
+  background: hsl(var(--secondary) / 0.72) !important;
+  border: 1px solid hsl(var(--border) / 0.75) !important;
+}
+.da-ledger-tab { color: hsl(var(--muted-foreground)); }
+.da-ledger-tab[data-state='active'] {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  box-shadow: none !important;
+}
+.da-filter-chip.is-active {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.da-ledger-metrics::before,
+.da-ledger-section::before {
+  content: '';
+  position: absolute;
+  inset: 0.45rem auto 0.45rem 0;
+  width: 2px;
+  background: hsl(var(--primary) / 0.65);
+  pointer-events: none;
+}
+
+.da-mode .da-hud,
+.light .da-mode .da-hud {
+  background: hsl(var(--background) / 0.96) !important;
+  border-color: hsl(var(--border) / 0.85) !important;
+  box-shadow: 0 1px 0 hsl(var(--primary) / 0.22), 0 8px 24px -20px hsl(0 0% 0% / 0.9) !important;
+}
+.da-mode .da-hud-emblem,
+.light .da-mode .da-hud-emblem {
+  background: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--primary) / 0.46) !important;
+  box-shadow: none !important;
+}
+.da-mode .da-hud-emblem-img,
+.light .da-mode .da-hud-emblem-img { filter: none !important; }
+.da-mode .da-hud-title,
+.light .da-mode .da-hud-title { color: hsl(var(--primary)) !important; }
+.da-mode .da-hud-chip,
+.da-mode .da-hud-action,
+.light .da-mode .da-hud-chip,
+.light .da-mode .da-hud-action {
+  background: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  text-shadow: none !important;
+}
+
+.da-mode .da-page-icon,
+.light .da-mode .da-page-icon {
+  background: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--primary) / 0.42) !important;
+  box-shadow: none !important;
+  color: hsl(var(--primary)) !important;
+  border-radius: 8px;
+}
+.da-mode .da-back,
+.light .da-mode .da-back {
+  background: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 8px;
+}
+.da-mode .da-back:hover { border-color: hsl(var(--primary) / 0.55) !important; }
+
+.da-mode .da-status-setup,
+.da-mode .da-status-live,
+.da-mode .da-status-complete,
+.da-mode .da-status-active,
+.light .da-mode .da-status-setup,
+.light .da-mode .da-status-live,
+.light .da-mode .da-status-complete,
+.light .da-mode .da-status-active {
+  background: hsl(var(--secondary)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  box-shadow: none !important;
+  border-radius: 4px;
+}
+.da-mode .da-status-live,
+.da-mode .da-status-active,
+.da-mode .da-status-complete {
+  border-color: hsl(var(--primary) / 0.48) !important;
+  color: hsl(var(--da-gold-bright)) !important;
+}
+.da-mode .da-status-active::before {
+  background: hsl(var(--primary)) !important;
+  box-shadow: none !important;
+  animation: none;
+}
+.da-mode .da-pill,
+.da-mode .da-cta,
+.light .da-mode .da-pill,
+.light .da-mode .da-cta,
+.da-lounge .dl-cta {
+  box-shadow: none !important;
+}
+.da-mode .da-cta,
+.light .da-mode .da-cta,
+.da-lounge .dl-cta {
+  background: hsl(var(--primary)) !important;
+  border: 1px solid hsl(var(--da-gold-bright) / 0.42) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-radius: 6px;
+}
+
+.da-lounge .dl-eyebrow { color: hsl(var(--muted-foreground)); letter-spacing: 0.18em; }
+.da-lounge .dl-status {
+  top: 0.5rem;
+  background: hsl(var(--card) / 0.96) !important;
+  border-color: hsl(var(--primary) / 0.3) !important;
+}
+.da-lounge .dl-avatar-muted {
+  background: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
+  border-color: hsl(var(--border));
+}
+.da-lounge .dl-avatar-gold,
+.da-lounge .dl-new-pill {
+  background: hsl(var(--primary) / 0.12);
+  color: hsl(var(--da-gold-bright));
+  border-color: hsl(var(--primary) / 0.4);
+}
+.da-lounge .dl-round-chip {
+  border-radius: 4px;
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+.da-lounge .dl-round-chip-active {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.da-lounge .dl-cell {
+  background: hsl(var(--secondary) / 0.68);
+  border-color: hsl(var(--border) / 0.58);
+  border-radius: 5px;
+}
+.da-lounge .dl-cell-text { color: hsl(var(--foreground)); }
+.da-lounge .dl-cell-num,
+.da-lounge .dl-cell-empty { color: hsl(var(--muted-foreground) / 0.7); }
+.da-lounge .dl-cell-future { background: transparent; border-color: hsl(var(--border) / 0.42); }
+.da-lounge .dl-cell-current {
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.58);
+  box-shadow: inset 3px 0 0 hsl(var(--primary));
+}
+.da-lounge .dl-cell-you { border-color: hsl(var(--foreground) / 0.18); }
+.da-lounge .dl-board-corner,
+.da-lounge .dl-board-head,
+.da-lounge .dl-board-roundlabel,
+.da-lounge .dl-board-cell { border-color: hsl(var(--border) / 0.52); }
+.da-lounge.dl-sheet {
+  background: hsl(var(--popover));
+  border-color: hsl(var(--primary) / 0.38);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -18px 44px hsl(0 0% 0% / 0.55);
+}
+
+.da-mode .skeleton-shimmer,
+.da-mode .da-shimmer,
+.light .da-mode .skeleton-shimmer,
+.light .da-mode .da-shimmer {
+  background: linear-gradient(90deg, hsl(var(--secondary)), hsl(var(--primary) / 0.14), hsl(var(--secondary))) !important;
+  background-size: 200% 100% !important;
+}
+.da-mode .da-boot,
+.light .da-mode .da-boot {
+  background: hsl(var(--background)) !important;
+}
+.da-mode .da-boot-grid,
+.light .da-mode .da-boot-grid {
+  background-image: repeating-linear-gradient(0deg, transparent 0, transparent 55px, hsl(var(--primary) / 0.055) 55px, hsl(var(--primary) / 0.055) 56px) !important;
+}
+.da-mode .da-boot-corner-glow,
+.light .da-mode .da-boot-corner-glow { background: none !important; }
+.da-mode .da-boot-emblem-glow,
+.light .da-mode .da-boot-emblem-glow { opacity: 0 !important; }
+.da-mode .da-boot-emblem,
+.light .da-mode .da-boot-emblem {
+  border-color: hsl(var(--primary) / 0.48) !important;
+  box-shadow: none !important;
+}
+.da-mode .da-boot-emblem-img,
+.light .da-mode .da-boot-emblem-img { filter: none !important; }
+.da-mode .da-boot-title,
+.light .da-mode .da-boot-title {
+  background-image: none !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  color: hsl(var(--foreground)) !important;
+  text-shadow: none !important;
+}
+.da-mode .da-boot-bar-fill,
+.light .da-mode .da-boot-bar-fill {
+  background: hsl(var(--primary)) !important;
+  box-shadow: none !important;
+}
+.da-exit-dialog {
+  --background: 40 10% 6%;
+  --foreground: 39 31% 85%;
+  --primary: 38 50% 48%;
+  --primary-foreground: 40 18% 7%;
+  background: hsl(40 13% 11%) !important;
+  border-color: hsl(38 21% 25%) !important;
+}
+
+@media (min-width: 1024px) {
+  .da-ledger-page .da-ledger-metrics { margin-bottom: 1rem; }
+  .da-mode .da-glass,
+  .da-mode .glass-card { box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.03), 0 12px 30px -26px hsl(0 0% 0% / 0.95) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .da-mode .animate-pulse,
+  .da-mode .da-banner-pulse,
+  .da-mode .da-status-active::before { animation: none !important; }
+}
