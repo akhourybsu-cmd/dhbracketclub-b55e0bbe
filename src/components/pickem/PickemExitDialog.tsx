@@ -18,11 +18,7 @@ export function PickemExitDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent
-        className="border-gold/30"
-        style={{
-          background:
-            'linear-gradient(180deg, hsl(160 35% 7%), hsl(160 50% 4%))',
-        }}
+        className="nfl-command-dialog"
       >
         <AlertDialogHeader>
           <AlertDialogTitle className="text-white text-lg font-black tracking-tight">
