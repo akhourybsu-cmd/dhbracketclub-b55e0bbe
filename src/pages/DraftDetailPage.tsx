@@ -832,6 +832,129 @@ export default function DraftDetailPage() {
   const streaks = hasResults ? findScoringStreaks(draftResults, picks) : new Map();
   const timings = computePickTimings(picks);
 
+  // ── Pick history card (shared by the playoff 2-col layout and the lounge layout) ──
+  const pickHistoryCard = picks.length > 0 ? (
+            <div
+              className={`overflow-hidden rounded-2xl border ${
+                isPlayoffDraft
+                  ? 'border-amber-500/25 bg-gradient-to-b from-amber-500/[0.09] via-card to-card'
+                  : 'border-border/40 bg-gradient-to-b from-amber-500/[0.05] via-card to-card'
+              }`}
+            >
+              <div className="px-4 py-3 border-b border-border/20 flex items-center gap-2">
+                <Trophy className="w-3.5 h-3.5 text-amber-500/70" />
+                <span className="font-display font-semibold text-xs text-foreground/70 uppercase tracking-widest">Pick History</span>
+                <PickCount className="ml-auto" />
+              </div>
+              <div className="p-3 space-y-2.5">
+                {(() => {
+                  const nonPlayoffRounds = !isPlayoffDraft && draft?.num_rounds
+                    ? Math.max(1, Math.ceil(currentPickNumber / Math.max(1, participants.length)))
+                    : 0;
+                  return picks.map((pick) => {
+                  const enrichment = enrichments.get(pick.id);
+                  const isEditing = editingPickId === pick.id;
+                  const canManage = canManagePick(pick);
+                  return (
+                    <div key={pick.id}>
+                    {isEditing ? (
+                      /* ── Inline edit mode ── */
+                      <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-3 space-y-2.5 animate-in fade-in-0 zoom-in-[0.98] duration-200">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold text-primary/70 uppercase tracking-widest">Editing Pick</span>
+                          <span className="text-[9px] text-muted-foreground/50">R{pick.round} · #{pick.pick_number}</span>
+                          <span className="text-[9px] text-muted-foreground/60 truncate ml-auto">{pick.profiles?.display_name}</span>
+                        </div>
+                        <Input
+                          value={editPickText}
+                          onChange={(e) => setEditPickText(e.target.value)}
+                          placeholder={pick.pick_text}
+                          maxLength={100}
+                          className="form-input h-9 text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && editPickText.trim()) handleSavePickEdit();
+                            if (e.key === 'Escape') handleCancelEditPick();
+                          }}
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleSavePickEdit}
+                            disabled={savingPick || !editPickText.trim()}
+                            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
+                          >
+                            {savingPick ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEditPick}
+                            disabled={savingPick}
+                            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-muted/40 text-muted-foreground text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 active:scale-[0.98] transition-all"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : hasEnrichments ? (
+                      <EnrichedItemCard
+                        itemId={pick.id}
+                        title={pick.pick_text}
+                        pickedByName={pick.profiles?.display_name}
+                        pickedById={pick.user_id}
+                        pickNumber={pick.pick_number}
+                        round={pick.round}
+                        isTotal={isPlayoffDraft ? pick.round >= 4 : nonPlayoffRounds > 0 && pick.round === nonPlayoffRounds}
+                        enrichment={enrichment}
+                        onImageClick={() => setImagePickerPick(pick)}
+                        isEnriching={enrichingPickIds.has(pick.id)}
+                        isNew={freshPickIds.has(pick.id)}
+                        onEdit={canManage ? () => handleStartEditPick(pick) : undefined}
+                        onDelete={canManage ? () => setPickToRemove(pick) : undefined}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-background/60 border border-border/30">
+                        <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-muted/60 to-muted/30 flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm font-display font-bold text-muted-foreground/40">{pick.pick_number}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-[13px] text-foreground truncate">{pick.pick_text}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[11px] text-muted-foreground/70 truncate">{pick.profiles?.display_name}</p>
+                            <span className="text-[9px] text-muted-foreground/30">·</span>
+                            <p className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">R{pick.round}</p>
+                          </div>
+                        </div>
+                        {canManage && (
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            <button
+                              onClick={() => handleStartEditPick(pick)}
+                              className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition-all active:scale-95"
+                              title="Edit pick"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {user && (
+                              <button
+                                onClick={() => setPickToRemove(pick)}
+                                className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all active:scale-95"
+                                title={user.id === pick.user_id ? 'Remove my pick' : `Remove ${pick.profiles?.display_name || 'player'}'s pick`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    </div>
+                  );
+                  });
+                })()}
+              </div>
+            </div>
+  ) : null;
+
   return (
     // Live-draft view fills the desktop shell (up to 1100px from
     // DraftArenaLayout). The completion-report block further below
