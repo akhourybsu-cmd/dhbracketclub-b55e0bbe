@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +30,7 @@ import { getDerivedDraftTurn } from '@/lib/draftTurn';
 import { getSeasonJoinEligibility } from '@/lib/draft/seasonEligibility';
 import { Confetti } from '@/components/Confetti';
 import { OnTheClockTimer } from '@/components/draft/OnTheClockTimer';
-import { DraftOrderStrip } from '@/components/draft/DraftOrderStrip';
+
 import { PickAnnouncement } from '@/components/draft/PickAnnouncement';
 import { DraftStatsCard } from '@/components/draft/DraftStatsCard';
 import { findMvpPick, findScoringStreaks, computePickTimings, formatDuration } from '@/lib/draftStats';
@@ -67,6 +67,10 @@ import { getPlayoffRoundShort, getPlayoffRoundName } from '@/lib/playoffStyle';
 import { DraftAiContextCard } from '@/components/draft/DraftAiContextCard';
 import { JudgingScopeButton } from '@/components/draft/JudgingScopeButton';
 import { DraftChannelInviteButton } from '@/components/draft/DraftChannelInviteButton';
+import { DraftStatusHeader } from '@/components/draft/DraftStatusHeader';
+import { DraftBoard } from '@/components/draft/DraftBoard';
+import { MakePickSheet } from '@/components/draft/MakePickSheet';
+import { useDraftLastVisit } from '@/hooks/useDraftLastVisit';
 
 interface Participant {
   id: string;
@@ -121,6 +125,8 @@ export default function DraftDetailPage() {
   const [seasonActionBusy, setSeasonActionBusy] = useState(false);
   const [seasonRosterLocked, setSeasonRosterLocked] = useState(false);
   const [seasonJoinEligible, setSeasonJoinEligible] = useState(true);
+  const [showPickSheet, setShowPickSheet] = useState(false);
+  const pickCountWhenSheetOpened = useRef(0);
 
   const { season } = useCurrentSeason();
   const { entries: seasonEntries, refetch: refetchSeasonEntries } = useSeasonEntries(season?.id);
@@ -414,6 +420,33 @@ export default function DraftDetailPage() {
   const isInProgress = draft?.status === 'in_progress';
   const isSetup = draft?.status === 'setup';
   const hasEnrichments = enrichments.size > 0;
+
+  // "Since your last visit" — diff picks against the stored per-draft snapshot
+  const newPickIds = useDraftLastVisit(draftId, user?.id, picks, !loading && isInProgress);
+
+  // How many picks stand between now and the viewer's next turn (snake order)
+  const picksUntilYou = useMemo(() => {
+    if (!user || !isParticipant || isMyTurn || !draft?.num_rounds) return null;
+    const ordered = [...participants].sort((a, b) => a.pick_order - b.pick_order);
+    const n = ordered.length;
+    if (n === 0) return null;
+    for (let p = currentPickNumber; p <= n * draft.num_rounds; p++) {
+      const r = Math.ceil(p / n);
+      const idx = (p - 1) % n;
+      const participant = r % 2 === 1 ? ordered[idx] : ordered[n - 1 - idx];
+      if (participant?.user_id === user.id) return p - currentPickNumber;
+    }
+    return null;
+  }, [participants, currentPickNumber, user, isParticipant, isMyTurn, draft?.num_rounds]);
+
+  // Close the pick sheet once the submitted pick lands via refetch/realtime.
+  // If the AI check holds submission, pick count doesn't change and the
+  // sheet stays open so the user can review the suggestion.
+  useEffect(() => {
+    if (showPickSheet && picks.length > pickCountWhenSheetOpened.current) {
+      setShowPickSheet(false);
+    }
+  }, [picks.length, showPickSheet]);
 
   const handleStartDraft = async () => {
     if (!draftId) return;
