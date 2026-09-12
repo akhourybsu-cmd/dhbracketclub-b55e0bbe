@@ -1379,10 +1379,39 @@ export default function DraftDetailPage() {
               instead of being trapped in one column. */}
           <PickAnnouncement pick={announcement} onHide={() => setAnnouncement(null)} />
 
-          {/* Live-draft 2-column layout on lg+:
-                LEFT  (420px, sticky)  — turn hero + pick input + AI suggestion
-                RIGHT (1fr, scrolls)   — pick history
-              Mobile/tablet (<lg) is unchanged — pure single-column stack. */}
+          {/* ── Lounge layout (regular drafts): compact status + board dominate ── */}
+          {!isPlayoffDraft && (
+            <div className="da-lounge">
+              <DraftStatusHeader
+                currentRound={currentRound}
+                numRounds={draft.num_rounds}
+                currentPickNumber={currentPickNumber}
+                totalPicks={participants.length * draft.num_rounds}
+                pickerName={currentPicker?.profiles?.display_name || 'Unknown'}
+                pickerInitials={(currentPicker?.profiles?.display_name || '?').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'}
+                isMyTurn={isMyTurn}
+                picksUntilYou={picksUntilYou}
+                clockStartedAt={picks.length > 0 ? ((picks[picks.length - 1] as any)?.picked_at ?? null) : (draft?.updated_at ?? null)}
+                newPickCount={newPickIds.size}
+                onMakePick={isMyTurn ? () => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); } : undefined}
+              />
+              <div className="mb-4">
+                <DraftBoard
+                  participants={participants}
+                  picks={picks}
+                  currentPickNumber={currentPickNumber}
+                  numRounds={draft.num_rounds}
+                  currentUserId={user?.id}
+                  newPickIds={newPickIds}
+                  enrichments={enrichments}
+                />
+              </div>
+              {pickHistoryCard}
+            </div>
+          )}
+
+          {/* Playoff drafts keep the 2-column war-room layout. */}
+          {isPlayoffDraft && (
           <div className="lg:grid lg:grid-cols-[420px_1fr] lg:gap-5 lg:items-start">
           <div className="lg:sticky lg:top-3">
 
