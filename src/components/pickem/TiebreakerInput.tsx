@@ -20,15 +20,8 @@ export function TiebreakerInput({ game, predicted, actual, onChange, locked = fa
   if (!game) return null;
 
   return (
-    <div
-      className="relative rounded-2xl overflow-hidden p-4 mt-1"
-      style={{
-        background: 'radial-gradient(ellipse 100% 80% at 50% 0%, hsl(var(--gold) / 0.12), transparent 70%), hsl(var(--card))',
-        border: '1px solid hsl(var(--gold) / 0.32)',
-        boxShadow: '0 0 18px hsl(var(--gold) / 0.10)',
-      }}
-    >
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+    <div className="nfl-tiebreaker relative overflow-hidden p-4 mt-1">
+      <div className="nfl-surface-rule" />
 
       <div className="flex items-center gap-1.5 mb-3">
         <Star className="w-3.5 h-3.5 text-gold fill-gold" />

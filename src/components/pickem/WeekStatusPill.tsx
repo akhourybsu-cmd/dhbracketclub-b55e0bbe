@@ -15,7 +15,7 @@ export function WeekStatusPill({ status }: { status: NflWeek['status'] }) {
     <span
       key={status}
       className={cn(
-        'status-pill inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 font-extrabold uppercase tracking-[0.1em] rounded-full animate-fade-in whitespace-nowrap',
+        'status-pill nfl-status-pill inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 font-extrabold uppercase animate-fade-in whitespace-nowrap',
         m.cls
       )}
     >

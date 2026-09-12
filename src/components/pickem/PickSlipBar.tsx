@@ -78,12 +78,12 @@ export function PickSlipBar({
       className="fixed left-0 right-0 z-30 px-3"
       style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
     >
-      <div className="max-w-[640px] mx-auto space-y-1.5">
+      <div className="max-w-[760px] mx-auto space-y-1.5">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'w-full pk-scorebug px-4 py-2.5 flex items-center gap-3 active:scale-[0.99] transition-transform',
+            'w-full pk-scorebug nfl-pick-slip px-4 py-2.5 flex items-center gap-3 active:scale-[0.99] transition-transform',
             'backdrop-blur-md',
           )}
           style={{ borderColor: `${accent.replace(')', ' / 0.45)')}`, boxShadow: `0 -2px 16px ${accent.replace(')', ' / 0.18)')}, var(--shadow-card)` }}
@@ -143,7 +143,7 @@ export function PickSlipBar({
         {showLockToggle && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleCardLock!(); }}
+            onClick={(e) => { e.stopPropagation(); onToggleCardLock?.(); }}
             className={cn(
               'w-full rounded-xl px-4 py-2.5 flex items-center justify-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.14em] btn-press transition-colors backdrop-blur-md border',
               cardLocked
