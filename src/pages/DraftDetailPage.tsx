@@ -982,7 +982,7 @@ export default function DraftDetailPage() {
     // Live-draft view fills the desktop shell (up to 1100px from
     // DraftArenaLayout). The completion-report block further below
     // re-caps itself at 760px so long-form content stays readable.
-    <div className="max-w-md mx-auto lg:max-w-none lg:mx-0">
+    <div className="max-w-md mx-auto lg:max-w-none lg:mx-0 da-ledger-page">
       <Confetti active={showConfetti} />
       {/* Header — playoff drafts get a premium matchup hero */}
       {isPlayoffDraft && playoffMatch ? (
@@ -1093,9 +1093,9 @@ export default function DraftDetailPage() {
       ) : (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
           <div
-            className="rounded-2xl p-3.5 sm:p-4"
+             className="da-glass da-ledger-section p-3.5 sm:p-4"
             style={{
-              background: 'linear-gradient(160deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%)',
+               background: 'hsl(var(--card))',
               border: '1px solid hsl(var(--border) / 0.5)',
             }}
           >
@@ -1130,7 +1130,7 @@ export default function DraftDetailPage() {
                 </button>
               </div>
             ) : (
-              <h1 className="text-[1.5rem] sm:text-[1.75rem] font-extrabold tracking-tight leading-[1.15] text-balance">
+               <h1 className="dl-display text-[1.5rem] sm:text-[1.75rem] font-extrabold leading-[1.15] text-balance">
                 {draft.topic}
               </h1>
             )}
@@ -1242,7 +1242,7 @@ export default function DraftDetailPage() {
           ) : null}
 
           {!isParticipant && user && (
-            <div className="da-pill mt-2 self-start" style={{ background: 'hsl(160 30% 9% / 0.7)', color: 'hsl(45 95% 65%)', borderColor: 'hsl(45 80% 50% / 0.22)' }}>
+            <div className="da-pill mt-2 self-start">
               <span>👁</span>
               <span>Spectating</span>
             </div>

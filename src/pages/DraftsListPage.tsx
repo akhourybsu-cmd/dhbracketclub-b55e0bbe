@@ -1490,7 +1490,7 @@ export default function DraftsListPage() {
   };
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 da-ledger-page">
       <Tabs defaultValue={defaultTab} className="w-full">
         {/* Tab bar.
             Previous bug: the active TabsTrigger inherits shadcn's
@@ -1501,29 +1501,29 @@ export default function DraftsListPage() {
             painted dark-on-dark and effectively invisible. The fix:
             force the active state to a solid gold fill so the dark
             text reads as black-on-gold (the intended look). */}
-        <div className="flex items-center mb-4 gap-2">
+          <div className="flex items-center mb-5 gap-2 da-ledger-toolbar">
           <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
-            <TabsList className="inline-flex w-max gap-1 p-1 rounded-xl h-auto" style={{ background: 'hsl(45 95% 55% / 0.08)', border: '1px solid hsl(45 95% 55% / 0.18)' }}>
+            <TabsList className="inline-flex w-max gap-1 p-1 rounded-lg h-auto da-ledger-tabs">
               <TabsTrigger value="drafts"
-                className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg data-[state=active]:bg-[hsl(45_95%_55%)] data-[state=active]:text-[hsl(160_30%_6%)] data-[state=active]:shadow-[0_0_12px_hsl(45_95%_55%/0.45)] data-[state=inactive]:text-white/60"
+                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md"
                 style={{ '--tw-ring-color': 'transparent' } as any}>
                 Drafts
               </TabsTrigger>
               <TabsTrigger value="season"
-                className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg data-[state=active]:bg-[hsl(45_95%_55%)] data-[state=active]:text-[hsl(160_30%_6%)] data-[state=active]:shadow-[0_0_12px_hsl(45_95%_55%/0.45)] data-[state=inactive]:text-white/60">
+                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
                 Season
               </TabsTrigger>
               <TabsTrigger value="stats"
-                className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg data-[state=active]:bg-[hsl(45_95%_55%)] data-[state=active]:text-[hsl(160_30%_6%)] data-[state=active]:shadow-[0_0_12px_hsl(45_95%_55%/0.45)] data-[state=inactive]:text-white/60">
+                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
                 Stats
               </TabsTrigger>
               <TabsTrigger value="misc"
-                className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg data-[state=active]:bg-[hsl(45_95%_55%)] data-[state=active]:text-[hsl(160_30%_6%)] data-[state=active]:shadow-[0_0_12px_hsl(45_95%_55%/0.45)] data-[state=inactive]:text-white/60">
+                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
                 Misc
               </TabsTrigger>
               {canSeeCommissioner && (
                 <TabsTrigger value="commissioner"
-                  className="flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-lg data-[state=active]:bg-[hsl(45_95%_55%)] data-[state=active]:text-[hsl(160_30%_6%)] data-[state=active]:shadow-[0_0_12px_hsl(45_95%_55%/0.45)] data-[state=inactive]:text-white/60">
+                   className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
                   Commissioner
                 </TabsTrigger>
               )}
@@ -1558,10 +1558,9 @@ export default function DraftsListPage() {
             // The card sits on a radial gold wash + hairline top-edge strip
             // so it visually anchors to the rest of the gold-themed shell.
             <div
-              className="da-glass mb-4 relative overflow-hidden"
+               className="da-glass da-ledger-metrics mb-5 relative overflow-hidden"
               style={{
-                background:
-                  'radial-gradient(120% 80% at 100% 0%, hsl(45 93% 52% / 0.12), transparent 55%), linear-gradient(180deg, hsl(160 35% 7% / 0.88), hsl(160 50% 4% / 0.94))',
+                 background: 'hsl(var(--card))',
               }}
             >
               {/* Top edge gold accent strip */}
@@ -1673,7 +1672,7 @@ export default function DraftsListPage() {
                   onChange={e => setDraftQuery(e.target.value)}
                   placeholder="Search drafts"
                   aria-label="Search drafts"
-                  className="w-full h-9 pl-9 pr-3 rounded-xl bg-card/50 border border-gold/20 text-[12.5px] font-semibold placeholder:text-muted-foreground/50 focus:outline-none focus:border-gold/45"
+                         className="w-full h-9 pl-9 pr-3 rounded-lg bg-card border border-border text-[12.5px] font-semibold placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60"
                 />
               </div>
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
@@ -1690,9 +1689,9 @@ export default function DraftsListPage() {
                       type="button"
                       onClick={() => setDraftFilter(f.key)}
                       className={cn(
-                        'flex-shrink-0 h-9 px-3 rounded-xl text-[11px] font-extrabold border transition-colors',
+                         'da-filter-chip flex-shrink-0 h-9 px-3 rounded-lg text-[11px] font-extrabold border transition-colors',
                         active
-                          ? 'border-gold/50 text-[hsl(160_30%_6%)] bg-[hsl(45_95%_55%)]'
+                           ? 'is-active'
                           : 'border-border/40 text-muted-foreground/75 hover:text-foreground',
                       )}
                     >
@@ -1797,7 +1796,7 @@ export default function DraftsListPage() {
                     <AccordionItem
                       key={g.id}
                       value={g.id}
-                      className="border-0 rounded-xl overflow-hidden da-glass"
+                       className="border-0 rounded-lg overflow-hidden da-glass da-ledger-section"
                     >
                       <AccordionTrigger className="px-4 py-3 hover:no-underline">
                         <div className="flex items-center gap-3 flex-1 min-w-0 text-left">

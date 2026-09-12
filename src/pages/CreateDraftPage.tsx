@@ -81,7 +81,7 @@ export default function CreateDraftPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto pb-6">
+    <div className="max-w-xl mx-auto pb-6 da-ledger-page">
       <div className="flex items-center gap-2 mb-4">
         <Link to="/drafts" className="da-back" aria-label="Back to Drafts">
           <ArrowLeft className="w-4 h-4" />
@@ -95,14 +95,14 @@ export default function CreateDraftPage() {
             <Bookmark className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="page-header-title">Create Draft</h1>
+            <h1 className="page-header-title dl-display">Create Draft</h1>
             <p className="page-header-subtitle">Set up a snake draft for the crew</p>
           </div>
         </motion.div>
       </div>
 
       <motion.form onSubmit={handleCreate} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
-        <div className="da-glass p-5 space-y-4">
+        <div className="da-glass da-ledger-section p-5 space-y-5">
           <div>
             <label className="form-label">Topic</label>
             <Input
@@ -161,15 +161,15 @@ export default function CreateDraftPage() {
                   key={n}
                   type="button"
                   onClick={() => setNumRounds(n)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all btn-press ${
+                  className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all btn-press ${
                     numRounds === n ? 'shadow-md' : 'text-muted-foreground'
                   }`}
                   style={
                     numRounds === n
                       ? {
-                          background: 'linear-gradient(135deg, hsl(45 100% 65%), hsl(40 95% 50%))',
-                          color: 'hsl(160 30% 6%)',
-                          boxShadow: '0 4px 14px hsl(45 95% 40% / 0.45), inset 0 1px 0 hsl(45 100% 90% / 0.55)',
+                          background: 'hsl(var(--primary))',
+                          color: 'hsl(var(--primary-foreground))',
+                          boxShadow: 'inset 0 1px 0 hsl(var(--foreground) / 0.12)',
                         }
                       : { background: 'hsl(var(--muted) / 0.6)', border: '1px solid hsl(var(--gold) / 0.18)' }
                   }
@@ -184,18 +184,18 @@ export default function CreateDraftPage() {
         <button
           type="submit"
           disabled={loading || !topic.trim()}
-          className="w-full h-12 rounded-xl font-black uppercase tracking-[0.14em] text-[13px] btn-press transition-all disabled:cursor-not-allowed"
+          className="w-full h-12 rounded-lg font-black uppercase tracking-[0.14em] text-[13px] btn-press transition-all disabled:cursor-not-allowed"
           style={{
-            color: loading || !topic.trim() ? 'hsl(var(--muted-foreground))' : 'hsl(160 40% 6%)',
+             color: loading || !topic.trim() ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
             background: loading || !topic.trim()
               ? 'hsl(var(--muted) / 0.6)'
-              : 'linear-gradient(135deg, hsl(45 100% 65%), hsl(40 95% 50%))',
+               : 'hsl(var(--primary))',
             border: loading || !topic.trim()
               ? '1px solid hsl(var(--border))'
-              : '1px solid hsl(45 95% 55% / 0.55)',
+               : '1px solid hsl(var(--primary) / 0.65)',
             boxShadow: loading || !topic.trim()
               ? 'none'
-              : '0 6px 20px hsl(45 95% 40% / 0.5), inset 0 1px 0 hsl(45 100% 90% / 0.65)',
+               : '0 6px 18px hsl(var(--background) / 0.55), inset 0 1px 0 hsl(var(--foreground) / 0.12)',
             opacity: loading || !topic.trim() ? 0.9 : 1,
           }}
         >

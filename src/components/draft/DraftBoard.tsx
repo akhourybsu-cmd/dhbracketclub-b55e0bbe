@@ -161,9 +161,9 @@ export function DraftBoard({
                 <div className="flex items-center justify-between mb-2 px-0.5">
                   <p className="dl-eyebrow flex items-center gap-1.5">
                     Round {round}
-                    <DirIcon className="w-3 h-3 text-[hsl(45,42%,55%)]" aria-hidden />
+                    <DirIcon className="w-3 h-3 text-primary" aria-hidden />
                   </p>
-                  <p className="dl-display text-[10px] font-bold tabular-nums text-zinc-500">{made}/{n}</p>
+                  <p className="dl-display text-[10px] font-bold tabular-nums text-muted-foreground">{made}/{n}</p>
                 </div>
                 <div className="space-y-1.5">
                   {order.map((p, idx) => {
@@ -221,8 +221,8 @@ export function DraftBoard({
             const DirIcon = round % 2 === 1 ? MoveRight : MoveLeft;
             return [
               <div key={`rl-${round}`} className="dl-board-roundlabel">
-                <span className="dl-display text-[11px] font-bold text-zinc-500">R{round}</span>
-                <DirIcon className="w-3 h-3 text-[hsl(45,42%,55%)]" aria-hidden />
+                <span className="dl-display text-[11px] font-bold text-muted-foreground">R{round}</span>
+                <DirIcon className="w-3 h-3 text-primary" aria-hidden />
               </div>,
               ...order.map((p, idx) => (
                 <div key={`${round}:${p.user_id}`} className="dl-board-cell">
@@ -232,11 +232,11 @@ export function DraftBoard({
             ];
           })}
         </div>
-        <div className="px-3 py-2 border-t border-white/[0.06] flex items-center justify-between">
-          <span className="text-[10px] text-zinc-500 font-medium">
+        <div className="px-3 py-2 border-t border-border/60 flex items-center justify-between">
+          <span className="text-[10px] text-muted-foreground font-medium">
             Snake draft — order reverses each round
           </span>
-          <span className="dl-display text-[10px] font-bold tabular-nums text-zinc-400">
+          <span className="dl-display text-[10px] font-bold tabular-nums text-muted-foreground/85">
             {picks.length}/{totalPicks} picks
           </span>
         </div>

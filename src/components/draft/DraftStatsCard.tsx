@@ -109,7 +109,7 @@ export function DraftStatsCard({ picks, results, participants }: DraftStatsCardP
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card overflow-hidden mb-4"
+        className="da-glass overflow-hidden mb-4"
       >
         <CollapsibleTrigger className="w-full px-4 py-3 flex items-center gap-2 text-left">
           <Target className="w-4 h-4 text-primary" />

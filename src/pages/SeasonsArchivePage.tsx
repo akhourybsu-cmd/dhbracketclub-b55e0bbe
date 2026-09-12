@@ -23,7 +23,7 @@ export default function SeasonsArchivePage() {
   const archived = seasons.filter(s => s.status === 'complete');
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 da-ledger-page">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <Link to="/drafts" className="da-back" aria-label="Back to Drafts">
@@ -34,8 +34,8 @@ export default function SeasonsArchivePage() {
             <Archive className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="page-header-title">Seasons</h1>
-            <p className="page-header-subtitle">Trophy room & archive</p>
+            <h1 className="page-header-title dl-display">Seasons</h1>
+            <p className="page-header-subtitle">Current campaign and past records</p>
           </div>
         </div>
       </div>
@@ -83,9 +83,9 @@ export default function SeasonsArchivePage() {
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-1.5 mb-2 px-1">
+       <div className="da-section-heading">
         {icon}
-        <h2 className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70">{title}</h2>
+         <h2 className="dl-display text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground/70">{title}</h2>
       </div>
       <div className="space-y-2">{children}</div>
     </div>
@@ -115,14 +115,13 @@ function SeasonCard({
       <Link to={`/drafts/seasons/${season.id}`} className="block group">
         <div
           className={cn(
-            'da-glass p-4 hover-lift cursor-pointer relative overflow-hidden',
+             'da-glass da-ledger-row p-4 hover-lift cursor-pointer relative overflow-hidden',
             !archived && 'border-gold/30'
           )}
           style={
             !archived
               ? {
-                  background:
-                    'linear-gradient(135deg, hsl(var(--gold) / 0.08), transparent 60%), linear-gradient(180deg, hsl(160 35% 7% / 0.88), hsl(160 50% 4% / 0.94))',
+                   background: 'hsl(var(--card))',
                   borderLeft: '3px solid hsl(var(--gold))',
                 }
               : { borderLeft: '3px solid hsl(var(--silver) / 0.45)' }
@@ -131,7 +130,7 @@ function SeasonCard({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-extrabold text-[14px] leading-snug break-words">{formatSeasonTitle(season)}</h3>
+                 <h3 className="dl-display font-extrabold text-[14px] leading-snug break-words">{formatSeasonTitle(season)}</h3>
               </div>
               {season.subtitle && (
                 <p className="text-[11px] font-semibold text-muted-foreground/80 leading-snug break-words mb-1">{season.subtitle}</p>

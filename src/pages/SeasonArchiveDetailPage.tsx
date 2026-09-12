@@ -69,7 +69,7 @@ export default function SeasonArchiveDetailPage() {
   const playoffMatches = matches.filter(m => m.status === 'complete');
 
   return (
-    <div className="pb-6">
+    <div className="pb-6 da-ledger-page">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <Link to="/drafts/seasons" className="da-back" aria-label="Back to Seasons">
@@ -77,7 +77,7 @@ export default function SeasonArchiveDetailPage() {
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h1 className="font-extrabold text-lg leading-snug break-words">{formatSeasonTitle(season)}</h1>
+             <h1 className="dl-display font-extrabold text-lg leading-snug break-words">{formatSeasonTitle(season)}</h1>
             {isComplete && (
               <span
                 className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded"
@@ -98,7 +98,7 @@ export default function SeasonArchiveDetailPage() {
         </div>
       </div>
 
-      <div className="space-y-3">
+       <div className="space-y-4">
         {/* Podium — only for complete seasons */}
         {isComplete && (champion || runnerUp || thirdPlace) && (
           <motion.div
@@ -164,7 +164,7 @@ export default function SeasonArchiveDetailPage() {
         )}
 
         {/* Season summary stats */}
-        <div className="da-glass p-4">
+         <div className="da-glass da-ledger-section p-4">
           <div className="flex items-center gap-1.5 mb-3">
             <BarChart3 className="w-3.5 h-3.5 text-muted-foreground" />
             <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground/70">
@@ -189,7 +189,7 @@ export default function SeasonArchiveDetailPage() {
 
         {/* Final Standings */}
         {standings.length > 0 && (
-          <div className="da-glass p-4">
+           <div className="da-glass da-ledger-section p-4">
             <div className="flex items-center gap-1.5 mb-3">
               <Trophy className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} />
               <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground/70">
@@ -237,7 +237,7 @@ export default function SeasonArchiveDetailPage() {
 
         {/* Playoff results */}
         {matches.length > 0 && (
-          <div className="da-glass p-4">
+           <div className="da-glass da-ledger-section p-4">
             <div className="flex items-center gap-1.5 mb-3">
               <Swords className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} />
               <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground/70">
@@ -302,7 +302,7 @@ export default function SeasonArchiveDetailPage() {
 
         {/* Regular season drafts */}
         {allDrafts.length > 0 && (
-          <div className="da-glass p-4">
+           <div className="da-glass da-ledger-section p-4">
             <div className="flex items-center gap-1.5 mb-3">
               <Bookmark className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} />
               <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground/70">

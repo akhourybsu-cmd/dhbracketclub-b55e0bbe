@@ -100,7 +100,7 @@ export function TransferCommissionerCard({ season, isAppAdmin, onTransferred }: 
 
   return (
     <div
-      className="glass-card p-4 space-y-3"
+      className="da-glass p-4 space-y-3"
       style={{ borderColor: 'hsl(var(--gold) / 0.2)' }}
     >
       <div className="flex items-center gap-2">

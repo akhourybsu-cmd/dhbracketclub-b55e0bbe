@@ -71,12 +71,12 @@ export function DraftStatusHeader({
           <p className="dl-eyebrow">
             Round {currentRound} <SnakeIcon className="inline w-3 h-3 -mt-0.5" aria-hidden />
           </p>
-          <p className="dl-display text-xl font-bold leading-tight text-white">
-            {currentPickNumber}<span className="text-zinc-600 font-medium">/{totalPicks}</span>
+          <p className="dl-display text-xl font-bold leading-tight text-foreground">
+            {currentPickNumber}<span className="text-muted-foreground/55 font-medium">/{totalPicks}</span>
           </p>
         </div>
 
-        <div className="w-px self-stretch bg-white/[0.07]" aria-hidden />
+        <div className="w-px self-stretch bg-border/60" aria-hidden />
 
         {/* Who's choosing */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -89,13 +89,13 @@ export function DraftStatusHeader({
             {isMyTurn ? 'YOU' : pickerInitials}
           </div>
           <div className="min-w-0">
-            <p className={cn('dl-display text-[15px] font-bold truncate', isMyTurn ? 'text-[hsl(45,50%,66%)]' : 'text-white')}>
+            <p className={cn('dl-display text-[15px] font-bold truncate', isMyTurn ? 'text-primary' : 'text-foreground')}>
               {isMyTurn ? 'Your Pick' : `${pickerName} is choosing`}
             </p>
-            <p className="text-[10px] text-zinc-500 font-medium truncate">
+            <p className="text-[10px] text-muted-foreground font-medium truncate">
               {elapsed && <span>{elapsed}</span>}
               {!isMyTurn && picksUntilYou !== null && picksUntilYou > 0 && (
-                <span className="text-zinc-400">
+                <span className="text-muted-foreground/85">
                   {elapsed ? ' · ' : ''}{picksUntilYou} {picksUntilYou === 1 ? 'pick' : 'picks'} until you
                 </span>
               )}
