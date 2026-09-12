@@ -137,6 +137,43 @@ export default function PollDetailPage() {
   // Realtime: auto-refresh when anyone votes
   usePollVoteUpdates(pollId, fetchData);
 
+  // Date polls: tapping a date cycles free → maybe → can't → cleared.
+  const handleCycleDate = async (dateKey: string) => {
+    if (!user || !pollId) return;
+    const opt = options.find(o => o.option_date === dateKey);
+    if (!opt) return;
+    const current = (votes.find(v => v.user_id === user.id && v.option_id === opt.id)?.response ?? null) as AvailabilityResponse | null;
+    const next = nextResponse(current, poll?.allow_maybe !== false);
+    const myName = votes.find(v => v.user_id === user.id)?.profiles?.display_name ?? 'You';
+
+    setVotes(prev => {
+      const rest = prev.filter(v => !(v.user_id === user.id && v.option_id === opt.id));
+      return next
+        ? [...rest, { id: `local-${opt.id}`, poll_id: pollId, option_id: opt.id, user_id: user.id, response: next, profiles: { display_name: myName } }]
+        : rest;
+    });
+
+    try {
+      if (!next) {
+        await memberData(
+          supabase.from('poll_votes').delete().eq('poll_id', pollId).eq('user_id', user.id).eq('option_id', opt.id).select('id'),
+          'Clear date answer',
+        );
+      } else {
+        await memberData(
+          supabase.from('poll_votes')
+            .upsert({ poll_id: pollId, option_id: opt.id, user_id: user.id, response: next }, { onConflict: 'poll_id,user_id,option_id' })
+            .select('id'),
+          'Save date answer',
+        );
+      }
+      void fetchData();
+    } catch (cycleError) {
+      toast.error(memberErrorMessage(cycleError));
+      void fetchData();
+    }
+  };
+
   const handleVote = async () => {
     if (!user || !pollId || !selectedOption || myVote) return;
     setVoting(true);
