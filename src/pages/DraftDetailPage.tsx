@@ -1590,164 +1590,30 @@ export default function DraftDetailPage() {
           </div>{/* /lg sticky left column */}
 
           <div className="lg:min-w-0">
-          {/* Pick history — enriched cards */}
-          {picks.length > 0 && (
-            <div
-              className="overflow-hidden rounded-2xl"
-              style={
-                isPlayoffDraft
-                  ? {
-                      background: 'linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92))',
-                      border: '1px solid hsl(45 93% 52% / 0.22)',
-                      boxShadow: '0 6px 24px -12px hsl(45 93% 52% / 0.28)',
-                    }
-                  : undefined
-              }
-            >
-              <div
-                className={cn(
-                  'px-4 py-3 flex items-center justify-between gap-2',
-                  !isPlayoffDraft && 'border-b border-border/25',
-                )}
-                style={
-                  isPlayoffDraft
-                    ? { borderBottom: '1px solid hsl(45 93% 52% / 0.18)' }
-                    : undefined
-                }
-              >
-                <div className="flex items-center gap-1.5">
-                  {isPlayoffDraft && (
-                    <Trophy className="w-3 h-3" style={{ color: 'hsl(45 93% 52%)' }} strokeWidth={2.5} />
-                  )}
-                  <p
-                    className="text-[11px] font-extrabold uppercase tracking-[0.18em]"
-                    style={isPlayoffDraft ? { color: 'hsl(45 93% 52%)' } : undefined}
-                  >
-                    {isPlayoffDraft ? 'Battle Timeline' : 'Pick History'}
-                  </p>
-                </div>
-                <span className="font-mono text-[10px] font-extrabold tabular-nums text-muted-foreground/70">
-                  <PickCount value={picks.length} /> {picks.length === 1 ? 'pick' : 'picks'}
-                </span>
-              </div>
-              {/* Wrap the scrollable list in a positioned container so we
-                  can layer a soft fade-mask at the bottom. The mask is a
-                  pointer-events-none overlay that fades the last few
-                  pixels of content into the card background — gives users
-                  a clear "more below" cue without adding chrome. Only
-                  shown when there are enough picks to actually scroll. */}
-              <div className="relative">
-              <div className="divide-y divide-border/20 max-h-96 overflow-y-auto">
-                <AnimatePresence initial={false}>
-                  {(() => {
-                    const reversed = [...picks].reverse();
-                    const freshIds = freshPickIds;
-                    let lastRound: number | null = null;
-                    const nodes: React.ReactNode[] = [];
-                    reversed.forEach((pick) => {
-                      // Round divider — inserted when round changes top→bottom (newer first).
-                      if (lastRound !== null && pick.round !== lastRound) {
-                        nodes.push(
-                          <div key={`rd-${lastRound}`} className="draft-round-divider">
-                            <span>Round {lastRound}</span>
-                          </div>,
-                        );
-                      }
-                      lastRound = pick.round;
-                      const isEnriching = enrichingPickIds.has(pick.id);
-                      const enrichment = enrichments.get(pick.id);
-                      const isFresh = freshIds.has(pick.id);
-                      nodes.push(
-                        <motion.div
-                          key={pick.id}
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          layout
-                          className={cn(isFresh && 'draft-pick-fresh')}
-                        >
-                          {isEnriching && !enrichment ? (
-                            <EnrichedItemSkeleton compact />
-                          ) : editingPickId === pick.id ? (
-                            <div className="flex items-center gap-2 px-3 py-3 w-full">
-                              <Input
-                                value={editPickText}
-                                onChange={(e) => setEditPickText(e.target.value)}
-                                className="h-10 text-sm flex-1 min-w-0"
-                                autoFocus
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleSavePickEdit(); if (e.key === 'Escape') handleCancelEditPick(); }}
-                              />
-                              <Button size="sm" onClick={handleSavePickEdit} disabled={savingPick || !editPickText.trim()} className="h-10 w-10 p-0 flex-shrink-0">
-                                <Check className="w-4 h-4" />
-                              </Button>
-                              <button onClick={handleCancelEditPick} className="h-10 w-10 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-muted/50 transition-colors flex-shrink-0">
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <EnrichedItemCard
-                              label={pick.pick_text}
-                              rank={pick.pick_number}
-                              enrichment={enrichment}
-                              showRank
-                              compact={!hasEnrichments}
-                              onImageClick={enrichment && (enrichment.metadata?.image_candidates as any[])?.length > 0
-                                ? () => setImagePickerPick(pick)
-                                : undefined}
-                              actions={
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
-                                  <span className="text-[10px] text-muted-foreground/60 text-right">
-                                    <span className="block font-medium">{pick.profiles?.display_name}</span>
-                                    <span className="font-mono">Rd {pick.round}</span>
-                                  </span>
-                                  {(canManage || pick.user_id === user?.id) && (
-                                    <div className="flex items-center gap-0.5">
-                                      {/* Default opacity bumped from /50 → /70 so
-                                          the affordance reads on touch devices
-                                          where there's no hover state to reveal it. */}
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); handleStartEditPick(pick); }}
-                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-primary active:text-primary active:bg-primary/10 transition-colors"
-                                        title="Edit pick"
-                                      >
-                                        <Pencil className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setPickToRemove(pick); }}
-                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-destructive active:text-destructive active:bg-destructive/10 transition-colors"
-                                        title="Remove pick"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              }
-                            />
-                          )}
-                        </motion.div>,
-                      );
-                    });
-                    return nodes;
-                  })()}
-                </AnimatePresence>
-              </div>
-              {/* Fade mask — only render when there are enough rows to
-                  actually be cut off (>5 picks at typical row height). */}
-              {picks.length > 5 && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-10"
-                  style={{
-                    background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0) 100%)',
-                  }}
-                />
-              )}
-              </div>{/* /scroll mask wrapper */}
-            </div>
-          )}
+          {pickHistoryCard}
           </div>{/* /lg right column */}
           </div>{/* /lg 2-col grid wrapper */}
+          )}
+
+          {/* Bottom-sheet pick composer — regular drafts only (playoffs keep
+              the inline composer in the war-room column). */}
+          {!isPlayoffDraft && (
+            <MakePickSheet
+              open={showPickSheet}
+              onClose={() => setShowPickSheet(false)}
+              currentRound={currentRound}
+              currentPickNumber={currentPickNumber}
+              pickText={pickText}
+              onTextChange={(t) => { setPickText(t); setText(t); }}
+              onSubmit={handleMakePick}
+              submitting={submitting}
+              localDuplicate={!!localDuplicate}
+              suggestion={suggestion}
+              onApplyCorrection={(t) => { setPickText(t); setText(t); clearSuggestion(); }}
+              onDismissSuggestion={clearSuggestion}
+              topic={draft.topic}
+            />
+          )}
         </motion.div>
       )}
 
