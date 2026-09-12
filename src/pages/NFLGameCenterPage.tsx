@@ -15,6 +15,7 @@ import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { chooseChainBoardWeek, useCrazyChainWeeks } from '@/hooks/useCrazyChainWeeks';
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
 import { chainGameIsOpen } from '../../supabase/functions/_shared/chainGameRules';
+import { NflCheckButton } from '@/components/pickem/NflCheckButton';
 
 export default function NFLGameCenterPage() {
   const { user } = useAuth();
@@ -154,16 +155,32 @@ export default function NFLGameCenterPage() {
       </section>
 
       {isAdmin && (
-        <Link to="/nfl/admin/crazy-chain" className="glass-card p-3.5 flex items-center gap-3 btn-press">
-          <div className="w-9 h-9 rounded-xl bg-destructive/10 border border-destructive/25 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-destructive" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[13px] font-extrabold">Crazy Chain Control Room</p>
-            <p className="text-[10px] text-muted-foreground">Publish and settle weekly predictions</p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground" />
-        </Link>
+        <div className="space-y-2">
+          {season && (
+            <div className="glass-card p-3.5 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-extrabold">Scores & standings</p>
+                <p className="text-[10px] text-muted-foreground">Updates automatically each night at midnight Eastern</p>
+              </div>
+              <NflCheckButton
+                seasonYear={season.year}
+                currentWeek={week?.week_number ?? season.current_week}
+                onDone={() => window.location.reload()}
+                className="shrink-0"
+              />
+            </div>
+          )}
+          <Link to="/nfl/admin/crazy-chain" className="glass-card p-3.5 flex items-center gap-3 btn-press">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 border border-destructive/25 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-destructive" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[13px] font-extrabold">Crazy Chain Control Room</p>
+              <p className="text-[10px] text-muted-foreground">Publish and settle weekly predictions</p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          </Link>
+        </div>
       )}
     </div>
   );
