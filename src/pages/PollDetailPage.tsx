@@ -96,12 +96,32 @@ export default function PollDetailPage() {
       } else {
         setMyVote(null);
       }
+
+      // Club roster — used by date polls to show who hasn't answered yet.
+      if (pollData.poll_type === 'date' && club?.id) {
+        try {
+          const rows = await memberData(
+            supabase.from('club_members').select('user_id').eq('club_id', club.id),
+            'Load club roster',
+          );
+          const ids = (rows ?? []).map((r: any) => r.user_id);
+          if (ids.length) {
+            const profs = await memberData(
+              supabase.from('profiles').select('id, display_name').in('id', ids),
+              'Load member names',
+            );
+            setMembers((profs ?? []).map((p: any) => ({ user_id: p.id, display_name: p.display_name })));
+          }
+        } catch {
+          setMembers([]);
+        }
+      }
     } catch (loadError) {
       setError(memberErrorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  }, [pollId, user]);
+  }, [pollId, user, club?.id]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
