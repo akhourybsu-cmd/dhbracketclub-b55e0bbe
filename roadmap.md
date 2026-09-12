@@ -11,6 +11,6 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 6. Make Selection bottom sheet (MakePickSheet, portaled) with preserved AI/duplicate checks — type-checked; no my-turn draft available for live sheet test
 - [x] 7. Drafts list page: light typography pass (Space Grotesk on hero stats + season titles); existing war-room styling already matched lounge language
 - [x] 8. tsc passes; esbuild parse passes; browser smoke verified on mobile + desktop (detail, board, round nav)
-- [ ] 9. Extend Heritage Ledger shell and shared primitives across the complete Draft Arena
-- [ ] 10. Polish hub, setup, results, seasons, stats, and commissioner surfaces
-- [ ] 11. Verify representative Draft Arena screens on mobile and desktop
+- [x] 9. Extend Heritage Ledger shell and shared primitives across the complete Draft Arena
+- [x] 10. Polish hub, setup, results, seasons, stats, and commissioner surfaces
+- [x] 11. Verify representative Draft Arena screens on mobile and desktop
