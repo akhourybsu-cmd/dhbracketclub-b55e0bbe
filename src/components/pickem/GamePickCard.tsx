@@ -97,7 +97,7 @@ function TeamButton({
         transition={{ type: 'spring', stiffness: 400, damping: 22 }}
         onClick={() => onTap(side, teamId)}
         className={cn(
-          'flex-1 flex items-center gap-2.5 px-3 min-h-[68px] py-2.5 rounded-xl transition-all duration-150 btn-press',
+          'nfl-team-pick flex-1 flex items-center gap-2.5 px-3 min-h-[76px] py-2.5 transition-all duration-150 btn-press',
           'border text-left relative overflow-hidden',
           selected && !isFinal && 'pk-selected',
           !selected && !locked && 'bg-card/70 hover:bg-muted/40 border-border/40',
@@ -193,8 +193,8 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
   };
 
   return (
-    <div className="pk-scorebug p-3">
-      <p className="text-[11px] text-muted-foreground mb-2">{locked ? 'Deadline: ' : 'Pick by '}{format(new Date(pickemGameLockAt(game)), 'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
+    <div className="pk-scorebug nfl-matchup-card p-3">
+      <p className="nfl-matchup-deadline">{locked ? 'Deadline: ' : 'Pick by '}{format(new Date(pickemGameLockAt(game)), 'EEE, MMM d · h:mm a')} · 48h before kickoff</p>
       {/* Scorebug header: time + status (broadcast lower-third) */}
       <div className="flex items-center justify-between mb-2 px-1">
         <div className="flex items-center gap-1.5">
@@ -224,7 +224,7 @@ export function GamePickCard({ game, pick, onPick, saving, weekLocked, cardLocke
           className="flex items-center justify-center text-[9px] font-extrabold tracking-[0.18em] text-muted-foreground/60 px-1"
           aria-hidden
         >
-          <span className="px-1.5 py-1 rounded-full bg-black/40 border border-white/10">@</span>
+          <span className="nfl-at-marker">@</span>
         </div>
         <TeamButton side="home" {...sideProps} />
       </div>

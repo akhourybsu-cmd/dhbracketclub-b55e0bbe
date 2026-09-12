@@ -3158,6 +3158,17 @@
 .nfl-command-main .pk-broadcast-divider::before,
 .nfl-command-main .pk-broadcast-divider::after { background: linear-gradient(90deg, transparent, hsl(var(--nfl-white) / .18), transparent); }
 .nfl-command-dialog { border-color: hsl(var(--nfl-gold) / .28); background: hsl(var(--nfl-slate)); color: hsl(var(--nfl-white)); }
+.nfl-matchup-card { position: relative; overflow: hidden; }
+.nfl-matchup-card::before { content: ''; position: absolute; inset-block: 0; left: 0; width: 3px; background: hsl(var(--nfl-green)); }
+.nfl-matchup-deadline { margin: 0 0 10px 4px; color: hsl(var(--nfl-white) / .42); font: 600 10px 'JetBrains Mono', monospace; }
+.nfl-team-pick { border-radius: 5px !important; }
+.nfl-at-marker { min-width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; border: 1px solid hsl(var(--nfl-white) / .12); background: hsl(var(--nfl-midnight) / .72); color: hsl(var(--nfl-white) / .48); }
+.nfl-week-navigator { padding: 10px; border: 1px solid hsl(var(--nfl-white) / .09); border-radius: 6px; background: hsl(var(--nfl-slate) / .42); }
+.nfl-week-button { border-radius: 5px; }
+.nfl-week-active { border: 1px solid hsl(var(--nfl-gold) / .44); border-radius: 5px; background: hsl(var(--nfl-gold) / .1); box-shadow: inset 0 -2px 0 hsl(var(--nfl-gold)); }
+.nfl-tiebreaker { border: 1px solid hsl(var(--nfl-gold) / .28); border-radius: 6px; background: hsl(var(--nfl-slate) / .68); box-shadow: inset 3px 0 0 hsl(var(--nfl-gold)), 0 14px 30px hsl(var(--nfl-midnight) / .25); }
+.nfl-pick-slip { border: 1px solid hsl(var(--nfl-gold) / .3) !important; border-radius: 6px !important; background: hsl(var(--nfl-midnight) / .94) !important; }
+.nfl-status-pill { border-radius: 999px; letter-spacing: .08em; }
 
 @media (min-width: 768px) {
   .nfl-command-main > .member-page,
