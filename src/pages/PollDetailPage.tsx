@@ -285,6 +285,25 @@ export default function PollDetailPage() {
   // Find the winning option(s)
   const maxVotes = Math.max(...options.map(o => voteCounts.get(o.id) || 0), 0);
 
+  // Date-poll derived data
+  const dateOptions = options
+    .filter(o => !!o.option_date)
+    .map(o => ({ id: o.id, date: o.option_date as string, label: o.label }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const dateCandidates = dateOptions.map(o => o.date);
+  const dateVotes: AvailabilityVote[] = votes.map(v => ({
+    user_id: v.user_id,
+    option_id: v.option_id,
+    response: (v.response ?? 'yes') as AvailabilityResponse,
+    display_name: v.profiles?.display_name ?? null,
+  }));
+  const myResponses: Record<string, AvailabilityResponse | undefined> = {};
+  dateOptions.forEach(o => {
+    const mine = votes.find(v => v.user_id === user?.id && v.option_id === o.id);
+    if (mine) myResponses[o.date] = (mine.response ?? 'yes') as AvailabilityResponse;
+  });
+
+
   return (
     <div className="member-page max-w-3xl mx-auto" aria-busy={voting || deleting || saving}>
       <Link to="/polls" className="back-link">
