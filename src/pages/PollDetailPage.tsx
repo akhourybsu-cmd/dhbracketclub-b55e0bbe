@@ -29,12 +29,23 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MemberLoadError } from '@/components/member/MemberLoadError';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { useClub } from '@/contexts/ClubContext';
+import DateGridPicker from '@/components/polls/DateGridPicker';
+import AvailabilityResults from '@/components/polls/AvailabilityResults';
+import {
+  type AvailabilityResponse,
+  type AvailabilityVote,
+  type MemberRef,
+  nextResponse,
+} from '@/lib/polls/availability';
 
 interface PollOption {
   id: string;
   label: string;
   position: number;
+  option_date?: string | null;
 }
+
 
 export default function PollDetailPage() {
   const { pollId } = useParams<{ pollId: string }>();
