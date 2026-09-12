@@ -7010,6 +7010,7 @@ export type Database = {
           club_id: string
           id: string
           label: string
+          option_date: string | null
           poll_id: string
           position: number
         }
@@ -7017,6 +7018,7 @@ export type Database = {
           club_id?: string
           id?: string
           label: string
+          option_date?: string | null
           poll_id: string
           position?: number
         }
@@ -7024,6 +7026,7 @@ export type Database = {
           club_id?: string
           id?: string
           label?: string
+          option_date?: string | null
           poll_id?: string
           position?: number
         }
@@ -7051,6 +7054,7 @@ export type Database = {
           id: string
           option_id: string
           poll_id: string
+          response: string
           user_id: string
         }
         Insert: {
@@ -7059,6 +7063,7 @@ export type Database = {
           id?: string
           option_id: string
           poll_id: string
+          response?: string
           user_id: string
         }
         Update: {
@@ -7067,6 +7072,7 @@ export type Database = {
           id?: string
           option_id?: string
           poll_id?: string
+          response?: string
           user_id?: string
         }
         Relationships: [
@@ -7102,6 +7108,7 @@ export type Database = {
       }
       polls: {
         Row: {
+          allow_maybe: boolean
           closes_at: string | null
           club_id: string
           competition_id: string
@@ -7114,6 +7121,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allow_maybe?: boolean
           closes_at?: string | null
           club_id?: string
           competition_id: string
@@ -7126,6 +7134,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allow_maybe?: boolean
           closes_at?: string | null
           club_id?: string
           competition_id?: string
