@@ -6,19 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
+import { MessageCircle, Plus, X, ArrowLeft, CalendarDays, ListChecks } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAISuggestions } from '@/hooks/useAISuggestions';
 import AISuggestions from '@/components/AISuggestions';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
+import DateGridPicker from '@/components/polls/DateGridPicker';
+import { formatDateOptionLabel } from '@/lib/polls/availability';
+import { cn } from '@/lib/utils';
 
 export default function CreatePollPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [pollKind, setPollKind] = useState<'single' | 'date'>('single');
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
+  const [dates, setDates] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { suggestions, loading: aiLoading, fetchSuggestions, removeSuggestion } = useAISuggestions();
+
+  const toggleDate = (key: string) =>
+    setDates(prev => (prev.includes(key) ? prev.filter(d => d !== key) : [...prev, key].sort()));
 
   const handleAddSuggestion = (text: string) => {
     removeSuggestion(text);
@@ -48,8 +56,17 @@ export default function CreatePollPage() {
     e.preventDefault();
     if (!user) return;
 
-    const validOptions = options.map(o => o.trim()).filter(Boolean);
-    if (validOptions.length < 2) {
+    const isDatePoll = pollKind === 'date';
+    const sortedDates = [...dates].sort();
+    const validOptions = isDatePoll
+      ? sortedDates.map(formatDateOptionLabel)
+      : options.map(o => o.trim()).filter(Boolean);
+
+    if (isDatePoll && sortedDates.length < 2) {
+      toast.error('Pick at least 2 candidate dates');
+      return;
+    }
+    if (!isDatePoll && validOptions.length < 2) {
       toast.error('Add at least 2 options');
       return;
     }
