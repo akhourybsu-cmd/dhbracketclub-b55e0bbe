@@ -7,6 +7,7 @@ import { useActiveSeason, usePickemAdmin, useSeasonWeeks, useTeams, useWeekGames
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { NflCheckButton } from '@/components/pickem/NflCheckButton';
 
 export default function PickemAdminPage() {
   const navigate = useNavigate();
