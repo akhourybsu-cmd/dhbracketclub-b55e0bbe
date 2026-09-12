@@ -94,7 +94,7 @@ export default function CreatePollPage() {
           competition_id: comp.id,
           question: question.trim(),
           created_by: user.id,
-          poll_type: 'single',
+          poll_type: isDatePoll ? 'date' : 'single',
         })
         .select()
         .single(), 'Create poll');
@@ -105,6 +105,7 @@ export default function CreatePollPage() {
         poll_id: poll.id,
         label,
         position: i,
+        option_date: isDatePoll ? sortedDates[i] : null,
       }));
       await memberData(supabase.from('poll_options').insert(optionRows).select('id'), 'Create poll options');
 
@@ -165,21 +166,70 @@ export default function CreatePollPage() {
       </motion.div>
 
       <motion.form onSubmit={handleCreate} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
+        <div className="grid grid-cols-2 gap-2">
+          {([
+            ['single', 'Choice poll', 'Vote on options', ListChecks] as const,
+            ['date', 'Date poll', 'Find a day everyone is free', CalendarDays] as const,
+          ]).map(([kind, title, desc, Icon]) => (
+            <button
+              key={kind}
+              type="button"
+              onClick={() => setPollKind(kind)}
+              aria-pressed={pollKind === kind}
+              className={cn(
+                'glass-card p-4 text-left transition-all btn-press',
+                pollKind === kind && 'border-warning/50 ring-1 ring-warning/30',
+              )}
+            >
+              <Icon className="mb-2 h-4 w-4" style={{ color: 'hsl(var(--warning))' }} />
+              <p className="text-[12px] font-bold">{title}</p>
+              <p className="text-[10px] font-medium text-muted-foreground/70">{desc}</p>
+            </button>
+          ))}
+        </div>
+
         <div className="glass-card p-5 space-y-4">
           <div>
-            <label htmlFor="poll-question" className="form-label">Question</label>
+            <label htmlFor="poll-question" className="form-label">{pollKind === 'date' ? 'What are we planning?' : 'Question'}</label>
             <Input
               id="poll-question"
               required
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="e.g. Where are we going Friday?"
+              placeholder={pollKind === 'date' ? 'e.g. Friendsgiving' : 'e.g. Where are we going Friday?'}
               maxLength={200}
               className="form-input"
             />
           </div>
         </div>
 
+        {pollKind === 'date' ? (
+          <div className="glass-card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <label className="form-label mb-0">Candidate dates</label>
+              <span className="font-mono text-[10px] text-muted-foreground">{dates.length} selected</span>
+            </div>
+            <DateGridPicker mode="author" selected={dates} onToggle={toggleDate} />
+            {dates.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {[...dates].sort().map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => toggleDate(d)}
+                    className="flex items-center gap-1 rounded-lg bg-warning/10 px-2 py-1.5 text-[10px] font-bold text-warning"
+                    aria-label={`Remove ${formatDateOptionLabel(d)}`}
+                  >
+                    {formatDateOptionLabel(d)} <X className="h-3 w-3" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-[10px] font-medium text-muted-foreground/70">
+              Members mark each date free, maybe, or can't — the best dates rank themselves.
+            </p>
+          </div>
+        ) : (
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-3">
             <label className="form-label mb-0">Options</label>
