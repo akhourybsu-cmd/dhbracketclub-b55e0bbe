@@ -835,122 +835,145 @@ export default function DraftDetailPage() {
   // ── Pick history card (shared by the playoff 2-col layout and the lounge layout) ──
   const pickHistoryCard = picks.length > 0 ? (
             <div
-              className={`overflow-hidden rounded-2xl border ${
+              className="overflow-hidden rounded-2xl"
+              style={
                 isPlayoffDraft
-                  ? 'border-amber-500/25 bg-gradient-to-b from-amber-500/[0.09] via-card to-card'
-                  : 'border-border/40 bg-gradient-to-b from-amber-500/[0.05] via-card to-card'
-              }`}
+                  ? {
+                      background: 'linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.92))',
+                      border: '1px solid hsl(45 93% 52% / 0.22)',
+                      boxShadow: '0 6px 24px -12px hsl(45 93% 52% / 0.28)',
+                    }
+                  : undefined
+              }
             >
-              <div className="px-4 py-3 border-b border-border/20 flex items-center gap-2">
-                <Trophy className="w-3.5 h-3.5 text-amber-500/70" />
-                <span className="font-display font-semibold text-xs text-foreground/70 uppercase tracking-widest">Pick History</span>
-                <PickCount className="ml-auto" />
+              <div
+                className={cn(
+                  'px-4 py-3 flex items-center justify-between gap-2',
+                  !isPlayoffDraft && 'border-b border-border/25',
+                )}
+                style={
+                  isPlayoffDraft
+                    ? { borderBottom: '1px solid hsl(45 93% 52% / 0.18)' }
+                    : undefined
+                }
+              >
+                <div className="flex items-center gap-1.5">
+                  {isPlayoffDraft && (
+                    <Trophy className="w-3 h-3" style={{ color: 'hsl(45 93% 52%)' }} strokeWidth={2.5} />
+                  )}
+                  <p
+                    className="text-[11px] font-extrabold uppercase tracking-[0.18em]"
+                    style={isPlayoffDraft ? { color: 'hsl(45 93% 52%)' } : undefined}
+                  >
+                    {isPlayoffDraft ? 'Battle Timeline' : 'Pick History'}
+                  </p>
+                </div>
+                <span className="font-mono text-[10px] font-extrabold tabular-nums text-muted-foreground/70">
+                  <PickCount value={picks.length} /> {picks.length === 1 ? 'pick' : 'picks'}
+                </span>
               </div>
-              <div className="p-3 space-y-2.5">
-                {(() => {
-                  const nonPlayoffRounds = !isPlayoffDraft && draft?.num_rounds
-                    ? Math.max(1, Math.ceil(currentPickNumber / Math.max(1, participants.length)))
-                    : 0;
-                  return picks.map((pick) => {
-                  const enrichment = enrichments.get(pick.id);
-                  const isEditing = editingPickId === pick.id;
-                  const canManage = canManagePick(pick);
-                  return (
-                    <div key={pick.id}>
-                    {isEditing ? (
-                      /* ── Inline edit mode ── */
-                      <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-3 space-y-2.5 animate-in fade-in-0 zoom-in-[0.98] duration-200">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-bold text-primary/70 uppercase tracking-widest">Editing Pick</span>
-                          <span className="text-[9px] text-muted-foreground/50">R{pick.round} · #{pick.pick_number}</span>
-                          <span className="text-[9px] text-muted-foreground/60 truncate ml-auto">{pick.profiles?.display_name}</span>
-                        </div>
-                        <Input
-                          value={editPickText}
-                          onChange={(e) => setEditPickText(e.target.value)}
-                          placeholder={pick.pick_text}
-                          maxLength={100}
-                          className="form-input h-9 text-sm"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && editPickText.trim()) handleSavePickEdit();
-                            if (e.key === 'Escape') handleCancelEditPick();
-                          }}
-                        />
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={handleSavePickEdit}
-                            disabled={savingPick || !editPickText.trim()}
-                            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50"
-                          >
-                            {savingPick ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                            Save
-                          </button>
-                          <button
-                            onClick={handleCancelEditPick}
-                            disabled={savingPick}
-                            className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-lg bg-muted/40 text-muted-foreground text-[11px] font-bold uppercase tracking-wider hover:bg-muted/60 active:scale-[0.98] transition-all"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : hasEnrichments ? (
-                      <EnrichedItemCard
-                        itemId={pick.id}
-                        title={pick.pick_text}
-                        pickedByName={pick.profiles?.display_name}
-                        pickedById={pick.user_id}
-                        pickNumber={pick.pick_number}
-                        round={pick.round}
-                        isTotal={isPlayoffDraft ? pick.round >= 4 : nonPlayoffRounds > 0 && pick.round === nonPlayoffRounds}
-                        enrichment={enrichment}
-                        onImageClick={() => setImagePickerPick(pick)}
-                        isEnriching={enrichingPickIds.has(pick.id)}
-                        isNew={freshPickIds.has(pick.id)}
-                        onEdit={canManage ? () => handleStartEditPick(pick) : undefined}
-                        onDelete={canManage ? () => setPickToRemove(pick) : undefined}
-                      />
-                    ) : (
-                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-background/60 border border-border/30">
-                        <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-muted/60 to-muted/30 flex items-center justify-center flex-shrink-0">
-                          <span className="text-sm font-display font-bold text-muted-foreground/40">{pick.pick_number}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-[13px] text-foreground truncate">{pick.pick_text}</p>
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-[11px] text-muted-foreground/70 truncate">{pick.profiles?.display_name}</p>
-                            <span className="text-[9px] text-muted-foreground/30">·</span>
-                            <p className="text-[9px] text-muted-foreground/40 uppercase tracking-wider">R{pick.round}</p>
-                          </div>
-                        </div>
-                        {canManage && (
-                          <div className="flex items-center gap-0.5 flex-shrink-0">
-                            <button
-                              onClick={() => handleStartEditPick(pick)}
-                              className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition-all active:scale-95"
-                              title="Edit pick"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            {user && (
-                              <button
-                                onClick={() => setPickToRemove(pick)}
-                                className="p-1.5 rounded-lg text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all active:scale-95"
-                                title={user.id === pick.user_id ? 'Remove my pick' : `Remove ${pick.profiles?.display_name || 'player'}'s pick`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
+              <div className="relative">
+              <div className="divide-y divide-border/20 max-h-96 overflow-y-auto">
+                <AnimatePresence initial={false}>
+                  {(() => {
+                    const reversed = [...picks].reverse();
+                    const freshIds = freshPickIds;
+                    let lastRound: number | null = null;
+                    const nodes: React.ReactNode[] = [];
+                    reversed.forEach((pick) => {
+                      // Round divider — inserted when round changes top→bottom (newer first).
+                      if (lastRound !== null && pick.round !== lastRound) {
+                        nodes.push(
+                          <div key={`rd-${lastRound}`} className="draft-round-divider">
+                            <span>Round {lastRound}</span>
+                          </div>,
+                        );
+                      }
+                      lastRound = pick.round;
+                      const isEnriching = enrichingPickIds.has(pick.id);
+                      const enrichment = enrichments.get(pick.id);
+                      const isFresh = freshIds.has(pick.id);
+                      nodes.push(
+                        <motion.div
+                          key={pick.id}
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          layout
+                          className={cn(isFresh && 'draft-pick-fresh')}
+                        >
+                          {isEnriching && !enrichment ? (
+                            <EnrichedItemSkeleton compact />
+                          ) : editingPickId === pick.id ? (
+                            <div className="flex items-center gap-2 px-3 py-3 w-full">
+                              <Input
+                                value={editPickText}
+                                onChange={(e) => setEditPickText(e.target.value)}
+                                className="h-10 text-sm flex-1 min-w-0"
+                                autoFocus
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSavePickEdit(); if (e.key === 'Escape') handleCancelEditPick(); }}
+                              />
+                              <Button size="sm" onClick={handleSavePickEdit} disabled={savingPick || !editPickText.trim()} className="h-10 w-10 p-0 flex-shrink-0">
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <button onClick={handleCancelEditPick} className="h-10 w-10 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground active:bg-muted/50 transition-colors flex-shrink-0">
+                                <X className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    </div>
-                  );
-                  });
-                })()}
+                            </div>
+                          ) : (
+                            <EnrichedItemCard
+                              label={pick.pick_text}
+                              rank={pick.pick_number}
+                              enrichment={enrichment}
+                              showRank
+                              compact={!hasEnrichments}
+                              onImageClick={enrichment && (enrichment.metadata?.image_candidates as any[])?.length > 0
+                                ? () => setImagePickerPick(pick)
+                                : undefined}
+                              actions={
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <span className="text-[10px] text-muted-foreground/60 text-right">
+                                    <span className="block font-medium">{pick.profiles?.display_name}</span>
+                                    <span className="font-mono">Rd {pick.round}</span>
+                                  </span>
+                                  {(canManage || pick.user_id === user?.id) && (
+                                    <div className="flex items-center gap-0.5">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleStartEditPick(pick); }}
+                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-primary active:text-primary active:bg-primary/10 transition-colors"
+                                        title="Edit pick"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setPickToRemove(pick); }}
+                                        className="p-2 rounded-md text-muted-foreground/70 hover:text-destructive active:text-destructive active:bg-destructive/10 transition-colors"
+                                        title="Remove pick"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              }
+                            />
+                          )}
+                        </motion.div>,
+                      );
+                    });
+                    return nodes;
+                  })()}
+                </AnimatePresence>
+              </div>
+              {picks.length > 5 && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-10"
+                  style={{
+                    background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0) 100%)',
+                  }}
+                />
+              )}
               </div>
             </div>
   ) : null;
