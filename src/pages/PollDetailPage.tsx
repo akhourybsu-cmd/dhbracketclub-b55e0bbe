@@ -64,8 +64,12 @@ export default function PollDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editQuestion, setEditQuestion] = useState('');
   const [saving, setSaving] = useState(false);
+  const [members, setMembers] = useState<MemberRef[]>([]);
+  const { club } = useClub();
 
   const isCreator = poll?.created_by === user?.id;
+  const isDatePoll = poll?.poll_type === 'date';
+
 
   const fetchData = useCallback(async () => {
     if (!pollId || !user) {
