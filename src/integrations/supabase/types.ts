@@ -5837,6 +5837,61 @@ export type Database = {
           },
         ]
       }
+      nfl_chain_boards: {
+        Row: {
+          catch_up: boolean
+          checked_at: string | null
+          club_id: string
+          eligible_game_ids: string[]
+          lock_at: string
+          season_id: string
+          warnings: Json
+          week_id: string
+        }
+        Insert: {
+          catch_up?: boolean
+          checked_at?: string | null
+          club_id: string
+          eligible_game_ids: string[]
+          lock_at: string
+          season_id: string
+          warnings?: Json
+          week_id: string
+        }
+        Update: {
+          catch_up?: boolean
+          checked_at?: string | null
+          club_id?: string
+          eligible_game_ids?: string[]
+          lock_at?: string
+          season_id?: string
+          warnings?: Json
+          week_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfl_chain_boards_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_boards_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_boards_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_weeks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfl_chain_entries: {
         Row: {
           club_id: string
@@ -5935,6 +5990,7 @@ export type Database = {
           status: string
           subject_label: string
           threshold: number
+          void_reason: string | null
         }
         Insert: {
           actual_value?: number | null
@@ -5950,6 +6006,7 @@ export type Database = {
           status?: string
           subject_label: string
           threshold: number
+          void_reason?: string | null
         }
         Update: {
           actual_value?: number | null
@@ -5965,6 +6022,7 @@ export type Database = {
           status?: string
           subject_label?: string
           threshold?: number
+          void_reason?: string | null
         }
         Relationships: [
           {
@@ -5973,6 +6031,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "nfl_chain_entries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_legs_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_chain_game_cards"
+            referencedColumns: ["entry_id"]
           },
           {
             foreignKeyName: "nfl_chain_legs_market_id_fkey"
@@ -5986,6 +6051,10 @@ export type Database = {
       nfl_chain_markets: {
         Row: {
           actual_value: number | null
+          availability_checked_at: string | null
+          availability_evidence: Json | null
+          availability_note: string | null
+          availability_status: string
           club_id: string
           created_at: string
           created_by: string | null
@@ -5996,6 +6065,8 @@ export type Database = {
           market_type: string
           operator: string
           result: boolean | null
+          result_checked_at: string | null
+          result_source: string | null
           season_id: string
           settled_at: string | null
           settled_by: string | null
@@ -6006,10 +6077,15 @@ export type Database = {
           subject_team_id: string | null
           threshold: number
           updated_at: string
+          void_reason: string | null
           week_id: string
         }
         Insert: {
           actual_value?: number | null
+          availability_checked_at?: string | null
+          availability_evidence?: Json | null
+          availability_note?: string | null
+          availability_status?: string
           club_id?: string
           created_at?: string
           created_by?: string | null
@@ -6020,6 +6096,8 @@ export type Database = {
           market_type: string
           operator?: string
           result?: boolean | null
+          result_checked_at?: string | null
+          result_source?: string | null
           season_id: string
           settled_at?: string | null
           settled_by?: string | null
@@ -6030,10 +6108,15 @@ export type Database = {
           subject_team_id?: string | null
           threshold: number
           updated_at?: string
+          void_reason?: string | null
           week_id: string
         }
         Update: {
           actual_value?: number | null
+          availability_checked_at?: string | null
+          availability_evidence?: Json | null
+          availability_note?: string | null
+          availability_status?: string
           club_id?: string
           created_at?: string
           created_by?: string | null
@@ -6044,6 +6127,8 @@ export type Database = {
           market_type?: string
           operator?: string
           result?: boolean | null
+          result_checked_at?: string | null
+          result_source?: string | null
           season_id?: string
           settled_at?: string | null
           settled_by?: string | null
@@ -6054,6 +6139,7 @@ export type Database = {
           subject_team_id?: string | null
           threshold?: number
           updated_at?: string
+          void_reason?: string | null
           week_id?: string
         }
         Relationships: [
@@ -6070,6 +6156,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_markets_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_chain_game_cards"
+            referencedColumns: ["game_id"]
           },
           {
             foreignKeyName: "nfl_chain_markets_game_id_fkey"
@@ -6117,6 +6210,8 @@ export type Database = {
           id: string
           last_settled_week: number | null
           longest_card: number
+          pending_games: number
+          perfect_games: number
           perfect_weeks: number
           rank: number | null
           season_id: string
@@ -6133,6 +6228,8 @@ export type Database = {
           id?: string
           last_settled_week?: number | null
           longest_card?: number
+          pending_games?: number
+          perfect_games?: number
           perfect_weeks?: number
           rank?: number | null
           season_id: string
@@ -6149,6 +6246,8 @@ export type Database = {
           id?: string
           last_settled_week?: number | null
           longest_card?: number
+          pending_games?: number
+          perfect_games?: number
           perfect_weeks?: number
           rank?: number | null
           season_id?: string
@@ -6185,6 +6284,9 @@ export type Database = {
         Row: {
           away_score: number | null
           away_team_id: string
+          chain_lock_at: string | null
+          crazy_chain_availability_checked_at: string | null
+          crazy_chain_lock_at: string | null
           created_at: string
           external_id: string | null
           external_provider: string | null
@@ -6201,6 +6303,9 @@ export type Database = {
         Insert: {
           away_score?: number | null
           away_team_id: string
+          chain_lock_at?: string | null
+          crazy_chain_availability_checked_at?: string | null
+          crazy_chain_lock_at?: string | null
           created_at?: string
           external_id?: string | null
           external_provider?: string | null
@@ -6217,6 +6322,9 @@ export type Database = {
         Update: {
           away_score?: number | null
           away_team_id?: string
+          chain_lock_at?: string | null
+          crazy_chain_availability_checked_at?: string | null
+          crazy_chain_lock_at?: string | null
           created_at?: string
           external_id?: string | null
           external_provider?: string | null
@@ -6315,6 +6423,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_picks_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_chain_game_cards"
+            referencedColumns: ["game_id"]
           },
           {
             foreignKeyName: "nfl_picks_game_id_fkey"
@@ -6656,6 +6771,13 @@ export type Database = {
           week_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "nfl_weeks_featured_game_fk"
+            columns: ["featured_game_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_chain_game_cards"
+            referencedColumns: ["game_id"]
+          },
           {
             foreignKeyName: "nfl_weeks_featured_game_fk"
             columns: ["featured_game_id"]
@@ -10085,6 +10207,73 @@ export type Database = {
       }
     }
     Views: {
+      nfl_chain_game_cards: {
+        Row: {
+          away_team_id: string | null
+          chain_lock_at: string | null
+          club_id: string | null
+          entry_id: string | null
+          game_id: string | null
+          game_status: string | null
+          hits: number | null
+          home_team_id: string | null
+          kickoff_at: string | null
+          links_risked: number | null
+          misses: number | null
+          pending: number | null
+          season_id: string | null
+          settled_at: string | null
+          status: string | null
+          user_id: string | null
+          voids: number | null
+          week_id: string | null
+          week_number: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfl_chain_entries_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_entries_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_chain_entries_week_id_fkey"
+            columns: ["week_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_weeks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_games_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nfl_games_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "nfl_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfl_team_records: {
         Row: {
           games_played: number | null
@@ -10182,6 +10371,20 @@ export type Database = {
       }
       apply_mission_draft_live: {
         Args: { _also_update_active_op?: boolean; _draft_id: string }
+        Returns: Json
+      }
+      apply_nfl_chain_availability: {
+        Args: {
+          _checked_at: string
+          _checks: Json
+          _event_id: string
+          _game_id: string
+          _kickoff_at: string
+        }
+        Returns: Json
+      }
+      apply_nfl_chain_game_results: {
+        Args: { _checked_at: string; _game_id: string; _results: Json }
         Returns: Json
       }
       award_endless_rewards: {
@@ -10306,6 +10509,7 @@ export type Database = {
       get_boost_for_run: { Args: never; Returns: Json }
       get_bracket_pool_id: { Args: { _bracket_id: string }; Returns: string }
       get_club_password: { Args: { _club_id: string }; Returns: string }
+      get_nfl_chain_board: { Args: { _week_id: string }; Returns: Json }
       is_app_admin: { Args: { _user_id: string }; Returns: boolean }
       is_club_admin: {
         Args: { _club: string; _user: string }
@@ -10619,7 +10823,24 @@ export type Database = {
         Args: { _campaign: string; _user: string }
         Returns: string
       }
+      nfl_chain_board_unlocked: {
+        Args: { _club_id: string; _week_id: string }
+        Returns: boolean
+      }
+      nfl_chain_game_unlocked: { Args: { _game_id: string }; Returns: boolean }
+      nfl_tiebreaker_unlocked: { Args: { _week_id: string }; Returns: boolean }
       nfl_week_lock_at: { Args: { _week_id: string }; Returns: string }
+      publish_nfl_chain_board: {
+        Args: {
+          _availability: Json
+          _checked_at: string
+          _club_id: string
+          _markets: Json
+          _warnings?: Json
+          _week_id: string
+        }
+        Returns: Json
+      }
       purchase_boost: { Args: { _boost_code: string }; Returns: Json }
       readshift_read_cards: {
         Args: { _round_id: string }
@@ -10654,6 +10875,10 @@ export type Database = {
       }
       recompute_nfl_week_status: {
         Args: { _week_id: string }
+        Returns: undefined
+      }
+      refresh_nfl_chain_entry: {
+        Args: { _entry_id: string }
         Returns: undefined
       }
       replace_draft_results_atomic: {
@@ -10698,6 +10923,10 @@ export type Database = {
       }
       save_nfl_chain_card: {
         Args: { _market_ids: string[]; _week_id: string }
+        Returns: Json
+      }
+      save_nfl_chain_game: {
+        Args: { _game_id: string; _market_ids: string[] }
         Returns: Json
       }
       set_displayed_sigil: { Args: { _sigil_code: string }; Returns: undefined }
