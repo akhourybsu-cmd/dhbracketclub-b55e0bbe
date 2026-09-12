@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     // ESPN's edge blocks Deno's default and browser-like User-Agents with 403; a curl UA is accepted.
     const r = await fetch(espnUrl,{signal:AbortSignal.timeout(15_000),headers:{
       'User-Agent':'curl/8.4.0',
-      'Accept':'application/json, text/plain, */*','Referer':'https://www.espn.com/',
+      'Accept':'*/*',
     }});
     if (!r.ok) return json({ error: `ESPN fetch failed: ${r.status}` }, 502);
     const data = await r.json();
