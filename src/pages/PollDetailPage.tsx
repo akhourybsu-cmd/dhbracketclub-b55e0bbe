@@ -29,12 +29,24 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MemberLoadError } from '@/components/member/MemberLoadError';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
+import { useClub } from '@/contexts/ClubContext';
+import DateGridPicker from '@/components/polls/DateGridPicker';
+import AvailabilityResults from '@/components/polls/AvailabilityResults';
+import {
+  type AvailabilityResponse,
+  type AvailabilityVote,
+  type MemberRef,
+  fromDateKey,
+  nextResponse,
+} from '@/lib/polls/availability';
 
 interface PollOption {
   id: string;
   label: string;
   position: number;
+  option_date?: string | null;
 }
+
 
 export default function PollDetailPage() {
   const { pollId } = useParams<{ pollId: string }>();
@@ -53,8 +65,12 @@ export default function PollDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editQuestion, setEditQuestion] = useState('');
   const [saving, setSaving] = useState(false);
+  const [members, setMembers] = useState<MemberRef[]>([]);
+  const { club } = useClub();
 
   const isCreator = poll?.created_by === user?.id;
+  const isDatePoll = poll?.poll_type === 'date';
+
 
   const fetchData = useCallback(async () => {
     if (!pollId || !user) {
@@ -81,12 +97,32 @@ export default function PollDetailPage() {
       } else {
         setMyVote(null);
       }
+
+      // Club roster — used by date polls to show who hasn't answered yet.
+      if (pollData.poll_type === 'date' && club?.id) {
+        try {
+          const rows = await memberData(
+            supabase.from('club_members').select('user_id').eq('club_id', club.id),
+            'Load club roster',
+          );
+          const ids = (rows ?? []).map((r: any) => r.user_id);
+          if (ids.length) {
+            const profs = await memberData(
+              supabase.from('profiles').select('id, display_name').in('id', ids),
+              'Load member names',
+            );
+            setMembers((profs ?? []).map((p: any) => ({ user_id: p.id, display_name: p.display_name })));
+          }
+        } catch {
+          setMembers([]);
+        }
+      }
     } catch (loadError) {
       setError(memberErrorMessage(loadError));
     } finally {
       setLoading(false);
     }
-  }, [pollId, user]);
+  }, [pollId, user, club?.id]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
@@ -101,6 +137,43 @@ export default function PollDetailPage() {
 
   // Realtime: auto-refresh when anyone votes
   usePollVoteUpdates(pollId, fetchData);
+
+  // Date polls: tapping a date cycles free → maybe → can't → cleared.
+  const handleCycleDate = async (dateKey: string) => {
+    if (!user || !pollId) return;
+    const opt = options.find(o => o.option_date === dateKey);
+    if (!opt) return;
+    const current = (votes.find(v => v.user_id === user.id && v.option_id === opt.id)?.response ?? null) as AvailabilityResponse | null;
+    const next = nextResponse(current, poll?.allow_maybe !== false);
+    const myName = votes.find(v => v.user_id === user.id)?.profiles?.display_name ?? 'You';
+
+    setVotes(prev => {
+      const rest = prev.filter(v => !(v.user_id === user.id && v.option_id === opt.id));
+      return next
+        ? [...rest, { id: `local-${opt.id}`, poll_id: pollId, option_id: opt.id, user_id: user.id, response: next, profiles: { display_name: myName } }]
+        : rest;
+    });
+
+    try {
+      if (!next) {
+        await memberData(
+          supabase.from('poll_votes').delete().eq('poll_id', pollId).eq('user_id', user.id).eq('option_id', opt.id).select('id'),
+          'Clear date answer',
+        );
+      } else {
+        await memberData(
+          supabase.from('poll_votes')
+            .upsert({ poll_id: pollId, option_id: opt.id, user_id: user.id, response: next }, { onConflict: 'poll_id,user_id,option_id' })
+            .select('id'),
+          'Save date answer',
+        );
+      }
+      void fetchData();
+    } catch (cycleError) {
+      toast.error(memberErrorMessage(cycleError));
+      void fetchData();
+    }
+  };
 
   const handleVote = async () => {
     if (!user || !pollId || !selectedOption || myVote) return;
@@ -213,6 +286,25 @@ export default function PollDetailPage() {
   // Find the winning option(s)
   const maxVotes = Math.max(...options.map(o => voteCounts.get(o.id) || 0), 0);
 
+  // Date-poll derived data
+  const dateOptions = options
+    .filter(o => !!o.option_date)
+    .map(o => ({ id: o.id, date: o.option_date as string, label: o.label }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const dateCandidates = dateOptions.map(o => o.date);
+  const dateVotes: AvailabilityVote[] = votes.map(v => ({
+    user_id: v.user_id,
+    option_id: v.option_id,
+    response: (v.response ?? 'yes') as AvailabilityResponse,
+    display_name: v.profiles?.display_name ?? null,
+  }));
+  const myResponses: Record<string, AvailabilityResponse | undefined> = {};
+  dateOptions.forEach(o => {
+    const mine = votes.find(v => v.user_id === user?.id && v.option_id === o.id);
+    if (mine) myResponses[o.date] = (mine.response ?? 'yes') as AvailabilityResponse;
+  });
+
+
   return (
     <div className="member-page max-w-3xl mx-auto" aria-busy={voting || deleting || saving}>
       <Link to="/polls" className="back-link">
@@ -282,12 +374,38 @@ export default function PollDetailPage() {
           <div className="stat-card py-2 flex-1">
             <MessageCircle className="w-3 h-3" style={{ color: 'hsl(var(--warning))' }} />
             <span className="stat-value text-xs">{options.length}</span>
-            <span className="stat-label">Options</span>
+            <span className="stat-label">{isDatePoll ? 'Dates' : 'Options'}</span>
           </div>
         </div>
       </motion.div>
 
-      {/* Options / Results */}
+      {isDatePoll ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
+          <div className="glass-card p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="section-header mb-0">Your availability</h3>
+              {!isOpen && <span className="status-pill bg-muted text-muted-foreground">Closed</span>}
+            </div>
+            <DateGridPicker
+              mode="vote"
+              disabled={!isOpen}
+              month={dateCandidates[0] ? fromDateKey(dateCandidates[0]) : undefined}
+              candidates={dateCandidates}
+              responses={myResponses}
+              onCycle={handleCycleDate}
+            />
+          </div>
+
+          <AvailabilityResults
+            options={dateOptions}
+            votes={dateVotes}
+            members={members}
+            onCreateEvent={isCreator ? (dateKey, label) => {
+              navigate(`/events?date=${dateKey}&title=${encodeURIComponent(poll.question)}&pollId=${pollId}&label=${encodeURIComponent(label)}`);
+            } : undefined}
+          />
+        </motion.div>
+      ) : (
       <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="space-y-2 mb-5">
           {options.map((opt, idx) => {
@@ -408,6 +526,7 @@ export default function PollDetailPage() {
           </div>
         )}
       </motion.div>
+      )}
 
       {/* Delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
