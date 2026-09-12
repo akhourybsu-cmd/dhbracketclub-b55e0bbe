@@ -114,7 +114,7 @@ function SeasonHeaderCard({ season, entries }: { season: any; entries: any[] }) 
                   <Trophy className="w-5 h-5" style={{ color: 'hsl(var(--gold))' }} />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-extrabold text-xl tracking-tight leading-tight">{formatSeasonTitle(season)}</h2>
+                  <h2 className="dl-display font-extrabold text-xl tracking-tight leading-tight">{formatSeasonTitle(season)}</h2>
                   {season.subtitle && (
                     <p className="text-[12px] font-semibold text-muted-foreground/85 mt-0.5 leading-snug">{season.subtitle}</p>
                   )}
@@ -1594,7 +1594,7 @@ export default function DraftsListPage() {
                       </p>
                     </div>
                     <p
-                      className="text-[34px] lg:text-[26px] font-black leading-none tabular-nums"
+                      className="dl-display text-[34px] lg:text-[26px] font-black leading-none tabular-nums"
                       style={{
                         color: 'hsl(var(--gold))',
                         textShadow: '0 0 18px hsl(var(--gold) / 0.4)',
@@ -1609,7 +1609,7 @@ export default function DraftsListPage() {
                       <Crown className="w-3 h-3 text-muted-foreground/60" strokeWidth={2.5} />
                       <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Wins</p>
                     </div>
-                    <p className="text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
+                    <p className="dl-display text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
                       <CountedNumber value={myDraftStats.wins} />
                     </p>
                   </div>
@@ -1619,7 +1619,7 @@ export default function DraftsListPage() {
                       <Medal className="w-3 h-3 text-muted-foreground/60" strokeWidth={2.5} />
                       <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Podiums</p>
                     </div>
-                    <p className="text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
+                    <p className="dl-display text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
                       <CountedNumber value={myDraftStats.podiums} />
                     </p>
                   </div>
