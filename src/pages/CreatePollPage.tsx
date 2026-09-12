@@ -275,9 +275,10 @@ export default function CreatePollPage() {
             </button>
           )}
         </div>
+        )}
 
         <Button type="submit" className="w-full h-11 rounded-xl font-bold btn-press" disabled={loading || !question.trim()}>
-          {loading ? 'Creating…' : 'Create Poll'}
+          {loading ? 'Creating…' : pollKind === 'date' ? 'Create Date Poll' : 'Create Poll'}
         </Button>
       </motion.form>
     </div>
