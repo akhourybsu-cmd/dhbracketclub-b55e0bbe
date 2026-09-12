@@ -118,6 +118,8 @@ export default function PollsListPage() {
           {polls.map((p, i) => {
             const count = voteCounts.get(p.id) || 0;
             const voted = myVotes.has(p.id);
+            const isDatePoll = (p as { poll_type?: string }).poll_type === 'date';
+            const Icon = isDatePoll ? CalendarDays : MessageCircle;
             return (
               <motion.div key={p.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 + i * 0.04 }}>
                 <Link to={`/polls/${p.id}`} className="block group">
@@ -127,17 +129,17 @@ export default function PollsListPage() {
                         <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{
                           background: 'linear-gradient(135deg, hsl(var(--warning) / 0.15), hsl(var(--warning) / 0.04))',
                         }}>
-                          <MessageCircle className="w-5 h-5" style={{ color: 'hsl(var(--warning))' }} />
+                          <Icon className="w-5 h-5" style={{ color: 'hsl(var(--warning))' }} />
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-bold text-sm truncate">{p.question}</h3>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[10px] text-muted-foreground/70 font-medium">
-                              {formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}
+                              {isDatePoll ? 'Date poll' : formatDistanceToNow(new Date(p.created_at), { addSuffix: true })}
                             </span>
                             <span className="w-0.5 h-0.5 rounded-full bg-muted-foreground/15" />
                             <span className="text-[10px] text-muted-foreground/70 flex items-center gap-0.5 font-medium">
-                              <Users className="w-2.5 h-2.5" /> {count} vote{count !== 1 ? 's' : ''}
+                              <Users className="w-2.5 h-2.5" /> {count} {isDatePoll ? `answer${count !== 1 ? 's' : ''}` : `vote${count !== 1 ? 's' : ''}`}
                             </span>
                           </div>
                         </div>
