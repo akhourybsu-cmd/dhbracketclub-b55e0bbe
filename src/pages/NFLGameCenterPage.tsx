@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Activity, ArrowRight, CalendarDays, Flame, ListChecks,
-  Radio, Shield, Trophy, Zap,
+  Activity, ArrowRight, CalendarDays, CheckCircle2, Clock3, Flame,
+  ListChecks, Radio, Shield, Sparkles, Trophy, Users, Zap,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ import { chooseChainBoardWeek, useCrazyChainWeeks } from '@/hooks/useCrazyChainW
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
 import { chainGameIsOpen } from '../../supabase/functions/_shared/chainGameRules';
 import { NflCheckButton } from '@/components/pickem/NflCheckButton';
+import { KickoffCountdown } from '@/components/pickem/KickoffCountdown';
 
 export default function NFLGameCenterPage() {
   const { user } = useAuth();
@@ -38,149 +39,162 @@ export default function NFLGameCenterPage() {
   const myPickem = pickemStandings.find(row => row.user_id === user?.id);
   const finalGames = games.filter(game => game.status === 'final').length;
   const liveGames = games.filter(game => game.status === 'live').length;
+  const scheduledGames = games.filter(game => game.status === 'scheduled');
+  const featuredGames = [...games]
+    .sort((a, b) => {
+      const priority = { live: 0, scheduled: 1, final: 2 };
+      return priority[a.status] - priority[b.status] || new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime();
+    })
+    .slice(0, 4);
+  const picksComplete = games.length > 0 && picks.length >= games.length;
+  const pickemLeaders = pickemStandings.slice(0, 3);
+  const chainLeaders = chainStandings.filter(row => row.total_cards > 0).slice(0, 3);
   const openMarkets = markets.filter(market => migrationReady && market.status === 'open'
     && chainGames.some(game => game.id === market.game_id && chainGameIsOpen(game,now))).length;
 
   return (
-    <div className="space-y-4 pb-7">
-      <TurfBackdrop className="p-5 overflow-hidden">
-        <div className="pk-field-stripe mb-4" aria-hidden />
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="pk-section-label flex items-center gap-1.5">
-              <Radio className="w-3 h-3 text-gold" /> NFL Command Deck
-            </p>
-            <h1 className="text-[27px] sm:text-[32px] font-black tracking-tight leading-none text-white mt-2">
-              NFL Game Center
-            </h1>
-            <p className="text-[12px] text-white/65 mt-2 max-w-[40ch] leading-relaxed">
-              Scores, weekly predictions, live results, and the club's longest Crazy Chain—all in one place.
-            </p>
+    <div className="nfl-command space-y-4 pb-7">
+      <TurfBackdrop className="nfl-command-hero p-4 sm:p-6">
+        <div className="nfl-command-kicker">
+          <span className={liveGames > 0 ? 'nfl-live-dot' : 'nfl-ready-dot'} aria-hidden />
+          {liveGames > 0 ? `${liveGames} game${liveGames === 1 ? '' : 's'} in progress` : 'NFL prediction command center'}
+        </div>
+        <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="nfl-command-overline">{season?.name || 'Club football'}</p>
+            <h1 className="nfl-command-title">NFL Game Center</h1>
+            <p className="nfl-command-copy">Track the slate, lock your weekly picks, and build a Crazy Chain from one live command deck.</p>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-gold/15 border border-gold/35 flex items-center justify-center shrink-0 shadow-[0_0_22px_hsl(45_95%_55%/0.18)]">
-            <Activity className="w-6 h-6 text-gold" />
+          <div className="nfl-command-metrics">
+            <ScoreChip label="Games" value={games.length} />
+            <ScoreChip label="Final" value={finalGames} />
+            <ScoreChip label="Live" value={liveGames} hot={liveGames > 0} />
           </div>
         </div>
-
         {loading ? (
-          <div className="mt-5 h-16 rounded-xl pk-skeleton" />
+          <div className="mt-5 h-14 rounded-lg pk-skeleton" />
         ) : season ? (
-          <div className="pk-scoreboard mt-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="pk-scoreboard-label">{season.name}</p>
-                <p className="text-[16px] text-white font-black mt-1">
-                  {week?.label || `Week ${season.current_week}`}
-                </p>
-                <p className="text-[10px] text-white/55 mt-1">
-                  {liveGames > 0
-                    ? `${liveGames} live · ${finalGames}/${games.length} final`
-                    : locked
-                      ? `${finalGames}/${games.length} games final`
-                      : lockAt
-                        ? `Next game locks ${format(lockAt, 'EEE h:mm a')}`
-                        : 'Schedule preparing'}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 text-center">
-                <ScoreChip label="Games" value={games.length} />
-                <ScoreChip label="Live" value={liveGames} hot={liveGames > 0} />
-              </div>
+          <div className="nfl-week-strip mt-5">
+            <div>
+              <span className="nfl-data-label">Current slate</span>
+              <strong>{week?.label || `Week ${season.current_week}`}</strong>
+            </div>
+            <div className="nfl-week-status">
+              <Clock3 className="h-4 w-4" />
+              {liveGames > 0
+                ? `${finalGames}/${games.length} complete`
+                : locked
+                  ? 'Picks locked'
+                  : lockAt
+                    ? `Next lock ${format(lockAt, 'EEE h:mm a')}`
+                    : 'Schedule preparing'}
             </div>
           </div>
         ) : (
-          <div className="pk-scoreboard mt-5 text-[11px] text-white/60">No NFL season is configured yet.</div>
+          <div className="nfl-week-strip mt-5">No NFL season is configured yet.</div>
         )}
       </TurfBackdrop>
 
-      <section>
-        <div className="pk-broadcast-divider" aria-hidden />
-        <p className="pk-section-label mb-2 px-0.5">Play This Week</p>
-        <div className="grid sm:grid-cols-2 gap-2.5">
-          <GameTile
-            to="/pickem"
-            icon={<ListChecks className="w-5 h-5 text-gold" />}
-            eyebrow="Classic"
-            title="Weekly Pick'em"
-            description="Pick every winner and climb the season table."
-            stat={week ? `${picks.length}/${games.length} picked` : 'Season setup'}
-            cta="Open Pick'em"
-          />
-          <GameTile
-            to={chainWeek ? `/nfl/crazy-chain?week=${chainWeek.week_number}` : '/nfl/crazy-chain'}
-            icon={<Zap className="w-5 h-5 text-emerald-300" />}
-            eyebrow={chainWeek ? `Week ${chainWeek.week_number} · Crazy Chain` : 'Risk · Reward'}
-            title="Crazy Chain"
-            description="Stack as many stat predictions as you dare. One miss breaks the chain."
-            stat={entry
-              ? `${entry.links_risked} link${entry.links_risked === 1 ? '' : 's'} in play`
-              : myChain?.current_chain
-                ? `${myChain.current_chain} current chain`
-                : chainLocked ? 'Board locked' : `${openMarkets} predictions open`}
-            cta="Build My Chain"
-            featured
-          />
-        </div>
-      </section>
+      <div className="nfl-dashboard-grid">
+        <div className="space-y-4">
+          <section className="nfl-panel" aria-labelledby="slate-heading">
+            <div className="nfl-panel-header">
+              <div>
+                <p className="nfl-command-overline">Live board</p>
+                <h2 id="slate-heading">Week at a glance</h2>
+              </div>
+              <Link to={week ? `/pickem/week/${week.week_number}` : '/pickem'} className="nfl-text-link">Full slate <ArrowRight /></Link>
+            </div>
+            {featuredGames.length ? (
+              <div className="nfl-matchup-list">
+                {featuredGames.map(game => <MatchupRow key={game.id} game={game} />)}
+              </div>
+            ) : (
+              <div className="nfl-empty-slate">The next slate will appear here when the schedule is ready.</div>
+            )}
+          </section>
 
-      <section>
-        <div className="pk-broadcast-divider" aria-hidden />
-        <p className="pk-section-label mb-2 px-0.5">Follow the Season</p>
-        <div className="grid grid-cols-2 gap-2">
-          <CompactTile
-            to={week ? `/pickem/week/${week.week_number}` : '/pickem'}
-            icon={<Radio className="w-4 h-4 text-emerald-300" />}
-            title="Scores & Slate"
-            detail={liveGames ? `${liveGames} live now` : `${games.length} games`}
-          />
-          <CompactTile
-            to="/pickem/standings"
-            icon={<Trophy className="w-4 h-4 text-gold" />}
-            title="Pick'em Table"
-            detail={myPickem?.rank ? `You are #${myPickem.rank}` : 'Season race'}
-          />
-          <CompactTile
-            to="/nfl/crazy-chain/leaderboard"
-            icon={<Flame className="w-4 h-4 text-orange-300" />}
-            title="Chain Leaders"
-            detail={myChain ? `Best ${myChain.best_chain}` : 'Club records'}
-          />
-          <CompactTile
-            to="/nfl/crazy-chain/history"
-            icon={<CalendarDays className="w-4 h-4 text-sky-300" />}
-            title="My Chains"
-            detail="Weekly history"
-          />
+          <section className="grid gap-4 md:grid-cols-2" aria-label="Prediction games">
+            <PredictionCard
+              to="/pickem"
+              icon={<ListChecks />}
+              eyebrow="Weekly card"
+              title="Pick'em"
+              description="Choose every winner before each matchup locks."
+              progress={games.length ? `${picks.length} of ${games.length} selected` : 'Awaiting slate'}
+              status={picksComplete ? 'Card complete' : locked ? 'Slate locked' : 'Action needed'}
+              complete={picksComplete}
+              cta="Review picks"
+            />
+            <PredictionCard
+              to={chainWeek ? `/nfl/crazy-chain?week=${chainWeek.week_number}` : '/nfl/crazy-chain'}
+              icon={<Zap />}
+              eyebrow={chainWeek ? `Week ${chainWeek.week_number}` : 'Weekly run'}
+              title="Crazy Chain"
+              description="Link stat predictions together and protect your streak."
+              progress={entry
+                ? `${entry.links_risked} link${entry.links_risked === 1 ? '' : 's'} active`
+                : myChain?.current_chain
+                  ? `${myChain.current_chain} current chain`
+                  : `${openMarkets} predictions open`}
+              status={entry ? 'Chain submitted' : chainLocked ? 'Board locked' : 'Board open'}
+              complete={Boolean(entry)}
+              cta="Open board"
+              featured
+            />
+          </section>
         </div>
-      </section>
+
+        <aside className="space-y-4">
+          <StandingsPanel
+            title="Pick'em race"
+            to="/pickem/standings"
+            rows={pickemLeaders.map(row => ({
+              id: row.user_id,
+              name: row.profiles?.display_name || 'Club member',
+              value: `${row.total_correct} correct`,
+              rank: row.rank,
+            }))}
+            myStat={myPickem?.rank ? `Your position: #${myPickem.rank}` : 'Make a pick to enter the table'}
+          />
+          <StandingsPanel
+            title="Chain leaders"
+            to="/nfl/crazy-chain/leaderboard"
+            rows={chainLeaders.map(row => ({
+              id: row.user_id,
+              name: row.profiles?.display_name || 'Club member',
+              value: `Best ${row.best_chain}`,
+              rank: row.rank,
+            }))}
+            myStat={myChain ? `Your best chain: ${myChain.best_chain}` : 'Build your first chain'}
+            chain
+          />
+          <div className="nfl-utility-grid">
+            <CompactTile to="/nfl/crazy-chain/history" icon={<CalendarDays />} title="My history" detail="Past chain cards" />
+            <CompactTile to="/pickem/standings" icon={<Users />} title="Club table" detail={`${pickemStandings.length} competitors`} />
+          </div>
+        </aside>
+      </div>
 
       {isAdmin && (
-        <div className="space-y-2">
+        <section className="nfl-admin-strip">
+          <div className="flex items-center gap-3">
+            <div className="nfl-admin-icon"><Shield /></div>
+            <div>
+              <p className="nfl-command-overline">Commissioner tools</p>
+              <h2>League operations</h2>
+              <p>Scores refresh nightly. Run a manual check when results need immediate attention.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
           {season && (
-            <div className="glass-card p-3.5 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-extrabold">Scores & standings</p>
-                <p className="text-[10px] text-muted-foreground">Updates automatically each night at midnight Eastern</p>
-              </div>
-              <NflCheckButton
-                seasonYear={season.year}
-                currentWeek={week?.week_number ?? season.current_week}
-                onDone={() => window.location.reload()}
-                className="shrink-0"
-              />
-            </div>
+            <NflCheckButton seasonYear={season.year} currentWeek={week?.week_number ?? season.current_week} onDone={() => window.location.reload()} />
           )}
-          <Link to="/nfl/admin/crazy-chain" className="glass-card p-3.5 flex items-center gap-3 btn-press">
-            <div className="w-9 h-9 rounded-xl bg-destructive/10 border border-destructive/25 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-destructive" />
-            </div>
-            <div className="flex-1">
-              <p className="text-[13px] font-extrabold">Crazy Chain Control Room</p>
-              <p className="text-[10px] text-muted-foreground">Publish and settle weekly predictions</p>
-            </div>
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          <Link to="/nfl/admin/crazy-chain" className="nfl-admin-link">
+            Chain control <ArrowRight />
           </Link>
-        </div>
+          </div>
+        </section>
       )}
     </div>
   );
@@ -188,46 +202,111 @@ export default function NFLGameCenterPage() {
 
 function ScoreChip({ label, value, hot }: { label: string; value: number; hot?: boolean }) {
   return (
-    <div className={`min-w-14 rounded-lg px-2 py-1.5 border ${hot ? 'bg-emerald-400/15 border-emerald-300/30' : 'bg-black/30 border-white/10'}`}>
-      <p className={`text-[15px] font-black tabular-nums ${hot ? 'text-emerald-200' : 'text-white'}`}>{value}</p>
-      <p className="text-[7px] uppercase tracking-widest text-white/45 font-bold">{label}</p>
+    <div className={hot ? 'nfl-metric is-live' : 'nfl-metric'}>
+      <p>{value}</p>
+      <span>{label}</span>
     </div>
   );
 }
 
-function GameTile({ to, icon, eyebrow, title, description, stat, cta, featured }: {
-  to: string; icon: React.ReactNode; eyebrow: string; title: string;
-  description: string; stat: string; cta: string; featured?: boolean;
+function MatchupRow({ game }: { game: ReturnType<typeof useWeekGames>['games'][number] }) {
+  const away = game.away_team;
+  const home = game.home_team;
+  const isLive = game.status === 'live';
+  const isFinal = game.status === 'final';
+  return (
+    <div className="nfl-matchup-row">
+      <div className="nfl-matchup-time">
+        <span className={isLive ? 'is-live' : ''}>{isLive ? 'In progress' : isFinal ? 'Final' : format(new Date(game.kickoff_at), 'EEE')}</span>
+        <strong>{isLive || isFinal ? 'Score' : format(new Date(game.kickoff_at), 'h:mm a')}</strong>
+      </div>
+      <TeamIdentity team={away} score={game.away_score} />
+      <span className="nfl-matchup-at">@</span>
+      <TeamIdentity team={home} score={game.home_score} home />
+      <div className="nfl-matchup-clock">
+        {game.status === 'scheduled' ? <KickoffCountdown target={game.kickoff_at} compact /> : isLive ? <Radio /> : <CheckCircle2 />}
+      </div>
+    </div>
+  );
+}
+
+function TeamIdentity({ team, score, home }: {
+  team?: { abbr: string; name: string; city: string; logo_url: string | null };
+  score: number | null;
+  home?: boolean;
 }) {
   return (
-    <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.18 }}>
-      <Link to={to} className={`block glass-card p-4 h-full btn-press ${featured ? 'ring-1 ring-emerald-400/30' : ''}`}>
-        <div className="flex items-center justify-between">
-          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">{icon}</div>
-          {featured && <span className="text-[8px] px-2 py-1 rounded-full bg-emerald-400/10 border border-emerald-300/25 text-emerald-300 uppercase tracking-widest font-black">New</span>}
+    <div className={home ? 'nfl-team is-home' : 'nfl-team'}>
+      {team?.logo_url ? <img src={team.logo_url} alt={`${team.city} ${team.name}`} /> : <span className="nfl-team-fallback">{team?.abbr || 'NFL'}</span>}
+      <div>
+        <strong>{team?.abbr || 'TBD'}</strong>
+        <span>{team?.city || 'To be determined'}</span>
+      </div>
+      {score !== null && <b>{score}</b>}
+    </div>
+  );
+}
+
+function PredictionCard({ to, icon, eyebrow, title, description, progress, status, cta, complete, featured }: {
+  to: string; icon: React.ReactNode; eyebrow: string; title: string; description: string;
+  progress: string; status: string; cta: string; complete?: boolean; featured?: boolean;
+}) {
+  return (
+    <motion.div whileHover={{ y: -3 }} transition={{ duration: 0.18 }} className="h-full">
+      <Link to={to} className={featured ? 'nfl-prediction-card is-featured' : 'nfl-prediction-card'}>
+        <div className="nfl-card-topline">
+          <span className="nfl-card-icon">{icon}</span>
+          <span className={complete ? 'nfl-state is-complete' : 'nfl-state'}>{complete && <CheckCircle2 />}{status}</span>
         </div>
-        <p className="text-[8px] uppercase tracking-[0.2em] text-muted-foreground font-black mt-4">{eyebrow}</p>
-        <h2 className="text-[18px] font-black tracking-tight mt-1">{title}</h2>
-        <p className="text-[11px] text-muted-foreground leading-relaxed mt-1 min-h-10">{description}</p>
-        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
-          <span className="text-[10px] font-bold text-gold truncate">{stat}</span>
-          <span className="text-[10px] font-black flex items-center gap-1 shrink-0">{cta}<ArrowRight className="w-3 h-3" /></span>
+        <p className="nfl-command-overline">{eyebrow}</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <div className="nfl-card-footer">
+          <strong>{progress}</strong>
+          <span>{cta} <ArrowRight /></span>
         </div>
       </Link>
     </motion.div>
   );
 }
 
+function StandingsPanel({ title, to, rows, myStat, chain }: {
+  title: string; to: string; rows: Array<{ id: string; name: string; value: string; rank: number | null }>;
+  myStat: string; chain?: boolean;
+}) {
+  return (
+    <section className="nfl-panel nfl-standings-panel">
+      <div className="nfl-panel-header">
+        <div>
+          <p className="nfl-command-overline">{chain ? 'Crazy Chain' : 'Season standings'}</p>
+          <h2>{title}</h2>
+        </div>
+        <Link to={to} aria-label={`View ${title}`} className="nfl-icon-link"><ArrowRight /></Link>
+      </div>
+      <div className="nfl-leader-list">
+        {rows.length ? rows.map((row, index) => (
+          <div key={row.id} className="nfl-leader-row">
+            <span>{row.rank || index + 1}</span>
+            <div className="nfl-avatar">{row.name.slice(0, 2).toUpperCase()}</div>
+            <strong>{row.name}</strong>
+            <b>{row.value}</b>
+          </div>
+        )) : <p className="nfl-empty-leaders">Standings populate after the first completed card.</p>}
+      </div>
+      <div className="nfl-my-standing">{chain ? <Flame /> : <Trophy />}{myStat}</div>
+    </section>
+  );
+}
+
 function CompactTile({ to, icon, title, detail }: { to: string; icon: React.ReactNode; title: string; detail: string }) {
   return (
-    <Link to={to} className="pk-tile p-3.5 btn-press">
-      <div className="flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center shrink-0">{icon}</div>
-        <div className="min-w-0">
-          <p className="text-[12px] font-extrabold truncate">{title}</p>
-          <p className="text-[9px] text-muted-foreground truncate">{detail}</p>
-        </div>
+    <Link to={to} className="nfl-utility-link">
+      <span>{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <small>{detail}</small>
       </div>
+      <ArrowRight />
     </Link>
   );
 }

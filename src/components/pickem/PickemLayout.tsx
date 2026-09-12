@@ -1,4 +1,6 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 import { PickemHUD } from './PickemHUD';
 import { PickemBoot } from './PickemBoot';
 
@@ -12,12 +14,18 @@ import { PickemBoot } from './PickemBoot';
  * Nexus Defense and Rune Delve work.
  */
 export function PickemLayout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const isGameCenter = pathname === '/nfl';
+
   return (
     <div className="pk-mode pk-shell relative min-h-[100dvh]">
       <PickemHUD />
 
       <main
-        className="max-w-[640px] mx-auto px-3 sm:px-5 pt-3"
+        className={cn(
+          'mx-auto px-3 sm:px-5 pt-3',
+          isGameCenter ? 'max-w-[1180px]' : 'max-w-[640px]',
+        )}
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {children}
