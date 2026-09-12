@@ -127,6 +127,7 @@ export default function EventsPage() {
           starts_at: new Date(form.starts_at).toISOString(),
           ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
           created_by: user.id,
+          ...(linkedPollId ? { linked_poll_id: linkedPollId } : {}),
         }).select().single(),
         'Create event',
       );
