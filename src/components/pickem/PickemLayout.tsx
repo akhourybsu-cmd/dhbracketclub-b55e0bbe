@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { PickemHUD } from './PickemHUD';
 import { PickemBoot } from './PickemBoot';
@@ -15,8 +14,6 @@ import { PickemCommandNav } from './PickemCommandNav';
  * Nexus Defense and Rune Delve work.
  */
 export function PickemLayout({ children }: { children: ReactNode }) {
-  useLocation();
-
   return (
     <div className="pk-mode pk-shell relative min-h-[100dvh]">
       <PickemHUD />

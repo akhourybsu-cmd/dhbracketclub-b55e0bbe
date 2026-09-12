@@ -10,9 +10,9 @@ const primaryItems = [
   { to: '/nfl', label: 'Game Center', icon: LayoutDashboard, exact: true },
   { to: '/pickem', label: "Pick'em", icon: ListChecks, exact: true },
   { to: '/nfl/crazy-chain', label: 'Crazy Chain', icon: Zap, exact: true },
-  { to: '/pickem/standings', label: 'Standings', icon: Trophy },
-  { to: '/pickem/history', label: 'History', icon: History },
-  { to: '/pickem/rules', label: 'Playbook', icon: BookOpen },
+  { to: '/pickem/standings', label: 'Standings', icon: Trophy, exact: false },
+  { to: '/pickem/history', label: 'History', icon: History, exact: false },
+  { to: '/pickem/rules', label: 'Playbook', icon: BookOpen, exact: false },
 ] as const;
 
 export function PickemCommandNav() {
