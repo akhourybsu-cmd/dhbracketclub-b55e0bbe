@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { runNflCheck, summarizeNflCheck } from '@/lib/nfl/refreshNow';
 
 /**
- * One-tap "check everything" for NFL Game Center. Refreshes scores for the
- * recent weeks and re-scores Pick'em + Crazy Chain. Automatic checks otherwise
- * run once a day at midnight Eastern.
+ * One-tap "check everything" for NFL Game Center. Refreshes scores for every
+ * week with recent or imminent kickoffs, re-scores Pick'em + Crazy Chain, and
+ * rebuilds chain boards. Automatic checks otherwise run on the NFL cron.
  */
 export function NflCheckButton({ seasonYear, currentWeek, onDone, className, label = 'Check for updates' }: {
   seasonYear: number; currentWeek: number; onDone?: () => void; className?: string; label?: string;
@@ -17,10 +17,10 @@ export function NflCheckButton({ seasonYear, currentWeek, onDone, className, lab
   async function check() {
     setChecking(true);
     try {
-      const results = await runNflCheck(seasonYear, currentWeek);
-      const summary = summarizeNflCheck(results);
-      if (results.some(result => result.ok)) toast.success(summary);
-      else toast.error(summary);
+      const summary = await runNflCheck(seasonYear, currentWeek);
+      const message = summarizeNflCheck(summary);
+      if (summary.weeks.some(week => week.ok)) toast.success(message);
+      else toast.error(message);
       onDone?.();
     } finally {
       setChecking(false);
