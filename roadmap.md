@@ -17,7 +17,7 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 
 # Crazy Chain refresh and responsive polish
 
-- [ ] 12. Surface Crazy Chain scoring and board-refresh outcomes from the manual NFL check
-- [ ] 13. Refresh NFL and Crazy Chain screen data in place after a manual check
-- [ ] 14. Polish Crazy Chain board, history, leaderboard, and controls for mobile and desktop
-- [ ] 15. Verify focused tests, type safety, and representative phone/desktop screens
+- [x] 12. Surface Crazy Chain scoring and board-refresh outcomes from the manual NFL check
+- [x] 13. Refresh NFL and Crazy Chain screen data in place after a manual check
+- [x] 14. Polish Crazy Chain board, history, leaderboard, and controls for mobile and desktop
+- [x] 15. Verify focused tests, type safety, and representative phone/desktop screens
