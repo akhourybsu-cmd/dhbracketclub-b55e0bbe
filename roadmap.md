@@ -24,7 +24,7 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 
 # NFL Game Center + Draft Arena light/dark modes
 
-- [ ] 16. Give the NFL Game Center complete daylight and night theme tokens across shared screens and dialogs
-- [ ] 17. Restore a true parchment-light Heritage Ledger variant across the complete Draft Arena
-- [ ] 18. Add an accessible theme switch to both standalone center headers
-- [ ] 19. Verify representative NFL, Crazy Chain, Draft hub, and Draft room screens in both themes on phone and desktop
+- [x] 16. Give the NFL Game Center complete daylight and night theme tokens across shared screens and dialogs
+- [x] 17. Restore a true parchment-light Heritage Ledger variant across the complete Draft Arena
+- [x] 18. Add an accessible theme switch to both standalone center headers
+- [x] 19. Verify representative NFL, Crazy Chain, Draft hub, and Draft room screens in both themes on phone and desktop

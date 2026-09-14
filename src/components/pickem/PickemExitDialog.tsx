@@ -21,20 +21,20 @@ export function PickemExitDialog({
         className="nfl-command-dialog"
       >
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white text-lg font-black tracking-tight">
+          <AlertDialogTitle className="nfl-dialog-title text-lg font-black tracking-tight">
             Exit NFL Game Center?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-white/65 text-sm">
+          <AlertDialogDescription className="nfl-dialog-description text-sm">
             You'll head back to DH Club. Your picks and Crazy Chain are safe — come back anytime.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="bg-white/5 border-white/15 text-white hover:bg-white/10">
+          <AlertDialogCancel className="nfl-dialog-cancel">
             Stay in Game Center
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-gold text-black font-extrabold hover:bg-gold/90"
+            className="nfl-dialog-action font-extrabold"
           >
             Exit
           </AlertDialogAction>

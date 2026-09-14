@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import pickemEmblem from '@/assets/pickem-emblem.png';
 import { useActiveSeason, useCurrentWeek } from '@/hooks/usePickem';
 import { PickemExitDialog } from './PickemExitDialog';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 /**
  * Sticky in-game HUD for the NFL Game Center standalone shell.
@@ -112,6 +113,8 @@ export function PickemHUD() {
               {weekChip}
             </span>
           )}
+
+          <ThemeToggle className="nfl-hud-icon shrink-0" />
 
           {!isStandings && !isHub && (
             <Button asChild variant="ghost" size="icon" className="nfl-hud-icon nfl-hud-standings">
