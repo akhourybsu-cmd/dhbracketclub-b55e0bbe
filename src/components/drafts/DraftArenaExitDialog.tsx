@@ -18,20 +18,20 @@ export function DraftArenaExitDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="da-exit-dialog border-gold/30">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white text-lg font-black tracking-tight">
+          <AlertDialogTitle className="da-exit-title text-lg font-black tracking-tight">
             Leave the Draft Arena?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-white/65 text-sm">
+          <AlertDialogDescription className="da-exit-description text-sm">
             You'll head back to the league hub. Drafts in progress keep running — come back anytime to make your pick.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="da-exit-cancel bg-white/5 border-white/15 text-white hover:bg-white/10">
+          <AlertDialogCancel className="da-exit-cancel">
             Stay in the Arena
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="bg-gold text-black font-extrabold hover:bg-gold/90"
+            className="da-exit-action font-extrabold"
           >
             Exit
           </AlertDialogAction>

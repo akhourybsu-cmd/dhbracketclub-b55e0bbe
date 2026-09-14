@@ -5,6 +5,8 @@ import draftEmblem from '@/assets/draft-emblem.png';
 import { useCurrentSeason, formatSeasonChip } from '@/hooks/useDraftSeasons';
 import { DraftArenaExitDialog } from './DraftArenaExitDialog';
 import { openSeasonWelcome } from './seasonWelcomeBus';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
 
 
 /**
@@ -50,14 +52,16 @@ export function DraftArenaHUD() {
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="flex items-center gap-2 h-12 px-2 max-w-[640px] lg:max-w-[1100px] mx-auto">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={handleBack}
             aria-label={isHub ? 'Exit Draft Arena' : 'Back to Draft Arena'}
-            className="w-11 h-11 rounded-xl flex items-center justify-center btn-press text-white/90 active:text-gold"
+            className="da-hud-action w-11 h-11 shrink-0 btn-press"
           >
             <ArrowLeft className="w-5 h-5" />
-          </button>
+          </Button>
 
           <Link to="/drafts" className="flex-1 min-w-0 flex items-center gap-2.5 btn-press">
             <span className="da-hud-emblem relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
@@ -73,7 +77,7 @@ export function DraftArenaHUD() {
               <p className="da-hud-title text-[12px] font-black uppercase tracking-[0.18em] truncate">
                 Draft Arena
               </p>
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/60 truncate">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground truncate">
                 {subtitle}
               </p>
             </div>
@@ -101,6 +105,8 @@ export function DraftArenaHUD() {
               <Info className="w-4 h-4" />
             </button>
           )}
+
+          <ThemeToggle className="da-hud-action shrink-0" />
 
           {!isHub && (
             <Link
