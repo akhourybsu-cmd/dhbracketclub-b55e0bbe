@@ -13,10 +13,10 @@ export default function CrazyChainLeaderboardPage() {
   const leader = standings[0];
 
   return (
-    <div className="space-y-4 pb-7">
-      <TurfBackdrop className="p-5">
+    <div className="nfl-chain-page space-y-4 pb-7">
+      <TurfBackdrop className="nfl-chain-hero p-4 sm:p-5">
         <p className="pk-section-label flex items-center gap-1.5"><Trophy className="w-3 h-3 text-gold" /> Club Record Board</p>
-        <h1 className="text-[26px] font-black text-white mt-2">Crazy Chain Leaders</h1>
+        <h1 className="nfl-chain-title mt-2">Crazy Chain Leaders</h1>
         <p className="text-[11px] text-white/60 mt-1">Current chains lead the table. Personal best breaks ties.</p>
         <p className="text-xs text-white/65 mt-2">Updates as games resolve · {updatedAt ? 'Refreshed ' + new Date(updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) : 'Checking results'}</p>
         {leader?.rank != null && (
@@ -42,7 +42,7 @@ export default function CrazyChainLeaderboardPage() {
           <p className="text-[10px] text-muted-foreground mt-1">The board activates after the first Crazy Chain card settles.</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="nfl-chain-leader-grid">
           {standings.map((standing, index) => {
             const mine = standing.user_id === user?.id;
             // Members with no card yet are listed for visibility but never
@@ -55,7 +55,7 @@ export default function CrazyChainLeaderboardPage() {
                 key={standing.id}
                 initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: Math.min(index * 0.035, 0.25) }}
-                className={`glass-card p-3.5 flex items-center gap-3 ${mine ? 'ring-1 ring-gold/35' : ''}`}
+                className={`glass-card nfl-chain-leader-row p-3 sm:p-3.5 flex items-center gap-2.5 sm:gap-3 ${mine ? 'ring-1 ring-gold/35' : ''}`}
               >
                 <div className={`w-9 h-8 rounded-lg flex items-center justify-center text-[11px] font-black tabular-nums ${medal && standing.rank === 1 ? 'bg-gold/15 text-gold border border-gold/30' : 'bg-white/5 text-muted-foreground border border-white/10'}`}>
                   {medal ? <Medal className="w-4 h-4" /> : idle ? '–' : `${shared ? 'T' : ''}${standing.rank}`}
@@ -68,7 +68,7 @@ export default function CrazyChainLeaderboardPage() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-extrabold truncate">{standing.profiles?.display_name || 'Member'}{mine ? ' · You' : ''}</p>
-                  <p className="text-[9px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                  <p className="text-[9px] text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     {idle ? <span>No chain card yet</span> : <><span>Best {standing.best_chain}</span><span>•</span><span>{standing.perfect_games ?? 0} perfect games</span></>}
                   </p>
                   {!!standing.pending_games && <p className="text-[10px] text-muted-foreground mt-1">{standing.pending_games} locked game(s) awaiting results</p>}

@@ -28,7 +28,7 @@ export default function CrazyChainPage() {
   if (seasonLoading || (loading && !weeks.length)) return <div className="h-64 rounded-2xl pk-skeleton" />;
   if (error) return <div className="glass-card p-5"><p role="alert">{error.message}</p><Button onClick={() => void refetch()}>Retry</Button></div>;
   if (!season || !week) return <p className="glass-card p-5">No active NFL week.</p>;
-  return <div className="member-page">
+  return <div className="member-page nfl-chain-page">
     <label className="block mb-4 space-y-1.5">
       <span className="text-xs font-bold text-muted-foreground">Browse games by week</span>
       <select aria-label="Crazy Chain week" value={week.week_number} onChange={event => setParams({ week: event.target.value })} className="w-full min-h-11 rounded-xl border border-input bg-background px-3 text-sm">
@@ -82,19 +82,19 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
     finally { setSaving(null); }
   }
   return <div className="space-y-4 pb-8">
-    <TurfBackdrop className="p-5">
+    <TurfBackdrop className="nfl-chain-hero p-4 sm:p-5">
       <p className="pk-section-label flex items-center gap-2"><Zap className="w-3 h-3 text-gold" /> Game by game</p>
-      <h1 className="text-3xl font-black text-white mt-2">Crazy Chain</h1>
-      <p className="text-sm text-white/70 mt-2 max-w-prose">Build a set of predictions for each game. Hit them all to add links; one miss breaks your chain. Later games stay open until their own deadlines.</p>
-      <div className="grid grid-cols-3 gap-2 mt-4">
+      <h1 className="nfl-chain-title mt-2">Crazy Chain</h1>
+      <p className="nfl-chain-copy mt-2 max-w-prose">Build a set of predictions for each game. Hit them all to add links; one miss breaks your chain. Later games stay open until their own deadlines.</p>
+      <div className="nfl-chain-stats mt-4">
         {[['Current',mine?.current_chain || 0],['Best',mine?.best_chain || 0],['Pending picks',entry?.legs.filter(l => l.status === 'pending').length || 0]].map(([label,value]) =>
-          <div key={label} className="rounded-xl bg-black/25 p-3 text-center"><p className="text-2xl font-black text-white tabular-nums">{value}</p><p className="text-[10px] text-white/65">{label}</p></div>)}
+          <div key={label} className="nfl-chain-stat"><p>{value}</p><span>{label}</span></div>)}
       </div>
       {standingsError && <p role="alert" className="text-xs text-white/75 mt-2">Standings could not refresh. Last available totals shown.</p>}
     </TurfBackdrop>
     <div className="grid grid-cols-2 gap-2">
-      <Link to="/nfl/crazy-chain/leaderboard" className="pk-tile p-3 flex items-center gap-2 text-sm"><Trophy className="w-4 h-4 text-primary" /> Leaderboard</Link>
-      <Link to="/nfl/crazy-chain/history" className="pk-tile p-3 flex items-center gap-2 text-sm"><History className="w-4 h-4 text-primary" /> My game results</Link>
+      <Link to="/nfl/crazy-chain/leaderboard" className="pk-tile btn-press p-3 flex items-center gap-2 text-sm"><Trophy className="w-4 h-4 text-primary" /> Leaderboard</Link>
+      <Link to="/nfl/crazy-chain/history" className="pk-tile btn-press p-3 flex items-center gap-2 text-sm"><History className="w-4 h-4 text-primary" /> My game results</Link>
     </div>
     <div className="rounded-xl border border-border bg-muted/30 p-3 text-xs space-y-1">
       <p className="font-bold">Crazy Chain picks lock 30 minutes before kickoff.</p>
@@ -116,6 +116,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
           </select>
         </div>
         {!visible.length && <p className="glass-card p-5 text-sm text-muted-foreground">No predictions published for these games yet.</p>}
+        <div className="nfl-chain-game-grid">
         {visible.map(game => {
           const open = isOpen(game);
           const saved = savedByGame.get(game.id) || [];
@@ -145,7 +146,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
                 return <button key={market.id} type="button" aria-pressed={chosen}
                   disabled={!open || saving !== null || market.status !== 'open'}
                   onClick={() => setDrafts(current => ({...current,[game.id]:chosen ? selected.filter(id => id !== market.id) : [...selected,market.id]}))}
-                  className={'w-full text-left px-3.5 py-3 flex items-start gap-3 transition-colors disabled:cursor-default ' + (chosen ? 'bg-primary/10' : 'hover:bg-muted/40')}>
+                  className={'nfl-chain-market btn-press w-full text-left px-3.5 py-3 flex items-start gap-3 transition-colors disabled:cursor-default ' + (chosen ? 'bg-primary/10' : 'hover:bg-muted/40')}>
                   <span className={'mt-0.5 w-6 h-6 shrink-0 rounded-md border flex items-center justify-center ' + (result === 'miss' ? 'border-destructive text-destructive' : chosen ? 'border-primary text-primary' : 'border-border')}>
                     {cancelled ? <X className="w-4 h-4 text-muted-foreground" /> : result === 'miss' ? <X className="w-4 h-4" /> : chosen ? <Check className="w-4 h-4" /> : null}
                   </span>
@@ -168,6 +169,7 @@ function CrazyChainWeek({ season, week }: { season: NflSeason; week: CrazyChainB
             </div> : <p className="px-3.5 py-2.5 border-t border-border text-xs text-muted-foreground flex items-center gap-2"><LockKeyhole className="w-3.5 h-3.5 shrink-0" />{migrationReady ? 'This game is closed to new picks. Later games have their own deadlines.' : 'Database update required to enable per-game picks.'}</p>}
           </section>;
         })}
+        </div>
       </>}
   </div>;
 }

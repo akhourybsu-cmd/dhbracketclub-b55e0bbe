@@ -17,6 +17,7 @@ import {
 } from '@/hooks/useCrazyChain';
 import { CHAIN_MARKET_LABELS, formatThreshold, type ChainOperator } from '@/lib/nfl/crazyChain';
 import { CrazyChainBoardImport } from '@/components/pickem/CrazyChainBoardImport';
+import { NflCheckButton } from '@/components/pickem/NflCheckButton';
 
 const MARKET_TYPES = [
   'team_win', 'team_points', 'game_total',
@@ -169,7 +170,7 @@ export default function CrazyChainAdminPage() {
   }
 
   return (
-    <div className="space-y-4 pb-8">
+    <div className="nfl-chain-page space-y-4 pb-8">
       <Link to="/nfl" className="text-[11px] text-muted-foreground flex items-center gap-1 btn-press"><ArrowLeft className="w-4 h-4" /> NFL Game Center</Link>
       <div className="page-header">
         <div className="page-header-icon bg-destructive/10"><Shield className="w-5 h-5 text-destructive" /></div>
@@ -187,6 +188,13 @@ export default function CrazyChainAdminPage() {
                 {autoScoring ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Calculator className="w-3.5 h-3.5 mr-1" />} Auto-score
               </Button>
             </div>
+            <NflCheckButton
+              seasonYear={season.year}
+              currentWeek={weeks.find(week => week.id === weekId)?.week_number ?? season.current_week}
+              onDone={() => void refetch()}
+              className="w-full min-h-11"
+              label="Refresh games, scores and Chain"
+            />
             <label className="block text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Week</label>
             <select value={weekId} onChange={event => setWeekId(event.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
               {weeks.map(week => <option key={week.id} value={week.id}>{week.label}</option>)}

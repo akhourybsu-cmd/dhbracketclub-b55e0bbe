@@ -3170,17 +3170,37 @@
 .nfl-pick-slip { border: 1px solid hsl(var(--nfl-gold) / .3) !important; border-radius: 6px !important; background: hsl(var(--nfl-midnight) / .94) !important; }
 .nfl-status-pill { border-radius: 999px; letter-spacing: .08em; }
 
+/* Crazy Chain — responsive scorecard and game-board rhythm */
+.nfl-chain-title { color: hsl(var(--nfl-white)); font-size: clamp(24px, 4vw, 34px); line-height: 1.05; font-weight: 800; }
+.nfl-chain-copy { color: hsl(var(--nfl-white) / .68); font-size: 13px; line-height: 1.6; }
+.nfl-chain-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.nfl-chain-stat { min-width: 0; min-height: 68px; padding: 11px 8px; display: grid; place-content: center; text-align: center; border: 1px solid hsl(var(--nfl-white) / .1); border-radius: 5px; background: hsl(var(--nfl-midnight) / .5); }
+.nfl-chain-stat p { color: hsl(var(--nfl-white)); font-family: 'Sora', sans-serif; font-size: 22px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.nfl-chain-stat span { margin-top: 7px; color: hsl(var(--nfl-white) / .52); font-size: 9px; line-height: 1.2; font-weight: 800; text-transform: uppercase; }
+.nfl-chain-game-grid,
+.nfl-chain-history-grid,
+.nfl-chain-leader-grid { display: grid; gap: 8px; }
+.nfl-chain-market { min-height: 52px; touch-action: manipulation; }
+.nfl-chain-market:active { background: hsl(var(--nfl-green) / .14); transform: translateY(1px); }
+.nfl-chain-leader-row { min-width: 0; }
+
 @media (min-width: 768px) {
   .nfl-command-main > .member-page,
   .nfl-command-main > .space-y-3,
   .nfl-command-main > .space-y-4 { max-width: 980px; }
   .nfl-command-main .member-page > .space-y-4 { max-width: none; }
+  .nfl-chain-game-grid,
+  .nfl-chain-history-grid,
+  .nfl-chain-leader-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
 }
 @media (max-width: 640px) {
   .nfl-command-nav-link { padding-inline: 10px; }
   .nfl-command-nav-link span { font-size: 9px; }
   .nfl-command-nav-admin { margin-left: 0; }
   .nfl-command-main { padding-top: 12px; }
+  .nfl-chain-stat { min-height: 62px; padding-inline: 5px; }
+  .nfl-chain-stat p { font-size: 19px; }
+  .nfl-chain-stat span { font-size: 8px; overflow-wrap: anywhere; }
 }
 
 /* Force readable surfaces in the shell even under light theme */

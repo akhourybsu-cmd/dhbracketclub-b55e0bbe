@@ -6,12 +6,16 @@ export interface NflCheckResult {
   upserts: number;
   finals: number;
   scoredUsers: number;
+  chainSettled: number;
+  chainPending: number;
+  chainDeferred: boolean;
   error?: string;
 }
 
 export interface NflCheckSummary {
   weeks: NflCheckResult[];
   boardsRefreshed: number;
+  boardErrors: number;
 }
 
 const WEEK_WINDOW_DAYS = 8;
@@ -64,17 +68,25 @@ export async function runNflCheck(seasonYear: number, currentWeek: number): Prom
       });
       if (error) throw error;
       if (data?.week_id) weekIds.push(data.week_id);
+      const chain = data?.scored?.crazy_chain;
+      const chainError = chain?.ok === false && !chain?.deferred
+        ? chain?.error || 'Crazy Chain scoring needs a retry.'
+        : undefined;
       weeks.push({
         weekNumber,
-        ok: data?.ok !== false,
+        ok: data?.ok !== false && !chainError,
         upserts: data?.upserts ?? 0,
         finals: data?.finals ?? 0,
         scoredUsers: data?.scored?.scored_users ?? 0,
-        error: data?.error,
+        chainSettled: chain?.settled ?? 0,
+        chainPending: chain?.skipped ?? 0,
+        chainDeferred: chain?.deferred === true,
+        error: data?.error || chainError,
       });
     } catch (error) {
       weeks.push({
         weekNumber, ok: false, upserts: 0, finals: 0, scoredUsers: 0,
+        chainSettled: 0, chainPending: 0, chainDeferred: false,
         error: error instanceof Error ? error.message : 'Check failed',
       });
     }
@@ -82,18 +94,20 @@ export async function runNflCheck(seasonYear: number, currentWeek: number): Prom
 
   // Best effort: chain boards are a per-club projection of the same games.
   let boardsRefreshed = 0;
+  let boardErrors = 0;
   for (const weekId of weekIds) {
     try {
       const { data, error } = await supabase.functions.invoke('refresh-nfl-chain-boards', {
         body: { week_id: weekId },
       });
       if (!error && data?.ok !== false) boardsRefreshed += 1;
+      else boardErrors += 1;
     } catch {
-      // A club without chain boards is not an error for the score check.
+      boardErrors += 1;
     }
   }
 
-  return { weeks, boardsRefreshed };
+  return { weeks, boardsRefreshed, boardErrors };
 }
 
 export function summarizeNflCheck(summary: NflCheckSummary): string {
@@ -102,9 +116,16 @@ export function summarizeNflCheck(summary: NflCheckSummary): string {
   const games = weeks.reduce((total, week) => total + week.upserts, 0);
   const finals = weeks.reduce((total, week) => total + week.finals, 0);
   const scored = weeks.reduce((total, week) => total + week.scoredUsers, 0);
+  const chainSettled = weeks.reduce((total, week) => total + week.chainSettled, 0);
+  const chainPending = weeks.reduce((total, week) => total + week.chainPending, 0);
+  const chainDeferred = weeks.some(week => week.chainDeferred);
   if (!weeks.length) return 'No weeks were available to check.';
   if (failed.length === weeks.length) return failed[0]?.error || 'Nothing could be checked. Try again shortly.';
   const tail = failed.length ? ` · ${failed.length} week${failed.length === 1 ? '' : 's'} need a retry` : '';
   const standings = scored ? ` · standings updated for ${scored} entr${scored === 1 ? 'y' : 'ies'}` : '';
-  return `${games} game${games === 1 ? '' : 's'} refreshed · ${finals} final${standings}${tail}`;
+  const chain = chainSettled ? ` · ${chainSettled} Chain prediction${chainSettled === 1 ? '' : 's'} settled` : '';
+  const pending = chainPending ? ` · ${chainPending} stat${chainPending === 1 ? '' : 's'} pending` : '';
+  const deferred = chainDeferred ? ' · Chain scoring is still processing; check again shortly' : '';
+  const boards = summary.boardErrors ? ` · ${summary.boardErrors} Chain board${summary.boardErrors === 1 ? '' : 's'} need a retry` : '';
+  return `${games} game${games === 1 ? '' : 's'} refreshed · ${finals} final${standings}${chain}${pending}${deferred}${boards}${tail}`;
 }
