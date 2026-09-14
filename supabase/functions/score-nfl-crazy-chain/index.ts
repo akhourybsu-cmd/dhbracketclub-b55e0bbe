@@ -48,12 +48,12 @@ Deno.serve(async req=>{
       if(!markets?.length) continue;
       let summary:FinalSummary|null=null;
       try{
-        const response=await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event='+encodeURIComponent(game.external_id||''),{signal:deadline()});
-        if(response.ok){
-          const candidate=await response.json();
-          if(verifyFinalSummary(candidate,game,teams,year)) summary=candidate;
-        }
-      }catch{ /* team results still use verified stored final scores */ }
+        // ESPN's edge answers 403 for Deno's default User-Agent, which silently
+        // left every player statistic pending. Use the accepted shared fetcher.
+        const candidate=await fetchNflData<FinalSummary>('summary?event='+encodeURIComponent(game.external_id||''));
+        if(verifyFinalSummary(candidate,game,teams,year)) summary=candidate;
+        else console.warn('Final summary failed verification',game.external_id);
+      }catch(error){ console.warn('Final summary unavailable',game.external_id,error instanceof Error?error.message:error); }
       const values=[];
       for(const market of markets as StatMarket[]){
         const value=finalMarketValue(market,game,summary,teams);
