@@ -187,7 +187,7 @@ export default function NFLGameCenterPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
           {season && (
-            <NflCheckButton seasonYear={season.year} currentWeek={week?.week_number ?? season.current_week} onDone={() => window.location.reload()} />
+            <NflCheckButton seasonYear={season.year} currentWeek={week?.week_number ?? season.current_week} />
           )}
           <Link to="/nfl/admin/crazy-chain" className="nfl-admin-link">
             Chain control <ArrowRight />

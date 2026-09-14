@@ -13,20 +13,20 @@ export default function CrazyChainHistoryPage() {
   const {cards,error:cardsError,refetch:refreshCards}=useMyCrazyChainGameCards(undefined,season?.id);
   const {standings}=useCrazyChainStandings(season?.id);
   const standing=standings.find(row=>row.user_id===user?.id);
-  return <div className="member-page space-y-4 pb-7">
-    <TurfBackdrop className="p-5">
+  return <div className="member-page nfl-chain-page space-y-4 pb-7">
+    <TurfBackdrop className="nfl-chain-hero p-4 sm:p-5">
       <p className="pk-section-label flex items-center gap-2"><History className="w-3 h-3 text-gold" /> Game-by-game history</p>
-      <h1 className="text-2xl font-black text-white mt-2">My Crazy Chains</h1>
-      <div className="grid grid-cols-3 gap-2 mt-4">
+      <h1 className="nfl-chain-title mt-2">My Crazy Chains</h1>
+      <div className="nfl-chain-stats mt-4">
         {[['Current',standing?.current_chain||0],['Best',standing?.best_chain||0],['Perfect games',standing?.perfect_games||0]].map(([label,value])=>
-          <div key={label} className="rounded-xl bg-black/25 p-3 text-center"><p className="text-xl text-white font-black">{value}</p><p className="text-[10px] text-white/65">{label}</p></div>)}
+          <div key={label} className="nfl-chain-stat"><p>{value}</p><span>{label}</span></div>)}
       </div>
     </TurfBackdrop>
     <p className="text-xs text-muted-foreground">Results refresh every 30 seconds. Each game is scored separately; chain steps follow kickoff order. Simultaneous games are checked together, with any miss breaking that step.</p>
     {loading ? <div className="h-32 rounded-xl pk-skeleton" /> : error || cardsError ?
       <div className="glass-card p-4"><p role="alert" className="text-sm">{error || cardsError}</p><Button variant="outline" className="mt-3" onClick={()=>void Promise.all([refetch(),refreshCards()])}>Retry</Button></div>
       : !cards.length ? <div className="glass-card p-6 text-center"><Link2 className="w-6 h-6 mx-auto mb-2 text-primary" /><p className="text-sm">Save predictions for a game to start your history.</p></div>
-      : [...cards].reverse().map(card=>{
+      : <div className="nfl-chain-history-grid">{[...cards].reverse().map(card=>{
         const entry=entries.find(e=>e.id===card.entry_id);
         const away=teams.find(team=>team.id===card.away_team_id)?.abbr || 'Away';
         const home=teams.find(team=>team.id===card.home_team_id)?.abbr || 'Home';
@@ -42,6 +42,6 @@ export default function CrazyChainHistoryPage() {
               <div className="flex-1 min-w-0"><p>{leg.display_text}</p>{leg.status==='void' && <p className="text-muted-foreground mt-1">{leg.void_reason || 'Voided; no link earned and no chain penalty.'}</p>}</div><span className="text-muted-foreground shrink-0">{leg.status}{leg.actual_value!=null?' · '+leg.actual_value:''}</span>
             </div>)}</div>
         </article>;
-      })}
+      })}</div>}
   </div>;
 }
