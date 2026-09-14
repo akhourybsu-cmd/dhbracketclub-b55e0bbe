@@ -2,6 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { finalMarketValue, verifyFinalSummary, type FinalGame, type FinalSummary, type StatMarket } from '../_shared/chainFinalStats.ts';
 import { readAllNflRows } from '../_shared/nflReadAll.ts';
+import { fetchNflData } from '../_shared/chainBoardData.ts';
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,x-client-info,apikey,content-type,x-cron-secret'};
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...headers,'Content-Type':'application/json'}});
 const deadline=()=>AbortSignal.timeout(15_000);
