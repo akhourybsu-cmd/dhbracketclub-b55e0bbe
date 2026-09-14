@@ -2,6 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { finalMarketValue, verifyFinalSummary, type FinalGame, type FinalSummary, type StatMarket } from '../_shared/chainFinalStats.ts';
 import { readAllNflRows } from '../_shared/nflReadAll.ts';
+import { fetchNflData } from '../_shared/chainBoardData.ts';
 const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization,x-client-info,apikey,content-type,x-cron-secret'};
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...headers,'Content-Type':'application/json'}});
 const deadline=()=>AbortSignal.timeout(15_000);
@@ -48,12 +49,12 @@ Deno.serve(async req=>{
       if(!markets?.length) continue;
       let summary:FinalSummary|null=null;
       try{
-        const response=await fetch('https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event='+encodeURIComponent(game.external_id||''),{signal:deadline()});
-        if(response.ok){
-          const candidate=await response.json();
-          if(verifyFinalSummary(candidate,game,teams,year)) summary=candidate;
-        }
-      }catch{ /* team results still use verified stored final scores */ }
+        // ESPN's edge answers 403 for Deno's default User-Agent, which silently
+        // left every player statistic pending. Use the accepted shared fetcher.
+        const candidate=await fetchNflData<FinalSummary>('summary?event='+encodeURIComponent(game.external_id||''));
+        if(verifyFinalSummary(candidate,game,teams,year)) summary=candidate;
+        else console.warn('Final summary failed verification',game.external_id);
+      }catch(error){ console.warn('Final summary unavailable',game.external_id,error instanceof Error?error.message:error); }
       const values=[];
       for(const market of markets as StatMarket[]){
         const value=finalMarketValue(market,game,summary,teams);
