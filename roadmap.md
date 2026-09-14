@@ -21,3 +21,10 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 13. Refresh NFL and Crazy Chain screen data in place after a manual check
 - [x] 14. Polish Crazy Chain board, history, leaderboard, and controls for mobile and desktop
 - [x] 15. Verify focused tests, type safety, and representative phone/desktop screens
+
+# NFL Game Center + Draft Arena light/dark modes
+
+- [ ] 16. Give the NFL Game Center complete daylight and night theme tokens across shared screens and dialogs
+- [ ] 17. Restore a true parchment-light Heritage Ledger variant across the complete Draft Arena
+- [ ] 18. Add an accessible theme switch to both standalone center headers
+- [ ] 19. Verify representative NFL, Crazy Chain, Draft hub, and Draft room screens in both themes on phone and desktop
