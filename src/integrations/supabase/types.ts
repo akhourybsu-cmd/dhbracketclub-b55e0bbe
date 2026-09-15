@@ -11239,6 +11239,7 @@ export type Database = {
           _shares: number
           _side: string
           _symbol: string
+          _user_id: string
         }
         Returns: Json
       }
