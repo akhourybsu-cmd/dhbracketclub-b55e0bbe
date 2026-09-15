@@ -7623,6 +7623,48 @@ export type Database = {
           },
         ]
       }
+      pw_daily_values: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          portfolio_id: string
+          trading_date: string
+          value: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          portfolio_id: string
+          trading_date: string
+          value: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          portfolio_id?: string
+          trading_date?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_daily_values_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_daily_values_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "pw_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pw_entries: {
         Row: {
           avg_pct: number | null
@@ -7676,6 +7718,107 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pw_holdings: {
+        Row: {
+          avg_cost: number
+          club_id: string
+          created_at: string
+          id: string
+          portfolio_id: string
+          shares: number
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          avg_cost?: number
+          club_id: string
+          created_at?: string
+          id?: string
+          portfolio_id: string
+          shares?: number
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          avg_cost?: number
+          club_id?: string
+          created_at?: string
+          id?: string
+          portfolio_id?: string
+          shares?: number
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_holdings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_holdings_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "pw_portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_league_settings: {
+        Row: {
+          club_id: string
+          created_at: string
+          max_position_pct: number
+          max_trades_per_day: number
+          starting_cash: number
+          updated_at: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          max_position_pct?: number
+          max_trades_per_day?: number
+          starting_cash?: number
+          updated_at?: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          max_position_pct?: number
+          max_trades_per_day?: number
+          starting_cash?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_league_settings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_market_holidays: {
+        Row: {
+          early_close: boolean
+          holiday_date: string
+          label: string | null
+        }
+        Insert: {
+          early_close?: boolean
+          holiday_date: string
+          label?: string | null
+        }
+        Update: {
+          early_close?: boolean
+          holiday_date?: string
+          label?: string | null
+        }
+        Relationships: []
       }
       pw_picks: {
         Row: {
@@ -7731,6 +7874,63 @@ export type Database = {
           },
         ]
       }
+      pw_portfolios: {
+        Row: {
+          cash: number
+          club_id: string
+          created_at: string
+          final_rank: number | null
+          holdings_value: number
+          id: string
+          season_id: string
+          total_value: number
+          updated_at: string
+          user_id: string
+          valued_at: string | null
+        }
+        Insert: {
+          cash?: number
+          club_id: string
+          created_at?: string
+          final_rank?: number | null
+          holdings_value?: number
+          id?: string
+          season_id: string
+          total_value?: number
+          updated_at?: string
+          user_id: string
+          valued_at?: string | null
+        }
+        Update: {
+          cash?: number
+          club_id?: string
+          created_at?: string
+          final_rank?: number | null
+          holdings_value?: number
+          id?: string
+          season_id?: string
+          total_value?: number
+          updated_at?: string
+          user_id?: string
+          valued_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_portfolios_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_portfolios_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "pw_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pw_price_snapshots: {
         Row: {
           captured_at: string
@@ -7775,6 +7975,183 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_quotes: {
+        Row: {
+          fetched_at: string
+          high: number | null
+          low: number | null
+          open: number | null
+          prev_close: number | null
+          price: number | null
+          symbol: string
+        }
+        Insert: {
+          fetched_at?: string
+          high?: number | null
+          low?: number | null
+          open?: number | null
+          prev_close?: number | null
+          price?: number | null
+          symbol: string
+        }
+        Update: {
+          fetched_at?: string
+          high?: number | null
+          low?: number | null
+          open?: number | null
+          prev_close?: number | null
+          price?: number | null
+          symbol?: string
+        }
+        Relationships: []
+      }
+      pw_seasons: {
+        Row: {
+          club_id: string
+          created_at: string
+          ends_on: string
+          finalized_at: string | null
+          id: string
+          quarter: number
+          starting_cash: number
+          starts_on: string
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          ends_on: string
+          finalized_at?: string | null
+          id?: string
+          quarter: number
+          starting_cash?: number
+          starts_on: string
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          ends_on?: string
+          finalized_at?: string | null
+          id?: string
+          quarter?: number
+          starting_cash?: number
+          starts_on?: string
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_seasons_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_symbols: {
+        Row: {
+          active: boolean
+          exchange: string | null
+          name: string
+          symbol: string
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          exchange?: string | null
+          name?: string
+          symbol: string
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          exchange?: string | null
+          name?: string
+          symbol?: string
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pw_trades: {
+        Row: {
+          amount: number
+          club_id: string
+          created_at: string
+          id: string
+          portfolio_id: string
+          price: number
+          realized_pl: number | null
+          season_id: string
+          shares: number
+          side: string
+          symbol: string
+          trading_date: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          club_id: string
+          created_at?: string
+          id?: string
+          portfolio_id: string
+          price: number
+          realized_pl?: number | null
+          season_id: string
+          shares: number
+          side: string
+          symbol: string
+          trading_date?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          club_id?: string
+          created_at?: string
+          id?: string
+          portfolio_id?: string
+          price?: number
+          realized_pl?: number | null
+          season_id?: string
+          shares?: number
+          side?: string
+          symbol?: string
+          trading_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_trades_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_trades_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "pw_portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_trades_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "pw_seasons"
             referencedColumns: ["id"]
           },
         ]
@@ -10851,6 +11228,24 @@ export type Database = {
         Returns: Json
       }
       purchase_boost: { Args: { _boost_code: string }; Returns: Json }
+      pw_ensure_season: { Args: { _club_id: string }; Returns: string }
+      pw_is_member: { Args: { _club_id: string }; Returns: boolean }
+      pw_join_season: {
+        Args: { _season_id: string; _user_id?: string }
+        Returns: string
+      }
+      pw_market_is_open: { Args: { _at?: string }; Returns: boolean }
+      pw_place_trade: {
+        Args: {
+          _price: number
+          _season_id: string
+          _shares: number
+          _side: string
+          _symbol: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       readshift_read_cards: {
         Args: { _round_id: string }
         Returns: {
