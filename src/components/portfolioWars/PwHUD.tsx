@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Share2 } from 'lucide-react';
+import { useLocation, useNavigate, Link, NavLink } from 'react-router-dom';
+import { ArrowLeft, Share2, Briefcase, ArrowLeftRight, Trophy, Rss, Landmark } from 'lucide-react';
 import pwEmblem from '@/assets/portfolio-wars-emblem.png';
 import { marketState, formatCountdown } from '@/lib/portfolioWars/market';
 import { copyShareTextWithLink } from '@/lib/share';
