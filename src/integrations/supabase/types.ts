@@ -6294,6 +6294,7 @@ export type Database = {
           home_team_id: string
           id: string
           kickoff_at: string
+          pickem_unlock_until: string | null
           season_id: string
           status: string
           updated_at: string
@@ -6313,6 +6314,7 @@ export type Database = {
           home_team_id: string
           id?: string
           kickoff_at: string
+          pickem_unlock_until?: string | null
           season_id: string
           status?: string
           updated_at?: string
@@ -6332,6 +6334,7 @@ export type Database = {
           home_team_id?: string
           id?: string
           kickoff_at?: string
+          pickem_unlock_until?: string | null
           season_id?: string
           status?: string
           updated_at?: string
