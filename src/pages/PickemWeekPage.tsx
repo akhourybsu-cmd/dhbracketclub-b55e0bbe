@@ -210,6 +210,10 @@ export default function PickemWeekPage() {
 
       <WeekNavigator weeks={visibleWeeks} currentWeek={week.week_number} basePath="/pickem/week" />
 
+      {isAdmin && games.length > 0 && (
+        <CommissionerUnlockCard games={games} now={now} onChanged={refreshGames} />
+      )}
+
       {games.some(game => game.status === 'final') && (
         <Link to={`/pickem/week/${week.week_number}/results`}>
           <div className="glass-card p-3 flex items-center gap-2 hover:bg-muted/30 transition-colors">
