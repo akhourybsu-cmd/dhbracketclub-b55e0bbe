@@ -205,8 +205,12 @@ function AnimatedRoutes() {
         {/* Compete hub */}
         <Route path="/compete" element={<ProtectedPage><CompetePage /></ProtectedPage>} />
 
-        {/* Portfolio Wars — weekly stock-picking challenge */}
+        {/* Portfolio Wars — live trading league */}
         <Route path="/portfolio-wars" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PortfolioWarsPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/trade" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwTradePage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/leaderboard" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwLeaderboardPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/activity" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwActivityPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/history" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwHistoryPage /></PwLayout></ProtectedPage>} />
 
         {/* Lockbox module */}
         <Route path="/lockbox" element={<ProtectedPage assetSlug="lockbox"><LockboxPage /></ProtectedPage>} />
