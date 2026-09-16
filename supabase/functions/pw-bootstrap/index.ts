@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
   if (!clubId) clubId = clubIds[0];
   if (!clubIds.includes(clubId)) return json({ error: "Not a member of that club" }, 403);
 
-  const { data: seasonId, error: sErr } = await admin.rpc("pw_ensure_season", { _club_id: clubId });
+  const { data: seasonId, error: sErr } = await admin.rpc("pw_ensure_season", { _club_id: clubId, _user_id: user.id });
   if (sErr) return json({ error: sErr.message }, 400);
 
   const { data: portfolioId, error: pErr } = await admin.rpc("pw_join_season", {

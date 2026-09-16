@@ -136,6 +136,10 @@ const NexusSigilVaultPage = lazyWithRetry(() => import("./pages/NexusSigilVaultP
 const NexusSimulatorPage = lazyWithRetry(() => import("./pages/NexusSimulatorPage"));
 const NexusMissionWorkshopPage = lazyWithRetry(() => import("./pages/NexusMissionWorkshopPage"));
 const PortfolioWarsPage = lazyWithRetry(() => import("./pages/PortfolioWarsPage"));
+const PwTradePage = lazyWithRetry(() => import("./pages/PwTradePage"));
+const PwLeaderboardPage = lazyWithRetry(() => import("./pages/PwLeaderboardPage"));
+const PwActivityPage = lazyWithRetry(() => import("./pages/PwActivityPage"));
+const PwHistoryPage = lazyWithRetry(() => import("./pages/PwHistoryPage"));
 const PwLayout = lazyWithRetry(() => import("./components/portfolioWars/PwLayout").then(m => ({ default: m.PwLayout })));
 const RuneDelveLayout = lazyWithRetry(() => import("./components/runedelve/RuneDelveLayout").then(m => ({ default: m.RuneDelveLayout })));
 const NexusLayout = lazyWithRetry(() => import("./components/nexus/NexusLayout").then(m => ({ default: m.NexusLayout })));
@@ -205,8 +209,12 @@ function AnimatedRoutes() {
         {/* Compete hub */}
         <Route path="/compete" element={<ProtectedPage><CompetePage /></ProtectedPage>} />
 
-        {/* Portfolio Wars — weekly stock-picking challenge */}
+        {/* Portfolio Wars — live trading league */}
         <Route path="/portfolio-wars" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PortfolioWarsPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/trade" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwTradePage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/leaderboard" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwLeaderboardPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/activity" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwActivityPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/history" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwHistoryPage /></PwLayout></ProtectedPage>} />
 
         {/* Lockbox module */}
         <Route path="/lockbox" element={<ProtectedPage assetSlug="lockbox"><LockboxPage /></ProtectedPage>} />

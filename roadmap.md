@@ -28,3 +28,11 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 17. Restore a true parchment-light Heritage Ledger variant across the complete Draft Arena
 - [x] 18. Add an accessible theme switch to both standalone center headers
 - [x] 19. Verify representative NFL, Crazy Chain, Draft hub, and Draft room screens in both themes on phone and desktop
+
+# Portfolio Wars — live trading league
+- [x] 20. Wire Trade / Standings / Club tape / History screens into app routes
+- [x] 21. Replace weekly-game header wording with live market open/closed status + countdown
+- [x] 22. Retire weekly game schedules; add hourly market-hours revaluation, end-of-day snapshot, nightly symbol sync, daily season roll-over
+- [x] 23. Fix season bootstrap (server-side membership check) — season + portfolio now created on first visit
+- [x] 24. Verify screens, search, live quote and market-closed blocker in browser
+- [ ] 25. Place one real buy/sell end to end — blocked until the US market is open (next open 09:30 ET)
