@@ -17,6 +17,7 @@ import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { KickoffCountdown } from '@/components/pickem/KickoffCountdown';
 import { PickSlipBar } from '@/components/pickem/PickSlipBar';
 import { PickemShell } from '@/components/pickem/PickemShell';
+import { CommissionerUnlockCard } from '@/components/pickem/CommissionerUnlockCard';
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
 
 export default function PickemWeekPage() {
@@ -209,6 +210,10 @@ export default function PickemWeekPage() {
       {gamesError && <button type="button" onClick={() => void refreshGames()} className="glass-card p-3 w-full text-sm text-destructive">{gamesError} · Retry</button>}
 
       <WeekNavigator weeks={visibleWeeks} currentWeek={week.week_number} basePath="/pickem/week" />
+
+      {isAdmin && games.length > 0 && (
+        <CommissionerUnlockCard games={games} now={now} onChanged={refreshGames} />
+      )}
 
       {games.some(game => game.status === 'final') && (
         <Link to={`/pickem/week/${week.week_number}/results`}>

@@ -7,6 +7,8 @@ type GameDeadlines = {
   /** Legacy database name: this remains Weekly Pick'em's frozen 48-hour cutoff. */
   chain_lock_at?: string | null;
   crazy_chain_lock_at?: string | null;
+  /** Commissioner override: while set to a future time, Pick'em selections reopen. */
+  pickem_unlock_until?: string | null;
 };
 function frozenDeadline(kickoffAt: string, frozenAt: string | null | undefined, leadMs: number): number {
   const kickoff = Date.parse(kickoffAt);
@@ -22,6 +24,12 @@ export function chainGameIsOpen(game: GameDeadlines & { status: string }, now = 
 export function pickemGameLockAt(game: GameDeadlines): number {
   return frozenDeadline(game.kickoff_at, game.chain_lock_at, PICKEM_LOCK_MS);
 }
+/** True while a commissioner has reopened this matchup and the window has not expired. */
+export function pickemOverrideActive(game: GameDeadlines, now = Date.now()): boolean {
+  const until = game.pickem_unlock_until ? Date.parse(game.pickem_unlock_until) : NaN;
+  return Number.isFinite(until) && now < until;
+}
 export function pickemGameIsOpen(game: GameDeadlines & { status: string }, now = Date.now()): boolean {
-  return game.status === 'scheduled' && now < pickemGameLockAt(game);
+  if (game.status !== 'scheduled') return false;
+  return now < pickemGameLockAt(game) || pickemOverrideActive(game, now);
 }

@@ -51,6 +51,8 @@ export type NflGame = {
   kickoff_at: string;
   chain_lock_at?: string | null;
   crazy_chain_lock_at?: string | null;
+  /** Commissioner override: while in the future, picks reopen for this matchup. */
+  pickem_unlock_until?: string | null;
   status: 'scheduled' | 'live' | 'final';
   away_score: number | null;
   home_score: number | null;
