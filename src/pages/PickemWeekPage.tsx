@@ -17,6 +17,7 @@ import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { KickoffCountdown } from '@/components/pickem/KickoffCountdown';
 import { PickSlipBar } from '@/components/pickem/PickSlipBar';
 import { PickemShell } from '@/components/pickem/PickemShell';
+import { CommissionerUnlockCard } from '@/components/pickem/CommissionerUnlockCard';
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
 
 export default function PickemWeekPage() {
