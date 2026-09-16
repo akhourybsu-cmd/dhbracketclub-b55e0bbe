@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Share2 } from 'lucide-react';
 import pwEmblem from '@/assets/portfolio-wars-emblem.png';
-import { useCurrentChallenge } from '@/hooks/usePortfolioWars';
+import { marketState, formatCountdown } from '@/lib/portfolioWars/market';
 import { copyShareTextWithLink } from '@/lib/share';
 import { PwExitDialog } from './PwExitDialog';
 
@@ -14,33 +14,25 @@ import { PwExitDialog } from './PwExitDialog';
 export function PwHUD() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { data: current } = useCurrentChallenge();
   const [exitOpen, setExitOpen] = useState(false);
+  const [market, setMarket] = useState(() => marketState());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setMarket(marketState()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const isHub = location.pathname === '/portfolio-wars';
 
-  // Market-status pip color & label
-  const marketStatus = (() => {
-    if (!current) return { color: 'hsl(0 0% 50%)', label: 'IDLE' };
-    switch (current.status) {
-      case 'upcoming': return { color: 'hsl(152 80% 55%)', label: 'OPEN' };
-      case 'locked': return { color: 'hsl(38 100% 60%)', label: 'LOCKED' };
-      case 'active': return { color: 'hsl(152 80% 55%)', label: 'LIVE' };
-      case 'completed':
-      case 'archived': return { color: 'hsl(0 0% 55%)', label: 'CLOSED' };
-      default: return { color: 'hsl(0 0% 50%)', label: 'IDLE' };
-    }
-  })();
+  const marketStatus = market.isOpen
+    ? { color: 'hsl(152 80% 55%)', label: 'OPEN' }
+    : { color: 'hsl(38 100% 60%)', label: 'CLOSED' };
 
-  const subtitle = current
-    ? (current.status === 'upcoming' ? 'Picks Open · Lock Monday'
-      : current.status === 'locked' ? 'Picks Locked · Awaiting Open'
-      : current.status === 'active' ? 'Live · Markets In Motion'
-      : current.status === 'completed' ? 'Week Complete · Final Recap'
-      : 'Trading Floor')
-    : 'Trading Floor';
+  const subtitle = market.isOpen
+    ? `Market Open · ${formatCountdown(market.msUntilChange)} ${market.changeLabel}`
+    : `Market Closed · ${formatCountdown(market.msUntilChange)} ${market.changeLabel}`;
 
-  const weekChip = current?.week_number ? `WK ${current.week_number}` : null;
+  const weekChip: string | null = null;
 
   const handleBack = () => {
     if (isHub) setExitOpen(true);
@@ -49,9 +41,7 @@ export function PwHUD() {
 
   const handleShare = async () => {
     const url = 'https://dryhorse.app/portfolio-wars';
-    const text = current
-      ? `Portfolio Wars · Week ${current.week_number} on DH Club — pick 3 stocks, climb the leaderboard.`
-      : 'Pick 3 stocks. Climb the leaderboard. Portfolio Wars on DH Club.';
+    const text = 'Grow $50,000 into the best portfolio in the club — Portfolio Wars on DH Club.';
     if (navigator.share) {
       try { await navigator.share({ title: 'Portfolio Wars', text, url }); return; }
       catch { /* fall through */ }
