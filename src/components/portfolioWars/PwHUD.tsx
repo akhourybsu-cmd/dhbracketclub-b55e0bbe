@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Share2 } from 'lucide-react';
+import { useLocation, useNavigate, Link, NavLink } from 'react-router-dom';
+import { ArrowLeft, Share2, Briefcase, ArrowLeftRight, Trophy, Rss, Landmark } from 'lucide-react';
 import pwEmblem from '@/assets/portfolio-wars-emblem.png';
 import { marketState, formatCountdown } from '@/lib/portfolioWars/market';
 import { copyShareTextWithLink } from '@/lib/share';
 import { PwExitDialog } from './PwExitDialog';
+
+const PW_TABS = [
+  { to: '/portfolio-wars', label: 'Portfolio', icon: Briefcase },
+  { to: '/portfolio-wars/trade', label: 'Trade', icon: ArrowLeftRight },
+  { to: '/portfolio-wars/leaderboard', label: 'Standings', icon: Trophy },
+  { to: '/portfolio-wars/activity', label: 'Tape', icon: Rss },
+  { to: '/portfolio-wars/history', label: 'History', icon: Landmark },
+] as const;
 
 /**
  * Sticky in-game HUD for the Portfolio Wars standalone shell.
@@ -151,6 +159,31 @@ export function PwHUD() {
             <Share2 className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Section tabs */}
+        <nav
+          aria-label="Portfolio Wars sections"
+          className="max-w-[640px] mx-auto px-2 pb-1.5 flex items-center gap-1 overflow-x-auto"
+          style={{ scrollbarWidth: 'none' }}
+        >
+          {PW_TABS.map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.to === '/portfolio-wars'}
+              className="btn-press shrink-0 h-9 px-3 rounded-lg flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em]"
+              style={({ isActive }) => ({
+                background: isActive ? 'hsl(152 80% 50% / 0.16)' : 'transparent',
+                border: `1px solid ${isActive ? 'hsl(152 80% 50% / 0.5)' : 'hsl(220 20% 100% / 0.08)'}`,
+                color: isActive ? 'hsl(152 80% 65%)' : 'hsl(220 10% 100% / 0.55)',
+                boxShadow: isActive ? '0 0 10px hsl(152 80% 50% / 0.25)' : 'none',
+              })}
+            >
+              <tab.icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </NavLink>
+          ))}
+        </nav>
       </header>
 
       <PwExitDialog
