@@ -136,6 +136,10 @@ const NexusSigilVaultPage = lazyWithRetry(() => import("./pages/NexusSigilVaultP
 const NexusSimulatorPage = lazyWithRetry(() => import("./pages/NexusSimulatorPage"));
 const NexusMissionWorkshopPage = lazyWithRetry(() => import("./pages/NexusMissionWorkshopPage"));
 const PortfolioWarsPage = lazyWithRetry(() => import("./pages/PortfolioWarsPage"));
+const PwTradePage = lazyWithRetry(() => import("./pages/PwTradePage"));
+const PwLeaderboardPage = lazyWithRetry(() => import("./pages/PwLeaderboardPage"));
+const PwActivityPage = lazyWithRetry(() => import("./pages/PwActivityPage"));
+const PwHistoryPage = lazyWithRetry(() => import("./pages/PwHistoryPage"));
 const PwLayout = lazyWithRetry(() => import("./components/portfolioWars/PwLayout").then(m => ({ default: m.PwLayout })));
 const RuneDelveLayout = lazyWithRetry(() => import("./components/runedelve/RuneDelveLayout").then(m => ({ default: m.RuneDelveLayout })));
 const NexusLayout = lazyWithRetry(() => import("./components/nexus/NexusLayout").then(m => ({ default: m.NexusLayout })));
