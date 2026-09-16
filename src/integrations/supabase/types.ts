@@ -11228,7 +11228,9 @@ export type Database = {
         Returns: Json
       }
       purchase_boost: { Args: { _boost_code: string }; Returns: Json }
-      pw_ensure_season: { Args: { _club_id: string }; Returns: string }
+      pw_ensure_season:
+        | { Args: { _club_id: string }; Returns: string }
+        | { Args: { _club_id: string; _user_id: string }; Returns: string }
       pw_is_member: { Args: { _club_id: string }; Returns: boolean }
       pw_join_season: {
         Args: { _season_id: string; _user_id?: string }
