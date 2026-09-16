@@ -6,6 +6,14 @@ import { marketState, formatCountdown } from '@/lib/portfolioWars/market';
 import { copyShareTextWithLink } from '@/lib/share';
 import { PwExitDialog } from './PwExitDialog';
 
+const PW_TABS = [
+  { to: '/portfolio-wars', label: 'Portfolio', icon: Briefcase },
+  { to: '/portfolio-wars/trade', label: 'Trade', icon: ArrowLeftRight },
+  { to: '/portfolio-wars/leaderboard', label: 'Standings', icon: Trophy },
+  { to: '/portfolio-wars/activity', label: 'Tape', icon: Rss },
+  { to: '/portfolio-wars/history', label: 'History', icon: Landmark },
+] as const;
+
 /**
  * Sticky in-game HUD for the Portfolio Wars standalone shell.
  * Replaces the DH Club page header while inside /portfolio-wars.
