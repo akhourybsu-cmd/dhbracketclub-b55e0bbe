@@ -42,4 +42,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 27. Render shared Pick’em weeks as verified, live-data chat cards
 - [x] 28. Move phone chat tools and message actions into consistent bottom sheets
 - [x] 29. Stabilize chat scroll, keyboard, channel-switch, and menu behavior
-- [ ] 30. Verify focused tests plus phone/desktop light and dark chat flows
+- [x] 30. Verify focused tests plus phone/desktop light and dark chat flows
