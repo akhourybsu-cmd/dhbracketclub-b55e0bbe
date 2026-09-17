@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Search, X, Loader2, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MarketStatusBar } from '@/components/portfolioWars/MarketStatusBar';
 import {
   usePwSeason, usePwSettings, usePwPortfolio, usePwQuotes,
   usePwSymbolSearch, usePwTradesToday, usePwTrade, PwTradeResult,
 } from '@/hooks/usePwLeague';
+import { usePwPlaceOrder, usePwOrders } from '@/hooks/usePwDesk';
 import { marketState, money, pct, shareCount } from '@/lib/portfolioWars/market';
 
 /** Trade desk: search the US market, read a live quote, buy or sell. */
@@ -19,13 +20,19 @@ export default function PwTradePage() {
   const { data: pf } = usePwPortfolio(season?.id);
   const { data: tradesToday } = usePwTradesToday(pf?.portfolio.id);
   const trade = usePwTrade();
+  const placeOrder = usePwPlaceOrder();
+  const { data: orders } = usePwOrders(season?.id);
 
   const [symbol, setSymbol] = useState(initial);
   const [term, setTerm] = useState('');
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [mode, setMode] = useState<'dollars' | 'shares'>('dollars');
   const [input, setInput] = useState('');
+  const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
+  const [limitInput, setLimitInput] = useState('');
+  const [tif, setTif] = useState<'day' | 'gtc'>('gtc');
   const [receipt, setReceipt] = useState<PwTradeResult | null>(null);
+  const [queued, setQueued] = useState<string | null>(null);
 
   const { data: results, isFetching: searching } = usePwSymbolSearch(term);
   const { data: quotes } = usePwQuotes(symbol ? [symbol] : [], !!symbol);
@@ -43,25 +50,66 @@ export default function PwTradePage() {
   useEffect(() => { if (initial) setSymbol(initial); }, [initial]);
 
   const amountNum = Number(input) || 0;
-  const shares = mode === 'shares' ? amountNum : price > 0 ? amountNum / price : 0;
-  const estCost = mode === 'shares' ? shares * price : amountNum;
+  const limitNum = Number(limitInput) || 0;
+  const refPrice = orderType === 'limit' && limitNum > 0 ? limitNum : price;
+  const shares = mode === 'shares' ? amountNum : refPrice > 0 ? amountNum / refPrice : 0;
+  const estCost = mode === 'shares' ? shares * refPrice : amountNum;
+  const openOrders = (orders ?? []).filter((o) => o.status === 'open');
+
+  /** A resting order is anything that can't fill right now at the live price. */
+  const resting = orderType === 'limit' || !market.isOpen;
 
   const blocker = useMemo(() => {
     if (!symbol) return 'Pick a stock first';
-    if (!price) return 'Waiting for a live price';
-    if (!market.isOpen) return 'Market is closed';
-    if (tradesLeft <= 0) return `Daily limit reached (${tradeLimit} trades)`;
+    if (!price && !resting) return 'Waiting for a live price';
+    if (orderType === 'limit' && limitNum <= 0) return 'Enter a target price';
     if (amountNum <= 0) return 'Enter an amount';
+    if (resting) {
+      if (openOrders.length >= 20) return 'You already have 20 orders waiting';
+      return null;
+    }
+    if (tradesLeft <= 0) return `Daily limit reached (${tradeLimit} trades)`;
     if (side === 'buy' && estCost > cash + 0.005) return 'Not enough cash';
     if (side === 'buy' && totalValue > 0 && estCost + Number(holding?.shares ?? 0) * price > (positionCap / 100) * totalValue)
       return `Position cap is ${positionCap}% of your portfolio`;
     if (side === 'sell' && (!holding || shares > Number(holding.shares) + 1e-6)) return 'You do not own that many shares';
     return null;
-  }, [symbol, price, market.isOpen, tradesLeft, tradeLimit, amountNum, side, estCost, cash, totalValue, holding, positionCap, shares]);
+  }, [symbol, price, resting, orderType, limitNum, tradesLeft, tradeLimit, amountNum, side, estCost, cash, totalValue, holding, positionCap, shares, openOrders.length]);
+
+  const pending = trade.isPending || placeOrder.isPending;
+
+  const actionLabel = blocker
+    ?? (resting
+      ? `Place ${orderType === 'limit' ? 'target' : 'queued'} ${side} order`
+      : `${side === 'buy' ? 'Buy' : 'Sell'} ${symbol}`);
 
   const submit = async () => {
     if (!season || blocker) return;
     try {
+      if (resting) {
+        const result = await placeOrder.mutateAsync({
+          seasonId: season.id,
+          symbol,
+          side,
+          orderType,
+          ...(mode === 'shares' ? { shares: amountNum } : { amount: amountNum }),
+          ...(orderType === 'limit' ? { limitPrice: limitNum } : {}),
+          timeInForce: tif,
+        });
+        setInput('');
+        if (result.status === 'filled' && result.fill) {
+          setReceipt(result.fill as unknown as PwTradeResult);
+          setQueued(null);
+        } else {
+          setReceipt(null);
+          setQueued(
+            orderType === 'limit'
+              ? `Waiting for ${symbol} to reach ${money(limitNum)}.`
+              : `Queued — this fills right after the market opens.`,
+          );
+        }
+        return;
+      }
       const result = await trade.mutateAsync({
         seasonId: season.id,
         symbol,
@@ -69,9 +117,10 @@ export default function PwTradePage() {
         ...(mode === 'shares' ? { shares: amountNum } : { amount: amountNum }),
       });
       setReceipt(result);
+      setQueued(null);
       setInput('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Trade failed');
+      toast.error(e instanceof Error ? e.message : 'Order failed');
     }
   };
 
@@ -79,6 +128,7 @@ export default function PwTradePage() {
     setSymbol(s);
     setTerm('');
     setReceipt(null);
+    setQueued(null);
     setParams({ symbol: s }, { replace: true });
   };
 
