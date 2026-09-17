@@ -218,6 +218,9 @@ function AnimatedRoutes() {
         <Route path="/portfolio-wars/leaderboard" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwLeaderboardPage /></PwLayout></ProtectedPage>} />
         <Route path="/portfolio-wars/activity" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwActivityPage /></PwLayout></ProtectedPage>} />
         <Route path="/portfolio-wars/history" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwHistoryPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/watchlists" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwWatchlistsPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/orders" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwOrdersPage /></PwLayout></ProtectedPage>} />
+        <Route path="/portfolio-wars/stock/:symbol" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PwStockPage /></PwLayout></ProtectedPage>} />
 
         {/* Lockbox module */}
         <Route path="/lockbox" element={<ProtectedPage assetSlug="lockbox"><LockboxPage /></ProtectedPage>} />
