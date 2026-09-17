@@ -87,12 +87,12 @@ export default function PortfolioWarsPage() {
         </div>
 
         <div className="mt-3">
-          <EquityCurve points={curve ?? []} baseline={startingCash} />
+          <EquityCurve points={livePoints} baseline={startingCash} />
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-3">
           <Stat label="Cash" value={money(cash)} />
-          <Stat label="Invested" value={money(Number(pf?.portfolio.holdings_value ?? 0))} />
+          <Stat label="Invested" value={money(live.holdingsValue)} />
           <Stat label="Trades left" value={`${tradesLeft}/${tradeLimit}`} />
         </div>
       </section>
