@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import webpush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,20 +21,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      return new Response(JSON.stringify({ error: "Missing VAPID config" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    webpush.setVapidDetails("https://dryhorse.app", vapidPublicKey, vapidPrivateKey);
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
 
     // Find today's lockbox day
     const now = new Date();
@@ -64,70 +53,37 @@ Deno.serve(async (req) => {
 
     const usersWithLocks = new Set((todayLocks || []).map((l: any) => l.user_id));
 
-    // Get all push subscriptions
-    const { data: subscriptions } = await supabase
-      .from("push_subscriptions")
-      .select("endpoint, p256dh, auth, user_id");
+    // Every club member who still has no lock — not just the few with a push
+    // subscription, so the in-app inbox reaches everyone.
+    const { data: members } = await supabase.from("club_members").select("user_id");
+    const targets = [...new Set((members || []).map((m: any) => m.user_id).filter(Boolean))]
+      .filter((uid: string) => !usersWithLocks.has(uid));
 
-    if (!subscriptions || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ sent: 0 }), {
+    if (targets.length === 0) {
+      return new Response(JSON.stringify({ sent: 0, message: "Everyone already locked in" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Check lockbox notification preferences
-    const userIds = [...new Set(subscriptions.map((s: any) => s.user_id))];
-    const { data: prefRows } = await supabase
-      .from("notification_preferences")
-      .select("user_id, lockbox")
-      .in("user_id", userIds);
+    // send-push-notification owns preference filtering, inbox rows, delivery
+    // and expired-subscription cleanup.
+    const result = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-cron-secret": expected },
+      body: JSON.stringify({
+        type: "lockbox",
+        title: "🔒 Don't Forget Your Lock!",
+        message: "Set up today's Lockbox defense before time runs out.",
+        url: "/lockbox",
+        tag: "dh-lockbox-reminder",
+        target_user_ids: targets,
+      }),
+    }).then((r) => r.json()).catch(() => ({}));
 
-    const disabledUsers = new Set(
-      (prefRows || []).filter((p: any) => p.lockbox === false).map((p: any) => p.user_id),
-    );
-
-    // Only notify users who haven't set their lock yet and have lockbox notifications enabled
-    const filtered = subscriptions.filter(
-      (s: any) => !usersWithLocks.has(s.user_id) && !disabledUsers.has(s.user_id),
-    );
-
-    if (filtered.length === 0) {
-      return new Response(JSON.stringify({ sent: 0, message: "All users have locks or disabled" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const payload = JSON.stringify({
-      title: "🔒 Don't Forget Your Lock!",
-      body: "Set up today's Lockbox defense before time runs out.",
-      tag: "dh-lockbox-reminder",
-      data: { url: "/lockbox" },
-      icon: "/pwa-icon-512.png",
-    });
-
-    const expiredEndpoints: string[] = [];
-    let sent = 0;
-
-    for (const sub of filtered) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          payload,
-        );
-        sent++;
-      } catch (e: any) {
-        const sc = typeof e?.statusCode === "number" ? e.statusCode : undefined;
-        if (sc === 410 || sc === 404) expiredEndpoints.push(sub.endpoint);
-      }
-    }
-
-    if (expiredEndpoints.length > 0) {
-      await supabase.from("push_subscriptions").delete().in("endpoint", expiredEndpoints);
-    }
-
-    return new Response(JSON.stringify({ sent, expired: expiredEndpoints.length }), {
+    return new Response(JSON.stringify({ ok: true, targets: targets.length, ...result }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (error: any) {
     console.error("Lockbox reminder error:", error);
     return new Response(JSON.stringify({ error: error?.message }), {
