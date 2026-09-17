@@ -1,4 +1,5 @@
 import { buildChatMessagePermalink, chatMessagePreview, messageMentionsDisplayName } from '@/lib/chatExperience';
+import { buildPickemShareMessage, getPickemShareTarget, isPickemShareMessage } from '@/lib/pickemShare';
 
 describe('chat experience helpers', () => {
   it('matches complete display-name mentions case-insensitively', () => {
@@ -16,5 +17,20 @@ describe('chat experience helpers', () => {
   it('builds a stable deep link for a message', () => {
     expect(buildChatMessagePermalink('https://dh.example', 'channel-1', 'message-2'))
       .toBe('https://dh.example/chat?channel=channel-1&message=message-2');
+  });
+
+  it('builds and validates a weekly Pick’em share without trusting card text', () => {
+    const weekId = '123e4567-e89b-42d3-a456-426614174000';
+    const content = buildPickemShareMessage({
+      origin: 'https://dryhorse.app',
+      weekId,
+      weekNumber: 3,
+      weekLabel: 'Week 3',
+      pickedCount: 16,
+      totalGames: 16,
+    });
+    expect(isPickemShareMessage(content)).toBe(true);
+    expect(getPickemShareTarget(content.match(/https?:\/\/[^\s]+/)?.[0] ?? '')).toEqual({ weekId, weekNumber: 3 });
+    expect(getPickemShareTarget('https://dryhorse.app/pickem/week/3?weekId=not-a-real-id')).toBeNull();
   });
 });

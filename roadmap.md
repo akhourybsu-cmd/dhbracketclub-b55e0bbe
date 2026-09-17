@@ -36,3 +36,10 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 23. Fix season bootstrap (server-side membership check) — season + portfolio now created on first visit
 - [x] 24. Verify screens, search, live quote and market-closed blocker in browser
 - [ ] 25. Place one real buy/sell end to end — blocked until the US market is open (next open 09:30 ET)
+
+# Pick’em sharing + chat interaction polish
+- [x] 26. Share a locked weekly Pick’em card directly into an eligible DH chat channel
+- [x] 27. Render shared Pick’em weeks as verified, live-data chat cards
+- [x] 28. Move phone chat tools and message actions into consistent bottom sheets
+- [x] 29. Stabilize chat scroll, keyboard, channel-switch, and menu behavior
+- [x] 30. Verify focused tests plus phone/desktop light and dark chat flows

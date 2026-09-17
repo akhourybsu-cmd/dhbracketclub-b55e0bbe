@@ -82,12 +82,12 @@ const CATEGORIES: Category[] = [
 // Filter out any placeholder rows (defensive against typos in the data table).
 const ALL: Emoji[] = CATEGORIES.flatMap(c => c.emojis).filter(x => x.k.length > 0 || /\p{Emoji}/u.test(x.e));
 
-export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void }) {
+export function EmojiPicker({ onSelect, autoFocusSearch = false }: { onSelect: (emoji: string) => void; autoFocusSearch?: boolean }) {
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState(CATEGORIES[0].id);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { searchRef.current?.focus(); }, []);
+  useEffect(() => { if (autoFocusSearch) searchRef.current?.focus(); }, [autoFocusSearch]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
