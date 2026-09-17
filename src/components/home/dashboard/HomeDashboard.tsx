@@ -85,6 +85,8 @@ interface Props {
   activity: ActivityRow[];
   events: EventRow[];
   loading?: boolean;
+  /** Optional plugin cards rendered above the activity feed. */
+  extra?: ReactNode;
 }
 
 const ACTIVITY_ANCHOR_DEFAULT = 'home-activity';
