@@ -26,6 +26,8 @@ import { isPrivateAttachmentUrl, isImageAttachmentUrl } from '@/lib/chatAttachme
 import { isDraftInviteMessage } from '@/lib/draftInvite';
 import { isPickemShareMessage } from '@/lib/pickemShare';
 import { buildChatMessagePermalink, chatMessagePreview } from '@/lib/chatExperience';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChatBottomSheet } from './ChatBottomSheet';
 
 /* ═══ URL auto-linking + inline image preview ═══ */
 const URL_RE = /((?:https?|lovable-private):\/\/[^\s<]+)/g;
@@ -346,6 +348,7 @@ function MessageBubbleInner({
   const replyIconScale = useTransform(dragX, [0, SWIPE_THRESHOLD], [0.5, 1]);
   const [swiped, setSwiped] = useState(false);
   const reduceMotion = useReducedMotion();
+  const isMobile = useIsMobile();
 
   // Subtle entrance: own messages rise a touch more (they came from the
   // composer below); received slide in from the same direction but
@@ -695,7 +698,7 @@ function MessageBubbleInner({
                     {lightboxIndex !== null && (
                       <ChatImageLightbox urls={imageUrls} index={lightboxIndex} onClose={() => setLightboxIndex(null)} />
                     )}
-                    {showReactPicker && createPortal(
+                    {showReactPicker && !isMobile && createPortal(
                       <div
                         className="fixed inset-0 z-[70] flex items-center justify-center p-4"
                         onClick={() => setShowReactPicker(false)}
@@ -774,7 +777,7 @@ function MessageBubbleInner({
           overflow-x-hidden clip. Position is measured + clamped to the
           viewport so the bar always appears in full. A transparent
           backdrop catches outside taps to dismiss. */}
-      {typeof document !== 'undefined' && createPortal(
+      {typeof document !== 'undefined' && !isMobile && createPortal(
         <AnimatePresence>
           {showOverlay && (
             <Fragment key="overlay-wrapper">
@@ -802,8 +805,8 @@ function MessageBubbleInner({
                 role="menu"
                 className="fixed z-[60] flex flex-col gap-1.5 rounded-2xl border border-border/25 bg-background/95 p-1.5 shadow-xl backdrop-blur-xl"
                 style={{
-                  left: overlayPos?.left ?? 0,
-                  top: overlayPos?.top ?? 0,
+                   left: overlayPos?.left ?? -9999,
+                   top: overlayPos?.top ?? -9999,
                   visibility: overlayPos ? 'visible' : 'hidden',
                   maxWidth: 'calc(100vw - 16px)',
                   scrollbarWidth: 'none',
@@ -900,6 +903,34 @@ function MessageBubbleInner({
           )}
         </AnimatePresence>,
         document.body,
+      )}
+
+      {isMobile && (
+        <>
+          <ChatBottomSheet open={showOverlay} onOpenChange={setShowOverlay} title="Message actions" description={chatMessagePreview(msg.content, 80)}>
+            <div className="mb-3 flex items-center justify-between gap-1 rounded-lg bg-muted/25 p-1" aria-label="Quick reactions">
+              {QUICK_EMOJIS.map(emoji => (
+                <button key={emoji} type="button" onClick={event => handleReaction(emoji, event)} className="flex h-11 min-w-10 flex-1 items-center justify-center rounded-lg text-lg active:scale-90" aria-label={`React with ${emoji}`}>{emoji}</button>
+              ))}
+              <button type="button" onClick={() => { setShowOverlay(false); setShowReactPicker(true); }} className="flex h-11 min-w-10 flex-1 items-center justify-center rounded-lg active:scale-90" aria-label="More reactions"><SmilePlus className="h-5 w-5" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => { onReply(msg); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Reply className="h-4 w-4 text-primary" /> Reply</button>
+              <button type="button" onClick={() => { onTogglePin(msg); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Pin className="h-4 w-4 text-primary" /> {msg.is_pinned ? 'Unpin' : 'Pin'}</button>
+              {stripAttachmentUrls(msg.content) && <button type="button" onClick={handleCopy} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Copy className="h-4 w-4 text-primary" /> Copy</button>}
+              <button type="button" onClick={handleShare} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Share2 className="h-4 w-4 text-primary" /> Share</button>
+              {isOwn ? (
+                <>
+                  <button type="button" onClick={() => { onStartEditing(msg); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Pencil className="h-4 w-4 text-primary" /> Edit</button>
+                  <button type="button" onClick={() => { setShowDeleteConfirm(true); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-destructive/10 px-3 font-semibold text-destructive"><Trash2 className="h-4 w-4" /> Delete</button>
+                </>
+              ) : <button type="button" onClick={() => { setShowReportConfirm(true); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Flag className="h-4 w-4 text-destructive" /> Report</button>}
+            </div>
+          </ChatBottomSheet>
+          <ChatBottomSheet open={showReactPicker} onOpenChange={setShowReactPicker} title="Choose a reaction">
+            <div className="flex justify-center"><EmojiPicker onSelect={emoji => { handleReaction(emoji); setShowReactPicker(false); }} /></div>
+          </ChatBottomSheet>
+        </>
       )}
 
       {/* Delete confirmation dialog */}

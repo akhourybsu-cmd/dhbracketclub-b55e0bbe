@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { Hash, ChevronLeft, Pin, Search, X, Link2, Settings, Lock, MoreVertical, Bell, Reply, UsersRound, Loader2 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { getChannelTypeMeta } from '@/components/chat/channelTypeMeta';
 import { StatusPill } from '@/components/ui/status-pill';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -35,6 +34,8 @@ import { MemberLoadError } from '@/components/member/MemberLoadError';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
 import { messageMentionsDisplayName } from '@/lib/chatExperience';
 import { useChatViewport } from '@/hooks/useChatViewport';
+import { ChatBottomSheet } from '@/components/chat/ChatBottomSheet';
+import { Button } from '@/components/ui/button';
 
 const CHAT_DRAFT_PREFIX = 'dh_chat_draft_v1';
 
@@ -59,7 +60,7 @@ export default function ChatPage() {
 
   // One viewport authority for iOS Safari/WebViews and Android keyboard modes.
   const { height: chatHeight, keyboardOpen } = useChatViewport();
-  const [scrollToBottomTrigger, setScrollToBottomTrigger] = useState(0);
+  const [showMobileActions, setShowMobileActions] = useState(false);
   const [jumpSignal, setJumpSignal] = useState<{ id: string; n: number } | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
@@ -75,10 +76,6 @@ export default function ChatPage() {
     setSearchResults(null);
     setJumpSignal(prev => ({ id, n: (prev?.n ?? 0) + 1 }));
   };
-
-  useEffect(() => {
-    setScrollToBottomTrigger(count => count + 1);
-  }, [chatHeight]);
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -942,33 +939,9 @@ export default function ChatPage() {
           )}
 
           {/* Mobile: overflow menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <MobileIconButton className="sm:hidden" aria-label="Channel actions">
-                <MoreVertical className="w-[18px] h-[18px]" />
-              </MobileIconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onClick={() => { setShowSearch(true); setShowPinned(false); setShowMembers(false); setSearchQuery(''); setSearchResults(null); }}>
-                <Search className="w-4 h-4 mr-2" /> Search messages
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowSearch(false); setShowMembers(false); void loadPinnedMessages(); }}>
-                <Pin className="w-4 h-4 mr-2" /> Pinned{pinnedCount > 0 ? ` (${pinnedCount})` : ''}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setShowMembers(true); setShowSearch(false); setShowPinned(false); }}>
-                <UsersRound className="w-4 h-4 mr-2" /> Members ({members.length})
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/shared')}>
-                <Link2 className="w-4 h-4 mr-2" /> Shared media
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {selectedChannel && (
-                <DropdownMenuItem onClick={() => setSettingsChannel(selectedChannel)}>
-                  <Bell className="w-4 h-4 mr-2" /> Notifications & settings
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <MobileIconButton className="sm:hidden" aria-label="Channel actions" onClick={() => setShowMobileActions(true)}>
+            <MoreVertical className="w-[18px] h-[18px]" />
+          </MobileIconButton>
         </div>
 
         <div className="flex flex-1 min-h-0">
@@ -1068,7 +1041,6 @@ export default function ChatPage() {
                   loadingMore={loadingMore}
                   isSearchActive={false}
                   lastReadAt={lastReadAt}
-                  scrollToBottomTrigger={scrollToBottomTrigger}
                 />}
                 <div className="flex-shrink-0 border-t border-border/15 z-10">
                     <AnimatePresence>
@@ -1200,6 +1172,15 @@ export default function ChatPage() {
           onDelete={handleDeleteChannel}
         />
       )}
+      <ChatBottomSheet open={showMobileActions} onOpenChange={setShowMobileActions} title={selectedChannel ? `#${selectedChannel.name}` : 'Channel actions'}>
+        <div className="space-y-1">
+          <Button variant="ghost" className="h-12 w-full justify-start" onClick={() => { setShowMobileActions(false); setShowSearch(true); setShowPinned(false); setShowMembers(false); setSearchQuery(''); setSearchResults(null); }}><Search /> Search messages</Button>
+          <Button variant="ghost" className="h-12 w-full justify-start" onClick={() => { setShowMobileActions(false); setShowSearch(false); setShowMembers(false); void loadPinnedMessages(); }}><Pin /> Pinned{pinnedCount > 0 ? ` (${pinnedCount})` : ''}</Button>
+          <Button variant="ghost" className="h-12 w-full justify-start" onClick={() => { setShowMobileActions(false); setShowMembers(true); setShowSearch(false); setShowPinned(false); }}><UsersRound /> Members ({members.length})</Button>
+          <Button variant="ghost" className="h-12 w-full justify-start" onClick={() => { setShowMobileActions(false); navigate('/shared'); }}><Link2 /> Shared media</Button>
+          {selectedChannel && <Button variant="ghost" className="h-12 w-full justify-start" onClick={() => { setShowMobileActions(false); setSettingsChannel(selectedChannel); }}><Bell /> Notifications & settings</Button>}
+        </div>
+      </ChatBottomSheet>
     </div>
   );
 }
