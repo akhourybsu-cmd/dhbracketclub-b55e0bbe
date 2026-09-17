@@ -195,6 +195,42 @@ export function usePwEquityCurve(portfolioId?: string) {
   });
 }
 
+/* ── Live valuation ────────────────────────────────────────────────── */
+
+/** Marks a portfolio to the latest quotes we have, so the value on screen
+ *  tracks the market instead of waiting for the next server revaluation. */
+export function livePortfolioValue(
+  portfolio: PwPortfolio | null | undefined,
+  holdings: PwHolding[] | undefined,
+  quotes: Record<string, PwQuote> | undefined,
+  fallbackTotal = 0,
+) {
+  if (!portfolio) {
+    return { cash: fallbackTotal, holdingsValue: 0, total: fallbackTotal, dayChange: 0, priced: false };
+  }
+  const cash = Number(portfolio.cash);
+  let holdingsValue = 0;
+  let dayChange = 0;
+  let priced = false;
+  for (const h of holdings ?? []) {
+    const quote = quotes?.[h.symbol];
+    const price = Number(quote?.price ?? h.avg_cost);
+    if (quote?.price) priced = true;
+    holdingsValue += Number(h.shares) * price;
+    if (quote?.prev_close) dayChange += Number(h.shares) * (price - Number(quote.prev_close));
+  }
+  const live = (holdings?.length ?? 0) > 0 && priced;
+  return {
+    cash,
+    holdingsValue: live ? round2(holdingsValue) : Number(portfolio.holdings_value),
+    total: live ? round2(cash + holdingsValue) : Number(portfolio.total_value),
+    dayChange: live ? round2(dayChange) : 0,
+    priced: live,
+  };
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 /* ── Quotes ────────────────────────────────────────────────────────── */
 
 /** Shared quote cache for a set of symbols, refreshed server-side. */
