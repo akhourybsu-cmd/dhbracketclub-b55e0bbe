@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Plus, Flame, Check, Trash2, Dumbbell, Timer, ChevronDown, Sparkles, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +27,7 @@ function useElapsed(sinceIso: string | null): number {
 
 /** One-shot "workout complete" overlay. Portaled; self-dismisses via onDone. */
 function CompleteCelebration({ points, onDone }: { points: number | null; onDone: () => void }) {
+  const reduceMotion = useReducedMotion();
   useEffect(() => {
     if (points == null) return;
     const t = setTimeout(onDone, 1900);
@@ -42,6 +43,18 @@ function CompleteCelebration({ points, onDone }: { points: number | null; onDone
             initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.75] }} transition={{ duration: 1 }} />
           <motion.div initial={{ scale: 0.5, opacity: 0, y: 16 }} animate={{ scale: [0.5, 1.12, 1], opacity: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 18 }} className="relative text-center px-6">
+            {!reduceMotion && Array.from({ length: 10 }).map((_, i) => (
+              <motion.span
+                key={i}
+                aria-hidden
+                className="absolute left-1/2 top-1/2 text-[18px]"
+                initial={{ x: 0, y: 0, opacity: 0, scale: 0.4 }}
+                animate={{ x: (i - 4.5) * 18, y: -42 - (i % 3) * 20, opacity: [0, 1, 0], scale: [0.4, 1, 0.75] }}
+                transition={{ duration: 1.15, delay: i * 0.035, ease: 'easeOut' }}
+              >
+                ✦
+              </motion.span>
+            ))}
             <div className="text-[56px] leading-none mb-1">🔥</div>
             <h1 className="text-[26px] font-black tracking-[0.06em]" style={{ color: 'hsl(40 100% 92%)', textShadow: '0 0 26px hsl(24 100% 55% / 0.9)' }}>WORKOUT LOGGED</h1>
             <p className="text-[15px] font-black mt-1 tabular-nums" style={{ color: 'hsl(28 100% 70%)' }}>+{points.toLocaleString()} fuel to the flame</p>
@@ -55,10 +68,11 @@ function CompleteCelebration({ points, onDone }: { points: number | null; onDone
 
 function HistoryRow({ session, onDelete }: { session: LogSessionWithEntries; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const total = sessionPoints(session.entries);
   const when = session.completed_at ? new Date(session.completed_at) : new Date(session.started_at);
   return (
-    <div style={{ borderTop: '1px solid hsl(220 14% 60% / 0.1)' }}>
+    <motion.div whileHover={reduceMotion ? undefined : { x: 2 }} style={{ borderTop: '1px solid hsl(220 14% 60% / 0.1)' }}>
       <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center gap-3 px-3.5 py-3 text-left">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'hsl(220 14% 16% / 0.9)', border: '1px solid hsl(24 60% 60% / 0.16)' }}>
           <Dumbbell className="w-4 h-4" style={{ color: 'hsl(28 80% 60%)' }} />
@@ -87,7 +101,7 @@ function HistoryRow({ session, onDelete }: { session: LogSessionWithEntries; onD
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
@@ -99,6 +113,7 @@ const QUICK_STARTS: ExercisePick[] = [
 ];
 
 export default function WorkoutLogPage() {
+  const reduceMotion = useReducedMotion();
   const { user } = useAuth();
   const { club } = useClub();
   const { isInstalled, loading: assetsLoading } = useClubAssets();
@@ -177,7 +192,7 @@ export default function WorkoutLogPage() {
   return (
     <div className="pb-10 pt-1">
       {/* ── Session header ── */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="fg-glass px-5 py-4 mb-4 relative overflow-hidden">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="fg-glass fg-log-hero px-5 py-4 mb-4 relative overflow-hidden">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4" style={{ color: 'hsl(28 100% 66%)' }} />
           <p className="fg-pill">Freeform log</p>
@@ -187,10 +202,10 @@ export default function WorkoutLogPage() {
         </h1>
         {activeSession ? (
           <div className="flex items-center gap-4">
-            <div>
+            <motion.div animate={reduceMotion ? undefined : { scale: [1, 1.02, 1] }} transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}>
               <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'hsl(28 40% 60%)' }}>Elapsed</p>
               <p className="text-[22px] font-black tabular-nums leading-none mt-0.5" style={{ color: 'hsl(30 40% 95%)' }}>{fmtDur(elapsed)}</p>
-            </div>
+            </motion.div>
             <div>
               <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'hsl(28 40% 60%)' }}>Exercises</p>
               <p className="text-[22px] font-black tabular-nums leading-none mt-0.5" style={{ color: 'hsl(30 40% 95%)' }}>{activeSession.entries.length}</p>
@@ -264,11 +279,19 @@ export default function WorkoutLogPage() {
       {!activeSession && !loading && (
         <div className="mb-6">
           <div className="grid grid-cols-2 gap-2.5 mb-3">
-            {QUICK_STARTS.map((q) => (
-              <button key={q.name} onClick={() => setPick(q)} className="fg-key min-h-[58px] rounded-2xl px-3 py-2.5 flex-col items-start text-left">
+            {QUICK_STARTS.map((q, i) => (
+              <motion.button
+                key={q.name}
+                initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                transition={{ delay: 0.04 * i, type: 'spring', stiffness: 420, damping: 30 }}
+                whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+                onClick={() => setPick(q)}
+                className="fg-key min-h-[58px] rounded-2xl px-3 py-2.5 flex-col items-start text-left"
+              >
                 <span className="text-[13px] font-black leading-tight">{q.name}</span>
                 <span className="text-[10px] font-bold opacity-65">Quick start</span>
-              </button>
+              </motion.button>
             ))}
           </div>
           <button onClick={() => setSearchOpen(true)} disabled={busy} className="fg-cta w-full h-14 rounded-2xl text-[16px] mb-2.5">
@@ -283,18 +306,18 @@ export default function WorkoutLogPage() {
       {/* ── Fuel this week ── */}
       {!loading && (myWeekPoints > 0 || clubWeekPoints > 0) && (
         <div className="flex gap-2.5 mb-6">
-          <div className="fg-glass flex-1 px-4 py-3 text-center">
+          <motion.div initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={reduceMotion ? undefined : { opacity: 1, y: 0 }} className="fg-glass flex-1 px-4 py-3 text-center">
             <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'hsl(28 40% 60%)' }}>Your fuel this week</p>
             <p className="inline-flex items-center gap-1 text-[20px] font-black tabular-nums mt-1" style={{ color: 'hsl(30 42% 95%)' }}>
               <Flame className="w-4 h-4" style={{ color: 'hsl(28 100% 66%)' }} />{myWeekPoints.toLocaleString()}
             </p>
-          </div>
-          <div className="fg-glass flex-1 px-4 py-3 text-center">
+          </motion.div>
+          <motion.div initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={reduceMotion ? undefined : { opacity: 1, y: 0 }} transition={{ delay: 0.04 }} className="fg-glass flex-1 px-4 py-3 text-center">
             <p className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: 'hsl(28 40% 60%)' }}>Club fuel this week</p>
             <p className="inline-flex items-center gap-1 text-[20px] font-black tabular-nums mt-1" style={{ color: 'hsl(28 100% 70%)' }}>
               <Flame className="w-4 h-4" />{clubWeekPoints.toLocaleString()}
             </p>
-          </div>
+          </motion.div>
         </div>
       )}
 
