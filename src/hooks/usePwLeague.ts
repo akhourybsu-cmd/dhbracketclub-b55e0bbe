@@ -195,6 +195,42 @@ export function usePwEquityCurve(portfolioId?: string) {
   });
 }
 
+/* ── Live valuation ────────────────────────────────────────────────── */
+
+/** Marks a portfolio to the latest quotes we have, so the value on screen
+ *  tracks the market instead of waiting for the next server revaluation. */
+export function livePortfolioValue(
+  portfolio: PwPortfolio | null | undefined,
+  holdings: PwHolding[] | undefined,
+  quotes: Record<string, PwQuote> | undefined,
+  fallbackTotal = 0,
+) {
+  if (!portfolio) {
+    return { cash: fallbackTotal, holdingsValue: 0, total: fallbackTotal, dayChange: 0, priced: false };
+  }
+  const cash = Number(portfolio.cash);
+  let holdingsValue = 0;
+  let dayChange = 0;
+  let priced = false;
+  for (const h of holdings ?? []) {
+    const quote = quotes?.[h.symbol];
+    const price = Number(quote?.price ?? h.avg_cost);
+    if (quote?.price) priced = true;
+    holdingsValue += Number(h.shares) * price;
+    if (quote?.prev_close) dayChange += Number(h.shares) * (price - Number(quote.prev_close));
+  }
+  const live = (holdings?.length ?? 0) > 0 && priced;
+  return {
+    cash,
+    holdingsValue: live ? round2(holdingsValue) : Number(portfolio.holdings_value),
+    total: live ? round2(cash + holdingsValue) : Number(portfolio.total_value),
+    dayChange: live ? round2(dayChange) : 0,
+    priced: live,
+  };
+}
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 /* ── Quotes ────────────────────────────────────────────────────────── */
 
 /** Shared quote cache for a set of symbols, refreshed server-side. */
@@ -270,18 +306,27 @@ export function usePwLeaderboard(seasonId?: string, startingCash = 50000) {
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
       const priceOf = new Map(((quotes ?? []) as any[]).map((q) => [q.symbol, Number(q.price)]));
       const topOf = new Map<string, { symbol: string; value: number }>();
+      // Mark every rival to the latest quotes too, so the board moves with the market.
+      const liveHoldings = new Map<string, number>();
       for (const h of ((holdings ?? []) as any[])) {
         const value = Number(h.shares) * (priceOf.get(h.symbol) ?? Number(h.avg_cost));
+        liveHoldings.set(h.portfolio_id, (liveHoldings.get(h.portfolio_id) ?? 0) + value);
         const cur = topOf.get(h.portfolio_id);
         if (!cur || value > cur.value) topOf.set(h.portfolio_id, { symbol: h.symbol, value });
       }
 
-      return rows.map((p) => ({
-        ...p,
-        profile: profMap.get(p.user_id) ?? null,
-        return_pct: ((Number(p.total_value) - startingCash) / startingCash) * 100,
-        top_holding: topOf.get(p.id) ?? null,
-      })).sort((a, b) => Number(b.total_value) - Number(a.total_value)) as PwStanding[];
+      return rows.map((p) => {
+        const hv = liveHoldings.has(p.id) ? round2(liveHoldings.get(p.id)!) : Number(p.holdings_value);
+        const total = round2(Number(p.cash) + hv);
+        return {
+          ...p,
+          holdings_value: hv,
+          total_value: total,
+          profile: profMap.get(p.user_id) ?? null,
+          return_pct: ((total - startingCash) / startingCash) * 100,
+          top_holding: topOf.get(p.id) ?? null,
+        };
+      }).sort((a, b) => Number(b.total_value) - Number(a.total_value)) as PwStanding[];
     },
   });
 

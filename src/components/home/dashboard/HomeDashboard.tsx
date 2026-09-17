@@ -18,7 +18,7 @@
 // from `DashboardPage`, so we never double-query. Side-effect ownership
 // stays with the page.
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Bookmark, Trophy, CalendarDays, ScrollText, Newspaper, MessageCircle,
   BarChart3, Activity as ActivityIcon, FileText,
@@ -85,6 +85,8 @@ interface Props {
   activity: ActivityRow[];
   events: EventRow[];
   loading?: boolean;
+  /** Optional plugin cards rendered above the activity feed. */
+  extra?: ReactNode;
 }
 
 const ACTIVITY_ANCHOR_DEFAULT = 'home-activity';
@@ -95,7 +97,7 @@ export function HomeDashboard({
   activePollCount, narrativeActiveCount, lorePostsThisWeek,
   activeDraftStatus, upcomingEventCount,
   season, seasonTarget, seasonCompleted, standings,
-  activity, events, loading,
+  activity, events, loading, extra,
 }: Props) {
   const accent = club?.accent_color ?? '152 72% 46%';
   const { user } = useAuth();
@@ -311,6 +313,8 @@ export function HomeDashboard({
               accent={accent}
             />
           )}
+
+          {extra && <div className="mb-4">{extra}</div>}
 
           <ActivityFeed rows={feedRows} loading={loading} anchorId={activityAnchorId} />
         </div>

@@ -4,7 +4,7 @@ import { MarketStatusBar } from '@/components/portfolioWars/MarketStatusBar';
 import { EquityCurve } from '@/components/portfolioWars/EquityCurve';
 import {
   usePwSeason, usePwSettings, usePwPortfolio, usePwQuotes,
-  usePwTradesToday, usePwEquityCurve,
+  usePwTradesToday, usePwEquityCurve, livePortfolioValue,
 } from '@/hooks/usePwLeague';
 import { money, pct, seasonLabel, shareCount } from '@/lib/portfolioWars/market';
 
@@ -19,17 +19,24 @@ export default function PortfolioWarsPage() {
   const { data: curve } = usePwEquityCurve(pf?.portfolio.id);
 
   const startingCash = Number(season?.starting_cash ?? settings?.starting_cash ?? 50000);
-  const total = Number(pf?.portfolio.total_value ?? startingCash);
-  const cash = Number(pf?.portfolio.cash ?? startingCash);
+  const live = livePortfolioValue(pf?.portfolio, pf?.holdings, quotes, startingCash);
+  const total = live.total;
+  const cash = live.cash;
   const returnPct = ((total - startingCash) / startingCash) * 100;
   const tradeLimit = settings?.max_trades_per_day ?? 5;
   const tradesLeft = Math.max(0, tradeLimit - (tradesToday ?? 0));
 
-  const dayChange = (pf?.holdings ?? []).reduce((sum, h) => {
-    const q = quotes?.[h.symbol];
-    if (!q?.prev_close) return sum;
-    return sum + Number(h.shares) * (Number(q.price) - Number(q.prev_close));
-  }, 0);
+  const dayChange = live.dayChange;
+
+  // The curve is stamped on fills and at the close; mark today's point to live prices.
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  const livePoints = (() => {
+    const points = (curve ?? []).filter((p) => p.trading_date !== today);
+    if (!pf?.portfolio) return points;
+    return [...points, { trading_date: today, value: total }];
+  })();
 
   if (seasonLoading) {
     return <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="glass-card rounded-2xl h-24 animate-pulse" />)}</div>;
@@ -90,12 +97,12 @@ export default function PortfolioWarsPage() {
         </div>
 
         <div className="mt-3">
-          <EquityCurve points={curve ?? []} baseline={startingCash} />
+          <EquityCurve points={livePoints} baseline={startingCash} />
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-3">
           <Stat label="Cash" value={money(cash)} />
-          <Stat label="Invested" value={money(Number(pf?.portfolio.holdings_value ?? 0))} />
+          <Stat label="Invested" value={money(live.holdingsValue)} />
           <Stat label="Trades left" value={`${tradesLeft}/${tradeLimit}`} />
         </div>
       </section>
