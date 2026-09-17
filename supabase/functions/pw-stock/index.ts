@@ -20,9 +20,11 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "Unauthorized" }, 401);
 
   const url = new URL(req.url);
-  const symbol = (url.searchParams.get("symbol") || "").toUpperCase().trim();
+  let body: Record<string, unknown> = {};
+  if (req.method === "POST") body = await req.json().catch(() => ({}));
+  const symbol = String(body.symbol ?? url.searchParams.get("symbol") ?? "").toUpperCase().trim();
   if (!symbol || !/^[A-Z.\-]{1,10}$/.test(symbol)) return json({ error: "Invalid symbol" }, 400);
-  const range = url.searchParams.get("range") === "1y" ? "1y" : "3m";
+  const range = (body.range ?? url.searchParams.get("range")) === "1y" ? "1y" : "3m";
 
   const key = Deno.env.get("FINNHUB_API_KEY");
   if (!key) return json({ error: "Market data is not configured" }, 500);
