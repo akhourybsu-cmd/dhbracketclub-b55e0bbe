@@ -114,6 +114,8 @@ Deno.serve(async (req) => {
       placed_on: etDate(),
     });
 
+    await stampEquityPoint(admin, portfolioId);
+
     return json({ ok: true, status: "filled", fill: fill ?? null });
   }
 
