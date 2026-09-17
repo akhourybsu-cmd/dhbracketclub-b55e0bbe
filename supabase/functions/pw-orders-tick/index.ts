@@ -4,6 +4,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { etDate, isMarketOpen } from "../_shared/pwMarket.ts";
+import { stampEquityPoint } from "../_shared/pwSnapshot.ts";
 
 const FINNHUB = "https://finnhub.io/api/v1";
 
