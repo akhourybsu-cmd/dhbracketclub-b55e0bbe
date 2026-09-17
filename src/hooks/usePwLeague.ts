@@ -412,6 +412,8 @@ export function usePwTrade() {
       qc.invalidateQueries({ queryKey: ['pw-my-trades'] });
       qc.invalidateQueries({ queryKey: ['pw-standings'] });
       qc.invalidateQueries({ queryKey: ['pw-activity'] });
+      qc.invalidateQueries({ queryKey: ['pw-equity'] });
+      qc.invalidateQueries({ queryKey: ['pw-quotes'] });
     },
   });
 }

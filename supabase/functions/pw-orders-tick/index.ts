@@ -4,6 +4,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { etDate, isMarketOpen } from "../_shared/pwMarket.ts";
+import { stampEquityPoint } from "../_shared/pwSnapshot.ts";
 
 const FINNHUB = "https://finnhub.io/api/v1";
 
@@ -135,6 +136,7 @@ Deno.serve(async (req) => {
       status: "filled", filled_shares: shares, filled_price: price, filled_at: new Date().toISOString(),
     }).eq("id", o.id);
     filled += 1;
+    await stampEquityPoint(admin, o.portfolio_id);
     await notify(expectedCron, o.user_id, o.club_id,
       `${o.side === "buy" ? "Bought" : "Sold"} ${trimShares(shares)} ${o.symbol}`,
       `Filled at $${price.toFixed(2)}`, "/portfolio-wars/orders");

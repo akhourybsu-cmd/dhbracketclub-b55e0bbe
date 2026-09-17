@@ -3,6 +3,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "npm:zod@3";
+import { stampEquityPoint } from "../_shared/pwSnapshot.ts";
 
 const FINNHUB = "https://finnhub.io/api/v1";
 
@@ -76,6 +77,10 @@ Deno.serve(async (req) => {
     _price: price,
   });
   if (error) return json({ error: error.message }, 400);
+
+  const { data: pf } = await admin.from("pw_portfolios")
+    .select("id").eq("season_id", season_id).eq("user_id", user.id).maybeSingle();
+  if (pf) await stampEquityPoint(admin, (pf as { id: string }).id);
 
   return json(data ?? { ok: true });
 });
