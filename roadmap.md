@@ -51,3 +51,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 33. Streamline daily workout and freeform logging so members can start with fewer taps
 - [x] 34. Clean up collaborative flame, roster, and club-goal presentation
 - [x] 35. Verify FORGE screens and logging flows in browser
+- [ ] 36. Add polished, reduced-motion-safe FORGE animations for logging, progress, sheets, and quick starts

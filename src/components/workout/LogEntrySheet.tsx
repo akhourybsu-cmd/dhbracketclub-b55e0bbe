@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Plus, Trash2, Play, Pause, RotateCcw, Flame } from 'lucide-react';
 import { useStopwatch } from '@/lib/workout/useStopwatch';
 import { scoreEntry, fmtDur, type LogKind, type LogSet } from '@/lib/workout/logScoring';
@@ -24,18 +24,19 @@ const num = (v: string): number => {
 function Stepper({ value, onChange, step = 1, min = 0, label, suffix }: {
   value: number; onChange: (v: number) => void; step?: number; min?: number; label: string; suffix?: string;
 }) {
+  const reduceMotion = useReducedMotion();
   return (
     <div className="flex-1">
       <p className="text-[9px] font-bold uppercase tracking-[0.12em] mb-1 text-center" style={{ color: 'hsl(28 30% 58%)' }}>{label}</p>
       <div className="flex items-center gap-1.5">
-        <button type="button" onClick={() => onChange(Math.max(min, Math.round((value - step) * 100) / 100))}
-          className="fg-key w-9 h-10 rounded-lg text-[18px] font-black flex-shrink-0">−</button>
+        <motion.button type="button" whileTap={reduceMotion ? undefined : { scale: 0.9 }} onClick={() => onChange(Math.max(min, Math.round((value - step) * 100) / 100))}
+          className="fg-key w-9 h-10 rounded-lg text-[18px] font-black flex-shrink-0">−</motion.button>
         <input type="number" inputMode="decimal" value={value === 0 ? '' : value} placeholder="0"
           onChange={(e) => onChange(Math.max(min, num(e.target.value)))}
-          className="w-full h-10 rounded-lg text-center text-[16px] font-black tabular-nums outline-none"
+          className="fg-stepper-input w-full h-10 rounded-lg text-center text-[16px] font-black tabular-nums outline-none"
           style={{ background: 'hsl(220 14% 14%)', border: '1px solid hsl(24 40% 55% / 0.2)', color: 'hsl(30 35% 94%)' }} />
-        <button type="button" onClick={() => onChange(Math.round((value + step) * 100) / 100)}
-          className="fg-key w-9 h-10 rounded-lg text-[18px] font-black flex-shrink-0">+</button>
+        <motion.button type="button" whileTap={reduceMotion ? undefined : { scale: 0.9 }} onClick={() => onChange(Math.round((value + step) * 100) / 100)}
+          className="fg-key w-9 h-10 rounded-lg text-[18px] font-black flex-shrink-0">+</motion.button>
       </div>
       {suffix && <p className="text-[8px] text-center mt-0.5" style={{ color: 'hsl(28 25% 52%)' }}>{suffix}</p>}
     </div>
@@ -56,6 +57,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }
   onSave: (input: AddEntryInput) => Promise<unknown> | void;
   onAddAnother?: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const kind = pick?.logKind ?? 'reps';
   const [sets, setSets] = useState<LogSet[]>([{ weight: null, reps: null }]);
   const [seconds, setSeconds] = useState(0);
@@ -182,8 +184,9 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }
             {/* ── Sets: weights or bodyweight reps ── */}
             {(kind === 'weight_reps' || kind === 'reps') && (
               <div className="space-y-2 mb-3">
+                <AnimatePresence initial={false}>
                 {sets.map((s, i) => (
-                  <div key={i} className="flex items-end gap-2">
+                  <motion.div key={i} layout initial={reduceMotion ? false : { opacity: 0, y: 8 }} animate={reduceMotion ? undefined : { opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, x: -12 }} className="flex items-end gap-2">
                     <span className="w-6 text-center text-[13px] font-black tabular-nums pb-2.5 flex-shrink-0" style={{ color: 'hsl(28 30% 55%)' }}>{i + 1}</span>
                     {kind === 'weight_reps' && (
                       <Stepper label="Weight" suffix="lb" step={5} value={Number(s.weight) || 0} onChange={(v) => setSet(i, { weight: v })} />
@@ -194,8 +197,9 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }
                       style={{ opacity: sets.length <= 1 ? 0.35 : 1 }}>
                       <Trash2 className="w-4 h-4" />
                     </button>
-                  </div>
+                  </motion.div>
                 ))}
+                </AnimatePresence>
                 <button type="button" onClick={addSet} className="fg-key w-full h-10 rounded-xl text-[13px]">
                   <Plus className="w-4 h-4" /> Add set
                 </button>
@@ -206,7 +210,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }
             {kind === 'duration' && (
               <div className="mb-3">
                 <div className="text-center mb-3">
-                  <p className="text-[42px] font-black tabular-nums leading-none" style={{ color: 'hsl(30 40% 96%)' }}>{fmtDur(liveSeconds)}</p>
+                  <motion.p animate={sw.running && !reduceMotion ? { scale: [1, 1.035, 1] } : undefined} transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }} className="text-[42px] font-black tabular-nums leading-none" style={{ color: 'hsl(30 40% 96%)' }}>{fmtDur(liveSeconds)}</motion.p>
                 </div>
                 <div className="flex gap-2 mb-3">
                   {!sw.running ? (
@@ -235,7 +239,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }
                 <Stepper label="Distance" suffix="miles" step={0.25} value={distanceMi} onChange={setDistanceMi} />
                 <div>
                   <div className="text-center mb-2">
-                    <p className="text-[30px] font-black tabular-nums leading-none" style={{ color: 'hsl(30 40% 96%)' }}>{fmtDur(liveSeconds)}</p>
+                    <motion.p animate={sw.running && !reduceMotion ? { scale: [1, 1.03, 1] } : undefined} transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }} className="text-[30px] font-black tabular-nums leading-none" style={{ color: 'hsl(30 40% 96%)' }}>{fmtDur(liveSeconds)}</motion.p>
                   </div>
                   <div className="flex gap-2">
                     {!sw.running ? (
@@ -259,12 +263,12 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }
             )}
 
             {/* Fuel preview + save */}
-            <div className="flex items-center justify-between rounded-xl px-3.5 py-2.5 mb-3" style={{ background: 'hsl(24 60% 30% / 0.14)', border: '1px solid hsl(24 95% 55% / 0.2)' }}>
+            <motion.div animate={preview.points > 0 && !reduceMotion ? { boxShadow: ['0 0 0 hsl(24 100% 55% / 0)', '0 0 18px hsl(24 100% 55% / 0.24)', '0 0 0 hsl(24 100% 55% / 0)'] } : undefined} transition={{ duration: 0.55 }} className="flex items-center justify-between rounded-xl px-3.5 py-2.5 mb-3" style={{ background: 'hsl(24 60% 30% / 0.14)', border: '1px solid hsl(24 95% 55% / 0.2)' }}>
               <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: 'hsl(28 40% 64%)' }}>Fuel</span>
               <span className="inline-flex items-center gap-1.5 text-[18px] font-black tabular-nums" style={{ color: 'hsl(30 45% 95%)' }}>
                 <Flame className="w-4 h-4" style={{ color: 'hsl(28 100% 66%)' }} /> +{preview.points.toLocaleString()}
               </span>
-            </div>
+            </motion.div>
             <div className="grid grid-cols-2 gap-2 mb-1">
               {onAddAnother && (
                 <button onClick={() => handleSave(true)} disabled={!canSave || saving}

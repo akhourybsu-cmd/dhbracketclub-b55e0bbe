@@ -4975,6 +4975,31 @@
   box-shadow: 0 1px 0 hsl(30 60% 80% / 0.05) inset, 0 12px 28px -18px hsl(222 40% 2% / 0.9);
   position: relative;
 }
+.fg-mode .fg-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse 60% 120% at var(--fg-glow-x, 50%) 0%, hsl(28 100% 62% / 0.14), transparent 62%);
+  transition: opacity 180ms ease;
+}
+.fg-mode .fg-glass:hover::before { opacity: 1; }
+.fg-forge-hero::after,
+.fg-log-hero::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -45% -20%;
+  height: 70%;
+  pointer-events: none;
+  background: radial-gradient(ellipse 55% 60% at 50% 50%, hsl(24 100% 55% / 0.14), transparent 70%);
+  animation: fgHeroBreathe 4.8s ease-in-out infinite;
+}
+@keyframes fgHeroBreathe {
+  0%, 100% { opacity: 0.55; transform: translateY(0) scale(1); }
+  50% { opacity: 0.95; transform: translateY(-5px) scale(1.04); }
+}
 .fg-mode .fg-subcard {
   background: hsl(220 14% 16% / 0.5);
   border: 1px solid hsl(24 20% 65% / 0.08);
@@ -5065,6 +5090,27 @@
   background: linear-gradient(90deg, transparent, hsl(40 100% 80% / 0.45), transparent);
   width: 40%; animation: fgShimmer 2.4s ease-in-out infinite;
 }
+.fg-bar-spark {
+  position: absolute;
+  top: 50%;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 9999px;
+  pointer-events: none;
+  background: hsl(40 100% 72%);
+  box-shadow: 0 0 10px hsl(28 100% 58% / 0.85), 0 0 22px hsl(20 100% 50% / 0.38);
+  transform: translate(-50%, -50%);
+}
+.fg-fuel-pop {
+  color: hsl(30 45% 96%);
+  background: hsl(24 95% 55% / 0.22);
+  border: 1px solid hsl(28 100% 66% / 0.5);
+  box-shadow: 0 10px 24px -12px hsl(20 100% 50% / 0.8);
+}
+.fg-stepper-input:focus {
+  border-color: hsl(28 95% 58% / 0.55) !important;
+  box-shadow: 0 0 0 3px hsl(24 95% 55% / 0.14);
+}
 
 /* Boot overlay */
 .fg-boot {
@@ -5083,7 +5129,9 @@
 @media (prefers-reduced-motion: reduce) {
   .fg-ember,
   .fg-heat-glow,
-  .fg-shimmer::after {
+  .fg-shimmer::after,
+  .fg-forge-hero::after,
+  .fg-log-hero::after {
     animation: none;
   }
 }
