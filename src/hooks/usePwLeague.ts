@@ -306,18 +306,27 @@ export function usePwLeaderboard(seasonId?: string, startingCash = 50000) {
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
       const priceOf = new Map(((quotes ?? []) as any[]).map((q) => [q.symbol, Number(q.price)]));
       const topOf = new Map<string, { symbol: string; value: number }>();
+      // Mark every rival to the latest quotes too, so the board moves with the market.
+      const liveHoldings = new Map<string, number>();
       for (const h of ((holdings ?? []) as any[])) {
         const value = Number(h.shares) * (priceOf.get(h.symbol) ?? Number(h.avg_cost));
+        liveHoldings.set(h.portfolio_id, (liveHoldings.get(h.portfolio_id) ?? 0) + value);
         const cur = topOf.get(h.portfolio_id);
         if (!cur || value > cur.value) topOf.set(h.portfolio_id, { symbol: h.symbol, value });
       }
 
-      return rows.map((p) => ({
-        ...p,
-        profile: profMap.get(p.user_id) ?? null,
-        return_pct: ((Number(p.total_value) - startingCash) / startingCash) * 100,
-        top_holding: topOf.get(p.id) ?? null,
-      })).sort((a, b) => Number(b.total_value) - Number(a.total_value)) as PwStanding[];
+      return rows.map((p) => {
+        const hv = liveHoldings.has(p.id) ? round2(liveHoldings.get(p.id)!) : Number(p.holdings_value);
+        const total = round2(Number(p.cash) + hv);
+        return {
+          ...p,
+          holdings_value: hv,
+          total_value: total,
+          profile: profMap.get(p.user_id) ?? null,
+          return_pct: ((total - startingCash) / startingCash) * 100,
+          top_holding: topOf.get(p.id) ?? null,
+        };
+      }).sort((a, b) => Number(b.total_value) - Number(a.total_value)) as PwStanding[];
     },
   });
 
