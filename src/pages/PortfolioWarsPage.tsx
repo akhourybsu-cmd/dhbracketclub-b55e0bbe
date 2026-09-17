@@ -4,7 +4,7 @@ import { MarketStatusBar } from '@/components/portfolioWars/MarketStatusBar';
 import { EquityCurve } from '@/components/portfolioWars/EquityCurve';
 import {
   usePwSeason, usePwSettings, usePwPortfolio, usePwQuotes,
-  usePwTradesToday, usePwEquityCurve,
+  usePwTradesToday, usePwEquityCurve, livePortfolioValue,
 } from '@/hooks/usePwLeague';
 import { money, pct, seasonLabel, shareCount } from '@/lib/portfolioWars/market';
 
