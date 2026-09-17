@@ -6,6 +6,8 @@ import type { ParsedLink } from '@/lib/linkParser';
 import { isSafeUrl } from '@/lib/linkParser';
 import { getDraftIdFromUrl } from '@/lib/draftInvite';
 import { DraftInviteCard } from './DraftInviteCard';
+import { getPickemShareTarget } from '@/lib/pickemShare';
+import { PickemShareCard } from './PickemShareCard';
 
 interface LinkPreviewData {
   title?: string;
@@ -17,13 +19,17 @@ interface LinkPreviewData {
 interface LinkPreviewCardProps {
   link: ParsedLink;
   messageId: string;
+  authorId: string;
+  authorName?: string | null;
 }
 
-function LinkPreviewCardInner({ link, messageId }: LinkPreviewCardProps) {
+function LinkPreviewCardInner({ link, messageId, authorId, authorName }: LinkPreviewCardProps) {
   if (!isSafeUrl(link.url)) return null;
 
   const draftId = getDraftIdFromUrl(link.url);
   if (draftId) return <DraftInviteCard draftId={draftId} />;
+  const pickemTarget = getPickemShareTarget(link.url);
+  if (pickemTarget) return <PickemShareCard {...pickemTarget} authorId={authorId} authorName={authorName} />;
 
   switch (link.contentType) {
     case 'image':

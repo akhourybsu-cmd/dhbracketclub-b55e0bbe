@@ -24,6 +24,7 @@ import { ChatImageLightbox } from './ChatImageLightbox';
 import { EmojiPicker } from './EmojiPicker';
 import { isPrivateAttachmentUrl, isImageAttachmentUrl } from '@/lib/chatAttachments';
 import { isDraftInviteMessage } from '@/lib/draftInvite';
+import { isPickemShareMessage } from '@/lib/pickemShare';
 import { buildChatMessagePermalink, chatMessagePreview } from '@/lib/chatExperience';
 
 /* ═══ URL auto-linking + inline image preview ═══ */
@@ -671,7 +672,7 @@ function MessageBubbleInner({
                   <div>
                     <p className={cn(
                       "chat-message-copy text-[13px] leading-[1.55] break-words whitespace-pre-wrap",
-                      (((imageUrls.length > 0 || fileUrls.length > 0) && !stripAttachmentUrls(msg.content)) || isDraftInviteMessage(msg.content)) && "hidden"
+                      (((imageUrls.length > 0 || fileUrls.length > 0) && !stripAttachmentUrls(msg.content)) || isDraftInviteMessage(msg.content) || isPickemShareMessage(msg.content)) && "hidden"
                     )}>
                       {renderContent(stripAttachmentUrls(msg.content), currentUserId, currentDisplayName)}
                       {msg.is_pinned && <Pin className="w-2 h-2 inline-block ml-1 -mt-0.5" style={{ color: 'hsl(var(--premium-warm) / 0.5)' }} />}
@@ -680,7 +681,7 @@ function MessageBubbleInner({
                     {previewLinks.length > 0 && !msg._optimistic && (
                       <div className="space-y-1.5 mt-1.5">
                         {previewLinks.map((link, i) => (
-                          <LinkPreviewCard key={`${link.url}-${i}`} link={link} messageId={msg.id} />
+                          <LinkPreviewCard key={`${link.url}-${i}`} link={link} messageId={msg.id} authorId={msg.user_id} authorName={msg.profiles?.display_name} />
                         ))}
                       </div>
                     )}

@@ -19,11 +19,15 @@ import { PickSlipBar } from '@/components/pickem/PickSlipBar';
 import { PickemShell } from '@/components/pickem/PickemShell';
 import { CommissionerUnlockCard } from '@/components/pickem/CommissionerUnlockCard';
 import { useCrazyChainBoard } from '@/hooks/useCrazyChainBoard';
+import { PickemChatShareSheet } from '@/components/pickem/PickemChatShareSheet';
+import { useClubAssets } from '@/hooks/useClubAssets';
 
 export default function PickemWeekPage() {
   const { weekNumber } = useParams<{ weekNumber: string }>();
   const num = parseInt(weekNumber || '1', 10);
   const { user } = useAuth();
+  const { isInstalled } = useClubAssets();
+  const [shareOpen, setShareOpen] = useState(false);
 
   const { season, loading: seasonLoading } = useActiveSeason();
   const { weeks, loading: weeksLoading } = useSeasonWeeks(season?.id);
@@ -113,23 +117,14 @@ export default function PickemWeekPage() {
     }
   }
 
-  async function shareCard() {
+  function shareText() {
     const lines = games.map((game) => {
       const pick = picks.find((item) => item.game_id === game.id);
       const team = pick?.picked_team_id === game.away_team_id ? game.away_team : pick?.picked_team_id === game.home_team_id ? game.home_team : null;
       return `${game.away_team?.abbr ?? 'Away'} @ ${game.home_team?.abbr ?? 'Home'} — ${team?.abbr ?? 'No pick'}`;
     });
     const tb = featured && tiebreaker?.predicted_total != null ? `\nTiebreaker: ${tiebreaker.predicted_total} total points` : '';
-    const text = `${week?.label ?? 'NFL Pick’em'} picks\n${lines.join('\n')}${tb}`;
-    try {
-      if (navigator.share) await navigator.share({ title: `${week?.label ?? 'NFL'} Pick’em`, text });
-      else {
-        await navigator.clipboard.writeText(text);
-        toast.success('Pick card copied');
-      }
-    } catch (error) {
-      if ((error as DOMException)?.name !== 'AbortError') toast.error('Could not share this card');
-    }
+    return `${week?.label ?? 'NFL Pick’em'} picks\n${lines.join('\n')}${tb}`;
   }
 
   if (seasonLoading || adminLoading || (season && (weeksLoading || countsLoading))) {
@@ -228,7 +223,7 @@ export default function PickemWeekPage() {
       {weekLocked && picks.length > 0 && (
         <button
           type="button"
-          onClick={shareCard}
+          onClick={() => setShareOpen(true)}
           className="w-full glass-card p-3 flex items-center gap-2 hover:bg-muted/30 transition-colors btn-press text-left"
         >
           <Share2 className="w-4 h-4 text-primary" />
@@ -236,6 +231,17 @@ export default function PickemWeekPage() {
           <span className="text-[10px] text-muted-foreground">Picks are revealed</span>
         </button>
       )}
+      <PickemChatShareSheet
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        weekId={week.id}
+        weekNumber={week.week_number}
+        weekLabel={week.label}
+        pickedCount={pickedCount}
+        totalGames={totalGames}
+        nativeText={shareText()}
+        chatInstalled={isInstalled('chat')}
+      />
 
       {/* ─────────── Game Slate ─────────── */}
       {gamesLoading ? (
