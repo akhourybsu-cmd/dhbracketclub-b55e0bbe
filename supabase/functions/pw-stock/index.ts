@@ -40,17 +40,34 @@ Deno.serve(async (req) => {
   ]);
 
   const q = (quoteRes ?? {}) as Record<string, number>;
-  const price = typeof q.c === "number" && q.c > 0 ? q.c : null;
+  let price = typeof q.c === "number" && q.c > 0 ? q.c : null;
+  let open = q.o ?? null;
+  let high = q.h ?? null;
+  let low = q.l ?? null;
+  let prevClose = q.pc ?? null;
 
-  if (price) {
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } },
-    );
+  const admin = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } },
+  );
+
+  if (!price) {
+    // Live feed came back empty (rate limit, or a symbol the plan omits) —
+    // fall back to the last price the app already cached.
+    const { data: cached } = await admin.from("pw_quotes")
+      .select("price, open, high, low, prev_close").eq("symbol", symbol).maybeSingle();
+    if (cached?.price) {
+      price = Number(cached.price);
+      open = open ?? cached.open;
+      high = high ?? cached.high;
+      low = low ?? cached.low;
+      prevClose = prevClose ?? cached.prev_close;
+    }
+  } else {
     await admin.from("pw_quotes").upsert({
-      symbol, price, prev_close: q.pc ?? null, open: q.o ?? null,
-      high: q.h ?? null, low: q.l ?? null, fetched_at: new Date().toISOString(),
+      symbol, price, prev_close: prevClose, open, high, low,
+      fetched_at: new Date().toISOString(),
     }, { onConflict: "symbol" });
   }
 
@@ -65,10 +82,10 @@ Deno.serve(async (req) => {
   return json({
     symbol,
     price,
-    open: q.o ?? null,
-    high: q.h ?? null,
-    low: q.l ?? null,
-    prev_close: q.pc ?? null,
+    open,
+    high,
+    low,
+    prev_close: prevClose,
     profile: {
       name: (profile.name as string) ?? null,
       exchange: (profile.exchange as string) ?? null,
