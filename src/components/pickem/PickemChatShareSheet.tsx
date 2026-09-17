@@ -50,7 +50,7 @@ export function PickemChatShareSheet(props: PickemChatShareSheetProps) {
   }, [isClubAdmin, props.chatInstalled, props.open]);
 
   const message = useMemo(() => buildPickemShareMessage({
-    origin: window.location.origin,
+    origin: 'https://dryhorse.app',
     weekId: props.weekId,
     weekNumber: props.weekNumber,
     weekLabel: props.weekLabel,
@@ -85,7 +85,7 @@ export function PickemChatShareSheet(props: PickemChatShareSheetProps) {
   };
 
   return (
-    <ChatBottomSheet open={props.open} onOpenChange={props.onOpenChange} title="Share your pick card" description={`${props.weekLabel} · ${props.pickedCount}/${props.totalGames} picks`} className="sm:block sm:left-1/2 sm:right-auto sm:w-[420px] sm:-translate-x-1/2 sm:rounded-t-2xl">
+    <ChatBottomSheet open={props.open} onOpenChange={props.onOpenChange} title="Share your pick card" description={`${props.weekLabel} · ${props.pickedCount}/${props.totalGames} picks`} mobileOnly={false} className="sm:left-1/2 sm:right-auto sm:w-[420px] sm:-translate-x-1/2 sm:rounded-t-2xl">
       <div className="space-y-3">
         {props.chatInstalled && (
           <section>

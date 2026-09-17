@@ -38,8 +38,8 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [ ] 25. Place one real buy/sell end to end — blocked until the US market is open (next open 09:30 ET)
 
 # Pick’em sharing + chat interaction polish
-- [ ] 26. Share a locked weekly Pick’em card directly into an eligible DH chat channel
-- [ ] 27. Render shared Pick’em weeks as verified, live-data chat cards
-- [ ] 28. Move phone chat tools and message actions into consistent bottom sheets
-- [ ] 29. Stabilize chat scroll, keyboard, channel-switch, and menu behavior
+- [x] 26. Share a locked weekly Pick’em card directly into an eligible DH chat channel
+- [x] 27. Render shared Pick’em weeks as verified, live-data chat cards
+- [x] 28. Move phone chat tools and message actions into consistent bottom sheets
+- [x] 29. Stabilize chat scroll, keyboard, channel-switch, and menu behavior
 - [ ] 30. Verify focused tests plus phone/desktop light and dark chat flows
