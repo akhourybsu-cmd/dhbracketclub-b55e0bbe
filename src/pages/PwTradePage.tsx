@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Search, X, Loader2, CheckCircle2, Clock, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MarketStatusBar } from '@/components/portfolioWars/MarketStatusBar';
 import {
   usePwSeason, usePwSettings, usePwPortfolio, usePwQuotes,
   usePwSymbolSearch, usePwTradesToday, usePwTrade, PwTradeResult,
 } from '@/hooks/usePwLeague';
+import { usePwPlaceOrder, usePwOrders } from '@/hooks/usePwDesk';
 import { marketState, money, pct, shareCount } from '@/lib/portfolioWars/market';
 
 /** Trade desk: search the US market, read a live quote, buy or sell. */
@@ -19,13 +20,19 @@ export default function PwTradePage() {
   const { data: pf } = usePwPortfolio(season?.id);
   const { data: tradesToday } = usePwTradesToday(pf?.portfolio.id);
   const trade = usePwTrade();
+  const placeOrder = usePwPlaceOrder();
+  const { data: orders } = usePwOrders(season?.id);
 
   const [symbol, setSymbol] = useState(initial);
   const [term, setTerm] = useState('');
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [mode, setMode] = useState<'dollars' | 'shares'>('dollars');
   const [input, setInput] = useState('');
+  const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
+  const [limitInput, setLimitInput] = useState('');
+  const [tif, setTif] = useState<'day' | 'gtc'>('gtc');
   const [receipt, setReceipt] = useState<PwTradeResult | null>(null);
+  const [queued, setQueued] = useState<string | null>(null);
 
   const { data: results, isFetching: searching } = usePwSymbolSearch(term);
   const { data: quotes } = usePwQuotes(symbol ? [symbol] : [], !!symbol);
@@ -43,25 +50,66 @@ export default function PwTradePage() {
   useEffect(() => { if (initial) setSymbol(initial); }, [initial]);
 
   const amountNum = Number(input) || 0;
-  const shares = mode === 'shares' ? amountNum : price > 0 ? amountNum / price : 0;
-  const estCost = mode === 'shares' ? shares * price : amountNum;
+  const limitNum = Number(limitInput) || 0;
+  const refPrice = orderType === 'limit' && limitNum > 0 ? limitNum : price;
+  const shares = mode === 'shares' ? amountNum : refPrice > 0 ? amountNum / refPrice : 0;
+  const estCost = mode === 'shares' ? shares * refPrice : amountNum;
+  const openOrders = (orders ?? []).filter((o) => o.status === 'open');
+
+  /** A resting order is anything that can't fill right now at the live price. */
+  const resting = orderType === 'limit' || !market.isOpen;
 
   const blocker = useMemo(() => {
     if (!symbol) return 'Pick a stock first';
-    if (!price) return 'Waiting for a live price';
-    if (!market.isOpen) return 'Market is closed';
-    if (tradesLeft <= 0) return `Daily limit reached (${tradeLimit} trades)`;
+    if (!price && !resting) return 'Waiting for a live price';
+    if (orderType === 'limit' && limitNum <= 0) return 'Enter a target price';
     if (amountNum <= 0) return 'Enter an amount';
+    if (resting) {
+      if (openOrders.length >= 20) return 'You already have 20 orders waiting';
+      return null;
+    }
+    if (tradesLeft <= 0) return `Daily limit reached (${tradeLimit} trades)`;
     if (side === 'buy' && estCost > cash + 0.005) return 'Not enough cash';
     if (side === 'buy' && totalValue > 0 && estCost + Number(holding?.shares ?? 0) * price > (positionCap / 100) * totalValue)
       return `Position cap is ${positionCap}% of your portfolio`;
     if (side === 'sell' && (!holding || shares > Number(holding.shares) + 1e-6)) return 'You do not own that many shares';
     return null;
-  }, [symbol, price, market.isOpen, tradesLeft, tradeLimit, amountNum, side, estCost, cash, totalValue, holding, positionCap, shares]);
+  }, [symbol, price, resting, orderType, limitNum, tradesLeft, tradeLimit, amountNum, side, estCost, cash, totalValue, holding, positionCap, shares, openOrders.length]);
+
+  const pending = trade.isPending || placeOrder.isPending;
+
+  const actionLabel = blocker
+    ?? (resting
+      ? `Place ${orderType === 'limit' ? 'target' : 'queued'} ${side} order`
+      : `${side === 'buy' ? 'Buy' : 'Sell'} ${symbol}`);
 
   const submit = async () => {
     if (!season || blocker) return;
     try {
+      if (resting) {
+        const result = await placeOrder.mutateAsync({
+          seasonId: season.id,
+          symbol,
+          side,
+          orderType,
+          ...(mode === 'shares' ? { shares: amountNum } : { amount: amountNum }),
+          ...(orderType === 'limit' ? { limitPrice: limitNum } : {}),
+          timeInForce: tif,
+        });
+        setInput('');
+        if (result.status === 'filled' && result.fill) {
+          setReceipt(result.fill as unknown as PwTradeResult);
+          setQueued(null);
+        } else {
+          setReceipt(null);
+          setQueued(
+            orderType === 'limit'
+              ? `Waiting for ${symbol} to reach ${money(limitNum)}.`
+              : `Queued — this fills right after the market opens.`,
+          );
+        }
+        return;
+      }
       const result = await trade.mutateAsync({
         seasonId: season.id,
         symbol,
@@ -69,9 +117,10 @@ export default function PwTradePage() {
         ...(mode === 'shares' ? { shares: amountNum } : { amount: amountNum }),
       });
       setReceipt(result);
+      setQueued(null);
       setInput('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Trade failed');
+      toast.error(e instanceof Error ? e.message : 'Order failed');
     }
   };
 
@@ -79,6 +128,7 @@ export default function PwTradePage() {
     setSymbol(s);
     setTerm('');
     setReceipt(null);
+    setQueued(null);
     setParams({ symbol: s }, { replace: true });
   };
 
@@ -132,7 +182,10 @@ export default function PwTradePage() {
         <section className="glass-card rounded-2xl p-4 space-y-3">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-2xl font-black text-white leading-none">{symbol}</p>
+              <Link to={`/portfolio-wars/stock/${symbol}`} className="text-2xl font-black text-white leading-none flex items-center gap-1.5">
+                {symbol}
+                <BarChart3 className="w-4 h-4" style={{ color: 'hsl(var(--pw-bull))' }} />
+              </Link>
               <p className="text-[11px] text-white/55 mt-1">
                 {holding ? `You hold ${shareCount(Number(holding.shares))} sh · avg ${money(Number(holding.avg_cost))}` : 'No position yet'}
               </p>
@@ -149,6 +202,7 @@ export default function PwTradePage() {
               )}
             </div>
           </div>
+
 
           {/* Buy / sell */}
           <div className="grid grid-cols-2 gap-2">
@@ -189,6 +243,54 @@ export default function PwTradePage() {
             </span>
           </div>
 
+          {/* Order type */}
+          <div className="flex items-center gap-2">
+            {([['market', 'At market'], ['limit', 'Target price']] as const).map(([t, label]) => (
+              <button
+                key={t} type="button"
+                onClick={() => { setOrderType(t); setReceipt(null); setQueued(null); }}
+                className="h-9 px-3 rounded-lg text-[10px] font-black uppercase tracking-[0.14em] btn-press"
+                style={{
+                  background: orderType === t ? 'hsl(var(--pw-bull) / 0.16)' : 'hsl(var(--pw-surface) / 0.5)',
+                  border: `1px solid hsl(var(--pw-bull) / ${orderType === t ? 0.45 : 0.12})`,
+                  color: orderType === t ? 'hsl(var(--pw-bull))' : 'hsl(0 0% 100% / 0.5)',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+            {resting && (
+              <button
+                type="button"
+                onClick={() => setTif(tif === 'gtc' ? 'day' : 'gtc')}
+                className="ml-auto h-9 px-3 rounded-lg text-[10px] font-black uppercase tracking-[0.14em] btn-press"
+                style={{
+                  background: 'hsl(var(--pw-amber) / 0.14)',
+                  border: '1px solid hsl(var(--pw-amber) / 0.34)',
+                  color: 'hsl(var(--pw-amber))',
+                }}
+              >
+                {tif === 'gtc' ? 'Until cancelled' : 'Today only'}
+              </button>
+            )}
+          </div>
+
+          {orderType === 'limit' && (
+            <label className="block">
+              <span className="text-[10px] font-black uppercase tracking-[0.14em] text-white/45">
+                Target price
+              </span>
+              <input
+                value={limitInput}
+                onChange={(e) => { setLimitInput(e.target.value.replace(/[^0-9.]/g, '')); setQueued(null); }}
+                inputMode="decimal"
+                placeholder={price ? price.toFixed(2) : '0.00'}
+                className="mt-1 w-full h-11 rounded-xl px-3 text-base font-black tabular-nums text-white bg-black/30 outline-none"
+                style={{ border: '1px solid hsl(var(--pw-bull) / 0.22)' }}
+              />
+            </label>
+          )}
+
           <input
             value={input}
             onChange={(e) => { setInput(e.target.value.replace(/[^0-9.]/g, '')); setReceipt(null); }}
@@ -204,7 +306,7 @@ export default function PwTradePage() {
           </div>
 
           <button
-            type="button" onClick={submit} disabled={!!blocker || trade.isPending}
+            type="button" onClick={submit} disabled={!!blocker || pending}
             className="w-full h-12 rounded-xl flex items-center justify-center gap-2 text-[13px] font-black uppercase tracking-[0.14em] btn-press disabled:opacity-45"
             style={{
               background: `hsl(var(--pw-${side === 'buy' ? 'bull' : 'bear'}) / 0.2)`,
@@ -212,8 +314,8 @@ export default function PwTradePage() {
               color: `hsl(var(--pw-${side === 'buy' ? 'bull' : 'bear'}))`,
             }}
           >
-            {trade.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            {blocker ?? `${side === 'buy' ? 'Buy' : 'Sell'} ${symbol}`}
+            {pending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {actionLabel}
           </button>
 
           {receipt && (
@@ -235,12 +337,45 @@ export default function PwTradePage() {
               </div>
             </div>
           )}
+
+          {queued && (
+            <div
+              className="rounded-xl px-3 py-3 flex items-start gap-2"
+              style={{ background: 'hsl(var(--pw-amber) / 0.12)', border: '1px solid hsl(var(--pw-amber) / 0.35)' }}
+            >
+              <Clock className="w-4 h-4 mt-0.5" style={{ color: 'hsl(var(--pw-amber))' }} />
+              <div className="text-[12px] text-white/80 leading-relaxed">
+                <p className="font-black text-white">Order placed</p>
+                <p>{queued}</p>
+                <Link
+                  to="/portfolio-wars/orders"
+                  className="font-black uppercase tracking-[0.14em] text-[10px]"
+                  style={{ color: 'hsl(var(--pw-amber))' }}
+                >
+                  See working orders
+                </Link>
+              </div>
+            </div>
+          )}
         </section>
       ) : (
         <section className="glass-card rounded-2xl p-5 text-center space-y-1">
           <p className="text-sm font-bold text-white">Search any US-listed stock</p>
-          <p className="text-xs text-white/60">NYSE, Nasdaq and AMEX. Buy in dollars or shares, fills at the live price.</p>
+          <p className="text-xs text-white/60">
+            NYSE, Nasdaq and AMEX. Buy in dollars or shares at the live price, or set a target price
+            and let the order fill on its own.
+          </p>
         </section>
+      )}
+
+      {!!openOrders.length && (
+        <Link
+          to="/portfolio-wars/orders"
+          className="block text-center text-[11px] font-black uppercase tracking-[0.16em] py-2"
+          style={{ color: 'hsl(var(--pw-amber))' }}
+        >
+          {openOrders.length} order{openOrders.length === 1 ? '' : 's'} waiting
+        </Link>
       )}
 
       <Link

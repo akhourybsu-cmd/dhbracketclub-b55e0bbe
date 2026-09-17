@@ -7823,6 +7823,97 @@ export type Database = {
         }
         Relationships: []
       }
+      pw_orders: {
+        Row: {
+          amount: number | null
+          club_id: string
+          created_at: string
+          filled_at: string | null
+          filled_price: number | null
+          filled_shares: number | null
+          id: string
+          limit_price: number | null
+          order_type: string
+          placed_on: string
+          portfolio_id: string
+          reject_reason: string | null
+          season_id: string
+          shares: number | null
+          side: string
+          status: string
+          symbol: string
+          time_in_force: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          club_id: string
+          created_at?: string
+          filled_at?: string | null
+          filled_price?: number | null
+          filled_shares?: number | null
+          id?: string
+          limit_price?: number | null
+          order_type: string
+          placed_on?: string
+          portfolio_id: string
+          reject_reason?: string | null
+          season_id: string
+          shares?: number | null
+          side: string
+          status?: string
+          symbol: string
+          time_in_force?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          club_id?: string
+          created_at?: string
+          filled_at?: string | null
+          filled_price?: number | null
+          filled_shares?: number | null
+          id?: string
+          limit_price?: number | null
+          order_type?: string
+          placed_on?: string
+          portfolio_id?: string
+          reject_reason?: string | null
+          season_id?: string
+          shares?: number | null
+          side?: string
+          status?: string
+          symbol?: string
+          time_in_force?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_orders_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_orders_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "pw_portfolios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pw_orders_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "pw_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pw_picks: {
         Row: {
           club_id: string
@@ -7930,6 +8021,56 @@ export type Database = {
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "pw_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_price_alerts: {
+        Row: {
+          club_id: string
+          created_at: string
+          direction: string
+          id: string
+          status: string
+          symbol: string
+          target_price: number
+          triggered_at: string | null
+          triggered_price: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          status?: string
+          symbol: string
+          target_price: number
+          triggered_at?: string | null
+          triggered_price?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          status?: string
+          symbol?: string
+          target_price?: number
+          triggered_at?: string | null
+          triggered_price?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_price_alerts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -8155,6 +8296,82 @@ export type Database = {
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "pw_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_watchlist_items: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          sort_order: number
+          symbol: string
+          user_id: string
+          watchlist_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          sort_order?: number
+          symbol: string
+          user_id: string
+          watchlist_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          sort_order?: number
+          symbol?: string
+          user_id?: string
+          watchlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_watchlist_items_watchlist_id_fkey"
+            columns: ["watchlist_id"]
+            isOneToOne: false
+            referencedRelation: "pw_watchlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pw_watchlists: {
+        Row: {
+          club_id: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pw_watchlists_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
         ]

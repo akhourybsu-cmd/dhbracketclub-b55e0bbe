@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link, NavLink } from 'react-router-dom';
-import { ArrowLeft, Share2, Briefcase, ArrowLeftRight, Trophy, Rss, Landmark } from 'lucide-react';
+import { ArrowLeft, Share2, Briefcase, ArrowLeftRight, Star, Clock, Trophy, Rss, Landmark } from 'lucide-react';
 import pwEmblem from '@/assets/portfolio-wars-emblem.png';
 import { marketState, formatCountdown } from '@/lib/portfolioWars/market';
 import { copyShareTextWithLink } from '@/lib/share';
@@ -9,6 +9,8 @@ import { PwExitDialog } from './PwExitDialog';
 const PW_TABS = [
   { to: '/portfolio-wars', label: 'Portfolio', icon: Briefcase },
   { to: '/portfolio-wars/trade', label: 'Trade', icon: ArrowLeftRight },
+  { to: '/portfolio-wars/watchlists', label: 'Watchlists', icon: Star },
+  { to: '/portfolio-wars/orders', label: 'Orders', icon: Clock },
   { to: '/portfolio-wars/leaderboard', label: 'Standings', icon: Trophy },
   { to: '/portfolio-wars/activity', label: 'Tape', icon: Rss },
   { to: '/portfolio-wars/history', label: 'History', icon: Landmark },
