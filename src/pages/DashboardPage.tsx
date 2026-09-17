@@ -317,10 +317,12 @@ function DashboardHome() {
       <HomeDashboard club={club} displayName={displayName} avatarUrl={avatarUrl} installedSlugs={installedSlugs}
         pendingActions={actions} narrativeActiveCount={narrativeActiveCount} activeDraftStatus={activeDraftStatus}
         upcomingEventCount={events.length} season={hasDrafts?(season??null):null} seasonTarget={seasonTarget}
-        seasonCompleted={regularEntries} standings={standings} activity={activity} events={events} loading={loading} />
+        seasonCompleted={regularEntries} standings={standings} activity={activity} events={events} loading={loading}
+        extra={<PwHomeWidget enabled={installedSlugs.has('portfolio-wars')} />} />
     </DashboardErrorBoundary> : <MobileHome displayName={displayName} clubName={club?.name || 'your club'} installedSlugs={installedSlugs}
       actions={actions} updates={updates} shortcuts={qb} refreshing={refreshing} error={loadError} onRefresh={()=>void fetchData()}>
       {isFreshClub&&!loadError&&<EmptyClubState isAdmin={isClubAdmin} accent={accent} clubName={club?.name} />}
+      <PwHomeWidget enabled={installedSlugs.has('portfolio-wars')} />
       {(hasDrafts&&season || installedSlugs.has('narrative-rpg')&&narrativeActiveCount>0)&&<details className="rounded-2xl border border-border/70 bg-card px-4">
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between text-sm font-semibold">Your season & stories<ChevronDown className="h-4 w-4 text-muted-foreground" /></summary>
         <FeaturedModule season={hasDrafts?season??null:null} standings={standings} regularEntries={regularEntries}
