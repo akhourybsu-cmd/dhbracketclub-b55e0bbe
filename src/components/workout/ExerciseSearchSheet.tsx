@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Search, Plus, Dumbbell } from 'lucide-react';
 import {
   searchCatalog, CATALOG_MUSCLES, type CatalogExercise, type LogKind,
@@ -38,6 +38,7 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
   onClose: () => void;
   onPick: (pick: ExercisePick) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const [q, setQ] = useState('');
   const [kind, setKind] = useState<LogKind | null>(null);
   const [muscle, setMuscle] = useState<string | null>(null);
@@ -87,13 +88,13 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
               {KIND_CHIPS.map((c) => {
                 const on = kind === c.key;
                 return (
-                  <button key={c.key} onClick={() => setKind(on ? null : c.key)}
+                  <motion.button key={c.key} whileTap={reduceMotion ? undefined : { scale: 0.94 }} onClick={() => setKind(on ? null : c.key)}
                     className="flex-shrink-0 h-8 px-3 rounded-full text-[12px] font-bold whitespace-nowrap"
                     style={{
                       background: on ? 'hsl(24 95% 55% / 0.22)' : 'hsl(220 14% 15%)',
                       border: `1px solid ${on ? 'hsl(24 95% 55% / 0.55)' : 'hsl(24 30% 55% / 0.18)'}`,
                       color: on ? 'hsl(28 100% 70%)' : 'hsl(30 20% 72%)',
-                    }}>{c.label}</button>
+                    }}>{c.label}</motion.button>
                 );
               })}
               <select value={muscle ?? ''} onChange={(e) => setMuscle(e.target.value || null)}
@@ -111,11 +112,19 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
                 <div className="mb-2 rounded-2xl p-2.5" style={{ background: 'hsl(220 14% 13% / 0.72)', border: '1px solid hsl(24 35% 58% / 0.14)' }}>
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] mb-2" style={{ color: 'hsl(28 36% 58%)' }}>Quick start</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {QUICK_PICKS.map((p) => (
-                      <button key={p.name} onClick={() => onPick(p)} className="fg-key min-h-[48px] rounded-xl px-3 py-2 flex-col items-start text-left">
+                    {QUICK_PICKS.map((p, i) => (
+                      <motion.button
+                        key={p.name}
+                        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+                        animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                        transition={{ delay: 0.035 * i, type: 'spring', stiffness: 420, damping: 30 }}
+                        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                        onClick={() => onPick(p)}
+                        className="fg-key min-h-[48px] rounded-xl px-3 py-2 flex-col items-start text-left"
+                      >
                         <span className="text-[12px] font-black leading-tight">{p.name}</span>
                         <span className="text-[9px] font-bold opacity-65">{KIND_LABEL[p.logKind]}</span>
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 </div>
@@ -145,8 +154,15 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
                 </select>
               </div>
 
-              {results.map((e) => (
-                <button key={e.id} onClick={() => pickCatalog(e)}
+              <AnimatePresence initial={false}>
+              {results.map((e, i) => (
+                <motion.button key={e.id} onClick={() => pickCatalog(e)}
+                  layout
+                  initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                  animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                  exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                  transition={{ delay: Math.min(i, 8) * 0.012 }}
+                  whileTap={reduceMotion ? undefined : { scale: 0.985 }}
                   className="w-full flex items-center gap-2.5 py-2.5 px-1 text-left rounded-xl active:bg-white/[0.03]">
                   <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'hsl(220 14% 15%)', border: '1px solid hsl(24 30% 55% / 0.16)' }}>
                     <Dumbbell className="w-4 h-4" style={{ color: 'hsl(28 80% 62%)' }} />
@@ -159,8 +175,9 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
                   </div>
                   <span className="text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 rounded-md flex-shrink-0"
                     style={{ background: 'hsl(24 95% 55% / 0.12)', color: 'hsl(28 70% 66%)' }}>{KIND_LABEL[e.logKind]}</span>
-                </button>
+                </motion.button>
               ))}
+              </AnimatePresence>
               {results.length === 0 && (
                 <p className="text-center text-[12px] py-6" style={{ color: 'hsl(28 20% 58%)' }}>
                   No library match — use “Log {trimmed ? `“${trimmed}”` : 'a custom exercise'}” above.

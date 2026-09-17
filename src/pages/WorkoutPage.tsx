@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Dumbbell, Trophy, ChevronRight, ChevronDown, Flame, Timer, Play, Medal, Users, Settings, HelpCircle, Undo2, Plus, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -37,11 +37,14 @@ const ordinal = (n: number) => {
 /** Number that eases to its new value — used on the hero score. */
 function CountUp({ value, className }: { value: number; className?: string }) {
   const [display, setDisplay] = useState(value);
+  const [pulseKey, setPulseKey] = useState(0);
   const prev = useRef(value);
+  const reduceMotion = useReducedMotion();
   useEffect(() => {
     const from = prev.current, to = value;
     prev.current = value;
     if (from === to) { setDisplay(to); return; }
+    if (to > from && !reduceMotion) setPulseKey((k) => k + 1);
     const start = performance.now(), dur = 550;
     let raf = 0;
     const tick = (t: number) => {
@@ -52,13 +55,24 @@ function CountUp({ value, className }: { value: number; className?: string }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [value]);
-  return <span className={className}>{display.toLocaleString()}</span>;
+  }, [value, reduceMotion]);
+  return (
+    <motion.span
+      key={pulseKey}
+      className={className}
+      initial={false}
+      animate={reduceMotion ? undefined : { scale: [1, 1.07, 1], filter: ['drop-shadow(0 0 0 hsl(24 100% 55% / 0))', 'drop-shadow(0 0 14px hsl(24 100% 55% / 0.75))', 'drop-shadow(0 0 0 hsl(24 100% 55% / 0))'] }}
+      transition={{ duration: 0.55, ease: 'easeOut' }}
+    >
+      {display.toLocaleString()}
+    </motion.span>
+  );
 }
 
 /** Live segmented countdown — the app's competitive pulse. */
 function CountdownSegments({ endsAt }: { endsAt: string }) {
   const cd = useCountdown(endsAt);
+  const reduceMotion = useReducedMotion();
   if (cd.done) return <span className="text-[13px] font-black" style={{ color: 'hsl(28 60% 62%)' }}>Ended</span>;
   const segs = cd.d >= 2
     ? [{ v: cd.d, l: 'DAYS' }, { v: cd.h, l: 'HRS' }, { v: cd.m, l: 'MIN' }]
@@ -68,14 +82,19 @@ function CountdownSegments({ endsAt }: { endsAt: string }) {
     <div className="flex items-center gap-1.5">
       {segs.map((s, i) => (
         <div key={i} className="flex flex-col items-center">
-          <div className="min-w-[34px] px-1.5 py-1 rounded-lg text-center tabular-nums font-black text-[16px] leading-none"
+          <motion.div
+            key={`${s.l}-${s.v}`}
+            initial={reduceMotion ? false : { y: -3, scale: 0.96 }}
+            animate={reduceMotion ? undefined : { y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 30 }}
+            className="min-w-[34px] px-1.5 py-1 rounded-lg text-center tabular-nums font-black text-[16px] leading-none"
             style={{
               background: urgent ? 'hsl(6 90% 22% / 0.6)' : 'hsl(18 60% 12% / 0.7)',
               border: `1px solid ${urgent ? 'hsl(6 95% 60% / 0.5)' : 'hsl(24 95% 55% / 0.3)'}`,
               color: urgent ? 'hsl(8 100% 72%)' : 'hsl(30 60% 92%)',
             }}>
             {String(s.v).padStart(2, '0')}
-          </div>
+          </motion.div>
           <span className="text-[7px] font-bold tracking-[0.14em] mt-1" style={{ color: 'hsl(28 40% 58%)' }}>{s.l}</span>
         </div>
       ))}
@@ -85,6 +104,7 @@ function CountdownSegments({ endsAt }: { endsAt: string }) {
 
 function EmberBar({ pct, delay = 0, height = 'h-2' }: { pct: number; delay?: number; height?: string }) {
   const full = pct >= 1;
+  const reduceMotion = useReducedMotion();
   return (
     <div className={cn('relative rounded-full overflow-hidden', height)} style={{ background: 'hsl(220 14% 20% / 0.75)' }}>
       <motion.div
@@ -96,6 +116,15 @@ function EmberBar({ pct, delay = 0, height = 'h-2' }: { pct: number; delay?: num
         animate={{ width: `${Math.round(Math.min(1, pct) * 100)}%` }}
         transition={{ type: 'spring', stiffness: 210, damping: 28, delay }}
       />
+      {pct > 0 && !reduceMotion && (
+        <motion.span
+          aria-hidden
+          className="fg-bar-spark"
+          initial={false}
+          animate={{ left: `${Math.min(98, Math.max(2, pct * 100))}%` }}
+          transition={{ type: 'spring', stiffness: 240, damping: 26, delay }}
+        />
+      )}
     </div>
   );
 }
@@ -107,6 +136,7 @@ const tileVariants = {
 
 
 export default function WorkoutPage() {
+  const reduceMotion = useReducedMotion();
   const { user } = useAuth();
   const { club, isClubAdmin } = useClub();
   const { isInstalled, loading: assetsLoading } = useClubAssets();
@@ -127,6 +157,7 @@ export default function WorkoutPage() {
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [flameSurge, setFlameSurge] = useState(0);
   const [showBlaze, setShowBlaze] = useState(false);
+  const [logBurst, setLogBurst] = useState<{ id: string; amount: number; tick: number } | null>(null);
   const bumpFlame = () => setFlameSurge(s => s + 1);
 
   const currentMondayKey = useMemo(() => {
@@ -263,6 +294,8 @@ export default function WorkoutPage() {
     try {
       await logActivity({ exercise: we.exercise, weekId: week?.id ?? null, rawValue: amount });
       bumpFlame();
+      setLogBurst({ id: we.id, amount, tick: Date.now() });
+      window.setTimeout(() => setLogBurst((cur) => (cur?.id === we.id ? null : cur)), 900);
       try { navigator.vibrate?.(8); } catch { /* ignore */ }
       // Celebrate the moment a personal goal is crossed.
       const after = computeExerciseProgress(we, [...myWeekActivities, { raw_value: amount } as any], pg).goalPct;
@@ -316,7 +349,7 @@ export default function WorkoutPage() {
       {/* ── The Club Flame — collective, front & center ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-        className="fg-glass px-5 pt-4 pb-5 relative overflow-hidden mb-4"
+        className="fg-glass fg-forge-hero px-5 pt-4 pb-5 relative overflow-hidden mb-4"
       >
         <div className="flex items-start justify-between gap-3 relative z-[2]">
           <div className="min-w-0">
@@ -360,25 +393,32 @@ export default function WorkoutPage() {
       </motion.div>
 
       {/* Quick action dock — weekly gauntlet first, freeform workouts one tap away */}
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
-        <a href="#forge-daily-workouts" className="fg-key min-h-[64px] rounded-2xl px-3 py-3 flex-col items-start text-left">
+      <motion.div
+        initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+        animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className="grid grid-cols-2 gap-2.5 mb-4"
+      >
+        <motion.a whileTap={reduceMotion ? undefined : { scale: 0.98 }} href="#forge-daily-workouts" className="fg-key min-h-[64px] rounded-2xl px-3 py-3 flex-col items-start text-left">
           <Dumbbell className="w-5 h-5" />
           <span className="text-[14px] font-black leading-tight">Daily workouts</span>
           <span className="text-[10px] font-bold opacity-70">{weekExercises.length} moves ready</span>
-        </a>
-        <Link to="/workouts/log" className="fg-cta min-h-[64px] rounded-2xl px-3 py-3 flex-col items-start text-left">
+        </motion.a>
+        <motion.div whileTap={reduceMotion ? undefined : { scale: 0.98 }}>
+        <Link to="/workouts/log" className="fg-cta min-h-[64px] rounded-2xl px-3 py-3 flex-col items-start text-left w-full">
           <Sparkles className="w-5 h-5" />
           <span className="text-[14px] font-black leading-tight">{activeLogSession ? 'Resume workout' : 'Any workout'}</span>
           <span className="text-[10px] font-bold opacity-70">Adds fuel to the flame</span>
         </Link>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Club group goals */}
       {groupGoals.map((g) => {
         const combined = weekActivities.filter(a => a.exercise_id === g.exercise_id).reduce((t, a) => t + Number(a.raw_value), 0);
         const pct = g.target > 0 ? Math.min(1, combined / g.target) : 0;
         return (
-          <motion.div key={g.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          <motion.div key={g.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} whileHover={reduceMotion ? undefined : { y: -2 }}
             className="fg-glass p-4 mb-4" style={{ borderColor: 'hsl(24 95% 55% / 0.32)' }}>
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4" style={{ color: 'hsl(28 100% 66%)' }} />
@@ -409,7 +449,7 @@ export default function WorkoutPage() {
         const combined = weekActivities.filter(a => a.exercise_id === headline.exercise_id).reduce((t, a) => t + Number(a.raw_value), 0);
         const pct = target > 0 ? Math.min(1, combined / target) : 0;
         return (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="fg-glass p-4 mb-4" style={{ borderColor: 'hsl(24 95% 55% / 0.32)' }}>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} whileHover={reduceMotion ? undefined : { y: -2 }} className="fg-glass p-4 mb-4" style={{ borderColor: 'hsl(24 95% 55% / 0.32)' }}>
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4" style={{ color: 'hsl(28 100% 66%)' }} />
               <h3 className="text-[12px] font-black uppercase tracking-[0.14em]" style={{ color: 'hsl(28 90% 66%)' }}>Club Goal</h3>
@@ -440,7 +480,7 @@ export default function WorkoutPage() {
           const cleared = prog.goalPct >= 1;
           const hasTutorial = !!libKeyOf(we);
           return (
-            <motion.div key={we.id} custom={i} variants={tileVariants} initial="hidden" animate="show" className="fg-glass p-3.5 relative overflow-hidden">
+            <motion.div key={we.id} custom={i} variants={tileVariants} initial="hidden" animate="show" whileHover={reduceMotion ? undefined : { y: -2 }} whileTap={reduceMotion ? undefined : { scale: 0.995 }} className="fg-glass p-3.5 relative overflow-hidden">
               <AnimatePresence>
                 {poppedGoal === we.id && (
                   <motion.div
@@ -450,6 +490,20 @@ export default function WorkoutPage() {
                   >
                     <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1.1, opacity: 1 }} exit={{ scale: 1.4, opacity: 0 }}
                       className="text-[28px] font-black" style={{ color: 'hsl(38 100% 65%)' }}>🔥</motion.span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              <AnimatePresence>
+                {logBurst?.id === we.id && !reduceMotion && (
+                  <motion.div
+                    key={logBurst.tick}
+                    initial={{ opacity: 0, y: 10, scale: 0.85 }}
+                    animate={{ opacity: 1, y: -8, scale: 1 }}
+                    exit={{ opacity: 0, y: -24, scale: 0.92 }}
+                    transition={{ duration: 0.55, ease: 'easeOut' }}
+                    className="absolute right-4 top-4 z-[3] pointer-events-none rounded-full px-2.5 py-1 text-[12px] font-black tabular-nums fg-fuel-pop"
+                  >
+                    +{logBurst.amount}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -484,7 +538,7 @@ export default function WorkoutPage() {
                     <button onClick={() => quickLog(we, 1)} className="fg-cta flex-1 h-11 rounded-xl text-[14px]">Complete round</button>
                   ) : (
                     quick.map(n => (
-                      <motion.button key={n} whileTap={{ scale: 0.9 }} onClick={() => quickLog(we, n)}
+                      <motion.button key={n} whileTap={reduceMotion ? undefined : { scale: 0.9 }} onClick={() => quickLog(we, n)}
                         className="fg-key flex-1 h-11 rounded-xl font-black text-[16px] tabular-nums">
                         +{n}
                       </motion.button>
