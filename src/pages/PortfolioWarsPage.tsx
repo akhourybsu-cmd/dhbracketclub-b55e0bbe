@@ -28,6 +28,16 @@ export default function PortfolioWarsPage() {
 
   const dayChange = live.dayChange;
 
+  // The curve is stamped on fills and at the close; mark today's point to live prices.
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+  const livePoints = (() => {
+    const points = (curve ?? []).filter((p) => p.trading_date !== today);
+    if (!pf?.portfolio) return points;
+    return [...points, { trading_date: today, value: total }];
+  })();
+
   if (seasonLoading) {
     return <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="glass-card rounded-2xl h-24 animate-pulse" />)}</div>;
   }
