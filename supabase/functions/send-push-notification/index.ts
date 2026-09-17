@@ -33,11 +33,45 @@ type NotifRow = {
 async function insertNotifications(supabase: any, rows: NotifRow[]) {
   if (!rows.length) return;
   try {
-    await supabase.from("notifications").insert(rows);
+    const { error } = await supabase.from("notifications").insert(rows);
+    if (error) console.error("notifications insert failed:", error.message);
   } catch (e) {
     console.error("notifications insert failed:", e);
   }
 }
+
+// ── Club-wide recipients: every member of the given club, or of every club the
+// caller belongs to when no club_id is supplied. Used when a caller broadcasts
+// (poll opened, celebrations, week open) without naming recipients. ──
+async function clubBroadcastRecipients(
+  supabase: any,
+  clubId: string | null,
+  callerId: string | null,
+  isCron: boolean,
+  isAdmin: boolean,
+): Promise<{ userIds: string[]; clubId: string | null }> {
+  let targetClub = clubId;
+
+  if (!isCron && !isAdmin) {
+    // A member may only broadcast inside clubs they belong to.
+    const { data: mine } = await supabase
+      .from("club_members")
+      .select("club_id")
+      .eq("user_id", callerId);
+    const myClubs = new Set((mine || []).map((r: any) => r.club_id));
+    if (myClubs.size === 0) return { userIds: [], clubId: null };
+    if (targetClub && !myClubs.has(targetClub)) return { userIds: [], clubId: null };
+    if (!targetClub && myClubs.size === 1) targetClub = [...myClubs][0] as string;
+    if (!targetClub) return { userIds: [], clubId: null };
+  }
+
+  let query = supabase.from("club_members").select("user_id, club_id");
+  if (targetClub) query = query.eq("club_id", targetClub);
+  const { data: members } = await query;
+  const userIds = [...new Set((members || []).map((m: any) => m.user_id).filter(Boolean))] as string[];
+  return { userIds, clubId: targetClub };
+}
+
 
 // ── Send push to subscriptions, cleaning up expired ones ──
 async function deliverPush(
