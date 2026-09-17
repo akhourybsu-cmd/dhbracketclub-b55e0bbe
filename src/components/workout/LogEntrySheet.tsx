@@ -48,7 +48,7 @@ function Stepper({ value, onChange, step = 1, min = 0, label, suffix }: {
  * distance+time, a distance, or a plain completion) and previews the fuel the
  * entry will earn. Emits one AddEntryInput on save. Portaled to <body>.
  */
-export function LogEntrySheet({ pick, sessionId, onClose, onSave }: {
+export function LogEntrySheet({ pick, sessionId, onClose, onSave, onAddAnother }: {
   pick: ExercisePick | null;
   /** Session the draft is keyed to — lets a half-composed entry survive an app kill. */
   sessionId: string | null;
