@@ -29,7 +29,7 @@ export function WorkoutLoggerSheet({
     <AnimatePresence>
       {exercise && (
         <motion.div
-          className="fixed inset-0 z-[60] flex flex-col justify-end"
+          className="fg-mode fixed inset-0 z-[60] flex flex-col justify-end"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         >
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />

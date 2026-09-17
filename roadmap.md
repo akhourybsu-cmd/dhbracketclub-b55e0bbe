@@ -45,3 +45,9 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 30. Verify focused tests plus phone/desktop light and dark chat flows
 
 - [x] 31. Portfolio Wars trading desk: watchlists, stock detail pages, target-price orders, orders queued while closed, price alerts
+
+# FORGE cleanup and logging polish
+- [x] 32. Make the FORGE Compete banner feel like a proper game entry point with current week and collaboration status
+- [x] 33. Streamline daily workout and freeform logging so members can start with fewer taps
+- [x] 34. Clean up collaborative flame, roster, and club-goal presentation
+- [x] 35. Verify FORGE screens and logging flows in browser

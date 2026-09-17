@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Trophy, BarChart3, MessageCircle, Bookmark, ChevronRight, Lock, Shield,
-  Swords, TrendingUp, VenetianMask, Flame,
+  Swords, TrendingUp, VenetianMask, Flame, Dumbbell, Timer, Users,
 } from 'lucide-react';
 import { useClub } from '@/contexts/ClubContext';
 import * as readshiftApi from '@/lib/readshift/api';
@@ -20,20 +20,40 @@ import runedelveEmblem from '@/assets/runedelve-emblem.png';
 import nexusEmblem from '@/assets/nexus-emblem.png';
 import pickemEmblem from '@/assets/pickem-emblem.png';
 import draftEmblem from '@/assets/draft-emblem.png';
+import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 
 /* ── FORGE card ── */
 function WorkoutArenaCompeteCard() {
   const { club } = useClub();
-  const [week, setWeek] = useState<{ title: string; ends_at: string } | null>(null);
+  const { user } = useAuth();
+  const { clubWeekPoints, activeSession } = useWorkoutLog(club?.id, user?.id);
+  const [week, setWeek] = useState<{ id: string; title: string; ends_at: string } | null>(null);
+  const [stats, setStats] = useState<{ entries: number; participants: number }>({ entries: 0, participants: 0 });
+
   useEffect(() => {
     if (!club?.id) return;
     let cancelled = false;
     (async () => {
       const { data } = await (supabase as any)
-        .from('workout_weeks').select('title, ends_at')
+        .from('workout_weeks').select('id, title, ends_at')
         .eq('club_id', club.id).eq('status', 'active')
         .order('starts_at', { ascending: false }).limit(1);
-      if (!cancelled) setWeek(data?.[0] ?? null);
+      const active = data?.[0] ?? null;
+      if (active) {
+        const { data: acts } = await (supabase as any)
+          .from('workout_activities')
+          .select('user_id')
+          .eq('week_id', active.id)
+          .eq('status', 'active')
+          .limit(1000);
+        if (!cancelled) {
+          const users = new Set(((acts || []) as any[]).map((a) => a.user_id).filter(Boolean));
+          setStats({ entries: acts?.length ?? 0, participants: users.size });
+        }
+      } else if (!cancelled) {
+        setStats({ entries: 0, participants: 0 });
+      }
+      if (!cancelled) setWeek(active);
     })();
     return () => { cancelled = true; };
   }, [club?.id]);
@@ -47,26 +67,57 @@ function WorkoutArenaCompeteCard() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-      <div className="glass-card p-4 relative overflow-hidden border border-primary/10">
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'radial-gradient(circle at 40% 30%, hsl(24 100% 55% / 0.35), transparent 70%), linear-gradient(135deg, hsl(18 60% 14%), hsl(12 60% 8%))', border: '1px solid hsl(24 95% 55% / 0.35)' }}>
-              <Flame className="w-5 h-5" style={{ color: 'hsl(28 100% 66%)' }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="font-black text-[15px] tracking-[0.14em]">FORGE</h2>
-                <StatusPill variant={week ? 'live' : 'neutral'} size="xs" dot={!!week} pulse={!!week}>{week ? 'Live' : 'Weekly'}</StatusPill>
+      <Link to="/workouts" className="block">
+        <div className="relative overflow-hidden rounded-2xl btn-press"
+          style={{
+            background:
+              'radial-gradient(ellipse 115% 85% at 50% 0%, hsl(24 96% 44% / 0.44), transparent 62%),' +
+              'radial-gradient(ellipse 80% 65% at 105% 100%, hsl(42 95% 54% / 0.22), transparent 62%),' +
+              'linear-gradient(180deg, hsl(220 16% 9%), hsl(222 22% 5%))',
+            border: '1px solid hsl(24 95% 55% / 0.36)',
+            boxShadow: '0 12px 40px hsl(18 95% 24% / 0.42), inset 0 1px 0 hsl(38 100% 82% / 0.16)',
+          }}>
+          <div aria-hidden className="absolute -top-12 -right-10 w-44 h-44 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, hsl(28 100% 58% / 0.38), transparent 70%)', filter: 'blur(8px)' }} />
+          <div className="relative z-10 p-5">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0 w-[88px] h-[88px] rounded-2xl flex items-center justify-center"
+                style={{ background: 'radial-gradient(circle at 40% 30%, hsl(28 100% 58% / 0.34), transparent 68%), linear-gradient(145deg, hsl(220 14% 16%), hsl(222 20% 8%))', border: '1px solid hsl(24 95% 55% / 0.34)' }}>
+                <Flame className="w-10 h-10" style={{ color: 'hsl(30 100% 66%)', filter: 'drop-shadow(0 0 16px hsl(24 100% 55% / 0.68))' }} />
               </div>
-              <p className="text-[11px] text-muted-foreground/70 truncate">{context}</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(30 95% 70%)' }}>◆ Club Fitness</span>
+                  <StatusPill variant={week ? 'live' : 'neutral'} size="xs" dot={!!week} pulse={!!week}>{week ? 'In Progress' : 'Weekly'}</StatusPill>
+                </div>
+                <h2 className="font-extrabold text-[23px] leading-none tracking-tight mb-2"
+                  style={{ background: 'linear-gradient(180deg, hsl(30 35% 98%), hsl(30 96% 70%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 0 18px hsl(24 100% 48% / 0.38)' }}>
+                  FORGE
+                </h2>
+                <p className="text-[11px] font-semibold truncate mb-3" style={{ color: 'hsl(30 18% 72%)' }}>{context}</p>
+                <CompeteCTAButton accent="28 100% 60%" accentDeep="18 95% 50%" ink="222 24% 6%" pulse={!!activeSession}>
+                  {activeSession ? 'Resume Log' : 'Log Workout'}
+                </CompeteCTAButton>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              {[
+                { icon: Dumbbell, label: 'Daily', value: stats.entries ? `${stats.entries} logs` : 'Ready' },
+                { icon: Users, label: 'Crew', value: stats.participants ? `${stats.participants} active` : 'Open' },
+                { icon: Timer, label: 'Fuel', value: clubWeekPoints ? clubWeekPoints.toLocaleString() : '0' },
+              ].map((m) => (
+                <div key={m.label} className="rounded-xl px-2.5 py-2"
+                  style={{ background: 'hsl(220 16% 8% / 0.52)', border: '1px solid hsl(24 60% 60% / 0.14)' }}>
+                  <m.icon className="w-3.5 h-3.5 mb-1" style={{ color: 'hsl(30 96% 68%)' }} />
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.12em]" style={{ color: 'hsl(28 28% 55%)' }}>{m.label}</p>
+                  <p className="text-[12px] font-black truncate" style={{ color: 'hsl(30 35% 92%)' }}>{m.value}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <Link to="/workouts" className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-primary/12 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15">
-            {week ? 'Log a workout' : 'Open'} <ChevronRight className="w-3 h-3" />
-          </Link>
         </div>
-      </div>
+      </Link>
     </motion.div>
   );
 }

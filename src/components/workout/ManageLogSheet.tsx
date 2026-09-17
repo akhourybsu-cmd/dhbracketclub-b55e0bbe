@@ -65,7 +65,7 @@ export function ManageLogSheet({
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-[60] flex flex-col justify-end"
+        <motion.div className="fg-mode fixed inset-0 z-[60] flex flex-col justify-end"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
           <motion.div

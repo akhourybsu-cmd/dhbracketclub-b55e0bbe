@@ -180,7 +180,10 @@ export default function WorkoutPage() {
   const freeformTarget = Math.max(1, members.length || 1) * 300;
   const combinedFuel = clubPoints + clubWeekPoints;
   const clubStoke = (clubTarget + freeformTarget) > 0 ? combinedFuel / (clubTarget + freeformTarget) : 0;
-  const participants = useMemo(() => leaderboard.filter(r => r.score > 0).length, [leaderboard]);
+  const participants = useMemo(
+    () => leaderboard.filter(r => r.score > 0 || (clubWeekByMember[r.userId]?.points ?? 0) > 0).length,
+    [leaderboard, clubWeekByMember],
+  );
   const rosterSize = Math.max(members.length, leaderboard.length);
 
   const exercisesById = useMemo(() => {
@@ -327,11 +330,16 @@ export default function WorkoutPage() {
           <ClubFlame intensity={clubStoke} surge={flameSurge} />
           <div className="text-center -mt-4 relative z-[2]">
             <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: 'hsl(28 60% 64%)' }}>The club has forged</p>
-            <CountUp value={clubPoints} className="text-[44px] leading-none font-black tabular-nums" />
+            <CountUp value={combinedFuel} className="text-[44px] leading-none font-black tabular-nums" />
             <p className="text-[11px] font-bold mt-1" style={{ color: 'hsl(30 20% 66%)' }}>
               {clubStoke >= 1 ? 'FULL BLAZE 🔥' : `${Math.round(clubStoke * 100)}% to full blaze`}
               {' · '}{participants}/{rosterSize} fired up
             </p>
+            {clubWeekPoints > 0 && (
+              <p className="text-[10px] font-bold mt-1" style={{ color: 'hsl(28 42% 58%)' }}>
+                Includes {clubWeekPoints.toLocaleString()} fuel from personal workouts
+              </p>
+            )}
           </div>
         </div>
 
@@ -351,17 +359,19 @@ export default function WorkoutPage() {
         </div>
       </motion.div>
 
-      {/* Freeform log — stoke the flame with any workout */}
-      <Link to="/workouts/log" className="fg-cta w-full h-12 rounded-xl text-[15px] mb-2">
-        <Sparkles className="w-5 h-5" /> {activeLogSession ? 'Resume your workout' : 'Log a workout'}
-        <Plus className="w-4 h-4 opacity-70" />
-      </Link>
-      {clubWeekPoints > 0 && (
-        <p className="text-center text-[11px] font-bold mb-4" style={{ color: 'hsl(28 40% 62%)' }}>
-          🔥 +{clubWeekPoints.toLocaleString()} freeform fuel added to the flame this week
-        </p>
-      )}
-      {clubWeekPoints === 0 && <div className="mb-4" />}
+      {/* Quick action dock — weekly gauntlet first, freeform workouts one tap away */}
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        <a href="#forge-daily-workouts" className="fg-key min-h-[64px] rounded-2xl px-3 py-3 flex-col items-start text-left">
+          <Dumbbell className="w-5 h-5" />
+          <span className="text-[14px] font-black leading-tight">Daily workouts</span>
+          <span className="text-[10px] font-bold opacity-70">{weekExercises.length} moves ready</span>
+        </a>
+        <Link to="/workouts/log" className="fg-cta min-h-[64px] rounded-2xl px-3 py-3 flex-col items-start text-left">
+          <Sparkles className="w-5 h-5" />
+          <span className="text-[14px] font-black leading-tight">{activeLogSession ? 'Resume workout' : 'Any workout'}</span>
+          <span className="text-[10px] font-bold opacity-70">Adds fuel to the flame</span>
+        </Link>
+      </div>
 
       {/* Club group goals */}
       {groupGoals.map((g) => {
@@ -420,7 +430,7 @@ export default function WorkoutPage() {
       })()}
 
       {/* Workouts */}
-      <h3 className="text-[11px] font-black uppercase tracking-[0.16em] mb-2.5 px-1" style={{ color: 'hsl(28 45% 62%)' }}>This week’s workouts</h3>
+      <h3 id="forge-daily-workouts" className="scroll-mt-4 text-[11px] font-black uppercase tracking-[0.16em] mb-2.5 px-1" style={{ color: 'hsl(28 45% 62%)' }}>This week’s workouts</h3>
       <div className="space-y-2.5 mb-6">
         {weekExercises.map((we, i) => {
           const prog = computeExerciseProgress(we, myWeekActivities, personalGoalFor(we));
@@ -517,6 +527,8 @@ export default function WorkoutPage() {
           const open = expandedMember === row.userId;
           const acts = weekActivities.filter(a => a.user_id === row.userId);
           const freeform = clubWeekByMember[row.userId];
+          const memberFuel = row.score + (freeform?.points ?? 0);
+          const sparkShare = combinedFuel > 0 ? memberFuel / combinedFuel : spark;
           return (
             <motion.div key={row.userId} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.02 * Math.min(i, 12) }}
               style={{ background: isMe ? 'hsl(24 95% 55% / 0.08)' : 'transparent', borderTop: i ? '1px solid hsl(220 14% 60% / 0.1)' : 'none' }}>
@@ -529,12 +541,12 @@ export default function WorkoutPage() {
                 <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: color, boxShadow: `0 0 8px -1px ${color}` }} />
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-[13px] font-bold" style={{ color: isMe ? color : 'hsl(30 30% 90%)' }}>{isMe ? 'You' : (nameById.get(row.userId) || 'Member')}</p>
-                  <div className="h-1 rounded-full mt-1 overflow-hidden" style={{ background: 'hsl(220 14% 20% / 0.75)' }}>
-                    <div className="h-full rounded-full" style={{ width: `${Math.round(Math.min(1, spark * 2) * 100)}%`, background: color }} />
+                    <div className="h-1 rounded-full mt-1 overflow-hidden" style={{ background: 'hsl(220 14% 20% / 0.75)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.round(Math.min(1, sparkShare * 2) * 100)}%`, background: color }} />
                   </div>
                 </div>
                 <span className="text-[11px] tabular-nums flex-shrink-0" style={{ color: 'hsl(28 25% 55%)' }}>{Math.round(row.completionPct * 100)}%</span>
-                <span className="text-[13px] font-black tabular-nums w-14 text-right flex-shrink-0" style={{ color: 'hsl(30 40% 94%)' }}>{row.score.toLocaleString()}</span>
+                <span className="text-[13px] font-black tabular-nums w-14 text-right flex-shrink-0" style={{ color: 'hsl(30 40% 94%)' }}>{memberFuel.toLocaleString()}</span>
                 <ChevronDown className="w-4 h-4 flex-shrink-0 transition-transform" style={{ color: 'hsl(28 30% 50%)', transform: open ? 'rotate(180deg)' : 'none' }} />
               </button>
 
@@ -563,7 +575,7 @@ export default function WorkoutPage() {
                         <Sparkles className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(28 45% 60%)' }} />
                         <span className="text-[11px] font-bold flex-1" style={{ color: 'hsl(28 30% 66%)' }}>Personal workouts</span>
                         <span className="text-[11px] font-black tabular-nums" style={{ color: 'hsl(30 30% 84%)' }}>
-                          {(freeform?.sessions ?? 0)} logged
+                          {(freeform?.sessions ?? 0)} logged · {(freeform?.points ?? 0).toLocaleString()} fuel
                         </span>
                       </div>
                       <p className="text-[9px]" style={{ color: 'hsl(28 18% 46%)' }}>Personal workout details stay private.</p>

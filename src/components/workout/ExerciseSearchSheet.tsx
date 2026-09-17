@@ -20,6 +20,13 @@ const KIND_LABEL: Record<LogKind, string> = {
   weight_reps: 'Weights', reps: 'Reps', duration: 'Timed', distance: 'Distance', cardio: 'Cardio', completion: 'Done',
 };
 
+const QUICK_PICKS: ExercisePick[] = [
+  { catalogId: null, name: 'Push-ups', category: 'quick start', logKind: 'reps' },
+  { catalogId: null, name: 'Squats', category: 'quick start', logKind: 'reps' },
+  { catalogId: null, name: 'Walk / run', category: 'quick start', logKind: 'cardio' },
+  { catalogId: null, name: 'Plank', category: 'quick start', logKind: 'duration' },
+];
+
 /**
  * Full-catalog search + custom-entry sheet. Portaled to <body> per the DH
  * bottom-sheet convention. Searches the ~870-movement library instantly
@@ -51,7 +58,7 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-[60] flex flex-col justify-end"
+        <motion.div className="fg-mode fixed inset-0 z-[60] flex flex-col justify-end"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
           <motion.div role="dialog" aria-modal="true" aria-label="Find an exercise"
@@ -100,6 +107,19 @@ export function ExerciseSearchSheet({ open, onClose, onPick }: {
 
             {/* Results */}
             <div className="flex-1 overflow-y-auto -mx-1 px-1 pb-2" style={{ overscrollBehavior: 'contain' }}>
+              {!trimmed && (
+                <div className="mb-2 rounded-2xl p-2.5" style={{ background: 'hsl(220 14% 13% / 0.72)', border: '1px solid hsl(24 35% 58% / 0.14)' }}>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] mb-2" style={{ color: 'hsl(28 36% 58%)' }}>Quick start</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {QUICK_PICKS.map((p) => (
+                      <button key={p.name} onClick={() => onPick(p)} className="fg-key min-h-[48px] rounded-xl px-3 py-2 flex-col items-start text-left">
+                        <span className="text-[12px] font-black leading-tight">{p.name}</span>
+                        <span className="text-[9px] font-bold opacity-65">{KIND_LABEL[p.logKind]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Custom-entry row — always offered so nothing is un-loggable */}
               <div className="flex items-center gap-2 py-2.5 px-1 mb-1 rounded-xl" style={{ background: 'hsl(24 60% 30% / 0.12)' }}>
                 <button onClick={pickCustom} className="flex items-center gap-2.5 flex-1 min-w-0 text-left">

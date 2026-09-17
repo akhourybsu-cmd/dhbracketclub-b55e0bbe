@@ -5044,6 +5044,12 @@
 }
 .fg-mode .fg-key:disabled { opacity: 0.45; box-shadow: none; transform: none; }
 
+.fg-mode .fg-key.flex-col,
+.fg-cta.flex-col {
+  align-items: flex-start;
+  justify-content: center;
+}
+
 
 /* Heat glow used on the hero score + primary emblems */
 @keyframes fgHeatPulse {
@@ -5073,6 +5079,14 @@
 .fg-boot-title { color: hsl(30 40% 97%); text-shadow: 0 0 22px hsl(24 100% 55% / 0.45); }
 .fg-boot-bar-track { background: hsl(20 40% 14% / 0.8); border: 1px solid hsl(22 90% 55% / 0.18); }
 .fg-boot-bar-fill { background: linear-gradient(90deg, hsl(24 100% 60%), hsl(40 96% 55%)); box-shadow: 0 0 14px hsl(24 100% 55% / 0.7); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fg-ember,
+  .fg-heat-glow,
+  .fg-shimmer::after {
+    animation: none;
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════
    DRAFT ARENA — PRIVATE CLUB LOUNGE (.da-lounge)
