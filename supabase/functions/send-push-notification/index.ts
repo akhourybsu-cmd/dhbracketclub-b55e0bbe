@@ -325,7 +325,7 @@ Deno.serve(async (req) => {
 
       await insertNotifications(supabase, enabled.map((uid: string) => ({
         user_id: uid,
-        club_id: typeof club_id === "string" ? club_id : null,
+        club_id: broadcastClubId,
         type,
         title: title || `New ${type}`,
         body: message || null,
