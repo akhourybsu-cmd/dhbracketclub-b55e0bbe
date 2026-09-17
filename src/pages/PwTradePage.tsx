@@ -182,7 +182,10 @@ export default function PwTradePage() {
         <section className="glass-card rounded-2xl p-4 space-y-3">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-2xl font-black text-white leading-none">{symbol}</p>
+              <Link to={`/portfolio-wars/stock/${symbol}`} className="text-2xl font-black text-white leading-none flex items-center gap-1.5">
+                {symbol}
+                <BarChart3 className="w-4 h-4" style={{ color: 'hsl(var(--pw-bull))' }} />
+              </Link>
               <p className="text-[11px] text-white/55 mt-1">
                 {holding ? `You hold ${shareCount(Number(holding.shares))} sh · avg ${money(Number(holding.avg_cost))}` : 'No position yet'}
               </p>
@@ -199,6 +202,7 @@ export default function PwTradePage() {
               )}
             </div>
           </div>
+
 
           {/* Buy / sell */}
           <div className="grid grid-cols-2 gap-2">
