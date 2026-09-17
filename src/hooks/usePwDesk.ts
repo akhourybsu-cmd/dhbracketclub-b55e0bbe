@@ -226,8 +226,7 @@ export function usePwPlaceOrder() {
   const qc = useQueryClient();
   return useMutation<PwOrderResult, Error, PwOrderInput>({
     mutationFn: async (input) => {
-      const { data, error } = await supabase.functions.invoke('pw-order', {
-        body: {
+      const data = await invokeFn('pw-order', {
           season_id: input.seasonId,
           symbol: input.symbol,
           side: input.side,
@@ -236,10 +235,7 @@ export function usePwPlaceOrder() {
           amount: input.amount,
           limit_price: input.limitPrice,
           time_in_force: input.timeInForce ?? 'gtc',
-        },
       });
-      if (error) throw new Error(readError(error, data));
-      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : 'Order failed');
       return data as PwOrderResult;
     },
     onSuccess: () => {
@@ -337,19 +333,27 @@ export function usePwStock(symbol?: string, range: '3m' | '1y' = '3m') {
     staleTime: 1000 * 20,
     refetchInterval: 1000 * 60,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('pw-stock', {
-        body: { symbol, range },
-      });
-      if (error) throw new Error(readError(error, data));
-      if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : 'Could not load that stock');
+      const data = await invokeFn('pw-stock', { symbol, range });
       return data as PwStockDetail;
     },
   });
 }
 
-/** Pulls the human-readable message out of a failed edge-function response. */
-function readError(error: unknown, data: any): string {
-  if (data && typeof data.error === 'string') return data.error;
-  if (error instanceof Error) return error.message;
-  return 'Something went wrong';
+/**
+ * Calls an edge function and surfaces the server's own error message.
+ * supabase-js hides the response body on non-2xx, so read it off `context`.
+ */
+async function invokeFn(name: string, body: Record<string, unknown>): Promise<any> {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (error) {
+    let message = error.message;
+    const ctx = (error as any).context;
+    if (ctx && typeof ctx.json === 'function') {
+      const payload = await ctx.json().catch(() => null);
+      if (payload && typeof payload.error === 'string') message = payload.error;
+    }
+    throw new Error(message || 'Something went wrong');
+  }
+  if (data && typeof data.error === 'string') throw new Error(data.error);
+  return data;
 }
