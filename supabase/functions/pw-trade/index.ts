@@ -77,6 +77,10 @@ Deno.serve(async (req) => {
   });
   if (error) return json({ error: error.message }, 400);
 
+  const { data: pf } = await admin.from("pw_portfolios")
+    .select("id").eq("season_id", season_id).eq("user_id", user.id).maybeSingle();
+  if (pf) await stampEquityPoint(admin, (pf as { id: string }).id);
+
   return json(data ?? { ok: true });
 });
 
