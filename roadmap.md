@@ -43,3 +43,5 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 28. Move phone chat tools and message actions into consistent bottom sheets
 - [x] 29. Stabilize chat scroll, keyboard, channel-switch, and menu behavior
 - [x] 30. Verify focused tests plus phone/desktop light and dark chat flows
+
+- [x] 31. Portfolio Wars trading desk: watchlists, stock detail pages, target-price orders, orders queued while closed, price alerts
