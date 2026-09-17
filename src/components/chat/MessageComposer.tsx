@@ -11,6 +11,8 @@ import { GifPicker } from './GifPicker';
 import { EmojiPicker } from './EmojiPicker';
 import { isGifProviderConfigured } from '@/lib/gifProvider';
 import { SLASH_COMMAND_NAMES } from '@/lib/chatSlashCommands';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { ChatBottomSheet } from './ChatBottomSheet';
 
 export interface MentionMember {
   id: string;
@@ -88,6 +90,19 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
     const [uploading, setUploading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const gifEnabled = isGifProviderConfigured();
+    const isMobile = useIsMobile();
+
+    const closeAccessories = useCallback(() => {
+      setShowAttachMenu(false);
+      setShowEmoji(false);
+      setShowFormatting(false);
+    }, []);
+
+    const toggleAccessory = useCallback((accessory: 'attach' | 'emoji' | 'format') => {
+      setShowAttachMenu(current => accessory === 'attach' ? !current : false);
+      setShowEmoji(current => accessory === 'emoji' ? !current : false);
+      setShowFormatting(current => accessory === 'format' ? !current : false);
+    }, []);
 
     useImperativeHandle(ref, () => ({
       focus: () => textareaRef.current?.focus(),
@@ -116,14 +131,12 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
       if (!showAttachMenu && !showEmoji && !showFormatting) return;
       const handler = (e: MouseEvent) => {
         if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-          setShowAttachMenu(false);
-          setShowEmoji(false);
-          setShowFormatting(false);
+          closeAccessories();
         }
       };
       document.addEventListener('mousedown', handler);
       return () => document.removeEventListener('mousedown', handler);
-    }, [showAttachMenu, showEmoji, showFormatting]);
+    }, [closeAccessories, showAttachMenu, showEmoji, showFormatting]);
 
     const detectMention = useCallback(() => {
       const el = textareaRef.current;
@@ -584,7 +597,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
           {!compact && (
             <div className="relative flex-shrink-0">
               <button
-                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                onClick={() => toggleAccessory('attach')}
                 aria-label={showAttachMenu ? 'Close attachment menu' : 'Add attachment'}
                 aria-expanded={showAttachMenu}
                 type="button"
@@ -605,7 +618,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.95 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    className="absolute bottom-full left-0 mb-2 bg-popover/90 backdrop-blur-lg border border-border/20 rounded-xl shadow-xl z-50 overflow-hidden min-w-[170px]"
+                    className="absolute bottom-full left-0 mb-2 hidden bg-popover/90 backdrop-blur-lg border border-border/20 rounded-xl shadow-xl z-50 overflow-hidden min-w-[170px] sm:block"
                   >
                     <button
                       onClick={() => { fileInputRef.current?.click(); }}
@@ -657,8 +670,9 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
 
           <div className="flex-1 relative">
             {/* Slash-command suggestions */}
+            <AnimatePresence>
             {matchingCommands.length > 0 && mentionQuery === null && (
-              <div className="absolute bottom-full left-0 right-0 z-50 mb-1 overflow-hidden rounded-xl border border-border/20 bg-popover/95 shadow-xl backdrop-blur-lg">
+              <motion.div initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.97 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="absolute bottom-full left-0 right-0 z-50 mb-1 overflow-hidden rounded-xl border border-border/20 bg-popover/95 shadow-xl backdrop-blur-lg">
                 <div className="border-b border-border/10 px-3 py-2 text-[9px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground/55">
                   Commands
                 </div>
@@ -676,12 +690,14 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                     <span className="truncate text-[11px] text-muted-foreground/70">{SLASH_COMMAND_HINTS[name]}</span>
                   </button>
                 ))}
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
 
             {/* Mention autocomplete dropdown */}
+            <AnimatePresence>
             {mentionQuery !== null && filteredMembers.length > 0 && (
-              <div ref={dropdownRef} className="absolute bottom-full left-0 right-0 mb-1 bg-popover/90 backdrop-blur-lg border border-border/20 rounded-xl shadow-xl z-50 overflow-hidden max-h-[200px] overflow-y-auto">
+              <motion.div ref={dropdownRef} initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.97 }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} className="absolute bottom-full left-0 right-0 mb-1 bg-popover/90 backdrop-blur-lg border border-border/20 rounded-xl shadow-xl z-50 overflow-hidden max-h-[200px] overflow-y-auto">
                 {filteredMembers.map((member, i) => (
                   <button
                     key={member.id}
@@ -695,8 +711,9 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                     <span className="font-medium truncate">{member.display_name}</span>
                   </button>
                 ))}
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
 
             <textarea
               ref={textareaRef}
@@ -719,7 +736,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
           {/* Formatting toggle */}
           {!compact && (
             <button
-              onClick={() => { setShowFormatting(value => !value); setShowAttachMenu(false); setShowEmoji(false); }}
+              onClick={() => toggleAccessory('format')}
               aria-label="Formatting options"
               aria-expanded={showFormatting}
               type="button"
@@ -736,7 +753,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
           {!compact && (
             <div className="relative flex-shrink-0">
               <button
-                onClick={() => { setShowEmoji(v => !v); setShowAttachMenu(false); }}
+                onClick={() => toggleAccessory('emoji')}
                 aria-label="Emoji"
                 aria-expanded={showEmoji}
                 type="button"
@@ -754,7 +771,7 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 8, scale: 0.96 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    className="absolute bottom-full -right-[3.15rem] mb-2 z-50 sm:right-0"
+                    className="absolute bottom-full -right-[3.15rem] mb-2 z-50 hidden sm:block sm:right-0"
                   >
                     <EmojiPicker onSelect={(emoji) => insertAtCursor(emoji)} />
                   </motion.div>
@@ -799,6 +816,22 @@ export const MessageComposer = forwardRef<MessageComposerHandle, MessageComposer
               />
             )}
           </AnimatePresence>
+        )}
+        {isMobile && (
+          <>
+            <ChatBottomSheet open={showAttachMenu} onOpenChange={open => open ? toggleAccessory('attach') : setShowAttachMenu(false)} title="Add to message">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => { setShowAttachMenu(false); fileInputRef.current?.click(); }} className="flex min-h-16 items-center gap-3 rounded-lg bg-muted/35 px-3 text-left font-semibold"><Image className="h-5 w-5 text-primary" /> Photos</button>
+                <button type="button" onClick={() => { setShowAttachMenu(false); cameraInputRef.current?.click(); }} className="flex min-h-16 items-center gap-3 rounded-lg bg-muted/35 px-3 text-left font-semibold"><Camera className="h-5 w-5 text-primary" /> Camera</button>
+                <button type="button" onClick={() => { setShowAttachMenu(false); docInputRef.current?.click(); }} className="flex min-h-16 items-center gap-3 rounded-lg bg-muted/35 px-3 text-left font-semibold"><Paperclip className="h-5 w-5 text-primary" /> File</button>
+                {gifEnabled && <button type="button" onClick={() => { setShowAttachMenu(false); setShowGifPicker(true); }} className="flex min-h-16 items-center gap-3 rounded-lg bg-muted/35 px-3 text-left font-semibold"><ImagePlay className="h-5 w-5 text-primary" /> GIF</button>}
+                <button type="button" onClick={() => { setShowAttachMenu(false); setShowFormatting(true); }} className="col-span-2 flex min-h-12 items-center gap-3 rounded-lg bg-muted/35 px-3 text-left font-semibold"><Type className="h-5 w-5 text-primary" /> Formatting</button>
+              </div>
+            </ChatBottomSheet>
+            <ChatBottomSheet open={showEmoji} onOpenChange={open => open ? toggleAccessory('emoji') : setShowEmoji(false)} title="Emoji">
+              <div className="flex justify-center"><EmojiPicker onSelect={emoji => { insertAtCursor(emoji); setShowEmoji(false); }} /></div>
+            </ChatBottomSheet>
+          </>
         )}
       </div>
     );
