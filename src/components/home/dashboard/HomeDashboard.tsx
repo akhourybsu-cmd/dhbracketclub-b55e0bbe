@@ -18,7 +18,7 @@
 // from `DashboardPage`, so we never double-query. Side-effect ownership
 // stays with the page.
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   Bookmark, Trophy, CalendarDays, ScrollText, Newspaper, MessageCircle,
   BarChart3, Activity as ActivityIcon, FileText,
