@@ -314,6 +314,8 @@ export function HomeDashboard({
             />
           )}
 
+          {extra && <div className="mb-4">{extra}</div>}
+
           <ActivityFeed rows={feedRows} loading={loading} anchorId={activityAnchorId} />
         </div>
 
