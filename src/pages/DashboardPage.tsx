@@ -25,6 +25,7 @@ import { FeaturedModule } from '@/components/home/FeaturedModule';
 import { MembersOnline } from '@/components/home/MembersOnline';
 import { DiscoverStrip } from '@/components/home/DiscoverStrip';
 import { EmptyClubState } from '@/components/home/EmptyClubState';
+import { PwHomeWidget } from '@/components/portfolioWars/PwHomeWidget';
 
 import { HomeDashboard } from '@/components/home/dashboard/HomeDashboard';
 import { DashboardErrorBoundary } from '@/components/home/dashboard/DashboardErrorBoundary';
