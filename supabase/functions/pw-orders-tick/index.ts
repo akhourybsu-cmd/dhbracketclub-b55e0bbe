@@ -35,6 +35,11 @@ interface AlertRow {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  const expectedCron = Deno.env.get("CRON_SHARED_SECRET");
+  if (!expectedCron || (req.headers.get("x-cron-secret") || "") !== expectedCron) {
+    return json({ error: "Unauthorized" }, 401);
+  }
+
   const key = Deno.env.get("FINNHUB_API_KEY");
   if (!key) return json({ error: "FINNHUB_API_KEY not configured" }, 500);
 
@@ -120,7 +125,7 @@ Deno.serve(async (req) => {
       await admin.from("pw_orders")
         .update({ status: "rejected", reject_reason: error.message }).eq("id", o.id);
       rejected.push(o.id);
-      await notify(admin, o.user_id, o.club_id, "pw_order_rejected",
+      await notify(expectedCron, o.user_id, o.club_id,
         `${o.side === "buy" ? "Buy" : "Sell"} order for ${o.symbol} could not fill`,
         error.message, "/portfolio-wars/orders");
       continue;
@@ -130,7 +135,7 @@ Deno.serve(async (req) => {
       status: "filled", filled_shares: shares, filled_price: price, filled_at: new Date().toISOString(),
     }).eq("id", o.id);
     filled += 1;
-    await notify(admin, o.user_id, o.club_id, "pw_order_filled",
+    await notify(expectedCron, o.user_id, o.club_id,
       `${o.side === "buy" ? "Bought" : "Sold"} ${trimShares(shares)} ${o.symbol}`,
       `Filled at $${price.toFixed(2)}`, "/portfolio-wars/orders");
   }
@@ -146,7 +151,7 @@ Deno.serve(async (req) => {
       status: "triggered", triggered_at: new Date().toISOString(), triggered_price: price,
     }).eq("id", a.id);
     triggeredCount += 1;
-    await notify(admin, a.user_id, a.club_id, "pw_price_alert",
+    await notify(expectedCron, a.user_id, a.club_id,
       `${a.symbol} is ${a.direction} $${Number(a.target_price).toFixed(2)}`,
       `Trading at $${price.toFixed(2)}`, `/portfolio-wars/stock/${a.symbol}`);
   }
@@ -162,18 +167,23 @@ function trimShares(n: number): string {
 }
 
 async function notify(
-  admin: ReturnType<typeof createClient>,
-  userId: string, clubId: string, type: string, title: string, body: string, url: string,
+  cronSecret: string, userId: string, clubId: string, title: string, message: string, url: string,
 ) {
-  const { error } = await admin.from("notifications")
-    .insert({ user_id: userId, club_id: clubId, type, title, body, url });
-  if (error) console.error("notification insert failed", error.message);
   try {
-    await admin.functions.invoke("send-push-notification", {
-      body: { target_user_ids: [userId], club_id: clubId, type, title, body, url, skip_inbox: true },
+    await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-push-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-cron-secret": cronSecret },
+      body: JSON.stringify({
+        type: "portfolio_wars",
+        title,
+        message,
+        url,
+        club_id: clubId,
+        target_user_ids: [userId],
+      }),
     });
   } catch (e) {
-    console.error("push invoke failed", e instanceof Error ? e.message : e);
+    console.error("notify failed", e instanceof Error ? e.message : e);
   }
 }
 
