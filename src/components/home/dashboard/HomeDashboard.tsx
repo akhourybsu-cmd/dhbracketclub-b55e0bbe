@@ -97,7 +97,7 @@ export function HomeDashboard({
   activePollCount, narrativeActiveCount, lorePostsThisWeek,
   activeDraftStatus, upcomingEventCount,
   season, seasonTarget, seasonCompleted, standings,
-  activity, events, loading,
+  activity, events, loading, extra,
 }: Props) {
   const accent = club?.accent_color ?? '152 72% 46%';
   const { user } = useAuth();
