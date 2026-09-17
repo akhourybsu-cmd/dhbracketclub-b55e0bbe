@@ -19,17 +19,14 @@ export default function PortfolioWarsPage() {
   const { data: curve } = usePwEquityCurve(pf?.portfolio.id);
 
   const startingCash = Number(season?.starting_cash ?? settings?.starting_cash ?? 50000);
-  const total = Number(pf?.portfolio.total_value ?? startingCash);
-  const cash = Number(pf?.portfolio.cash ?? startingCash);
+  const live = livePortfolioValue(pf?.portfolio, pf?.holdings, quotes, startingCash);
+  const total = live.total;
+  const cash = live.cash;
   const returnPct = ((total - startingCash) / startingCash) * 100;
   const tradeLimit = settings?.max_trades_per_day ?? 5;
   const tradesLeft = Math.max(0, tradeLimit - (tradesToday ?? 0));
 
-  const dayChange = (pf?.holdings ?? []).reduce((sum, h) => {
-    const q = quotes?.[h.symbol];
-    if (!q?.prev_close) return sum;
-    return sum + Number(h.shares) * (Number(q.price) - Number(q.prev_close));
-  }, 0);
+  const dayChange = live.dayChange;
 
   if (seasonLoading) {
     return <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="glass-card rounded-2xl h-24 animate-pulse" />)}</div>;
