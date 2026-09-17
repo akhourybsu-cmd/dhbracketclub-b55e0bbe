@@ -54,6 +54,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave }: {
   sessionId: string | null;
   onClose: () => void;
   onSave: (input: AddEntryInput) => Promise<unknown> | void;
+  onAddAnother?: () => void;
 }) {
   const kind = pick?.logKind ?? 'reps';
   const [sets, setSets] = useState<LogSet[]>([{ weight: null, reps: null }]);
@@ -126,7 +127,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave }: {
   const removeSet = (i: number) =>
     setSets((prev) => (prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev));
 
-  const handleSave = async () => {
+  const handleSave = async (addAnother = false) => {
     if (!pick || !canSave || saving) return;
     setSaving(true);
     try {
@@ -144,6 +145,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave }: {
       clearDraft(sessionId);
       sw.reset();
       onClose();
+      if (addAnother) window.requestAnimationFrame(() => onAddAnother?.());
     } finally {
       setSaving(false);
     }
@@ -160,7 +162,7 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave }: {
   return createPortal(
     <AnimatePresence>
       {pick && (
-        <motion.div className="fixed inset-0 z-[70] flex flex-col justify-end"
+        <motion.div className="fg-mode fixed inset-0 z-[70] flex flex-col justify-end"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={abandon} aria-hidden />
           <motion.div role="dialog" aria-modal="true" aria-label={`Log ${pick.name}`}
@@ -263,11 +265,20 @@ export function LogEntrySheet({ pick, sessionId, onClose, onSave }: {
                 <Flame className="w-4 h-4" style={{ color: 'hsl(28 100% 66%)' }} /> +{preview.points.toLocaleString()}
               </span>
             </div>
-            <button onClick={handleSave} disabled={!canSave || saving}
-              className="fg-cta w-full h-12 rounded-xl text-[15px] mb-1"
-              style={{ opacity: !canSave || saving ? 0.5 : 1 }}>
-              {saving ? 'Saving…' : 'Add to workout'}
-            </button>
+            <div className="grid grid-cols-2 gap-2 mb-1">
+              {onAddAnother && (
+                <button onClick={() => handleSave(true)} disabled={!canSave || saving}
+                  className="fg-key h-12 rounded-xl text-[13px]"
+                  style={{ opacity: !canSave || saving ? 0.5 : 1 }}>
+                  Save + next
+                </button>
+              )}
+              <button onClick={() => handleSave(false)} disabled={!canSave || saving}
+                className="fg-cta h-12 rounded-xl text-[15px]"
+                style={{ opacity: !canSave || saving ? 0.5 : 1, gridColumn: onAddAnother ? undefined : '1 / -1' }}>
+                {saving ? 'Saving…' : 'Add to workout'}
+              </button>
+            </div>
           </motion.div>
         </motion.div>
       )}

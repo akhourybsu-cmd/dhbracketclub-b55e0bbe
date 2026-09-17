@@ -91,6 +91,13 @@ function HistoryRow({ session, onDelete }: { session: LogSessionWithEntries; onD
   );
 }
 
+const QUICK_STARTS: ExercisePick[] = [
+  { catalogId: null, name: 'Strength training', category: 'quick start', logKind: 'weight_reps' },
+  { catalogId: null, name: 'Bodyweight circuit', category: 'quick start', logKind: 'reps' },
+  { catalogId: null, name: 'Cardio session', category: 'quick start', logKind: 'cardio' },
+  { catalogId: null, name: 'Timed hold', category: 'quick start', logKind: 'duration' },
+];
+
 export default function WorkoutLogPage() {
   const { user } = useAuth();
   const { club } = useClub();
@@ -135,11 +142,11 @@ export default function WorkoutLogPage() {
       const s = await startSession();
       sessionId = s?.id;
     }
-    if (!sessionId) { toast.error('No active session'); return; }
+    if (!sessionId) { toast.error('No active session'); throw new Error('No active session'); }
     try {
       await addEntry(sessionId, input);
       try { navigator.vibrate?.(8); } catch { /* ignore */ }
-    } catch { toast.error('Could not save that exercise'); }
+    } catch (e) { toast.error('Could not save that exercise'); throw e; }
   };
 
   const handleFinish = async () => {
@@ -255,9 +262,22 @@ export default function WorkoutLogPage() {
 
       {/* ── Start CTA (no active session) ── */}
       {!activeSession && !loading && (
-        <button onClick={handleStart} disabled={busy} className="fg-cta w-full h-14 rounded-2xl text-[16px] mb-6">
-          <Plus className="w-6 h-6" /> Start a workout
-        </button>
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-2.5 mb-3">
+            {QUICK_STARTS.map((q) => (
+              <button key={q.name} onClick={() => setPick(q)} className="fg-key min-h-[58px] rounded-2xl px-3 py-2.5 flex-col items-start text-left">
+                <span className="text-[13px] font-black leading-tight">{q.name}</span>
+                <span className="text-[10px] font-bold opacity-65">Quick start</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setSearchOpen(true)} disabled={busy} className="fg-cta w-full h-14 rounded-2xl text-[16px] mb-2.5">
+            <Plus className="w-6 h-6" /> Add first exercise
+          </button>
+          <button onClick={handleStart} disabled={busy} className="fg-key w-full h-11 rounded-xl text-[13px]">
+            Start blank session
+          </button>
+        </div>
       )}
 
       {/* ── Fuel this week ── */}
@@ -291,7 +311,13 @@ export default function WorkoutLogPage() {
       )}
 
       <ExerciseSearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} onPick={handlePick} />
-      <LogEntrySheet pick={pick} sessionId={activeSession?.id ?? null} onClose={() => setPick(null)} onSave={handleSaveEntry} />
+      <LogEntrySheet
+        pick={pick}
+        sessionId={activeSession?.id ?? null}
+        onClose={() => setPick(null)}
+        onSave={handleSaveEntry}
+        onAddAnother={() => setSearchOpen(true)}
+      />
       <CompleteCelebration points={finished} onDone={() => { setFinished(null); navigate('/workouts'); }} />
     </div>
   );
