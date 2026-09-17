@@ -22,20 +22,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      return new Response(JSON.stringify({ error: "Missing VAPID config" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    webpush.setVapidDetails("https://dryhorse.app", vapidPublicKey, vapidPrivateKey);
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
 
     // Find today's lockbox day
     const now = new Date();
