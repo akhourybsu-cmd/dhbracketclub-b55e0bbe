@@ -172,7 +172,7 @@ export default function DraftKioskPage() {
     const soundOn = !muted && settings.sound;
     const durations: Record<RevealPhase, number> = reduceMotion
       ? { locked: 0, confirmed: 0, reveal: 900, landing: 450 }
-      : { locked: 1150, confirmed: 900, reveal: 2350, landing: 900 };
+      : { locked: 2200, confirmed: 2400, reveal: 2500, landing: 2000 };
 
     if (soundOn) {
       if (reveal.phase === 'locked') kioskSound.locked();

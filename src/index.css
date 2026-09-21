@@ -5880,6 +5880,85 @@
 }
 .light .da-lounge .dl-host-btn-danger { color: hsl(0 70% 42%); }
 
+/* Live room command center: mobile stays stacked; desktop becomes a control deck. */
+.da-live-command-masthead { display: none; }
+.da-live-zone-label {
+  display: none;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.55rem;
+  color: hsl(var(--muted-foreground));
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.da-live-zone-label span { color: hsl(var(--primary)); }
+@media (min-width: 1024px) {
+  .da-live-command {
+    position: relative;
+    padding: 0.75rem;
+    border: 1px solid hsl(var(--border) / 0.66);
+    border-radius: 0.75rem;
+    background:
+      linear-gradient(90deg, hsl(var(--primary) / 0.025) 1px, transparent 1px),
+      linear-gradient(hsl(var(--primary) / 0.025) 1px, transparent 1px),
+      hsl(var(--background) / 0.46);
+    background-size: 28px 28px;
+  }
+  .da-live-command::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 1px 0 hsl(var(--primary) / 0.16);
+  }
+  .da-live-command-masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 58px;
+    margin-bottom: 0.75rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid hsl(var(--primary) / 0.24);
+    border-radius: 0.5rem;
+    background: linear-gradient(105deg, hsl(var(--card)), hsl(var(--primary) / 0.08));
+  }
+  .da-live-command-signals { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; justify-content: flex-end; }
+  .da-live-command-signals > span {
+    padding: 0.28rem 0.5rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.3rem;
+    background: hsl(var(--background) / 0.52);
+    color: hsl(var(--muted-foreground));
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .da-live-command-signals .da-live-signal { color: hsl(var(--foreground)); }
+  .da-live-signal i {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    margin-right: 0.35rem;
+    border-radius: 999px;
+    background: hsl(151 62% 46%);
+    box-shadow: 0 0 10px hsl(151 62% 46% / 0.72);
+    animation: da-command-signal 1.8s ease-in-out infinite;
+  }
+  .da-live-command-signals .da-live-role { color: hsl(var(--primary)); border-color: hsl(var(--primary) / 0.38); }
+  .da-live-command-grid { display: grid; grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); gap: 0.75rem; align-items: start; }
+  .da-live-command-rail { position: sticky; top: 0.75rem; min-width: 0; }
+  .da-live-command-board { min-width: 0; padding-left: 0.75rem; border-left: 1px solid hsl(var(--border) / 0.68); }
+  .da-live-command-history { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid hsl(var(--border) / 0.68); }
+  .da-live-zone-label { display: flex; }
+  .da-live-host-panel { border-color: hsl(var(--primary) / 0.32); box-shadow: 0 18px 48px -38px hsl(var(--primary) / 0.75); }
+}
+@keyframes da-command-signal { 0%, 100% { opacity: 0.58; } 50% { opacity: 1; } }
+
 @keyframes da-urgent-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.045); }
@@ -6095,5 +6174,5 @@
 @media (prefers-reduced-motion: reduce) {
   .da-kiosk-ticker-run, .da-kiosk-cell-current, .da-urgent-pulse,
   .da-kiosk-cell-landed, .da-kiosk-reveal::before, .da-kiosk-reveal-beam,
-  .da-kiosk-reveal-lines, .da-kiosk-lock-mark { animation: none !important; }
+  .da-kiosk-reveal-lines, .da-kiosk-lock-mark, .da-live-signal i { animation: none !important; }
 }
