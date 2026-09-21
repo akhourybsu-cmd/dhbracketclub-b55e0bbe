@@ -249,9 +249,8 @@ export default function DraftKioskPage() {
     );
   }
 
-  const recent = picks.filter(pick => pick.id !== concealedPickId).slice(-12).reverse();
-
   const concealedPickId = reveal && reveal.phase !== 'landing' ? reveal.pick.id : null;
+  const recent = picks.filter(pick => pick.id !== concealedPickId).slice(-12).reverse();
 
   return (
     <LayoutGroup id="kiosk-pick-reveal">
