@@ -41,6 +41,22 @@ export const kioskSound = {
     tone(784, 0.16, 'triangle', 0.08, 0.09);
     tone(1046, 0.22, 'sine', 0.07, 0.19);
   },
+  /** A submitted selection has been locked but not revealed yet. */
+  locked: () => {
+    tone(110, 0.32, 'sine', 0.08);
+    tone(220, 0.2, 'triangle', 0.05, 0.2);
+  },
+  /** Suspense lift immediately before the selection appears. */
+  reveal: () => {
+    tone(392, 0.18, 'sine', 0.055);
+    tone(523, 0.22, 'triangle', 0.065, 0.16);
+    tone(784, 0.4, 'sine', 0.075, 0.34);
+  },
+  /** Short impact as the selection settles into the board. */
+  land: () => {
+    tone(1046, 0.1, 'triangle', 0.075);
+    tone(523, 0.28, 'sine', 0.065, 0.06);
+  },
   /** Clock expired. */
   horn: () => {
     tone(196, 0.55, 'sawtooth', 0.09);
