@@ -240,14 +240,14 @@ export function DraftBoard({
 
           {/* Round rows */}
           {rounds.map((round) => {
-            const order = roundOrder(round);
             const DirIcon = round % 2 === 1 ? MoveRight : MoveLeft;
             return [
               <div key={`rl-${round}`} className="dl-board-roundlabel">
                 <span className="dl-display text-[11px] font-bold text-muted-foreground">R{round}</span>
                 <DirIcon className="w-3 h-3 text-primary" aria-hidden />
               </div>,
-              ...order.map((p, idx) => (
+              // Columns stay locked to their owner; the round arrow conveys direction.
+              ...ordered.map((p, idx) => (
                 <div key={`${round}:${p.user_id}`} className="dl-board-cell">
                   {renderCellContent(round, p, idx, true)}
                 </div>
