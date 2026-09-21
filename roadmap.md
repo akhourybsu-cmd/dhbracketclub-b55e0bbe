@@ -52,3 +52,10 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 34. Clean up collaborative flame, roster, and club-goal presentation
 - [x] 35. Verify FORGE screens and logging flows in browser
 - [x] 36. Add polished, reduced-motion-safe FORGE animations for logging, progress, sheets, and quick starts
+
+# Home screen widget hub
+- [ ] 37. Rebuild Home as a crisp, widget-first hub with subtle micro-animations
+- [ ] 38. Add installed-app widgets for active modules, including Portfolio Wars, NFL Pick'em, Draft Arena, and FORGE
+- [ ] 39. Keep widget visibility gated by club-installed assets and active/current data
+- [ ] 40. Verify Home on mobile and desktop without changing app game logic
+
