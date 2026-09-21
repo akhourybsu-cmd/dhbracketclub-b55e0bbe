@@ -82,13 +82,23 @@ export function DraftBoard({
   const roundOrder = (round: number) =>
     round % 2 === 1 ? ordered : [...ordered].reverse();
 
-  const pickNumberFor = (round: number, participantIdx: number) =>
-    (round - 1) * n + participantIdx + 1;
+  /**
+   * Each participant keeps their own column, so the pick number has to follow
+   * the snake direction instead of the column index — otherwise a reversed
+   * round shows someone's pick underneath the wrong person's name.
+   */
+  const pickNumberFor = (round: number, columnIdx: number) => {
+    const posInRound = round % 2 === 1 ? columnIdx : n - 1 - columnIdx;
+    return (round - 1) * n + posInRound + 1;
+  };
 
-  const renderCellContent = (round: number, p: BoardParticipant, idx: number, dense: boolean) => {
+  const columnIndexOf = (p: BoardParticipant) =>
+    Math.max(0, ordered.findIndex((o) => o.user_id === p.user_id));
+
+  const renderCellContent = (round: number, p: BoardParticipant, _idx: number, dense: boolean) => {
     const pick = pickByCell.get(`${round}:${p.user_id}`);
     const skipped = skippedSlots?.has(`${round}:${p.user_id}`) ?? false;
-    const pickNum = pickNumberFor(round, idx);
+    const pickNum = pickNumberFor(round, columnIndexOf(p));
     const isCurrent = !pick && !skipped && pickNum === currentPickNumber;
     const isYou = p.user_id === currentUserId;
     const isNew = pick ? newPickIds.has(pick.id) : false;
