@@ -27,6 +27,8 @@ interface DraftBoardProps {
   enrichments: Map<string, { image_url?: string | null; thumbnail_url?: string | null }>;
   /** picks made since the viewer's last visit */
   newPickIds: Set<string>;
+  /** live drafts: slots the host passed, keyed `${round}:${user_id}` */
+  skippedSlots?: Set<string>;
 }
 
 function initials(name?: string) {
@@ -46,6 +48,7 @@ export function DraftBoard({
   currentUserId,
   enrichments,
   newPickIds,
+  skippedSlots,
 }: DraftBoardProps) {
   const ordered = useMemo(
     () => [...participants].sort((a, b) => a.pick_order - b.pick_order),
@@ -84,12 +87,22 @@ export function DraftBoard({
 
   const renderCellContent = (round: number, p: BoardParticipant, idx: number, dense: boolean) => {
     const pick = pickByCell.get(`${round}:${p.user_id}`);
+    const skipped = skippedSlots?.has(`${round}:${p.user_id}`) ?? false;
     const pickNum = pickNumberFor(round, idx);
-    const isCurrent = !pick && pickNum === currentPickNumber;
+    const isCurrent = !pick && !skipped && pickNum === currentPickNumber;
     const isYou = p.user_id === currentUserId;
     const isNew = pick ? newPickIds.has(pick.id) : false;
     const enrichment = pick ? enrichments.get(pick.id) : undefined;
     const img = enrichment?.thumbnail_url || enrichment?.image_url;
+
+    if (!pick && skipped) {
+      return (
+        <div className="dl-cell dl-cell-future opacity-60" title="Pick passed">
+          <span className="dl-cell-num dl-display">{pickNum}</span>
+          <span className="dl-cell-text">Passed</span>
+        </div>
+      );
+    }
 
     if (pick) {
       return (

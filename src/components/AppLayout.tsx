@@ -93,13 +93,15 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   useEffect(() => { fetchUnreadCount(); }, [location.pathname, fetchUnreadCount]);
 
   const isChatRoute = location.pathname.startsWith('/chat');
-  const isDrafts = location.pathname.startsWith('/drafts');
+  // The live-draft projector screen owns the whole display — no sidebar, no nav.
+  const isDraftKiosk = /^\/drafts\/[^/]+\/kiosk\/?$/.test(location.pathname);
+  const isDrafts = location.pathname.startsWith('/drafts') && !isDraftKiosk;
   const isForge = location.pathname.startsWith('/workouts');
   // Draft Arena keeps its own gold HUD, but on desktop it now lives INSIDE the
   // shared DH Club frame (global sidebar + notifications) instead of replacing
   // the whole shell. Mobile behaviour is unchanged: full-bleed game shell.
   // FORGE behaves like Draft Arena: own HUD, keeps the desktop DH frame.
-  const isGameShell = isGameShellRoute(location.pathname);
+  const isGameShell = isGameShellRoute(location.pathname) || isDraftKiosk;
   const isImmersiveShell = isGameShell && !isDrafts && !isForge;
 
 

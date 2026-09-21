@@ -69,6 +69,9 @@ import { JudgingScopeButton } from '@/components/draft/JudgingScopeButton';
 import { DraftChannelInviteButton } from '@/components/draft/DraftChannelInviteButton';
 import { DraftStatusHeader } from '@/components/draft/DraftStatusHeader';
 import { DraftBoard } from '@/components/draft/DraftBoard';
+import { useDraftSkips, useLiveClock, useLiveDraftHost } from '@/hooks/useLiveDraft';
+import { LiveHostPanel } from '@/components/draft/live/LiveHostPanel';
+import { LiveClockStrip } from '@/components/draft/live/LiveClockStrip';
 import { MakePickSheet } from '@/components/draft/MakePickSheet';
 import { useDraftLastVisit } from '@/hooks/useDraftLastVisit';
 
@@ -224,6 +227,44 @@ export default function DraftDetailPage() {
   const [isAppAdmin, setIsAppAdmin] = useState(false);
   const isParticipant = participants.some(p => p.user_id === user?.id);
   const canManage = isCreator || isAppAdmin;
+
+  /* ── Live draft hosting ──
+     A live draft shares one clock across every device. Skipped slots are real
+     rows, so they consume board positions exactly like picks do. */
+  const isLiveDraft = Boolean((draft as any)?.is_live);
+  const { skips, refetch: refetchSkips } = useDraftSkips(draftId, isLiveDraft);
+  const consumedSlots = picks.length + (isLiveDraft ? skips.length : 0);
+  const liveHost = useLiveDraftHost({
+    draftId,
+    draft,
+    participants,
+    consumedSlots,
+    onChange: () => { void refetchSkips(); },
+  });
+  const liveClock = useLiveClock(isLiveDraft ? draft : null, liveHost.settings.pickSeconds);
+  const skippedSlots = useMemo(
+    () => new Set(skips.map(s => `${s.round}:${s.user_id}`)),
+    [skips],
+  );
+
+  // Keep passed slots in sync with realtime pick/turn changes.
+  useEffect(() => {
+    if (isLiveDraft) void refetchSkips();
+  }, [isLiveDraft, picks.length, (draft as any)?.current_pick_number, refetchSkips]);
+
+  // Auto-skip: when the host chose it, an expired clock passes the pick itself.
+  const autoSkipGuard = useRef<number>(-1);
+  useEffect(() => {
+    if (!isLiveDraft || !canManage) return;
+    if (draft?.status !== 'in_progress') return;
+    if (liveHost.settings.timeoutBehavior !== 'auto_skip') return;
+    if (!liveClock.running || liveClock.paused || !liveClock.expired) return;
+    if (autoSkipGuard.current === consumedSlots) return;
+    autoSkipGuard.current = consumedSlots;
+    void liveHost.skipCurrentPick();
+  }, [canManage, consumedSlots, draft?.status, isLiveDraft, liveClock.expired, liveClock.paused, liveClock.running, liveHost]);
+
+
 
   useEffect(() => {
     if (!user?.id) return;
@@ -408,14 +449,14 @@ export default function DraftDetailPage() {
   const derivedTurn = getDerivedDraftTurn(
     draft || { num_rounds: 1 },
     participants,
-    picks.length
+    consumedSlots
   );
   const currentPicker = derivedTurn.current_pick_user_id
     ? participants.find(p => p.user_id === derivedTurn.current_pick_user_id) || null
     : null;
   const isMyTurn = derivedTurn.current_pick_user_id === user?.id;
   const currentRound = derivedTurn.current_round ?? 1;
-  const currentPickNumber = derivedTurn.current_pick_number ?? (picks.length + 1);
+  const currentPickNumber = derivedTurn.current_pick_number ?? (consumedSlots + 1);
   const isDraftComplete = draft?.status === 'complete' || (draft && participants.length > 0 && currentRound > draft.num_rounds);
   const isInProgress = draft?.status === 'in_progress';
   const isSetup = draft?.status === 'setup';
@@ -496,7 +537,15 @@ export default function DraftDetailPage() {
         current_round: 1,
         current_pick_number: 1,
         current_pick_user_id: shuffled[0].user_id,
-      }).eq('id', draftId);
+        // Live drafts open with the shared clock already ticking.
+        ...(isLiveDraft && liveHost.settings.autoStartClock
+          ? {
+              clock_started_at: new Date().toISOString(),
+              pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+              clock_paused_at: null,
+            }
+          : {}),
+      } as any).eq('id', draftId);
       if (error) {
         console.error('Failed to update draft status', error);
         throw error;
@@ -539,7 +588,7 @@ export default function DraftDetailPage() {
 
     setSubmitting(true);
     try {
-      const pickNumber = picks.length + 1;
+      const pickNumber = consumedSlots + 1;
       const { data: newPick, error } = await supabase.from('draft_picks').insert({
         draft_id: draftId,
         user_id: user.id,
@@ -552,7 +601,10 @@ export default function DraftDetailPage() {
       // Check if draft is complete after this pick
       const totalExpected = participants.length * draft.num_rounds;
       if (pickNumber >= totalExpected) {
-        await supabase.from('drafts').update({ status: 'complete' }).eq('id', draftId);
+        await supabase
+          .from('drafts')
+          .update({ status: 'complete', ...(isLiveDraft ? { pick_deadline_at: null, clock_paused_at: null } : {}) } as any)
+          .eq('id', draftId);
         await supabase.from('activity_feed').insert({
           actor_user_id: user.id,
           event_type: 'draft_completed',
@@ -586,11 +638,23 @@ export default function DraftDetailPage() {
         const nextOrderIdx = nextRound % 2 === 0 ? nextPos : participants.length - 1 - nextPos;
         const nextPicker = sortedParticipants[nextOrderIdx];
 
+        // Live drafts roll the shared clock straight onto the next picker.
+        const clockPatch = isLiveDraft && liveHost.settings.autoStartClock
+          ? {
+              clock_started_at: new Date().toISOString(),
+              pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+              clock_paused_at: null,
+            }
+          : isLiveDraft
+            ? { pick_deadline_at: null, clock_paused_at: null }
+            : {};
+
         await supabase.from('drafts').update({
           current_pick_number: pickNumber + 1,
           current_round: nextRound + 1,
           current_pick_user_id: nextPicker?.user_id || null,
-        }).eq('id', draftId);
+          ...clockPatch,
+        } as any).eq('id', draftId);
 
         if (
           nextPicker &&
@@ -1221,7 +1285,7 @@ export default function DraftDetailPage() {
               <Award className="w-4 h-4 flex-shrink-0" style={{ color: 'hsl(var(--gold))' }} />
               <span className="text-[11px] font-bold" style={{ color: 'hsl(var(--gold))' }}>Season Draft #{seasonEntry.week_number}</span>
             </div>
-          ) : isCommissioner && season ? (
+          ) : isCommissioner && season && !isLiveDraft ? (
             <button
               onClick={async () => {
                 setSeasonActionBusy(true);
@@ -1382,6 +1446,49 @@ export default function DraftDetailPage() {
           {/* ── Lounge layout (regular drafts): compact status + board dominate ── */}
           {!isPlayoffDraft && (
             <div className="da-lounge">
+              {/* Live drafts: shared clock for the room, command center for the host */}
+              {isLiveDraft && (
+                <div className="mb-3 space-y-3">
+                  {canManage ? (
+                    <LiveHostPanel
+                      draftId={draftId!}
+                      clock={liveClock}
+                      settings={liveHost.settings}
+                      busy={liveHost.busy}
+                      pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+                      onDeckName={
+                        participants.length > 0
+                          ? [...participants].sort((a, b) => a.pick_order - b.pick_order)[
+                              (() => {
+                                const n = participants.length;
+                                const slot = consumedSlots + 1;
+                                const round = Math.floor(slot / n);
+                                const pos = slot % n;
+                                return round % 2 === 0 ? pos : n - 1 - pos;
+                              })()
+                            ]?.profiles?.display_name || undefined
+                          : undefined
+                      }
+                      kioskCode={(draft as any)?.kiosk_code ?? null}
+                      slotsLeft={Math.max(0, participants.length * draft.num_rounds - consumedSlots)}
+                      onStartClock={liveHost.startClock}
+                      onStopClock={liveHost.stopClock}
+                      onPause={liveHost.pause}
+                      onResume={liveHost.resume}
+                      onAddTime={liveHost.addTime}
+                      onSkip={liveHost.skipCurrentPick}
+                      onSaveSettings={liveHost.saveSettings}
+                      onEnsureKioskCode={liveHost.ensureKioskCode}
+                    />
+                  ) : (
+                    <LiveClockStrip
+                      clock={liveClock}
+                      pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+                      isMyTurn={isMyTurn}
+                    />
+                  )}
+                </div>
+              )}
               <DraftStatusHeader
                 currentRound={currentRound}
                 numRounds={draft.num_rounds}
@@ -1404,6 +1511,7 @@ export default function DraftDetailPage() {
                   currentUserId={user?.id}
                   newPickIds={newPickIds}
                   enrichments={enrichments}
+                  skippedSlots={isLiveDraft ? skippedSlots : undefined}
                 />
               </div>
               {pickHistoryCard}

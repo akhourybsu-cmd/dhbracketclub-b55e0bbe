@@ -7,17 +7,33 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Bookmark, ArrowLeft, Sparkles } from 'lucide-react';
+import { Bookmark, ArrowLeft, Sparkles, Radio, MonitorPlay } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useFeatureFlag } from '@/hooks/useFeatureFlags';
+import {
+  DEFAULT_LIVE_SETTINGS,
+  PICK_SECONDS_OPTIONS,
+  TIMEOUT_BEHAVIOR_HINTS,
+  TIMEOUT_BEHAVIOR_LABELS,
+  newKioskCode,
+  type PickTimeoutBehavior,
+} from '@/lib/draft/liveDraft';
 
 export default function CreateDraftPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { enabled: liveEnabled } = useFeatureFlag('live-draft');
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [aiContext, setAiContext] = useState('');
   const [numRounds, setNumRounds] = useState(5);
   const [loading, setLoading] = useState(false);
+  const [isLive, setIsLive] = useState(false);
+  const [pickSeconds, setPickSeconds] = useState(DEFAULT_LIVE_SETTINGS.pickSeconds);
+  const [timeoutBehavior, setTimeoutBehavior] = useState<PickTimeoutBehavior>(DEFAULT_LIVE_SETTINGS.timeoutBehavior);
+  const [announce, setAnnounce] = useState(true);
+  const [ticker, setTicker] = useState(true);
+  const [kioskSoundOn, setKioskSoundOn] = useState(true);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +65,21 @@ export default function CreateDraftPage() {
           num_rounds: numRounds,
           status: 'setup',
           ai_context: trimmedCtx ? trimmedCtx : null,
+          ...(liveEnabled && isLive
+            ? {
+                is_live: true,
+                kiosk_code: newKioskCode(),
+                timer_seconds: pickSeconds,
+                live_settings: {
+                  ...DEFAULT_LIVE_SETTINGS,
+                  pickSeconds,
+                  timeoutBehavior,
+                  announce,
+                  ticker,
+                  sound: kioskSoundOn,
+                },
+              }
+            : {}),
         } as any)
         .select()
         .single();
@@ -150,6 +181,103 @@ export default function CreateDraftPage() {
               Tell the AI what this category includes or excludes so the report judges picks the way you intended. {aiContext.length}/1000
             </p>
           </div>
+
+          {/* Live draft hosting — host the room in person, project the board. */}
+          {liveEnabled && (
+            <div
+              className="rounded-xl p-3.5"
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent 72%)',
+                border: '1px solid hsl(var(--primary) / 0.28)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setIsLive(v => !v)}
+                className="w-full flex items-center gap-2.5 text-left btn-press"
+              >
+                <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg" style={{ background: 'hsl(var(--primary) / 0.16)' }}>
+                  <Radio className="w-3.5 h-3.5 text-primary" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[12px] font-extrabold uppercase tracking-[0.12em] text-primary">Live draft</span>
+                  <span className="block text-[11px] text-muted-foreground leading-snug">
+                    Everyone picks on their own device while you run the clock and project the board.
+                  </span>
+                </span>
+                <span className={`w-11 h-6 rounded-full relative transition-colors shrink-0 ${isLive ? 'bg-primary' : 'bg-muted'}`}>
+                  <span className="absolute top-0.5 w-5 h-5 rounded-full bg-background transition-all" style={{ left: isLive ? 22 : 2 }} />
+                </span>
+              </button>
+
+              {isLive && (
+                <div className="mt-3.5 space-y-3.5">
+                  <div>
+                    <p className="form-label">Time per pick</p>
+                    <div className="flex flex-wrap gap-2">
+                      {PICK_SECONDS_OPTIONS.map(sec => (
+                        <button
+                          key={sec}
+                          type="button"
+                          onClick={() => setPickSeconds(sec)}
+                          className={`px-3 h-9 rounded-lg text-[12px] font-bold tabular-nums btn-press border ${
+                            pickSeconds === sec ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground border-border/70'
+                          }`}
+                        >
+                          {sec >= 60 ? `${sec / 60}m` : `${sec}s`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="form-label">When the clock hits zero</p>
+                    <div className="space-y-2">
+                      {(['alert', 'auto_skip', 'none'] as PickTimeoutBehavior[]).map(b => (
+                        <button
+                          key={b}
+                          type="button"
+                          onClick={() => setTimeoutBehavior(b)}
+                          className={`w-full text-left rounded-lg p-2.5 border btn-press ${
+                            timeoutBehavior === b ? 'border-primary bg-primary/10' : 'border-border/70'
+                          }`}
+                        >
+                          <span className="block text-[12px] font-bold">{TIMEOUT_BEHAVIOR_LABELS[b]}</span>
+                          <span className="block text-[10px] text-muted-foreground leading-snug">{TIMEOUT_BEHAVIOR_HINTS[b]}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {([
+                      ['Announce each pick on the big screen', announce, setAnnounce],
+                      ['Ticker tape of recent picks', ticker, setTicker],
+                      ['Projector sound effects', kioskSoundOn, setKioskSoundOn],
+                    ] as [string, boolean, (v: boolean) => void][]).map(([label, value, set]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => set(!value)}
+                        className="w-full flex items-center justify-between rounded-lg p-2.5 border border-border/70 btn-press"
+                      >
+                        <span className="text-[12px] font-semibold text-left">{label}</span>
+                        <span className={`w-10 h-5.5 rounded-full relative transition-colors shrink-0 ${value ? 'bg-primary' : 'bg-muted'}`} style={{ height: 22 }}>
+                          <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-background transition-all" style={{ left: value ? 20 : 2 }} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="flex items-start gap-1.5 text-[10px] text-muted-foreground/80 leading-snug">
+                    <MonitorPlay className="w-3.5 h-3.5 text-primary shrink-0 mt-px" />
+                    A projector link and room code are created with the draft. Live drafts stay out of season standings unless you add them yourself.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="form-label flex items-baseline justify-between">
               <span>Rounds</span>
