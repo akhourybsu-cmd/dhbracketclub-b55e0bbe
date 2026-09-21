@@ -342,18 +342,20 @@ export default function DraftKioskPage() {
             ))}
 
             {Array.from({ length: numRounds }, (_, i) => i + 1).map(round => {
-              const order = round % 2 === 1 ? sorted : [...sorted].reverse();
               return [
                 <div key={`r${round}`} className="da-kiosk-roundlabel dl-display">
                   R{round}
                 </div>,
-                ...order.map((p, idx) => {
+                // Each player owns a column, so the snake direction only changes
+                // the pick number inside the round — never which column it lands in.
+                ...sorted.map((p, idx) => {
                   const key = `${round}:${p.user_id}`;
                   const boardPick = pickByCell.get(key);
                   const pick = boardPick?.id === concealedPickId ? undefined : boardPick;
                   const awaitingReveal = boardPick?.id === concealedPickId;
                   const skipped = skipByCell.has(key);
-                  const slot = (round - 1) * n + idx;
+                  const posInRound = round % 2 === 1 ? idx : n - 1 - idx;
+                  const slot = (round - 1) * n + posInRound;
                   const isCurrent = !pick && !skipped && slot === consumed && !complete;
                   return (
                     <motion.div
