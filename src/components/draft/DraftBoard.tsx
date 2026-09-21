@@ -191,7 +191,7 @@ export function DraftBoard({
                 <div className="space-y-1.5">
                   {order.map((p, idx) => {
                     const pick = pickByCell.get(`${round}:${p.user_id}`);
-                    const pickNum = pickNumberFor(round, idx);
+                    const pickNum = pickNumberFor(round, columnIndexOf(p));
                     const isCurrent = !pick && pickNum === currentPickNumber;
                     return (
                       <div key={p.user_id} className="flex items-center gap-2.5">
