@@ -96,6 +96,13 @@ export default function DraftKioskPage() {
 
   useDraftUpdates(draftId, fetchData);
 
+  // Projector reliability fallback: venue Wi-Fi can silently drop realtime.
+  // A small poll keeps the shared board and reveal sequence moving regardless.
+  useEffect(() => {
+    const poll = window.setInterval(() => void fetchData(), 2000);
+    return () => window.clearInterval(poll);
+  }, [fetchData]);
+
   const sorted = useMemo(() => [...participants].sort((a, b) => a.pick_order - b.pick_order), [participants]);
   const n = sorted.length;
   const numRounds = draft?.num_rounds ?? 0;
