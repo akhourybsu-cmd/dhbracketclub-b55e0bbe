@@ -7,6 +7,7 @@ import { DraftArenaExitDialog } from './DraftArenaExitDialog';
 import { openSeasonWelcome } from './seasonWelcomeBus';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
+import { DraftArenaAppearance } from './DraftArenaAppearance';
 
 
 /**
@@ -106,6 +107,7 @@ export function DraftArenaHUD() {
             </button>
           )}
 
+          <DraftArenaAppearance />
           <ThemeToggle className="da-hud-action shrink-0" />
 
           {!isHub && (

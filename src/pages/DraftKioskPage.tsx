@@ -9,6 +9,7 @@ import { LiveClockDial } from '@/components/draft/live/LiveClockDial';
 import { kioskSound } from '@/lib/draft/kioskSound';
 import { parseLiveSettings, slotToParticipantIndex } from '@/lib/draft/liveDraft';
 import { cn } from '@/lib/utils';
+import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 
 interface KioskParticipant {
   user_id: string;
@@ -49,6 +50,7 @@ function initials(name?: string | null) {
  * driven entirely by realtime updates from the live draft.
  */
 export default function DraftKioskPage() {
+  const { palette } = useDraftArenaPalette();
   const { draftId } = useParams<{ draftId: string }>();
   const [draft, setDraft] = useState<any>(null);
   const [participants, setParticipants] = useState<KioskParticipant[]>([]);
@@ -254,7 +256,7 @@ export default function DraftKioskPage() {
 
   return (
     <LayoutGroup id="kiosk-pick-reveal">
-    <div className="da-mode da-lounge da-kiosk min-h-[100dvh] flex flex-col">
+    <div className="da-mode da-lounge da-kiosk min-h-[100dvh] flex flex-col" data-da-palette={palette}>
       {/* Top bar */}
       <header className="da-kiosk-bar">
         <div className="min-w-0">
