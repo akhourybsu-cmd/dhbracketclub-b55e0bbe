@@ -4806,6 +4806,7 @@
 
 /* Draft Arena palettes are personal display preferences. Heritage remains
    the default; the alternatives only replace semantic Arena tokens. */
+html[data-da-palette='broadcast'],
 .da-mode[data-da-palette='broadcast'],
 html[data-da-palette='broadcast'] .da-lounge.dl-sheet,
 html[data-da-palette='broadcast'] .da-exit-dialog {
@@ -4819,6 +4820,7 @@ html[data-da-palette='broadcast'] .da-exit-dialog {
   --da-gold: 205 78% 55%; --da-gold-bright: 202 84% 72%; --da-ink-on-gold: 218 38% 8%;
   --dl-gold: 205 78% 55%; --dl-gold-hi: 202 84% 72%; --dl-surface: 217 24% 12%; --dl-surface-2: 216 20% 16%;
 }
+html[data-da-palette='club'],
 .da-mode[data-da-palette='club'],
 html[data-da-palette='club'] .da-lounge.dl-sheet,
 html[data-da-palette='club'] .da-exit-dialog {
@@ -4832,6 +4834,7 @@ html[data-da-palette='club'] .da-exit-dialog {
   --da-gold: 154 58% 44%; --da-gold-bright: 151 60% 68%; --da-ink-on-gold: 162 30% 6%;
   --dl-gold: 154 58% 44%; --dl-gold-hi: 151 60% 68%; --dl-surface: 161 17% 11%; --dl-surface-2: 160 14% 15%;
 }
+html[data-da-palette='signal'],
 .da-mode[data-da-palette='signal'],
 html[data-da-palette='signal'] .da-lounge.dl-sheet,
 html[data-da-palette='signal'] .da-exit-dialog {
@@ -4845,6 +4848,7 @@ html[data-da-palette='signal'] .da-exit-dialog {
   --da-gold: 5 72% 55%; --da-gold-bright: 7 82% 72%; --da-ink-on-gold: 0 0% 100%;
   --dl-gold: 5 72% 55%; --dl-gold-hi: 7 82% 72%; --dl-surface: 348 12% 11%; --dl-surface-2: 348 10% 16%;
 }
+html.light[data-da-palette='broadcast'],
 .light .da-mode[data-da-palette='broadcast'],
 html.light[data-da-palette='broadcast'] .da-lounge.dl-sheet,
 html.light[data-da-palette='broadcast'] .da-exit-dialog {
@@ -4854,6 +4858,7 @@ html.light[data-da-palette='broadcast'] .da-exit-dialog {
   --border: 211 25% 72%; --input: 211 25% 72%; --gold: 207 72% 39%; --da-gold: 207 72% 39%; --da-gold-bright: 209 78% 32%;
   --da-ink-on-gold: 0 0% 100%; --dl-gold: 207 72% 39%; --dl-gold-hi: 209 78% 32%; --dl-surface: 210 38% 99%; --dl-surface-2: 211 29% 92%;
 }
+html.light[data-da-palette='club'],
 .light .da-mode[data-da-palette='club'],
 html.light[data-da-palette='club'] .da-lounge.dl-sheet,
 html.light[data-da-palette='club'] .da-exit-dialog {
@@ -4863,6 +4868,7 @@ html.light[data-da-palette='club'] .da-exit-dialog {
   --border: 153 21% 69%; --input: 153 21% 69%; --gold: 154 60% 29%; --da-gold: 154 60% 29%; --da-gold-bright: 156 66% 24%;
   --da-ink-on-gold: 0 0% 100%; --dl-gold: 154 60% 29%; --dl-gold-hi: 156 66% 24%; --dl-surface: 145 27% 99%; --dl-surface-2: 151 20% 91%;
 }
+html.light[data-da-palette='signal'],
 .light .da-mode[data-da-palette='signal'],
 html.light[data-da-palette='signal'] .da-lounge.dl-sheet,
 html.light[data-da-palette='signal'] .da-exit-dialog {
@@ -5995,7 +6001,7 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   gap: 0.55rem;
   margin-bottom: 0.55rem;
   color: hsl(var(--muted-foreground));
-  font-family: var(--font-display);
+  font-family: 'Space Grotesk', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.14em;
