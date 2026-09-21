@@ -1632,6 +1632,58 @@ export type Database = {
           },
         ]
       }
+      draft_skips: {
+        Row: {
+          club_id: string
+          created_at: string
+          draft_id: string
+          id: string
+          pick_number: number
+          round: number
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          draft_id: string
+          id?: string
+          pick_number: number
+          round: number
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          draft_id?: string
+          id?: string
+          pick_number?: number
+          round?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_skips_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_skips_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_skips_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drafts: {
         Row: {
           ai_context: string | null
@@ -1639,6 +1691,8 @@ export type Database = {
           ai_context_updated_at: string | null
           ai_context_updated_by: string | null
           category: string | null
+          clock_paused_at: string | null
+          clock_started_at: string | null
           club_id: string
           competition_id: string
           created_at: string
@@ -1647,7 +1701,11 @@ export type Database = {
           current_pick_user_id: string | null
           current_round: number
           id: string
+          is_live: boolean
+          kiosk_code: string | null
+          live_settings: Json
           num_rounds: number
+          pick_deadline_at: string | null
           status: string
           timer_seconds: number | null
           topic: string
@@ -1659,6 +1717,8 @@ export type Database = {
           ai_context_updated_at?: string | null
           ai_context_updated_by?: string | null
           category?: string | null
+          clock_paused_at?: string | null
+          clock_started_at?: string | null
           club_id?: string
           competition_id: string
           created_at?: string
@@ -1667,7 +1727,11 @@ export type Database = {
           current_pick_user_id?: string | null
           current_round?: number
           id?: string
+          is_live?: boolean
+          kiosk_code?: string | null
+          live_settings?: Json
           num_rounds?: number
+          pick_deadline_at?: string | null
           status?: string
           timer_seconds?: number | null
           topic: string
@@ -1679,6 +1743,8 @@ export type Database = {
           ai_context_updated_at?: string | null
           ai_context_updated_by?: string | null
           category?: string | null
+          clock_paused_at?: string | null
+          clock_started_at?: string | null
           club_id?: string
           competition_id?: string
           created_at?: string
@@ -1687,7 +1753,11 @@ export type Database = {
           current_pick_user_id?: string | null
           current_round?: number
           id?: string
+          is_live?: boolean
+          kiosk_code?: string | null
+          live_settings?: Json
           num_rounds?: number
+          pick_deadline_at?: string | null
           status?: string
           timer_seconds?: number | null
           topic?: string
