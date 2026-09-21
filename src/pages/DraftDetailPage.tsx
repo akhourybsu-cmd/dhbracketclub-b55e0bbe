@@ -1443,78 +1443,103 @@ export default function DraftDetailPage() {
               instead of being trapped in one column. */}
           <PickAnnouncement pick={announcement} onHide={() => setAnnouncement(null)} />
 
-          {/* ── Lounge layout (regular drafts): compact status + board dominate ── */}
+          {/* ── Lounge layout: compact on phones, command center for live hosts on desktop ── */}
           {!isPlayoffDraft && (
-            <div className="da-lounge">
-              {/* Live drafts: shared clock for the room, command center for the host */}
+            <div className={cn('da-lounge', isLiveDraft && 'da-live-command')}>
               {isLiveDraft && (
-                <div className="mb-3 space-y-3">
-                  {canManage ? (
-                    <LiveHostPanel
-                      draftId={draftId!}
-                      clock={liveClock}
-                      settings={liveHost.settings}
-                      busy={liveHost.busy}
-                      pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
-                      onDeckName={
-                        participants.length > 0
-                          ? [...participants].sort((a, b) => a.pick_order - b.pick_order)[
-                              (() => {
-                                const n = participants.length;
-                                const slot = consumedSlots + 1;
-                                const round = Math.floor(slot / n);
-                                const pos = slot % n;
-                                return round % 2 === 0 ? pos : n - 1 - pos;
-                              })()
-                            ]?.profiles?.display_name || undefined
-                          : undefined
-                      }
-                      kioskCode={(draft as any)?.kiosk_code ?? null}
-                      slotsLeft={Math.max(0, participants.length * draft.num_rounds - consumedSlots)}
-                      onStartClock={liveHost.startClock}
-                      onStopClock={liveHost.stopClock}
-                      onPause={liveHost.pause}
-                      onResume={liveHost.resume}
-                      onAddTime={liveHost.addTime}
-                      onSkip={liveHost.skipCurrentPick}
-                      onSaveSettings={liveHost.saveSettings}
-                      onEnsureKioskCode={liveHost.ensureKioskCode}
-                    />
-                  ) : (
-                    <LiveClockStrip
-                      clock={liveClock}
-                      pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
-                      isMyTurn={isMyTurn}
-                    />
-                  )}
+                <div className="da-live-command-masthead">
+                  <div>
+                    <p className="dl-eyebrow">Live operations</p>
+                    <h2 className="dl-display text-lg font-black">Draft Command Center</h2>
+                  </div>
+                  <div className="da-live-command-signals" aria-label="Live draft status">
+                    <span className="da-live-signal"><i aria-hidden /> Connected</span>
+                    <span>{participants.length} players</span>
+                    <span>{Math.max(0, participants.length * draft.num_rounds - consumedSlots)} picks remaining</span>
+                    {canManage && <span className="da-live-role">Host control</span>}
+                  </div>
                 </div>
               )}
-              <DraftStatusHeader
-                currentRound={currentRound}
-                numRounds={draft.num_rounds}
-                currentPickNumber={currentPickNumber}
-                totalPicks={participants.length * draft.num_rounds}
-                pickerName={currentPicker?.profiles?.display_name || 'Unknown'}
-                pickerInitials={(currentPicker?.profiles?.display_name || '?').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'}
-                isMyTurn={isMyTurn}
-                picksUntilYou={picksUntilYou}
-                clockStartedAt={picks.length > 0 ? ((picks[picks.length - 1] as any)?.picked_at ?? null) : (draft?.updated_at ?? null)}
-                newPickCount={newPickIds.size}
-                onMakePick={isMyTurn ? () => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); } : undefined}
-              />
-              <div className="mb-4">
-                <DraftBoard
-                  participants={participants}
-                  picks={picks}
-                  currentPickNumber={currentPickNumber}
-                  numRounds={draft.num_rounds}
-                  currentUserId={user?.id}
-                  newPickIds={newPickIds}
-                  enrichments={enrichments}
-                  skippedSlots={isLiveDraft ? skippedSlots : undefined}
-                />
+
+              <div className={cn(isLiveDraft && 'da-live-command-grid')}>
+                {isLiveDraft && (
+                  <aside className="da-live-command-rail" aria-label={canManage ? 'Host controls' : 'Live clock'}>
+                    <div className="da-live-zone-label"><span>01</span> Clock &amp; control</div>
+                    {canManage ? (
+                      <LiveHostPanel
+                        draftId={draftId!}
+                        clock={liveClock}
+                        settings={liveHost.settings}
+                        busy={liveHost.busy}
+                        pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+                        onDeckName={
+                          participants.length > 0
+                            ? [...participants].sort((a, b) => a.pick_order - b.pick_order)[
+                                (() => {
+                                  const n = participants.length;
+                                  const slot = consumedSlots + 1;
+                                  const round = Math.floor(slot / n);
+                                  const pos = slot % n;
+                                  return round % 2 === 0 ? pos : n - 1 - pos;
+                                })()
+                              ]?.profiles?.display_name || undefined
+                            : undefined
+                        }
+                        kioskCode={(draft as any)?.kiosk_code ?? null}
+                        slotsLeft={Math.max(0, participants.length * draft.num_rounds - consumedSlots)}
+                        onStartClock={liveHost.startClock}
+                        onStopClock={liveHost.stopClock}
+                        onPause={liveHost.pause}
+                        onResume={liveHost.resume}
+                        onAddTime={liveHost.addTime}
+                        onSkip={liveHost.skipCurrentPick}
+                        onSaveSettings={liveHost.saveSettings}
+                        onEnsureKioskCode={liveHost.ensureKioskCode}
+                      />
+                    ) : (
+                      <LiveClockStrip
+                        clock={liveClock}
+                        pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+                        isMyTurn={isMyTurn}
+                      />
+                    )}
+                  </aside>
+                )}
+
+                <section className={cn(isLiveDraft && 'da-live-command-board')} aria-label="Draft board and status">
+                  {isLiveDraft && <div className="da-live-zone-label"><span>02</span> Board state</div>}
+                  <DraftStatusHeader
+                    currentRound={currentRound}
+                    numRounds={draft.num_rounds}
+                    currentPickNumber={currentPickNumber}
+                    totalPicks={participants.length * draft.num_rounds}
+                    pickerName={currentPicker?.profiles?.display_name || 'Unknown'}
+                    pickerInitials={(currentPicker?.profiles?.display_name || '?').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'}
+                    isMyTurn={isMyTurn}
+                    picksUntilYou={picksUntilYou}
+                    clockStartedAt={picks.length > 0 ? ((picks[picks.length - 1] as any)?.picked_at ?? null) : (draft?.updated_at ?? null)}
+                    newPickCount={newPickIds.size}
+                    onMakePick={isMyTurn ? () => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); } : undefined}
+                  />
+                  <div className="mb-4">
+                    <DraftBoard
+                      participants={participants}
+                      picks={picks}
+                      currentPickNumber={currentPickNumber}
+                      numRounds={draft.num_rounds}
+                      currentUserId={user?.id}
+                      newPickIds={newPickIds}
+                      enrichments={enrichments}
+                      skippedSlots={isLiveDraft ? skippedSlots : undefined}
+                    />
+                  </div>
+                </section>
               </div>
-              {pickHistoryCard}
+
+              <section className={cn(isLiveDraft && 'da-live-command-history')} aria-label="Pick history">
+                {isLiveDraft && <div className="da-live-zone-label"><span>03</span> Selection log</div>}
+                {pickHistoryCard}
+              </section>
             </div>
           )}
 

@@ -71,7 +71,7 @@ export function LiveHostPanel({
   };
 
   return (
-    <div className="dl-card p-4 space-y-4">
+    <div className="dl-card da-live-host-panel p-4 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="dl-eyebrow">Host Controls</p>
