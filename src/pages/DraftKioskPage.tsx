@@ -141,7 +141,11 @@ export default function DraftKioskPage() {
       return;
     }
     const latest = fresh[fresh.length - 1];
-    if (!latest || !settings.announce) return;
+    if (!latest) return;
+    if (!settings.announce) {
+      if (!muted && settings.sound) kioskSound.pick();
+      return;
+    }
     setRevealQueue(queue => [
       ...queue,
       ...fresh.map(pick => ({ pick, name: nameFor(pick.user_id) })),
@@ -238,7 +242,7 @@ export default function DraftKioskPage() {
     );
   }
 
-  const recent = [...picks].slice(-12).reverse();
+  const recent = picks.filter(pick => pick.id !== concealedPickId).slice(-12).reverse();
 
   const concealedPickId = reveal && reveal.phase !== 'landing' ? reveal.pick.id : null;
 
@@ -371,7 +375,7 @@ export default function DraftKioskPage() {
       </div>
 
       {/* Ticker tape */}
-      {settings.ticker && recent.length > 0 && (
+      {settings.ticker && recent.length > 0 && !reveal && (
         <footer className="da-kiosk-ticker">
           <span className="da-kiosk-ticker-label dl-display">Latest picks</span>
           <div className="da-kiosk-ticker-track">
