@@ -25,7 +25,7 @@ import { FeaturedModule } from '@/components/home/FeaturedModule';
 import { MembersOnline } from '@/components/home/MembersOnline';
 import { DiscoverStrip } from '@/components/home/DiscoverStrip';
 import { EmptyClubState } from '@/components/home/EmptyClubState';
-import { PwHomeWidget } from '@/components/portfolioWars/PwHomeWidget';
+import { HomeWidgetHub } from '@/components/home/HomeWidgetHub';
 
 import { HomeDashboard } from '@/components/home/dashboard/HomeDashboard';
 import { DashboardErrorBoundary } from '@/components/home/dashboard/DashboardErrorBoundary';
@@ -305,6 +305,10 @@ function DashboardHome() {
     [narrativeCampaigns],
   );
 
+  const widgetHub = <HomeWidgetHub enabledAssets={enabledAssets} installedSlugs={installedSlugs}
+    userId={user?.id} clubId={club?.id} drafts={drafts} draftSeason={hasDrafts ? season ?? null : null}
+    draftSeasonTarget={seasonTarget} draftSeasonCompleted={regularEntries} draftStandings={standings} />;
+
   if (loading || assetsLoading) return <div className="member-page space-y-5" aria-label="Loading home" aria-busy="true">
     <div className="space-y-2 pt-2"><div className="h-3 w-32 rounded skeleton-shimmer" /><div className="h-8 w-52 rounded skeleton-shimmer" /></div>
     <div className="h-24 rounded-2xl skeleton-shimmer" /><div className="grid grid-cols-2 gap-2">{[1,2,3,4].map(n=><div key={n} className="h-16 rounded-xl skeleton-shimmer" />)}</div>
@@ -318,11 +322,10 @@ function DashboardHome() {
         pendingActions={actions} narrativeActiveCount={narrativeActiveCount} activeDraftStatus={activeDraftStatus}
         upcomingEventCount={events.length} season={hasDrafts?(season??null):null} seasonTarget={seasonTarget}
         seasonCompleted={regularEntries} standings={standings} activity={activity} events={events} loading={loading}
-        extra={<PwHomeWidget enabled={installedSlugs.has('portfolio-wars')} />} />
+        extra={widgetHub} />
     </DashboardErrorBoundary> : <MobileHome displayName={displayName} clubName={club?.name || 'your club'} installedSlugs={installedSlugs}
-      actions={actions} updates={updates} shortcuts={qb} refreshing={refreshing} error={loadError} onRefresh={()=>void fetchData()}>
+      actions={actions} updates={updates} shortcuts={qb} refreshing={refreshing} error={loadError} onRefresh={()=>void fetchData()} widgets={widgetHub}>
       {isFreshClub&&!loadError&&<EmptyClubState isAdmin={isClubAdmin} accent={accent} clubName={club?.name} />}
-      <PwHomeWidget enabled={installedSlugs.has('portfolio-wars')} />
       {(hasDrafts&&season || installedSlugs.has('narrative-rpg')&&narrativeActiveCount>0)&&<details className="rounded-2xl border border-border/70 bg-card px-4">
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between text-sm font-semibold">Your season & stories<ChevronDown className="h-4 w-4 text-muted-foreground" /></summary>
         <FeaturedModule season={hasDrafts?season??null:null} standings={standings} regularEntries={regularEntries}

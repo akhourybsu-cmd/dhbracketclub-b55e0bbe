@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 interface Props {
   displayName: string; clubName: string; installedSlugs: Set<string>;
   actions: NextAction[]; updates: HomeUpdate[]; shortcuts: UseQuickBarReturn;
-  refreshing?: boolean; error?: string|null; onRefresh: () => void; children?: ReactNode;
+  refreshing?: boolean; error?: string|null; onRefresh: () => void; widgets?: ReactNode; children?: ReactNode;
 }
 const SECTIONS: {key:HomeSection;label:string;empty:string}[] = [
   {key:'latest',label:'Latest',empty:'A little quiet here—for now.'},
@@ -22,7 +22,7 @@ const SECTIONS: {key:HomeSection;label:string;empty:string}[] = [
   {key:'playing',label:'In progress',empty:'No games or stories in progress.'},
 ];
 
-export function MobileHome({displayName,clubName,installedSlugs,actions,updates,shortcuts,refreshing,error,onRefresh,children}:Props) {
+export function MobileHome({displayName,clubName,installedSlugs,actions,updates,shortcuts,refreshing,error,onRefresh,widgets,children}:Props) {
   const [section,setSection]=useState<HomeSection>('latest');
   const [edit,setEdit]=useState(false);
   const [expanded,setExpanded]=useState(false);
@@ -58,6 +58,7 @@ export function MobileHome({displayName,clubName,installedSlugs,actions,updates,
           <span className="home-shortcut-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] text-primary"><Icon className="h-[18px] w-[18px]" aria-hidden /></span><span className="min-h-7 min-w-0 break-words text-center text-[11px] font-medium leading-[14px]">{meta.label}</span></Link>;
       })}</div>:<button onClick={()=>setEdit(true)} className="min-h-12 w-full rounded-xl border border-dashed border-border text-sm text-muted-foreground">Choose your favorite apps</button>}
     </section>}
+    {widgets}
 
     <section aria-label="Club activity" className="min-w-0">
       <div className="mb-2 flex items-center justify-between gap-2"><h2 className="text-base font-semibold tracking-[-0.025em]">Around the club</h2>{installedSlugs.has('feed')&&<Link to="/feed" className="home-quiet-action inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-[11px] font-medium text-muted-foreground">Full feed<ChevronRight className="h-3.5 w-3.5" /></Link>}</div>
