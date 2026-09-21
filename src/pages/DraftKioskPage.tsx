@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { Maximize2, Minimize2, Volume2, VolumeX, Radio, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDraftUpdates } from '@/hooks/useRealtimeSubscription';
@@ -23,6 +23,13 @@ interface KioskPick {
   pick_number: number;
   round: number;
   picked_at: string;
+}
+
+type RevealPhase = 'locked' | 'confirmed' | 'reveal' | 'landing';
+interface PickReveal {
+  pick: KioskPick;
+  name: string;
+  phase: RevealPhase;
 }
 
 function initials(name?: string | null) {
@@ -49,7 +56,9 @@ export default function DraftKioskPage() {
   const [loading, setLoading] = useState(true);
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [announce, setAnnounce] = useState<{ pick: KioskPick; name: string } | null>(null);
+  const [reveal, setReveal] = useState<PickReveal | null>(null);
+  const [revealQueue, setRevealQueue] = useState<Array<{ pick: KioskPick; name: string }>>([]);
+  const reduceMotion = useReducedMotion();
   const seenPickIds = useRef<Set<string>>(new Set());
   const hydrated = useRef(false);
   const lastTickSecond = useRef<number>(-1);
@@ -87,6 +96,13 @@ export default function DraftKioskPage() {
 
   useDraftUpdates(draftId, fetchData);
 
+  // Projector reliability fallback: venue Wi-Fi can silently drop realtime.
+  // A small poll keeps the shared board and reveal sequence moving regardless.
+  useEffect(() => {
+    const poll = window.setInterval(() => void fetchData(), 2000);
+    return () => window.clearInterval(poll);
+  }, [fetchData]);
+
   const sorted = useMemo(() => [...participants].sort((a, b) => a.pick_order - b.pick_order), [participants]);
   const n = sorted.length;
   const numRounds = draft?.num_rounds ?? 0;
@@ -121,7 +137,7 @@ export default function DraftKioskPage() {
     return set;
   }, [skips]);
 
-  /* ── Sound + announcements ── */
+  /* ── Sound + cinematic pick reveals ── */
   useEffect(() => {
     // Seed on first load so a refresh doesn't replay the whole board.
     if (loading) return;
@@ -133,14 +149,49 @@ export default function DraftKioskPage() {
     }
     const latest = fresh[fresh.length - 1];
     if (!latest) return;
-    if (!muted && settings.sound) kioskSound.pick();
-    if (settings.announce) {
-      setAnnounce({ pick: latest, name: nameFor(latest.user_id) });
-      const id = setTimeout(() => setAnnounce(null), 4200);
-      return () => clearTimeout(id);
+    if (!settings.announce) {
+      if (!muted && settings.sound) kioskSound.pick();
+      return;
     }
+    setRevealQueue(queue => [
+      ...queue,
+      ...fresh.map(pick => ({ pick, name: nameFor(pick.user_id) })),
+    ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [picks, loading]);
+
+  useEffect(() => {
+    if (reveal || revealQueue.length === 0) return;
+    const [next, ...rest] = revealQueue;
+    setRevealQueue(rest);
+    setReveal({ ...next, phase: reduceMotion ? 'reveal' : 'locked' });
+  }, [reduceMotion, reveal, revealQueue]);
+
+  useEffect(() => {
+    if (!reveal) return;
+    const soundOn = !muted && settings.sound;
+    const durations: Record<RevealPhase, number> = reduceMotion
+      ? { locked: 0, confirmed: 0, reveal: 900, landing: 450 }
+      : { locked: 1150, confirmed: 900, reveal: 2350, landing: 900 };
+
+    if (soundOn) {
+      if (reveal.phase === 'locked') kioskSound.locked();
+      if (reveal.phase === 'confirmed') kioskSound.reveal();
+      if (reveal.phase === 'landing') kioskSound.land();
+    }
+
+    const nextPhase: Record<RevealPhase, RevealPhase | null> = {
+      locked: 'confirmed',
+      confirmed: 'reveal',
+      reveal: 'landing',
+      landing: null,
+    };
+    const timer = window.setTimeout(() => {
+      const next = nextPhase[reveal.phase];
+      setReveal(next ? { ...reveal, phase: next } : null);
+    }, durations[reveal.phase]);
+    return () => window.clearTimeout(timer);
+  }, [muted, reduceMotion, reveal, settings.sound]);
 
   useEffect(() => {
     if (muted || !settings.sound || !clock.running || clock.paused) return;
@@ -198,9 +249,11 @@ export default function DraftKioskPage() {
     );
   }
 
-  const recent = [...picks].slice(-12).reverse();
+  const concealedPickId = reveal && reveal.phase !== 'landing' ? reveal.pick.id : null;
+  const recent = picks.filter(pick => pick.id !== concealedPickId).slice(-12).reverse();
 
   return (
+    <LayoutGroup id="kiosk-pick-reveal">
     <div className="da-mode da-lounge da-kiosk min-h-[100dvh] flex flex-col">
       {/* Top bar */}
       <header className="da-kiosk-bar">
@@ -294,25 +347,31 @@ export default function DraftKioskPage() {
                 </div>,
                 ...order.map((p, idx) => {
                   const key = `${round}:${p.user_id}`;
-                  const pick = pickByCell.get(key);
+                  const boardPick = pickByCell.get(key);
+                  const pick = boardPick?.id === concealedPickId ? undefined : boardPick;
+                  const awaitingReveal = boardPick?.id === concealedPickId;
                   const skipped = skipByCell.has(key);
                   const slot = (round - 1) * n + idx;
                   const isCurrent = !pick && !skipped && slot === consumed && !complete;
                   return (
-                    <div
+                    <motion.div
                       key={key}
+                      layoutId={pick ? `kiosk-pick-${pick.id}` : undefined}
+                      transition={{ type: 'spring', stiffness: 190, damping: 23, mass: 0.9 }}
                       className={cn(
                         'da-kiosk-cell',
                         pick && 'da-kiosk-cell-filled',
+                        reveal?.phase === 'landing' && pick?.id === reveal.pick.id && 'da-kiosk-cell-landed',
+                        awaitingReveal && 'da-kiosk-cell-awaiting',
                         skipped && 'da-kiosk-cell-skipped',
                         isCurrent && 'da-kiosk-cell-current',
                       )}
                     >
                       <span className="da-kiosk-cell-num dl-display">{slot + 1}</span>
                       <span className="da-kiosk-cell-text">
-                        {pick ? pick.pick_text : skipped ? 'Passed' : isCurrent ? 'On the clock' : '—'}
+                        {pick ? pick.pick_text : awaitingReveal ? 'Pick locked' : skipped ? 'Passed' : isCurrent ? 'On the clock' : '—'}
                       </span>
-                    </div>
+                    </motion.div>
                   );
                 }),
               ];
@@ -322,7 +381,7 @@ export default function DraftKioskPage() {
       </div>
 
       {/* Ticker tape */}
-      {settings.ticker && recent.length > 0 && (
+      {settings.ticker && recent.length > 0 && !reveal && (
         <footer className="da-kiosk-ticker">
           <span className="da-kiosk-ticker-label dl-display">Latest picks</span>
           <div className="da-kiosk-ticker-track">
@@ -338,27 +397,82 @@ export default function DraftKioskPage() {
         </footer>
       )}
 
-      {/* Pick announcement */}
-      <AnimatePresence>
-        {announce && (
+      {/* Cinematic pick announcement */}
+      <AnimatePresence mode="wait">
+        {reveal && reveal.phase !== 'landing' && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            key={reveal.pick.id}
+            initial={{ opacity: 0 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-8 pointer-events-none"
-            style={{ background: 'hsl(var(--background) / 0.72)', backdropFilter: 'blur(6px)' }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.12 : 0.35 }}
+            className="da-kiosk-reveal fixed inset-0 z-50 flex items-center justify-center p-5 sm:p-8 pointer-events-none"
           >
-            <div className="da-kiosk-card text-center px-10 py-8 max-w-[80vw]">
-              <p className="dl-eyebrow">
-                Pick #{announce.pick.pick_number} · Round {announce.pick.round}
-              </p>
-              <p className="dl-display text-4xl xl:text-6xl font-black mt-2 leading-tight">{announce.pick.pick_text}</p>
-              <p className="dl-display text-lg font-bold mt-3 text-primary">{announce.name}</p>
-            </div>
+            <div className="da-kiosk-reveal-beam" aria-hidden />
+            <div className="da-kiosk-reveal-lines" aria-hidden />
+            <AnimatePresence mode="wait">
+              {reveal.phase === 'locked' && (
+                <motion.div
+                  key="locked"
+                  initial={{ opacity: 0, scale: 1.16, letterSpacing: '0.32em' }}
+                  animate={{ opacity: 1, scale: 1, letterSpacing: '0.18em' }}
+                  exit={{ opacity: 0, scale: 0.88 }}
+                  transition={{ duration: reduceMotion ? 0.12 : 0.55 }}
+                  className="da-kiosk-reveal-status dl-display"
+                >
+                  <span className="da-kiosk-lock-mark" aria-hidden />
+                  Pick locked
+                </motion.div>
+              )}
+              {reveal.phase === 'confirmed' && (
+                <motion.div
+                  key="confirmed"
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, filter: 'blur(8px)' }}
+                  transition={{ duration: reduceMotion ? 0.12 : 0.45 }}
+                  className="text-center"
+                >
+                  <p className="da-kiosk-reveal-kicker dl-display">Selection confirmed</p>
+                  <p className="da-kiosk-reveal-in dl-display">The pick is in</p>
+                </motion.div>
+              )}
+              {reveal.phase === 'reveal' && (
+                <motion.div
+                  key="reveal"
+                  layoutId={`kiosk-pick-${reveal.pick.id}`}
+                  initial={{ opacity: 0, y: 24, scale: 0.92 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 1 }}
+                  transition={{ duration: reduceMotion ? 0.15 : 0.8, ease: [0.22, 1, 0.36, 1] }}
+                  className="da-kiosk-reveal-card"
+                >
+                  <p className="da-kiosk-reveal-kicker dl-display">
+                    Pick #{reveal.pick.pick_number} · Round {reveal.pick.round}
+                  </p>
+                  <motion.p
+                    initial={{ clipPath: 'inset(0 100% 0 0)' }}
+                    animate={{ clipPath: 'inset(0 0% 0 0)' }}
+                    transition={{ delay: reduceMotion ? 0 : 0.25, duration: reduceMotion ? 0.15 : 1.1, ease: [0.22, 1, 0.36, 1] }}
+                    className="da-kiosk-reveal-pick dl-display"
+                  >
+                    {reveal.pick.pick_text}
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: reduceMotion ? 0 : 1.15, duration: 0.4 }}
+                    className="da-kiosk-reveal-name dl-display"
+                  >
+                    {reveal.name}
+                  </motion.p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+    </LayoutGroup>
   );
 }
