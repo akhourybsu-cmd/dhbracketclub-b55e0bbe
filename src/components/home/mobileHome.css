@@ -84,6 +84,29 @@
   background: hsl(var(--muted) / 0.55);
 }
 
+.home-widget-card {
+  background:
+    radial-gradient(90% 70% at 0% 0%, hsl(var(--primary) / 0.08), transparent 62%),
+    linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.86));
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease, transform var(--motion-fast) var(--ease-app);
+}
+
+.home-widget-card-live {
+  border-color: hsl(var(--primary) / 0.28);
+  box-shadow: var(--shadow-premium);
+}
+
+.home-widget-icon {
+  box-shadow: inset 0 1px 0 hsl(var(--primary-foreground) / 0.08);
+}
+
+.home-widget-launcher {
+  box-shadow: var(--shadow-card);
+  transition: background-color var(--motion-fast) ease, border-color var(--motion-fast) ease,
+    box-shadow var(--motion-fast) ease, transform var(--motion-fast) var(--ease-app);
+}
+
 .mobile-home .home-activity-list > li + li > a::before {
   content: '';
   position: absolute;
@@ -131,9 +154,16 @@
   .mobile-home :is(.home-action, .home-more, .home-activity-row, .home-quiet-action):hover {
     background-color: hsl(var(--primary) / 0.045);
   }
+  .home-widget-card:hover,
+  .home-widget-launcher:hover {
+    background-color: hsl(var(--primary) / 0.045);
+    transform: translateY(-1px);
+  }
 }
 
-.mobile-home :is(.home-shortcut, .home-action):active {
+.mobile-home :is(.home-shortcut, .home-action):active,
+.home-widget-card:active,
+.home-widget-launcher:active {
   transform: scale(0.985);
 }
 
@@ -149,7 +179,11 @@
     animation-duration: 0.01ms !important;
   }
   .mobile-home :is(.home-shortcut, .home-action, button):active,
-  .mobile-home .home-shortcut:hover {
+  .mobile-home .home-shortcut:hover,
+  .home-widget-card:active,
+  .home-widget-launcher:active,
+  .home-widget-card:hover,
+  .home-widget-launcher:hover {
     transform: none;
   }
 }
