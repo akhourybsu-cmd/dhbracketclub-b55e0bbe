@@ -61,4 +61,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 
 
 41. Live draft hosting (early access, host-only): live-draft feature flag, shared pick clock on the draft row, host command center (pause/resume/+30s/reset/clock off/pass pick), projector kiosk at /drafts/:id/kiosk with big board, on-deck, ticker tape, pick announcements and sound, plus a real Admin > Feature Flags switchboard. Live drafts stay out of season standings. — done
-42. Cinematic kiosk pick sequence: conceal fresh picks, stage lock/confirmation/slow reveal, animate into the board, queue rapid picks, and provide reduced-motion behavior. — in progress
+42. Cinematic kiosk pick sequence: conceal fresh picks, stage lock/confirmation/slow reveal, animate into the board, queue rapid picks, and provide reduced-motion behavior. — done
