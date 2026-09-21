@@ -4803,6 +4803,91 @@
 .light .da-exit-dialog {
   background: linear-gradient(180deg, hsl(45 24% 99%), hsl(45 30% 94%)) !important;
 }
+
+/* Draft Arena palettes are personal display preferences. Heritage remains
+   the default; the alternatives only replace semantic Arena tokens. */
+.da-mode[data-da-palette='broadcast'],
+html[data-da-palette='broadcast'] .da-appearance-panel,
+html[data-da-palette='broadcast'] .da-lounge.dl-sheet,
+html[data-da-palette='broadcast'] .da-exit-dialog {
+  --background: 218 28% 7%; --foreground: 210 28% 94%;
+  --card: 217 24% 12%; --card-foreground: 210 28% 94%;
+  --popover: 217 25% 10%; --popover-foreground: 210 28% 94%;
+  --primary: 205 78% 55%; --primary-foreground: 218 38% 8%;
+  --secondary: 216 20% 17%; --secondary-foreground: 210 24% 88%;
+  --muted: 216 18% 19%; --muted-foreground: 213 16% 67%;
+  --border: 211 28% 27%; --input: 211 25% 27%; --gold: 205 78% 55%;
+  --da-gold: 205 78% 55%; --da-gold-bright: 202 84% 72%; --da-ink-on-gold: 218 38% 8%;
+  --dl-gold: 205 78% 55%; --dl-gold-hi: 202 84% 72%; --dl-surface: 217 24% 12%; --dl-surface-2: 216 20% 16%;
+}
+.da-mode[data-da-palette='club'],
+html[data-da-palette='club'] .da-appearance-panel,
+html[data-da-palette='club'] .da-lounge.dl-sheet,
+html[data-da-palette='club'] .da-exit-dialog {
+  --background: 164 20% 6%; --foreground: 150 20% 94%;
+  --card: 161 17% 11%; --card-foreground: 150 20% 94%;
+  --popover: 161 18% 9%; --popover-foreground: 150 20% 94%;
+  --primary: 154 58% 44%; --primary-foreground: 162 30% 6%;
+  --secondary: 160 14% 16%; --secondary-foreground: 150 18% 87%;
+  --muted: 160 13% 18%; --muted-foreground: 155 12% 66%;
+  --border: 157 22% 25%; --input: 157 20% 25%; --gold: 154 58% 44%;
+  --da-gold: 154 58% 44%; --da-gold-bright: 151 60% 68%; --da-ink-on-gold: 162 30% 6%;
+  --dl-gold: 154 58% 44%; --dl-gold-hi: 151 60% 68%; --dl-surface: 161 17% 11%; --dl-surface-2: 160 14% 15%;
+}
+.da-mode[data-da-palette='signal'],
+html[data-da-palette='signal'] .da-appearance-panel,
+html[data-da-palette='signal'] .da-lounge.dl-sheet,
+html[data-da-palette='signal'] .da-exit-dialog {
+  --background: 345 13% 6%; --foreground: 0 14% 95%;
+  --card: 348 12% 11%; --card-foreground: 0 14% 95%;
+  --popover: 348 13% 9%; --popover-foreground: 0 14% 95%;
+  --primary: 5 72% 55%; --primary-foreground: 0 0% 100%;
+  --secondary: 348 10% 17%; --secondary-foreground: 0 12% 88%;
+  --muted: 348 10% 19%; --muted-foreground: 355 10% 68%;
+  --border: 354 20% 26%; --input: 354 18% 26%; --gold: 5 72% 55%;
+  --da-gold: 5 72% 55%; --da-gold-bright: 7 82% 72%; --da-ink-on-gold: 0 0% 100%;
+  --dl-gold: 5 72% 55%; --dl-gold-hi: 7 82% 72%; --dl-surface: 348 12% 11%; --dl-surface-2: 348 10% 16%;
+}
+.light .da-mode[data-da-palette='broadcast'],
+html.light[data-da-palette='broadcast'] .da-appearance-panel,
+html.light[data-da-palette='broadcast'] .da-lounge.dl-sheet,
+html.light[data-da-palette='broadcast'] .da-exit-dialog {
+  --background: 210 34% 95%; --foreground: 218 34% 14%; --card: 210 38% 99%; --card-foreground: 218 34% 14%;
+  --popover: 210 38% 99%; --popover-foreground: 218 34% 14%; --primary: 207 72% 39%; --primary-foreground: 0 0% 100%;
+  --secondary: 211 29% 90%; --secondary-foreground: 218 30% 16%; --muted: 211 25% 89%; --muted-foreground: 216 18% 37%;
+  --border: 211 25% 72%; --input: 211 25% 72%; --gold: 207 72% 39%; --da-gold: 207 72% 39%; --da-gold-bright: 209 78% 32%;
+  --da-ink-on-gold: 0 0% 100%; --dl-gold: 207 72% 39%; --dl-gold-hi: 209 78% 32%; --dl-surface: 210 38% 99%; --dl-surface-2: 211 29% 92%;
+}
+.light .da-mode[data-da-palette='club'],
+html.light[data-da-palette='club'] .da-appearance-panel,
+html.light[data-da-palette='club'] .da-lounge.dl-sheet,
+html.light[data-da-palette='club'] .da-exit-dialog {
+  --background: 150 24% 94%; --foreground: 164 30% 11%; --card: 145 27% 99%; --card-foreground: 164 30% 11%;
+  --popover: 145 27% 99%; --popover-foreground: 164 30% 11%; --primary: 154 60% 29%; --primary-foreground: 0 0% 100%;
+  --secondary: 151 20% 89%; --secondary-foreground: 164 26% 14%; --muted: 151 18% 88%; --muted-foreground: 160 16% 34%;
+  --border: 153 21% 69%; --input: 153 21% 69%; --gold: 154 60% 29%; --da-gold: 154 60% 29%; --da-gold-bright: 156 66% 24%;
+  --da-ink-on-gold: 0 0% 100%; --dl-gold: 154 60% 29%; --dl-gold-hi: 156 66% 24%; --dl-surface: 145 27% 99%; --dl-surface-2: 151 20% 91%;
+}
+.light .da-mode[data-da-palette='signal'],
+html.light[data-da-palette='signal'] .da-appearance-panel,
+html.light[data-da-palette='signal'] .da-lounge.dl-sheet,
+html.light[data-da-palette='signal'] .da-exit-dialog {
+  --background: 8 28% 96%; --foreground: 350 28% 13%; --card: 6 30% 99%; --card-foreground: 350 28% 13%;
+  --popover: 6 30% 99%; --popover-foreground: 350 28% 13%; --primary: 4 68% 43%; --primary-foreground: 0 0% 100%;
+  --secondary: 6 24% 91%; --secondary-foreground: 350 24% 15%; --muted: 6 20% 89%; --muted-foreground: 350 14% 37%;
+  --border: 3 23% 73%; --input: 3 23% 73%; --gold: 4 68% 43%; --da-gold: 4 68% 43%; --da-gold-bright: 2 72% 36%;
+  --da-ink-on-gold: 0 0% 100%; --dl-gold: 4 68% 43%; --dl-gold-hi: 2 72% 36%; --dl-surface: 6 30% 99%; --dl-surface-2: 6 24% 92%;
+}
+
+.da-appearance-panel { border-color: hsl(var(--primary) / .34); background: hsl(var(--popover) / .98); }
+.da-appearance-option { color: hsl(var(--muted-foreground)); }
+.da-appearance-option:hover { color: hsl(var(--foreground)); background: hsl(var(--secondary)); }
+.da-appearance-option.is-selected { color: hsl(var(--foreground)); background: hsl(var(--primary) / .1); }
+.da-palette-swatch { width: 1.5rem; height: 1.5rem; flex: none; border-radius: 999px; border: 1px solid hsl(var(--foreground) / .18); box-shadow: inset 0 1px 0 hsl(0 0% 100% / .22); }
+.da-palette-swatch-heritage { background: hsl(38 50% 48%); }
+.da-palette-swatch-broadcast { background: hsl(205 78% 55%); }
+.da-palette-swatch-club { background: hsl(154 58% 44%); }
+.da-palette-swatch-signal { background: hsl(5 72% 55%); }
 .light .da-exit-dialog .da-exit-cancel {
   background-color: hsl(45 24% 96%) !important;
   border-color: hsl(45 80% 50% / 0.35) !important;
@@ -5880,15 +5965,43 @@
 }
 .light .da-lounge .dl-host-btn-danger { color: hsl(0 70% 42%); }
 
-/* Live room command center: mobile stays stacked; desktop becomes a control deck. */
-.da-live-command-masthead { display: none; }
+/* Live room command center: a priority stack on phones, a control deck on desktop. */
+.da-live-command {
+  padding: 0.5rem;
+  border: 1px solid hsl(var(--border) / 0.58);
+  border-radius: 0.65rem;
+  background: hsl(var(--background) / 0.4);
+}
+.da-live-command-masthead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid hsl(var(--primary) / 0.25);
+}
+.da-live-command-signals { display: flex; gap: 0.35rem; overflow-x: auto; scrollbar-width: none; }
+.da-live-command-signals::-webkit-scrollbar { display: none; }
+.da-live-command-signals > span {
+  flex: none; padding: 0.25rem 0.42rem; border: 1px solid hsl(var(--border)); border-radius: 0.3rem;
+  color: hsl(var(--muted-foreground)); font-size: 9px; font-weight: 800; text-transform: uppercase;
+}
+.da-live-signal i {
+  display: inline-block; width: 6px; height: 6px; margin-right: 0.3rem; border-radius: 999px;
+  background: hsl(var(--primary)); box-shadow: 0 0 8px hsl(var(--primary) / .6); animation: da-command-signal 1.8s ease-in-out infinite;
+}
+.da-live-command-grid { display: flex; flex-direction: column; }
+.da-live-command-rail { order: 0; margin-bottom: 0.65rem; }
+.da-live-command-board { order: 1; min-width: 0; }
+.da-live-command-history { margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px solid hsl(var(--border) / .58); }
 .da-live-zone-label {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 0.55rem;
   margin-bottom: 0.55rem;
   color: hsl(var(--muted-foreground));
-  font-family: var(--font-display);
+  font-family: 'Space Grotesk', 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.14em;

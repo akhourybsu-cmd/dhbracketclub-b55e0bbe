@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { DraftArenaHUD } from './DraftArenaHUD';
 import { DraftArenaBoot } from './DraftArenaBoot';
 import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
+import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 
 /**
  * Full-screen standalone shell for the Draft Arena. Applies the `.da-mode`
@@ -13,8 +14,10 @@ import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
  * Nexus Defense, Rune Delve, and Pick'em work.
  */
 export function DraftArenaLayout({ children }: { children: ReactNode }) {
+  const { palette } = useDraftArenaPalette();
+
   return (
-    <div className="da-mode da-lounge da-shell relative min-h-[100dvh]">
+    <div className="da-mode da-lounge da-shell relative min-h-[100dvh]" data-da-palette={palette}>
       <DraftArenaHUD />
 
       {/* Shell width: mobile-first 640px cap (the original calm phone
