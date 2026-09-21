@@ -59,3 +59,5 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 39. Keep widget visibility gated by club-installed assets and active/current data
 - [x] 40. Verify Home on mobile and desktop without changing app game logic
 
+
+41. Live draft hosting (early access, host-only): live-draft feature flag, shared pick clock on the draft row, host command center (pause/resume/+30s/reset/clock off/pass pick), projector kiosk at /drafts/:id/kiosk with big board, on-deck, ticker tape, pick announcements and sound, plus a real Admin > Feature Flags switchboard. Live drafts stay out of season standings. — done
