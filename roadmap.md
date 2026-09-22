@@ -65,3 +65,10 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 43. Extend kiosk reveal beats to 2–2.5 seconds and partition desktop live drafts into a high-intensity command center with clock controls, board state, and selection log. — done
 44. Polish each player's live Draft command center on desktop and mobile; add persistent Heritage Bronze, Broadcast Blue, Club Emerald, and Signal Red palettes with full light/dark support across Draft Arena. — done
 45. Unify palette styling across the complete Draft Arena, including nested draft boards and the projector kiosk, with more distinct dual-accent identities and board states. — done
+
+# Draft Arena first phase
+- [ ] 46. Add the private Personal Draft Desk with saved ideas, notes, favorites, ordering, and on-deck selection
+- [ ] 47. Add synchronized pre-draft ceremony with randomized order reveal and host controls
+- [ ] 48. Add factual live broadcast moments to draft rooms and projector kiosk
+- [ ] 49. Add a dedicated post-draft magazine and connect completed drafts to it
+- [ ] 50. Apply secure schema changes and verify the full phase on mobile and desktop
