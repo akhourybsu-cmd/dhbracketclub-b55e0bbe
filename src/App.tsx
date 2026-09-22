@@ -50,6 +50,7 @@ const DraftsListPage = lazyWithRetry(() => import("./pages/DraftsListPage"));
 const DraftKioskPage = lazyWithRetry(() => import("./pages/DraftKioskPage"));
 const CreateDraftPage = lazyWithRetry(() => import("./pages/CreateDraftPage"));
 const DraftDetailPage = lazyWithRetry(() => import("./pages/DraftDetailPage"));
+const DraftMagazinePage = lazyWithRetry(() => import("./pages/DraftMagazinePage"));
 const ReadshiftListPage = lazyWithRetry(() => import("./pages/ReadshiftListPage"));
 const CreateReadshiftPage = lazyWithRetry(() => import("./pages/CreateReadshiftPage"));
 const ReadshiftGamePage = lazyWithRetry(() => import("./pages/ReadshiftGamePage"));
@@ -267,6 +268,7 @@ function AnimatedRoutes() {
         <Route path="/drafts/seasons/:seasonId" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><SeasonArchiveDetailPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/create" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><CreateDraftPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/:draftId" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftDetailPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/:draftId/magazine" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftMagazinePage /></DraftArenaLayout></ProtectedPage>} />
         {/* Projector kiosk — full-bleed, outside the Draft Arena shell */}
         <Route path="/drafts/:draftId/kiosk" element={<ProtectedPage assetSlug="draft-arena"><DraftKioskPage /></ProtectedPage>} />
         <Route path="/readshift" element={<ProtectedPage assetSlug="readshift"><ReadshiftLayout><ReadshiftListPage /></ReadshiftLayout></ProtectedPage>} />

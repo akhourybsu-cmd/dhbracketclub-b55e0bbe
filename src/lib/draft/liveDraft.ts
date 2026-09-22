@@ -28,6 +28,10 @@ export interface LiveDraftSettings {
   autoStartClock: boolean;
   /** Announce each pick with a full-screen kiosk card. */
   announce: boolean;
+  /** Run the synchronized order reveal before the first pick. */
+  ceremony: boolean;
+  /** Show factual broadcast moments in the room and kiosk. */
+  broadcast: boolean;
 }
 
 export const DEFAULT_LIVE_SETTINGS: LiveDraftSettings = {
@@ -37,6 +41,8 @@ export const DEFAULT_LIVE_SETTINGS: LiveDraftSettings = {
   ticker: true,
   autoStartClock: true,
   announce: true,
+  ceremony: true,
+  broadcast: true,
 };
 
 export const PICK_SECONDS_OPTIONS = [30, 45, 60, 90, 120, 180, 300];
@@ -67,6 +73,8 @@ export function parseLiveSettings(raw: unknown): LiveDraftSettings {
     ticker: obj.ticker !== false,
     autoStartClock: obj.autoStartClock !== false,
     announce: obj.announce !== false,
+    ceremony: obj.ceremony !== false,
+    broadcast: obj.broadcast !== false,
   };
 }
 
