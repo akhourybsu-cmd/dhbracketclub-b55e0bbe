@@ -1178,7 +1178,6 @@ export default function DraftsListPage() {
   const [isAppAdmin, setIsAppAdmin] = useState(false);
   const [startNextOpen, setStartNextOpen] = useState(false);
 
-  const seasonDraftIds = new Set(entries.map(e => e.draft_id));
   const playoffDraftIds = entries.filter(e => e.is_playoff).map(e => e.draft_id);
   const playoffMatchByDraft = usePlayoffMatchByDraftIds(playoffDraftIds);
   const totalDrafts = season ? getSeasonDraftTarget(season) : 12;

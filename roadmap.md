@@ -72,4 +72,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 48. Add factual live broadcast moments to draft rooms and projector kiosk
 - [x] 49. Add a dedicated post-draft magazine and connect completed drafts to it
 - [x] 50. Apply secure schema changes and verify the full phase on mobile and desktop
-- [ ] 51. Simplify Draft Arena navigation: consolidate header actions, merge one-off drafts into the room list, and keep menu paths clean on mobile and desktop
+- [x] 51. Simplify Draft Arena navigation: consolidate header actions, merge one-off drafts into the room list, and keep menu paths clean on mobile and desktop
