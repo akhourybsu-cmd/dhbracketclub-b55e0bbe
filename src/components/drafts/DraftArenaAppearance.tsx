@@ -26,27 +26,38 @@ export function DraftArenaAppearance() {
           <p className="dl-display text-sm font-bold">Arena palette</p>
           <p className="text-[11px] text-muted-foreground">Your choice works in light and dark mode.</p>
         </div>
-        <div className="grid gap-1" role="radiogroup" aria-label="Draft Arena palette">
-          {DRAFT_ARENA_PALETTES.map((option) => {
-            const selected = option.id === palette;
-            return (
-              <Button
-                key={option.id}
-                type="button"
-                variant="ghost"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setPalette(option.id)}
-                className={cn('da-appearance-option h-11 justify-start px-2.5', selected && 'is-selected')}
-              >
-                <span className={cn('da-palette-swatch', option.swatchClass)} aria-hidden />
-                <span className="min-w-0 flex-1 text-left text-xs font-bold">{option.label}</span>
-                {selected && <Check className="h-4 w-4 text-primary" aria-hidden />}
-              </Button>
-            );
-          })}
-        </div>
+        <DraftArenaPaletteList />
       </PopoverContent>
     </Popover>
+  );
+}
+
+export function DraftArenaPaletteList({ onSelect }: { onSelect?: () => void }) {
+  const { palette, setPalette } = useDraftArenaPalette();
+
+  return (
+    <div className="grid gap-1" role="radiogroup" aria-label="Draft Arena palette">
+      {DRAFT_ARENA_PALETTES.map((option) => {
+        const selected = option.id === palette;
+        return (
+          <Button
+            key={option.id}
+            type="button"
+            variant="ghost"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => {
+              setPalette(option.id);
+              onSelect?.();
+            }}
+            className={cn('da-appearance-option h-11 justify-start px-2.5', selected && 'is-selected')}
+          >
+            <span className={cn('da-palette-swatch', option.swatchClass)} aria-hidden />
+            <span className="min-w-0 flex-1 text-left text-xs font-bold">{option.label}</span>
+            {selected && <Check className="h-4 w-4 text-primary" aria-hidden />}
+          </Button>
+        );
+      })}
+    </div>
   );
 }
