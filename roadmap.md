@@ -64,3 +64,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 42. Cinematic kiosk pick sequence: conceal fresh picks, stage lock/confirmation/slow reveal, animate into the board, queue rapid picks, and provide reduced-motion behavior. — done
 43. Extend kiosk reveal beats to 2–2.5 seconds and partition desktop live drafts into a high-intensity command center with clock controls, board state, and selection log. — done
 44. Polish each player's live Draft command center on desktop and mobile; add persistent Heritage Bronze, Broadcast Blue, Club Emerald, and Signal Red palettes with full light/dark support across Draft Arena. — done
+45. Unify palette styling across the complete Draft Arena, including nested draft boards and the projector kiosk, with more distinct dual-accent identities and board states. — done

@@ -4804,9 +4804,24 @@
   background: linear-gradient(180deg, hsl(45 24% 99%), hsl(45 30% 94%)) !important;
 }
 
+/* Palette identity uses a primary signal plus a contrasting secondary signal.
+   These board-specific tokens keep nested `.da-lounge` surfaces from falling
+   back to Heritage when they render inside the Arena shell. */
+.da-mode,
+.da-lounge,
+.da-exit-dialog,
+.da-appearance-panel {
+  --da-accent-2: 42 24% 78%;
+  --da-board-grid: 38 26% 30%;
+  --da-board-head: 39 16% 17%;
+  --da-board-picked: 39 14% 18%;
+  --da-board-future: 40 10% 10%;
+}
+
 /* Draft Arena palettes are personal display preferences. Heritage remains
    the default; the alternatives only replace semantic Arena tokens. */
 .da-mode[data-da-palette='broadcast'],
+.da-mode[data-da-palette='broadcast'] .da-lounge,
 html[data-da-palette='broadcast'] .da-appearance-panel,
 html[data-da-palette='broadcast'] .da-lounge.dl-sheet,
 html[data-da-palette='broadcast'] .da-exit-dialog {
@@ -4819,8 +4834,11 @@ html[data-da-palette='broadcast'] .da-exit-dialog {
   --border: 211 28% 27%; --input: 211 25% 27%; --gold: 205 78% 55%;
   --da-gold: 205 78% 55%; --da-gold-bright: 202 84% 72%; --da-ink-on-gold: 218 38% 8%;
   --dl-gold: 205 78% 55%; --dl-gold-hi: 202 84% 72%; --dl-surface: 217 24% 12%; --dl-surface-2: 216 20% 16%;
+  --da-accent-2: 188 76% 62%; --da-board-grid: 207 34% 30%; --da-board-head: 214 31% 16%;
+  --da-board-picked: 215 24% 18%; --da-board-future: 219 24% 9%;
 }
 .da-mode[data-da-palette='club'],
+.da-mode[data-da-palette='club'] .da-lounge,
 html[data-da-palette='club'] .da-appearance-panel,
 html[data-da-palette='club'] .da-lounge.dl-sheet,
 html[data-da-palette='club'] .da-exit-dialog {
@@ -4833,8 +4851,11 @@ html[data-da-palette='club'] .da-exit-dialog {
   --border: 157 22% 25%; --input: 157 20% 25%; --gold: 154 58% 44%;
   --da-gold: 154 58% 44%; --da-gold-bright: 151 60% 68%; --da-ink-on-gold: 162 30% 6%;
   --dl-gold: 154 58% 44%; --dl-gold-hi: 151 60% 68%; --dl-surface: 161 17% 11%; --dl-surface-2: 160 14% 15%;
+  --da-accent-2: 48 72% 58%; --da-board-grid: 154 27% 28%; --da-board-head: 159 23% 15%;
+  --da-board-picked: 157 17% 17%; --da-board-future: 164 19% 8%;
 }
 .da-mode[data-da-palette='signal'],
+.da-mode[data-da-palette='signal'] .da-lounge,
 html[data-da-palette='signal'] .da-appearance-panel,
 html[data-da-palette='signal'] .da-lounge.dl-sheet,
 html[data-da-palette='signal'] .da-exit-dialog {
@@ -4847,8 +4868,11 @@ html[data-da-palette='signal'] .da-exit-dialog {
   --border: 354 20% 26%; --input: 354 18% 26%; --gold: 5 72% 55%;
   --da-gold: 5 72% 55%; --da-gold-bright: 7 82% 72%; --da-ink-on-gold: 0 0% 100%;
   --dl-gold: 5 72% 55%; --dl-gold-hi: 7 82% 72%; --dl-surface: 348 12% 11%; --dl-surface-2: 348 10% 16%;
+  --da-accent-2: 35 92% 62%; --da-board-grid: 356 28% 30%; --da-board-head: 350 20% 15%;
+  --da-board-picked: 352 15% 17%; --da-board-future: 346 14% 8%;
 }
 .light .da-mode[data-da-palette='broadcast'],
+.light .da-mode[data-da-palette='broadcast'] .da-lounge,
 html.light[data-da-palette='broadcast'] .da-appearance-panel,
 html.light[data-da-palette='broadcast'] .da-lounge.dl-sheet,
 html.light[data-da-palette='broadcast'] .da-exit-dialog {
@@ -4857,8 +4881,11 @@ html.light[data-da-palette='broadcast'] .da-exit-dialog {
   --secondary: 211 29% 90%; --secondary-foreground: 218 30% 16%; --muted: 211 25% 89%; --muted-foreground: 216 18% 37%;
   --border: 211 25% 72%; --input: 211 25% 72%; --gold: 207 72% 39%; --da-gold: 207 72% 39%; --da-gold-bright: 209 78% 32%;
   --da-ink-on-gold: 0 0% 100%; --dl-gold: 207 72% 39%; --dl-gold-hi: 209 78% 32%; --dl-surface: 210 38% 99%; --dl-surface-2: 211 29% 92%;
+  --da-accent-2: 188 72% 32%; --da-board-grid: 210 32% 70%; --da-board-head: 208 42% 93%;
+  --da-board-picked: 210 35% 96%; --da-board-future: 210 28% 98%;
 }
 .light .da-mode[data-da-palette='club'],
+.light .da-mode[data-da-palette='club'] .da-lounge,
 html.light[data-da-palette='club'] .da-appearance-panel,
 html.light[data-da-palette='club'] .da-lounge.dl-sheet,
 html.light[data-da-palette='club'] .da-exit-dialog {
@@ -4867,8 +4894,11 @@ html.light[data-da-palette='club'] .da-exit-dialog {
   --secondary: 151 20% 89%; --secondary-foreground: 164 26% 14%; --muted: 151 18% 88%; --muted-foreground: 160 16% 34%;
   --border: 153 21% 69%; --input: 153 21% 69%; --gold: 154 60% 29%; --da-gold: 154 60% 29%; --da-gold-bright: 156 66% 24%;
   --da-ink-on-gold: 0 0% 100%; --dl-gold: 154 60% 29%; --dl-gold-hi: 156 66% 24%; --dl-surface: 145 27% 99%; --dl-surface-2: 151 20% 91%;
+  --da-accent-2: 45 76% 38%; --da-board-grid: 151 26% 67%; --da-board-head: 146 32% 92%;
+  --da-board-picked: 147 29% 96%; --da-board-future: 145 23% 98%;
 }
 .light .da-mode[data-da-palette='signal'],
+.light .da-mode[data-da-palette='signal'] .da-lounge,
 html.light[data-da-palette='signal'] .da-appearance-panel,
 html.light[data-da-palette='signal'] .da-lounge.dl-sheet,
 html.light[data-da-palette='signal'] .da-exit-dialog {
@@ -4877,6 +4907,8 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   --secondary: 6 24% 91%; --secondary-foreground: 350 24% 15%; --muted: 6 20% 89%; --muted-foreground: 350 14% 37%;
   --border: 3 23% 73%; --input: 3 23% 73%; --gold: 4 68% 43%; --da-gold: 4 68% 43%; --da-gold-bright: 2 72% 36%;
   --da-ink-on-gold: 0 0% 100%; --dl-gold: 4 68% 43%; --dl-gold-hi: 2 72% 36%; --dl-surface: 6 30% 99%; --dl-surface-2: 6 24% 92%;
+  --da-accent-2: 31 88% 42%; --da-board-grid: 2 28% 70%; --da-board-head: 5 38% 93%;
+  --da-board-picked: 5 34% 96%; --da-board-future: 5 25% 98%;
 }
 
 .da-appearance-panel { border-color: hsl(var(--primary) / .34); background: hsl(var(--popover) / .98); }
@@ -4884,10 +4916,10 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .da-appearance-option:hover { color: hsl(var(--foreground)); background: hsl(var(--secondary)); }
 .da-appearance-option.is-selected { color: hsl(var(--foreground)); background: hsl(var(--primary) / .1); }
 .da-palette-swatch { width: 1.5rem; height: 1.5rem; flex: none; border-radius: 999px; border: 1px solid hsl(var(--foreground) / .18); box-shadow: inset 0 1px 0 hsl(0 0% 100% / .22); }
-.da-palette-swatch-heritage { background: hsl(38 50% 48%); }
-.da-palette-swatch-broadcast { background: hsl(205 78% 55%); }
-.da-palette-swatch-club { background: hsl(154 58% 44%); }
-.da-palette-swatch-signal { background: hsl(5 72% 55%); }
+.da-palette-swatch-heritage { background: linear-gradient(135deg, hsl(38 50% 48%) 0 58%, hsl(42 24% 78%) 58%); }
+.da-palette-swatch-broadcast { background: linear-gradient(135deg, hsl(205 78% 55%) 0 58%, hsl(188 76% 62%) 58%); }
+.da-palette-swatch-club { background: linear-gradient(135deg, hsl(154 58% 44%) 0 58%, hsl(48 72% 58%) 58%); }
+.da-palette-swatch-signal { background: linear-gradient(135deg, hsl(5 72% 55%) 0 58%, hsl(35 92% 62%) 58%); }
 .light .da-exit-dialog .da-exit-cancel {
   background-color: hsl(45 24% 96%) !important;
   border-color: hsl(45 80% 50% / 0.35) !important;
@@ -5533,6 +5565,9 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+.da-lounge .dl-card {
+  border-top-color: hsl(var(--primary) / 0.42) !important;
+}
 .da-mode .da-subcard,
 .light .da-mode .da-subcard {
   background: hsl(var(--secondary) / 0.62) !important;
@@ -5694,24 +5729,39 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   color: hsl(var(--primary-foreground));
 }
 .da-lounge .dl-cell {
-  background: hsl(var(--secondary) / 0.68);
-  border-color: hsl(var(--border) / 0.58);
+  background: hsl(var(--da-board-picked));
+  border-color: hsl(var(--da-board-grid) / 0.78);
   border-radius: 5px;
+  box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.035);
 }
 .da-lounge .dl-cell-text { color: hsl(var(--foreground)); }
 .da-lounge .dl-cell-num,
 .da-lounge .dl-cell-empty { color: hsl(var(--muted-foreground) / 0.7); }
-.da-lounge .dl-cell-future { background: transparent; border-color: hsl(var(--border) / 0.42); }
+.da-lounge .dl-cell-future { background: hsl(var(--da-board-future) / 0.58); border-color: hsl(var(--da-board-grid) / 0.52); }
 .da-lounge .dl-cell-current {
-  background: hsl(var(--primary) / 0.1);
-  border-color: hsl(var(--primary) / 0.58);
-  box-shadow: inset 3px 0 0 hsl(var(--primary));
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--da-accent-2) / 0.08));
+  border-color: hsl(var(--primary) / 0.78);
+  box-shadow: inset 3px 0 0 hsl(var(--primary)), 0 0 0 1px hsl(var(--primary) / 0.12);
 }
-.da-lounge .dl-cell-you { border-color: hsl(var(--foreground) / 0.18); }
+.da-lounge .dl-cell-you { border-color: hsl(var(--da-accent-2) / 0.48); }
 .da-lounge .dl-board-corner,
 .da-lounge .dl-board-head,
 .da-lounge .dl-board-roundlabel,
-.da-lounge .dl-board-cell { border-color: hsl(var(--border) / 0.52); }
+.da-lounge .dl-board-cell { border-color: hsl(var(--da-board-grid) / 0.7); }
+.da-lounge .dl-board-corner,
+.da-lounge .dl-board-head { background: hsl(var(--da-board-head)); }
+.da-lounge .dl-board-roundlabel {
+  background: linear-gradient(180deg, hsl(var(--da-board-head)), hsl(var(--da-board-future)));
+  color: hsl(var(--primary));
+}
+.da-lounge .dl-board-head-you {
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.18), hsl(var(--da-board-head)));
+  box-shadow: inset 0 3px 0 hsl(var(--da-accent-2));
+}
+.da-lounge .dl-cell-new {
+  border-color: hsl(var(--primary) / 0.55);
+  box-shadow: inset 0 2px 0 hsl(var(--primary) / 0.55);
+}
 .da-lounge.dl-sheet {
   background: hsl(var(--popover));
   border-color: hsl(var(--primary) / 0.38);
@@ -5895,6 +5945,11 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   --dl-gold-hi: 38 72% 31%;
   --dl-surface: 42 24% 99%;
   --dl-surface-2: 40 22% 93%;
+  --da-accent-2: 38 30% 48%;
+  --da-board-grid: 37 27% 72%;
+  --da-board-head: 40 29% 92%;
+  --da-board-picked: 41 28% 97%;
+  --da-board-future: 42 24% 99%;
   color: hsl(var(--foreground));
 }
 .light .da-shell {
@@ -6122,8 +6177,9 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 }
 .da-kiosk-head {
   display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.5rem;
-  border-radius: 0.5rem; background: hsl(var(--muted) / 0.4);
-  border: 1px solid hsl(var(--border) / 0.7); min-width: 0;
+  border-radius: 0.5rem; background: hsl(var(--da-board-head));
+  border: 1px solid hsl(var(--da-board-grid) / 0.78); min-width: 0;
+  box-shadow: inset 0 2px 0 hsl(var(--primary) / 0.28);
 }
 .da-kiosk-roundlabel {
   display: flex; align-items: center; justify-content: center;
@@ -6131,8 +6187,8 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 }
 .da-kiosk-cell {
   min-height: 46px; padding: 0.35rem 0.5rem; border-radius: 0.5rem;
-  border: 1px solid hsl(var(--border) / 0.6);
-  background: hsl(var(--muted) / 0.22);
+  border: 1px solid hsl(var(--da-board-grid) / 0.68);
+  background: hsl(var(--da-board-future) / 0.68);
   display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0;
 }
 .da-kiosk-cell-num { font-size: 9px; font-weight: 900; color: hsl(var(--muted-foreground) / 0.8); }
@@ -6141,13 +6197,15 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   overflow-wrap: anywhere;
 }
 .da-kiosk-cell-filled {
-  background: linear-gradient(135deg, hsl(var(--gold) / 0.16), hsl(var(--card)));
-  border-color: hsl(var(--gold) / 0.35);
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.16), hsl(var(--da-board-picked)) 54%, hsl(var(--da-accent-2) / 0.06));
+  border-color: hsl(var(--primary) / 0.42);
 }
 .da-kiosk-cell-skipped { opacity: 0.55; border-style: dashed; }
 .da-kiosk-cell-current {
-  border-color: hsl(45 93% 52% / 0.9);
-  box-shadow: 0 0 0 1px hsl(45 93% 52% / 0.5), 0 0 24px hsl(45 93% 52% / 0.28);
+  color: hsl(var(--foreground));
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.24), hsl(var(--da-accent-2) / 0.1));
+  border-color: hsl(var(--primary) / 0.9);
+  box-shadow: 0 0 0 1px hsl(var(--primary) / 0.5), 0 0 24px hsl(var(--primary) / 0.28);
   animation: da-urgent-pulse 1.8s ease-in-out infinite;
 }
 .da-kiosk-cell-awaiting {
