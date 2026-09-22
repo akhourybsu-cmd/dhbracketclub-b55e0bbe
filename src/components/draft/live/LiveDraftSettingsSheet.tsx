@@ -131,6 +131,8 @@ export function LiveDraftSettingsSheet({ open, onClose, settings, onSave }: Live
                   ['announce', 'Announce each pick on the big screen'],
                   ['ticker', 'Ticker tape of recent picks'],
                   ['sound', 'Kiosk sound effects'],
+                  ['ceremony', 'Pre-draft order ceremony'],
+                  ['broadcast', 'Broadcast moments and milestones'],
                 ] as [keyof LiveDraftSettings, string][]).map(([key, label]) => (
                   <button
                     key={String(key)}

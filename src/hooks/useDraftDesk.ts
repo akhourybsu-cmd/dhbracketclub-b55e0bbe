@@ -64,7 +64,7 @@ export function useDraftDesk(draftId?: string, userId?: string) {
 
   const patch = useCallback(async (id: string, values: Partial<Pick<DraftDeskItem, 'title' | 'notes' | 'is_favorite' | 'is_on_deck' | 'position'>>) => {
     const snapshot = itemsRef.current;
-    let next = snapshot.map(item => item.id === id ? { ...item, ...values } : values.is_on_deck ? { ...item, is_on_deck: false } : item);
+    let next: DraftDeskItem[] = snapshot.map(item => item.id === id ? { ...item, ...values } as DraftDeskItem : values.is_on_deck ? { ...item, is_on_deck: false } : item);
     next = [...next].sort((a, b) => a.position - b.position);
     setItems(next);
     try {
