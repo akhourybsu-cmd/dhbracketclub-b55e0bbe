@@ -67,8 +67,8 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 45. Unify palette styling across the complete Draft Arena, including nested draft boards and the projector kiosk, with more distinct dual-accent identities and board states. — done
 
 # Draft Arena first phase
-- [ ] 46. Add the private Personal Draft Desk with saved ideas, notes, favorites, ordering, and on-deck selection
-- [ ] 47. Add synchronized pre-draft ceremony with randomized order reveal and host controls
-- [ ] 48. Add factual live broadcast moments to draft rooms and projector kiosk
-- [ ] 49. Add a dedicated post-draft magazine and connect completed drafts to it
-- [ ] 50. Apply secure schema changes and verify the full phase on mobile and desktop
+- [x] 46. Add the private Personal Draft Desk with saved ideas, notes, favorites, ordering, and on-deck selection
+- [x] 47. Add synchronized pre-draft ceremony with randomized order reveal and host controls
+- [x] 48. Add factual live broadcast moments to draft rooms and projector kiosk
+- [x] 49. Add a dedicated post-draft magazine and connect completed drafts to it
+- [x] 50. Apply secure schema changes and verify the full phase on mobile and desktop

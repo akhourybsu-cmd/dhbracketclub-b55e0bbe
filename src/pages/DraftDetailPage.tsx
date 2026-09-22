@@ -1799,6 +1799,17 @@ export default function DraftDetailPage() {
               topic={draft.topic}
             />
           )}
+          {isParticipant && (
+            <div className="mt-4">
+              <PersonalDraftDesk
+                compact
+                draftId={draftId}
+                userId={user?.id}
+                taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
+                onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); if (!isPlayoffDraft) setShowPickSheet(true); } : undefined}
+              />
+            </div>
+          )}
         </motion.div>
       )}
 
