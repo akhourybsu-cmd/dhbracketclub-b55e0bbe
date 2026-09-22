@@ -18,4 +18,12 @@ describe('deriveBroadcastMoments', () => {
     ], 3);
     expect(moments.some(moment => moment.kind === 'speed')).toBe(false);
   });
+
+  it('does not invent a speed moment from malformed timestamps', () => {
+    const moments = deriveBroadcastMoments([
+      { id: 'a', user_id: 'u1', pick_text: 'Alpha', pick_number: 1, round: 1, picked_at: 'not-a-date' },
+      { id: 'b', user_id: 'u2', pick_text: 'Beta', pick_number: 2, round: 1, picked_at: 'still-not-a-date' },
+    ], 3);
+    expect(moments.some(moment => moment.kind === 'speed')).toBe(false);
+  });
 });
