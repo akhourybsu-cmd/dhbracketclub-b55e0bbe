@@ -24,11 +24,12 @@ export default function DraftMagazinePage() {
         withTimeout<any>(supabase.from('draft_participants').select('*, profiles:user_id(display_name)').eq('draft_id', draftId).order('pick_order'), QUERY_TIMEOUT_MS, 'recap participants'),
         withTimeout<any>(supabase.from('draft_picks').select('*, profiles:user_id(display_name)').eq('draft_id', draftId).order('pick_number'), QUERY_TIMEOUT_MS, 'recap picks'),
         withTimeout<any>((supabase as any).from('draft_results').select('*').eq('draft_id', draftId).order('rank'), QUERY_TIMEOUT_MS, 'recap results'),
+        withTimeout<any>((supabase as any).from('draft_skips').select('round, user_id').eq('draft_id', draftId), QUERY_TIMEOUT_MS, 'recap passes'),
       ];
-      const [draft, participants, picks, results] = await Promise.all(queries);
-      const failed = [draft, participants, picks, results].find(result => result.error);
+      const [draft, participants, picks, results, skips] = await Promise.all(queries);
+      const failed = [draft, participants, picks, results, skips].find(result => result.error);
       if (failed?.error) throw failed.error;
-      setData({ draft: draft.data, participants: participants.data ?? [], picks: picks.data ?? [], results: results.data ?? [] });
+      setData({ draft: draft.data, participants: participants.data ?? [], picks: picks.data ?? [], results: results.data ?? [], skips: skips.data ?? [] });
     } catch (err: any) { setError(err?.message || 'Could not open this recap.'); }
     finally { setLoading(false); }
   }, [draftId]);
@@ -62,7 +63,7 @@ export default function DraftMagazinePage() {
       <article><Trophy /><small>Final Board</small><strong>{picks.length} picks</strong><span>{stats?.timings?.totalDurationMs ? formatDuration(stats.timings.totalDurationMs) : 'Async edition'}</span></article>
     </section>
     {results.length > 0 && <section className="da-magazine-podium"><p className="dl-eyebrow">Final standings</p>{results.slice(0, 3).map((result: any) => { const p = participants.find((row: any) => row.user_id === result.user_id); return <article key={result.id}><span className="dl-display">{result.rank}</span><div><strong>{p?.profiles?.display_name || 'Unknown'}</strong><small>{Number(result.total_score).toFixed(1)} · +{result.points_awarded} pts</small></div>{result.rank === 1 && <Crown />}</article>; })}</section>}
-    <section className="da-magazine-board"><div className="da-magazine-section-title"><Sparkles /><div><p className="dl-eyebrow">The complete board</p><h2 className="dl-display">Every selection, in order</h2></div></div><DraftBoard participants={participants} picks={picks} numRounds={draft.num_rounds} currentPickNumber={picks.length + 1} enrichments={enrichmentMap} newPickIds={new Set()} /></section>
+    <section className="da-magazine-board"><div className="da-magazine-section-title"><Sparkles /><div><p className="dl-eyebrow">The complete board</p><h2 className="dl-display">Every selection, in order</h2></div></div><DraftBoard participants={participants} picks={picks} numRounds={draft.num_rounds} currentPickNumber={participants.length * draft.num_rounds + 1} enrichments={enrichmentMap} newPickIds={new Set()} skippedSlots={new Set(data.skips.map((skip: any) => `${skip.round}:${skip.user_id}`))} /></section>
     <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={12} />
     <section className="da-magazine-timeline"><p className="dl-eyebrow">Selection timeline</p>{picks.map((pick: any) => <article key={pick.id}><span className="dl-display">#{pick.pick_number}</span><div><strong>{pick.pick_text}</strong><small>{pick.profiles?.display_name} · Round {pick.round}</small></div></article>)}</section>
   </div>;
