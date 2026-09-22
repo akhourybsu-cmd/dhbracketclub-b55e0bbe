@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Send, Sparkles, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { PersonalDraftDesk } from '@/components/draft/PersonalDraftDesk';
 
 export interface PickSuggestionState {
   corrected_text?: string | null;
@@ -129,6 +130,9 @@ interface MakePickSheetProps extends PickComposerFieldsProps {
   onClose: () => void;
   currentRound: number;
   currentPickNumber: number;
+  draftId?: string;
+  userId?: string;
+  taken?: Set<string>;
 }
 
 /**
@@ -140,6 +144,9 @@ export function MakePickSheet({
   onClose,
   currentRound,
   currentPickNumber,
+  draftId,
+  userId,
+  taken = new Set<string>(),
   ...fields
 }: MakePickSheetProps) {
   useEffect(() => {
@@ -190,6 +197,15 @@ export function MakePickSheet({
               </button>
             </div>
             <PickComposerFields {...fields} autoFocus />
+            <div className="mt-4">
+              <PersonalDraftDesk
+                compact
+                draftId={draftId}
+                userId={userId}
+                taken={taken}
+                onChoose={fields.onTextChange}
+              />
+            </div>
             <p className="mt-3 text-center text-[10px] uppercase tracking-[0.18em] text-zinc-600 font-bold">
               The board stays visible above — check what's taken
             </p>

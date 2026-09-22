@@ -34,6 +34,8 @@ export default function CreateDraftPage() {
   const [announce, setAnnounce] = useState(true);
   const [ticker, setTicker] = useState(true);
   const [kioskSoundOn, setKioskSoundOn] = useState(true);
+  const [ceremony, setCeremony] = useState(true);
+  const [broadcast, setBroadcast] = useState(true);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +79,10 @@ export default function CreateDraftPage() {
                   announce,
                   ticker,
                   sound: kioskSoundOn,
+                  ceremony,
+                  broadcast,
                 },
+                ceremony_enabled: ceremony,
               }
             : {}),
         } as any)
@@ -254,6 +259,8 @@ export default function CreateDraftPage() {
                       ['Announce each pick on the big screen', announce, setAnnounce],
                       ['Ticker tape of recent picks', ticker, setTicker],
                       ['Projector sound effects', kioskSoundOn, setKioskSoundOn],
+                       ['Pre-draft order ceremony', ceremony, setCeremony],
+                       ['Broadcast moments and milestones', broadcast, setBroadcast],
                     ] as [string, boolean, (v: boolean) => void][]).map(([label, value, set]) => (
                       <button
                         key={label}

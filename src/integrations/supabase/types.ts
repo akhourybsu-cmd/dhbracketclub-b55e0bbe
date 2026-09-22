@@ -932,6 +932,60 @@ export type Database = {
           },
         ]
       }
+      draft_desk_items: {
+        Row: {
+          created_at: string
+          draft_id: string
+          id: string
+          is_favorite: boolean
+          is_on_deck: boolean
+          notes: string | null
+          position: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          draft_id: string
+          id?: string
+          is_favorite?: boolean
+          is_on_deck?: boolean
+          notes?: string | null
+          position?: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string
+          id?: string
+          is_favorite?: boolean
+          is_on_deck?: boolean
+          notes?: string | null
+          position?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_desk_items_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_desk_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_grading_jobs: {
         Row: {
           attempt_count: number
@@ -1691,6 +1745,10 @@ export type Database = {
           ai_context_updated_at: string | null
           ai_context_updated_by: string | null
           category: string | null
+          ceremony_enabled: boolean
+          ceremony_reveal_index: number
+          ceremony_started_at: string | null
+          ceremony_status: string
           clock_paused_at: string | null
           clock_started_at: string | null
           club_id: string
@@ -1717,6 +1775,10 @@ export type Database = {
           ai_context_updated_at?: string | null
           ai_context_updated_by?: string | null
           category?: string | null
+          ceremony_enabled?: boolean
+          ceremony_reveal_index?: number
+          ceremony_started_at?: string | null
+          ceremony_status?: string
           clock_paused_at?: string | null
           clock_started_at?: string | null
           club_id?: string
@@ -1743,6 +1805,10 @@ export type Database = {
           ai_context_updated_at?: string | null
           ai_context_updated_by?: string | null
           category?: string | null
+          ceremony_enabled?: boolean
+          ceremony_reveal_index?: number
+          ceremony_started_at?: string | null
+          ceremony_status?: string
           clock_paused_at?: string | null
           clock_started_at?: string | null
           club_id?: string

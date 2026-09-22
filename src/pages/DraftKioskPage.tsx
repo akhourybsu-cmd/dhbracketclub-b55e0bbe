@@ -10,6 +10,8 @@ import { kioskSound } from '@/lib/draft/kioskSound';
 import { parseLiveSettings, slotToParticipantIndex } from '@/lib/draft/liveDraft';
 import { cn } from '@/lib/utils';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
+import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
+import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
 
 interface KioskParticipant {
   user_id: string;
@@ -288,6 +290,10 @@ export default function DraftKioskPage() {
         </div>
       </header>
 
+      {draft.status === 'setup' && draft.ceremony_status === 'revealing' ? (
+        <main className="flex-1 grid place-items-center p-6"><div className="w-full max-w-5xl"><PreDraftCeremony topic={draft.topic} participants={participants} revealIndex={Number(draft.ceremony_reveal_index || 0)} canManage={false} busy={false} onRevealNext={() => {}} onBegin={() => {}} /></div></main>
+      ) : <>
+
       <div className="flex-1 grid gap-4 p-4 lg:grid-cols-[minmax(280px,26%)_1fr] min-h-0">
         {/* On the clock */}
         <section className="da-kiosk-card flex flex-col items-center justify-center gap-4 p-5 text-center">
@@ -384,6 +390,8 @@ export default function DraftKioskPage() {
         </section>
       </div>
 
+      {settings.broadcast && picks.length > 0 && !reveal && <div className="px-4 pb-3"><DraftBroadcastFeed picks={picks.map(pick => ({ ...pick, profiles: { display_name: nameFor(pick.user_id) } }))} totalPicks={totalSlots} limit={3} /></div>}
+
       {/* Ticker tape */}
       {settings.ticker && recent.length > 0 && !reveal && (
         <footer className="da-kiosk-ticker">
@@ -400,6 +408,7 @@ export default function DraftKioskPage() {
           </div>
         </footer>
       )}
+      </>}
 
       {/* Cinematic pick announcement */}
       <AnimatePresence mode="wait">

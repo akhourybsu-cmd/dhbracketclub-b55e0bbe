@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark, Users, Play, Send, Trophy, RefreshCw, Sparkles, MoreVertical, Pencil, Trash2, X, Star, ChevronDown, ChevronUp, Award, AlertTriangle, Check, Flame, Flag, Loader2, Crown } from 'lucide-react';
+import { Bookmark, Users, Play, Send, Trophy, RefreshCw, Sparkles, MoreVertical, Pencil, Trash2, X, Star, ChevronDown, ChevronUp, Award, AlertTriangle, Check, Flame, Flag, Loader2, Crown, BookOpen } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -74,6 +74,9 @@ import { LiveHostPanel } from '@/components/draft/live/LiveHostPanel';
 import { LiveClockStrip } from '@/components/draft/live/LiveClockStrip';
 import { MakePickSheet } from '@/components/draft/MakePickSheet';
 import { useDraftLastVisit } from '@/hooks/useDraftLastVisit';
+import { PersonalDraftDesk } from '@/components/draft/PersonalDraftDesk';
+import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
+import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
 
 interface Participant {
   id: string;
@@ -129,6 +132,7 @@ export default function DraftDetailPage() {
   const [seasonRosterLocked, setSeasonRosterLocked] = useState(false);
   const [seasonJoinEligible, setSeasonJoinEligible] = useState(true);
   const [showPickSheet, setShowPickSheet] = useState(false);
+  const [ceremonyBusy, setCeremonyBusy] = useState(false);
   const pickCountWhenSheetOpened = useRef(0);
 
   const { season } = useCurrentSeason();
@@ -532,7 +536,12 @@ export default function DraftDetailPage() {
         }
       }
 
-      const { error } = await supabase.from('drafts').update({
+      const ceremonyEnabled = Boolean((draft as any).ceremony_enabled && liveHost.settings.ceremony);
+      const { error } = await supabase.from('drafts').update(ceremonyEnabled ? {
+        ceremony_status: 'revealing',
+        ceremony_reveal_index: 0,
+        ceremony_started_at: new Date().toISOString(),
+      } as any : {
         status: 'in_progress',
         current_round: 1,
         current_pick_number: 1,
@@ -550,7 +559,7 @@ export default function DraftDetailPage() {
         console.error('Failed to update draft status', error);
         throw error;
       }
-      toast.success('Draft started! Order randomized 🎲');
+      toast.success(ceremonyEnabled ? 'Draft order locked. Ceremony ready.' : 'Draft started! Order randomized 🎲');
       fetchData();
     } catch (err: any) {
       console.error('handleStartDraft error:', err);
@@ -558,6 +567,40 @@ export default function DraftDetailPage() {
     } finally {
       setStarting(false);
     }
+  };
+
+  const handleCeremonyReveal = async () => {
+    if (!draftId || !canManage) return;
+    setCeremonyBusy(true);
+    try {
+      const next = Math.min(participants.length, Number((draft as any).ceremony_reveal_index || 0) + 1);
+      const { error } = await supabase.from('drafts').update({ ceremony_reveal_index: next } as any).eq('id', draftId);
+      if (error) throw error;
+      setDraft((current: any) => ({ ...current, ceremony_reveal_index: next }));
+    } catch (err: any) { toast.error(err.message || 'Could not reveal the next player'); }
+    finally { setCeremonyBusy(false); }
+  };
+
+  const handleCeremonyBegin = async () => {
+    if (!draftId || !canManage) return;
+    const first = [...participants].sort((a, b) => a.pick_order - b.pick_order)[0];
+    if (!first) return;
+    setCeremonyBusy(true);
+    try {
+      const { error } = await supabase.from('drafts').update({
+        status: 'in_progress', ceremony_status: 'complete', ceremony_reveal_index: participants.length,
+        current_round: 1, current_pick_number: 1, current_pick_user_id: first.user_id,
+        ...(isLiveDraft && liveHost.settings.autoStartClock ? {
+          clock_started_at: new Date().toISOString(),
+          pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+          clock_paused_at: null,
+        } : {}),
+      } as any).eq('id', draftId);
+      if (error) throw error;
+      toast.success('The draft is live');
+      await fetchData();
+    } catch (err: any) { toast.error(err.message || 'Could not begin the draft'); }
+    finally { setCeremonyBusy(false); }
   };
 
   const handleMakePick = async () => {
@@ -1352,6 +1395,9 @@ export default function DraftDetailPage() {
       {/* ═══ Setup Phase ═══ */}
       {isSetup && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+          {(draft as any).ceremony_status === 'revealing' && (draft as any).ceremony_enabled ? (
+            <PreDraftCeremony topic={draft.topic} participants={participants} revealIndex={Number((draft as any).ceremony_reveal_index || 0)} canManage={canManage} busy={ceremonyBusy} onRevealNext={() => void handleCeremonyReveal()} onBegin={() => void handleCeremonyBegin()} />
+          ) : <>
           <div className="glass-card p-5 mb-5">
             <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-3">Participants</p>
             <div className="space-y-2">
@@ -1432,6 +1478,8 @@ export default function DraftDetailPage() {
               {starting ? 'Starting…' : 'Start Draft'}
             </button>
           )}
+          </>}
+          {isParticipant && <div className="mt-4"><PersonalDraftDesk draftId={draftId} userId={user?.id} taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))} /></div>}
         </motion.div>
       )}
 
@@ -1533,6 +1581,7 @@ export default function DraftDetailPage() {
                       skippedSlots={isLiveDraft ? skippedSlots : undefined}
                     />
                   </div>
+                  {liveHost.settings.broadcast && <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} />}
                 </section>
               </div>
 
@@ -1736,6 +1785,9 @@ export default function DraftDetailPage() {
               onClose={() => setShowPickSheet(false)}
               currentRound={currentRound}
               currentPickNumber={currentPickNumber}
+              draftId={draftId}
+              userId={user?.id}
+              taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
               pickText={pickText}
               onTextChange={(t) => { setPickText(t); setText(t); }}
               onSubmit={handleMakePick}
@@ -1746,6 +1798,17 @@ export default function DraftDetailPage() {
               onDismissSuggestion={clearSuggestion}
               topic={draft.topic}
             />
+          )}
+          {isParticipant && (
+            <div className="mt-4">
+              <PersonalDraftDesk
+                compact
+                draftId={draftId}
+                userId={user?.id}
+                taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
+                onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); if (!isPlayoffDraft) setShowPickSheet(true); } : undefined}
+              />
+            </div>
           )}
         </motion.div>
       )}
@@ -1761,6 +1824,7 @@ export default function DraftDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           className="lg:max-w-[760px] lg:mx-auto"
         >
+          <div className="mb-4 flex justify-end"><Button asChild variant="outline" className="gap-2"><Link to={`/drafts/${draftId}/magazine`}><BookOpen className="h-4 w-4" /> Open Draft Magazine</Link></Button></div>
           {/* ─── Playoff completion banners ─── */}
           {isPlayoffDraft && playoffMatch?.winner_user_id && (() => {
             const winnerId = playoffMatch.winner_user_id;
