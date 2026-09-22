@@ -29,7 +29,7 @@ export function deriveBroadcastMoments(picks: BroadcastPick[], totalPicks: numbe
     }
     if (index > 0 && pick.picked_at && ordered[index - 1].picked_at) {
       const seconds = Math.round((new Date(pick.picked_at).getTime() - new Date(ordered[index - 1].picked_at!).getTime()) / 1000);
-      if (seconds >= 0 && seconds <= 10) moments.push({ id: `speed-${pick.id}`, kind: 'speed', eyebrow: 'Quick trigger', headline: `${name} needed only ${seconds}s`, detail: pick.pick_text, pickNumber: pick.pick_number });
+      if (Number.isFinite(seconds) && seconds >= 0 && seconds <= 10) moments.push({ id: `speed-${pick.id}`, kind: 'speed', eyebrow: 'Quick trigger', headline: `${name} needed only ${seconds}s`, detail: pick.pick_text, pickNumber: pick.pick_number });
     }
   });
   if (totalPicks > 0 && ordered.length >= totalPicks) moments.push({ id: 'complete', kind: 'complete', eyebrow: 'Final board', headline: 'Every selection is locked', detail: `${totalPicks} picks · Draft complete`, pickNumber: totalPicks + 1 });
