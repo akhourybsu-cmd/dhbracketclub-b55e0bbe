@@ -5945,6 +5945,11 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   --dl-gold-hi: 38 72% 31%;
   --dl-surface: 42 24% 99%;
   --dl-surface-2: 40 22% 93%;
+  --da-accent-2: 38 30% 48%;
+  --da-board-grid: 37 27% 72%;
+  --da-board-head: 40 29% 92%;
+  --da-board-picked: 41 28% 97%;
+  --da-board-future: 42 24% 99%;
   color: hsl(var(--foreground));
 }
 .light .da-shell {
