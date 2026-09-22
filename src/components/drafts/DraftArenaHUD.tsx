@@ -5,9 +5,8 @@ import draftEmblem from '@/assets/draft-emblem.png';
 import { useCurrentSeason, formatSeasonChip } from '@/hooks/useDraftSeasons';
 import { DraftArenaExitDialog } from './DraftArenaExitDialog';
 import { openSeasonWelcome } from './seasonWelcomeBus';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { DraftArenaAppearance } from './DraftArenaAppearance';
+import { DraftArenaMenu } from './DraftArenaMenu';
 
 
 /**
@@ -107,18 +106,7 @@ export function DraftArenaHUD() {
             </button>
           )}
 
-          <DraftArenaAppearance />
-          <ThemeToggle className="da-hud-action shrink-0" />
-
-          {!isHub && (
-            <Link
-              to="/drafts?tab=season"
-              aria-label="Season standings"
-              className="da-hud-action w-9 h-9 rounded-lg flex items-center justify-center btn-press"
-            >
-              <Trophy className="w-4 h-4" />
-            </Link>
-          )}
+          <DraftArenaMenu />
 
         </div>
       </header>

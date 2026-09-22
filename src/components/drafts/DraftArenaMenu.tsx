@@ -37,6 +37,7 @@ export function DraftArenaMenu() {
   const isActive = (link: (typeof primaryLinks)[number]) => {
     if ('pathPrefix' in link && link.pathPrefix) return location.pathname.startsWith(link.pathPrefix);
     if (location.pathname !== '/drafts') return false;
+    if (!('tab' in link)) return false;
     return activeTab === link.tab || (link.tab === 'drafts' && activeTab === 'misc');
   };
 
