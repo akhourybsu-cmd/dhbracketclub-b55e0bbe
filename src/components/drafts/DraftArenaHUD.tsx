@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useLocation, useNavigate, Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Info, Trophy } from 'lucide-react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Info } from 'lucide-react';
 import draftEmblem from '@/assets/draft-emblem.png';
 import { useCurrentSeason, formatSeasonChip } from '@/hooks/useDraftSeasons';
 import { DraftArenaExitDialog } from './DraftArenaExitDialog';
@@ -17,7 +17,6 @@ import { DraftArenaMenu } from './DraftArenaMenu';
 export function DraftArenaHUD() {
   const location = useLocation();
   const navigate = useNavigate();
-  const params = useParams();
   const { season } = useCurrentSeason();
   const [exitOpen, setExitOpen] = useState(false);
 
