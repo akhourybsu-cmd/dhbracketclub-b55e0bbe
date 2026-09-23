@@ -73,3 +73,6 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 49. Add a dedicated post-draft magazine and connect completed drafts to it
 - [x] 50. Apply secure schema changes and verify the full phase on mobile and desktop
 - [x] 51. Simplify Draft Arena navigation: consolidate header actions, merge one-off drafts into the room list, and keep menu paths clean on mobile and desktop
+
+# Chat latest-message and unread behavior
+- [ ] 52. Open chats at the latest message, keep sent messages in view, and exclude self-authored messages from unread badges

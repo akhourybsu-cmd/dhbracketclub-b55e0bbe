@@ -73,9 +73,8 @@ export function MessageList({
   // genuine new-message arrivals.
   const justSwitchedRef = useRef(true);
 
-  // Unread divider: index of the last already-read message (the divider renders
-  // right after it). Computed up here so the channel-open scroll can target it,
-  // matching Discord's "land on your first unread" behavior.
+  // Unread divider: index of the last already-read message. It remains visible
+  // in history, while opening a conversation always starts at the latest message.
   const unreadDividerAfterIdx = (() => {
     if (!lastReadAt || isSearchActive) return -1;
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -127,15 +126,14 @@ export function MessageList({
   // Auto scroll to bottom on new messages.
   //
   // Behaviour:
-  //   • First render after a channel switch → snap instant (no smooth)
-  //     so the initial position lands before the user sees anything.
+  //   • First render after a channel switch → snap to latest instantly.
+  //   • Sending your own message → always return to latest, even if you had
+  //     scrolled upward before composing it.
   //   • Subsequent renders while autoScroll=true → smooth-scroll for
   //     new arrivals.
   //   • autoScroll=false → bump the "new messages" badge instead.
   useEffect(() => {
-    // First render after a channel switch: land on the unread divider if there
-    // is one (so you start reading where you left off), otherwise snap to the
-    // bottom. Either way, do it instantly before the user sees anything.
+    // First render after a channel switch always opens at the latest message.
     if (justSwitchedRef.current) {
       // Wait until messages have loaded AND the channel's read-state has
       // resolved (undefined = still loading) before choosing where to land.
@@ -143,23 +141,25 @@ export function MessageList({
       justSwitchedRef.current = false;
       prevMsgCount.current = messages.length;
       setNewMsgCount(0);
-      if (hasUnreadDivider && dividerRef.current) {
-        dividerRef.current.scrollIntoView({ block: 'center', behavior: 'auto' });
-        setAutoScroll(false); // we're parked at the divider, not the bottom
-      } else {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      setAutoScroll(true);
       return;
     }
 
-    if (autoScroll) {
+    const addedMessages = messages.length > prevMsgCount.current
+      ? messages.slice(prevMsgCount.current)
+      : [];
+    const sentByCurrentUser = Boolean(userId && addedMessages.some(message => message.user_id === userId));
+
+    if (autoScroll || sentByCurrentUser) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      if (sentByCurrentUser) setAutoScroll(true);
       setNewMsgCount(0);
     } else if (messages.length > prevMsgCount.current && prevScrollHeight.current === null) {
       setNewMsgCount(prev => prev + (messages.length - prevMsgCount.current));
     }
     prevMsgCount.current = messages.length;
-  }, [messages, autoScroll, hasUnreadDivider, lastReadAt]);
+  }, [messages, autoScroll, lastReadAt, userId]);
 
   // Re-anchor on resize
   useEffect(() => {

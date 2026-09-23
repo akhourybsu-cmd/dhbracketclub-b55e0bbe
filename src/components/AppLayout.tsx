@@ -18,6 +18,7 @@ import { APP_NAV_SECTIONS, getRouteTitle, isGameShellRoute, isRouteActive, type 
 import { MobileAppHeader } from '@/components/mobile/MobileAppHeader';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
+import { countUnreadChatChannels } from '@/lib/chatExperience';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -61,7 +62,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       const { data: lastMsgs } = await withTimeout(
         supabase
           .from('messages')
-          .select('channel_id, created_at')
+          .select('channel_id, user_id, created_at')
           .is('parent_message_id', null)
           .in('channel_id', chIds)
           .order('created_at', { ascending: false })
@@ -71,17 +72,11 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       );
 
       if (!lastMsgs) return;
-      const latestPerChannel = new Map<string, string>();
-      lastMsgs.forEach((m: any) => {
-        if (!latestPerChannel.has(m.channel_id)) latestPerChannel.set(m.channel_id, m.created_at);
-      });
-
-      let count = 0;
-      latestPerChannel.forEach((latestAt, chId) => {
-        const lastRead = readMap.get(chId);
-        if (!lastRead || new Date(latestAt) > new Date(lastRead)) count++;
-      });
-      setUnreadChatCount(count);
+      setUnreadChatCount(countUnreadChatChannels(lastMsgs as Array<{
+        channel_id: string;
+        user_id: string;
+        created_at: string;
+      }>, readMap, user.id));
     } catch {}
   }, [user]);
 
