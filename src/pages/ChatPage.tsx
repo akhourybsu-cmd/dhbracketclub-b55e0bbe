@@ -319,7 +319,7 @@ export default function ChatPage() {
         }
         const isViewing = selectedIdRef.current === m.channel_id;
         const fromMe = m.user_id === user.id;
-        if (isViewing && !fromMe) {
+        if (isViewing) {
           void supabase
             .from('channel_read_states')
             .update({ last_read_at: m.created_at })
