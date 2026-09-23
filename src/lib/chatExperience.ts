@@ -45,3 +45,26 @@ export function buildChatMessagePermalink(origin: string, channelId: string, mes
   url.searchParams.set('message', messageId);
   return url.toString();
 }
+
+interface ChatUnreadMessage {
+  channel_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+/** Count channels containing unread messages authored by someone else. */
+export function countUnreadChatChannels(
+  messages: ChatUnreadMessage[],
+  readAtByChannel: Map<string, string>,
+  currentUserId: string,
+): number {
+  const channels = new Set<string>();
+  for (const message of messages) {
+    if (message.user_id === currentUserId || channels.has(message.channel_id)) continue;
+    const lastReadAt = readAtByChannel.get(message.channel_id);
+    if (!lastReadAt || new Date(message.created_at) > new Date(lastReadAt)) {
+      channels.add(message.channel_id);
+    }
+  }
+  return channels.size;
+}

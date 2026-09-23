@@ -58,6 +58,7 @@ export function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [newMsgCount, setNewMsgCount] = useState(0);
   const [openOverlayMessageId, setOpenOverlayMessageId] = useState<string | null>(null);
@@ -67,15 +68,20 @@ export function MessageList({
     setOpenOverlayMessageId(msgId);
   }, []);
 
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
   // Track whether we just switched channels — used by the auto-scroll
   // effect to know it should snap instantly (no smooth scroll) on the
   // first render after a channel change, and only smooth-scroll for
   // genuine new-message arrivals.
   const justSwitchedRef = useRef(true);
 
-  // Unread divider: index of the last already-read message (the divider renders
-  // right after it). Computed up here so the channel-open scroll can target it,
-  // matching Discord's "land on your first unread" behavior.
+  // Unread divider: index of the last already-read message. It remains visible
+  // in history, while opening a conversation always starts at the latest message.
   const unreadDividerAfterIdx = (() => {
     if (!lastReadAt || isSearchActive) return -1;
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -127,15 +133,14 @@ export function MessageList({
   // Auto scroll to bottom on new messages.
   //
   // Behaviour:
-  //   • First render after a channel switch → snap instant (no smooth)
-  //     so the initial position lands before the user sees anything.
+  //   • First render after a channel switch → snap to latest instantly.
+  //   • Sending your own message → always return to latest, even if you had
+  //     scrolled upward before composing it.
   //   • Subsequent renders while autoScroll=true → smooth-scroll for
   //     new arrivals.
   //   • autoScroll=false → bump the "new messages" badge instead.
   useEffect(() => {
-    // First render after a channel switch: land on the unread divider if there
-    // is one (so you start reading where you left off), otherwise snap to the
-    // bottom. Either way, do it instantly before the user sees anything.
+    // First render after a channel switch always opens at the latest message.
     if (justSwitchedRef.current) {
       // Wait until messages have loaded AND the channel's read-state has
       // resolved (undefined = still loading) before choosing where to land.
@@ -143,48 +148,52 @@ export function MessageList({
       justSwitchedRef.current = false;
       prevMsgCount.current = messages.length;
       setNewMsgCount(0);
-      if (hasUnreadDivider && dividerRef.current) {
-        dividerRef.current.scrollIntoView({ block: 'center', behavior: 'auto' });
-        setAutoScroll(false); // we're parked at the divider, not the bottom
-      } else {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }
+      scrollToLatest('auto');
+      setAutoScroll(true);
       return;
     }
 
-    if (autoScroll) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const addedMessages = messages.length > prevMsgCount.current
+      ? messages.slice(prevMsgCount.current)
+      : [];
+    const sentByCurrentUser = Boolean(userId && addedMessages.some(message => message.user_id === userId));
+
+    if (autoScroll || sentByCurrentUser) {
+      scrollToLatest('smooth');
+      if (sentByCurrentUser) setAutoScroll(true);
       setNewMsgCount(0);
     } else if (messages.length > prevMsgCount.current && prevScrollHeight.current === null) {
       setNewMsgCount(prev => prev + (messages.length - prevMsgCount.current));
     }
     prevMsgCount.current = messages.length;
-  }, [messages, autoScroll, hasUnreadDivider, lastReadAt]);
+  }, [messages, autoScroll, lastReadAt, scrollToLatest, userId]);
 
   // Re-anchor on resize
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    const content = contentRef.current;
+    if (!el || !content) return;
 
     const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         if (autoScroll) {
-          messagesEndRef.current?.scrollIntoView();
+          scrollToLatest('auto');
         }
       });
     });
     observer.observe(el);
+    observer.observe(content);
     return () => observer.disconnect();
-  }, [autoScroll]);
+  }, [autoScroll, scrollToLatest]);
 
   // External scroll-to-bottom trigger
   useEffect(() => {
     if (scrollToBottomTrigger && autoScroll) {
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView();
+        scrollToLatest('auto');
       });
     }
-  }, [autoScroll, scrollToBottomTrigger]);
+  }, [autoScroll, scrollToBottomTrigger, scrollToLatest]);
 
   // Passive scroll handler
   const rafRef = useRef<number | null>(null);
@@ -217,7 +226,7 @@ export function MessageList({
   }, [hasMore, loadingMore, onLoadMore]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToLatest('smooth');
     setAutoScroll(true);
     setNewMsgCount(0);
   };
@@ -244,7 +253,7 @@ export function MessageList({
     <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 relative" style={{ minHeight: 0, overscrollBehavior: 'contain' }}>
       {/* Desktop reading lane: caps the conversation at a comfortable
           measure instead of letting bubbles span an ultrawide canvas. */}
-      <div className="py-2 w-full lg:max-w-[760px] lg:mx-auto">
+      <div ref={contentRef} className="py-2 w-full lg:max-w-[760px] lg:mx-auto">
         {loadingMore && (
           <div className="text-center py-2">
             <span className="text-[10px] text-muted-foreground/50 font-medium">Loading older messages…</span>
