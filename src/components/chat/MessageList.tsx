@@ -58,6 +58,7 @@ export function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const [newMsgCount, setNewMsgCount] = useState(0);
   const [openOverlayMessageId, setOpenOverlayMessageId] = useState<string | null>(null);
@@ -65,6 +66,12 @@ export function MessageList({
 
   const handleToggleOverlay = useCallback((msgId: string | null) => {
     setOpenOverlayMessageId(msgId);
+  }, []);
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
   }, []);
 
   // Track whether we just switched channels — used by the auto-scroll
@@ -141,7 +148,7 @@ export function MessageList({
       justSwitchedRef.current = false;
       prevMsgCount.current = messages.length;
       setNewMsgCount(0);
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      scrollToLatest('auto');
       setAutoScroll(true);
       return;
     }
@@ -152,39 +159,41 @@ export function MessageList({
     const sentByCurrentUser = Boolean(userId && addedMessages.some(message => message.user_id === userId));
 
     if (autoScroll || sentByCurrentUser) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToLatest('smooth');
       if (sentByCurrentUser) setAutoScroll(true);
       setNewMsgCount(0);
     } else if (messages.length > prevMsgCount.current && prevScrollHeight.current === null) {
       setNewMsgCount(prev => prev + (messages.length - prevMsgCount.current));
     }
     prevMsgCount.current = messages.length;
-  }, [messages, autoScroll, lastReadAt, userId]);
+  }, [messages, autoScroll, lastReadAt, scrollToLatest, userId]);
 
   // Re-anchor on resize
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    const content = contentRef.current;
+    if (!el || !content) return;
 
     const observer = new ResizeObserver(() => {
       requestAnimationFrame(() => {
         if (autoScroll) {
-          messagesEndRef.current?.scrollIntoView();
+          scrollToLatest('auto');
         }
       });
     });
     observer.observe(el);
+    observer.observe(content);
     return () => observer.disconnect();
-  }, [autoScroll]);
+  }, [autoScroll, scrollToLatest]);
 
   // External scroll-to-bottom trigger
   useEffect(() => {
     if (scrollToBottomTrigger && autoScroll) {
       requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView();
+        scrollToLatest('auto');
       });
     }
-  }, [autoScroll, scrollToBottomTrigger]);
+  }, [autoScroll, scrollToBottomTrigger, scrollToLatest]);
 
   // Passive scroll handler
   const rafRef = useRef<number | null>(null);
@@ -217,7 +226,7 @@ export function MessageList({
   }, [hasMore, loadingMore, onLoadMore]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToLatest('smooth');
     setAutoScroll(true);
     setNewMsgCount(0);
   };
@@ -244,7 +253,7 @@ export function MessageList({
     <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 relative" style={{ minHeight: 0, overscrollBehavior: 'contain' }}>
       {/* Desktop reading lane: caps the conversation at a comfortable
           measure instead of letting bubbles span an ultrawide canvas. */}
-      <div className="py-2 w-full lg:max-w-[760px] lg:mx-auto">
+      <div ref={contentRef} className="py-2 w-full lg:max-w-[760px] lg:mx-auto">
         {loadingMore && (
           <div className="text-center py-2">
             <span className="text-[10px] text-muted-foreground/50 font-medium">Loading older messages…</span>

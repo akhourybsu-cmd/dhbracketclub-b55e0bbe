@@ -75,4 +75,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 51. Simplify Draft Arena navigation: consolidate header actions, merge one-off drafts into the room list, and keep menu paths clean on mobile and desktop
 
 # Chat latest-message and unread behavior
-- [ ] 52. Open chats at the latest message, keep sent messages in view, and exclude self-authored messages from unread badges
+- [x] 52. Open chats at the latest message, keep sent messages in view, and exclude self-authored messages from unread badges
