@@ -59,7 +59,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
     items: [
       { path: '/feed', label: 'Activity Feed', icon: Newspaper },
       { path: '/events', label: 'Events', icon: CalendarDays },
-      { path: '/finds', label: 'Daily Find', icon: Lightbulb },
+      { path: '/finds', label: 'The Drop', icon: Bookmark },
       { path: '/lore', label: 'Lore', icon: ScrollText },
       { path: '/celebrations', label: 'Celebrations', icon: Cake },
       { path: '/polls', label: 'Polls', icon: MessageCircle },
@@ -107,7 +107,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/club\/request/, 'Club Access'],
   [/^\/club/, 'Club'],
   [/^\/events/, 'Events'],
-  [/^\/finds/, 'Daily Find'],
+  [/^\/finds/, 'The Drop'],
   [/^\/lore/, 'Lore'],
   [/^\/feed/, 'Activity'],
   [/^\/profile/, 'Profile'],

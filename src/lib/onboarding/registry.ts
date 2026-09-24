@@ -287,20 +287,20 @@ const REGISTRY: Record<string, FeatureOnboarding> = {
 
   'daily-find': {
     featureKey: 'daily-find',
-    displayName: 'Daily Find',
-    shortDescription: 'One thing you learned today, shared with the club.',
+    displayName: 'The Drop',
+    shortDescription: 'One thing worth saving today, shared with the club.',
     featureType: 'social',
     importance: 'minor',
     version: 1,
     iconKey: 'Sparkles',
-    onboardingTitle: 'Share one find a day',
-    onboardingSummary: 'Something you learned, an article, or a photo — saved to your calendar archive.',
+    onboardingTitle: 'Leave one Drop a day',
+    onboardingSummary: 'Something you learned, read, or saw — collected in the club archive.',
     onboardingSteps: [
-      { title: 'Drop today\'s find', body: 'Add a title, a quick note, a link or a screenshot. One per day.', iconKey: 'Sparkles' },
-      { title: 'Your archive', body: 'Every find lands on its day in your calendar. Build a streak.', iconKey: 'CalendarDays' },
-      { title: 'React, comment, share', body: 'See what everyone found, react, reply, and share finds into chat.', iconKey: 'MessageSquareText' },
+      { title: 'Add today\'s Drop', body: 'Save one thought, article, photo, or screenshot for the club.', iconKey: 'Sparkles' },
+      { title: 'Build your collection', body: 'Every Drop lands on its day in the archive and extends your streak.', iconKey: 'CalendarDays' },
+      { title: 'React, comment, share', body: 'Explore the club collection, reply, and pass a Drop into chat.', iconKey: 'MessageSquareText' },
     ],
-    primaryCta: { label: 'Open Daily Find', route: '/finds' },
+    primaryCta: { label: 'Open The Drop', route: '/finds' },
   },
 
   'lore': {
