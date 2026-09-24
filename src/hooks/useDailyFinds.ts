@@ -117,7 +117,7 @@ export function useCreateFind() {
       }).select('id').single();
       if (error) {
         if (image_path) void supabase.storage.from(BUCKET).remove([image_path]);
-        throw new Error(error.code === '23505' ? "You've already added today's Drop" : error.message);
+        throw new Error(error.message);
       }
       return data as { id: string };
     },
