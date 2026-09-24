@@ -932,6 +932,144 @@ export type Database = {
           },
         ]
       }
+      daily_find_comments: {
+        Row: {
+          body: string
+          created_at: string
+          find_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          find_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          find_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_find_comments_find_id_fkey"
+            columns: ["find_id"]
+            isOneToOne: false
+            referencedRelation: "daily_finds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_find_comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_find_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          find_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          find_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          find_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_find_reactions_find_id_fkey"
+            columns: ["find_id"]
+            isOneToOne: false
+            referencedRelation: "daily_finds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_find_reactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_finds: {
+        Row: {
+          club_id: string
+          created_at: string
+          find_date: string
+          id: string
+          image_path: string | null
+          kind: string
+          note: string | null
+          tags: string[]
+          title: string
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          find_date?: string
+          id?: string
+          image_path?: string | null
+          kind?: string
+          note?: string | null
+          tags?: string[]
+          title: string
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          find_date?: string
+          id?: string
+          image_path?: string | null
+          kind?: string
+          note?: string | null
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_finds_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_finds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_desk_items: {
         Row: {
           created_at: string
