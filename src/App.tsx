@@ -65,6 +65,8 @@ const LockboxCrackPage = lazyWithRetry(() => import("./pages/LockboxCrackPage"))
 const FeedPage = lazyWithRetry(() => import("./pages/FeedPage"));
 const LorePage = lazyWithRetry(() => import("./pages/LorePage"));
 const LoreDetailPage = lazyWithRetry(() => import("./pages/LoreDetailPage"));
+const DailyFindPage = lazyWithRetry(() => import("./pages/DailyFindPage"));
+const DailyFindDetailPage = lazyWithRetry(() => import("./pages/DailyFindDetailPage"));
 const PostsPage = lazyWithRetry(() => import("./pages/PostsPage"));
 const PostDetailPage = lazyWithRetry(() => import("./pages/PostDetailPage"));
 const SharedMediaPage = lazyWithRetry(() => import("./pages/SharedMediaPage"));
@@ -231,6 +233,10 @@ function AnimatedRoutes() {
         {/* DH Lore */}
         <Route path="/lore" element={<ProtectedPage assetSlug="lore"><LorePage /></ProtectedPage>} />
         <Route path="/lore/:loreId" element={<ProtectedPage assetSlug="lore"><LoreDetailPage /></ProtectedPage>} />
+
+        {/* Daily Find */}
+        <Route path="/finds" element={<ProtectedPage assetSlug="daily-find"><DailyFindPage /></ProtectedPage>} />
+        <Route path="/finds/:findId" element={<ProtectedPage assetSlug="daily-find"><DailyFindDetailPage /></ProtectedPage>} />
 
         {/* Feed + Posts */}
         <Route path="/feed" element={<ProtectedPage assetSlug="feed"><FeedPage /></ProtectedPage>} />

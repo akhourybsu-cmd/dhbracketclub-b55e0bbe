@@ -59,6 +59,7 @@ export const NAV_ASSET_SLUGS: Record<string, string> = {
   '/chat':            'chat',
   '/events':          'events',
   '/lore':            'lore',
+  '/finds':           'daily-find',
   '/feed':            'feed',
   '/polls':           'polls',
   '/rankings':        'rankings',

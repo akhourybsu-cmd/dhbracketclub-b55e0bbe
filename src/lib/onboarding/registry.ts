@@ -285,6 +285,24 @@ const REGISTRY: Record<string, FeatureOnboarding> = {
     primaryCta: { label: 'Open Rankings', route: '/rankings' },
   },
 
+  'daily-find': {
+    featureKey: 'daily-find',
+    displayName: 'Daily Find',
+    shortDescription: 'One thing you learned today, shared with the club.',
+    featureType: 'social',
+    importance: 'minor',
+    version: 1,
+    iconKey: 'Sparkles',
+    onboardingTitle: 'Share one find a day',
+    onboardingSummary: 'Something you learned, an article, or a photo — saved to your calendar archive.',
+    onboardingSteps: [
+      { title: 'Drop today\'s find', body: 'Add a title, a quick note, a link or a screenshot. One per day.', iconKey: 'Sparkles' },
+      { title: 'Your archive', body: 'Every find lands on its day in your calendar. Build a streak.', iconKey: 'CalendarDays' },
+      { title: 'React, comment, share', body: 'See what everyone found, react, reply, and share finds into chat.', iconKey: 'MessageSquareText' },
+    ],
+    primaryCta: { label: 'Open Daily Find', route: '/finds' },
+  },
+
   'lore': {
     featureKey: 'lore',
     displayName: 'Club Lore',

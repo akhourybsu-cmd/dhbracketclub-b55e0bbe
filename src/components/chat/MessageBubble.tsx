@@ -25,6 +25,7 @@ import { EmojiPicker } from './EmojiPicker';
 import { isPrivateAttachmentUrl, isImageAttachmentUrl } from '@/lib/chatAttachments';
 import { isDraftInviteMessage } from '@/lib/draftInvite';
 import { isPickemShareMessage } from '@/lib/pickemShare';
+import { isDailyFindShareMessage } from '@/lib/dailyFind';
 import { buildChatMessagePermalink, chatMessagePreview } from '@/lib/chatExperience';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ChatBottomSheet } from './ChatBottomSheet';
@@ -675,7 +676,7 @@ function MessageBubbleInner({
                   <div>
                     <p className={cn(
                       "chat-message-copy text-[13px] leading-[1.55] break-words whitespace-pre-wrap",
-                      (((imageUrls.length > 0 || fileUrls.length > 0) && !stripAttachmentUrls(msg.content)) || isDraftInviteMessage(msg.content) || isPickemShareMessage(msg.content)) && "hidden"
+                      (((imageUrls.length > 0 || fileUrls.length > 0) && !stripAttachmentUrls(msg.content)) || isDraftInviteMessage(msg.content) || isPickemShareMessage(msg.content) || isDailyFindShareMessage(msg.content)) && "hidden"
                     )}>
                       {renderContent(stripAttachmentUrls(msg.content), currentUserId, currentDisplayName)}
                       {msg.is_pinned && <Pin className="w-2 h-2 inline-block ml-1 -mt-0.5" style={{ color: 'hsl(var(--premium-warm) / 0.5)' }} />}
