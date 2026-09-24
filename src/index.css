@@ -6401,7 +6401,7 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   --drop-paper-strong: 120 5% 12%;
   --drop-edge: 48 8% 25%;
   --drop-ink: 45 22% 93%;
-  font-family: "Manrope", var(--font-sans);
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0;
 }
 .light .drop-page,
@@ -6431,7 +6431,7 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .drop-masthead { border-bottom: 1px solid hsl(var(--drop-edge) / .7); }
 .drop-title,
 .drop-card-title {
-  font-family: "Sora", var(--font-sans); font-weight: 800; letter-spacing: 0;
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif; font-weight: 800; letter-spacing: 0;
   text-wrap: balance;
 }
 .drop-title { font-weight: 700; }
