@@ -1,0 +1,2 @@
+ALTER TABLE public.daily_finds DROP CONSTRAINT IF EXISTS daily_finds_club_id_user_id_find_date_key;
+CREATE INDEX IF NOT EXISTS daily_finds_club_user_date_idx ON public.daily_finds (club_id, user_id, find_date);

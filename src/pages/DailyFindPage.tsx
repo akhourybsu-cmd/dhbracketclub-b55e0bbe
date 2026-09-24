@@ -117,14 +117,9 @@ export default function DailyFindPage() {
           </div>
         </div>
         <div className="relative mt-5">
-          {feed.isLoading ? <Skeleton className="h-12 w-full rounded-xl" /> : myToday ? (
-             <button type="button" onClick={() => navigate(`/finds/${myToday.id}`)} className="drop-today-status flex w-full items-center gap-3 rounded-xl border p-3 text-left">
-               <span className="drop-mini-mark">✓</span>
-               <span className="min-w-0 flex-1"><span className="block text-[11px] font-bold uppercase text-muted-foreground">Today's Drop is in</span><span className="block truncate text-sm font-bold">{myToday.title}</span></span>
-            </button>
-          ) : (
+          {feed.isLoading ? <Skeleton className="h-12 w-full rounded-xl" /> : (
             <motion.div whileTap={{ scale: 0.98 }}>
-               <Button onClick={() => setComposeOpen(true)} className="drop-primary h-12 w-full text-base font-bold"><Plus /> Add Today's Drop</Button>
+               <Button onClick={() => setComposeOpen(true)} className="drop-primary h-12 w-full text-base font-bold"><Plus /> {myToday ? 'Add another Drop' : "Add Today's Drop"}</Button>
             </motion.div>
           )}
         </div>
