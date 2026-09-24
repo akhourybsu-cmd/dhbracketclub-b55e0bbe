@@ -11,7 +11,6 @@ import {
   FileText,
   Flame,
   LayoutDashboard,
-  Lightbulb,
   Link2,
   Lock,
   MessageCircle,
