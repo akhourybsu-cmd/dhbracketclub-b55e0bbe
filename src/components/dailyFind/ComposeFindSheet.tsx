@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2, X } from 'lucide-react';
+import { BookOpen, Camera, ImagePlus, Lightbulb, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,28 +30,31 @@ export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
   }, [image]);
 
   const reset = () => { setKind('learned'); setTitle(''); setNote(''); setUrl(''); setTags(''); setImage(null); };
-  const prompt = FIND_KINDS.find(k => k.value === kind)!.prompt;
+  const prompt = FIND_KINDS.find(k => k.value === kind)?.prompt ?? 'What is worth saving today?';
+  const KIND_ICON = { learned: Lightbulb, article: BookOpen, photo: Camera } as const;
   const urlOk = !url.trim() || /^https?:\/\/\S+\.\S+/.test(url.trim());
   const canSave = title.trim().length > 0 && urlOk && (kind !== 'photo' || !!image) && !create.isPending;
 
   const submit = () => {
     if (!canSave) return;
     create.mutate({ kind, title, note, url, tags: normalizeTags(tags), image }, {
-      onSuccess: ({ id }) => { toast.success("Today's find is in 💡"); reset(); onOpenChange(false); onCreated?.(id); },
+       onSuccess: ({ id }) => { toast.success("Today's Drop is in"); reset(); onOpenChange(false); onCreated?.(id); },
       onError: (e: Error) => toast.error(e.message),
     });
   };
 
   return (
-    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Today's find" description="One thing per day — make it count." mobileOnly={false} className="sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2">
+    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Add Today's Drop" description="Leave one thing worth saving in the club collection." mobileOnly={false} className="drop-page sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2">
       <div className="space-y-3 px-1">
-        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/40 p-1" role="radiogroup" aria-label="Kind">
-          {FIND_KINDS.map(k => (
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border/40 bg-muted/30 p-1" role="radiogroup" aria-label="Drop type">
+          {FIND_KINDS.map(k => {
+            const Icon = KIND_ICON[k.value];
+            return (
             <button key={k.value} type="button" role="radio" aria-checked={kind === k.value} onClick={() => setKind(k.value)}
-              className={cn('h-10 rounded-lg text-sm font-bold transition-all', kind === k.value ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
-              {k.emoji} {k.label}
+              className={cn('flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-bold transition-all', kind === k.value ? 'bg-background text-[hsl(var(--drop-accent))] shadow-sm' : 'text-muted-foreground')}>
+              <Icon className="h-4 w-4" /> {k.label}
             </button>
-          ))}
+          )})}
         </div>
 
         <Input value={title} onChange={e => setTitle(e.target.value.slice(0, 160))} placeholder={prompt} className="h-12 text-base font-semibold" autoFocus />
@@ -71,14 +74,14 @@ export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
           </div>
         ) : (
           <Button type="button" variant="outline" onClick={() => fileRef.current?.click()} className="h-12 w-full border-dashed">
-            <ImagePlus /> {kind === 'photo' ? 'Add photo or screenshot' : 'Add photo (optional)'}
+             <ImagePlus /> {kind === 'photo' ? 'Add photo or screenshot' : 'Add image (optional)'}
           </Button>
         )}
 
         <Input value={tags} onChange={e => setTags(e.target.value)} placeholder="Tags — science, history, food" />
 
         <Button type="button" onClick={submit} disabled={!canSave} className="h-12 w-full text-base font-bold">
-          {create.isPending ? <Loader2 className="animate-spin" /> : '💡'} Share today's find
+           {create.isPending ? <Loader2 className="animate-spin" /> : <><span className="drop-mini-mark">D</span> Place in collection</>}
         </Button>
       </div>
     </ChatBottomSheet>
