@@ -45,8 +45,8 @@ export default function DailyFindDetailPage() {
   };
 
   return (
-    <div className="drop-page member-page lg:mx-auto lg:max-w-2xl">
-      <div className="page-toolbar">
+    <div className="drop-page member-page lg:mx-auto lg:max-w-[46rem]">
+      <div className="drop-tabs page-toolbar sticky top-0 z-20 mb-4 rounded-xl border px-2">
          <Link to="/finds" className="back-link"><ArrowLeft className="h-4 w-4" /> The Drop</Link>
         <div className="page-toolbar-actions">
           <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setShareOpen(true)} aria-label="Share"><Share2 /></Button>
@@ -67,7 +67,7 @@ export default function DailyFindDetailPage() {
              <div className="flex-1"><p className="text-sm font-bold">Dropped by {name}</p><p className="text-xs text-muted-foreground">{formatDayKey(find.find_date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div>
              <span className="drop-kind-tab">{meta.label}</span>
           </div>
-          <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight">{find.title}</h1>
+          <h1 className="drop-card-title mt-4 text-4xl leading-none sm:text-5xl">{find.title}</h1>
           {find.note && <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/85">{find.note}</p>}
           {find.url && <FindLinkPreview url={find.url} className="mt-4" />}
           {find.tags.length > 0 && (
@@ -85,7 +85,7 @@ export default function DailyFindDetailPage() {
           {(comments.data ?? []).map(c => (
             <div key={c.id} className="flex gap-2.5">
               <Avatar className="h-8 w-8"><AvatarImage src={c.profiles?.avatar_url ?? undefined} /><AvatarFallback className="text-xs">{(c.profiles?.display_name ?? '?').slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-              <div className="min-w-0 flex-1 rounded-2xl bg-muted/40 px-3 py-2">
+              <div className="drop-surface min-w-0 flex-1 rounded-2xl border px-3 py-2">
                 <div className="flex items-center gap-2">
                   <p className="text-xs font-bold">{c.profiles?.display_name ?? 'Member'}</p>
                   <p className="text-[10px] text-muted-foreground">{new Date(c.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
@@ -99,8 +99,8 @@ export default function DailyFindDetailPage() {
           ))}
           {comments.data?.length === 0 && <p className="px-1 text-sm text-muted-foreground">No comments yet — start the conversation.</p>}
         </div>
-        <form onSubmit={e => { e.preventDefault(); post(); }} className="mt-4 flex gap-2">
-          <Input value={body} onChange={e => setBody(e.target.value.slice(0, 1000))} placeholder="Add a comment" className="h-11" />
+        <form onSubmit={e => { e.preventDefault(); post(); }} className="drop-surface sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] mt-4 flex gap-2 rounded-xl border p-2 sm:bottom-3">
+          <Input value={body} onChange={e => setBody(e.target.value.slice(0, 1000))} placeholder="Add a comment" className="h-11 border-0 bg-transparent shadow-none" />
           <Button type="submit" size="icon" className="h-11 w-11 flex-shrink-0" disabled={!body.trim() || addComment.isPending} aria-label="Post comment">
             {addComment.isPending ? <Loader2 className="animate-spin" /> : <Send />}
           </Button>
