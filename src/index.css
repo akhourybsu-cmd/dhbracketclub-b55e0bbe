@@ -6401,7 +6401,7 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   --drop-paper-strong: 120 5% 12%;
   --drop-edge: 48 8% 25%;
   --drop-ink: 45 22% 93%;
-  font-family: "Work Sans", var(--font-sans);
+  font-family: "Manrope", var(--font-sans);
   letter-spacing: 0;
 }
 .light .drop-page,
@@ -6415,7 +6415,10 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   --drop-edge: 40 13% 73%;
   --drop-ink: 120 5% 7%;
 }
-.drop-page { color: hsl(var(--foreground)); }
+.drop-page {
+  width: 100%; min-height: calc(100dvh - var(--mobile-nav-height, 4.5rem)); color: hsl(var(--foreground));
+  background: hsl(var(--background));
+}
 .drop-surface,
 .drop-tabs,
 .drop-segmented,
@@ -6427,7 +6430,12 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .drop-sheet { color: hsl(var(--foreground)); }
 .drop-masthead { border-bottom: 1px solid hsl(var(--drop-edge) / .7); }
 .drop-title,
-.drop-card-title { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; letter-spacing: 0; }
+.drop-card-title {
+  font-family: "Sora", var(--font-sans); font-weight: 800; letter-spacing: 0;
+  text-wrap: balance;
+}
+.drop-title { font-weight: 700; }
+.drop-card-title { font-weight: 700; }
 .drop-streak {
   border: 1px solid hsl(var(--drop-accent) / .42);
   background: hsl(var(--drop-accent) / .11);
@@ -6483,8 +6491,15 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 @keyframes drop-pulse { 0%, 100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
 .drop-card:first-child { animation: drop-settle 460ms var(--ease-app) both; }
 @media (max-width: 639px) {
-  .drop-page.member-page { padding-left: .75rem; padding-right: .75rem; }
-  .drop-card { border-radius: 1rem; }
+  .drop-page.member-page { padding-left: 0; padding-right: 0; }
+  .drop-card { border-left: 0; border-right: 0; box-shadow: none; }
+  .drop-feed > section + section { border-top: 1px solid hsl(var(--drop-edge) / .7); padding-top: 1.5rem; }
+}
+@media (min-width: 1024px) {
+  .drop-page { min-height: 100dvh; }
+  .drop-content { padding-bottom: 4rem; }
+  .drop-feed { padding-inline: 2rem; }
+  .drop-card { box-shadow: 0 24px 70px hsl(var(--background) / .28); }
 }
 @media (prefers-reduced-motion: reduce) {
   .drop-card:first-child, .drop-live-label::before { animation: none; }

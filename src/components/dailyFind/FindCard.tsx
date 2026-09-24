@@ -78,7 +78,7 @@ function FindCardInner({ find, index = 0 }: { find: DailyFind; index?: number })
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: Math.min(index, 8) * 0.04, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -3 }}
-      className={cn('drop-card drop-surface overflow-hidden rounded-2xl border', KIND_TONE[find.kind])}
+      className={cn('drop-card drop-surface overflow-hidden border-y sm:rounded-xl sm:border', KIND_TONE[find.kind])}
     >
       <Link to={`/finds/${find.id}`} className="block active:opacity-90">
         <header className="flex items-center gap-3 px-4 pb-2 pt-4 sm:px-5">
@@ -89,7 +89,7 @@ function FindCardInner({ find, index = 0 }: { find: DailyFind; index?: number })
 
         <div className="px-4 pb-1 pt-2 sm:px-5">
           <span className="drop-kind-tab"><KindIcon className="h-3.5 w-3.5" /> {meta.label}</span>
-          <h3 className={cn('drop-card-title mt-3 text-[27px] leading-[1.02] sm:text-[32px]', find.kind === 'learned' && 'drop-thought-title')}>{find.title}</h3>
+          <h3 className={cn('drop-card-title mt-3 text-[25px] leading-[1.08] sm:text-[30px]', find.kind === 'learned' && 'drop-thought-title')}>{find.title}</h3>
           {find.note && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/75 line-clamp-4">{find.note}</p>}
           {find.image_path && <FindPhoto path={find.image_path} className={cn('-mx-4 mt-4 w-[calc(100%+2rem)] border-y border-[hsl(var(--drop-accent)/0.2)] sm:-mx-5 sm:w-[calc(100%+2.5rem)]', find.kind === 'photo' ? 'aspect-[4/5] max-h-[680px]' : 'aspect-[16/10] max-h-96')} />}
           {find.url && <FindLinkPreview url={find.url} compact className="mt-4" />}
