@@ -29,10 +29,10 @@ export function FindCalendar({ month, onMonthChange, finds, selectedDay, onSelec
   const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
 
   return (
-    <div className="drop-surface rounded-2xl border p-3 shadow-sm">
+    <div className="drop-calendar drop-surface rounded-2xl border p-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
         <button type="button" onClick={() => onMonthChange(new Date(y, m - 1, 1))} aria-label="Previous month" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted/60"><ChevronLeft className="h-5 w-5" /></button>
-        <p className="text-sm font-extrabold">{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
+        <p className="drop-card-title text-2xl">{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
         <button type="button" disabled={isCurrentMonth} onClick={() => onMonthChange(new Date(y, m + 1, 1))} aria-label="Next month" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted/60 disabled:opacity-30"><ChevronRight className="h-5 w-5" /></button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
@@ -54,7 +54,7 @@ export function FindCalendar({ month, onMonthChange, finds, selectedDay, onSelec
               aria-label={`${key}, ${list.length} finds`}
               aria-pressed={selected}
               className={cn(
-                'relative aspect-square overflow-hidden rounded-lg text-xs font-bold transition-all disabled:opacity-30',
+                 'relative aspect-square min-h-11 overflow-hidden rounded-lg text-xs font-bold transition-all disabled:opacity-30',
                 list.length ? 'bg-[hsl(var(--drop-accent)/0.1)]' : 'bg-muted/30',
                 selected && 'ring-2 ring-[hsl(var(--drop-accent))] ring-offset-1 ring-offset-card',
                 key === today && !selected && 'ring-1 ring-foreground/30',

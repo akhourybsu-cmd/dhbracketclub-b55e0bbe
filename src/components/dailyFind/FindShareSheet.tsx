@@ -63,7 +63,7 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
   };
 
   return (
-    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Share this Drop" description={find.title} mobileOnly={false} className="sm:left-1/2 sm:right-auto sm:w-[420px] sm:-translate-x-1/2">
+    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Share this Drop" description={find.title} mobileOnly={false} className="drop-page drop-sheet sm:left-1/2 sm:right-auto sm:w-[420px] sm:-translate-x-1/2">
       <div className="space-y-3">
         {chatInstalled && (
           <section>
