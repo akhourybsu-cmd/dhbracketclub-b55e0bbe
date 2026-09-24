@@ -78,3 +78,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 52. Open chats at the latest message, keep sent messages in view, and exclude self-authored messages from unread badges
 
 - [x] Daily Find: one "thing I learned today" per member per day, calendar archive, reactions, comments, tags/search, share to chat
+- [x] 53. Rebrand Daily Find as The Drop and redesign the feed, collectible cards, composer, and archive as a modern club bulletin

@@ -234,7 +234,7 @@ function AnimatedRoutes() {
         <Route path="/lore" element={<ProtectedPage assetSlug="lore"><LorePage /></ProtectedPage>} />
         <Route path="/lore/:loreId" element={<ProtectedPage assetSlug="lore"><LoreDetailPage /></ProtectedPage>} />
 
-        {/* Daily Find */}
+        {/* The Drop */}
         <Route path="/finds" element={<ProtectedPage assetSlug="daily-find"><DailyFindPage /></ProtectedPage>} />
         <Route path="/finds/:findId" element={<ProtectedPage assetSlug="daily-find"><DailyFindDetailPage /></ProtectedPage>} />
 

@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils';
 import { localDayKey, type DailyFind } from '@/lib/dailyFind';
 import { FindPhoto } from './FindCard';
 
+const KIND_DOT = { learned: 'bg-[hsl(var(--drop-learned))]', article: 'bg-[hsl(var(--drop-read))]', photo: 'bg-[hsl(var(--drop-saw))]' } as const;
+
 interface Props {
   month: Date;
   onMonthChange: (d: Date) => void;
@@ -27,7 +29,7 @@ export function FindCalendar({ month, onMonthChange, finds, selectedDay, onSelec
   const isCurrentMonth = y === new Date().getFullYear() && m === new Date().getMonth();
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-card p-3">
+    <div className="drop-surface rounded-2xl border p-3 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
         <button type="button" onClick={() => onMonthChange(new Date(y, m - 1, 1))} aria-label="Previous month" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted/60"><ChevronLeft className="h-5 w-5" /></button>
         <p className="text-sm font-extrabold">{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
@@ -53,8 +55,8 @@ export function FindCalendar({ month, onMonthChange, finds, selectedDay, onSelec
               aria-pressed={selected}
               className={cn(
                 'relative aspect-square overflow-hidden rounded-lg text-xs font-bold transition-all disabled:opacity-30',
-                list.length ? 'bg-[hsl(var(--gold)/0.16)]' : 'bg-muted/30',
-                selected && 'ring-2 ring-[hsl(var(--gold))] ring-offset-1 ring-offset-card',
+                list.length ? 'bg-[hsl(var(--drop-accent)/0.1)]' : 'bg-muted/30',
+                selected && 'ring-2 ring-[hsl(var(--drop-accent))] ring-offset-1 ring-offset-card',
                 key === today && !selected && 'ring-1 ring-foreground/30',
               )}
             >
@@ -62,7 +64,7 @@ export function FindCalendar({ month, onMonthChange, finds, selectedDay, onSelec
               <span className={cn('relative', photo && 'drop-shadow-[0_1px_2px_hsl(var(--background))]')}>{day}</span>
               {list.length > 0 && (
                 <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
-                  {list.slice(0, 3).map(f => <span key={f.id} className="h-1 w-1 rounded-full bg-[hsl(var(--gold))]" />)}
+                   {list.slice(0, 3).map(f => <span key={f.id} className={cn('h-1.5 w-1.5 rounded-full ring-1 ring-background', KIND_DOT[f.kind])} />)}
                 </span>
               )}
             </motion.button>

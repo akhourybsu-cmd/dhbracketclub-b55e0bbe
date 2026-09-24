@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Loader2, Send, Share2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Send, Share2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -30,8 +30,8 @@ export default function DailyFindDetailPage() {
   if (isLoading) return <div className="member-page lg:mx-auto lg:max-w-2xl"><Skeleton className="h-96 rounded-2xl" /></div>;
   if (!find) return (
     <div className="member-page p-8 text-center">
-      <p className="text-muted-foreground">This find isn't available.</p>
-      <Button asChild variant="outline" className="mt-4"><Link to="/finds">Back to Daily Find</Link></Button>
+       <p className="text-muted-foreground">This Drop isn't available.</p>
+       <Button asChild variant="outline" className="mt-4"><Link to="/finds">Back to The Drop</Link></Button>
     </div>
   );
 
@@ -45,34 +45,34 @@ export default function DailyFindDetailPage() {
   };
 
   return (
-    <div className="member-page lg:mx-auto lg:max-w-2xl">
+    <div className="drop-page member-page lg:mx-auto lg:max-w-2xl">
       <div className="page-toolbar">
-        <Link to="/finds" className="back-link"><ArrowLeft className="h-4 w-4" /> Daily Find</Link>
+         <Link to="/finds" className="back-link"><ArrowLeft className="h-4 w-4" /> The Drop</Link>
         <div className="page-toolbar-actions">
           <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => setShareOpen(true)} aria-label="Share"><Share2 /></Button>
           {canDelete && (
             <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Delete" onClick={() => {
-              if (!confirm('Delete this find?')) return;
-              delFind.mutate(find, { onSuccess: () => { toast.success('Find deleted'); navigate('/finds'); }, onError: (e: Error) => toast.error(e.message) });
+               if (!confirm('Delete this Drop?')) return;
+               delFind.mutate(find, { onSuccess: () => { toast.success('Drop deleted'); navigate('/finds'); }, onError: (e: Error) => toast.error(e.message) });
             }}><Trash2 /></Button>
           )}
         </div>
       </div>
 
-      <article className="overflow-hidden rounded-3xl border border-border/50 bg-card">
+       <article className={`drop-card drop-surface drop-kind-${find.kind === 'article' ? 'read' : find.kind === 'photo' ? 'saw' : 'learned'} overflow-hidden rounded-2xl border`}>
         {find.image_path && <FindPhoto path={find.image_path} className="max-h-[60vh] w-full [&_img]:object-contain [&_img]:max-h-[60vh]" />}
         <div className="p-5">
           <div className="flex items-center gap-2.5">
             <Avatar className="h-9 w-9"><AvatarImage src={find.profiles?.avatar_url ?? undefined} /><AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-            <div className="flex-1"><p className="text-sm font-bold">{name}</p><p className="text-xs text-muted-foreground">{formatDayKey(find.find_date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div>
-            <span className="rounded-full bg-[hsl(var(--gold)/0.14)] px-2.5 py-1 text-[11px] font-bold">{meta.emoji} {meta.label}</span>
+             <div className="flex-1"><p className="text-sm font-bold">Dropped by {name}</p><p className="text-xs text-muted-foreground">{formatDayKey(find.find_date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div>
+             <span className="drop-kind-tab">{meta.label}</span>
           </div>
           <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight">{find.title}</h1>
           {find.note && <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/85">{find.note}</p>}
           {find.url && <FindLinkPreview url={find.url} className="mt-4" />}
           {find.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
-              {find.tags.map(t => <Link key={t} to={`/finds?tab=search`} className="text-sm font-semibold text-[hsl(var(--gold))]">#{t}</Link>)}
+               {find.tags.map(t => <Link key={t} to={`/finds?tab=search`} className="text-sm font-semibold text-[hsl(var(--drop-accent))]">#{t}</Link>)}
             </div>
           )}
           <div className="mt-4"><FindReactionBar find={find} /></div>

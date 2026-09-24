@@ -11,13 +11,13 @@ export function DailyFindShareCard({ findId }: { findId: string }) {
   if (!find) return null;
   const meta = kindMeta(find.kind);
   return (
-    <button type="button" onClick={() => navigate(`/finds/${find.id}`)} className="mt-2 block w-full max-w-[330px] overflow-hidden rounded-xl border border-[hsl(var(--gold)/0.35)] bg-card text-left active:scale-[0.99]">
+    <button type="button" onClick={() => navigate(`/finds/${find.id}`)} className="drop-surface mt-2 block w-full max-w-[330px] overflow-hidden rounded-xl border text-left active:scale-[0.99]">
       {find.image_path && <FindPhoto path={find.image_path} className="aspect-[16/9] w-full" />}
       <div className="p-3">
-        <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[hsl(var(--gold))]">{meta.emoji} Daily Find · {formatDayKey(find.find_date)}</p>
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[hsl(var(--drop-accent))]">▣ The Drop · {meta.label} · {formatDayKey(find.find_date)}</p>
         <p className="mt-1 text-sm font-extrabold leading-snug">{find.title}</p>
         {find.note && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{find.note}</p>}
-        <p className="mt-2 flex items-center gap-1 text-xs font-bold text-foreground/80">{find.profiles?.display_name ?? 'Member'} <ArrowRight className="ml-auto h-3.5 w-3.5" /></p>
+        <p className="mt-2 flex items-center gap-1 text-xs font-bold text-foreground/80">Dropped by {find.profiles?.display_name ?? 'Member'} <ArrowRight className="ml-auto h-3.5 w-3.5" /></p>
       </div>
     </button>
   );

@@ -55,7 +55,7 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
 
   const elsewhere = async () => {
     try {
-      if (navigator.share) await navigator.share({ title: find.title, text: `Daily Find: ${find.title}`, url });
+      if (navigator.share) await navigator.share({ title: find.title, text: `The Drop: ${find.title}`, url });
       else { await navigator.clipboard.writeText(url); toast.success('Link copied'); }
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) toast.error('Could not share');
@@ -63,7 +63,7 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
   };
 
   return (
-    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Share this find" description={find.title} mobileOnly={false} className="sm:left-1/2 sm:right-auto sm:w-[420px] sm:-translate-x-1/2">
+    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Share this Drop" description={find.title} mobileOnly={false} className="sm:left-1/2 sm:right-auto sm:w-[420px] sm:-translate-x-1/2">
       <div className="space-y-3">
         {chatInstalled && (
           <section>

@@ -1,4 +1,4 @@
-// Daily Find — shared helpers (types, local-date keys, chat share markers).
+// The Drop — shared helpers (types, local-date keys, chat share markers).
 
 export type FindKind = 'learned' | 'article' | 'photo';
 
@@ -22,8 +22,8 @@ export interface DailyFind {
 
 export const FIND_KINDS: { value: FindKind; label: string; emoji: string; prompt: string }[] = [
   { value: 'learned', label: 'Learned', emoji: '💡', prompt: 'What did you learn today?' },
-  { value: 'article', label: 'Article', emoji: '📰', prompt: 'What article is worth reading?' },
-  { value: 'photo', label: 'Photo', emoji: '📸', prompt: 'What caught your eye?' },
+  { value: 'article', label: 'Read', emoji: '📰', prompt: 'What is worth reading?' },
+  { value: 'photo', label: 'Saw', emoji: '📸', prompt: 'What caught your eye?' },
 ];
 
 export const FIND_REACTIONS = ['🤯', '💡', '🔥', '😂', '❤️', '🤔'] as const;
@@ -72,7 +72,7 @@ export function currentStreak(dayKeys: Iterable<string>, today = new Date()): nu
 }
 
 // ─── Chat sharing ───
-export const DAILY_FIND_SHARE_MARKER = '💡 **Daily Find**';
+export const DAILY_FIND_SHARE_MARKER = '▣ **The Drop**';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function buildFindShareUrl(findId: string, origin = 'https://dryhorse.app'): string {
@@ -93,7 +93,7 @@ export function getFindShareTarget(url: string): string | null {
 }
 
 export function isDailyFindShareMessage(content: string): boolean {
-  if (!content.startsWith(DAILY_FIND_SHARE_MARKER)) return false;
+  if (!content.startsWith(DAILY_FIND_SHARE_MARKER) && !content.startsWith('💡 **Daily Find**')) return false;
   const url = content.match(/https?:\/\/[^\s]+/)?.[0];
   return Boolean(url && getFindShareTarget(url));
 }
