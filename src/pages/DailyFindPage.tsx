@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bookmark, CalendarDays, Flame, Plus, Search, Users } from 'lucide-react';
+import { Bookmark, CalendarDays, Flame, Plus, Search, Sparkles, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,7 @@ import { currentStreak, formatDayKey, localDayKey, type DailyFind } from '@/lib/
 import { cn } from '@/lib/utils';
 
 type Tab = 'club' | 'calendar' | 'search';
+const TAB_STORAGE_KEY = 'dh_drop_tab_v1';
 const TABS: { value: Tab; label: string; icon: typeof Users }[] = [
   { value: 'club', label: 'Club', icon: Users },
   { value: 'calendar', label: 'Calendar', icon: CalendarDays },
@@ -30,11 +31,11 @@ function FeedList({ finds, empty }: { finds: DailyFind[]; empty: string }) {
   }
   let i = 0;
   return (
-    <div className="space-y-5">
+    <div className="drop-feed space-y-7">
       {groups.map(([day, list]) => (
         <section key={day}>
-           <h2 className="mb-2 flex items-center gap-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.18em] text-muted-foreground">
-             <span>{day === localDayKey() ? "Today's collection" : formatDayKey(day, { weekday: 'long', month: 'short', day: 'numeric' })}</span><span className="h-px flex-1 bg-border/60" />
+           <h2 className="drop-day-rule mb-3 flex items-center gap-3 px-1 text-[11px] font-bold uppercase text-muted-foreground">
+              <span>{day === localDayKey() ? "Today's collection" : formatDayKey(day, { weekday: 'long', month: 'short', day: 'numeric' })}</span><span className="h-px flex-1 bg-border/60" />
           </h2>
           <div className="space-y-3">{list.map(f => <FindCard key={f.id} find={f} index={i++} />)}</div>
         </section>
@@ -47,14 +48,25 @@ export default function DailyFindPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') as Tab) || 'club';
-  const setTab = (t: Tab) => setParams(p => { p.set('tab', t); return p; }, { replace: true });
+  const requestedTab = params.get('tab');
+  const storedTab = typeof window !== 'undefined' ? window.localStorage.getItem(TAB_STORAGE_KEY) : null;
+  const tab: Tab = requestedTab === 'calendar' || requestedTab === 'search' || requestedTab === 'club'
+    ? requestedTab
+    : storedTab === 'calendar' || storedTab === 'search' || storedTab === 'club' ? storedTab : 'club';
+  const setTab = (t: Tab) => {
+    window.localStorage.setItem(TAB_STORAGE_KEY, t);
+    setParams(p => { p.set('tab', t); return p; }, { replace: true });
+  };
   const [composeOpen, setComposeOpen] = useState(false);
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
-  const [selectedDay, setSelectedDay] = useState<string | null>(localDayKey());
+  const selectedDay = params.get('day') || localDayKey();
   const [onlyMine, setOnlyMine] = useState(true);
-  const [term, setTerm] = useState('');
-  const [tag, setTag] = useState<string | null>(null);
+  const term = params.get('q') || '';
+  const tag = params.get('tag');
+  const updateParam = (key: string, value: string | null) => setParams(p => {
+    if (value) p.set(key, value); else p.delete(key);
+    return p;
+  }, { replace: true });
 
   const today = localDayKey();
   const feedRange = useMemo(() => {
@@ -85,24 +97,23 @@ export default function DailyFindPage() {
   const dayFinds = selectedDay ? monthFinds.filter(f => f.find_date === selectedDay) : [];
 
   return (
-    <div className="drop-page member-page lg:mx-auto lg:max-w-2xl">
-      <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="drop-hero relative mb-5 overflow-hidden rounded-2xl border p-5 sm:p-6">
-        <div aria-hidden className="drop-hero-mark">D</div>
-        <div className="relative flex items-start justify-between gap-3">
+    <div className="drop-page member-page lg:mx-auto lg:max-w-[46rem]">
+      <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="drop-masthead relative mb-3 overflow-hidden px-1 pb-5 pt-2 sm:px-3 sm:pt-4">
+        <div className="relative flex items-end justify-between gap-3">
           <div>
-            <p className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-[hsl(var(--drop-accent))]"><Bookmark className="h-3.5 w-3.5" /> Members' daily collection</p>
-            <h1 className="mt-2 text-4xl font-black leading-none">The Drop</h1>
-            <p className="mt-2 text-sm text-muted-foreground">One thing worth sharing today.</p>
+            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[hsl(var(--drop-accent))]"><Bookmark className="h-3.5 w-3.5" /> Daily club collection</p>
+            <h1 className="drop-title mt-1 text-5xl leading-none sm:text-6xl">The Drop</h1>
+            <p className="mt-1 text-sm text-muted-foreground">One thing worth sharing today.</p>
           </div>
-          <div className="drop-streak flex flex-col items-center rounded-xl px-3 py-2" aria-label={`${streak} day streak`}>
+          <div className="drop-streak flex min-w-16 flex-col items-center rounded-lg px-3 py-2" aria-label={`${streak} day streak`}>
             <Flame className={cn('h-5 w-5', streak > 0 ? 'text-[hsl(var(--drop-accent))]' : 'text-muted-foreground')} />
             <span className="text-lg font-black tabular-nums leading-none">{streak}</span>
             <span className="text-[9px] font-bold uppercase text-muted-foreground">streak</span>
           </div>
         </div>
-        <div className="relative mt-4">
+        <div className="relative mt-5">
           {feed.isLoading ? <Skeleton className="h-12 w-full rounded-xl" /> : myToday ? (
-             <button type="button" onClick={() => navigate(`/finds/${myToday.id}`)} className="flex w-full items-center gap-3 rounded-xl border border-[hsl(var(--drop-accent)/0.25)] bg-[hsl(var(--drop-accent)/0.09)] p-3 text-left">
+             <button type="button" onClick={() => navigate(`/finds/${myToday.id}`)} className="drop-today-status flex w-full items-center gap-3 rounded-xl border p-3 text-left">
                <span className="drop-mini-mark">✓</span>
                <span className="min-w-0 flex-1"><span className="block text-[11px] font-bold uppercase text-muted-foreground">Today's Drop is in</span><span className="block truncate text-sm font-bold">{myToday.title}</span></span>
             </button>
@@ -114,10 +125,10 @@ export default function DailyFindPage() {
         </div>
       </motion.header>
 
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl border border-border/40 bg-muted/30 p-1" role="tablist">
+      <div className="drop-tabs sticky top-0 z-20 mb-5 grid grid-cols-3 gap-1 rounded-xl border p-1.5" role="tablist">
         {TABS.map(t => (
           <button key={t.value} role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
-            className={cn('flex h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-bold transition-all', tab === t.value ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
+            className={cn('relative flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-bold transition-all', tab === t.value ? 'drop-tab-active' : 'text-muted-foreground hover:text-foreground')}>
             <t.icon className="h-4 w-4" /> {t.label}
           </button>
         ))}
@@ -126,19 +137,19 @@ export default function DailyFindPage() {
       {tab === 'club' && (
         feed.isError ? <MemberLoadError message={(feed.error as Error)?.message} onRetry={() => feed.refetch()} />
           : feed.isLoading ? <div className="space-y-3">{[0, 1].map(i => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
-          : <><div className="mb-4 flex items-center justify-between px-1"><p className="text-sm font-bold">{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="text-xs text-muted-foreground">Worth saving</span></div><FeedList finds={recent} empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
+          : <><div className="mb-4 flex items-center justify-between px-1"><p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="drop-live-label text-[10px] font-bold uppercase">Fresh today</span></div><FeedList finds={recent} empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
       )}
 
       {tab === 'calendar' && (
         <div className="space-y-4">
-          <div className="flex gap-1 rounded-full bg-muted/40 p-1 text-sm font-bold">
+           <div className="drop-segmented flex gap-1 rounded-xl border p-1 text-sm font-bold">
             {[true, false].map(v => (
-              <button key={String(v)} type="button" onClick={() => setOnlyMine(v)} className={cn('h-9 flex-1 rounded-full', onlyMine === v ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
+               <button key={String(v)} type="button" onClick={() => setOnlyMine(v)} className={cn('h-10 flex-1 rounded-lg', onlyMine === v ? 'drop-tab-active' : 'text-muted-foreground')}>
                  {v ? 'My collection' : 'Club archive'}
               </button>
             ))}
           </div>
-          <FindCalendar month={month} onMonthChange={setMonth} finds={monthFinds} selectedDay={selectedDay} onSelectDay={setSelectedDay} />
+          <FindCalendar month={month} onMonthChange={setMonth} finds={monthFinds} selectedDay={selectedDay} onSelectDay={day => updateParam('day', day)} />
           {selectedDay && (
             <FeedList finds={dayFinds} empty={`Nothing saved on ${formatDayKey(selectedDay, { month: 'long', day: 'numeric' })}.`} />
           )}
@@ -148,14 +159,14 @@ export default function DailyFindPage() {
       {tab === 'search' && (
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-             <Input value={term} onChange={e => setTerm(e.target.value)} placeholder="Search the collection" className="h-12 pl-9" />
+             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input value={term} onChange={e => updateParam('q', e.target.value)} placeholder="Search the collection" className="drop-search h-13 pl-11" />
           </div>
           {topTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {topTags.map(t => (
-                <button key={t} type="button" onClick={() => setTag(tag === t ? null : t)}
-                  className={cn('h-9 rounded-full border px-3 text-sm font-semibold', tag === t ? 'border-[hsl(var(--gold))] bg-[hsl(var(--gold)/0.14)]' : 'border-border/50 text-muted-foreground')}>
+                 <button key={t} type="button" onClick={() => updateParam('tag', tag === t ? null : t)}
+                   className={cn('h-10 rounded-full border px-4 text-sm font-semibold', tag === t ? 'border-[hsl(var(--drop-accent))] bg-[hsl(var(--drop-accent)/0.14)] text-foreground' : 'border-border/60 bg-[hsl(var(--drop-paper))] text-muted-foreground')}>
                   #{t}
                 </button>
               ))}

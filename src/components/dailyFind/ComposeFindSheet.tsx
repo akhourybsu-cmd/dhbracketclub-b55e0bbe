@@ -44,7 +44,7 @@ export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
   };
 
   return (
-    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Add Today's Drop" description="Leave one thing worth saving in the club collection." mobileOnly={false} className="drop-page sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2">
+    <ChatBottomSheet open={open} onOpenChange={onOpenChange} title="Add Today's Drop" description="Leave one thing worth saving in the club collection." mobileOnly={false} className="drop-page drop-sheet sm:left-1/2 sm:right-auto sm:w-[480px] sm:-translate-x-1/2">
       <div className="space-y-3 px-1">
         <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-border/40 bg-muted/30 p-1" role="radiogroup" aria-label="Drop type">
           {FIND_KINDS.map(k => {
@@ -68,7 +68,7 @@ export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
         {preview ? (
           <div className="relative overflow-hidden rounded-xl">
             <img src={preview} alt="" className="max-h-60 w-full object-cover" />
-            <button type="button" onClick={() => setImage(null)} aria-label="Remove photo" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-background/90">
+            <button type="button" onClick={() => setImage(null)} aria-label="Remove photo" className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background">
               <X className="h-4 w-4" />
             </button>
           </div>
