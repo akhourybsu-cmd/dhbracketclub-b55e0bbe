@@ -81,3 +81,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 53. Rebrand Daily Find as The Drop and redesign the feed, collectible cards, composer, and archive as a modern club bulletin
 - [x] 54. Transform The Drop into a responsive kinetic social feed with persistent navigation and fully opaque menus
 - [x] 55. Tighten The Drop typography and expand the feed into a crisp, edge-to-edge immersive layout
+- [x] 56. Turn The Drop into a one-at-a-time snap feed with safe YouTube/Shorts embeds and image-led article stories

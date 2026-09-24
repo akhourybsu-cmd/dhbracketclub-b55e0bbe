@@ -62,7 +62,7 @@ export function FindReactionBar({ find, compact }: { find: DailyFind; compact?: 
   );
 }
 
-function FindCardInner({ find, index = 0 }: { find: DailyFind; index?: number }) {
+function FindCardInner({ find, index = 0, immersive = false, position, total }: { find: DailyFind; index?: number; immersive?: boolean; position?: number; total?: number }) {
   const [shareOpen, setShareOpen] = useState(false);
   const meta = kindMeta(find.kind);
   const KindIcon = KIND_ICON[find.kind];
@@ -77,22 +77,21 @@ function FindCardInner({ find, index = 0 }: { find: DailyFind; index?: number })
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: Math.min(index, 8) * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -3 }}
-      className={cn('drop-card drop-surface overflow-hidden border-y sm:rounded-xl sm:border', KIND_TONE[find.kind])}
+      whileHover={immersive ? undefined : { y: -3 }}
+      className={cn('drop-card drop-surface overflow-hidden border-y sm:rounded-xl sm:border', immersive && 'drop-snap-card', KIND_TONE[find.kind])}
     >
+      {immersive && position && total && <span className="drop-position absolute right-4 top-5 z-10 text-[11px] font-bold tabular-nums text-muted-foreground">{position} / {total}</span>}
       <Link to={`/finds/${find.id}`} className="block active:opacity-90">
         <header className="flex items-center gap-3 px-4 pb-2 pt-4 sm:px-5">
           <Avatar className="h-10 w-10 border border-border/60"><AvatarImage src={find.profiles?.avatar_url ?? undefined} /><AvatarFallback className="text-[10px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
           <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{name}</p><p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="h-3 w-3" />{formatDayKey(find.find_date, { month: 'short', day: 'numeric' })} · {postedAt}</p></div>
-          {fresh && <span className="drop-fresh-badge">Fresh</span>}
+           {fresh && !immersive && <span className="drop-fresh-badge">Fresh</span>}
         </header>
 
         <div className="px-4 pb-1 pt-2 sm:px-5">
           <span className="drop-kind-tab"><KindIcon className="h-3.5 w-3.5" /> {meta.label}</span>
           <h3 className={cn('drop-card-title mt-3 text-[25px] leading-[1.08] sm:text-[30px]', find.kind === 'learned' && 'drop-thought-title')}>{find.title}</h3>
           {find.note && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/75 line-clamp-4">{find.note}</p>}
-          {find.image_path && <FindPhoto path={find.image_path} className={cn('-mx-4 mt-4 w-[calc(100%+2rem)] border-y border-[hsl(var(--drop-accent)/0.2)] sm:-mx-5 sm:w-[calc(100%+2.5rem)]', find.kind === 'photo' ? 'aspect-[4/5] max-h-[680px]' : 'aspect-[16/10] max-h-96')} />}
-          {find.url && <FindLinkPreview url={find.url} compact className="mt-4" />}
           {find.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {find.tags.map(t => <span key={t} className="text-xs font-semibold text-[hsl(var(--drop-accent))]">#{t}</span>)}
@@ -100,6 +99,9 @@ function FindCardInner({ find, index = 0 }: { find: DailyFind; index?: number })
           )}
         </div>
       </Link>
+
+      {find.image_path && <Link to={`/finds/${find.id}`} className="block"><FindPhoto path={find.image_path} className={cn('mt-3 w-full border-y border-[hsl(var(--drop-accent)/0.2)]', immersive ? 'drop-photo-immersive' : find.kind === 'photo' ? 'aspect-[4/5] max-h-[680px]' : 'aspect-[16/10] max-h-96')} /></Link>}
+      {find.url && <FindLinkPreview url={find.url} compact={!immersive} immersive={immersive} className={cn(immersive ? 'mx-3 mb-2 mt-3 sm:mx-5' : 'mx-4 mt-4 sm:mx-5')} />}
 
        <footer className="flex items-center gap-2 border-t border-border/50 px-4 py-3 sm:px-5">
         <div className="min-w-0 flex-1"><FindReactionBar find={find} compact /></div>

@@ -8,6 +8,7 @@ import { ChatBottomSheet } from '@/components/chat/ChatBottomSheet';
 import { useCreateFind } from '@/hooks/useDailyFinds';
 import { FIND_KINDS, normalizeTags, type FindKind } from '@/lib/dailyFind';
 import { cn } from '@/lib/utils';
+import { isSafeUrl } from '@/lib/linkParser';
 
 interface Props { open: boolean; onOpenChange: (o: boolean) => void; onCreated?: (id: string) => void }
 
@@ -32,7 +33,7 @@ export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
   const reset = () => { setKind('learned'); setTitle(''); setNote(''); setUrl(''); setTags(''); setImage(null); };
   const prompt = FIND_KINDS.find(k => k.value === kind)?.prompt ?? 'What is worth saving today?';
   const KIND_ICON = { learned: Lightbulb, article: BookOpen, photo: Camera } as const;
-  const urlOk = !url.trim() || /^https?:\/\/\S+\.\S+/.test(url.trim());
+  const urlOk = !url.trim() || isSafeUrl(url.trim());
   const canSave = title.trim().length > 0 && urlOk && (kind !== 'photo' || !!image) && !create.isPending;
 
   const submit = () => {
