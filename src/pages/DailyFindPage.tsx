@@ -22,8 +22,13 @@ const TABS: { value: Tab; label: string; icon: typeof Users }[] = [
   { value: 'search', label: 'Search', icon: Search },
 ];
 
-function FeedList({ finds, empty }: { finds: DailyFind[]; empty: string }) {
+function FeedList({ finds, empty, immersive = false }: { finds: DailyFind[]; empty: string; immersive?: boolean }) {
   if (finds.length === 0) return <div className="drop-surface rounded-2xl border border-dashed p-8 text-center"><Bookmark className="mx-auto h-7 w-7 text-[hsl(var(--drop-accent))]" /><p className="mt-3 text-sm font-semibold text-muted-foreground">{empty}</p></div>;
+  if (immersive) return (
+    <div className="drop-feed drop-snap-feed" aria-label="Club Drops">
+      {finds.map((find, index) => <FindCard key={find.id} find={find} index={index} immersive position={index + 1} total={finds.length} />)}
+    </div>
+  );
   const groups: [string, DailyFind[]][] = [];
   for (const f of finds) {
     const last = groups[groups.length - 1];
@@ -138,7 +143,7 @@ export default function DailyFindPage() {
        {tab === 'club' && (
         feed.isError ? <MemberLoadError message={(feed.error as Error)?.message} onRetry={() => feed.refetch()} />
           : feed.isLoading ? <div className="space-y-3">{[0, 1].map(i => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
-          : <><div className="mb-4 flex items-center justify-between px-4 sm:px-6 lg:px-8"><p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="drop-live-label text-[10px] font-bold uppercase">Fresh today</span></div><FeedList finds={recent} empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
+          : <><div className="mb-3 flex items-center justify-between px-4 sm:px-6 lg:px-8"><p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="drop-live-label text-[10px] font-bold uppercase">Swipe to explore</span></div><FeedList finds={recent} immersive empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
       )}
 
       {tab === 'calendar' && (

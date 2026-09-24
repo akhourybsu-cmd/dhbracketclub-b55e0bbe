@@ -6490,18 +6490,41 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 }
 @keyframes drop-pulse { 0%, 100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1); } }
 .drop-card:first-child { animation: drop-settle 460ms var(--ease-app) both; }
+.drop-snap-feed {
+  height: min(760px, calc(100dvh - 11rem)); min-height: 32rem; overflow-y: auto; overscroll-behavior-y: contain;
+  scroll-snap-type: y mandatory; scrollbar-width: none; padding: 0 .75rem 1rem;
+}
+.drop-snap-feed::-webkit-scrollbar { display: none; }
+.drop-snap-card {
+  min-height: calc(100% - .75rem); margin-bottom: .75rem; scroll-snap-align: start; scroll-snap-stop: always;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.drop-snap-card > footer { margin-top: auto; }
+.drop-video-wide { aspect-ratio: 16 / 9; }
+.drop-video-short { aspect-ratio: 9 / 14; max-height: 64dvh; margin-inline: auto; }
+.drop-media-immersive { border: 1px solid hsl(var(--drop-edge)); border-radius: .75rem; }
+.drop-media-scrim { background: linear-gradient(to top, hsl(var(--background) / .92), transparent 58%); }
+.drop-play { background: hsl(var(--drop-accent)); color: hsl(var(--drop-ink)); box-shadow: 0 14px 35px hsl(var(--background) / .45); }
+.drop-article-image { height: clamp(14rem, 38dvh, 28rem); }
+.drop-photo-immersive { height: clamp(17rem, 48dvh, 34rem); }
+.drop-position { letter-spacing: 0; }
 @media (max-width: 639px) {
   .drop-page.member-page { padding-left: 0; padding-right: 0; }
   .drop-card { border-left: 0; border-right: 0; box-shadow: none; }
-  .drop-feed > section + section { border-top: 1px solid hsl(var(--drop-edge) / .7); padding-top: 1.5rem; }
+  .drop-feed:not(.drop-snap-feed) > section + section { border-top: 1px solid hsl(var(--drop-edge) / .7); padding-top: 1.5rem; }
+  .drop-snap-feed { height: calc(100dvh - 10rem); min-height: 30rem; padding-inline: 0; }
+  .drop-snap-card { min-height: 100%; margin-bottom: 0; border-radius: 0; }
+  .drop-video-short { max-height: 54dvh; }
 }
 @media (min-width: 1024px) {
   .drop-page { min-height: 100dvh; }
   .drop-content { padding-bottom: 4rem; }
-  .drop-feed { padding-inline: 2rem; }
+  .drop-feed:not(.drop-snap-feed) { padding-inline: 2rem; }
+  .drop-snap-feed { max-width: 56rem; margin-inline: auto; }
   .drop-card { box-shadow: 0 24px 70px hsl(var(--background) / .28); }
 }
 @media (prefers-reduced-motion: reduce) {
   .drop-card:first-child, .drop-live-label::before { animation: none; }
   .drop-card { transition: none; }
+  .drop-snap-feed { scroll-behavior: auto; }
 }
