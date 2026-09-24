@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFindImageUrl, useToggleFindReaction } from '@/hooks/useDailyFinds';
 import { FIND_REACTIONS, formatDayKey, kindMeta, type DailyFind } from '@/lib/dailyFind';
 import { FindShareSheet } from './FindShareSheet';
+import { FindLinkPreview } from './FindLinkPreview';
 import { toast } from 'sonner';
 
 function domainOf(url: string) {
@@ -95,11 +96,7 @@ function FindCardInner({ find, index = 0 }: { find: DailyFind; index?: number })
         <div className="px-4 pt-3">
           <h3 className="text-[17px] font-extrabold leading-snug tracking-tight">{find.title}</h3>
           {find.note && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground line-clamp-4">{find.note}</p>}
-          {find.url && (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-muted/50 px-2.5 py-1.5 text-xs font-semibold text-foreground/80">
-              <ExternalLink className="h-3.5 w-3.5" /> {domainOf(find.url)}
-            </span>
-          )}
+          {find.url && <FindLinkPreview url={find.url} compact className="mt-3" />}
           {find.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {find.tags.map(t => <span key={t} className="text-xs font-semibold text-[hsl(var(--gold))]">#{t}</span>)}

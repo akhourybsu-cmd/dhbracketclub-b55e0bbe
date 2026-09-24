@@ -11,6 +11,7 @@ import { useClub } from '@/contexts/ClubContext';
 import { useAddFindComment, useDailyFind, useDeleteFind, useDeleteFindComment, useFindComments } from '@/hooks/useDailyFinds';
 import { FindPhoto, FindReactionBar } from '@/components/dailyFind/FindCard';
 import { FindShareSheet } from '@/components/dailyFind/FindShareSheet';
+import { FindLinkPreview } from '@/components/dailyFind/FindLinkPreview';
 import { formatDayKey, kindMeta } from '@/lib/dailyFind';
 
 export default function DailyFindDetailPage() {
@@ -68,11 +69,7 @@ export default function DailyFindDetailPage() {
           </div>
           <h1 className="mt-4 text-2xl font-black leading-tight tracking-tight">{find.title}</h1>
           {find.note && <p className="mt-2 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/85">{find.note}</p>}
-          {find.url && (
-            <a href={find.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 break-all rounded-xl bg-muted/50 p-3 text-sm font-semibold hover:bg-muted">
-              <ExternalLink className="h-4 w-4 flex-shrink-0" /> {find.url}
-            </a>
-          )}
+          {find.url && <FindLinkPreview url={find.url} className="mt-4" />}
           {find.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {find.tags.map(t => <Link key={t} to={`/finds?tab=search`} className="text-sm font-semibold text-[hsl(var(--gold))]">#{t}</Link>)}
