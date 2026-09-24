@@ -172,16 +172,16 @@ export default function DailyFindPage() {
                 </button>
               ))}
             </div>
-       )}
-       </main>
-          {term.trim().length < 2 && !tag
+           )}
+           {term.trim().length < 2 && !tag
             ? <p className="p-6 text-center text-sm text-muted-foreground">Type at least 2 letters or pick a tag.</p>
             : search.isLoading ? <Skeleton className="h-40 rounded-2xl" />
             : <FeedList finds={search.data ?? []} empty="No Drops match." />}
         </div>
-      )}
+       )}
+       </main>
 
-      <ComposeFindSheet open={composeOpen} onOpenChange={setComposeOpen} onCreated={id => navigate(`/finds/${id}`)} />
+       <ComposeFindSheet open={composeOpen} onOpenChange={setComposeOpen} onCreated={id => navigate(`/finds/${id}`)} />
     </div>
   );
 }
