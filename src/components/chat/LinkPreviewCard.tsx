@@ -8,6 +8,8 @@ import { getDraftIdFromUrl } from '@/lib/draftInvite';
 import { DraftInviteCard } from './DraftInviteCard';
 import { getPickemShareTarget } from '@/lib/pickemShare';
 import { PickemShareCard } from './PickemShareCard';
+import { getFindShareTarget } from '@/lib/dailyFind';
+import { DailyFindShareCard } from './DailyFindShareCard';
 
 interface LinkPreviewData {
   title?: string;
@@ -30,6 +32,9 @@ function LinkPreviewCardInner({ link, messageId, authorId, authorName }: LinkPre
   if (draftId) return <DraftInviteCard draftId={draftId} />;
   const pickemTarget = getPickemShareTarget(link.url);
   if (pickemTarget) return <PickemShareCard {...pickemTarget} authorId={authorId} authorName={authorName} />;
+
+  const findId = getFindShareTarget(link.url);
+  if (findId) return <DailyFindShareCard findId={findId} />;
 
   switch (link.contentType) {
     case 'image':
