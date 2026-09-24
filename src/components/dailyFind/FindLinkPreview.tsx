@@ -37,7 +37,7 @@ export function FindLinkPreview({ url, compact, className }: { url: string; comp
       target="_blank"
       rel="noopener noreferrer"
       onClick={e => e.stopPropagation()}
-      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted/60 px-3 text-xs font-bold text-foreground hover:bg-muted"
+      className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[hsl(var(--drop-accent)/0.11)] px-3 text-xs font-bold text-[hsl(var(--drop-accent))] hover:bg-[hsl(var(--drop-accent)/0.18)]"
     >
       Open <ExternalLink className="h-3.5 w-3.5" />
     </a>
@@ -49,7 +49,7 @@ export function FindLinkPreview({ url, compact, className }: { url: string; comp
 
   if (!data) {
     return (
-      <div className={cn('flex items-center gap-2 rounded-xl border border-border/50 bg-muted/30 p-3', className)}>
+       <div className={cn('flex items-center gap-2 rounded-xl border border-[hsl(var(--drop-accent)/0.22)] bg-muted/30 p-3', className)}>
         <Globe className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1 break-all text-sm font-semibold">{host}</span>
         {openButton}
@@ -58,7 +58,7 @@ export function FindLinkPreview({ url, compact, className }: { url: string; comp
   }
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border border-border/50 bg-muted/20', className)}>
+    <div className={cn('overflow-hidden rounded-xl border border-[hsl(var(--drop-accent)/0.22)] bg-muted/20', className)}>
       {data.image_url && (
         <img
           src={data.image_url}
@@ -70,7 +70,7 @@ export function FindLinkPreview({ url, compact, className }: { url: string; comp
         />
       )}
       <div className="space-y-1.5 p-3">
-        <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+         <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--drop-accent))]">
           <Globe className="h-3 w-3" /> {data.site_name || host}
         </p>
         <p className="text-sm font-bold leading-snug">{data.title}</p>
