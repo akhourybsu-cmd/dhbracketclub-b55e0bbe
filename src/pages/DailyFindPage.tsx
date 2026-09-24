@@ -31,10 +31,10 @@ function FeedList({ finds, empty }: { finds: DailyFind[]; empty: string }) {
   }
   let i = 0;
   return (
-    <div className="drop-feed space-y-7">
+    <div className="drop-feed space-y-8">
       {groups.map(([day, list]) => (
         <section key={day}>
-           <h2 className="drop-day-rule mb-3 flex items-center gap-3 px-1 text-[11px] font-bold uppercase text-muted-foreground">
+            <h2 className="drop-day-rule mb-3 flex items-center gap-3 px-4 text-[11px] font-bold uppercase text-muted-foreground sm:px-0">
               <span>{day === localDayKey() ? "Today's collection" : formatDayKey(day, { weekday: 'long', month: 'short', day: 'numeric' })}</span><span className="h-px flex-1 bg-border/60" />
           </h2>
           <div className="space-y-3">{list.map(f => <FindCard key={f.id} find={f} index={i++} />)}</div>
@@ -97,12 +97,12 @@ export default function DailyFindPage() {
   const dayFinds = selectedDay ? monthFinds.filter(f => f.find_date === selectedDay) : [];
 
   return (
-    <div className="drop-page member-page lg:mx-auto lg:max-w-[46rem]">
-      <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="drop-masthead relative mb-3 overflow-hidden px-1 pb-5 pt-2 sm:px-3 sm:pt-4">
+     <div className="drop-page member-page lg:mx-auto lg:max-w-[72rem]">
+       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="drop-masthead relative mb-3 overflow-hidden px-4 pb-5 pt-3 sm:px-6 sm:pt-5 lg:px-8">
         <div className="relative flex items-end justify-between gap-3">
           <div>
             <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[hsl(var(--drop-accent))]"><Bookmark className="h-3.5 w-3.5" /> Daily club collection</p>
-            <h1 className="drop-title mt-1 text-5xl leading-none sm:text-6xl">The Drop</h1>
+             <h1 className="drop-title mt-1 text-[2.65rem] leading-none sm:text-5xl">The Drop</h1>
             <p className="mt-1 text-sm text-muted-foreground">One thing worth sharing today.</p>
           </div>
           <div className="drop-streak flex min-w-16 flex-col items-center rounded-lg px-3 py-2" aria-label={`${streak} day streak`}>
@@ -125,7 +125,7 @@ export default function DailyFindPage() {
         </div>
       </motion.header>
 
-      <div className="drop-tabs sticky top-0 z-20 mb-5 grid grid-cols-3 gap-1 rounded-xl border p-1.5" role="tablist">
+       <div className="drop-tabs sticky top-0 z-20 mb-5 grid grid-cols-3 gap-1 border-y p-1.5 sm:mx-6 sm:rounded-xl sm:border lg:mx-8" role="tablist">
         {TABS.map(t => (
           <button key={t.value} role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
             className={cn('relative flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-bold transition-all', tab === t.value ? 'drop-tab-active' : 'text-muted-foreground hover:text-foreground')}>
@@ -134,14 +134,15 @@ export default function DailyFindPage() {
         ))}
       </div>
 
-      {tab === 'club' && (
+       <main className="drop-content">
+       {tab === 'club' && (
         feed.isError ? <MemberLoadError message={(feed.error as Error)?.message} onRetry={() => feed.refetch()} />
           : feed.isLoading ? <div className="space-y-3">{[0, 1].map(i => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
-          : <><div className="mb-4 flex items-center justify-between px-1"><p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="drop-live-label text-[10px] font-bold uppercase">Fresh today</span></div><FeedList finds={recent} empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
+          : <><div className="mb-4 flex items-center justify-between px-4 sm:px-6 lg:px-8"><p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="drop-live-label text-[10px] font-bold uppercase">Fresh today</span></div><FeedList finds={recent} empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
       )}
 
       {tab === 'calendar' && (
-        <div className="space-y-4">
+         <div className="space-y-4 px-4 sm:px-6 lg:px-8">
            <div className="drop-segmented flex gap-1 rounded-xl border p-1 text-sm font-bold">
             {[true, false].map(v => (
                <button key={String(v)} type="button" onClick={() => setOnlyMine(v)} className={cn('h-10 flex-1 rounded-lg', onlyMine === v ? 'drop-tab-active' : 'text-muted-foreground')}>
@@ -157,7 +158,7 @@ export default function DailyFindPage() {
       )}
 
       {tab === 'search' && (
-        <div className="space-y-4">
+         <div className="space-y-4 px-4 sm:px-6 lg:px-8">
           <div className="relative">
              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={term} onChange={e => updateParam('q', e.target.value)} placeholder="Search the collection" className="drop-search h-13 pl-11" />
@@ -171,15 +172,16 @@ export default function DailyFindPage() {
                 </button>
               ))}
             </div>
-          )}
-          {term.trim().length < 2 && !tag
+           )}
+           {term.trim().length < 2 && !tag
             ? <p className="p-6 text-center text-sm text-muted-foreground">Type at least 2 letters or pick a tag.</p>
             : search.isLoading ? <Skeleton className="h-40 rounded-2xl" />
             : <FeedList finds={search.data ?? []} empty="No Drops match." />}
         </div>
-      )}
+       )}
+       </main>
 
-      <ComposeFindSheet open={composeOpen} onOpenChange={setComposeOpen} onCreated={id => navigate(`/finds/${id}`)} />
+       <ComposeFindSheet open={composeOpen} onOpenChange={setComposeOpen} onCreated={id => navigate(`/finds/${id}`)} />
     </div>
   );
 }
