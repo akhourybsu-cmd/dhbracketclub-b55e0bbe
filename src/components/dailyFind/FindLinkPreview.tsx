@@ -9,6 +9,13 @@ function hostOf(url: string) {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; }
 }
 
+function readableText(value: string | null) {
+  if (!value || typeof document === 'undefined') return value;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = value;
+  return textarea.value;
+}
+
 export function useLinkPreview(url: string | null | undefined) {
   return useQuery({
     queryKey: ['link-preview', url],
@@ -30,6 +37,8 @@ export function useLinkPreview(url: string | null | undefined) {
 export function FindLinkPreview({ url, compact, className }: { url: string; compact?: boolean; className?: string }) {
   const { data, isLoading } = useLinkPreview(url);
   const host = hostOf(url);
+  const title = readableText(data?.title ?? null);
+  const description = readableText(data?.description ?? null);
 
   const openButton = (
     <a
@@ -73,9 +82,9 @@ export function FindLinkPreview({ url, compact, className }: { url: string; comp
          <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-[hsl(var(--drop-accent))]">
           <Globe className="h-3 w-3" /> {data.site_name || host}
         </p>
-        <p className="drop-card-title text-xl leading-tight">{data.title}</p>
-        {data.description && (
-          <p className={cn('text-sm leading-relaxed text-muted-foreground', compact && 'line-clamp-3')}>{data.description}</p>
+        <p className="drop-card-title text-xl leading-tight">{title}</p>
+        {description && (
+          <p className={cn('text-sm leading-relaxed text-muted-foreground', compact && 'line-clamp-3')}>{description}</p>
         )}
         <div className="flex justify-end pt-1">{openButton}</div>
       </div>
