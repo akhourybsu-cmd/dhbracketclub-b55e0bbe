@@ -66,6 +66,11 @@ export default function DailyFindPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [shared, setShared] = useState<{ title: string; url: string; note: string } | null>(null);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('drop-focus-active', isFullscreen);
+    return () => document.documentElement.classList.remove('drop-focus-active');
+  }, [isFullscreen]);
+
   const toggleFullscreen = () => setIsFullscreen(current => !current);
   useEffect(() => {
     const st = params.get('share_title') || '', sx = params.get('share_text') || '', su = params.get('share_url') || '';

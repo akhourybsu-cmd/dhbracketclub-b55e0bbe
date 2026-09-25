@@ -6515,6 +6515,10 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .drop-fullscreen { border-color: hsl(var(--drop-edge)); background: hsl(var(--drop-paper-strong)); color: hsl(var(--foreground)); }
 .drop-focus-mode { width: 100%; max-width: none; height: 100dvh; overflow: hidden; background: hsl(var(--background)); }
 .drop-focus-mode { position: fixed; inset: 0; z-index: 60; }
+html.drop-focus-active,
+html.drop-focus-active body { overflow: hidden; }
+html.drop-focus-active .app-desktop-sidebar { display: none; }
+html.drop-focus-active .app-main-content { padding-left: 0; }
 .drop-focus-mode .drop-reels-header { position: absolute; inset: max(.5rem, env(safe-area-inset-top, 0px)) .65rem auto auto; z-index: 40; width: auto; height: auto; padding: 0; border: 0; background: transparent; }
 .drop-focus-mode .drop-reels-header > div:first-child,
 .drop-focus-mode .drop-reels-header > div:last-child > :last-child { display: none; }
