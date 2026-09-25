@@ -89,4 +89,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 61. Smooth The Drop's vertical scrolling and replace native fullscreen with a warning-free distraction-free view
 
 # NFL Pick’em standings polish
-- [ ] 62. Surface weekly leaders and overall standings clearly, preserve ties, and prevent leaderboard overlap on mobile and desktop
+- [x] 62. Surface weekly leaders and overall standings clearly, preserve ties, and prevent leaderboard overlap on mobile and desktop

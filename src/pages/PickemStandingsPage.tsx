@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Trophy, Crown, Flame } from 'lucide-react';
+import { Trophy, Crown, Flame, CalendarDays } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useActiveSeason, useSeasonStandings } from '@/hooks/usePickem';
+import { useActiveSeason, useSeasonStandings, useSeasonWeeklyLeaders } from '@/hooks/usePickem';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
 import { PickemShell } from '@/components/pickem/PickemShell';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ export default function PickemStandingsPage() {
   const { user } = useAuth();
   const { season } = useActiveSeason();
   const { standings, loading, error, refetch } = useSeasonStandings(season?.id);
+  const { leaders: weeklyLeaders, loading: weeklyLoading } = useSeasonWeeklyLeaders(season?.id);
 
   const me = standings.find((standing) => standing.user_id === user?.id);
   const leader = standings[0];
@@ -28,6 +29,12 @@ export default function PickemStandingsPage() {
   const topTied = (sharedRanks.get(1) ?? 0) > 1;
   const top3 = topTied ? [] : standings.slice(0, 3);
   const rest = topTied ? standings : standings.slice(3);
+  const weeklyGroups = weeklyLeaders.reduce<Array<{ week: (typeof weeklyLeaders)[number]['week']; leaders: typeof weeklyLeaders }>>((groups, row) => {
+    const existing = groups.find(group => group.week.week_number === row.week.week_number);
+    if (existing) existing.leaders.push(row);
+    else groups.push({ week: row.week, leaders: [row] });
+    return groups;
+  }, []);
 
   return (
     <PickemShell>
@@ -69,6 +76,55 @@ export default function PickemStandingsPage() {
         </div>
       )}
 
+      <section className="nfl-standings-section" aria-labelledby="weekly-leaders-heading">
+        <div className="nfl-standings-heading">
+          <div>
+            <p className="pk-section-label">Week by week</p>
+            <h2 id="weekly-leaders-heading">Weekly leaders</h2>
+          </div>
+          <CalendarDays aria-hidden />
+        </div>
+        {weeklyLoading ? (
+          <div className="nfl-week-winners-grid" aria-label="Loading weekly leaders">
+            {[0, 1, 2].map(index => <div key={index} className="h-28 rounded-md skeleton-shimmer" />)}
+          </div>
+        ) : weeklyGroups.length === 0 ? (
+          <p className="nfl-standings-empty">Weekly leaders appear as games are scored.</p>
+        ) : (
+          <div className="nfl-week-winners-grid">
+            {weeklyGroups.map(group => {
+              const tied = group.leaders.length > 1;
+              const names = group.leaders.map(row => row.profiles?.display_name || 'Club member');
+              const score = group.leaders[0];
+              return (
+                <Link key={group.week.week_number} to={`/pickem/week/${group.week.week_number}/results`} className="nfl-week-winner-card">
+                  <div className="nfl-week-winner-topline">
+                    <span>Week {group.week.week_number}</span>
+                    <span className={group.week.status === 'scored' ? 'is-final' : 'is-live'}>
+                      {group.week.status === 'scored' ? 'Final' : 'In progress'}
+                    </span>
+                  </div>
+                  <strong>{tied ? `${group.leaders.length}-way tie` : names[0]}</strong>
+                  {tied && <p>{names.join(' · ')}</p>}
+                  <div className="nfl-week-winner-score">
+                    <span>{score.correct_picks}/{score.total_picks} correct</span>
+                    <span>{Math.round((score.accuracy || 0) * 100)}%</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="nfl-standings-section" aria-labelledby="overall-standings-heading">
+        <div className="nfl-standings-heading">
+          <div>
+            <p className="pk-section-label">Season race</p>
+            <h2 id="overall-standings-heading">Overall standings</h2>
+          </div>
+          <Trophy aria-hidden />
+        </div>
       {loading ? (
         <div className="glass-card p-6">
           <div className="space-y-2">
@@ -99,7 +155,7 @@ export default function PickemStandingsPage() {
 
           {/* Podium — 2-1-3 layout */}
           {top3.length >= 1 && (
-            <div className="grid grid-cols-3 gap-2 items-end">
+            <div className="nfl-season-podium">
               {/* 2nd */}
               <Podium standing={top3[1]} place={2} isMe={top3[1]?.user_id === user?.id} height="h-24" />
               {/* 1st */}
@@ -125,10 +181,10 @@ export default function PickemStandingsPage() {
                       initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: Math.min(i * 0.04, 0.3) }}
                       className={cn(
-                        'flex items-center gap-3 px-4 py-3.5',
+                        'nfl-season-standing-row',
                         isMe && 'bg-gold/5 border-l-2 border-l-gold',
                       )}>
-                      <div className="w-9 text-center text-[12px] font-extrabold tabular-nums text-muted-foreground">
+                      <div className="nfl-season-rank">
                         {rankLabel(s.rank ?? rank)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -138,7 +194,7 @@ export default function PickemStandingsPage() {
                           {s.weekly_wins > 0 && <> · {s.weekly_wins}W</>}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="nfl-season-score">
                         <p className="text-lg font-extrabold tabular-nums leading-none">{s.total_correct}</p>
                         <p className="text-[9px] text-muted-foreground/70 uppercase tracking-wider mt-0.5">correct</p>
                       </div>
@@ -150,6 +206,7 @@ export default function PickemStandingsPage() {
           )}
         </>
       )}
+      </section>
     </div>
     </PickemShell>
   );
@@ -173,7 +230,7 @@ function Podium({ standing, place, isMe, height, featured }: {
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
       transition={{ delay: place === 1 ? 0.1 : place === 2 ? 0.15 : 0.2, type: 'spring', stiffness: 220, damping: 22 }}
       className={cn(
-        'rounded-xl px-2 pt-3 pb-3 flex flex-col items-center justify-end text-center relative overflow-hidden',
+        'nfl-podium-card flex flex-col items-center justify-end text-center relative overflow-hidden',
         height,
         isMe && 'ring-2 ring-gold/50',
       )}
