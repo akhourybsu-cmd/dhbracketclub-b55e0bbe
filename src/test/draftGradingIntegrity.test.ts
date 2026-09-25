@@ -149,4 +149,11 @@ describe('stored draft report integrity', () => {
       results[1],
     ], participants, picks)).toBe(false);
   });
+
+  it('accepts a zero-score result only when that participant has no picks', () => {
+    expect(isCompleteDraftReport([
+      { user_id: 'user-a', rank: 2, total_score: 0, pick_ratings: [] },
+      { ...results[1], rank: 1 },
+    ], participants, [{ id: 'pick-b1', user_id: 'user-b' }])).toBe(true);
+  });
 });

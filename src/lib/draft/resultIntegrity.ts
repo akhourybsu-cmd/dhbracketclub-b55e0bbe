@@ -44,7 +44,7 @@ export function isCompleteDraftReport(
     seenRanks.add(rank);
 
     const total = Number(result.total_score);
-    if (!Number.isFinite(total) || total <= 0) return false;
+    if (!Number.isFinite(total) || total < 0) return false;
     if (!Array.isArray(result.pick_ratings)) return false;
 
     const expectedPickIds = expectedPicksByUser.get(result.user_id);
