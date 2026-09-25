@@ -4,15 +4,30 @@ import { Button } from '@/components/ui/button';
 
 interface CeremonyParticipant { user_id: string; pick_order: number; profiles?: { display_name?: string } | null }
 
-export function PreDraftCeremony({ topic, participants, revealIndex, canManage, busy, onRevealNext, onBegin }: {
+export function PreDraftCeremony({ topic, participants, revealIndex, canManage, busy, onRevealNext, onBegin, projector = false }: {
   topic: string; participants: CeremonyParticipant[]; revealIndex: number; canManage: boolean; busy: boolean;
-  onRevealNext: () => void; onBegin: () => void;
+  onRevealNext: () => void; onBegin: () => void; projector?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
   const ordered = [...participants].sort((a, b) => a.pick_order - b.pick_order);
   const allRevealed = revealIndex >= ordered.length;
-  return <section className="da-ceremony" aria-label="Draft order ceremony">
+  const latest = revealIndex > 0 ? ordered[Math.min(revealIndex, ordered.length) - 1] : null;
+  return <section className={projector ? 'da-ceremony da-ceremony-projector' : 'da-ceremony'} aria-label="Draft order ceremony">
     <div className="da-ceremony-glow" aria-hidden />
+    {projector && latest ? <AnimatePresence mode="wait">
+      <motion.div
+        key={`${latest.user_id}-${revealIndex}`}
+        initial={{ opacity: 0, scale: reduceMotion ? 1 : 1.18, filter: reduceMotion ? 'none' : 'blur(14px)' }}
+        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+        exit={{ opacity: 0, scale: reduceMotion ? 1 : .94 }}
+        transition={{ duration: reduceMotion ? .12 : .75, ease: [0.22, 1, 0.36, 1] }}
+        className="da-ceremony-projector-reveal"
+      >
+        <span className="dl-eyebrow">Draft position</span>
+        <b className="dl-display">#{revealIndex}</b>
+        <strong className="dl-display">{latest.profiles?.display_name || 'Unknown'}</strong>
+      </motion.div>
+    </AnimatePresence> : null}
     <div className="da-ceremony-copy">
       <p className="dl-eyebrow flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" /> Draft night</p>
       <h2 className="dl-display">{topic}</h2>

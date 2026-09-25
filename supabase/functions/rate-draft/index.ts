@@ -222,7 +222,7 @@ serve(async (req) => {
 
     const expectedPicksPerParticipant = Math.max(1, Number(draft.num_rounds) || 1);
     const incompleteParticipant = gradingRoster.find((entry) => entry.picks.length !== expectedPicksPerParticipant);
-    if (incompleteParticipant) {
+    if (incompleteParticipant && !draft.is_live) {
       return new Response(JSON.stringify({
         error: "Draft pick data is incomplete. Refresh the draft before generating its report.",
       }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -392,7 +392,7 @@ Use the rate_draft_results tool to return your structured analysis.`;
                     summary: { type: "string", description: "2-3 sentence summary of this participant's draft performance" },
                     pick_ratings: {
                       type: "array",
-                      minItems: expectedPicksPerParticipant,
+                      minItems: 0,
                       maxItems: expectedPicksPerParticipant,
                       items: {
                         type: "object",
@@ -460,7 +460,10 @@ Use the rate_draft_results tool to return your structured analysis.`;
           null,
           { success: false },
         );
-        if (providerFailures < 3) continue;
+        if (providerFailures < 3) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (2 ** (providerFailures - 1)) + Math.floor(Math.random() * 250)));
+          continue;
+        }
         await failGradingJob?.("Lovable AI network request failed after retries");
         return new Response(JSON.stringify({ error: "AI service is temporarily unavailable. No scores were changed." }), {
           status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -469,25 +472,48 @@ Use the rate_draft_results tool to return your structured analysis.`;
 
       if (!aiResponse.ok) {
         const status = aiResponse.status;
+        const retryAfter = Number(aiResponse.headers.get("retry-after"));
+        let safeMessage = "AI analysis failed";
+        try {
+          const body = await aiResponse.clone().json();
+          safeMessage = typeof body?.message === "string" ? body.message : typeof body?.error === "string" ? body.error : safeMessage;
+        } catch {
+          const text = await aiResponse.clone().text();
+          if (text.trim() && text.length <= 500) safeMessage = text.trim();
+        }
         await logAiUsage(
           { functionName: "rate-draft", model: "google/gemini-2.5-pro", userId, clubId: gate.clubId },
           null,
           { success: false, errorStatus: status },
         );
         if (status === 429) {
+          providerFailures++;
+          if (providerFailures < 3) {
+            const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+              ? Math.min(retryAfter * 1000, 15_000)
+              : 700 * (2 ** (providerFailures - 1)) + Math.floor(Math.random() * 350);
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+            continue;
+          }
           await failGradingJob?.("Lovable AI rate limit exceeded");
-          return new Response(JSON.stringify({ error: "AI rate limit exceeded. Please try again in a moment." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: safeMessage }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         if (status === 402) {
           await failGradingJob?.("Lovable AI credits exhausted");
-          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: safeMessage }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        const errText = await aiResponse.text();
-        console.error("AI error:", status, errText);
+        console.error("AI error:", status, safeMessage);
+        if (status === 403 || status === 404 || status === 400 || status === 401) {
+          await failGradingJob?.(`Lovable AI request failed with status ${status}`);
+          return new Response(JSON.stringify({ error: safeMessage }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
         providerFailures++;
-        if (status >= 500 && providerFailures < 3) continue;
+        if (status >= 500 && providerFailures < 3) {
+          await new Promise(resolve => setTimeout(resolve, 700 * (2 ** (providerFailures - 1)) + Math.floor(Math.random() * 350)));
+          continue;
+        }
         await failGradingJob?.(`Lovable AI request failed with status ${status}`);
-        return new Response(JSON.stringify({ error: "AI analysis failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: safeMessage }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       aiData = await aiResponse.json();
