@@ -121,7 +121,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
 
       {/* Main Content */}
       <main className={cn(
-        "flex-1 min-h-0 overflow-x-hidden min-w-0",
+        "app-main-content flex-1 min-h-0 overflow-x-hidden min-w-0",
         isGameShell ? "pb-0" : "",
         !isImmersiveShell && "lg:pl-64",
         isChatRoute && "overflow-hidden"
@@ -164,7 +164,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
         }
 
         return (
-          <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col z-40 bg-sidebar-background border-r border-border/50" style={{
+          <aside className="app-desktop-sidebar hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col z-40 bg-sidebar-background border-r border-border/50" style={{
             backdropFilter: 'blur(24px) saturate(180%)',
             boxShadow: 'inset -1px 0 0 hsl(var(--foreground) / 0.02)',
           }}>

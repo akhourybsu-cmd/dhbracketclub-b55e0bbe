@@ -86,3 +86,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 58. Clarify The Drop engagement overlay and comments sheet with readable counts, larger controls, and opaque grouped surfaces
 - [x] 59. Remove The Drop slide counter and add a native full-screen feed control
 - [x] 60. Make The Drop full-screen mode distraction-free and add a dedicated, asset-gated Drop button to the mobile bottom navigation
+- [x] 61. Smooth The Drop's vertical scrolling and replace native fullscreen with a warning-free distraction-free view
