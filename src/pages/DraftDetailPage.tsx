@@ -72,6 +72,8 @@ import { DraftBoard } from '@/components/draft/DraftBoard';
 import { useDraftSkips, useLiveClock, useLiveDraftHost } from '@/hooks/useLiveDraft';
 import { LiveHostPanel } from '@/components/draft/live/LiveHostPanel';
 import { LiveClockStrip } from '@/components/draft/live/LiveClockStrip';
+import { PersonalLiveKiosk } from '@/components/draft/live/PersonalLiveKiosk';
+import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import { MakePickSheet } from '@/components/draft/MakePickSheet';
 import { useDraftLastVisit } from '@/hooks/useDraftLastVisit';
 import { PersonalDraftDesk } from '@/components/draft/PersonalDraftDesk';
@@ -230,6 +232,7 @@ export default function DraftDetailPage() {
   const isCreator = draft?.created_by === user?.id;
   const [isAppAdmin, setIsAppAdmin] = useState(false);
   const isParticipant = participants.some(p => p.user_id === user?.id);
+  const { palette: daPalette } = useDraftArenaPalette();
   const canManage = isCreator || isAppAdmin;
 
   /* ── Live draft hosting ──
@@ -1797,6 +1800,45 @@ export default function DraftDetailPage() {
               onApplyCorrection={(t) => { setPickText(t); setText(t); clearSuggestion(); }}
               onDismissSuggestion={clearSuggestion}
               topic={draft.topic}
+            />
+          )}
+          {isLiveDraft && isParticipant && !isPlayoffDraft && (
+            <PersonalLiveKiosk
+              draftTitle={draft.title || draft.topic || 'Live draft'}
+              palette={daPalette}
+              clock={liveClock}
+              pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+              isMyTurn={isMyTurn}
+              picksUntilYou={typeof picksUntilYou === 'number' ? picksUntilYou : null}
+              currentRound={currentRound}
+              numRounds={draft.num_rounds}
+              currentPickNumber={currentPickNumber}
+              totalPicks={participants.length * draft.num_rounds}
+              myPicks={picks.filter(p => p.user_id === user?.id) as any}
+              recentPicks={[...picks].slice(-6).reverse().map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
+              onMakePick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}
+              board={
+                <DraftBoard
+                  participants={participants}
+                  picks={picks}
+                  currentPickNumber={currentPickNumber}
+                  numRounds={draft.num_rounds}
+                  currentUserId={user?.id}
+                  newPickIds={newPickIds}
+                  enrichments={enrichments}
+                  skippedSlots={skippedSlots}
+                />
+              }
+              broadcast={liveHost.settings.broadcast ? <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} /> : undefined}
+              desk={
+                <PersonalDraftDesk
+                  compact
+                  draftId={draftId}
+                  userId={user?.id}
+                  taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
+                  onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); setShowPickSheet(true); } : undefined}
+                />
+              }
             />
           )}
           {isParticipant && (

@@ -81,7 +81,7 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
   }, [open]);
 
   const enterFullscreen = async () => {
-    try { await rootRef.current?.requestFullscreen?.(); } catch { /* stays in-app full screen */ }
+    try { await document.documentElement.requestFullscreen?.(); } catch { /* stays in-app full screen */ }
     void requestWake();
   };
   const exitFullscreen = async () => {
