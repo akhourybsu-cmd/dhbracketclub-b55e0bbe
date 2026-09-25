@@ -95,3 +95,7 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 63. Add projector controls for the dramatic pick-order reveal and full post-draft report broadcast
 - [x] 64. Make AI draft reports support completed live drafts containing passed picks
 - [x] 65. Keep organizer controls and projector launch inside the private kiosk; add palette switching to player and projector kiosks
+
+# The Drop social opening screen
+- [x] 66. Replace the segmented opening controls with an editorial social masthead and clean destination navigation
+- [x] 67. Enforce one-Drop-at-a-time snapping for wheel, trackpad, and touch scrolling
