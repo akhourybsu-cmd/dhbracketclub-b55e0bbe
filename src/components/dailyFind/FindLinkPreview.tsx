@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Globe, Play } from 'lucide-react';
+import { ExternalLink, Globe, Loader2, Play, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { classifyUrl, isSafeUrl } from '@/lib/linkParser';
@@ -41,6 +41,7 @@ function YouTubeDropEmbed({ url, embedId, preview, immersive, className }: {
   url: string; embedId: string; preview: Preview | null | undefined; immersive?: boolean; className?: string;
 }) {
   const [playing, setPlaying] = useState(false);
+  const [failed, setFailed] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const isShort = /youtube\.com\/shorts\//i.test(url);
 
@@ -57,20 +58,21 @@ function YouTubeDropEmbed({ url, embedId, preview, immersive, className }: {
   const poster = preview?.image_url || `https://img.youtube.com/vi/${embedId}/hqdefault.jpg`;
   return (
     <div ref={rootRef} className={cn('drop-video relative overflow-hidden bg-muted', isShort ? 'drop-video-short' : 'drop-video-wide', immersive && 'drop-media-immersive', className)} onClick={e => e.stopPropagation()}>
-      {playing ? (
+      {playing && !failed ? (
         <iframe
           src={`https://www.youtube-nocookie.com/embed/${embedId}?autoplay=1&rel=0&playsinline=1`}
           title={readableText(preview?.title ?? null) || 'YouTube video'}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           className="absolute inset-0 h-full w-full"
+          onError={() => setFailed(true)}
         />
       ) : (
         <>
           <img src={poster} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
           <div className="drop-media-scrim absolute inset-0" />
-          <Button type="button" size="icon" onClick={() => setPlaying(true)} className="drop-play absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-label="Play video">
-            <Play className="h-7 w-7 fill-current" />
+          <Button type="button" size="icon" onClick={() => { setFailed(false); setPlaying(true); }} className="drop-play absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-label={failed ? 'Retry video' : 'Play video'}>
+            {failed ? <RotateCcw className="h-6 w-6" /> : <Play className="h-7 w-7 fill-current" />}
           </Button>
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
             <p className="text-xs font-bold uppercase text-primary-foreground/80">YouTube</p>
@@ -102,6 +104,8 @@ export function socialEmbed(url: string): Social | null {
 
 function SocialDropEmbed({ url, social, preview, immersive, className }: { url: string; social: Social; preview: Preview | null | undefined; immersive?: boolean; className?: string }) {
   const [playing, setPlaying] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = rootRef.current;
@@ -113,14 +117,17 @@ function SocialDropEmbed({ url, social, preview, immersive, className }: { url: 
   const title = readableText(preview?.title ?? null);
   return (
     <div ref={rootRef} className={cn('drop-video relative overflow-hidden bg-muted', social.tall ? 'drop-video-short' : 'drop-video-wide', immersive && 'drop-media-immersive', className)} onClick={e => e.stopPropagation()}>
-      {playing ? (
-        <iframe src={social.src} title={title || `${social.provider} video`} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 h-full w-full border-0 bg-background" />
+      {playing && !failed ? (
+        <>
+          {!loaded && <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-[hsl(var(--drop-paper))]"><Loader2 className="h-6 w-6 animate-spin text-[hsl(var(--drop-accent))]" /><span className="text-xs font-bold text-muted-foreground">Loading {social.provider}</span></div>}
+          <iframe src={social.src} title={title || `${social.provider} video`} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 h-full w-full border-0 bg-background" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
+        </>
       ) : (
         <>
           {preview?.image_url && <img src={preview.image_url} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
           <div className="drop-media-scrim absolute inset-0" />
-          <Button type="button" size="icon" onClick={() => setPlaying(true)} className="drop-play absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-label={`Play ${social.provider} video`}>
-            <Play className="h-7 w-7 fill-current" />
+          <Button type="button" size="icon" onClick={() => { setFailed(false); setLoaded(false); setPlaying(true); }} className="drop-play absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-label={failed ? `Retry ${social.provider} video` : `Play ${social.provider} video`}>
+            {failed ? <RotateCcw className="h-6 w-6" /> : <Play className="h-7 w-7 fill-current" />}
           </Button>
           <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
             <p className="text-xs font-bold uppercase text-primary-foreground/80">{social.provider}</p>

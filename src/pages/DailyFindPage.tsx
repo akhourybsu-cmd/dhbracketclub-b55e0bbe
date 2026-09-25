@@ -113,13 +113,13 @@ export default function DailyFindPage() {
   const dayFinds = selectedDay ? monthFinds.filter(f => f.find_date === selectedDay) : [];
 
   return (
-     <div className="drop-page member-page lg:mx-auto lg:max-w-[72rem]">
-       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="drop-masthead relative mb-3 overflow-hidden px-4 pb-5 pt-3 sm:px-6 sm:pt-5 lg:px-8">
+     <div className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page')}>
+       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn('drop-masthead relative overflow-hidden px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-header' : 'mb-3 pb-5 pt-3 sm:pt-5')}>
         <div className="relative flex items-end justify-between gap-3">
           <div>
-            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[hsl(var(--drop-accent))]"><Bookmark className="h-3.5 w-3.5" /> Daily club collection</p>
-             <h1 className="drop-title mt-1 text-[2.65rem] leading-none sm:text-5xl">The Drop</h1>
-            <p className="mt-1 text-sm text-muted-foreground">One thing worth sharing today.</p>
+             {tab !== 'club' && <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[hsl(var(--drop-accent))]"><Bookmark className="h-3.5 w-3.5" /> Daily club collection</p>}
+              <h1 className={cn('drop-title leading-none', tab === 'club' ? 'text-2xl' : 'mt-1 text-[2.65rem] sm:text-5xl')}>The Drop</h1>
+             {tab !== 'club' && <p className="mt-1 text-sm text-muted-foreground">One thing worth sharing today.</p>}
           </div>
           <div className="drop-streak flex min-w-16 flex-col items-center rounded-lg px-3 py-2" aria-label={`${streak} day streak`}>
             <Flame className={cn('h-5 w-5', streak > 0 ? 'text-[hsl(var(--drop-accent))]' : 'text-muted-foreground')} />
@@ -127,16 +127,16 @@ export default function DailyFindPage() {
             <span className="text-[9px] font-bold uppercase text-muted-foreground">streak</span>
           </div>
         </div>
-        <div className="relative mt-5">
+         <div className={cn('relative', tab === 'club' ? 'ml-auto w-auto' : 'mt-5')}>
           {feed.isLoading ? <Skeleton className="h-12 w-full rounded-xl" /> : (
             <motion.div whileTap={{ scale: 0.98 }}>
-               <Button onClick={() => setComposeOpen(true)} className="drop-primary h-12 w-full text-base font-bold"><Plus /> {myToday ? 'Add another Drop' : "Add Today's Drop"}</Button>
+                <Button onClick={() => setComposeOpen(true)} size={tab === 'club' ? 'icon' : 'default'} className={cn('drop-primary font-bold', tab === 'club' ? 'h-11 w-11 rounded-full' : 'h-12 w-full text-base')} aria-label="Add a Drop"><Plus /> {tab !== 'club' && (myToday ? 'Add another Drop' : "Add Today's Drop")}</Button>
             </motion.div>
           )}
         </div>
       </motion.header>
 
-       <div className="drop-tabs sticky top-0 z-20 mb-5 grid grid-cols-3 gap-1 border-y p-1.5 sm:mx-6 sm:rounded-xl sm:border lg:mx-8" role="tablist">
+        <div className={cn('drop-tabs sticky top-0 z-20 grid grid-cols-3 gap-1 border-y p-1.5 sm:mx-6 sm:rounded-xl sm:border lg:mx-8', tab === 'club' ? 'drop-reels-tabs' : 'mb-5')} role="tablist">
         {TABS.map(t => (
           <button key={t.value} role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
             className={cn('relative flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-bold transition-all', tab === t.value ? 'drop-tab-active' : 'text-muted-foreground hover:text-foreground')}>
@@ -149,7 +149,7 @@ export default function DailyFindPage() {
        {tab === 'club' && (
         feed.isError ? <MemberLoadError message={(feed.error as Error)?.message} onRetry={() => feed.refetch()} />
           : feed.isLoading ? <div className="space-y-3">{[0, 1].map(i => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
-          : <><div className="mb-3 flex items-center justify-between px-4 sm:px-6 lg:px-8"><p className="flex items-center gap-2 text-sm font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} {posters === 1 ? 'member has' : 'members have'} dropped today</p><span className="drop-live-label text-[10px] font-bold uppercase">Swipe to explore</span></div><FeedList finds={recent} immersive empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
+          : <><div className="drop-reels-status flex items-center justify-between px-4 sm:px-6 lg:px-8"><p className="flex items-center gap-2 text-xs font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} today</p><span className="drop-live-label text-[10px] font-bold uppercase">Swipe up</span></div><FeedList finds={recent} immersive empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
       )}
 
       {tab === 'calendar' && (
