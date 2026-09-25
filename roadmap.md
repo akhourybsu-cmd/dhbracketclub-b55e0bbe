@@ -82,3 +82,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 54. Transform The Drop into a responsive kinetic social feed with persistent navigation and fully opaque menus
 - [x] 55. Tighten The Drop typography and expand the feed into a crisp, edge-to-edge immersive layout
 - [x] 56. Turn The Drop into a one-at-a-time snap feed with safe YouTube/Shorts embeds and image-led article stories
+- [x] 57. Rebuild The Drop as a full-screen Reels-style feed with an action rail, in-feed comments, and resilient social-video embeds
