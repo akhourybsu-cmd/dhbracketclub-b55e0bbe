@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
-import { isMobilePrimaryActive, MOBILE_PRIMARY_NAV } from '@/lib/appNavigation';
+import { isMobilePrimaryActive, MOBILE_PRIMARY_NAV, type AppNavItem } from '@/lib/appNavigation';
 
 /**
  * Persistent mobile bottom tab bar — one-tap access to the core sections with
@@ -10,7 +10,7 @@ import { isMobilePrimaryActive, MOBILE_PRIMARY_NAV } from '@/lib/appNavigation';
  * Hidden on desktop (sidebar takes over) and inside full-screen shells
  * (chat / game modes), which AppLayout gates via `showMobileHeader`.
  */
-export function BottomTabBar({ unreadChatCount = 0 }: { unreadChatCount?: number }) {
+export function BottomTabBar({ unreadChatCount = 0, items = MOBILE_PRIMARY_NAV }: { unreadChatCount?: number; items?: AppNavItem[] }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { play } = useSoundEffect();
@@ -35,7 +35,7 @@ export function BottomTabBar({ unreadChatCount = 0 }: { unreadChatCount?: number
       aria-label="Primary"
     >
       <div className="flex items-stretch">
-        {MOBILE_PRIMARY_NAV.map(tab => {
+        {items.map(tab => {
           const active = isMobilePrimaryActive(pathname, tab.path);
           const Icon = tab.icon;
           const badge = tab.path === '/chat' ? unreadChatCount : 0;
@@ -47,7 +47,7 @@ export function BottomTabBar({ unreadChatCount = 0 }: { unreadChatCount?: number
               aria-current={active ? 'page' : undefined}
               className="relative flex-1 flex flex-col items-center justify-center gap-0.5 h-[58px] min-w-0 touch-manipulation active:scale-[0.94] transition-transform duration-100"
             >
-              <div className="relative flex items-center justify-center w-12 h-7">
+              <div className="relative flex items-center justify-center w-10 h-7">
                 {active && (
                   <motion.div
                     layoutId="bottomTabGlow"

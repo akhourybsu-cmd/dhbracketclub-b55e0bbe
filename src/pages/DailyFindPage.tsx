@@ -73,14 +73,16 @@ export default function DailyFindPage() {
   }, []);
 
   const toggleFullscreen = async () => {
+    if (isFullscreen) {
+      setIsFullscreen(false);
+      if (document.fullscreenElement) await document.exitFullscreen();
+      return;
+    }
+    setIsFullscreen(true);
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        return;
-      }
       await pageRef.current?.requestFullscreen();
     } catch {
-      // Browsers that do not support the Fullscreen API keep the normal feed available.
+      // Keep the distraction-free in-app mode when native fullscreen is unavailable.
     }
   };
   useEffect(() => {
@@ -132,7 +134,7 @@ export default function DailyFindPage() {
   const dayFinds = selectedDay ? monthFinds.filter(f => f.find_date === selectedDay) : [];
 
   return (
-     <div ref={pageRef} className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page')}>
+     <div ref={pageRef} className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page', isFullscreen && 'drop-focus-mode')}>
        <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn('drop-masthead relative overflow-hidden px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-header' : 'mb-3 pb-5 pt-3 sm:pt-5')}>
         <div className="relative flex items-end justify-between gap-3">
           <div>

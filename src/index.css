@@ -6512,8 +6512,17 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .drop-article-image { height: clamp(14rem, 38dvh, 28rem); }
 .drop-photo-immersive { height: 100%; min-height: 100%; margin-top: 0; border: 0; }
 .drop-fullscreen { border-color: hsl(var(--drop-edge)); background: hsl(var(--drop-paper-strong)); color: hsl(var(--foreground)); }
-.drop-page:fullscreen { width: 100%; max-width: none; height: 100dvh; overflow: hidden; background: hsl(var(--background)); }
-.drop-page:fullscreen .drop-snap-feed { height: calc(100dvh - 8.75rem - env(safe-area-inset-top, 0px)); max-width: none; border-radius: 0; }
+.drop-page:fullscreen,
+.drop-focus-mode { width: 100%; max-width: none; height: 100dvh; overflow: hidden; background: hsl(var(--background)); }
+.drop-focus-mode:not(:fullscreen) { position: fixed; inset: 0; z-index: 60; }
+.drop-focus-mode .drop-reels-header { position: absolute; inset: max(.5rem, env(safe-area-inset-top, 0px)) .65rem auto auto; z-index: 40; width: auto; height: auto; padding: 0; border: 0; background: transparent; }
+.drop-focus-mode .drop-reels-header > div:first-child,
+.drop-focus-mode .drop-reels-header > div:last-child > :last-child { display: none; }
+.drop-focus-mode .drop-fullscreen { background: hsl(var(--drop-paper) / .96); box-shadow: 0 8px 24px hsl(var(--background) / .45); }
+.drop-focus-mode .drop-reels-tabs,
+.drop-focus-mode .drop-reels-status { display: none; }
+.drop-focus-mode .drop-content { height: 100dvh; padding: 0; }
+.drop-focus-mode .drop-snap-feed { width: 100%; max-width: none; height: 100dvh; min-height: 100dvh; margin: 0; border-radius: 0; }
 .drop-reels-header { height: 3.75rem; display: flex; align-items: center; border-bottom: 0; }
 .drop-reels-header > div:first-child { width: 100%; align-items: center; }
 .drop-reels-header .drop-streak { display: none; }
