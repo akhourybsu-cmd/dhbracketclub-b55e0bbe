@@ -48,7 +48,7 @@ export function isCompleteDraftReport(
     if (!Array.isArray(result.pick_ratings)) return false;
 
     const expectedPickIds = expectedPicksByUser.get(result.user_id);
-    if (!expectedPickIds?.size || result.pick_ratings.length !== expectedPickIds.size) return false;
+    if (!expectedPickIds || result.pick_ratings.length !== expectedPickIds.size) return false;
 
     const seenPicks = new Set<string>();
     let calculatedTotal = 0;
@@ -62,6 +62,7 @@ export function isCompleteDraftReport(
       calculatedTotal += rating.score;
     }
 
+    if (expectedPickIds.size === 0 ? total !== 0 : total <= 0) return false;
     if (Math.abs(calculatedTotal - total) > 0.051) return false;
   }
 

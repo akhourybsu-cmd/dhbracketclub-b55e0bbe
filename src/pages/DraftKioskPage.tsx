@@ -29,6 +29,15 @@ interface KioskPick {
   picked_at: string;
 }
 
+interface KioskDraftResult {
+  id: string;
+  user_id: string;
+  rank: number;
+  total_score: number;
+  summary?: string | null;
+  pick_ratings?: Array<{ pick_id: string; pick_text: string; score: number; explanation: string }> | null;
+}
+
 type RevealPhase = 'locked' | 'confirmed' | 'reveal' | 'landing';
 interface PickReveal {
   pick: KioskPick;
@@ -58,7 +67,7 @@ export default function DraftKioskPage() {
   const [draft, setDraft] = useState<any>(null);
   const [participants, setParticipants] = useState<KioskParticipant[]>([]);
   const [picks, setPicks] = useState<KioskPick[]>([]);
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<KioskDraftResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -97,7 +106,7 @@ export default function DraftKioskPage() {
     setDraft(d);
     setParticipants((p ?? []) as any);
     setPicks((pk ?? []) as any);
-    setResults((report ?? []) as any[]);
+    setResults((report ?? []) as KioskDraftResult[]);
     void refetchSkips();
     setLoading(false);
   }, [draftId, refetchSkips]);

@@ -221,6 +221,7 @@ serve(async (req) => {
     });
 
     const expectedPicksPerParticipant = Math.max(1, Number(draft.num_rounds) || 1);
+    const maxActualPicks = Math.max(...gradingRoster.map((entry) => entry.picks.length));
     const incompleteParticipant = gradingRoster.find((entry) => entry.picks.length !== expectedPicksPerParticipant);
     if (incompleteParticipant && !draft.is_live) {
       return new Response(JSON.stringify({
@@ -393,7 +394,7 @@ Use the rate_draft_results tool to return your structured analysis.`;
                     pick_ratings: {
                       type: "array",
                       minItems: 0,
-                      maxItems: expectedPicksPerParticipant,
+                      maxItems: maxActualPicks,
                       items: {
                         type: "object",
                         properties: {
