@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Bookmark, CalendarDays, Flame, Maximize, Minimize, Plus, Search, Sparkles, Users } from 'lucide-react';
@@ -64,27 +64,9 @@ export default function DailyFindPage() {
   };
   const [composeOpen, setComposeOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const pageRef = useRef<HTMLDivElement>(null);
   const [shared, setShared] = useState<{ title: string; url: string; note: string } | null>(null);
-  useEffect(() => {
-    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === pageRef.current);
-    document.addEventListener('fullscreenchange', syncFullscreen);
-    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
-  }, []);
 
-  const toggleFullscreen = async () => {
-    if (isFullscreen) {
-      setIsFullscreen(false);
-      if (document.fullscreenElement) await document.exitFullscreen();
-      return;
-    }
-    setIsFullscreen(true);
-    try {
-      await pageRef.current?.requestFullscreen();
-    } catch {
-      // Keep the distraction-free in-app mode when native fullscreen is unavailable.
-    }
-  };
+  const toggleFullscreen = () => setIsFullscreen(current => !current);
   useEffect(() => {
     const st = params.get('share_title') || '', sx = params.get('share_text') || '', su = params.get('share_url') || '';
     if (!st && !sx && !su) return;
@@ -134,7 +116,7 @@ export default function DailyFindPage() {
   const dayFinds = selectedDay ? monthFinds.filter(f => f.find_date === selectedDay) : [];
 
   return (
-     <div ref={pageRef} className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page', isFullscreen && 'drop-focus-mode')}>
+     <div className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page', isFullscreen && 'drop-focus-mode')}>
        <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn('drop-masthead relative overflow-hidden px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-header' : 'mb-3 pb-5 pt-3 sm:pt-5')}>
         <div className="relative flex items-end justify-between gap-3">
           <div>
