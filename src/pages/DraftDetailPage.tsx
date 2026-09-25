@@ -1806,6 +1806,7 @@ export default function DraftDetailPage() {
             <PersonalLiveKiosk
               draftTitle={draft.title || draft.topic || 'Live draft'}
               palette={daPalette}
+              projectorPath={canManage ? `/drafts/${draftId}/kiosk` : undefined}
               clock={liveClock}
               pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
               isMyTurn={isMyTurn}
@@ -1830,6 +1831,38 @@ export default function DraftDetailPage() {
                 />
               }
               broadcast={liveHost.settings.broadcast ? <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} /> : undefined}
+              hostControls={canManage ? (
+                <LiveHostPanel
+                  draftId={draftId!}
+                  clock={liveClock}
+                  settings={liveHost.settings}
+                  busy={liveHost.busy}
+                  pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+                  onDeckName={
+                    participants.length > 0
+                      ? [...participants].sort((a, b) => a.pick_order - b.pick_order)[
+                          (() => {
+                            const participantCount = participants.length;
+                            const slot = consumedSlots + 1;
+                            const round = Math.floor(slot / participantCount);
+                            const position = slot % participantCount;
+                            return round % 2 === 0 ? position : participantCount - 1 - position;
+                          })()
+                        ]?.profiles?.display_name || undefined
+                      : undefined
+                  }
+                  kioskCode={(draft as any)?.kiosk_code ?? null}
+                  slotsLeft={Math.max(0, participants.length * draft.num_rounds - consumedSlots)}
+                  onStartClock={liveHost.startClock}
+                  onStopClock={liveHost.stopClock}
+                  onPause={liveHost.pause}
+                  onResume={liveHost.resume}
+                  onAddTime={liveHost.addTime}
+                  onSkip={liveHost.skipCurrentPick}
+                  onSaveSettings={liveHost.saveSettings}
+                  onEnsureKioskCode={liveHost.ensureKioskCode}
+                />
+              ) : undefined}
               desk={
                 <PersonalDraftDesk
                   compact

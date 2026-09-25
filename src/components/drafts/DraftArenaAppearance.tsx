@@ -21,7 +21,7 @@ export function DraftArenaAppearance() {
           <Palette className="h-[18px] w-[18px]" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="da-appearance-panel w-[min(19rem,calc(100vw-1rem))] p-2.5">
+      <PopoverContent align="end" sideOffset={8} className="da-appearance-panel z-[90] w-[min(19rem,calc(100vw-1rem))] p-2.5">
         <div className="px-1.5 pb-2">
           <p className="dl-display text-sm font-bold">Arena palette</p>
           <p className="text-[11px] text-muted-foreground">Your choice works in light and dark mode.</p>

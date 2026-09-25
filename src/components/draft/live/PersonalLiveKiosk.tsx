@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Maximize2, Minimize2, MonitorSmartphone, Sparkles, X } from 'lucide-react';
+import { Maximize2, Minimize2, MonitorPlay, MonitorSmartphone, Sparkles, X } from 'lucide-react';
 import { LiveClockDial } from './LiveClockDial';
 import { formatClock, type LiveClockState } from '@/lib/draft/liveDraft';
+import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
 
 interface KioskPick {
   id: string;
@@ -30,6 +31,7 @@ interface PersonalLiveKioskProps {
   broadcast?: ReactNode;
   hostControls?: ReactNode;
   palette?: string;
+  projectorPath?: string;
 }
 
 type WakeLockHandle = { release: () => Promise<void> };
@@ -131,6 +133,19 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
           <h2 className="dl-display text-base font-black truncate">{props.draftTitle}</h2>
         </div>
         <div className="flex items-center gap-1.5">
+          {props.projectorPath && (
+            <a
+              href={props.projectorPath}
+              target="_blank"
+              rel="noreferrer"
+              className="da-pk-icon btn-press"
+              aria-label="Open projector"
+              title="Open projector"
+            >
+              <MonitorPlay className="w-5 h-5" />
+            </a>
+          )}
+          <DraftArenaAppearance />
           <button
             type="button"
             className="da-pk-icon btn-press"

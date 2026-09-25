@@ -13,6 +13,7 @@ import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
 import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
 import { KioskDraftReport } from '@/components/draft/live/KioskDraftReport';
+import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
 
 interface KioskParticipant {
   user_id: string;
@@ -298,6 +299,7 @@ export default function DraftKioskPage() {
               <p className="da-kiosk-round dl-display tracking-[0.18em]">{draft.kiosk_code}</p>
             </div>
           )}
+          <DraftArenaAppearance />
           <button type="button" onClick={toggleMute} className="da-kiosk-btn" aria-label={muted ? 'Unmute' : 'Mute'}>
             {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
