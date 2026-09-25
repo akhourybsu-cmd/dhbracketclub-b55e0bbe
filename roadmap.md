@@ -87,3 +87,6 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 59. Remove The Drop slide counter and add a native full-screen feed control
 - [x] 60. Make The Drop full-screen mode distraction-free and add a dedicated, asset-gated Drop button to the mobile bottom navigation
 - [x] 61. Smooth The Drop's vertical scrolling and replace native fullscreen with a warning-free distraction-free view
+
+# NFL Pick’em standings polish
+- [x] 62. Surface weekly leaders and overall standings clearly, preserve ties, and prevent leaderboard overlap on mobile and desktop

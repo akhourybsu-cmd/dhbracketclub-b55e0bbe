@@ -31,6 +31,11 @@ export default function PickemWeekResultsPage() {
 
   const meStanding = standings.find((s) => s.user_id === user?.id);
   const myRank = meStanding?.rank ?? null;
+  const rankCounts = new Map<number, number>();
+  standings.forEach(standing => {
+    if (standing.rank != null) rankCounts.set(standing.rank, (rankCounts.get(standing.rank) ?? 0) + 1);
+  });
+  const rankLabel = (rank: number) => `${(rankCounts.get(rank) ?? 0) > 1 ? 'T-' : ''}${rank}`;
   const podiumed = allFinal && week?.status === 'scored' && myRank !== null && myRank >= 1 && myRank <= 3;
 
   // Trigger confetti once per session per week if user is in top 3
@@ -61,9 +66,9 @@ export default function PickemWeekResultsPage() {
             <span className="text-[36px] font-extrabold tabular-nums leading-none text-gold drop-shadow-[0_2px_8px_rgba(45,95,55,0.5)]">{correctCount}</span>
             <span className="text-[14px] font-extrabold text-white/70 tabular-nums">/ {totalScored || picks.length}</span>
             <span className="text-[12px] text-white/65 ml-2">({accuracy}%)</span>
-            {myRank && (
+            {myRank != null && (
               <span className="ml-auto text-[12px] font-extrabold text-white/85">
-                {allFinal ? 'Rank' : 'Live rank'} <span className="text-gold tabular-nums">#{myRank}</span>
+                {allFinal ? 'Rank' : 'Live rank'} <span className="text-gold tabular-nums">{rankLabel(myRank)}</span>
               </span>
             )}
           </div>
@@ -143,12 +148,12 @@ export default function PickemWeekResultsPage() {
                   key={s.id}
                   initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: Math.min(i * 0.04, 0.3) }}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3',
+                   className={cn(
+                     'nfl-week-standing-row',
                     isMe && 'bg-gold/5 border-l-2 border-l-gold',
                   )}>
-                  <div className="w-7 text-center text-[12px] font-extrabold tabular-nums">
-                    {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : <span className="text-muted-foreground">#{rank}</span>}
+                   <div className="nfl-week-standing-rank">
+                     {(rankCounts.get(rank) ?? 0) === 1 && rank === 1 ? '🥇' : (rankCounts.get(rank) ?? 0) === 1 && rank === 2 ? '🥈' : (rankCounts.get(rank) ?? 0) === 1 && rank === 3 ? '🥉' : <span className="text-muted-foreground">{rankLabel(rank)}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-extrabold truncate">{(s.profiles as any)?.display_name ?? 'Unknown'}</p>
@@ -157,7 +162,7 @@ export default function PickemWeekResultsPage() {
                       {s.tiebreak_delta != null && <> · TB ±{s.tiebreak_delta}</>}
                     </p>
                   </div>
-                  <div className="text-base font-extrabold tabular-nums">{s.correct_picks}</div>
+                   <div className="nfl-week-standing-score"><strong>{s.correct_picks}</strong><span>correct</span></div>
                 </motion.div>
               );
             })}

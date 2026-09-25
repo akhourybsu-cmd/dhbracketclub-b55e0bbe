@@ -8,7 +8,7 @@ import { format, differenceInDays } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   useActiveSeason, useCurrentWeek, useWeekGames, useMyWeekPicks,
-  useSeasonStandings, useSeasonWeeks, deriveWeekStatus, useWeekLock, usePickemAdmin,
+  useSeasonStandings, useSeasonWeeks, useSeasonWeeklyLeaders, deriveWeekStatus, useWeekLock, usePickemAdmin,
 } from '@/hooks/usePickem';
 import { WeekStatusPill } from '@/components/pickem/WeekStatusPill';
 import { TurfBackdrop } from '@/components/pickem/TurfBackdrop';
@@ -53,6 +53,7 @@ export default function PickemHomePage() {
   const { picks } = useMyWeekPicks(week?.id);
   const { weeks } = useSeasonWeeks(season?.id);
   const { standings } = useSeasonStandings(season?.id);
+  const { leaders: weeklyLeaders } = useSeasonWeeklyLeaders(season?.id);
   const { isAdmin } = usePickemAdmin();
 
   const me = standings.find((s) => s.user_id === user?.id);
@@ -62,6 +63,7 @@ export default function PickemHomePage() {
   const { lockAt, locked: weekLocked, now } = useWeekLock(games, season);
   const weekStatus = week ? (totalGames > 0 ? deriveWeekStatus(games, week.status, now) : week.status) : 'upcoming';
   const recentScored = weeks.filter((w) => w.status === 'scored').slice(-3).reverse();
+  const leadersForWeek = (weekId: string) => weeklyLeaders.filter(leader => leader.week_id === weekId);
 
   const isPreseasonInaugural = season && season.status === 'upcoming' && totalGames === 0;
   const daysToKickoff = season ? differenceInDays(new Date(season.starts_at), new Date()) : 0;
@@ -261,25 +263,33 @@ export default function PickemHomePage() {
           <div className="pk-broadcast-divider" aria-hidden />
           <p className="pk-section-label mb-2 px-0.5">Recent Results</p>
           <div className="space-y-1.5">
-            {recentScored.map((w, i) => (
+            {recentScored.map((w, i) => {
+              const leaders = leadersForWeek(w.id);
+              const winnerLabel = leaders.length > 1
+                ? `${leaders.length}-way tie: ${leaders.map(leader => leader.profiles?.display_name || 'Club member').join(', ')}`
+                : leaders[0]?.profiles?.display_name || 'Results available';
+              const winningScore = leaders[0] ? `${leaders[0].correct_picks}/${leaders[0].total_picks}` : null;
+              return (
               <motion.div key={w.id}
                 initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.05 }}>
                 <Link to={`/pickem/week/${w.week_number}/results`}>
-                  <div className="glass-card p-3 flex items-center gap-3 hover:bg-muted/30 transition-colors">
+                  <div className="glass-card nfl-recent-winner-row hover:bg-muted/30 transition-colors">
                     <div className="w-9 h-9 rounded-lg flex flex-col items-center justify-center bg-gold/10 border border-gold/30">
                       <p className="text-[7px] text-gold font-extrabold uppercase tracking-wider leading-none">Wk</p>
                       <p className="text-[12px] text-gold font-extrabold tabular-nums leading-none mt-0.5">{w.week_number}</p>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-extrabold truncate text-white">{w.label}</p>
-                      <p className="text-[10px] text-white/55">Final results in</p>
+                      <p className="nfl-recent-winner-name">{winnerLabel}</p>
                     </div>
+                    {winningScore && <span className="nfl-recent-winner-score">{winningScore}</span>}
                     <ChevronRight className="w-4 h-4 text-white/40" />
                   </div>
                 </Link>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -104,6 +104,10 @@ export type NflSeasonStanding = {
   profiles?: { display_name: string; avatar_url: string | null };
 };
 
+export type NflWeeklyLeader = NflWeeklyStanding & {
+  week: Pick<NflWeek, 'week_number' | 'label' | 'status'>;
+};
+
 export type NflTeamRecord = {
   team_id: string;
   season_id: string;
@@ -317,6 +321,33 @@ export function useWeeklyStandings(weekId?: string) {
     return rows.map(row=>({...row,profiles:profiles?.find(profile=>profile.id===row.user_id)}));
   });
   return {standings:(query.data || []) as NflWeeklyStanding[],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
+}
+
+/** Rank-one finishers for every week with scored picks, newest week first. */
+export function useSeasonWeeklyLeaders(seasonId?: string) {
+  const query=useNflQuery(['weekly-leaders',seasonId],!!seasonId,async signal=>{
+    const [rows,weeks]=await Promise.all([
+      nflData(supabase.from('nfl_weekly_standings').select('*')
+        .eq('season_id',seasonId as string).eq('rank',1)
+        .order('week_id').order('user_id').abortSignal(signal)),
+      nflData(supabase.from('nfl_weeks').select('id,week_number,label,status')
+        .eq('season_id',seasonId as string).order('week_number',{ascending:false}).abortSignal(signal)),
+    ]);
+    if(!rows?.length) return [];
+    const userIds=[...new Set(rows.map(row=>row.user_id))];
+    const profiles=await nflData(supabase.from('profiles').select('id,display_name,avatar_url').in('id',userIds).abortSignal(signal));
+    const weekMap=new Map((weeks || []).map(week=>[week.id,week]));
+    const profileMap=new Map((profiles || []).map(profile=>[profile.id,profile]));
+    return rows
+      .map(row=>({
+        ...row,
+        profiles:profileMap.get(row.user_id),
+        week:weekMap.get(row.week_id),
+      }))
+      .filter((row): row is typeof row & { week: Pick<NflWeek, 'week_number' | 'label' | 'status'> } => Boolean(row.week))
+      .sort((a,b)=>b.week.week_number-a.week.week_number || a.user_id.localeCompare(b.user_id));
+  });
+  return {leaders:(query.data || []) as NflWeeklyLeader[],loading:query.isLoading,error:query.error?.message || null,refetch:query.refetch};
 }
 
 export function useSeasonStandings(seasonId?: string) {
