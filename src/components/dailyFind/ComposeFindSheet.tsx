@@ -10,9 +10,9 @@ import { FIND_KINDS, normalizeTags, type FindKind } from '@/lib/dailyFind';
 import { cn } from '@/lib/utils';
 import { isSafeUrl } from '@/lib/linkParser';
 
-interface Props { open: boolean; onOpenChange: (o: boolean) => void; onCreated?: (id: string) => void }
+interface Props { open: boolean; onOpenChange: (o: boolean) => void; onCreated?: (id: string) => void; initial?: { title: string; url: string; note: string } | null }
 
-export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
+export function ComposeFindSheet({ open, onOpenChange, onCreated, initial }: Props) {
   const [kind, setKind] = useState<FindKind>('learned');
   const [title, setTitle] = useState('');
   const [note, setNote] = useState('');
@@ -22,6 +22,11 @@ export function ComposeFindSheet({ open, onOpenChange, onCreated }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const create = useCreateFind();
+
+  useEffect(() => {
+    if (!open || !initial) return;
+    setKind('article'); setTitle(initial.title); setNote(initial.note); setUrl(initial.url);
+  }, [open, initial]);
 
   useEffect(() => {
     if (!image) { setPreview(null); return; }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState , useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Bookmark, CalendarDays, Flame, Plus, Search, Sparkles, Users } from 'lucide-react';
@@ -63,6 +63,17 @@ export default function DailyFindPage() {
     setParams(p => { p.set('tab', t); return p; }, { replace: true });
   };
   const [composeOpen, setComposeOpen] = useState(false);
+  const [shared, setShared] = useState<{ title: string; url: string; note: string } | null>(null);
+  useEffect(() => {
+    const st = params.get('share_title') || '', sx = params.get('share_text') || '', su = params.get('share_url') || '';
+    if (!st && !sx && !su) return;
+    const found = su || (sx.match(/https?:\/\/[^\s]+/)?.[0] ?? '');
+    const leftover = sx.replace(found, '').trim();
+    setShared({ url: found, title: (st || leftover || '').slice(0, 160), note: st && leftover ? leftover.slice(0, 2000) : '' });
+    setComposeOpen(true);
+    setParams(p => { ['share_title', 'share_text', 'share_url'].forEach(k => p.delete(k)); return p; }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [month, setMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const selectedDay = params.get('day') || localDayKey();
   const [onlyMine, setOnlyMine] = useState(true);
@@ -181,7 +192,7 @@ export default function DailyFindPage() {
        )}
        </main>
 
-       <ComposeFindSheet open={composeOpen} onOpenChange={setComposeOpen} onCreated={id => navigate(`/finds/${id}`)} />
+       <ComposeFindSheet open={composeOpen} onOpenChange={o => { setComposeOpen(o); if (!o) setShared(null); }} initial={shared} onCreated={id => navigate(`/finds/${id}`)} />
     </div>
   );
 }
