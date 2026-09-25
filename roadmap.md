@@ -85,6 +85,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 57. Rebuild The Drop as a full-screen Reels-style feed with an action rail, in-feed comments, and resilient social-video embeds
 - [x] 58. Clarify The Drop engagement overlay and comments sheet with readable counts, larger controls, and opaque grouped surfaces
 - [x] 59. Remove The Drop slide counter and add a native full-screen feed control
-
-# Draft Arena player drafting
-- [ ] 60. Let commissioners build a yearly player pool, assign values, run the draft, and review who was selected each year
+- [x] 60. Make The Drop full-screen mode distraction-free and add a dedicated, asset-gated Drop button to the mobile bottom navigation

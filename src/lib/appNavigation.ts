@@ -92,6 +92,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
 export const MOBILE_PRIMARY_NAV: AppNavItem[] = [
   { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
   { path: '/chat', label: 'Chat', icon: MessageSquareText },
+  { path: '/finds', label: 'Drop', icon: Bookmark },
   { path: '/compete', label: 'Compete', icon: Swords },
   { path: '/club', label: 'Club', icon: Users },
   { path: '/profile', label: 'You', icon: User },
@@ -146,7 +147,9 @@ const COMPETE_PREFIXES = APP_NAV_SECTIONS
 /** Keeps the mobile bar oriented while a member is inside a hub destination. */
 export function isMobilePrimaryActive(pathname: string, path: string): boolean {
   if (path === '/club') {
-    return pathname === path || CLUB_LIFE_PREFIXES.some((prefix) => isRouteActive(pathname, prefix));
+    return pathname === path || CLUB_LIFE_PREFIXES
+      .filter((prefix) => prefix !== '/finds')
+      .some((prefix) => isRouteActive(pathname, prefix));
   }
   if (path === '/compete') {
     return pathname === path
