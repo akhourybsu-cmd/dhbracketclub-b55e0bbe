@@ -85,9 +85,60 @@ function YouTubeDropEmbed({ url, embedId, preview, immersive, className }: {
   );
 }
 
+type Social = { provider: string; src: string; tall: boolean };
+/** Allowlisted short-video providers → official embed URLs (no arbitrary embed HTML). */
+export function socialEmbed(url: string): Social | null {
+  let u: URL; try { u = new URL(url); } catch { return null; }
+  const h = u.hostname.replace(/^(www\.|m\.|mobile\.)/, '');
+  const path = u.pathname;
+  let m: RegExpMatchArray | null;
+  if (h.endsWith('tiktok.com') && (m = path.match(/\/video\/(\d+)/))) return { provider: 'TikTok', src: `https://www.tiktok.com/embed/v2/${m[1]}`, tall: true };
+  if (h === 'instagram.com' && (m = path.match(/\/(p|reel|reels|tv)\/([A-Za-z0-9_-]+)/))) return { provider: 'Instagram', src: `https://www.instagram.com/${m[1] === 'p' ? 'p' : 'reel'}/${m[2]}/embed`, tall: true };
+  if ((h === 'x.com' || h === 'twitter.com') && (m = path.match(/\/status\/(\d+)/))) return { provider: 'X', src: `https://platform.twitter.com/embed/Tweet.html?id=${m[1]}&dnt=true`, tall: true };
+  if ((h === 'facebook.com' || h === 'fb.watch') && (/\/(videos|reel|watch|share\/[vr])/.test(path) || h === 'fb.watch' || u.searchParams.has('v')))
+    return { provider: 'Facebook', src: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false`, tall: /\/reel|share\/r/.test(path) };
+  return null;
+}
+
+function SocialDropEmbed({ url, social, preview, immersive, className }: { url: string; social: Social; preview: Preview | null | undefined; immersive?: boolean; className?: string }) {
+  const [playing, setPlaying] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !playing) return;
+    const observer = new IntersectionObserver(([e]) => { if (e && e.intersectionRatio < 0.45) setPlaying(false); }, { threshold: [0, 0.45, 1] });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [playing]);
+  const title = readableText(preview?.title ?? null);
+  return (
+    <div ref={rootRef} className={cn('drop-video relative overflow-hidden bg-muted', social.tall ? 'drop-video-short' : 'drop-video-wide', immersive && 'drop-media-immersive', className)} onClick={e => e.stopPropagation()}>
+      {playing ? (
+        <iframe src={social.src} title={title || `${social.provider} video`} allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen className="absolute inset-0 h-full w-full border-0 bg-background" />
+      ) : (
+        <>
+          {preview?.image_url && <img src={preview.image_url} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
+          <div className="drop-media-scrim absolute inset-0" />
+          <Button type="button" size="icon" onClick={() => setPlaying(true)} className="drop-play absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full" aria-label={`Play ${social.provider} video`}>
+            <Play className="h-7 w-7 fill-current" />
+          </Button>
+          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+            <p className="text-xs font-bold uppercase text-primary-foreground/80">{social.provider}</p>
+            {title && <p className="drop-card-title mt-1 line-clamp-2 text-xl leading-tight text-primary-foreground sm:text-2xl">{title}</p>}
+          </div>
+        </>
+      )}
+      <a href={url} target="_blank" rel="noopener noreferrer" className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-foreground" aria-label={`Open on ${social.provider}`}>
+        <ExternalLink className="h-4 w-4" />
+      </a>
+    </div>
+  );
+}
+
 export function FindLinkPreview({ url, compact, immersive, className }: { url: string; compact?: boolean; immersive?: boolean; className?: string }) {
   const { data, isLoading } = useLinkPreview(url);
   const host = hostOf(url);
+  const social = socialEmbed(url);
   const title = readableText(data?.title ?? null);
   const description = readableText(data?.description ?? null);
   const parsed = classifyUrl(url);
@@ -96,6 +147,8 @@ export function FindLinkPreview({ url, compact, immersive, className }: { url: s
   if (parsed.contentType === 'youtube' && parsed.embedId) {
     return <YouTubeDropEmbed url={url} embedId={parsed.embedId} preview={data} immersive={immersive} className={className} />;
   }
+
+  if (social) return <SocialDropEmbed url={url} social={social} preview={data} immersive={immersive} className={className} />;
 
   const openButton = (
     <a
