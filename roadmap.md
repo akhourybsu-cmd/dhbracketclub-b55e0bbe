@@ -90,3 +90,7 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 
 # NFL Pick’em standings polish
 - [x] 62. Surface weekly leaders and overall standings clearly, preserve ties, and prevent leaderboard overlap on mobile and desktop
+
+# Live Draft projector broadcast
+- [x] 63. Add projector controls for the dramatic pick-order reveal and full post-draft report broadcast
+- [x] 64. Make AI draft reports support completed live drafts containing passed picks

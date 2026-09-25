@@ -32,6 +32,8 @@ export interface LiveDraftSettings {
   ceremony: boolean;
   /** Show factual broadcast moments in the room and kiosk. */
   broadcast: boolean;
+  /** Broadcast the complete scored report on the projector after grading. */
+  reportBroadcast: boolean;
 }
 
 export const DEFAULT_LIVE_SETTINGS: LiveDraftSettings = {
@@ -43,6 +45,7 @@ export const DEFAULT_LIVE_SETTINGS: LiveDraftSettings = {
   announce: true,
   ceremony: true,
   broadcast: true,
+  reportBroadcast: true,
 };
 
 export const PICK_SECONDS_OPTIONS = [30, 45, 60, 90, 120, 180, 300];
@@ -75,6 +78,7 @@ export function parseLiveSettings(raw: unknown): LiveDraftSettings {
     announce: obj.announce !== false,
     ceremony: obj.ceremony !== false,
     broadcast: obj.broadcast !== false,
+    reportBroadcast: obj.reportBroadcast !== false,
   };
 }
 
