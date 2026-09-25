@@ -1,7 +1,7 @@
-import { useMemo, useState , useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bookmark, CalendarDays, Flame, Plus, Search, Sparkles, Users } from 'lucide-react';
+import { Bookmark, CalendarDays, Flame, Maximize, Minimize, Plus, Search, Sparkles, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,7 +26,7 @@ function FeedList({ finds, empty, immersive = false }: { finds: DailyFind[]; emp
   if (finds.length === 0) return <div className="drop-surface rounded-2xl border border-dashed p-8 text-center"><Bookmark className="mx-auto h-7 w-7 text-[hsl(var(--drop-accent))]" /><p className="mt-3 text-sm font-semibold text-muted-foreground">{empty}</p></div>;
   if (immersive) return (
     <div className="drop-feed drop-snap-feed" aria-label="Club Drops">
-      {finds.map((find, index) => <FindCard key={find.id} find={find} index={index} immersive position={index + 1} total={finds.length} />)}
+      {finds.map((find, index) => <FindCard key={find.id} find={find} index={index} immersive />)}
     </div>
   );
   const groups: [string, DailyFind[]][] = [];
@@ -63,7 +63,26 @@ export default function DailyFindPage() {
     setParams(p => { p.set('tab', t); return p; }, { replace: true });
   };
   const [composeOpen, setComposeOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
   const [shared, setShared] = useState<{ title: string; url: string; note: string } | null>(null);
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(document.fullscreenElement === pageRef.current);
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      await pageRef.current?.requestFullscreen();
+    } catch {
+      // Browsers that do not support the Fullscreen API keep the normal feed available.
+    }
+  };
   useEffect(() => {
     const st = params.get('share_title') || '', sx = params.get('share_text') || '', su = params.get('share_url') || '';
     if (!st && !sx && !su) return;
@@ -113,7 +132,7 @@ export default function DailyFindPage() {
   const dayFinds = selectedDay ? monthFinds.filter(f => f.find_date === selectedDay) : [];
 
   return (
-     <div className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page')}>
+     <div ref={pageRef} className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page')}>
        <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn('drop-masthead relative overflow-hidden px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-header' : 'mb-3 pb-5 pt-3 sm:pt-5')}>
         <div className="relative flex items-end justify-between gap-3">
           <div>
@@ -127,7 +146,12 @@ export default function DailyFindPage() {
             <span className="text-[9px] font-bold uppercase text-muted-foreground">streak</span>
           </div>
         </div>
-         <div className={cn('relative', tab === 'club' ? 'ml-auto w-auto' : 'mt-5')}>
+          <div className={cn('relative', tab === 'club' ? 'ml-auto flex w-auto items-center gap-2' : 'mt-5')}>
+            {tab === 'club' && (
+              <Button type="button" variant="outline" size="icon" onClick={toggleFullscreen} className="drop-fullscreen h-11 w-11 rounded-full" aria-label={isFullscreen ? 'Exit full screen' : 'View The Drop full screen'} title={isFullscreen ? 'Exit full screen' : 'Full screen'}>
+                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+              </Button>
+            )}
           {feed.isLoading ? <Skeleton className="h-12 w-full rounded-xl" /> : (
             <motion.div whileTap={{ scale: 0.98 }}>
                 <Button onClick={() => setComposeOpen(true)} size={tab === 'club' ? 'icon' : 'default'} className={cn('drop-primary font-bold', tab === 'club' ? 'h-11 w-11 rounded-full' : 'h-12 w-full text-base')} aria-label="Add a Drop"><Plus /> {tab !== 'club' && (myToday ? 'Add another Drop' : "Add Today's Drop")}</Button>
