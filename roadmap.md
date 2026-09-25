@@ -84,3 +84,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 - [x] 56. Turn The Drop into a one-at-a-time snap feed with safe YouTube/Shorts embeds and image-led article stories
 - [x] 57. Rebuild The Drop as a full-screen Reels-style feed with an action rail, in-feed comments, and resilient social-video embeds
 - [x] 58. Clarify The Drop engagement overlay and comments sheet with readable counts, larger controls, and opaque grouped surfaces
+- [x] 59. Remove The Drop slide counter and add a native full-screen feed control

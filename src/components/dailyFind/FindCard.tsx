@@ -68,7 +68,7 @@ export function FindReactionBar({ find, compact }: { find: DailyFind; compact?: 
   );
 }
 
-function FindCardInner({ find, index = 0, immersive = false, position, total }: { find: DailyFind; index?: number; immersive?: boolean; position?: number; total?: number }) {
+function FindCardInner({ find, index = 0, immersive = false }: { find: DailyFind; index?: number; immersive?: boolean }) {
   const [shareOpen, setShareOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [active, setActive] = useState(!immersive);
@@ -104,7 +104,6 @@ function FindCardInner({ find, index = 0, immersive = false, position, total }: 
       whileHover={immersive ? undefined : { y: -3 }}
       className={cn('drop-card drop-surface overflow-hidden border-y sm:rounded-xl sm:border', immersive && 'drop-snap-card drop-reel', KIND_TONE[find.kind])}
     >
-      {immersive && position && total && <span className="drop-position absolute right-4 top-4 z-30 rounded-full bg-background px-2.5 py-1 text-[11px] font-bold tabular-nums text-foreground">{position} / {total}</span>}
       <Link to={`/finds/${find.id}`} className={cn('block active:opacity-90', immersive && 'drop-reel-copy')}>
         <header className={cn('flex items-center gap-3 px-4 pb-2 pt-4 sm:px-5', immersive && 'drop-reel-author')}>
           <Avatar className="h-10 w-10 border border-border/60"><AvatarImage src={find.profiles?.avatar_url ?? undefined} /><AvatarFallback className="text-[10px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>

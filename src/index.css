@@ -6511,7 +6511,9 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .drop-play { background: hsl(var(--drop-accent)); color: hsl(var(--drop-ink)); box-shadow: 0 14px 35px hsl(var(--background) / .45); }
 .drop-article-image { height: clamp(14rem, 38dvh, 28rem); }
 .drop-photo-immersive { height: 100%; min-height: 100%; margin-top: 0; border: 0; }
-.drop-position { letter-spacing: 0; }
+.drop-fullscreen { border-color: hsl(var(--drop-edge)); background: hsl(var(--drop-paper-strong)); color: hsl(var(--foreground)); }
+.drop-page:fullscreen { width: 100%; max-width: none; height: 100dvh; overflow: hidden; background: hsl(var(--background)); }
+.drop-page:fullscreen .drop-snap-feed { height: calc(100dvh - 8.75rem - env(safe-area-inset-top, 0px)); max-width: none; border-radius: 0; }
 .drop-reels-header { height: 3.75rem; display: flex; align-items: center; border-bottom: 0; }
 .drop-reels-header > div:first-child { width: 100%; align-items: center; }
 .drop-reels-header .drop-streak { display: none; }
