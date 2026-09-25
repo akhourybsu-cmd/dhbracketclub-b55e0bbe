@@ -6570,3 +6570,26 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   .drop-card { transition: none; }
   .drop-snap-feed { scroll-behavior: auto; }
 }
+
+/* ── Personal live kiosk (each player's private full-screen room) ── */
+.da-pk { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: hsl(var(--background)); color: hsl(var(--foreground)); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.da-pk-top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .75rem 1rem; border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+.da-pk-dot { width: .5rem; height: .5rem; border-radius: 999px; background: hsl(var(--primary)); box-shadow: 0 0 0 0 hsl(var(--primary) / .6); animation: da-pk-pulse 1.8s ease-out infinite; }
+@keyframes da-pk-pulse { to { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); } }
+.da-pk-icon { width: 44px; height: 44px; border-radius: .75rem; display: grid; place-items: center; border: 1px solid hsl(var(--border)); color: hsl(var(--muted-foreground)); background: hsl(var(--background)); }
+.da-pk-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .75rem; display: flex; flex-direction: column; gap: .75rem; }
+.da-pk-rail, .da-pk-main { display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.da-pk-clock { padding: 1rem; display: flex; align-items: center; gap: 1rem; transition: box-shadow .3s, border-color .3s; }
+.da-pk[data-my-turn] .da-pk-clock { border-color: hsl(var(--primary)); box-shadow: 0 0 0 1px hsl(var(--primary) / .5), 0 12px 32px -12px hsl(var(--primary) / .55); }
+.da-pk-pick { margin-top: .6rem; min-height: 44px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: .75rem; font-weight: 800; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.da-pk-team-row { display: flex; align-items: baseline; gap: .5rem; }
+.da-pk-num { min-width: 1.6rem; text-align: center; font-size: 11px; font-weight: 800; border-radius: .4rem; padding: .1rem .3rem; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+.da-pk-board { min-width: 0; overflow-x: auto; }
+.da-pk-feed-grid { display: grid; gap: .75rem; }
+.da-pk-reopen { position: fixed; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); z-index: 60; min-height: 44px; padding: 0 1rem; display: inline-flex; align-items: center; gap: .4rem; border-radius: 999px; font-weight: 700; font-size: 13px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: 0 10px 24px -10px hsl(var(--foreground) / .5); }
+@media (min-width: 1024px) {
+  .da-pk-body { display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; padding: 1.25rem; gap: 1.25rem; }
+  .da-pk-rail { position: sticky; top: 0; }
+  .da-pk-feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .da-pk-dot { animation: none; } }
