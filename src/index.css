@@ -6525,8 +6525,8 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
 .drop-reel-caption .drop-kind-tab { display: none; }
 .drop-reel-caption .drop-card-title { font-size: 1.1rem; line-height: 1.25; margin-top: 0; }
 .drop-reel-caption p { font-size: .82rem; line-height: 1.35; margin-top: .35rem; }
-.drop-action-rail { position: absolute; right: .65rem; bottom: 1.15rem; z-index: 25; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
-.drop-rail-action { display: flex; width: 3.5rem; min-height: 3.5rem; flex-direction: column; align-items: center; justify-content: center; gap: .15rem; border-radius: 999px; color: hsl(var(--foreground)); background: hsl(var(--background) / .88); border: 1px solid hsl(var(--drop-edge) / .7); box-shadow: 0 7px 24px hsl(var(--background) / .38); }
+.drop-action-rail { position: absolute; right: .65rem; bottom: 1rem; z-index: 25; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+.drop-rail-action { display: flex; width: 3.25rem; min-height: 3.25rem; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; border-radius: 999px; color: hsl(var(--foreground)); background: hsl(var(--background) / .92); border: 1px solid hsl(var(--drop-edge) / .7); box-shadow: 0 7px 24px hsl(var(--background) / .38); }
 .drop-rail-action span { max-width: 3.25rem; overflow: hidden; font-size: .58rem; font-weight: 800; line-height: 1; text-overflow: ellipsis; }
 .drop-rail-action.is-active { color: hsl(var(--drop-saw)); }
 @media (max-width: 639px) {
@@ -6543,7 +6543,7 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   .drop-feed:not(.drop-snap-feed) { padding-inline: 2rem; }
   .drop-snap-feed { width: min(100%, 64rem); max-width: 64rem; height: min(78dvh, 54rem); margin-inline: auto; border-radius: 1rem; }
   .drop-card { box-shadow: 0 24px 70px hsl(var(--background) / .28); }
-  .drop-reel-media.drop-video-short { width: min(100%, 31rem); }
+  .drop-reel-media.drop-video-short { width: min(100%, 31rem); height: 100%; flex: none; margin-inline: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .drop-card:first-child, .drop-live-label::before { animation: none; }
