@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Maximize2, Minimize2, MonitorSmartphone, Sparkles, X } from 'lucide-react';
 import { LiveClockDial } from './LiveClockDial';
 import { formatClock, type LiveClockState } from '@/lib/draft/liveDraft';
+import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
 
 interface KioskPick {
   id: string;
@@ -131,6 +132,7 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
           <h2 className="dl-display text-base font-black truncate">{props.draftTitle}</h2>
         </div>
         <div className="flex items-center gap-1.5">
+          <DraftArenaAppearance />
           <button
             type="button"
             className="da-pk-icon btn-press"
