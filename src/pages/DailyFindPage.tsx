@@ -1,7 +1,7 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bookmark, CalendarDays, Flame, Maximize, Minimize, Plus, Search, Sparkles, Users } from 'lucide-react';
+import { Bookmark, CalendarDays, Flame, Maximize, Minimize, Plus, Search, Users } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,9 +23,40 @@ const TABS: { value: Tab; label: string; icon: typeof Users }[] = [
 ];
 
 function FeedList({ finds, empty, immersive = false }: { finds: DailyFind[]; empty: string; immersive?: boolean }) {
+  const feedRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!immersive) return;
+    const feed = feedRef.current;
+    if (!feed) return;
+
+    let gestureLocked = false;
+    let unlockTimer: number | undefined;
+    const unlockAfterGesture = () => {
+      window.clearTimeout(unlockTimer);
+      unlockTimer = window.setTimeout(() => { gestureLocked = false; }, 420);
+    };
+    const handleWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) < 8 || Math.abs(event.deltaY) < Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      unlockAfterGesture();
+      if (gestureLocked) return;
+      gestureLocked = true;
+      const page = Math.round(feed.scrollTop / feed.clientHeight);
+      const next = Math.max(0, Math.min(finds.length - 1, page + (event.deltaY > 0 ? 1 : -1)));
+      feed.scrollTo({ top: next * feed.clientHeight, behavior: 'smooth' });
+    };
+
+    feed.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      feed.removeEventListener('wheel', handleWheel);
+      window.clearTimeout(unlockTimer);
+    };
+  }, [finds.length, immersive]);
+
   if (finds.length === 0) return <div className="drop-surface rounded-2xl border border-dashed p-8 text-center"><Bookmark className="mx-auto h-7 w-7 text-[hsl(var(--drop-accent))]" /><p className="mt-3 text-sm font-semibold text-muted-foreground">{empty}</p></div>;
   if (immersive) return (
-    <div className="drop-feed drop-snap-feed" aria-label="Club Drops">
+    <div ref={feedRef} className="drop-feed drop-snap-feed" aria-label="Club Drops">
       {finds.map((find, index) => <FindCard key={find.id} find={find} index={index} immersive />)}
     </div>
   );
@@ -122,39 +153,38 @@ export default function DailyFindPage() {
 
   return (
      <div className={cn('drop-page member-page lg:mx-auto lg:max-w-[72rem]', tab === 'club' && 'drop-reels-page', isFullscreen && 'drop-focus-mode')}>
-       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn('drop-masthead relative overflow-hidden px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-header' : 'mb-3 pb-5 pt-3 sm:pt-5')}>
-        <div className="relative flex items-end justify-between gap-3">
-          <div>
-             {tab !== 'club' && <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase text-[hsl(var(--drop-accent))]"><Bookmark className="h-3.5 w-3.5" /> Daily club collection</p>}
-              <h1 className={cn('drop-title leading-none', tab === 'club' ? 'text-2xl' : 'mt-1 text-[2.65rem] sm:text-5xl')}>The Drop</h1>
-             {tab !== 'club' && <p className="mt-1 text-sm text-muted-foreground">One thing worth sharing today.</p>}
-          </div>
-          <div className="drop-streak flex min-w-16 flex-col items-center rounded-lg px-3 py-2" aria-label={`${streak} day streak`}>
-            <Flame className={cn('h-5 w-5', streak > 0 ? 'text-[hsl(var(--drop-accent))]' : 'text-muted-foreground')} />
-            <span className="text-lg font-black tabular-nums leading-none">{streak}</span>
-            <span className="text-[9px] font-bold uppercase text-muted-foreground">streak</span>
-          </div>
-        </div>
-          <div className={cn('relative', tab === 'club' ? 'ml-auto flex w-auto items-center gap-2' : 'mt-5')}>
-            {tab === 'club' && (
-              <Button type="button" variant="outline" size="icon" onClick={toggleFullscreen} className="drop-fullscreen h-11 w-11 rounded-full" aria-label={isFullscreen ? 'Exit full screen' : 'View The Drop full screen'} title={isFullscreen ? 'Exit full screen' : 'Full screen'}>
-                {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
-              </Button>
-            )}
-          {feed.isLoading ? <Skeleton className="h-12 w-full rounded-xl" /> : (
-            <motion.div whileTap={{ scale: 0.98 }}>
-                <Button onClick={() => setComposeOpen(true)} size={tab === 'club' ? 'icon' : 'default'} className={cn('drop-primary font-bold', tab === 'club' ? 'h-11 w-11 rounded-full' : 'h-12 w-full text-base')} aria-label="Add a Drop"><Plus /> {tab !== 'club' && (myToday ? 'Add another Drop' : "Add Today's Drop")}</Button>
-            </motion.div>
-          )}
-        </div>
-      </motion.header>
+       <motion.header initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={cn('drop-masthead px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-header' : 'mb-3 pb-5 pt-3 sm:pt-5')}>
+         <div className="drop-brand-lockup">
+           <span className="drop-brand-mark" aria-hidden="true">D</span>
+           <div>
+             <p className="drop-brand-kicker">Club culture, collected daily</p>
+             <h1 className="drop-title">The Drop</h1>
+           </div>
+         </div>
+         <div className="drop-header-actions">
+           <div className="drop-day-signal" aria-label={`${posters} members posted today, ${streak} day streak`}>
+             <span><i />{posters} today</span>
+             <span><Flame className="h-3.5 w-3.5" />{streak} day streak</span>
+           </div>
+           {tab === 'club' && (
+             <Button type="button" variant="outline" size="icon" onClick={toggleFullscreen} className="drop-fullscreen h-11 w-11 rounded-full" aria-label={isFullscreen ? 'Exit full screen' : 'View The Drop full screen'} title={isFullscreen ? 'Exit full screen' : 'Full screen'}>
+               {isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}
+             </Button>
+           )}
+           {feed.isLoading ? <Skeleton className="h-11 w-11 rounded-full" /> : (
+             <motion.div whileTap={{ scale: 0.92 }}>
+               <Button onClick={() => setComposeOpen(true)} size="icon" className="drop-primary h-11 w-11 rounded-full" aria-label={myToday ? 'Add another Drop' : "Add today's Drop"}><Plus className="h-5 w-5" /></Button>
+             </motion.div>
+           )}
+         </div>
+       </motion.header>
 
-        <div className={cn('drop-tabs sticky top-0 z-20 grid grid-cols-3 gap-1 border-y p-1.5 sm:mx-6 sm:rounded-xl sm:border lg:mx-8', tab === 'club' ? 'drop-reels-tabs' : 'mb-5')} role="tablist">
+       <div className={cn('drop-tabs sticky top-0 z-20 flex items-stretch border-b px-4 sm:px-6 lg:px-8', tab === 'club' ? 'drop-reels-tabs' : 'mb-5')} role="tablist">
         {TABS.map(t => (
-          <button key={t.value} role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
-            className={cn('relative flex h-11 items-center justify-center gap-1.5 rounded-lg text-sm font-bold transition-all', tab === t.value ? 'drop-tab-active' : 'text-muted-foreground hover:text-foreground')}>
-            <t.icon className="h-4 w-4" /> {t.label}
-          </button>
+           <Button key={t.value} type="button" variant="ghost" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}
+             className={cn('drop-tab relative h-12 rounded-none px-0 text-sm', tab === t.value ? 'drop-tab-active' : 'text-muted-foreground hover:bg-transparent hover:text-foreground')}>
+             <t.icon className="h-4 w-4" /> {t.value === 'club' ? 'Feed' : t.label}
+           </Button>
         ))}
       </div>
 
@@ -162,7 +192,7 @@ export default function DailyFindPage() {
        {tab === 'club' && (
         feed.isError ? <MemberLoadError message={(feed.error as Error)?.message} onRetry={() => feed.refetch()} />
           : feed.isLoading ? <div className="space-y-3">{[0, 1].map(i => <Skeleton key={i} className="h-64 rounded-2xl" />)}</div>
-          : <><div className="drop-reels-status flex items-center justify-between px-4 sm:px-6 lg:px-8"><p className="flex items-center gap-2 text-xs font-bold"><Sparkles className="h-4 w-4 text-[hsl(var(--drop-accent))]" />{posters} today</p><span className="drop-live-label text-[10px] font-bold uppercase">Swipe up</span></div><FeedList finds={recent} immersive empty="Nothing dropped yet today. Be the first to share something worth saving." /></>
+          : <FeedList finds={recent} immersive empty="Nothing dropped yet today. Be the first to share something worth saving." />
       )}
 
       {tab === 'calendar' && (
