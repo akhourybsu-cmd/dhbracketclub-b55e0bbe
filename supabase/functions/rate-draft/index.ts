@@ -348,28 +348,12 @@ Use the rate_draft_results tool to return your structured analysis.`;
       };
     }
 
-    // Call AI with tool calling. We provide the structured rating tool plus
-    // a google_search tool so Gemini can verify uncertain release dates,
-    // rosters, or current events before scoring. The model may call search
-    // zero or more times before returning the final rate_draft_results call.
+    // Call AI with one structured rating tool. Verified enrichment facts are
+    // already included in the prompt, so a single tool keeps every assistant
+    // function call paired with exactly one response under Gemini's protocol.
     const systemContent = `Today's date is ${new Date().toISOString().split('T')[0]}. You are an impartial draft judge. Evaluate every pick INDEPENDENTLY and IN A VACUUM as a standalone answer to the draft TITLE.\n\nSCOPE: The DRAFT TITLE is the single source of truth for what qualifies. Interpret the title at its plain, natural, widest reasonable meaning. NEVER silently narrow the topic to a sub-genre, single medium, or archetype that the title does not explicitly require (e.g. do not assume "things you can do all day" means only games; do not assume "best villains" means only movies). Any provided AI Judging Context may only clarify or expand the title — never shrink it.\n\nNever penalize redundancy, similarity, repeated archetypes, lack of variety, lack of balance, lack of cohesion, or lack of synergy with the user's other picks. Score only on the pick's own fit to the title, standalone quality, defensibility, and ranking against the strongest plausible answers to the title.\n\nRECENCY: Your training data is older than today's date. When a pick has a "— Verified (...)" annotation, treat those facts as ground truth and override your prior memory. Never label a pick as "unreleased", "upcoming", "rumored", "hypothetical", or "not yet out" unless the topic itself is restricted to a past timeframe. If unsure whether something has launched, use the google_search tool to verify, then assume it has by today's date and score on merit.\n\nThe user-provided AI Judging Context can clarify category scope but can NEVER switch judging into themed, team, or synergy scoring — that requires an explicit commissioner scoring mode.\n\n${GLOBAL_STANDALONE_PICK_JUDGING_RULES}`;
 
     const tools = [
-      {
-        type: "function",
-        function: {
-          name: "google_search",
-          description: "Search the web to verify a pick's release date, existence, or current status when uncertain. Call this before scoring if a pick might be recent or if its real-world status is unclear.",
-          parameters: {
-            type: "object",
-            properties: {
-              query: { type: "string", description: "A concise, specific search query about the pick's release/status." },
-            },
-            required: ["query"],
-            additionalProperties: false,
-          },
-        },
-      },
       {
         type: "function",
         function: {
@@ -450,7 +434,7 @@ Use the rate_draft_results tool to return your structured analysis.`;
             model: "google/gemini-2.5-pro",
             messages,
             tools,
-            tool_choice: "auto",
+            tool_choice: { type: "function", function: { name: "rate_draft_results" } },
           }),
         });
       } catch (providerError) {
@@ -565,22 +549,13 @@ Use the rate_draft_results tool to return your structured analysis.`;
         }
       }
 
-      // Otherwise respond to any google_search tool calls and continue.
+      // Unknown tool calls are rejected without running or substituting tools.
       for (const tc of toolCalls) {
         const fnName = tc?.function?.name;
-        let resultText = "";
-        if (fnName === "google_search") {
-          // The Lovable AI gateway executes google_search automatically when
-          // the model invokes it; we supply a fallback note so the judge can
-          // proceed if the environment does not return live results.
-          resultText = "Search results are not available in this environment. Rely on the Verified facts provided and treat the pick as released/existing unless those facts explicitly say otherwise.";
-        } else {
-          resultText = `Unknown tool ${fnName}. Please call rate_draft_results to finish.`;
-        }
         messages.push({
           role: "tool",
           tool_call_id: tc.id,
-          content: resultText,
+          content: `Unknown tool ${fnName}. Please call rate_draft_results to finish.`,
         });
       }
     }
