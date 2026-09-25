@@ -183,6 +183,7 @@ export function rankValidatedDraftGrades(
 ): ValidatedDraftGrade[] {
   const metrics = (grade: ValidatedDraftGrade) => {
     const scores = grade.pick_ratings.map((pick) => pick.score);
+    if (scores.length === 0) return { max: 0, elite: 0, min: 0, avg: 0 };
     return {
       max: Math.max(...scores),
       elite: scores.filter((score) => score >= 8).length,

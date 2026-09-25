@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
 import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
+import { KioskDraftReport } from '@/components/draft/live/KioskDraftReport';
 
 interface KioskParticipant {
   user_id: string;
@@ -26,6 +27,15 @@ interface KioskPick {
   pick_number: number;
   round: number;
   picked_at: string;
+}
+
+interface KioskDraftResult {
+  id: string;
+  user_id: string;
+  rank: number;
+  total_score: number;
+  summary?: string | null;
+  pick_ratings?: Array<{ pick_id: string; pick_text: string; score: number; explanation: string }> | null;
 }
 
 type RevealPhase = 'locked' | 'confirmed' | 'reveal' | 'landing';
@@ -57,6 +67,7 @@ export default function DraftKioskPage() {
   const [draft, setDraft] = useState<any>(null);
   const [participants, setParticipants] = useState<KioskParticipant[]>([]);
   const [picks, setPicks] = useState<KioskPick[]>([]);
+  const [results, setResults] = useState<KioskDraftResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -74,7 +85,7 @@ export default function DraftKioskPage() {
 
   const fetchData = useCallback(async () => {
     if (!draftId) return;
-    const [{ data: d }, { data: p }, { data: pk }] = await Promise.all([
+    const [{ data: d }, { data: p }, { data: pk }, { data: report }] = await Promise.all([
       supabase.from('drafts').select('*').eq('id', draftId).maybeSingle(),
       supabase
         .from('draft_participants')
@@ -86,10 +97,16 @@ export default function DraftKioskPage() {
         .select('id, user_id, pick_text, pick_number, round, picked_at')
         .eq('draft_id', draftId)
         .order('pick_number'),
+      (supabase as any)
+        .from('draft_results')
+        .select('id, user_id, rank, total_score, summary, pick_ratings')
+        .eq('draft_id', draftId)
+        .order('rank'),
     ]);
     setDraft(d);
     setParticipants((p ?? []) as any);
     setPicks((pk ?? []) as any);
+    setResults((report ?? []) as KioskDraftResult[]);
     void refetchSkips();
     setLoading(false);
   }, [draftId, refetchSkips]);
@@ -291,7 +308,9 @@ export default function DraftKioskPage() {
       </header>
 
       {draft.status === 'setup' && draft.ceremony_status === 'revealing' ? (
-        <main className="flex-1 grid place-items-center p-6"><div className="w-full max-w-5xl"><PreDraftCeremony topic={draft.topic} participants={participants} revealIndex={Number(draft.ceremony_reveal_index || 0)} canManage={false} busy={false} onRevealNext={() => {}} onBegin={() => {}} /></div></main>
+        <main className="flex-1 grid place-items-center p-6"><div className="w-full max-w-5xl"><PreDraftCeremony topic={draft.topic} participants={participants} revealIndex={Number(draft.ceremony_reveal_index || 0)} canManage={false} busy={false} onRevealNext={() => {}} onBegin={() => {}} projector /></div></main>
+      ) : complete && settings.reportBroadcast && results.length > 0 ? (
+        <main className="flex-1 min-h-0 p-4"><KioskDraftReport topic={draft.topic} participants={participants} results={results} /></main>
       ) : <>
 
       <div className="flex-1 grid gap-4 p-4 lg:grid-cols-[minmax(280px,26%)_1fr] min-h-0">

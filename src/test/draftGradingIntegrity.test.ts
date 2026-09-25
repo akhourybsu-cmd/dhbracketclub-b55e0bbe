@@ -103,6 +103,20 @@ describe('draft grading output validation', () => {
 
     expect(ranked.map(result => result.user_id)).toEqual(['user-a', 'user-b']);
   });
+
+  it('supports a live-draft participant whose selections were all passed', () => {
+    const liveRoster: DraftGradingParticipant[] = [
+      { participantKey: 'participant_1', userId: 'user-a', picks: [] },
+      { participantKey: 'participant_2', userId: 'user-b', picks: roster[1].picks },
+    ];
+    const payload = [
+      { participant_key: 'participant_1', summary: 'All assigned turns were passed.', pick_ratings: [] },
+      validPayload[0],
+    ];
+    const results = validateDraftGradingResults(payload, liveRoster);
+    expect(results[0].total_score).toBe(0);
+    expect(rankValidatedDraftGrades(results, new Map())[0].user_id).toBe('user-b');
+  });
 });
 
 describe('stored draft report integrity', () => {
@@ -134,5 +148,12 @@ describe('stored draft report integrity', () => {
       { ...results[0], total_score: 9.9 },
       results[1],
     ], participants, picks)).toBe(false);
+  });
+
+  it('accepts a zero-score result only when that participant has no picks', () => {
+    expect(isCompleteDraftReport([
+      { user_id: 'user-a', rank: 2, total_score: 0, pick_ratings: [] },
+      { ...results[1], rank: 1 },
+    ], participants, [{ id: 'pick-b1', user_id: 'user-b' }])).toBe(true);
   });
 });
