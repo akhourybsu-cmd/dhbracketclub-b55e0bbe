@@ -1806,6 +1806,7 @@ export default function DraftDetailPage() {
             <PersonalLiveKiosk
               draftTitle={draft.title || draft.topic || 'Live draft'}
               palette={daPalette}
+              projectorPath={canManage ? `/drafts/${draftId}/kiosk` : undefined}
               clock={liveClock}
               pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
               isMyTurn={isMyTurn}

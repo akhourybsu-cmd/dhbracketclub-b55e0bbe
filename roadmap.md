@@ -94,4 +94,4 @@ Visual-only redesign. No gameplay/logic changes. Foundation: near-black + warm c
 # Live Draft projector broadcast
 - [x] 63. Add projector controls for the dramatic pick-order reveal and full post-draft report broadcast
 - [x] 64. Make AI draft reports support completed live drafts containing passed picks
-- [ ] 65. Keep organizer controls and projector launch inside the private kiosk; add palette switching to player and projector kiosks
+- [x] 65. Keep organizer controls and projector launch inside the private kiosk; add palette switching to player and projector kiosks
