@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Camera, Clock3, Heart, Lightbulb, MessageCircle, Share2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFindImageUrl, useToggleFindReaction } from '@/hooks/useDailyFinds';
@@ -14,6 +15,10 @@ import { toast } from 'sonner';
 
 const KIND_ICON = { learned: Lightbulb, article: BookOpen, photo: Camera } as const;
 const KIND_TONE = { learned: 'drop-kind-learned', article: 'drop-kind-read', photo: 'drop-kind-saw' } as const;
+
+function compactCount(count: number) {
+  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(count);
+}
 
 export function FindPhoto({ path, className }: { path: string | null; className?: string }) {
   const url = useFindImageUrl(path);
@@ -124,9 +129,18 @@ function FindCardInner({ find, index = 0, immersive = false, position, total }: 
 
       {immersive && (
         <aside className="drop-action-rail" aria-label="Drop actions">
-          <button type="button" onClick={() => toggle.mutate({ findId: find.id, emoji: '❤️', has: liked }, { onError: (error: Error) => toast.error(error.message) })} aria-pressed={liked} aria-label={liked ? 'Unlike' : 'Like'} className={cn('drop-rail-action', liked && 'is-active')}><Heart className={cn('h-7 w-7', liked && 'fill-current')} /><span>{likes || 'Like'}</span></button>
-          <button type="button" onClick={() => setCommentsOpen(true)} aria-label="Comments" className="drop-rail-action"><MessageCircle className="h-7 w-7" /><span>{comments || 'Comment'}</span></button>
-          <button type="button" onClick={() => setShareOpen(true)} aria-label="Share" className="drop-rail-action"><Share2 className="h-7 w-7" /><span>Share</span></button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => toggle.mutate({ findId: find.id, emoji: '❤️', has: liked }, { onError: (error: Error) => toast.error(error.message) })} disabled={toggle.isPending} aria-pressed={liked} aria-label={liked ? `Unlike, ${likes} likes` : `Like, ${likes} likes`} className={cn('drop-rail-action', liked && 'is-active')}>
+            <span className="drop-rail-icon"><Heart className={cn('h-6 w-6', liked && 'fill-current')} /></span>
+            <span className="drop-rail-count">{likes ? compactCount(likes) : 'Like'}</span>
+          </Button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => setCommentsOpen(true)} aria-label={`Open comments, ${comments} comments`} className="drop-rail-action">
+            <span className="drop-rail-icon"><MessageCircle className="h-6 w-6" /></span>
+            <span className="drop-rail-count">{comments ? compactCount(comments) : 'Comment'}</span>
+          </Button>
+          <Button type="button" variant="ghost" size="icon" onClick={() => setShareOpen(true)} aria-label="Share this Drop" className="drop-rail-action">
+            <span className="drop-rail-icon"><Share2 className="h-6 w-6" /></span>
+            <span className="drop-rail-count">Share</span>
+          </Button>
         </aside>
       )}
 
