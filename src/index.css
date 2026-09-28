@@ -6663,3 +6663,21 @@ html.drop-focus-active .app-main-content { padding-left: 0; }
   .da-pk-feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .da-pk-dot { animation: none; } }
+/* Missed picks + magazine polish */
+.da-missed { padding: 1rem; margin-bottom: .8rem; border-radius: 1rem; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+.da-missed-list { display: grid; gap: .5rem; }
+.da-missed-list li { display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: .75rem; padding: .7rem .8rem; border-radius: .75rem; background: hsl(var(--muted) / .45); border: 1px solid hsl(var(--border) / .6); }
+.da-missed-rank { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 999px; color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / .45); font-size: .95rem; }
+.da-missed-list strong, .da-missed-list small { display: block; }
+.da-missed-list small { margin-top: .15rem; font-size: .72rem; line-height: 1.35; color: hsl(var(--muted-foreground)); }
+.da-missed-list b { color: hsl(var(--primary)); font-size: 1.05rem; }
+.da-missed-skeleton { height: 3.4rem; animation: pulse 1.6s ease-in-out infinite; }
+.da-missed-error { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .8rem; color: hsl(var(--muted-foreground)); }
+.da-missed-error button { display: inline-flex; align-items: center; gap: .35rem; min-height: 44px; padding: 0 .8rem; border-radius: .6rem; border: 1px solid hsl(var(--border)); color: hsl(var(--foreground)); }
+.da-magazine { padding-inline: clamp(.75rem, 3vw, 1.5rem); }
+.da-magazine-board-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.da-magazine-stats strong, .da-magazine-timeline strong, .da-magazine-podium strong { overflow-wrap: anywhere; }
+.da-magazine-cover h1 { overflow-wrap: anywhere; }
+@media (max-width: 700px) { .da-magazine-cover h1 { font-size: clamp(2.1rem, 11vw, 3.4rem); max-width: none; } .da-magazine-cover { min-height: 22rem; } .da-magazine-timeline { columns: 1; } }
+@media (prefers-reduced-motion: reduce) { .da-missed-skeleton { animation: none; } }
+@media print { .da-missed { break-inside: avoid; } }

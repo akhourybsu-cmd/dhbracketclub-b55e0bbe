@@ -33,6 +33,7 @@ import { OnTheClockTimer } from '@/components/draft/OnTheClockTimer';
 
 import { PickAnnouncement } from '@/components/draft/PickAnnouncement';
 import { DraftStatsCard } from '@/components/draft/DraftStatsCard';
+import { MissedPicksCard } from '@/components/draft/MissedPicksCard';
 import { findMvpPick, findScoringStreaks, computePickTimings, formatDuration } from '@/lib/draftStats';
 import { useCountUp, useFirstSeen } from '@/lib/draft/animations';
 import {
@@ -2100,6 +2101,7 @@ export default function DraftDetailPage() {
 
               {/* Draft Stats Card */}
               <DraftStatsCard picks={picks} results={draftResults} participants={participants} />
+              <MissedPicksCard draftId={draftId!} initial={(draft as any)?.missed_picks} />
 
               {/* Detailed Results */}
               <div className="space-y-3">
