@@ -1,3 +1,4 @@
+import { serverNow } from '@/lib/serverClock';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -230,6 +231,15 @@ export default function DraftDetailPage() {
 
   // Realtime: auto-refresh on picks, participants, or draft status changes
   const { status: realtimeStatus } = useDraftUpdates(draftId, fetchData);
+
+  // Live drafts: if the realtime link drops, poll so the clock never drifts
+  // from the projector (which polls every 2s as its own fallback).
+  const liveInProgress = Boolean((draft as any)?.is_live) && draft?.status !== 'complete';
+  useEffect(() => {
+    if (!liveInProgress || realtimeStatus === 'connected') return;
+    const id = window.setInterval(() => void fetchData(), 3000);
+    return () => window.clearInterval(id);
+  }, [liveInProgress, realtimeStatus, fetchData]);
 
   const isCreator = draft?.created_by === user?.id;
   const [isAppAdmin, setIsAppAdmin] = useState(false);
@@ -554,8 +564,8 @@ export default function DraftDetailPage() {
         // Live drafts open with the shared clock already ticking.
         ...(isLiveDraft && liveHost.settings.autoStartClock
           ? {
-              clock_started_at: new Date().toISOString(),
-              pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+              clock_started_at: new Date(serverNow()).toISOString(),
+              pick_deadline_at: new Date(serverNow() + liveHost.settings.pickSeconds * 1000).toISOString(),
               clock_paused_at: null,
             }
           : {}),
@@ -596,8 +606,8 @@ export default function DraftDetailPage() {
         status: 'in_progress', ceremony_status: 'complete', ceremony_reveal_index: participants.length,
         current_round: 1, current_pick_number: 1, current_pick_user_id: first.user_id,
         ...(isLiveDraft && liveHost.settings.autoStartClock ? {
-          clock_started_at: new Date().toISOString(),
-          pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+          clock_started_at: new Date(serverNow()).toISOString(),
+          pick_deadline_at: new Date(serverNow() + liveHost.settings.pickSeconds * 1000).toISOString(),
           clock_paused_at: null,
         } : {}),
       } as any).eq('id', draftId);
@@ -697,8 +707,8 @@ export default function DraftDetailPage() {
         // Live drafts roll the shared clock straight onto the next picker.
         const clockPatch = isLiveDraft && liveHost.settings.autoStartClock
           ? {
-              clock_started_at: new Date().toISOString(),
-              pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+              clock_started_at: new Date(serverNow()).toISOString(),
+              pick_deadline_at: new Date(serverNow() + liveHost.settings.pickSeconds * 1000).toISOString(),
               clock_paused_at: null,
             }
           : isLiveDraft

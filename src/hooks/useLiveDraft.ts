@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { serverNow, syncServerClock } from '@/lib/serverClock';
 import {
   DEFAULT_LIVE_SETTINGS,
   type LiveDraftSettings,
@@ -47,6 +48,16 @@ export function useLiveClock(row: LiveClockRow | null | undefined, pickSeconds: 
   const [, setTick] = useState(0);
   const paused = Boolean(row?.clock_paused_at);
   const deadline = row?.pick_deadline_at ?? null;
+
+  // Align this device with the server clock (and re-align when it wakes up).
+  useEffect(() => {
+    void syncServerClock(true).then(() => setTick(t => t + 1));
+    const onVis = () => { if (document.visibilityState === 'visible') void syncServerClock(true); };
+    document.addEventListener('visibilitychange', onVis);
+    const id = setInterval(() => void syncServerClock(true), 5 * 60_000);
+    return () => { document.removeEventListener('visibilitychange', onVis); clearInterval(id); };
+  }, []);
+
 
   useEffect(() => {
     if (!deadline || paused) return;
@@ -102,7 +113,7 @@ export function useLiveDraftHost({ draftId, draft, participants, consumedSlots, 
   const startClock = useCallback(
     async (seconds?: number) => {
       const sec = seconds ?? settings.pickSeconds;
-      const now = Date.now();
+      const now = serverNow();
       await update({
         clock_started_at: new Date(now).toISOString(),
         pick_deadline_at: new Date(now + sec * 1000).toISOString(),
@@ -119,21 +130,21 @@ export function useLiveDraftHost({ draftId, draft, participants, consumedSlots, 
 
   const pause = useCallback(() => {
     if (!draft?.pick_deadline_at || draft?.clock_paused_at) return Promise.resolve();
-    return update({ clock_paused_at: new Date().toISOString() });
+    return update({ clock_paused_at: new Date(serverNow()).toISOString() });
   }, [draft?.clock_paused_at, draft?.pick_deadline_at, update]);
 
   const resume = useCallback(() => {
     if (!draft?.pick_deadline_at || !draft?.clock_paused_at) return Promise.resolve();
     const remaining = new Date(draft.pick_deadline_at).getTime() - new Date(draft.clock_paused_at).getTime();
     return update({
-      pick_deadline_at: new Date(Date.now() + Math.max(0, remaining)).toISOString(),
+      pick_deadline_at: new Date(serverNow() + Math.max(0, remaining)).toISOString(),
       clock_paused_at: null,
     });
   }, [draft?.clock_paused_at, draft?.pick_deadline_at, update]);
 
   const addTime = useCallback(
     (seconds: number) => {
-      const base = draft?.pick_deadline_at ? new Date(draft.pick_deadline_at).getTime() : Date.now();
+      const base = draft?.pick_deadline_at ? new Date(draft.pick_deadline_at).getTime() : serverNow();
       return update({ pick_deadline_at: new Date(base + seconds * 1000).toISOString() });
     },
     [draft?.pick_deadline_at, update],
@@ -179,7 +190,7 @@ export function useLiveDraftHost({ draftId, draft, participants, consumedSlots, 
         await supabase.from('drafts').update({ status: 'complete', pick_deadline_at: null, clock_paused_at: null }).eq('id', draftId);
       } else {
         const next = sorted[slotToParticipantIndex(nextSlot, sorted.length)];
-        const now = Date.now();
+        const now = serverNow();
         await supabase
           .from('drafts')
           .update({

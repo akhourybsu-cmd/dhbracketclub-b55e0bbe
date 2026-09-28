@@ -1,3 +1,4 @@
+import { serverNow } from "@/lib/serverClock";
 /**
  * Live draft hosting — shared model.
  *
@@ -108,7 +109,7 @@ export interface LiveClockState {
   expired: boolean;
 }
 
-export function readClock(row: LiveClockRow | null | undefined, pickSeconds: number, now = Date.now()): LiveClockState {
+export function readClock(row: LiveClockRow | null | undefined, pickSeconds: number, now = serverNow()): LiveClockState {
   const totalMs = Math.max(1000, pickSeconds * 1000);
   const deadline = row?.pick_deadline_at ? new Date(row.pick_deadline_at).getTime() : null;
   if (!deadline || Number.isNaN(deadline)) {

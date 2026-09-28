@@ -11835,6 +11835,7 @@ export type Database = {
         Args: { _game_id: string; _market_ids: string[] }
         Returns: Json
       }
+      server_now: { Args: never; Returns: string }
       set_displayed_sigil: { Args: { _sigil_code: string }; Returns: undefined }
       settle_nfl_chain_market: {
         Args: { _actual_value?: number; _market_id: string; _void?: boolean }
