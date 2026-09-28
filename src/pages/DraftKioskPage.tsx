@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { LayoutGroup, motion } from 'framer-motion';
 import { Maximize2, Minimize2, Volume2, VolumeX, Radio, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDraftUpdates } from '@/hooks/useRealtimeSubscription';
@@ -14,6 +14,8 @@ import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
 import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
 import { KioskDraftReport } from '@/components/draft/live/KioskDraftReport';
 import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
+import { usePickReveals } from '@/components/draft/live/usePickReveals';
+import { PickRevealOverlay } from '@/components/draft/live/PickRevealOverlay';
 
 interface KioskParticipant {
   user_id: string;
