@@ -11716,6 +11716,7 @@ export type Database = {
       nfl_chain_game_unlocked: { Args: { _game_id: string }; Returns: boolean }
       nfl_tiebreaker_unlocked: { Args: { _week_id: string }; Returns: boolean }
       nfl_week_lock_at: { Args: { _week_id: string }; Returns: string }
+      normalize_pick_text: { Args: { t: string }; Returns: string }
       publish_nfl_chain_board: {
         Args: {
           _availability: Json
