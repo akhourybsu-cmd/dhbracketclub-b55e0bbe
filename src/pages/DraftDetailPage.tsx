@@ -232,6 +232,15 @@ export default function DraftDetailPage() {
   // Realtime: auto-refresh on picks, participants, or draft status changes
   const { status: realtimeStatus } = useDraftUpdates(draftId, fetchData);
 
+  // Live drafts: if the realtime link drops, poll so the clock never drifts
+  // from the projector (which polls every 2s as its own fallback).
+  const liveInProgress = Boolean((draft as any)?.is_live) && draft?.status !== 'complete';
+  useEffect(() => {
+    if (!liveInProgress || realtimeStatus === 'connected') return;
+    const id = window.setInterval(() => void fetchData(), 3000);
+    return () => window.clearInterval(id);
+  }, [liveInProgress, realtimeStatus, fetchData]);
+
   const isCreator = draft?.created_by === user?.id;
   const [isAppAdmin, setIsAppAdmin] = useState(false);
   const isParticipant = participants.some(p => p.user_id === user?.id);
