@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, Send, Sparkles, X } from 'lucide-react';
+import { AlertTriangle, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { PersonalDraftDesk } from '@/components/draft/PersonalDraftDesk';
@@ -63,7 +63,7 @@ export function PickComposerFields({
           title={localDuplicate ? 'This pick has already been taken' : undefined}
           className="dl-cta h-11 px-4"
         >
-          <Send className={cn('w-4 h-4', submitting && 'animate-pulse')} />
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin" aria-label="Sending pick" /> : <Send className="w-4 h-4" />}
         </button>
       </div>
       {localDuplicate && (
