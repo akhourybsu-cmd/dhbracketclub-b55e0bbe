@@ -39,12 +39,6 @@ interface KioskDraftResult {
   pick_ratings?: Array<{ pick_id: string; pick_text: string; score: number; explanation: string }> | null;
 }
 
-type RevealPhase = 'locked' | 'confirmed' | 'reveal' | 'landing';
-interface PickReveal {
-  pick: KioskPick;
-  name: string;
-  phase: RevealPhase;
-}
 
 function initials(name?: string | null) {
   return (
@@ -72,11 +66,6 @@ export default function DraftKioskPage() {
   const [loading, setLoading] = useState(true);
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [reveal, setReveal] = useState<PickReveal | null>(null);
-  const [revealQueue, setRevealQueue] = useState<Array<{ pick: KioskPick; name: string }>>([]);
-  const reduceMotion = useReducedMotion();
-  const seenPickIds = useRef<Set<string>>(new Set());
-  const hydrated = useRef(false);
   const lastTickSecond = useRef<number>(-1);
   const hornPlayed = useRef(false);
 
