@@ -624,8 +624,9 @@ export default function DraftDetailPage() {
     if (pickInFlightRef.current) return;
 
     // Hard duplicate check (case-insensitive, matches edge function normalization)
-    const normalized = pickText.trim().toLowerCase();
-    const isDuplicate = picks.some(p => p.pick_text.trim().toLowerCase() === normalized);
+    const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const normalized = norm(pickText);
+    const isDuplicate = picks.some(p => norm(p.pick_text) === normalized);
     if (isDuplicate) {
       toast.error('This has already been picked!');
       return;
@@ -750,7 +751,10 @@ export default function DraftDetailPage() {
       // once as a batch when the draft completes (above), and admins can refresh
       // on demand via the "re-enrich" control (handleReEnrich).
     } catch (err: any) {
-      toast.error(err.message || 'Failed to pick');
+      const msg = String(err?.message || '');
+      if (msg.includes('DUPLICATE_PICK')) toast.error('This has already been picked!');
+      else if (msg.includes('DUPLICATE_SLOT')) { toast.error('That pick slot was just filled — refreshing.'); void fetchData(); }
+      else toast.error(msg || 'Failed to pick');
     } finally {
       setSubmitting(false);
       pickInFlightRef.current = false;

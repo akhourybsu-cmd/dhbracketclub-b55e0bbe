@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.guard_draft_pick_duplicates() FROM PUBLIC, anon, authenticated;
