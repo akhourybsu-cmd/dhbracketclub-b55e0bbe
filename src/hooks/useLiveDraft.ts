@@ -49,6 +49,16 @@ export function useLiveClock(row: LiveClockRow | null | undefined, pickSeconds: 
   const paused = Boolean(row?.clock_paused_at);
   const deadline = row?.pick_deadline_at ?? null;
 
+  // Align this device with the server clock (and re-align when it wakes up).
+  useEffect(() => {
+    void syncServerClock(true).then(() => setTick(t => t + 1));
+    const onVis = () => { if (document.visibilityState === 'visible') void syncServerClock(true); };
+    document.addEventListener('visibilitychange', onVis);
+    const id = setInterval(() => void syncServerClock(true), 5 * 60_000);
+    return () => { document.removeEventListener('visibilitychange', onVis); clearInterval(id); };
+  }, []);
+
+
   useEffect(() => {
     if (!deadline || paused) return;
     const id = setInterval(() => setTick(t => t + 1), 250);
