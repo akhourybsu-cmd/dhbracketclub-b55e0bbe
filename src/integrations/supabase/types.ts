@@ -1900,6 +1900,8 @@ export type Database = {
           is_live: boolean
           kiosk_code: string | null
           live_settings: Json
+          missed_picks: Json | null
+          missed_picks_generated_at: string | null
           num_rounds: number
           pick_deadline_at: string | null
           status: string
@@ -1930,6 +1932,8 @@ export type Database = {
           is_live?: boolean
           kiosk_code?: string | null
           live_settings?: Json
+          missed_picks?: Json | null
+          missed_picks_generated_at?: string | null
           num_rounds?: number
           pick_deadline_at?: string | null
           status?: string
@@ -1960,6 +1964,8 @@ export type Database = {
           is_live?: boolean
           kiosk_code?: string | null
           live_settings?: Json
+          missed_picks?: Json | null
+          missed_picks_generated_at?: string | null
           num_rounds?: number
           pick_deadline_at?: string | null
           status?: string
