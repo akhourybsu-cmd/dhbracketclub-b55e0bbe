@@ -77,7 +77,7 @@ serve(async (req) => {
       }),
     });
     const data = res.ok ? await res.json() : null;
-    await logAiUsage({ functionName: "draft-missed-picks", model: MODEL, userId: u.user.id, clubId: gate.clubId }, data, { success: res.ok });
+    await logAiUsage({ functionName: "draft-missed-picks", model: MODEL, userId: u.user.id, clubId: gate.clubId }, data?.usage, { success: res.ok, errorStatus: res.ok ? null : res.status });
     if (res.status === 429) return json({ error: "AI is busy right now. Try again shortly." }, 429);
     if (res.status === 402) return json({ error: "AI credits are exhausted." }, 402);
     if (!data) return json({ error: "AI analysis failed" }, 502);
