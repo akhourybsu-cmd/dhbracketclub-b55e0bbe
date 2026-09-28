@@ -624,8 +624,9 @@ export default function DraftDetailPage() {
     if (pickInFlightRef.current) return;
 
     // Hard duplicate check (case-insensitive, matches edge function normalization)
-    const normalized = pickText.trim().toLowerCase();
-    const isDuplicate = picks.some(p => p.pick_text.trim().toLowerCase() === normalized);
+    const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const normalized = norm(pickText);
+    const isDuplicate = picks.some(p => norm(p.pick_text) === normalized);
     if (isDuplicate) {
       toast.error('This has already been picked!');
       return;
