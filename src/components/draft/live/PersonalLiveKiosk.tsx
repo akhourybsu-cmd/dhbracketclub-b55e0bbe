@@ -4,6 +4,8 @@ import { Maximize2, Minimize2, MonitorPlay, MonitorSmartphone, Sparkles, X } fro
 import { LiveClockDial } from './LiveClockDial';
 import { formatClock, type LiveClockState } from '@/lib/draft/liveDraft';
 import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
+import { usePickReveals } from './usePickReveals';
+import { PickRevealOverlay } from './PickRevealOverlay';
 
 interface KioskPick {
   id: string;
@@ -25,6 +27,11 @@ interface PersonalLiveKioskProps {
   totalPicks: number;
   myPicks: KioskPick[];
   recentPicks: (KioskPick & { name: string })[];
+  /** Every pick so far, with display names — drives the cinematic reveal. */
+  allPicks?: (KioskPick & { name: string })[];
+  /** Live settings: cinematic announcements + sound switches. */
+  announce?: boolean;
+  sound?: boolean;
   onMakePick: () => void;
   board: ReactNode;
   desk: ReactNode;
