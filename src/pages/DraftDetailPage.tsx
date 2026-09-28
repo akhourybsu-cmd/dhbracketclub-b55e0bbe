@@ -1,3 +1,4 @@
+import { serverNow } from '@/lib/serverClock';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -554,8 +555,8 @@ export default function DraftDetailPage() {
         // Live drafts open with the shared clock already ticking.
         ...(isLiveDraft && liveHost.settings.autoStartClock
           ? {
-              clock_started_at: new Date().toISOString(),
-              pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+              clock_started_at: new Date(serverNow()).toISOString(),
+              pick_deadline_at: new Date(serverNow() + liveHost.settings.pickSeconds * 1000).toISOString(),
               clock_paused_at: null,
             }
           : {}),
@@ -596,8 +597,8 @@ export default function DraftDetailPage() {
         status: 'in_progress', ceremony_status: 'complete', ceremony_reveal_index: participants.length,
         current_round: 1, current_pick_number: 1, current_pick_user_id: first.user_id,
         ...(isLiveDraft && liveHost.settings.autoStartClock ? {
-          clock_started_at: new Date().toISOString(),
-          pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+          clock_started_at: new Date(serverNow()).toISOString(),
+          pick_deadline_at: new Date(serverNow() + liveHost.settings.pickSeconds * 1000).toISOString(),
           clock_paused_at: null,
         } : {}),
       } as any).eq('id', draftId);
@@ -697,8 +698,8 @@ export default function DraftDetailPage() {
         // Live drafts roll the shared clock straight onto the next picker.
         const clockPatch = isLiveDraft && liveHost.settings.autoStartClock
           ? {
-              clock_started_at: new Date().toISOString(),
-              pick_deadline_at: new Date(Date.now() + liveHost.settings.pickSeconds * 1000).toISOString(),
+              clock_started_at: new Date(serverNow()).toISOString(),
+              pick_deadline_at: new Date(serverNow() + liveHost.settings.pickSeconds * 1000).toISOString(),
               clock_paused_at: null,
             }
           : isLiveDraft
