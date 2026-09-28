@@ -4,6 +4,8 @@ import { Maximize2, Minimize2, MonitorPlay, MonitorSmartphone, Sparkles, X } fro
 import { LiveClockDial } from './LiveClockDial';
 import { formatClock, type LiveClockState } from '@/lib/draft/liveDraft';
 import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
+import { usePickReveals } from './usePickReveals';
+import { PickRevealOverlay } from './PickRevealOverlay';
 
 interface KioskPick {
   id: string;
@@ -25,6 +27,11 @@ interface PersonalLiveKioskProps {
   totalPicks: number;
   myPicks: KioskPick[];
   recentPicks: (KioskPick & { name: string })[];
+  /** Every pick so far, with display names — drives the cinematic reveal. */
+  allPicks?: (KioskPick & { name: string })[];
+  /** Live settings: cinematic announcements + sound switches. */
+  announce?: boolean;
+  sound?: boolean;
   onMakePick: () => void;
   board: ReactNode;
   desk: ReactNode;
@@ -100,6 +107,18 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
   }, [open]);
 
   const close = async () => { await exitFullscreen(); setOpen(false); };
+
+  // Cinematic pick reveal — the same suspense sequence the projector shows.
+  const allPicks = props.allPicks ?? [];
+  const nameByPick = new Map(allPicks.map(p => [p.user_id, p.name]));
+  const { reveal, reduceMotion } = usePickReveals({
+    picks: allPicks,
+    loading: false,
+    announce: props.announce ?? true,
+    sound: props.sound ?? true,
+    muted: false,
+    nameFor: userId => (userId ? nameByPick.get(userId) : undefined) ?? 'Player',
+  });
 
   if (!open) {
     return createPortal(
@@ -225,6 +244,9 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
           </div>
         </main>
       </div>
+
+      {/* Cinematic pick announcement — mirrors the projector */}
+      <PickRevealOverlay reveal={reveal} reduceMotion={reduceMotion} />
     </div>,
     document.body,
   );

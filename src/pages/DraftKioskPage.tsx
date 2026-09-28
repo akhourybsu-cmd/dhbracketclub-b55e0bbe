@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
+import { LayoutGroup, motion } from 'framer-motion';
 import { Maximize2, Minimize2, Volume2, VolumeX, Radio, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDraftUpdates } from '@/hooks/useRealtimeSubscription';
@@ -14,6 +14,8 @@ import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
 import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
 import { KioskDraftReport } from '@/components/draft/live/KioskDraftReport';
 import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
+import { usePickReveals } from '@/components/draft/live/usePickReveals';
+import { PickRevealOverlay } from '@/components/draft/live/PickRevealOverlay';
 
 interface KioskParticipant {
   user_id: string;
@@ -39,12 +41,6 @@ interface KioskDraftResult {
   pick_ratings?: Array<{ pick_id: string; pick_text: string; score: number; explanation: string }> | null;
 }
 
-type RevealPhase = 'locked' | 'confirmed' | 'reveal' | 'landing';
-interface PickReveal {
-  pick: KioskPick;
-  name: string;
-  phase: RevealPhase;
-}
 
 function initials(name?: string | null) {
   return (
@@ -72,11 +68,6 @@ export default function DraftKioskPage() {
   const [loading, setLoading] = useState(true);
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [reveal, setReveal] = useState<PickReveal | null>(null);
-  const [revealQueue, setRevealQueue] = useState<Array<{ pick: KioskPick; name: string }>>([]);
-  const reduceMotion = useReducedMotion();
-  const seenPickIds = useRef<Set<string>>(new Set());
-  const hydrated = useRef(false);
   const lastTickSecond = useRef<number>(-1);
   const hornPlayed = useRef(false);
 
@@ -159,61 +150,15 @@ export default function DraftKioskPage() {
     return set;
   }, [skips]);
 
-  /* ── Sound + cinematic pick reveals ── */
-  useEffect(() => {
-    // Seed on first load so a refresh doesn't replay the whole board.
-    if (loading) return;
-    const fresh = picks.filter(p => !seenPickIds.current.has(p.id));
-    picks.forEach(p => seenPickIds.current.add(p.id));
-    if (!hydrated.current) {
-      hydrated.current = true; // first paint: don't replay the whole board
-      return;
-    }
-    const latest = fresh[fresh.length - 1];
-    if (!latest) return;
-    if (!settings.announce) {
-      if (!muted && settings.sound) kioskSound.pick();
-      return;
-    }
-    setRevealQueue(queue => [
-      ...queue,
-      ...fresh.map(pick => ({ pick, name: nameFor(pick.user_id) })),
-    ]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [picks, loading]);
-
-  useEffect(() => {
-    if (reveal || revealQueue.length === 0) return;
-    const [next, ...rest] = revealQueue;
-    setRevealQueue(rest);
-    setReveal({ ...next, phase: reduceMotion ? 'reveal' : 'locked' });
-  }, [reduceMotion, reveal, revealQueue]);
-
-  useEffect(() => {
-    if (!reveal) return;
-    const soundOn = !muted && settings.sound;
-    const durations: Record<RevealPhase, number> = reduceMotion
-      ? { locked: 0, confirmed: 0, reveal: 900, landing: 450 }
-      : { locked: 2200, confirmed: 2400, reveal: 2500, landing: 2000 };
-
-    if (soundOn) {
-      if (reveal.phase === 'locked') kioskSound.locked();
-      if (reveal.phase === 'confirmed') kioskSound.reveal();
-      if (reveal.phase === 'landing') kioskSound.land();
-    }
-
-    const nextPhase: Record<RevealPhase, RevealPhase | null> = {
-      locked: 'confirmed',
-      confirmed: 'reveal',
-      reveal: 'landing',
-      landing: null,
-    };
-    const timer = window.setTimeout(() => {
-      const next = nextPhase[reveal.phase];
-      setReveal(next ? { ...reveal, phase: next } : null);
-    }, durations[reveal.phase]);
-    return () => window.clearTimeout(timer);
-  }, [muted, reduceMotion, reveal, settings.sound]);
+  /* ── Sound + cinematic pick reveals (shared with player kiosks) ── */
+  const { reveal, concealedPickId, reduceMotion } = usePickReveals({
+    picks,
+    loading,
+    announce: settings.announce,
+    sound: settings.sound,
+    muted,
+    nameFor,
+  });
 
   useEffect(() => {
     if (muted || !settings.sound || !clock.running || clock.paused) return;
@@ -271,7 +216,6 @@ export default function DraftKioskPage() {
     );
   }
 
-  const concealedPickId = reveal && reveal.phase !== 'landing' ? reveal.pick.id : null;
   const recent = picks.filter(pick => pick.id !== concealedPickId).slice(-12).reverse();
 
   return (
@@ -432,80 +376,7 @@ export default function DraftKioskPage() {
       </>}
 
       {/* Cinematic pick announcement */}
-      <AnimatePresence mode="wait">
-        {reveal && reveal.phase !== 'landing' && (
-          <motion.div
-            key={reveal.pick.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0.12 : 0.35 }}
-            className="da-kiosk-reveal fixed inset-0 z-50 flex items-center justify-center p-5 sm:p-8 pointer-events-none"
-          >
-            <div className="da-kiosk-reveal-beam" aria-hidden />
-            <div className="da-kiosk-reveal-lines" aria-hidden />
-            <AnimatePresence mode="wait">
-              {reveal.phase === 'locked' && (
-                <motion.div
-                  key="locked"
-                  initial={{ opacity: 0, scale: 1.16, letterSpacing: '0.32em' }}
-                  animate={{ opacity: 1, scale: 1, letterSpacing: '0.18em' }}
-                  exit={{ opacity: 0, scale: 0.88 }}
-                  transition={{ duration: reduceMotion ? 0.12 : 0.55 }}
-                  className="da-kiosk-reveal-status dl-display"
-                >
-                  <span className="da-kiosk-lock-mark" aria-hidden />
-                  Pick locked
-                </motion.div>
-              )}
-              {reveal.phase === 'confirmed' && (
-                <motion.div
-                  key="confirmed"
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, filter: 'blur(8px)' }}
-                  transition={{ duration: reduceMotion ? 0.12 : 0.45 }}
-                  className="text-center"
-                >
-                  <p className="da-kiosk-reveal-kicker dl-display">Selection confirmed</p>
-                  <p className="da-kiosk-reveal-in dl-display">The pick is in</p>
-                </motion.div>
-              )}
-              {reveal.phase === 'reveal' && (
-                <motion.div
-                  key="reveal"
-                  layoutId={`kiosk-pick-${reveal.pick.id}`}
-                  initial={{ opacity: 0, y: 24, scale: 0.92 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 1 }}
-                  transition={{ duration: reduceMotion ? 0.15 : 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  className="da-kiosk-reveal-card"
-                >
-                  <p className="da-kiosk-reveal-kicker dl-display">
-                    Pick #{reveal.pick.pick_number} · Round {reveal.pick.round}
-                  </p>
-                  <motion.p
-                    initial={{ clipPath: 'inset(0 100% 0 0)' }}
-                    animate={{ clipPath: 'inset(0 0% 0 0)' }}
-                    transition={{ delay: reduceMotion ? 0 : 0.25, duration: reduceMotion ? 0.15 : 1.1, ease: [0.22, 1, 0.36, 1] }}
-                    className="da-kiosk-reveal-pick dl-display"
-                  >
-                    {reveal.pick.pick_text}
-                  </motion.p>
-                  <motion.p
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: reduceMotion ? 0 : 1.15, duration: 0.4 }}
-                    className="da-kiosk-reveal-name dl-display"
-                  >
-                    {reveal.name}
-                  </motion.p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PickRevealOverlay reveal={reveal} reduceMotion={reduceMotion} />
     </div>
     </LayoutGroup>
   );
