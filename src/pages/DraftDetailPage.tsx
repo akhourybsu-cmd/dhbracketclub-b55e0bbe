@@ -1818,6 +1818,9 @@ export default function DraftDetailPage() {
               totalPicks={participants.length * draft.num_rounds}
               myPicks={picks.filter(p => p.user_id === user?.id) as any}
               recentPicks={[...picks].slice(-6).reverse().map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
+              allPicks={picks.map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
+              announce={liveHost.settings.announce}
+              sound={liveHost.settings.sound}
               onMakePick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}
               board={
                 <DraftBoard
