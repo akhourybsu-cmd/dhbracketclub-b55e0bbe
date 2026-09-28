@@ -108,6 +108,18 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
 
   const close = async () => { await exitFullscreen(); setOpen(false); };
 
+  // Cinematic pick reveal — the same suspense sequence the projector shows.
+  const allPicks = props.allPicks ?? [];
+  const nameByPick = new Map(allPicks.map(p => [p.user_id, p.name]));
+  const { reveal, reduceMotion } = usePickReveals({
+    picks: allPicks,
+    loading: false,
+    announce: props.announce ?? true,
+    sound: props.sound ?? true,
+    muted: false,
+    nameFor: userId => (userId ? nameByPick.get(userId) : undefined) ?? 'Player',
+  });
+
   if (!open) {
     return createPortal(
       <button type="button" onClick={() => setOpen(true)} className="da-pk-reopen btn-press" aria-label="Open my live kiosk">
@@ -232,6 +244,9 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
           </div>
         </main>
       </div>
+
+      {/* Cinematic pick announcement — mirrors the projector */}
+      <PickRevealOverlay reveal={reveal} reduceMotion={reduceMotion} />
     </div>,
     document.body,
   );
