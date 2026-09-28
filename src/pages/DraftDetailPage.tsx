@@ -113,6 +113,7 @@ export default function DraftDetailPage() {
   const [loading, setLoading] = useState(true);
   const [pickText, setPickText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const pickInFlightRef = useRef(false);
   const [starting, setStarting] = useState(false);
   const [enrichingPickIds, setEnrichingPickIds] = useState<Set<string>>(new Set());
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -609,6 +610,8 @@ export default function DraftDetailPage() {
 
   const handleMakePick = async () => {
     if (!user || !draftId || !pickText.trim() || !isMyTurn) return;
+    // One clean press: ignore repeat taps while a pick is in flight.
+    if (pickInFlightRef.current) return;
 
     // Hard duplicate check (case-insensitive, matches edge function normalization)
     const normalized = pickText.trim().toLowerCase();
@@ -618,14 +621,21 @@ export default function DraftDetailPage() {
       return;
     }
 
-    // AI-on-submit: fire the advisory spell-check/relevance check AT MOST ONCE
-    // per pick (never per keystroke). If it surfaces something actionable and we
-    // haven't shown it for this exact text yet, hold submission so the user can
-    // review; submitting the same text again proceeds. Skipped entirely when the
-    // club has AI turned off, so no wasted round-trip.
+    pickInFlightRef.current = true;
+    // Show pressed/sending state immediately — including during the AI check.
+    setSubmitting(true);
+
+    // AI-on-submit advisory check, capped so a slow/unavailable AI never
+    // stalls the press (live drafts get a tighter budget).
     if (aiEnabled && needsCheck(pickText)) {
-      const result = await runCheck(pickText);
+      const budget = isLiveDraft ? 2500 : 4000;
+      const result = await Promise.race([
+        runCheck(pickText),
+        new Promise<null>(r => setTimeout(() => r(null), budget)),
+      ]);
       if (result && (result.corrected_text || result.is_irrelevant || result.is_duplicate)) {
+        pickInFlightRef.current = false;
+        setSubmitting(false);
         return; // banner is now shown via `suggestion`; user reviews, then re-submits
       }
     }
@@ -633,7 +643,6 @@ export default function DraftDetailPage() {
     // Cancel any in-flight check so its result doesn't flicker after we submit.
     clearSuggestion();
 
-    setSubmitting(true);
     try {
       const pickNumber = consumedSlots + 1;
       const { data: newPick, error } = await supabase.from('draft_picks').insert({
@@ -734,6 +743,7 @@ export default function DraftDetailPage() {
       toast.error(err.message || 'Failed to pick');
     } finally {
       setSubmitting(false);
+      pickInFlightRef.current = false;
       // Restore focus after key-driven remount of pick input
       requestAnimationFrame(() => pickInputRef.current?.focus());
     }
