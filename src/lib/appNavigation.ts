@@ -10,7 +10,6 @@ import {
   Compass,
   FileText,
   Flame,
-  LayoutDashboard,
   House,
   Link2,
   Lock,
