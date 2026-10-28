@@ -64,7 +64,11 @@ export function DraftStatusHeader({
   const SnakeIcon = currentRound % 2 === 1 ? MoveRight : MoveLeft;
 
   return (
-    <div className="dl-status dl-card mb-3">
+    <div className="dl-status dl-card mb-3 sticky top-2 z-20 overflow-hidden backdrop-blur-md">
+      <div className="h-[3px] bg-muted/60" aria-hidden>
+        <div className="h-full bg-[hsl(var(--da-gold))] transition-[width] duration-700 ease-out"
+          style={{ width: `${totalPicks > 0 ? Math.min(100, ((currentPickNumber - 1) / totalPicks) * 100) : 0}%` }} />
+      </div>
       <div className="flex items-center gap-3 px-4 py-3">
         {/* Round / pick position */}
         <div className="shrink-0">
