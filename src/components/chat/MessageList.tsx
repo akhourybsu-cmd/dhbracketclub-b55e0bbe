@@ -82,15 +82,17 @@ export function MessageList({
 
   // Unread divider: index of the last already-read message. It remains visible
   // in history, while opening a conversation always starts at the latest message.
+  // Only messages from other people count as unread — your own never do.
   const unreadDividerAfterIdx = (() => {
     if (!lastReadAt || isSearchActive) return -1;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (new Date(messages[i].created_at) <= new Date(lastReadAt)) return i;
-    }
-    return -1;
+    const readAt = new Date(lastReadAt).getTime();
+    const firstUnread = messages.findIndex(m => m.user_id !== userId && new Date(m.created_at).getTime() > readAt);
+    return firstUnread > 0 ? firstUnread - 1 : -1;
   })();
-  const hasUnreadDivider = unreadDividerAfterIdx >= 0 && unreadDividerAfterIdx < messages.length - 1;
-  const unreadCount = hasUnreadDivider ? messages.length - 1 - unreadDividerAfterIdx : 0;
+  const hasUnreadDivider = unreadDividerAfterIdx >= 0;
+  const unreadCount = hasUnreadDivider
+    ? messages.slice(unreadDividerAfterIdx + 1).filter(m => m.user_id !== userId).length
+    : 0;
 
   // Reset auto-scroll state when channel changes.
   //
