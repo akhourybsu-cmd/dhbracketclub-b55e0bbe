@@ -1,8 +1,17 @@
-import { ENEMIES, getScenario } from "./catalog";
+import { ENEMIES, RESEARCH, UPGRADES, getScenario } from "./catalog";
 import type { CoreRun } from "./types";
+import { WEAPON_IDS, emptyMetrics, stats } from "./systems";
 
 const key = (userId: string, clubId: string) =>
   `nexus_core_run_v2:${userId}:${clubId}`;
+export function clearCoreRun(userId?: string, clubId?: string) {
+  if (userId && clubId)
+    try {
+      localStorage.removeItem(key(userId, clubId));
+    } catch {
+      /* storage unavailable */
+    }
+}
 export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
   if (!userId || !clubId) return null;
   try {
@@ -43,12 +52,36 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
       !s.upgrades ||
       !s.research ||
       !["nearest", "strongest", "fastest"].includes(s.targeting) ||
-      !Object.values(s.research).every(
-        (v) => Number.isInteger(v) && Number(v) >= 0 && Number(v) <= 10,
+      !Object.entries(s.research).every(
+        ([k, v]) =>
+          RESEARCH.some((r) => r.id === k) &&
+          Number.isInteger(v) &&
+          Number(v) >= 0 &&
+          Number(v) <= 10,
       ) ||
-      !Object.values(s.upgrades).every(
-        (v) => Number.isInteger(v) && Number(v) >= 0 && Number(v) <= 10,
+      !Object.entries(s.upgrades).every(([k, v]) => {
+        const def = UPGRADES.find((u) => u.id === k);
+        return (
+          !!def && Number.isInteger(v) && Number(v) >= 0 && Number(v) <= def.max
+        );
+      }) ||
+      !["arcCd", "railCd", "shieldDelay", "energyRemainder"].every(
+        (k) => s[k] === undefined || Number.isFinite(s[k]),
       ) ||
+      (s.metrics &&
+        !(
+          ["energyEarned", "energySpent", "shieldAbsorbed"].every(
+            (k) => Number.isFinite(s.metrics[k]) && s.metrics[k] >= 0,
+          ) &&
+          ["damage", "kills", "shots"].every(
+            (k) =>
+              s.metrics[k] &&
+              WEAPON_IDS.every(
+                (id) =>
+                  Number.isFinite(s.metrics[k][id]) && s.metrics[k][id] >= 0,
+              ),
+          )
+        )) ||
       !s.toSpawn.every((k) =>
         Object.prototype.hasOwnProperty.call(ENEMIES, k),
       ) ||
@@ -86,7 +119,18 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
       )
     )
       return null;
-    return s;
+    const migrated = {
+      ...s,
+      arcCd: s.arcCd ?? 0,
+      railCd: s.railCd ?? 0,
+      shieldDelay: s.shieldDelay ?? 0,
+      energyRemainder: s.energyRemainder ?? 0,
+      metrics: s.metrics ?? emptyMetrics(s.energy),
+    } as CoreRun;
+    const max = stats(migrated, getScenario(s.scenarioId)!);
+    migrated.hp = Math.min(migrated.hp, max.maxHp);
+    migrated.shield = Math.min(migrated.shield, max.maxShield);
+    return migrated;
   } catch {
     return null;
   }

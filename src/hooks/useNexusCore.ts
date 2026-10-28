@@ -3,11 +3,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { QUERY_TIMEOUT_MS, withTimeout } from "@/lib/asyncGuards";
-import { stats } from "@/lib/nexus/core/engine";
+import { createRun, stats } from "@/lib/nexus/core/engine";
 import { getScenario } from "@/lib/nexus/core/catalog";
 import type {
   CoreProfile,
   CoreRun,
+  CoreScenario,
   Research,
   ResearchId,
 } from "@/lib/nexus/core/types";
@@ -62,29 +63,83 @@ export function useNexusCore() {
       p_track: track,
     });
     client.setQueryData(queryKey, profileFromRow(row));
+    await client.invalidateQueries({
+      queryKey: ["nexus-core-ledger", user?.id],
+    });
+  }
+  async function begin(scenario: CoreScenario, id: string) {
+    if (!club) throw new Error("Choose a club before deploying");
+    const ticket = await rpc<{ id: string; seed: number; research: Research }>(
+      "nexus_core_begin",
+      { p_id: id, p_scenario: scenario.id, p_club_id: club.id },
+    );
+    return {
+      ...createRun(scenario, ticket.research, ticket.id, ticket.seed),
+      registered: true,
+    };
+  }
+  async function registerLegacy(run: CoreRun) {
+    if (!club) throw new Error("Choose a club to restore your run");
+    await rpc("nexus_core_begin", {
+      p_id: run.id,
+      p_scenario: run.scenarioId,
+      p_club_id: club.id,
+      p_legacy: true,
+    });
+    return { ...run, registered: true, legacy: true };
   }
   async function finish(run: CoreRun) {
     if (!club) throw new Error("Choose a club to save your run");
     const scenario = getScenario(run.scenarioId)!;
-    const result = await rpc<{
-      profile: ProfileRow;
-      reward: number;
-      stars: number;
-    }>("nexus_core_finish", {
+    const payload = {
       p_club_id: club.id,
       p_run: {
         id: run.id,
         scenarioId: scenario.id,
         phase: run.phase,
         cleared: run.cleared,
-        hpRatio: run.hp / stats(run, scenario).maxHp,
+        hpRatio: Math.min(1, run.hp / stats(run, scenario).maxHp),
         score: run.score,
         kills: run.kills,
         time: Math.floor(run.time),
+        upgrades: run.upgrades,
+        energy: run.energy,
+        earned: run.metrics?.energyEarned,
+        spent: run.metrics?.energySpent,
       },
-    });
+    };
+    type Receipt = {
+      profile: ProfileRow;
+      reward: number;
+      stars: number;
+      waves: number;
+      bonus: number;
+    };
+    let result: Receipt;
+    try {
+      result = await rpc<Receipt>("nexus_core_finish", payload);
+    } catch (e) {
+      if (
+        !run.balanceVersion &&
+        !run.registered &&
+        e instanceof Error &&
+        e.message.includes("Deploy your nexus before")
+      ) {
+        await registerLegacy(run);
+        result = await rpc<Receipt>("nexus_core_finish", payload);
+      } else throw e;
+    }
     client.setQueryData(queryKey, profileFromRow(result.profile));
-    return { reward: result.reward, stars: result.stars };
+    void client.invalidateQueries({
+      queryKey: ["nexus-core-ledger", user?.id],
+    });
+    void client.invalidateQueries({ queryKey: ["nexus-core-records"] });
+    return {
+      reward: result.reward,
+      stars: result.stars,
+      waves: result.waves,
+      bonus: result.bonus,
+    };
   }
   return {
     ...query,
@@ -92,6 +147,43 @@ export function useNexusCore() {
     userId: user?.id,
     clubId: club?.id,
     research,
+    begin,
+    registerLegacy,
     finish,
   };
+}
+
+export interface CreditEntry {
+  id: number;
+  kind: "run" | "research";
+  delta: number;
+  balance: number;
+  details: {
+    scenario?: string;
+    track?: string;
+    level?: number;
+    first_clear?: number;
+  };
+  created_at: string;
+}
+export function useNexusLedger() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["nexus-core-ledger", user?.id],
+    enabled: !!user,
+    retry: 1,
+    queryFn: async () => {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("nexus_core_ledger" as never)
+          .select("id,kind,delta,balance,details,created_at")
+          .order("id", { ascending: false })
+          .limit(12),
+        QUERY_TIMEOUT_MS,
+        "credit history",
+      );
+      if (error) throw new Error(error.message);
+      return (data || []) as unknown as CreditEntry[];
+    },
+  });
 }

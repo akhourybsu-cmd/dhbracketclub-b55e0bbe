@@ -13,6 +13,9 @@ import {
   Zap,
 } from "lucide-react";
 import { UPGRADES, getScenario } from "@/lib/nexus/core/catalog";
+import { upgradePreview } from "@/lib/nexus/core/systems";
+import { CoreWeaponPanel } from "@/components/nexus/core/CoreWeaponPanel";
+import { toast } from "sonner";
 import {
   activateAbility,
   buyUpgrade,
@@ -68,7 +71,7 @@ export default function NexusBattlePage() {
 }
 
 function Combat({ scenario }: { scenario: CoreScenario }) {
-  const { userId, clubId, profile } = useNexusCore();
+  const { userId, clubId, profile, registerLegacy } = useNexusCore();
   const navigate = useNavigate();
   const location = useLocation();
   const [run, setRun] = useState<CoreRun | null>(() => {
@@ -80,10 +83,11 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
   const runRef = useRef(run);
   const [paused, setPaused] = useState(!!run && run.phase !== "ready");
   const [speed, setSpeed] = useState(1);
-  const [category, setCategory] = useState<"attack" | "defense" | "utility">(
-    "attack",
-  );
+  const [category, setCategory] = useState<
+    "attack" | "weapons" | "defense" | "utility"
+  >("attack");
   const [muted, setMuted] = useState(true);
+  const [restoring, setRestoring] = useState(false);
   const [storageError, setStorageError] = useState(false);
   const lastSave = useRef(0);
   const warned = useRef(false);
@@ -118,6 +122,11 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
       runRef.current = next;
       setRun(next);
       if (!sound.current.muted) {
+        for (const kind of ["pulse", "arc", "rail"] as const)
+          if (
+            (next.metrics?.shots[kind] || 0) > (prev.metrics?.shots[kind] || 0)
+          )
+            sound.current.play(`shot.${kind}`);
         if (next.kills > prev.kills) sound.current.play("enemy.die");
         else if (next.damageTaken > prev.damageTaken)
           sound.current.play("leak");
@@ -204,7 +213,21 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
         sfx.play(ability === "nova" ? "ability.cast.emp" : "ability.ready");
     }
   };
-  const begin = () => {
+  const begin = async () => {
+    if (restoring) return;
+    if (!runRef.current!.balanceVersion && !runRef.current!.registered) {
+      setRestoring(true);
+      try {
+        commit(await registerLegacy(runRef.current!));
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Could not restore this run",
+        );
+        return;
+      } finally {
+        setRestoring(false);
+      }
+    }
     if (runRef.current?.phase === "ready")
       commit(startWave(runRef.current, scenario));
     setPaused(false);
@@ -319,7 +342,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               <Zap size={22} />
               <span>
                 <strong>Overdrive</strong>
-                <small>2.2× fire rate · 6s</small>
+                <small>2× weapon output · 6s</small>
               </span>
               <span>
                 {run.overdriveTime > 0
@@ -345,6 +368,11 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               </strong>
             </span>
           </div>
+          <CoreWeaponPanel
+            run={run}
+            scenario={scenario}
+            onInstall={() => setCategory("weapons")}
+          />
         </div>
         <section
           className="nc-panel nc-upgrade-panel"
@@ -361,7 +389,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
             </span>
           </div>
           <div className="nc-tabs" role="tablist" aria-label="Upgrade category">
-            {(["attack", "defense", "utility"] as const).map((c) => (
+            {(["attack", "weapons", "defense", "utility"] as const).map((c) => (
               <button
                 key={c}
                 id={`tab-${c}`}
@@ -400,7 +428,11 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                       <em>{level > 0 ? `L${level}` : ""}</em>
                     </strong>
                     <small>
-                      {blocked ? "Offline for this challenge" : u.description}
+                      {blocked
+                        ? "Offline for this challenge"
+                        : max
+                          ? u.description
+                          : upgradePreview(run, scenario, u.id)}
                     </small>
                   </span>
                   <span className="nc-upgrade-price">
@@ -459,9 +491,13 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               ? "Your nexus fires automatically. Earn energy, build upgrades, and hold the center. Start when you’re ready."
               : "Take a breath. Your defense is saved on this device. Resume at your own pace."}
           </AlertDialogDescription>
-          <button className="nc-button" onClick={begin}>
+          <button className="nc-button" onClick={begin} disabled={restoring}>
             <Play size={16} />
-            {run.phase === "ready" ? "Start defense" : "Resume defense"}
+            {restoring
+              ? "Restoring…"
+              : run.phase === "ready"
+                ? "Start defense"
+                : "Resume defense"}
           </button>
           <button
             className="nc-button nc-button-secondary"

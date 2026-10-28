@@ -13,7 +13,18 @@ export type UpgradeId =
   | "armor"
   | "income"
   | "orbit"
-  | "frost";
+  | "frost"
+  | "arc"
+  | "rail";
+export type WeaponId = "pulse" | "arc" | "rail" | "orbit" | "nova";
+export interface CombatMetrics {
+  damage: Record<WeaponId, number>;
+  kills: Record<WeaponId, number>;
+  shots: Record<WeaponId, number>;
+  energyEarned: number;
+  energySpent: number;
+  shieldAbsorbed: number;
+}
 export type ResearchId =
   "weapons" | "reactor" | "plating" | "barrier" | "salvage" | "nova";
 export type Levels = Partial<Record<UpgradeId, number>>;
@@ -47,6 +58,7 @@ export interface CoreEnemy {
   bounty: number;
   attackCd: number;
   slowed: number;
+  lastHit?: WeaponId;
 }
 
 export interface Projectile {
@@ -60,17 +72,22 @@ export interface Projectile {
 
 export interface CoreEffect {
   id: number;
-  kind: "hit" | "kill" | "nova" | "breach" | "shot";
+  kind: "hit" | "kill" | "nova" | "breach" | "shot" | "arc" | "rail";
   x: number;
   y: number;
   life: number;
   maxLife: number;
   value?: number;
+  fromX?: number;
+  fromY?: number;
 }
 
 export interface CoreRun {
   version: 2;
   rewardClaimed?: boolean;
+  balanceVersion?: number;
+  registered?: boolean;
+  legacy?: boolean;
   id: string;
   scenarioId: string;
   seed: number;
@@ -99,6 +116,11 @@ export interface CoreRun {
   overdriveCd: number;
   overdriveTime: number;
   orbitalCd: number;
+  arcCd?: number;
+  railCd?: number;
+  shieldDelay?: number;
+  energyRemainder?: number;
+  metrics?: CombatMetrics;
   targeting: Targeting;
 }
 

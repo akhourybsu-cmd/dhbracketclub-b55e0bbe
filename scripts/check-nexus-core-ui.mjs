@@ -39,29 +39,30 @@ try {
       contentType: "text/javascript",
       body: `
     const initial={credits:180,research:{},campaign:{},challenges:{},best_wave:0,total_runs:0};
-    window.nexusQa={profile:JSON.parse(sessionStorage.getItem('nexus-qa-profile')||'null')||initial,claims:0,failClaims:sessionStorage.getItem('nexus-qa-fail')==='1',claimed:new Map()};
-    const persist=()=>sessionStorage.setItem('nexus-qa-profile',JSON.stringify(window.nexusQa.profile));
+    window.nexusQa={tickets:JSON.parse(sessionStorage.getItem('nexus-qa-tickets')||'{}'),logs:JSON.parse(sessionStorage.getItem('nexus-qa-logs')||'[]'),profile:JSON.parse(sessionStorage.getItem('nexus-qa-profile')||'null')||initial,claims:0,failClaims:sessionStorage.getItem('nexus-qa-fail')==='1',claimed:new Map()};
+    const persist=()=>{sessionStorage.setItem('nexus-qa-profile',JSON.stringify(window.nexusQa.profile));sessionStorage.setItem('nexus-qa-tickets',JSON.stringify(window.nexusQa.tickets));sessionStorage.setItem('nexus-qa-logs',JSON.stringify(window.nexusQa.logs));};
     export const supabase={rpc:async(name,args)=>{
       if(name==='nexus_core_records')return{data:[],error:null};
       const qa=window.nexusQa; let data=qa.profile;
+      if(name==='nexus_core_begin'){data=qa.tickets[args.p_id]||{id:args.p_id,seed:42,research:structuredClone(qa.profile.research)};qa.tickets[args.p_id]=data;}
       if(name==='nexus_core_research'){
-        const track=args.p_track,level=qa.profile.research[track]||0,base={weapons:35,reactor:40,plating:30,barrier:30,salvage:35,nova:40}[track],cost=Math.round(base*1.5**level);
+        const track=args.p_track,level=qa.profile.research[track]||0,base={weapons:35,reactor:40,plating:30,barrier:30,salvage:35,nova:40}[track],cost=Math.round(base*1.35**level);
         if(qa.profile.credits<cost)return{data:null,error:{message:'Not enough credits'}};
-        qa.profile={...qa.profile,credits:qa.profile.credits-cost,research:{...qa.profile.research,[track]:level+1}};data=qa.profile;
+        qa.profile={...qa.profile,credits:qa.profile.credits-cost,research:{...qa.profile.research,[track]:level+1}};data=qa.profile;qa.logs.unshift({id:qa.logs.length+1,kind:'research',delta:-cost,balance:qa.profile.credits,details:{track,level:level+1},created_at:new Date().toISOString()});
       }
       if(name==='nexus_core_finish'){
         qa.claims++;
         if(qa.failClaims)return{data:null,error:{message:'Offline'}};
         const run=args.p_run;
         if(!qa.claimed.has(run.id)){
-          const reward=105,stars=3;
+          const waves=20,bonus=qa.profile.campaign[run.scenarioId]?0:70,reward=waves+bonus,stars=3;
           qa.profile={...qa.profile,credits:qa.profile.credits+reward,total_runs:qa.profile.total_runs+1,campaign:{...qa.profile.campaign,[run.scenarioId]:stars}};
-          qa.claimed.set(run.id,{reward,stars});
+          qa.claimed.set(run.id,{reward,stars,waves,bonus});qa.logs.unshift({id:qa.logs.length+1,kind:'run',delta:reward,balance:qa.profile.credits,details:{scenario:run.scenarioId,first_clear:bonus},created_at:new Date().toISOString()});
         }
         data={profile:qa.profile,...qa.claimed.get(run.id)};
       }
       persist();return{data,error:null};
-    },from:()=>{const q={select:()=>q,eq:()=>q,order:()=>q,limit:async()=>({data:[],error:null})};return q;}};
+    },from:()=>{const q={select:()=>q,eq:()=>q,order:()=>q,limit:async()=>({data:window.nexusQa.logs,error:null})};return q;}};
   `,
     }),
   );
@@ -122,7 +123,7 @@ try {
   await go("/nexus/research");
   await page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Pulse amplifier" }) })
+    .filter({ has: page.getByRole("heading", { name: "Weapon amplifier" }) })
     .getByRole("button")
     .click();
   await expect(page.getByText("LEVEL 1 / 10", { exact: true })).toBeVisible();
@@ -138,9 +139,9 @@ try {
   );
   await page.getByRole("button", { name: "Start defense" }).click();
   await expect(dialog).toBeHidden();
-  await page.getByRole("button", { name: /Pulse damage, level 0/ }).click();
+  await page.getByRole("button", { name: /Weapon power, level 0/ }).click();
   await expect(
-    page.getByRole("button", { name: /Pulse damage, level 1/ }),
+    page.getByRole("button", { name: /Weapon power, level 1/ }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Defense", exact: true }).click();
   await expect(
@@ -197,6 +198,47 @@ try {
   await expect(
     page.getByRole("heading", { name: "Sector locked." }),
   ).toBeVisible();
+  // Exercise every live weapon and the exact-value upgrade previews in real UI.
+  await go();
+  await page.evaluate(() => window.stageNexusBattle());
+  await go("/nexus/battle/endless");
+  await page.getByRole("button", { name: "Resume defense" }).click();
+  await page.locator(".nc-systems summary").click();
+  await expect(page.getByText("4 / 4 online")).toBeVisible();
+  await page.getByRole("tab", { name: "Weapons", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: /Chain arc, level 1/ }),
+  ).toContainText("targets");
+  await page.getByRole("button", { name: /Rail lance, level 1/ }).click();
+  await expect(
+    page.getByRole("button", { name: /Rail lance, level 2/ }),
+  ).toBeVisible();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const s = JSON.parse(
+            localStorage.getItem("nexus_core_run_v2:member:club"),
+          );
+          return ["pulse", "arc", "rail", "orbit"].every(
+            (k) => s.metrics.damage[k] > 0,
+          );
+        }),
+      { timeout: 10000 },
+    )
+    .toBe(true);
+  await noOverflow();
+  await page.screenshot({
+    path: join(output, "1440-weapon-systems.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await noOverflow();
+  await page.screenshot({
+    path: join(output, "390-weapon-systems.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   // Reward failures show a retry. A retry unlocks the next sector.
   await go();
   await page.evaluate(() => {
@@ -228,6 +270,10 @@ try {
   await expect(
     page.getByRole("heading", { name: "Know your perimeter." }),
   ).toBeVisible();
+  await go("/nexus/research");
+  await expect(page.getByLabel("Credit history")).toContainText(
+    "first-clear bonus",
+  );
   await go("/nexus/leaderboard");
   await expect(
     page.getByRole("heading", { name: "The first record is yours to set." }),

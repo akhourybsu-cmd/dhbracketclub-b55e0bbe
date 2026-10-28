@@ -2,6 +2,7 @@ import { Lock, Swords } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { CAMPAIGN, CHALLENGES } from "@/lib/nexus/core/catalog";
 import { useNexusCore } from "@/hooks/useNexusCore";
+import { waveCredits } from "@/lib/nexus/core/economy";
 import {
   CoreBack,
   CoreHeading,
@@ -62,7 +63,10 @@ function Sectors() {
               <p>{s.description}</p>
               <div className="nc-sector-info">
                 <span>{s.waves} waves</span>
-                <span>+{s.reward} clear bonus</span>
+                <span>
+                  {waveCredits(s, s.waves!)} wave credits
+                  {stars ? "" : ` + ${s.reward} first clear`}
+                </span>
               </div>
               {locked ? (
                 <span className="nc-note">

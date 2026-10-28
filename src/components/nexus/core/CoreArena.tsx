@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { ENEMIES } from "@/lib/nexus/core/catalog";
 import { distance, stats } from "@/lib/nexus/core/engine";
+import { SYSTEMS } from "@/lib/nexus/core/systems";
 import type { CoreRun, CoreScenario } from "@/lib/nexus/core/types";
 
 function hex(radius: number, offset = 0) {
@@ -126,14 +127,18 @@ export function CoreArena({
         />
       )}
       {v.orbit > 0 && (
-        <circle r="95" fill="none" stroke="hsl(265 95% 78% / .25)" />
+        <circle
+          r={SYSTEMS.orbitalRadius}
+          fill="none"
+          stroke="hsl(265 95% 78% / .25)"
+        />
       )}
       {Array.from({ length: v.orbit }, (_, i) => {
         const a = run.time * 1.8 + (i * Math.PI * 2) / v.orbit;
         return (
           <g
             key={i}
-            transform={`translate(${Math.cos(a) * 95} ${Math.sin(a) * 95}) rotate(${(a * 180) / Math.PI})`}
+            transform={`translate(${Math.cos(a) * SYSTEMS.orbitalRadius} ${Math.sin(a) * SYSTEMS.orbitalRadius}) rotate(${(a * 180) / Math.PI})`}
           >
             <path d="M-5 -16 L7 0 L-5 16 L-1 0Z" fill="hsl(265 100% 80%)" />
             <circle r="16" fill="hsl(265 100% 80% / .1)" />
@@ -271,6 +276,38 @@ export function CoreArena({
       )}
       {run.effects.map((e) => {
         const life = e.life / e.maxLife;
+        if (e.kind === "arc")
+          return (
+            <path
+              key={e.id}
+              d={`M ${e.fromX || 0} ${e.fromY || 0} L ${((e.fromX || 0) + e.x) / 2 + 8} ${((e.fromY || 0) + e.y) / 2 - 8} L ${e.x} ${e.y}`}
+              fill="none"
+              stroke="hsl(270 100% 80%)"
+              strokeWidth={2 + life * 2}
+              opacity={life}
+            />
+          );
+        if (e.kind === "rail")
+          return (
+            <g key={e.id} opacity={life}>
+              <line
+                x1="0"
+                y1="0"
+                x2={e.x}
+                y2={e.y}
+                stroke="hsl(42 100% 70%)"
+                strokeWidth={2 + life * 7}
+              />
+              <line
+                x1="0"
+                y1="0"
+                x2={e.x}
+                y2={e.y}
+                stroke="white"
+                strokeWidth="2"
+              />
+            </g>
+          );
         if (e.kind === "nova")
           return (
             <circle

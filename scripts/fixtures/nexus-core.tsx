@@ -14,7 +14,8 @@ import NexusCodexPage from "../../src/pages/NexusCodexPage";
 import NexusLeaderboardPage from "../../src/pages/NexusLeaderboardPage";
 import { NexusLayout } from "../../src/components/nexus/NexusLayout";
 import { createRun } from "../../src/lib/nexus/core/engine";
-import { CAMPAIGN } from "../../src/lib/nexus/core/catalog";
+import { CAMPAIGN, ENDLESS } from "../../src/lib/nexus/core/catalog";
+import { emptyMetrics } from "../../src/lib/nexus/core/systems";
 import { saveCoreRun } from "../../src/lib/nexus/core/persistence";
 import "@fontsource/dm-sans/400.css";
 import "@fontsource/dm-sans/500.css";
@@ -25,6 +26,63 @@ import "../../src/index.css";
 
 // The browser check can stage a completed run without waiting several minutes.
 Object.assign(window, {
+  stageNexusBattle: () => {
+    const run = createRun(ENDLESS);
+    Object.assign(run, {
+      registered: true,
+      phase: "wave",
+      wave: 5,
+      cleared: 4,
+      energy: 5000,
+      metrics: emptyMetrics(5000),
+      upgrades: { arc: 1, rail: 1, orbit: 2 },
+      enemies: [
+        {
+          id: 901,
+          kind: "tank",
+          x: 160,
+          y: 0,
+          hp: 10000,
+          maxHp: 10000,
+          speed: 1,
+          damage: 9,
+          radius: 14,
+          bounty: 17,
+          attackCd: 99,
+          slowed: 0,
+        },
+        {
+          id: 902,
+          kind: "drone",
+          x: 100,
+          y: 20,
+          hp: 10000,
+          maxHp: 10000,
+          speed: 1,
+          damage: 9,
+          radius: 9,
+          bounty: 7,
+          attackCd: 99,
+          slowed: 0,
+        },
+        {
+          id: 903,
+          kind: "swarm",
+          x: 39,
+          y: 0,
+          hp: 10000,
+          maxHp: 10000,
+          speed: 1,
+          damage: 9,
+          radius: 5,
+          bounty: 4,
+          attackCd: 99,
+          slowed: 0,
+        },
+      ],
+    });
+    saveCoreRun(run, "member", "club");
+  },
   stageNexusResult: () => {
     const run = createRun(CAMPAIGN[0]);
     Object.assign(run, {

@@ -7,8 +7,8 @@ Nexus Defense is a mobile-first, central-core survival game inspired by the upgr
 1. Choose a campaign sector, challenge, or endless run.
 2. The nexus automatically fires homing pulse projectiles within its targeting radius. Prioritize nearest, strongest, or fastest enemies.
 3. Kills and cleared waves award **energy**. Spend energy during the run on attack, defense, and utility systems. Purchases take effect immediately.
-4. Trigger **Nova burst** (area damage, knockback, temporary slow; 20-second cooldown) and **Overdrive** (2.2× fire rate for six seconds; 30-second cooldown).
-5. Enemies that reach the core keep attacking every second until destroyed. Shields absorb damage first. Armor reduces incoming damage, and repair systems restore hull.
+4. Trigger **Nova burst** (area damage, knockback, temporary slow; 20-second cooldown) and **Overdrive** (2× weapon output for six seconds; 30-second cooldown).
+5. Enemies that reach the core keep attacking every second until destroyed. Shields absorb damage first and recharge three seconds after the last hit. Armor reduces incoming damage, and repair systems restore hull.
 6. Every completed run awards **research credits**. Permanent research improves the next run; energy and in-battle upgrades reset.
 
 ## Modes
@@ -24,9 +24,9 @@ Enemies: drones, runners, swarms, armored bulwarks, splitters that spawn three s
 
 ## Economy and progression
 
-- Twelve energy upgrade tracks: pulse damage, fire rate, targeting range, multishot, critical strike, hull, shield, nanite repair, armor, energy siphon, orbital blades, stasis.
-- Six permanent research tracks: damage, fire rate, hull, shield, starting energy, and nova damage. Each has ten levels.
-- Finishing a run earns 5 credits + 6 per cleared wave (wave component capped at 500), plus a sector/challenge victory bonus. Replaying victories earns the bonus again. Abandoning an unfinished run does not earn credits.
+- Fourteen energy upgrade tracks: pulse damage, fire rate, targeting range, multishot, critical strike, hull, shield, nanite repair, armor, energy siphon, orbital blades, stasis, chain arc, and rail lance.
+- Six permanent research tracks: damage, fire rate, hull, shield, starting energy, and nova damage. Each has ten levels; prices grow by 1.35 per level.
+- Cleared campaign waves earn 4–8 credits depending on the sector; challenge waves earn 6. Endless pays `4 × waves + floor(waves² / 4)`, capped at 1,500. First-clear sector/challenge bonuses are paid once per account. Replays earn wave credits, and zero-wave losses earn nothing. Energy cannot be converted into research credits. Abandoning an unfinished run does not earn credits.
 - Research and campaign progress belong to the authenticated player across clubs. Run records belong to the club where the run finished. The club leaderboard selects each member's best run before limiting to the top 50; repeated runs cannot crowd out other players.
 
 ## Implementation
@@ -39,13 +39,13 @@ Enemies: drones, runners, swarms, armored bulwarks, splitters that spawn three s
 | Account progression and reward RPCs | `src/hooks/useNexusCore.ts` |
 | SVG arena and game design system | `src/components/nexus/core/` |
 | Player pages and routing | `src/pages/Nexus*Page.tsx`, `src/App.tsx` |
-| Tables, RLS, atomic mutations | `supabase/migrations/20261029000000_nexus_core_overhaul.sql` |
+| Tables, RLS, atomic mutations | `supabase/migrations/20261029000000_nexus_core_overhaul.sql` + `20261029010000_nexus_core_economy.sql` |
 
-The engine advances in pure 50ms steps. 2× speed executes two steps per interval. The seeded random state is part of the checkpoint, so restoring a run preserves its simulation. Runtime entities and transient effects are bounded. The game pauses when the document is hidden or the window loses focus. Checkpoints flush on route changes, backgrounding, purchases, abilities, and run completion.
+The engine advances in pure 50ms steps. Fractional cooldown overshoot carries forward so displayed weapon rates match combat. Pulse projectiles reserve expected lethal damage and retarget after a target dies. Chain arc visits distinct nearby targets with damage falloff; rail lance pierces aligned enemies and ignores armor. Research and weapon power amplify all systems; fire rate, critical strike, and multishot modify the pulse cannon. Overdrive doubles pulse fire rate, arc/rail recharge speed, and orbital damage. Telemetry counts actual HP removed and credits kills to their weapon. Energy siphon carries fractional bonuses instead of rounding each kill. 2× speed executes two steps per interval. The seeded random state is part of the checkpoint, so restoring a run preserves its simulation. Runtime entities and transient effects are bounded. The game pauses when the document is hidden or the window loses focus. Checkpoints flush on route changes, backgrounding, purchases, abilities, and run completion.
 
 Active runs save **on the current device**, under `nexus_core_run_v2:<user-id>:<club-id>`. Research and completed records sync through Supabase. A restored run begins paused. Starting another run requires explicitly replacing an unfinished checkpoint. Unclaimed completed runs must sync their rewards before a new deployment can overwrite them. If storage is unavailable, the UI warns the player and carries the completed run through router state.
 
-`nexus_core_profiles` and `nexus_core_runs` have row-level security. Clients cannot write either table directly. Research purchases lock the profile row and calculate prices on the server to prevent concurrent overspending. Reward claims also lock the profile and are idempotent by run UUID. The server validates scenario IDs, membership, campaign unlocks, wave limits, and outcomes, and calculates rewards itself. Combat and score generation remain client-side, consistent with the original casual game; this is not an authoritative anti-cheat server.
+`nexus_core_profiles`, `nexus_core_runs`, `nexus_core_sessions`, and `nexus_core_ledger` have row-level security. Deployments are registered before a new run starts; the server supplies a stable seed and research snapshot. One active deployment per account prevents parallel claims from abandoned runs. Existing accounts may import one pre-upgrade checkpoint without losing previously earned progression. Clients cannot write these tables directly. Research purchases lock the profile row and calculate prices on the server to prevent concurrent overspending. Reward claims also lock the profile and are idempotent by run UUID. The server validates deployment IDs, scenario IDs, membership, campaign unlocks, wave limits, durations, bounded counters, upgrade prices/caps, and energy-budget consistency. It calculates rewards and one-time clear bonuses itself. Every new research purchase and positive run payout creates a receipt in the account-scoped credit ledger. Combat and score generation remain client-side, consistent with the original casual game; this is not an authoritative anti-cheat server.
 
 ## Legacy compatibility
 
@@ -64,3 +64,9 @@ Keep the `nexus-defense` installed-asset gate on every player route. The scoped 
 ## Future work
 
 Add more sectors, enemy behaviors, challenge rotations, research branches, and core cosmetics through the v2 catalog and engine. Any future co-op should be designed for central-core combat. Cloud checkpoints and authoritative score verification can be added separately without mixing the old path-engine state into v2 saves.
+
+## Economy and balance regression checks
+
+- `node --import tsx scripts/balance-nexus-core.ts --output=/tmp/nexus-balance.json` runs the actual engine with six policies, eight seeds, thirteen scenarios, and two research tiers (1,248 runs). The report records weapon damage and energy budgets, not theoretical DPS. See [NEXUS_BALANCE_REPORT.md](NEXUS_BALANCE_REPORT.md) for the measured baseline and limitations.
+- `src/test/nexus/coreSystems.test.ts` checks actual fire rates, crits, retargeting, arc chains, rail piercing, orbitals at the hull, damage accounting, shield delays, slows, energy conservation, every upgrade cap, and payout policy. `coreBalance.test.ts` guards build viability and research progression.
+- Generate the frontend economy contract with `node --import tsx scripts/nexus-economy-contract.ts > /tmp/nexus-economy-contract.json`, then run `node scripts/test-nexus-core-economy.mjs` with optional `@electric-sql/pglite` installed. It applies the real economy migration twice and compares all 83 upgrade levels and 60 research prices to the server.

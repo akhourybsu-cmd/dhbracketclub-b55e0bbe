@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Crosshair, Heart, Orbit, Shield, Zap } from "lucide-react";
 import { CAMPAIGN, getScenario } from "@/lib/nexus/core/catalog";
@@ -6,6 +6,7 @@ import { createRun, isFinished, stats } from "@/lib/nexus/core/engine";
 import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
 import { useNexusCore } from "@/hooks/useNexusCore";
 import { CoreArena } from "@/components/nexus/core/CoreArena";
+import { rewardBreakdown } from "@/lib/nexus/core/economy";
 import {
   CoreBack,
   CoreHeading,
@@ -22,10 +23,14 @@ export default function NexusLoadoutPage() {
 }
 function Deployment() {
   const { missionId } = useParams();
-  const { profile, userId, clubId } = useNexusCore();
+  const { profile, userId, clubId, begin } = useNexusCore();
   const navigate = useNavigate();
   const scenario = getScenario(missionId);
   const [replace, setReplace] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [deployError, setDeployError] = useState("");
+  const deploymentId = useRef(crypto.randomUUID());
+  const busy = useRef(false);
   const preview = useMemo(
     () =>
       scenario ? createRun(scenario, profile?.research, "preview", 1) : null,
@@ -48,11 +53,29 @@ function Deployment() {
   const activeSave = saved && !isFinished(saved);
   const unclaimed = saved && isFinished(saved) && !saved.rewardClaimed;
   const v = stats(preview, scenario);
-  const deploy = () => {
-    const run = createRun(scenario, profile.research);
-    saveCoreRun(run, userId, clubId);
-    navigate(`/nexus/battle/${scenario.id}`, { state: { freshRun: run } });
+  const deploy = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setDeploying(true);
+    setDeployError("");
+    try {
+      const run = await begin(scenario, deploymentId.current);
+      saveCoreRun(run, userId, clubId);
+      navigate(`/nexus/battle/${scenario.id}`, { state: { freshRun: run } });
+    } catch (e) {
+      setDeployError(
+        e instanceof Error ? e.message : "Could not deploy. Try again.",
+      );
+    } finally {
+      busy.current = false;
+      setDeploying(false);
+    }
   };
+  const rewards = rewardBreakdown(
+    { phase: "victory", cleared: scenario.waves || 10 },
+    scenario,
+    profile,
+  );
   return (
     <>
       <CoreBack
@@ -85,9 +108,9 @@ function Deployment() {
               {scenario.waves ? `${scenario.waves} waves` : "Unlimited waves"}
             </span>
             <span>
-              {scenario.reward
-                ? `+${scenario.reward} clear bonus`
-                : "6 credits per wave"}
+              {scenario.waves
+                ? `${rewards.waves} wave credits${rewards.bonus ? ` + ${rewards.bonus} first-clear bonus` : ""}`
+                : "10 waves = 65 credits · higher waves earn more"}
             </span>
           </div>
           <ul className="nc-deploy-rules">
@@ -139,10 +162,15 @@ function Deployment() {
               </button>
             </div>
           ) : (
-            <button className="nc-button" onClick={deploy}>
-              Deploy nexus
+            <button className="nc-button" onClick={deploy} disabled={deploying}>
+              {deploying ? "Deploying…" : "Deploy nexus"}
               <ArrowRight size={17} />
             </button>
+          )}
+          {deployError && (
+            <p className="nc-rule" role="alert">
+              {deployError}. Retry deployment to reconnect.
+            </p>
           )}
           <p className="nc-note" style={{ fontSize: 10, marginTop: 16 }}>
             Research and completed records sync across devices. Active runs save

@@ -158,7 +158,7 @@ describe("central core combat", () => {
   it("applies purchases once, caps upgrades, and never spends unavailable energy", () => {
     const s = battle();
     const n = buyUpgrade(s, ENDLESS, "damage");
-    expect(n.energy).toBe(48);
+    expect(n.energy).toBe(52);
     expect(n.upgrades.damage).toBe(1);
     expect(buyUpgrade(n, ENDLESS, "multishot")).toBe(n);
     const max = { ...s, energy: 10000, upgrades: { damage: 10 } };
