@@ -11,6 +11,7 @@ import {
   FileText,
   Flame,
   LayoutDashboard,
+  House,
   Link2,
   Lock,
   MessageCircle,
@@ -47,7 +48,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
   {
     label: 'DH Club',
     items: [
-      { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
+      { path: '/dashboard', label: 'Home', icon: House },
       { path: '/chat', label: 'Chat', icon: MessageSquareText },
       { path: '/compete', label: 'Compete', icon: Swords },
       { path: '/club', label: 'Club', icon: Users },
@@ -90,7 +91,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
 ];
 
 export const MOBILE_PRIMARY_NAV: AppNavItem[] = [
-  { path: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { path: '/dashboard', label: 'Home', icon: House },
   { path: '/chat', label: 'Chat', icon: MessageSquareText },
   { path: '/finds', label: 'Drop', icon: Bookmark },
   { path: '/compete', label: 'Compete', icon: Swords },

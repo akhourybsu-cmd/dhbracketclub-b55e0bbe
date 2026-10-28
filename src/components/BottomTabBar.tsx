@@ -32,7 +32,7 @@ export function BottomTabBar({ unreadChatCount = 0, items, onOpenMore }: {
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
       aria-label="Primary"
     >
-      <div className="pointer-events-auto mx-auto flex max-w-md items-stretch rounded-[1.6rem] border border-border/50 bg-card/90 p-1 shadow-[0_10px_30px_-8px_hsl(var(--background)/0.7),0_2px_8px_hsl(var(--foreground)/0.06)] backdrop-blur-xl backdrop-saturate-150">
+      <div className="pointer-events-auto mx-auto flex max-w-md items-stretch rounded-[1.6rem] border border-border/50 bg-card/95 p-1 shadow-[0_10px_30px_-8px_hsl(var(--background)/0.7),0_2px_8px_hsl(var(--foreground)/0.06)] backdrop-blur-xl backdrop-saturate-150">
         {tabs.map((tab) => {
           const isMore = tab.key === 'more';
           const on = !isMore && active === tab.path;
