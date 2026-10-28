@@ -187,3 +187,78 @@
     transform: none;
   }
 }
+
+/* ── Premium pass ─────────────────────────────────────────── */
+.mobile-home { position: relative; isolation: isolate; }
+.mobile-home::before {
+  content: ''; position: absolute; z-index: -1; inset: -24px -16px auto;
+  height: 260px; pointer-events: none;
+  background:
+    radial-gradient(60% 70% at 15% 10%, hsl(var(--primary) / 0.16), transparent 70%),
+    radial-gradient(50% 60% at 95% 0%, hsl(var(--accent) / 0.12), transparent 70%);
+  mask-image: linear-gradient(180deg, #000 40%, transparent);
+}
+.mobile-home .home-welcome h1 {
+  background: linear-gradient(100deg, hsl(var(--foreground)) 30%, hsl(var(--primary)) 130%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* staggered entrance */
+@keyframes home-rise { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+.mobile-home > * { animation: home-rise 520ms cubic-bezier(.2,.8,.2,1) both; }
+.mobile-home > *:nth-child(2) { animation-delay: 60ms; }
+.mobile-home > *:nth-child(3) { animation-delay: 120ms; }
+.mobile-home > *:nth-child(4) { animation-delay: 180ms; }
+.mobile-home > *:nth-child(5) { animation-delay: 240ms; }
+.mobile-home > *:nth-child(n+6) { animation-delay: 300ms; }
+
+/* glossy hairline on cards */
+.mobile-home .home-priority,
+.mobile-home .home-shortcut,
+.mobile-home .home-activity-surface,
+.mobile-home > details,
+.home-widget-card {
+  box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.06), var(--shadow-premium);
+}
+.mobile-home .home-priority { position: relative; }
+.mobile-home .home-priority::after {
+  content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
+  border-radius: 0 3px 3px 0; background: hsl(var(--primary));
+  box-shadow: 0 0 12px hsl(var(--primary) / 0.6);
+}
+.mobile-home .home-action-icon { box-shadow: 0 6px 16px -8px hsl(var(--primary) / 0.7); }
+
+/* tactile press */
+.mobile-home .home-action,
+.mobile-home .home-shortcut,
+.mobile-home .home-activity-row,
+.mobile-home .home-tab,
+.home-widget-card,
+.home-widget-launcher {
+  transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 160ms ease, border-color 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-home .home-action:active,
+.mobile-home .home-shortcut:active,
+.home-widget-card:active,
+.home-widget-launcher:active { transform: scale(.97); }
+.mobile-home .home-activity-row:active { background: hsl(var(--muted) / 0.45); }
+.mobile-home .home-shortcut:active .home-shortcut-icon { transform: translateY(-1px); }
+.mobile-home .home-shortcut-icon {
+  height: 40px; width: 40px; border-radius: 13px;
+  transition: transform 160ms ease;
+  box-shadow: 0 8px 18px -10px hsl(var(--primary) / 0.8), inset 0 1px 0 hsl(var(--foreground) / 0.08);
+}
+.mobile-home .home-action-arrow { transition: transform 200ms ease; }
+.mobile-home .home-action:active .home-action-arrow { transform: translateX(3px); }
+
+/* segmented tabs */
+.mobile-home .home-tab[aria-selected='true'] {
+  color: hsl(var(--foreground));
+  box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.06), 0 4px 14px -6px hsl(var(--foreground) / 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-home > * { animation: none; }
+  .mobile-home *, .home-widget-card { transition: none !important; }
+}
