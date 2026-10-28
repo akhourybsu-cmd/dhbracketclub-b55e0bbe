@@ -15,6 +15,7 @@ import { AppDrawer } from '@/components/AppDrawer';
 import { NavDrawerProvider, useNavDrawer } from '@/contexts/NavDrawerContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
 import { APP_NAV_SECTIONS, getRouteTitle, isGameShellRoute, isRouteActive, MOBILE_PRIMARY_NAV, type AppNavSection } from '@/lib/appNavigation';
+import { useMostUsedTabs } from '@/hooks/useMostUsedTabs';
 import { MobileAppHeader } from '@/components/mobile/MobileAppHeader';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
@@ -105,7 +106,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const showMobileHeader = !isGameShell && !isChatRoute;
   const isDashboard = location.pathname === '/dashboard';
   const mobileTitle = getRouteTitle(location.pathname);
-  const mobileNavItems = MOBILE_PRIMARY_NAV.filter(item => filterNavPaths([item.path]).length > 0);
+  const isNavAvailable = useCallback((path: string) => filterNavPaths([path]).length > 0, [filterNavPaths]);
+  const mobileNavItems = useMostUsedTabs(isNavAvailable);
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col">
@@ -117,7 +119,8 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
 
       {/* Persistent mobile bottom tab bar — shown on the same surfaces as the
           mobile header (not in chat / full-screen game shells). */}
-      {showMobileHeader && <BottomTabBar unreadChatCount={unreadChatCount} items={mobileNavItems} />}
+      {showMobileHeader && <BottomTabBar unreadChatCount={unreadChatCount} items={mobileNavItems}
+        onOpenMore={() => setDrawerOpen(true)} />}
 
       {/* Main Content */}
       <main className={cn(
