@@ -14,7 +14,7 @@ import { useClub } from '@/contexts/ClubContext';
 import { AppDrawer } from '@/components/AppDrawer';
 import { NavDrawerProvider, useNavDrawer } from '@/contexts/NavDrawerContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
-import { APP_NAV_SECTIONS, getRouteTitle, isGameShellRoute, isRouteActive, MOBILE_PRIMARY_NAV, type AppNavSection } from '@/lib/appNavigation';
+import { APP_NAV_SECTIONS, getRouteTitle, isGameShellRoute, isRouteActive, type AppNavSection } from '@/lib/appNavigation';
 import { useMostUsedTabs } from '@/hooks/useMostUsedTabs';
 import { MobileAppHeader } from '@/components/mobile/MobileAppHeader';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
