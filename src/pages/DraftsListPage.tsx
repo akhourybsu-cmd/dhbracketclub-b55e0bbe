@@ -1,3 +1,4 @@
+import { DaStatChip } from '@/components/draft/ui/DraftKit';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -1428,7 +1429,7 @@ export default function DraftsListPage() {
     //   live(other) → success-green
     //   default   → none
     const edgeAccent =
-      isPlayoff ? 'hsl(45 93% 52%)'
+      isPlayoff ? 'hsl(var(--da-gold))'
       : isMyTurn ? 'hsl(var(--gold))'
       : isLive  ? 'hsl(var(--success))'
       : null;
@@ -1438,7 +1439,7 @@ export default function DraftsListPage() {
            <div className={cn('da-glass da-ledger-row p-4 hover-lift cursor-pointer relative overflow-hidden transition-transform',
             isPlayoff && 'arena-edge', isLive && !isPlayoff && 'draft-row-live', isMyTurn && !isPlayoff && 'draft-row-mine')}
             style={isPlayoff ? {
-              borderLeft: '3px solid hsl(45 93% 52%)',
+              borderLeft: '3px solid hsl(var(--da-gold))',
                background: 'hsl(var(--card))',
             } : edgeAccent ? {
               borderLeft: `3px solid ${edgeAccent}`,
@@ -1447,7 +1448,7 @@ export default function DraftsListPage() {
               <div
                 aria-hidden
                 className="absolute inset-x-0 top-0 h-px pointer-events-none"
-                style={{ background: 'linear-gradient(90deg, transparent, hsl(45 93% 52% / 0.7), transparent)' }}
+                style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--da-gold) / 0.7), transparent)' }}
               />
             )}
             {isPlayoff && <div className="absolute -right-2 -top-2 text-3xl opacity-10 select-none pointer-events-none" aria-hidden>✦</div>}
@@ -1455,30 +1456,20 @@ export default function DraftsListPage() {
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={isPlayoff ? { background: 'linear-gradient(135deg, hsl(45 93% 52% / 0.28), hsl(38 92% 50% / 0.10))', boxShadow: '0 0 10px hsl(45 93% 52% / 0.25)' } : { background: 'linear-gradient(135deg, hsl(var(--gold) / 0.15), hsl(var(--gold) / 0.04))' }}>
-                  {isPlayoff ? <Trophy className="w-5 h-5" style={{ color: 'hsl(45 93% 52%)' }} strokeWidth={2.5} /> : <Bookmark className="w-5 h-5" style={{ color: 'hsl(var(--gold))' }} />}
+                  style={isPlayoff ? { background: 'linear-gradient(135deg, hsl(var(--da-gold) / 0.28), hsl(var(--da-gold-bright) / 0.10))', boxShadow: '0 0 10px hsl(var(--da-gold) / 0.25)' } : { background: 'linear-gradient(135deg, hsl(var(--gold) / 0.15), hsl(var(--gold) / 0.04))' }}>
+                  {isPlayoff ? <Trophy className="w-5 h-5" style={{ color: 'hsl(var(--da-gold))' }} strokeWidth={2.5} /> : <Bookmark className="w-5 h-5" style={{ color: 'hsl(var(--gold))' }} />}
                 </div>
                 <div className="min-w-0">
                   {isPlayoff && <div className="mb-0.5"><PlayoffBadge round={playoffMatch!.round} matchNumber={playoffMatch!.match_number} size="xs" /></div>}
                    <h3 className="dl-display font-extrabold text-[15px] leading-tight break-words">{d.topic}</h3>
-                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                     {isPlayoff ? (
-                      <span className="text-[10px] font-bold tracking-wide" style={{ color: 'hsl(45 93% 52%)' }}>{getPlayoffGameLabel(playoffMatch!.round, playoffMatch!.match_number)}</span>
+                      <DaStatChip tone="gold" value={getPlayoffGameLabel(playoffMatch!.round, playoffMatch!.match_number)} />
                     ) : (
-                       <span className="text-[10px] text-muted-foreground/75 font-medium">{progressLabel}</span>
+                      <DaStatChip value={progressLabel} />
                     )}
-                    <span className="w-1 h-1 rounded-full bg-gold/25" />
-                    <span className="text-[10px] text-muted-foreground/75 flex items-center gap-1 font-medium">
-                      <Users className="w-2.5 h-2.5 text-muted-foreground/55" /> {count}
-                    </span>
-                    {winner && (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-gold/25" />
-                        <span className="text-[10px] flex items-center gap-1 font-bold" style={{ color: 'hsl(var(--gold))' }}>
-                          <Trophy className="w-2.5 h-2.5" /> {winner.display_name}
-                        </span>
-                      </>
-                    )}
+                    <DaStatChip icon={Users} value={count} />
+                    {winner && <DaStatChip icon={Trophy} tone="gold" value={winner.display_name} />}
                   </div>
                   {d.status === 'in_progress' && d.current_pick_user_id && (
                     isMyTurn ? (
