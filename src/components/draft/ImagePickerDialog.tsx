@@ -139,12 +139,12 @@ export default function ImagePickerDialog({
                   </div>
                 )}
                 {isCurrent && !selectedUrl && (
-                  <div className="absolute top-1 left-1 px-1 py-0.5 bg-background/80 rounded text-[8px] font-bold text-foreground">
+                  <div className="absolute top-1 left-1 px-1 py-0.5 bg-background/80 rounded text-[9.5px] font-bold text-foreground">
                     Current
                   </div>
                 )}
                 <div className="absolute bottom-0 inset-x-0 bg-background/70 px-1 py-0.5">
-                  <span className="text-[8px] font-medium text-foreground/80 truncate block">{opt.source}</span>
+                  <span className="text-[9.5px] font-medium text-foreground/80 truncate block">{opt.source}</span>
                 </div>
               </button>
             );

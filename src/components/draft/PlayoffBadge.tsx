@@ -14,7 +14,7 @@ interface PlayoffBadgeProps {
 /** Compact "PLAYOFF" / round chip used everywhere a draft row/card appears. */
 export function PlayoffBadge({ round, matchNumber, showRoundLabel = false, size = 'sm', className }: PlayoffBadgeProps) {
   const sizeCls =
-    size === 'xs' ? 'text-[8px] px-1 py-[1px] gap-0.5' :
+    size === 'xs' ? 'text-[9.5px] px-1 py-[1px] gap-0.5' :
     size === 'md' ? 'text-[10px] px-1.5 py-0.5 gap-1' :
     'text-[9px] px-1 py-0.5 gap-0.5';
   const iconCls = size === 'md' ? 'w-2.5 h-2.5' : 'w-2 h-2';

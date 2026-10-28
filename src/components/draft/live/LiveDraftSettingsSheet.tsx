@@ -47,7 +47,7 @@ export function LiveDraftSettingsSheet({ open, onClose, settings, onSave }: Live
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[90] bg-background/70 backdrop-blur-sm"
             onClick={onClose}
           />
           <motion.div
