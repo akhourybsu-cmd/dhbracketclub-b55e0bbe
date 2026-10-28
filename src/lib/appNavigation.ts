@@ -56,31 +56,31 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
   {
     label: 'Club life',
     items: [
-      { path: '/feed', label: 'Activity Feed', icon: Newspaper },
+      { path: '/feed', label: 'Activity Feed', shortLabel: 'Feed', icon: Newspaper },
       { path: '/events', label: 'Events', icon: CalendarDays },
-      { path: '/finds', label: 'The Drop', icon: Bookmark },
+      { path: '/finds', label: 'The Drop', shortLabel: 'Drop', icon: Bookmark },
       { path: '/lore', label: 'Lore', icon: ScrollText },
-      { path: '/celebrations', label: 'Celebrations', icon: Cake },
+      { path: '/celebrations', label: 'Celebrations', shortLabel: 'Bdays', icon: Cake },
       { path: '/polls', label: 'Polls', icon: MessageCircle },
       { path: '/rankings', label: 'Rankings', icon: BarChart3 },
       { path: '/posts', label: 'Posts', icon: FileText },
-      { path: '/shared', label: 'Shared Media', icon: Link2 },
+      { path: '/shared', label: 'Shared Media', shortLabel: 'Media', icon: Link2 },
     ],
   },
   {
     label: 'Games & stories',
     items: [
-      { path: '/drafts', label: 'Draft Arena', icon: Bookmark },
-      { path: '/rune-delve', label: 'Rune Delve', icon: Sparkles },
-      { path: '/nexus', label: 'Nexus Defense', icon: Shield },
-      { path: '/nfl', label: 'NFL Game Center', icon: Trophy },
+      { path: '/drafts', label: 'Draft Arena', shortLabel: 'Drafts', icon: Bookmark },
+      { path: '/rune-delve', label: 'Rune Delve', shortLabel: 'Delve', icon: Sparkles },
+      { path: '/nexus', label: 'Nexus Defense', shortLabel: 'Nexus', icon: Shield },
+      { path: '/nfl', label: 'NFL Game Center', shortLabel: 'NFL', icon: Trophy },
       { path: '/brackets', label: 'Brackets', icon: BracketsIcon },
-      { path: '/portfolio-wars', label: 'Portfolio Wars', icon: TrendingUp },
+      { path: '/portfolio-wars', label: 'Portfolio Wars', shortLabel: 'Stocks', icon: TrendingUp },
       { path: '/lockbox', label: 'Lockbox', icon: Lock },
-      { path: '/readshift', label: 'READSHIFT', icon: BookMarked },
+      { path: '/readshift', label: 'READSHIFT', shortLabel: 'Read', icon: BookMarked },
       { path: '/workouts', label: 'FORGE', icon: Flame },
-      { path: '/narrative', label: 'Narrative RPG', icon: BookOpen },
-      { path: '/journey', label: 'The Splendid Journey', icon: Compass },
+      { path: '/narrative', label: 'Narrative RPG', shortLabel: 'RPG', icon: BookOpen },
+      { path: '/journey', label: 'The Splendid Journey', shortLabel: 'Journey', icon: Compass },
     ],
   },
   {
@@ -173,4 +173,51 @@ export const GAME_SHELL_PREFIXES = [
 
 export function isGameShellRoute(pathname: string): boolean {
   return GAME_SHELL_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+/** Every shared destination that can earn a slot in the mobile tab bar. */
+export const ALL_NAV_ITEMS: AppNavItem[] = APP_NAV_SECTIONS.flatMap((section) => section.items);
+
+/** Fallback order for members who haven't built up a usage history yet. */
+export const DEFAULT_TAB_ORDER = ['/chat', '/finds', '/compete', '/club'];
+export const MOBILE_USAGE_SLOTS = 3;
+
+/** Maps any pathname to the most specific shared destination it belongs to. */
+export function navPathForRoute(pathname: string, items: AppNavItem[] = ALL_NAV_ITEMS): string | null {
+  if (pathname.startsWith('/pickem')) return '/nfl';
+  let best: string | null = null;
+  for (const item of items) {
+    const hit = pathname === item.path || pathname.startsWith(`${item.path}/`)
+      || (item.path === '/brackets' && pathname.startsWith('/pools'));
+    if (hit && (!best || item.path.length > best.length)) best = item.path;
+  }
+  return best;
+}
+
+/**
+ * Home is always first, then the member's most visited destinations
+ * (ties keep the default order), padded from DEFAULT_TAB_ORDER.
+ */
+export function pickMostUsedTabs(
+  usage: Record<string, number>,
+  available: AppNavItem[],
+  slots = MOBILE_USAGE_SLOTS,
+): AppNavItem[] {
+  const home = available.find((item) => item.path === '/dashboard');
+  const pool = available.filter((item) => item.path !== '/dashboard' && item.path !== '/profile');
+  const rank = (path: string) => {
+    const i = DEFAULT_TAB_ORDER.indexOf(path);
+    return i === -1 ? DEFAULT_TAB_ORDER.length : i;
+  };
+  const chosen = [...pool]
+    .sort((a, b) => (usage[b.path] ?? 0) - (usage[a.path] ?? 0) || rank(a.path) - rank(b.path))
+    .slice(0, slots);
+  return home ? [home, ...chosen] : chosen;
+}
+
+/** Picks the single tab that should light up, preferring exact destinations over hubs. */
+export function activeTabPath(pathname: string, tabs: AppNavItem[]): string | null {
+  const direct = tabs.find((tab) => isRouteActive(pathname, tab.path));
+  if (direct) return direct.path;
+  return tabs.find((tab) => isMobilePrimaryActive(pathname, tab.path))?.path ?? null;
 }
