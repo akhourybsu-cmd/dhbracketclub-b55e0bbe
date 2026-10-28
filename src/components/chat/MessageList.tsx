@@ -250,15 +250,17 @@ export function MessageList({
   // (unread divider position is computed near the top of the component)
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 relative" style={{ minHeight: 0, overscrollBehavior: 'contain' }}>
+    <div ref={scrollRef} className="flex-1 overflow-y-auto overflow-x-hidden px-2 sm:px-4 relative" style={{ minHeight: 0, overscrollBehavior: 'contain', overflowAnchor: 'none', WebkitOverflowScrolling: 'touch', scrollbarGutter: 'stable' }}>
       {/* Desktop reading lane: caps the conversation at a comfortable
           measure instead of letting bubbles span an ultrawide canvas. */}
       <div ref={contentRef} className="py-2 w-full lg:max-w-[760px] lg:mx-auto">
+        {/* Floating pill so loading older history never pushes the conversation down. */}
         {loadingMore && (
-          <div className="text-center py-2">
-            <span className="text-[10px] text-muted-foreground/50 font-medium">Loading older messages…</span>
+          <div className="sticky top-2 z-10 h-0 flex justify-center pointer-events-none">
+            <span className="text-[10px] text-muted-foreground font-medium bg-card/95 border border-border/40 rounded-full px-3 py-1 shadow-sm">Loading older messages…</span>
           </div>
         )}
+
 
         {/* Empty state for no messages */}
         {messages.length === 0 && !isSearchActive && (
@@ -297,7 +299,7 @@ export function MessageList({
           const senderGap = !sameAuthor && idx > 0 && !showDate;
 
           return (
-            <div key={msg.id} data-message-id={msg.id} style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 60px' }}>
+            <div key={msg.id} data-message-id={msg.id}>
               {showDate && (
                 <div className={cn("flex items-center gap-3", idx === 0 ? "py-3" : "pt-5 pb-3")}>
                   <div className="flex-1 h-px bg-border/10" />
