@@ -1,4 +1,4 @@
-import { DaStatChip } from '@/components/draft/ui/DraftKit';
+import { DaStatChip, DaSectionHeader } from '@/components/draft/ui/DraftKit';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -1812,7 +1812,17 @@ export default function DraftsListPage() {
             // in visual lockstep.
             const renderRow = renderDraftRow;
 
+            const yourTurn = visibleDrafts.filter((d: any) => d.status === 'in_progress' && user?.id && d.current_pick_user_id === user.id);
             return (
+              <>
+              {yourTurn.length > 0 && (
+                <section className="mb-4" aria-label="Your turn">
+                  <DaSectionHeader eyebrow="Action needed" title={<span className="flex items-center gap-2">Your turn <DaStatChip tone="gold" value={yourTurn.length} /></span>} />
+                  <motion.div className="space-y-2" initial="hidden" animate="show" variants={{ hidden: {}, show: {} }}>
+                    {yourTurn.map((d: any, i: number) => renderRow(d, i))}
+                  </motion.div>
+                </section>
+              )}
               <Accordion type="multiple" defaultValue={defaultOpen} className="space-y-2.5">
                 {orderedGroups.map(g => {
                   const chip = statusChip(g);
@@ -1887,6 +1897,7 @@ export default function DraftsListPage() {
                   );
                 })}
               </Accordion>
+              </>
             );
           })()}
 
@@ -2002,6 +2013,18 @@ export default function DraftsListPage() {
                     <p className="text-[11px] font-extrabold" style={{ color: 'hsl(var(--gold))' }}>Commissioner Tools</p>
                     <p className="text-[10px] text-muted-foreground/70">{formatSeasonTitle(season)}{season.subtitle ? ` · ${season.subtitle}` : ''}</p>
                   </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { to: `/drafts/seasons/${season.id}`, icon: Archive, label: 'Season page' },
+                    { to: '/drafts/create', icon: Plus, label: 'New draft' },
+                    { to: '/drafts/seasons', icon: Trophy, label: 'All seasons' },
+                  ].map(t => (
+                    <Link key={t.label} to={t.to} className="flex min-h-[72px] flex-col items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-card/70 btn-press hover:bg-muted/40 transition-colors">
+                      <t.icon className="w-5 h-5 text-[hsl(var(--da-gold))]" />
+                      <span className="text-[11px] font-bold">{t.label}</span>
+                    </Link>
+                  ))}
                 </div>
                 <CommissionerPanel season={season} entries={entries} onUpdate={handleSeasonUpdate} />
                 <TransferCommissionerCard season={season} isAppAdmin={isAppAdmin} onTransferred={refetchSeason} />
