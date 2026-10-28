@@ -6681,3 +6681,22 @@ html.drop-focus-active .app-main-content { padding-left: 0; }
 @media (max-width: 700px) { .da-magazine-cover h1 { font-size: clamp(2.1rem, 11vw, 3.4rem); max-width: none; } .da-magazine-cover { min-height: 22rem; } .da-magazine-timeline { columns: 1; } }
 @media (prefers-reduced-motion: reduce) { .da-missed-skeleton { animation: none; } }
 @media print { .da-missed { break-inside: avoid; } }
+
+/* ── Draft Arena presentation pass: board cell states ── */
+.da-lounge .dl-cell { transition: transform .18s ease, box-shadow .2s ease, background-color .2s ease; }
+.da-lounge .dl-cell-future { border-style: dashed; background: hsl(var(--da-board-future, var(--muted)) / 0.6); }
+.da-lounge .dl-cell-passed { opacity: .55; }
+.da-lounge .dl-cell-passed .dl-cell-text { text-decoration: line-through; text-decoration-thickness: 1px; }
+.da-lounge .dl-cell-you:not(.dl-cell-current) { box-shadow: inset 3px 0 0 hsl(var(--da-gold)); }
+.da-lounge .dl-cell-current {
+  border-color: hsl(var(--da-gold));
+  background: linear-gradient(135deg, hsl(var(--da-gold) / .16), hsl(var(--da-gold) / .04));
+  animation: dl-current-ring 2.4s ease-in-out infinite;
+}
+@keyframes dl-current-ring {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--da-gold) / .35); }
+  50% { box-shadow: 0 0 0 4px hsl(var(--da-gold) / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .da-lounge .dl-cell-current { animation: none; box-shadow: 0 0 0 2px hsl(var(--da-gold) / .4); }
+}

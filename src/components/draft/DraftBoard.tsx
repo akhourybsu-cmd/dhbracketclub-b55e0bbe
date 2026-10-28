@@ -107,7 +107,7 @@ export function DraftBoard({
 
     if (!pick && skipped) {
       return (
-        <div className="dl-cell dl-cell-future opacity-60" title="Pick passed">
+        <div className="dl-cell dl-cell-future dl-cell-passed" title="Pick passed">
           <span className="dl-cell-num dl-display">{pickNum}</span>
           <span className="dl-cell-text">Passed</span>
         </div>
