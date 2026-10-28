@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   APP_NAV_SECTIONS,
-  MOBILE_PRIMARY_NAV,
+  ALL_NAV_ITEMS,
+  activeTabPath,
+  navPathForRoute,
+  pickMostUsedTabs,
   getRouteTitle,
   isGameShellRoute,
   isMobilePrimaryActive,
@@ -14,14 +17,28 @@ describe('shared app navigation', () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
-  it('keeps the mobile bar focused on five primary destinations', () => {
-    expect(MOBILE_PRIMARY_NAV.map((item) => item.path)).toEqual([
-      '/dashboard',
-      '/chat',
-      '/compete',
-      '/club',
-      '/profile',
-    ]);
+  it('starts new members on Home, Chat, Drop, Compete', () => {
+    expect(pickMostUsedTabs({}, ALL_NAV_ITEMS).map((i) => i.path)).toEqual(['/dashboard', '/chat', '/finds', '/compete']);
+  });
+
+  it('promotes the three most used destinations after Home', () => {
+    const tabs = pickMostUsedTabs({ '/drafts': 9, '/portfolio-wars': 5, '/chat': 2, '/finds': 1 }, ALL_NAV_ITEMS);
+    expect(tabs.map((i) => i.path)).toEqual(['/dashboard', '/drafts', '/portfolio-wars', '/chat']);
+  });
+
+  it('never offers an uninstalled app as a tab', () => {
+    const available = ALL_NAV_ITEMS.filter((i) => i.path !== '/drafts');
+    expect(pickMostUsedTabs({ '/drafts': 50 }, available).map((i) => i.path)).not.toContain('/drafts');
+  });
+
+  it('counts nested routes toward their destination', () => {
+    expect(navPathForRoute('/drafts/abc/magazine')).toBe('/drafts');
+    expect(navPathForRoute('/pickem/week/3')).toBe('/nfl');
+  });
+
+  it('lights only the exact tab, not its hub', () => {
+    const tabs = pickMostUsedTabs({}, ALL_NAV_ITEMS);
+    expect(activeTabPath('/finds/123', tabs)).toBe('/finds');
   });
 
   it('does not make hub tabs active on their nested feature routes', () => {

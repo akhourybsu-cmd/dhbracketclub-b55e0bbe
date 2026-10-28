@@ -1,72 +1,69 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
-import { isMobilePrimaryActive, MOBILE_PRIMARY_NAV, type AppNavItem } from '@/lib/appNavigation';
+import { activeTabPath, type AppNavItem } from '@/lib/appNavigation';
 
 /**
- * Persistent mobile bottom tab bar — one-tap access to the core sections with
- * a spring-animated active indicator, tap haptics, and a live chat badge.
- * Hidden on desktop (sidebar takes over) and inside full-screen shells
- * (chat / game modes), which AppLayout gates via `showMobileHeader`.
+ * Floating mobile tab bar: Home + the member's most used destinations + More
+ * (opens the full app drawer). Tapping the active tab scrolls back to top.
  */
-export function BottomTabBar({ unreadChatCount = 0, items = MOBILE_PRIMARY_NAV }: { unreadChatCount?: number; items?: AppNavItem[] }) {
+export function BottomTabBar({ unreadChatCount = 0, items, onOpenMore }: {
+  unreadChatCount?: number; items: AppNavItem[]; onOpenMore: () => void;
+}) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { play } = useSoundEffect();
+  const active = activeTabPath(pathname, items);
 
-  const go = (path: string, active: boolean) => {
-    if (active) return;
-    play('tap');
-    navigator.vibrate?.(8);
+  const tap = () => { play('tap'); navigator.vibrate?.(8); };
+  const go = (path: string) => {
+    tap();
+    if (path === pathname) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     navigate(path);
   };
 
+  const tabs = [...items.map((t) => ({ ...t, key: t.path })), { key: 'more', path: '', label: 'More', icon: LayoutGrid }];
+
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/40 bg-card/[0.90] shadow-[0_-6px_20px_hsl(var(--background)/0.28)]"
-      style={{
-        backdropFilter: 'blur(16px) saturate(160%)',
-        WebkitBackdropFilter: 'blur(16px) saturate(160%)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        paddingLeft: 'env(safe-area-inset-left, 0px)',
-        paddingRight: 'env(safe-area-inset-right, 0px)',
-      }}
+      className="lg:hidden fixed inset-x-0 bottom-0 z-40 px-3 pointer-events-none"
+      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
       aria-label="Primary"
     >
-      <div className="flex items-stretch">
-        {items.map(tab => {
-          const active = isMobilePrimaryActive(pathname, tab.path);
+      <div className="pointer-events-auto mx-auto flex max-w-md items-stretch rounded-[1.6rem] border border-border/50 bg-card/95 p-1 shadow-[0_10px_30px_-8px_hsl(var(--background)/0.7),0_2px_8px_hsl(var(--foreground)/0.06)] backdrop-blur-xl backdrop-saturate-150">
+        {tabs.map((tab) => {
+          const isMore = tab.key === 'more';
+          const on = !isMore && active === tab.path;
           const Icon = tab.icon;
           const badge = tab.path === '/chat' ? unreadChatCount : 0;
+          const label = 'shortLabel' in tab && tab.shortLabel ? tab.shortLabel : tab.label;
           return (
             <button
-              key={tab.path}
-              onClick={() => go(tab.path, active)}
-              aria-label={tab.label}
-              aria-current={active ? 'page' : undefined}
-              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 h-[58px] min-w-0 touch-manipulation active:scale-[0.94] transition-transform duration-100"
+              key={tab.key}
+              onClick={() => (isMore ? (tap(), onOpenMore()) : go(tab.path))}
+              aria-label={isMore ? 'More apps' : tab.label}
+              aria-current={on ? 'page' : undefined}
+              className="relative flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.3rem] touch-manipulation transition-transform duration-100 active:scale-[0.92]"
             >
-              <div className="relative flex items-center justify-center w-10 h-7">
-                {active && (
-                  <motion.div
-                    layoutId="bottomTabGlow"
-                    className="absolute inset-0 rounded-full bg-primary/15"
-                    transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                  />
-                )}
-                <Icon
-                  className={cn('relative w-[22px] h-[22px] transition-colors duration-150', active ? 'text-primary' : 'text-muted-foreground/75')}
-                  strokeWidth={active ? 2.4 : 2}
+              {on && (
+                <motion.span
+                  layoutId="bottomTabPill"
+                  className="absolute inset-0 rounded-[1.3rem] bg-primary/12 ring-1 ring-primary/20"
+                  transition={{ type: 'spring', stiffness: 520, damping: 38 }}
                 />
+              )}
+              <span className="relative flex h-6 items-center justify-center">
+                <Icon className={cn('h-[21px] w-[21px] transition-colors', on ? 'text-primary' : 'text-muted-foreground')} strokeWidth={on ? 2.4 : 2} />
                 {badge > 0 && (
-                  <span className="absolute -top-1 right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-destructive text-destructive-foreground text-[8.5px] font-black flex items-center justify-center ring-2 ring-background tabular-nums">
+                  <span className="absolute -right-2.5 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-destructive px-1 text-[8.5px] font-black tabular-nums text-destructive-foreground ring-2 ring-card">
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )}
-              </div>
-              <span className={cn('text-[10px] font-bold tracking-tight transition-colors duration-150', active ? 'text-primary' : 'text-muted-foreground/75')}>
-                {tab.label}
+              </span>
+              <span className={cn('relative max-w-full truncate px-0.5 text-[10px] font-semibold tracking-tight transition-colors', on ? 'text-primary' : 'text-muted-foreground')}>
+                {label}
               </span>
             </button>
           );
