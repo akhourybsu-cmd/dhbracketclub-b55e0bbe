@@ -64,25 +64,31 @@ export function ChatAttachmentImage({ url, className, alt = 'Shared image', onOp
     );
   }
 
+  // Fixed frame: the placeholder and the loaded image occupy the exact same
+  // box, so images arriving never shove the conversation around.
+  const frameStyle = { width: 'min(240px, 62vw)', aspectRatio: '4 / 3' } as const;
+
   if (!resolved) {
     return (
       <div
         className={cn(wrapperClass, 'animate-pulse')}
-        style={{ width: 200, height: 140 }}
+        style={frameStyle}
         aria-label="Loading image"
       />
     );
   }
 
   const imgEl = (
-    <img
-      src={resolved}
-      alt={alt}
-      className={cn('rounded-lg max-w-[240px] max-h-[200px] object-cover border border-border/10', className)}
-      loading="lazy"
-      decoding="async"
-      onError={handleError}
-    />
+    <span className={cn(wrapperClass, 'block')} style={frameStyle}>
+      <img
+        src={resolved}
+        alt={alt}
+        className="w-full h-full object-cover"
+        loading="lazy"
+        decoding="async"
+        onError={handleError}
+      />
+    </span>
   );
 
   // With an onOpen handler, tapping launches the in-app lightbox. Otherwise
