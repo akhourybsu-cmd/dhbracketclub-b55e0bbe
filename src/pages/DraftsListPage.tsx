@@ -141,7 +141,7 @@ function SeasonHeaderCard({ season, entries }: { season: any; entries: any[] }) 
                   style={{ background: 'linear-gradient(180deg, hsl(var(--gold) / 0.10), hsl(var(--gold) / 0.02))', border: '1px solid hsl(var(--gold) / 0.16)' }}>
                   <span className="inline-flex mb-1" style={{ color: 'hsl(var(--gold) / 0.8)' }}>{stat.icon}</span>
                   <p className="text-[15px] font-extrabold tabular-nums leading-none">{stat.v}</p>
-                  <p className="text-[8px] text-muted-foreground/70 font-bold uppercase tracking-wider mt-1">{stat.l}</p>
+                  <p className="text-[9.5px] text-muted-foreground/70 font-bold uppercase tracking-wider mt-1">{stat.l}</p>
                 </div>
               ))}
             </div>
@@ -326,21 +326,26 @@ function StandingsCard({ standings, userId }: { standings: SeasonStanding[]; use
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className={cn('text-[13px] font-bold truncate', isMe && 'text-gold')}>{name}</p>
-                      {isMe && <span className="text-[8px] text-gold bg-gold/12 px-1.5 py-0.5 rounded font-extrabold tracking-wide flex-shrink-0">YOU</span>}
+                      {isMe && <span className="text-[9.5px] text-gold bg-gold/12 px-1.5 py-0.5 rounded font-extrabold tracking-wide flex-shrink-0">YOU</span>}
                       {isLeader && <Crown className="w-3 h-3 flex-shrink-0" style={{ color: 'hsl(var(--gold))' }} />}
                     </div>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground/80 tabular-nums">{s.drafts_played} played</span>
-                      <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md tabular-nums" style={{ background: 'hsl(var(--gold) / 0.1)', color: 'hsl(var(--gold) / 0.9)' }}>{s.wins}W</span>
-                      <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground/80 tabular-nums">{s.podiums} podium</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground/80 tabular-nums">{s.drafts_played} played</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md tabular-nums" style={{ background: 'hsl(var(--gold) / 0.1)', color: 'hsl(var(--gold) / 0.9)' }}>{s.wins}W</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-muted/50 text-muted-foreground/80 tabular-nums">{s.podiums} podium</span>
+                    </div>
+                    <div className="mt-1.5 h-1 rounded-full bg-muted/50 overflow-hidden" aria-hidden>
+                      <motion.div className="h-full rounded-full" style={{ background: 'hsl(var(--da-gold))' }}
+                        initial={{ width: 0 }} animate={{ width: `${leaderPts > 0 ? Math.max(4, (s.season_points / leaderPts) * 100) : 0}%` }}
+                        transition={{ duration: 0.6, delay: Math.min(i, 8) * 0.04, ease: [0.22, 1, 0.36, 1] }} />
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0 pl-1">
                     <p className="text-base font-black tabular-nums leading-none" style={{ color: 'hsl(var(--gold))' }}>{s.season_points}</p>
                     {gap !== null ? (
-                      <p className="text-[8px] text-muted-foreground/50 tabular-nums font-bold mt-0.5">-{gap} back</p>
+                      <p className="text-[9.5px] text-muted-foreground/50 tabular-nums font-bold mt-0.5">-{gap} back</p>
                     ) : (
-                      <p className="text-[8px] font-extrabold uppercase tracking-wide mt-0.5" style={{ color: 'hsl(var(--gold) / 0.65)' }}>Leader</p>
+                      <p className="text-[9.5px] font-extrabold uppercase tracking-wide mt-0.5" style={{ color: 'hsl(var(--gold) / 0.65)' }}>Leader</p>
                     )}
                   </div>
                   <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0 transition-transform', isExpanded && 'rotate-180')} />
@@ -356,7 +361,7 @@ function StandingsCard({ standings, userId }: { standings: SeasonStanding[]; use
                       ].map(stat => (
                         <div key={stat.l} className="text-center rounded-lg bg-muted/30 border border-border/20 p-2">
                           <p className="text-[13px] font-extrabold tabular-nums" style={stat.c ? { color: stat.c } : undefined}>{stat.v}</p>
-                          <p className="text-[7px] text-muted-foreground/60 font-bold uppercase tracking-wider mt-0.5">{stat.l}</p>
+                          <p className="text-[9px] text-muted-foreground/60 font-bold uppercase tracking-wider mt-0.5">{stat.l}</p>
                         </div>
                       ))}
                     </div>
@@ -562,7 +567,7 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
       <div className="rounded-lg bg-muted/30 p-2.5 border border-border/15 space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70">{gameLabel || `M${m.match_number}`}</span>
-          <span className={cn('text-[8px] font-bold px-1.5 py-0.5 rounded', statusClass)}>{statusLabel}</span>
+          <span className={cn('text-[9.5px] font-bold px-1.5 py-0.5 rounded', statusClass)}>{statusLabel}</span>
         </div>
         <div className="space-y-0.5">
           <p className={cn('text-[10px] font-bold flex items-center gap-1', m.winner_user_id === m.user_a && 'text-gold')}>
@@ -613,18 +618,18 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
           <>
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-2">
-                <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 text-center">Play-In</p>
+                <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/50 text-center">Play-In</p>
                 <MatchCard m={qfMatches[0]} placeholder={{ roundLabel: 'Play-In' }} />
               </div>
               <div className="space-y-2">
-                <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 text-center">Semis</p>
+                <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/50 text-center">Semis</p>
                 <MatchCard m={sfMatches[0]} placeholder={{ roundLabel: 'SF 1' }} />
                 <MatchCard m={sfMatches[1]} placeholder={{ roundLabel: 'SF 2' }} />
               </div>
               <div className="space-y-2">
-                <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50 text-center">Final · Bo3</p>
+                <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/50 text-center">Final · Bo3</p>
                 {seriesScore && finalMatches.length > 0 && !champion && (
-                  <p className="text-[8px] font-bold text-center text-gold">Series {seriesScore}</p>
+                  <p className="text-[9.5px] font-bold text-center text-gold">Series {seriesScore}</p>
                 )}
                 {finalMatches.length === 0 ? (
                   <MatchCard placeholder={{ roundLabel: 'Final' }} />
@@ -637,7 +642,7 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
               <div className="mt-3 pt-3 border-t border-border/15">
                 <div className="flex items-center justify-center gap-1.5 mb-2">
                   <Award className="w-3 h-3" style={{ color: 'hsl(var(--bronze))' }} />
-                  <p className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/70 text-center">3rd Place · Bo1</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/70 text-center">3rd Place · Bo1</p>
                 </div>
                 <div className="max-w-[200px] mx-auto">
                   {thirdPlaceMatch ? <MatchCard m={thirdPlaceMatch} gameLabel="3rd Place" /> : <MatchCard placeholder={{ roundLabel: '3rd Place' }} />}
@@ -649,7 +654,7 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2 mb-3">
               {['Play-In', 'Semis', 'Finals'].map(r => (
-                <div key={r} className="text-center"><span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/50">{r}</span></div>
+                <div key={r} className="text-center"><span className="text-[9.5px] font-bold uppercase tracking-widest text-muted-foreground/50">{r}</span></div>
               ))}
             </div>
             <div className="grid grid-cols-3 gap-2 items-center">
@@ -660,7 +665,7 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
               <div className="rounded-lg bg-muted/30 p-2.5 border border-border/10">
                 <p className="text-[10px] font-bold">#{1} <span className="text-muted-foreground font-normal">{getName(1)}</span></p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>BYE</span>
+                  <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>BYE</span>
                 </div>
                 <div className="h-px bg-border/20 my-1.5" />
                 <p className="text-[9px] text-muted-foreground">vs Play-In ✦</p>
@@ -669,7 +674,7 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
                 <div className="text-center">
                   <Trophy className="w-4 h-4 mx-auto mb-1" style={{ color: 'hsl(var(--gold) / 0.5)' }} />
                   <p className="text-[9px] font-bold" style={{ color: 'hsl(var(--gold))' }}>Championship</p>
-                  <p className="text-[8px] text-muted-foreground mt-0.5">Best of 3</p>
+                  <p className="text-[9.5px] text-muted-foreground mt-0.5">Best of 3</p>
                 </div>
               </div>
             </div>
@@ -838,7 +843,7 @@ function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: 
                     style={s.state === 'active' ? { background: 'hsl(var(--gold) / 0.18)', boxShadow: '0 0 0 2px hsl(var(--gold) / 0.25)' } : undefined}>
                     {s.state === 'done' ? '✓' : i + 1}
                   </div>
-                  <span className={cn('text-[8.5px] font-bold uppercase tracking-wider truncate',
+                  <span className={cn('text-[10px] font-bold uppercase tracking-wider truncate',
                     s.state === 'active' && 'text-gold',
                     s.state === 'done' && 'text-foreground/70',
                     s.state === 'todo' && 'text-muted-foreground/50')}>
@@ -880,7 +885,7 @@ function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: 
                   style={{ background: 'hsl(var(--muted) / 0.25)', borderColor: m.status === 'awaiting_topic' ? 'hsl(var(--gold) / 0.3)' : 'hsl(var(--border) / 0.3)' }}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70">{roundLabelForMatch(m)}</span>
-                    <span className={cn('text-[8.5px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider',
+                    <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider',
                       m.status === 'awaiting_topic' && 'bg-gold/15 text-gold',
                       m.status === 'in_progress' && 'bg-success/15 text-success',
                       m.status === 'pending' && 'bg-muted text-muted-foreground')}>
@@ -1623,7 +1628,7 @@ export default function DraftsListPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1 mb-1">
                       <Trophy className="w-3 h-3" style={{ color: 'hsl(var(--gold))' }} strokeWidth={2.5} />
-                      <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em]" style={{ color: 'hsl(var(--gold) / 0.7)' }}>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.2em]" style={{ color: 'hsl(var(--gold) / 0.7)' }}>
                         Total Pts
                       </p>
                     </div>
@@ -1641,7 +1646,7 @@ export default function DraftsListPage() {
                   <div className="flex-1 min-w-0 pb-1">
                     <div className="flex items-center gap-1 mb-1">
                       <Crown className="w-3 h-3 text-muted-foreground/60" strokeWidth={2.5} />
-                      <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Wins</p>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Wins</p>
                     </div>
                     <p className="dl-display text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
                       <CountedNumber value={myDraftStats.wins} />
@@ -1651,7 +1656,7 @@ export default function DraftsListPage() {
                   <div className="flex-1 min-w-0 pb-1">
                     <div className="flex items-center gap-1 mb-1">
                       <Medal className="w-3 h-3 text-muted-foreground/60" strokeWidth={2.5} />
-                      <p className="text-[8.5px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Podiums</p>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Podiums</p>
                     </div>
                     <p className="dl-display text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
                       <CountedNumber value={myDraftStats.podiums} />
@@ -1687,7 +1692,7 @@ export default function DraftsListPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-[13px] font-extrabold leading-none tabular-nums">{s.value}</p>
-                          <p className="text-[8.5px] text-muted-foreground/55 font-bold mt-0.5 uppercase tracking-wider truncate">{s.label}</p>
+                          <p className="text-[10px] text-muted-foreground/55 font-bold mt-0.5 uppercase tracking-wider truncate">{s.label}</p>
                         </div>
                       </div>
                     );
