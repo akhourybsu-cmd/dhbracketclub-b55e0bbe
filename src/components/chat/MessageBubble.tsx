@@ -548,7 +548,7 @@ function MessageBubbleInner({
         className={cn(
           "group relative",
           sameAuthor ? "py-[1px]" : "pt-1",
-          msg._optimistic && "opacity-70"
+          msg._optimistic && "opacity-90"
         )}
         style={{ x: dragX }}
         initial={enterInitial}
@@ -718,9 +718,14 @@ function MessageBubbleInner({
                         ))}
                       </div>
                     )}
-                    {msg._optimistic && (
-                      <span className="inline-flex items-center gap-1 mt-0.5 text-[9px] text-muted-foreground/50 font-medium">
-                        <Loader2 className="w-2.5 h-2.5 animate-spin" /> Sending…
+                    {isOwn && (
+                      <span
+                        className="flex h-3 items-center justify-end gap-0.5 mt-0.5 text-[9px] font-medium text-muted-foreground/60"
+                        aria-label={msg._optimistic ? 'Sending' : 'Sent'}
+                      >
+                        {msg._optimistic
+                          ? <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                          : <Check className="w-2.5 h-2.5 text-primary" />}
                       </span>
                     )}
                   </div>
