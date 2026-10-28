@@ -1,3 +1,4 @@
+import { DaDetails } from '@/components/draft/ui/DraftKit';
 import { serverNow } from '@/lib/serverClock';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -1904,6 +1905,7 @@ export default function DraftDetailPage() {
           )}
           {isParticipant && (
             <div className="mt-4">
+              <DaDetails title="My draft desk" defaultOpen={isMyTurn}>
               <PersonalDraftDesk
                 compact
                 draftId={draftId}
@@ -1911,6 +1913,7 @@ export default function DraftDetailPage() {
                 taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
                 onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); if (!isPlayoffDraft) setShowPickSheet(true); } : undefined}
               />
+              </DaDetails>
             </div>
           )}
         </motion.div>
@@ -1996,6 +1999,7 @@ export default function DraftDetailPage() {
           </div>
 
           {/* Judging Scope / AI Context */}
+          <div className="mb-4"><DaDetails title="Judging scope">
           <DraftAiContextCard
             draftId={draftId!}
             aiContext={(draft as any).ai_context || null}
@@ -2006,6 +2010,7 @@ export default function DraftDetailPage() {
             onSaved={fetchData}
             onRegenerate={regenerateResults}
           />
+          </DaDetails></div>
 
           {/* AI Report Section */}
           {resultsGenerating ? (
