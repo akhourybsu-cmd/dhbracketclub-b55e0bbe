@@ -41,13 +41,13 @@ function Row({ a }: { a: Achievement }) {
             </p>
             {a.unlocked && (
               <span
-                className="text-[8px] font-bold uppercase tracking-wider px-1 py-px rounded"
+                className="text-[9.5px] font-bold uppercase tracking-wider px-1 py-px rounded"
                 style={{ background: style.soft, color: style.color }}
               >
                 {style.label}
               </span>
             )}
-            {a.maxed && <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-400">Maxed</span>}
+            {a.maxed && <span className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-400">Maxed</span>}
           </div>
           <p className="text-[10px] text-muted-foreground/70 leading-snug mt-0.5 break-words">
             {a.description}

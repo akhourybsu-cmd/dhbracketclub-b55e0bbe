@@ -195,7 +195,7 @@ function TrophyCase({ agg, longestStreak, mvpPicks }: {
             <p className="text-sm font-extrabold tabular-nums leading-none" style={{ color: it.value > 0 ? it.color : 'hsl(var(--muted-foreground) / 0.5)' }}>
               {it.value}
             </p>
-            <p className="text-[8px] text-muted-foreground/60 font-bold mt-0.5 uppercase tracking-wider truncate">{it.label}</p>
+            <p className="text-[9.5px] text-muted-foreground/60 font-bold mt-0.5 uppercase tracking-wider truncate">{it.label}</p>
           </div>
         ))}
       </div>
@@ -323,9 +323,9 @@ function PickQualityCard({ pq }: { pq: ReturnType<typeof computePickQuality> }) 
           </div>
 
           <div className="flex justify-between mt-1 px-1">
-            <span className="text-[8px] text-muted-foreground/50">0</span>
-            <span className="text-[8px] text-muted-foreground/50">5</span>
-            <span className="text-[8px] text-muted-foreground/50">10</span>
+            <span className="text-[9.5px] text-muted-foreground/50">0</span>
+            <span className="text-[9.5px] text-muted-foreground/50">5</span>
+            <span className="text-[9.5px] text-muted-foreground/50">10</span>
           </div>
         </div>
         <div className="flex items-center gap-2 pt-1 border-t border-border/15">
@@ -443,7 +443,7 @@ function Leaderboards({ dataset, userId }: { dataset: any; userId?: string }) {
                           i === 0 ? 'text-gold' : 'text-muted-foreground/70')}>{i + 1}</span>
                         <UserAvatar name={r.name} url={r.avatar} size={22} />
                         <span className={cn('text-[12px] font-bold flex-1 truncate', isMe && 'text-gold')}>
-                          {r.name}{isMe && <span className="ml-1 text-[8px] opacity-70">YOU</span>}
+                          {r.name}{isMe && <span className="ml-1 text-[9.5px] opacity-70">YOU</span>}
                         </span>
                         <span className="text-[12px] font-extrabold tabular-nums" style={{ color: i === 0 ? 'hsl(var(--gold))' : undefined }}>
                           {r.display}
@@ -535,9 +535,9 @@ function FunAwards({ awards, userId }: { awards: ReturnType<typeof computeFunAwa
                 <span className="text-lg leading-none">{a.icon}</span>
                 <p className="text-[11px] font-extrabold flex-1 truncate" style={{ color: 'hsl(var(--gold))' }}>{a.title}</p>
               </div>
-              <p className="text-[12px] font-bold truncate">{a.winnerName}{isMe && <span className="ml-1 text-[8px] text-gold/80">YOU</span>}</p>
+              <p className="text-[12px] font-bold truncate">{a.winnerName}{isMe && <span className="ml-1 text-[9.5px] text-gold/80">YOU</span>}</p>
               <p className="text-[9px] text-muted-foreground/70 truncate mt-0.5">{a.value}</p>
-              <p className="text-[8px] text-muted-foreground/50 mt-0.5 truncate">{a.caption}</p>
+              <p className="text-[9.5px] text-muted-foreground/50 mt-0.5 truncate">{a.caption}</p>
             </div>
           );
         })}
@@ -591,7 +591,7 @@ function SeasonHistory({ dataset, userId }: { dataset: any; userId?: string }) {
             </div>
             <div className="text-right flex-shrink-0">
               <p className="text-[14px] font-extrabold tabular-nums" style={{ color: 'hsl(var(--gold))' }}>{r.st.season_points}</p>
-              <p className="text-[8px] text-muted-foreground/60 font-bold uppercase tracking-wider">pts</p>
+              <p className="text-[9.5px] text-muted-foreground/60 font-bold uppercase tracking-wider">pts</p>
             </div>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
           </Link>

@@ -385,7 +385,7 @@ function PlayerCell({
           )}
           {isActive && (
             <span
-              className="text-[8px] font-extrabold uppercase tracking-wider px-1 py-px rounded da-live-breathe"
+              className="text-[9.5px] font-extrabold uppercase tracking-wider px-1 py-px rounded da-live-breathe"
               style={{ background: `hsl(${ringHsl} / 0.2)`, color: `hsl(${ringHsl})` }}
             >
               On Clock

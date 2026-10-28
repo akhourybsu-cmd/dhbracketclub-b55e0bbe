@@ -1770,8 +1770,8 @@ export default function DraftDetailPage() {
                     )}
 
                     {suggestion.is_duplicate && (
-                      <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-xs">
-                        <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                      <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-[hsl(var(--da-gold)/0.1)] border border-[hsl(var(--da-gold)/0.3)] text-xs">
+                        <AlertTriangle className="w-3.5 h-3.5 text-[hsl(var(--da-gold))] flex-shrink-0" />
                         <span className="text-foreground/80 flex-1">
                           {suggestion.relevance_note || 'This pick may already have been taken.'}
                         </span>
@@ -1782,8 +1782,8 @@ export default function DraftDetailPage() {
                     )}
 
                     {suggestion.is_irrelevant && !suggestion.is_duplicate && (
-                      <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-xs">
-                        <AlertTriangle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                      <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/25 text-xs">
+                        <AlertTriangle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
                         <span className="text-foreground/80 flex-1">
                           {suggestion.relevance_note || `This might not be relevant to "${draft?.topic}".`}
                         </span>

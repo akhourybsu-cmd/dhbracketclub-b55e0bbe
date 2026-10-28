@@ -131,7 +131,7 @@ export function CountdownRing({
         </span>
         {!compact && (
           <span
-            className="text-[8px] font-extrabold uppercase tracking-[0.18em] mt-0.5"
+            className="text-[9.5px] font-extrabold uppercase tracking-[0.18em] mt-0.5"
             style={{ color: `hsl(${ringColor} / 0.7)` }}
           >
             {isStale ? 'Waiting' : isOvertime ? 'Overtime' : isUrgent ? 'Hurry' : 'On Clock'}
