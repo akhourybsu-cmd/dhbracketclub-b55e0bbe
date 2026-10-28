@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793205262216,
+      "tag": "0000_mark_own_messages_read",
+      "breakpoints": true
+    }
+  ]
+}
