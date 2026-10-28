@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DaInfoRow } from '@/components/draft/ui/DraftKit';
+
+const STEPS = ['Basics', 'Judging', 'Format', 'Review'] as const;
 import { Bookmark, ArrowLeft, Sparkles, Radio, MonitorPlay } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useFeatureFlag } from '@/hooks/useFeatureFlags';
@@ -23,6 +26,7 @@ export default function CreateDraftPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { enabled: liveEnabled } = useFeatureFlag('live-draft');
+  const [step, setStep] = useState(0);
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
   const [aiContext, setAiContext] = useState('');
