@@ -26,6 +26,11 @@ import "../../src/index.css";
 
 // The browser check can stage a completed run without waiting several minutes.
 Object.assign(window, {
+  stageNexusReady: () => {
+    const run = createRun(CAMPAIGN[0]);
+    run.registered = true;
+    saveCoreRun(run, "member", "club");
+  },
   stageNexusBattle: () => {
     const run = createRun(ENDLESS);
     Object.assign(run, {

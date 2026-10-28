@@ -1,4 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  Hexagon,
+  Maximize,
+  SlidersHorizontal,
+  ChevronRight,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import "@/components/nexus/core/battle.css";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -87,6 +101,31 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
     "attack" | "weapons" | "defense" | "utility"
   >("attack");
   const [muted, setMuted] = useState(true);
+  const [systemsOpen, setSystemsOpen] = useState(false);
+  const [entering, setEntering] = useState(false);
+  const [nativeFullScreen, setNativeFullScreen] = useState(
+    !!document.fullscreenElement,
+  );
+  useEffect(() => {
+    const sync = () => setNativeFullScreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  const pauseButton = useRef<HTMLButtonElement>(null);
+  const systemsButton = useRef<HTMLButtonElement>(null);
+  const upgradeList = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (upgradeList.current) {
+      upgradeList.current.scrollLeft = 0;
+      upgradeList.current.scrollTop = 0;
+    }
+  }, [category]);
+  useEffect(() => {
+    if (!entering) return;
+    const timer = window.setTimeout(() => setEntering(false), 1100);
+    return () => window.clearTimeout(timer);
+  }, [entering]);
+
   const [restoring, setRestoring] = useState(false);
   const [storageError, setStorageError] = useState(false);
   const lastSave = useRef(0);
@@ -98,6 +137,17 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
     scenario.mode === "campaign" &&
     Number(scenario.id) > 1 &&
     !profile?.campaign[String(Number(scenario.id) - 1)];
+  useEffect(() => {
+    if (!run || locked) return;
+    document.documentElement.classList.add("nc-battle-active");
+    document.body.classList.add("nc-battle-active");
+    return () => {
+      document.documentElement.classList.remove("nc-battle-active");
+      document.body.classList.remove("nc-battle-active");
+    };
+    // The run identity determines ownership of the fullscreen surface.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.id, locked]);
   const persist = (s: CoreRun) => {
     const ok = saveCoreRun(s, userId, clubId);
     if (!ok && !warned.current) {
@@ -112,7 +162,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
   };
 
   useEffect(() => {
-    if (locked || paused) return;
+    if (locked || paused || systemsOpen) return;
     const timer = window.setInterval(() => {
       const prev = runRef.current;
       if (!prev || prev.phase === "ready" || isFinished(prev)) return;
@@ -141,7 +191,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
       }
     }, STEP * 1000);
     return () => window.clearInterval(timer);
-  }, [scenario, paused, speed, userId, clubId, locked]);
+  }, [scenario, paused, systemsOpen, speed, userId, clubId, locked]);
 
   useEffect(() => {
     const flush = () => {
@@ -228,57 +278,59 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
         setRestoring(false);
       }
     }
-    if (runRef.current?.phase === "ready")
-      commit(startWave(runRef.current, scenario));
+    const starting = runRef.current?.phase === "ready";
+    if (starting) commit(startWave(runRef.current, scenario));
+    if (
+      starting &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      setEntering(true);
     setPaused(false);
   };
   const pause = () => {
     setPaused(true);
     persist(runRef.current!);
   };
-  return (
-    <main className="nc-battle">
-      <div className="nc-battle-top">
+  const inspect = () => {
+    persist(runRef.current!);
+    setSystemsOpen(true);
+  };
+  const requestFullScreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen?.().catch(() => {});
+    } else {
+      void document.documentElement.requestFullscreen?.().catch(() => {});
+    }
+  };
+  return createPortal(
+    <main
+      className={`nx-mode nc-shell nc-battle nc-play-screen ${entering ? "nc-entering" : ""}`}
+      aria-label="Nexus Defense battle"
+    >
+      <header className="nc-battle-top">
         <div>
           <h1>{scenario.title}</h1>
-          <p>
-            {scenario.subtitle} ·{" "}
-            {scenario.waves
-              ? `${scenario.waves} waves to hold`
-              : "No final wave"}
-          </p>
+          <p>{scenario.subtitle}</p>
         </div>
-        <div className="nc-controls">
-          <button
-            onClick={() => setMuted(!muted)}
-            aria-label={muted ? "Enable battle sound" : "Mute battle sound"}
-          >
-            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-          </button>
-          <button
-            aria-label={`Battle speed ${speed} times. Change speed.`}
-            onClick={() => setSpeed(speed === 1 ? 2 : 1)}
-          >
-            {speed}×
-          </button>
-          <button aria-label="Pause defense" onClick={pause}>
-            <Pause size={16} />
-          </button>
+        <div className="nc-session-state">
+          <i className="nc-live-dot" />
+          AUTO DEFENSE
+          <span>
+            {Math.floor(run.time / 60)}:
+            {String(Math.floor(run.time % 60)).padStart(2, "0")}
+          </span>
         </div>
-      </div>
-      {storageError && (
-        <p className="nc-rule" role="alert">
-          Device storage is unavailable. Keep this tab open to finish your run.
-        </p>
-      )}
+      </header>
       <div className="nc-battle-grid">
-        <div>
+        <section className="nc-live-stage" aria-label="Battle arena">
           <div className="nc-field">
             <div className="nc-wave-badge">
               <strong>
                 {String(run.wave || 1).padStart(2, "0")}
-                <small style={{ fontSize: 13, color: "hsl(200 18% 50%)" }}>
-                  {scenario.waves ? ` / ${scenario.waves}` : " / ∞"}
+                <small>
+                  {scenario.waves
+                    ? ` / ${String(scenario.waves).padStart(2, "0")}`
+                    : " / ∞"}
                 </small>
               </strong>
               <p>Current wave</p>
@@ -293,36 +345,49 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                 <button
                   onClick={() => commit(startWave(runRef.current!, scenario))}
                 >
-                  Send next wave now →
+                  Send next wave now <ChevronRight size={13} />
                 </button>
               </div>
             )}
             <CoreArena run={run} scenario={scenario} />
-            <div className="nc-vitals">
-              <Meter
-                label="Hull integrity"
-                value={run.hp}
-                max={v.maxHp}
-                color={
-                  run.hp / v.maxHp < 0.3 ? "hsl(0 92% 68%)" : "hsl(173 88% 70%)"
-                }
-                icon={<Heart size={11} />}
-              />
-              <Meter
-                label="Barrier"
-                value={run.shield}
-                max={v.maxShield}
-                color="hsl(200 90% 70%)"
-                icon={<Shield size={11} />}
-              />
-            </div>
+            {entering && (
+              <div className="nc-entry-reveal" aria-hidden="true">
+                <Hexagon size={28} />
+                <span>NEXUS ONLINE</span>
+              </div>
+            )}
           </div>
+          <div className="nc-vitals">
+            <Meter
+              label="Hull integrity"
+              value={run.hp}
+              max={v.maxHp}
+              color={
+                run.hp / v.maxHp < 0.3 ? "hsl(0 92% 68%)" : "hsl(173 88% 70%)"
+              }
+              icon={<Heart size={11} />}
+            />
+            <Meter
+              label="Barrier"
+              value={run.shield}
+              max={v.maxShield}
+              color="hsl(200 90% 70%)"
+              icon={<Shield size={11} />}
+            />
+          </div>
+        </section>
+        <section className="nc-command-deck" aria-label="Battle controls">
           <div className="nc-ability-row">
             <button
               className="nc-ability"
               disabled={run.novaCd > 0 || run.phase !== "wave"}
               onClick={() => cast("nova")}
               aria-label={`Nova burst${run.novaCd > 0 ? ` ready in ${Math.ceil(run.novaCd)} seconds` : " ready"}`}
+              style={
+                {
+                  "--nc-charge": `${(1 - run.novaCd / 20) * 100}%`,
+                } as React.CSSProperties
+              }
             >
               <Orbit size={22} />
               <span>
@@ -338,6 +403,11 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               disabled={run.overdriveCd > 0 || run.phase !== "wave"}
               onClick={() => cast("overdrive")}
               aria-label={`Overdrive${run.overdriveCd > 0 ? ` ready in ${Math.ceil(run.overdriveCd)} seconds` : " ready"}`}
+              style={
+                {
+                  "--nc-charge": `${(1 - run.overdriveCd / 30) * 100}%`,
+                } as React.CSSProperties
+              }
             >
               <Zap size={22} />
               <span>
@@ -353,57 +423,48 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               </span>
             </button>
           </div>
-          <div className="nc-battle-readout">
-            <span>
-              Neutralized <strong>{run.kills}</strong>
-            </span>
-            <span>
-              Damage <strong>{Math.round(v.damage)}</strong> / Fire rate{" "}
-              <strong>{v.fireRate.toFixed(1)}/s</strong>
-            </span>
-            <span>
-              <strong>
-                {Math.floor(run.time / 60)}:
-                {String(Math.floor(run.time % 60)).padStart(2, "0")}
-              </strong>
-            </span>
-          </div>
-          <CoreWeaponPanel
-            run={run}
-            scenario={scenario}
-            onInstall={() => setCategory("weapons")}
-          />
-        </div>
-        <section
-          className="nc-panel nc-upgrade-panel"
-          aria-label="Nexus upgrades"
-        >
-          <div className="nc-upgrade-title">
-            <h2>Fortify your core</h2>
-            <span
+          <div className="nc-command-toolbar">
+            <button
+              className="nc-deck-control"
+              ref={pauseButton}
+              aria-label="Pause defense"
+              onClick={pause}
+            >
+              <Pause size={18} />
+            </button>
+            <div
               className="nc-energy"
               aria-label={`${Math.floor(run.energy)} energy`}
             >
               <Zap size={16} />
-              {Math.floor(run.energy)}
-            </span>
+              <strong>{Math.floor(run.energy)}</strong>
+              <small>ENERGY</small>
+            </div>
+            <button
+              className="nc-deck-control"
+              aria-label={`Battle speed ${speed} times. Change speed.`}
+              onClick={() => setSpeed(speed === 1 ? 2 : 1)}
+            >
+              {speed}×
+            </button>
+            <button
+              className="nc-deck-control"
+              ref={systemsButton}
+              aria-label="Open weapon systems"
+              onClick={inspect}
+            >
+              <SlidersHorizontal size={18} />
+            </button>
           </div>
-          <div className="nc-tabs" role="tablist" aria-label="Upgrade category">
-            {(["attack", "weapons", "defense", "utility"] as const).map((c) => (
-              <button
-                key={c}
-                id={`tab-${c}`}
-                role="tab"
-                aria-selected={category === c}
-                aria-controls="core-upgrades"
-                onClick={() => setCategory(c)}
-              >
-                {c[0].toUpperCase() + c.slice(1)}
-              </button>
-            ))}
+          <div className="nc-upgrade-heading">
+            <span>UPGRADE YOUR CORE</span>
+            <span className="nc-swipe-hint">
+              Swipe for more <ChevronRight size={12} />
+            </span>
           </div>
           <div
             className="nc-upgrade-list"
+            ref={upgradeList}
             id="core-upgrades"
             role="tabpanel"
             aria-labelledby={`tab-${category}`}
@@ -442,7 +503,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                       "MAX"
                     ) : (
                       <>
-                        <Zap size={10} />
+                        <Zap size={11} />
                         {price}
                       </>
                     )}
@@ -451,69 +512,212 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               );
             })}
           </div>
-          <div className="nc-targeting">
-            <Crosshair size={14} />
-            <label htmlFor="core-priority">Prioritize</label>
-            <select
-              id="core-priority"
-              value={run.targeting}
-              onChange={(e) =>
-                commit({
-                  ...runRef.current!,
-                  targeting: e.target.value as Targeting,
-                })
-              }
-            >
-              <option value="nearest">Nearest to core</option>
-              <option value="strongest">Strongest enemy</option>
-              <option value="fastest">Fastest enemy</option>
-            </select>
+          <div className="nc-tabs" role="tablist" aria-label="Upgrade category">
+            {(["attack", "weapons", "defense", "utility"] as const).map((c) => (
+              <button
+                key={c}
+                id={`tab-${c}`}
+                role="tab"
+                aria-selected={category === c}
+                aria-controls="core-upgrades"
+                onClick={() => setCategory(c)}
+              >
+                {c[0].toUpperCase() + c.slice(1)}
+              </button>
+            ))}
           </div>
-          <p className="nc-note">
-            Earn energy from kills and cleared waves. Upgrades apply instantly
-            and last for this run.
-          </p>
         </section>
       </div>
+      {storageError && (
+        <p className="nc-storage-notice" role="alert">
+          Device storage unavailable. Keep this tab open to finish.
+        </p>
+      )}
       <AlertDialog
-        open={!isFinished(run) && (paused || run.phase === "ready")}
+        open={
+          !systemsOpen && !isFinished(run) && (paused || run.phase === "ready")
+        }
         onOpenChange={(open) => {
           if (!open && run.phase !== "ready") setPaused(false);
         }}
       >
-        <AlertDialogContent className="nx-mode nc-shell nc-dialog">
-          <Shield size={34} />
-          <AlertDialogTitle>
-            {run.phase === "ready" ? "Core ready." : "Defense paused."}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {run.phase === "ready"
-              ? "Your nexus fires automatically. Earn energy, build upgrades, and hold the center. Start when you’re ready."
-              : "Take a breath. Your defense is saved on this device. Resume at your own pace."}
-          </AlertDialogDescription>
-          <button className="nc-button" onClick={begin} disabled={restoring}>
-            <Play size={16} />
-            {restoring
-              ? "Restoring…"
-              : run.phase === "ready"
-                ? "Start defense"
-                : "Resume defense"}
-          </button>
-          <button
-            className="nc-button nc-button-secondary"
-            onClick={() => {
-              persist(runRef.current!);
-              navigate("/nexus");
-            }}
-          >
-            <ArrowLeft size={16} />
-            Save & exit
-          </button>
+        <AlertDialogContent
+          className={`nx-mode nc-shell nc-dialog nc-game-dialog ${run.phase === "ready" ? "nc-deployment-dialog" : "nc-pause-dialog"}`}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            pauseButton.current?.focus();
+          }}
+        >
+          {run.phase === "ready" ? (
+            <>
+              <div className="nc-deployment-label">
+                <span className="nc-live-dot" />
+                {scenario.subtitle} / DEPLOYMENT
+              </div>
+              <div className="nc-deployment-seal" aria-hidden="true">
+                <i />
+                <i />
+                <Hexagon size={62} />
+                <span>N</span>
+              </div>
+              <div className="nc-deployment-copy">
+                <div className="nc-eyebrow">DEFEND THE CENTER</div>
+                <AlertDialogTitle>{scenario.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {scenario.waves
+                    ? `${scenario.waves} waves. One core. Hold the perimeter.`
+                    : "One core. Endless waves. Set your next record."}
+                </AlertDialogDescription>
+              </div>
+              <div className="nc-deployment-systems">
+                <span>
+                  <Crosshair size={17} />
+                  AUTO TARGET
+                </span>
+                <span>
+                  <Shield size={17} />
+                  CORE SHIELD
+                </span>
+                <span>
+                  <Orbit size={17} />
+                  NOVA BURST
+                </span>
+              </div>
+              <div className="nc-deployment-actions">
+                <p>
+                  Your core fires automatically. Build upgrades with the energy
+                  you earn.
+                </p>
+                <button
+                  className="nc-button"
+                  onClick={begin}
+                  disabled={restoring}
+                >
+                  <Play size={17} />
+                  {restoring ? "Restoring…" : "Start defense"}
+                </button>
+                <button
+                  className="nc-back"
+                  onClick={() => {
+                    persist(runRef.current!);
+                    navigate("/nexus");
+                  }}
+                >
+                  Back to command center
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="nc-sheet-grip" />
+              <div className="nc-eyebrow">CORE ON STANDBY</div>
+              <AlertDialogTitle>Defense paused.</AlertDialogTitle>
+              <AlertDialogDescription>
+                {scenario.title} · Wave {run.wave} · Saved on this device
+              </AlertDialogDescription>
+              <div className="nc-pause-stats">
+                <span>
+                  <strong>{run.kills}</strong>Neutralized
+                </span>
+                <span>
+                  <strong>{run.score.toLocaleString()}</strong>Score
+                </span>
+                <span>
+                  <strong>{Math.round(v.damage)}</strong>Pulse damage
+                </span>
+              </div>
+              <div className="nc-menu-actions">
+                <button
+                  onClick={() => setMuted(!muted)}
+                  aria-label={
+                    muted ? "Enable battle sound" : "Mute battle sound"
+                  }
+                >
+                  {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}Sound{" "}
+                  {muted ? "off" : "on"}
+                </button>
+                {document.fullscreenEnabled && (
+                  <button onClick={requestFullScreen}>
+                    <Maximize size={18} />
+                    {nativeFullScreen ? "Exit full screen" : "Full screen"}
+                  </button>
+                )}
+              </div>
+              <button
+                className="nc-button"
+                onClick={begin}
+                disabled={restoring}
+              >
+                <Play size={17} />
+                {restoring ? "Restoring…" : "Resume defense"}
+              </button>
+              <button
+                className="nc-button nc-button-secondary"
+                onClick={() => {
+                  persist(runRef.current!);
+                  navigate("/nexus");
+                }}
+              >
+                <ArrowLeft size={16} />
+                Save & exit
+              </button>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
-    </main>
+      <Dialog open={systemsOpen} onOpenChange={setSystemsOpen}>
+        <DialogContent
+          className="nx-mode nc-shell nc-game-dialog nc-systems-dialog"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            systemsButton.current?.focus();
+          }}
+        >
+          <div className="nc-sheet-grip" />
+          <DialogTitle>Weapon systems</DialogTitle>
+          <DialogDescription>
+            Defense paused while you inspect your core.
+          </DialogDescription>
+          <div className="nc-systems-scroll">
+            <CoreWeaponPanel
+              run={run}
+              scenario={scenario}
+              expanded
+              onInstall={() => {
+                setCategory("weapons");
+                setSystemsOpen(false);
+              }}
+            />
+            <div className="nc-targeting">
+              <Crosshair size={16} />
+              <label htmlFor="core-priority">Prioritize</label>
+              <select
+                id="core-priority"
+                value={run.targeting}
+                onChange={(e) =>
+                  commit({
+                    ...runRef.current!,
+                    targeting: e.target.value as Targeting,
+                  })
+                }
+              >
+                <option value="nearest">Nearest to core</option>
+                <option value="strongest">Strongest enemy</option>
+                <option value="fastest">Fastest enemy</option>
+              </select>
+            </div>
+          </div>
+          <button className="nc-button" onClick={() => setSystemsOpen(false)}>
+            Return to defense
+            <ChevronRight size={17} />
+          </button>
+        </DialogContent>
+      </Dialog>
+    </main>,
+    document.body,
   );
 }
+
 function Meter({
   label,
   value,

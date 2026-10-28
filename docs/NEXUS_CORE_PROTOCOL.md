@@ -70,3 +70,13 @@ Add more sectors, enemy behaviors, challenge rotations, research branches, and c
 - `node --import tsx scripts/balance-nexus-core.ts --output=/tmp/nexus-balance.json` runs the actual engine with six policies, eight seeds, thirteen scenarios, and two research tiers (1,248 runs). The report records weapon damage and energy budgets, not theoretical DPS. See [NEXUS_BALANCE_REPORT.md](NEXUS_BALANCE_REPORT.md) for the measured baseline and limitations.
 - `src/test/nexus/coreSystems.test.ts` checks actual fire rates, crits, retargeting, arc chains, rail piercing, orbitals at the hull, damage accounting, shield delays, slows, energy conservation, every upgrade cap, and payout policy. `coreBalance.test.ts` guards build viability and research progression.
 - Generate the frontend economy contract with `node --import tsx scripts/nexus-economy-contract.ts > /tmp/nexus-economy-contract.json`, then run `node scripts/test-nexus-core-economy.mjs` with optional `@electric-sql/pglite` installed. It applies the real economy migration twice and compares all 83 upgrade levels and 60 research prices to the server.
+
+## Mobile battle presentation
+
+Combat owns the full dynamic viewport and renders through a portal to `document.body`, so route-transition transforms cannot constrain fixed positioning. The site header is hidden during battle. The document is locked while the game is mounted and restored on exit; only upgrade strips and inspection panels scroll.
+
+Portrait phones keep the arena above a fixed command deck: large Nova/Overdrive buttons, pause, energy, speed, systems, a swipeable upgrade strip, and category tabs. Controls have at least 44px touch targets and stay in the lower half of the screen. Landscape uses a compact arena/sidebar arrangement. Both layouts account for safe areas and changing browser viewport heights.
+
+Fresh deployments open on a full-screen mission introduction with a bottom-positioned Start button and a brief arena reveal. Reduced-motion preferences remove the reveal animation. Resuming a paused battle returns directly to combat. Pause and systems panels open near the thumb on portrait phones; inspecting systems stops the simulation. Desktop and landscape menus remain within the available height. Native browser fullscreen is offered in the pause menu when supported.
+
+The scoped layout lives in `src/components/nexus/core/battle.css`. Run `node scripts/check-nexus-mobile.mjs` against Vite on port 8080 for real touch-swipe, viewport, safe-area, pause, and scroll-cleanup checks across eight phone/tablet/desktop sizes. The account backend is isolated through `scripts/nexus-ui-fixture.mjs`; production components and the actual engine are used.

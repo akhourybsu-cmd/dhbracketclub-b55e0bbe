@@ -1,0 +1,983 @@
+/* Combat owns the viewport. Its portal escapes route-transition transforms. */
+html.nc-battle-active,
+body.nc-battle-active {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.nx-mode.nc-play-screen {
+  --nc-safe-top: env(safe-area-inset-top, 0px);
+  --nc-safe-bottom: env(safe-area-inset-bottom, 0px);
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  margin: 0;
+  padding: var(--nc-safe-top) env(safe-area-inset-right, 0px) 0
+    env(safe-area-inset-left, 0px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: hsl(218 42% 5%);
+}
+.nc-play-screen .nc-battle-top {
+  flex: 0 0 52px;
+  margin: 0;
+  padding: 0 20px;
+  border-bottom: 1px solid hsl(190 30% 40% / 0.15);
+}
+.nc-play-screen .nc-battle-top h1 {
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+.nc-play-screen .nc-battle-top p {
+  font:
+    400 9px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.14em;
+}
+.nc-session-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: hsl(var(--nc-accent));
+  font:
+    500 9px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.09em;
+}
+.nc-session-state span {
+  margin-left: 10px;
+  color: hsl(200 18% 65%);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.nc-play-screen .nc-battle-grid {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 0;
+  align-items: stretch;
+  padding: 12px 18px max(12px, env(safe-area-inset-bottom, 0px));
+}
+.nc-live-stage {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.nc-play-screen .nc-field {
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px 0 0 0;
+  border-right: 0;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(192 55% 12% / 0.6),
+    hsl(218 42% 5%)
+  );
+}
+.nc-play-screen .nc-field .nc-arena {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+.nc-play-screen .nc-vitals {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border: 1px solid hsl(190 30% 40% / 0.2);
+  border-right: 0;
+  border-radius: 0 0 0 12px;
+}
+.nc-play-screen .nc-command-deck {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid hsl(190 30% 40% / 0.2);
+  border-radius: 0 12px 12px 0;
+  background: linear-gradient(180deg, hsl(215 35% 8%), hsl(218 40% 6%));
+}
+.nc-play-screen .nc-ability-row {
+  margin: 0;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.nc-play-screen .nc-ability {
+  position: relative;
+  overflow: hidden;
+  min-height: 58px;
+  padding: 9px 10px;
+  gap: 7px;
+  touch-action: manipulation;
+}
+.nc-play-screen .nc-ability strong {
+  font-size: 11px;
+}
+.nc-play-screen .nc-ability small {
+  font-size: 9px;
+  line-height: 1.35;
+}
+.nc-play-screen .nc-ability > svg {
+  width: 18px;
+  flex-shrink: 0;
+}
+.nc-play-screen .nc-ability > span:last-child {
+  font-size: 9px;
+}
+.nc-play-screen .nc-ability:disabled {
+  opacity: 0.65;
+}
+.nc-play-screen .nc-ability::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: var(--nc-charge, 100%);
+  background: currentColor;
+  opacity: 0.6;
+  transition: width 0.1s linear;
+}
+.nc-command-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.nc-deck-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid hsl(190 30% 40% / 0.25);
+  border-radius: 7px;
+  color: hsl(200 18% 82%);
+  background: hsl(210 35% 13% / 0.5);
+  font:
+    500 13px "Space Grotesk",
+    sans-serif;
+  touch-action: manipulation;
+}
+.nc-deck-control:active {
+  background: hsl(var(--nc-accent) / 0.15);
+  color: hsl(var(--nc-accent));
+}
+.nc-command-toolbar .nc-energy {
+  flex: 1;
+  gap: 4px;
+  padding-left: 4px;
+}
+.nc-command-toolbar .nc-energy strong {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+}
+.nc-command-toolbar .nc-energy small {
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  margin-left: 4px;
+  color: hsl(200 18% 60%);
+}
+.nc-upgrade-heading {
+  display: flex;
+  justify-content: space-between;
+  flex-shrink: 0;
+  align-items: center;
+  font:
+    500 9px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.12em;
+  color: hsl(200 18% 57%);
+}
+.nc-swipe-hint {
+  display: none;
+  letter-spacing: 0;
+  align-items: center;
+  gap: 2px;
+  font:
+    400 10px "DM Sans",
+    sans-serif;
+}
+.nc-play-screen .nc-upgrade-list {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  flex-direction: column;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(190 25% 24%) transparent;
+  padding: 2px 1px;
+  gap: 7px;
+}
+.nc-play-screen .nc-upgrade {
+  flex-shrink: 0;
+  min-height: 72px;
+  padding: 11px;
+}
+.nc-play-screen .nc-upgrade-copy strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.nc-play-screen .nc-upgrade-copy small {
+  font-size: 10px;
+  line-height: 1.5;
+  color: hsl(200 18% 68%);
+}
+.nc-play-screen .nc-upgrade-copy em {
+  font-size: 10px;
+}
+.nc-play-screen .nc-upgrade-price {
+  font-size: 12px;
+}
+.nc-play-screen .nc-command-deck .nc-tabs {
+  order: 5;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 3px;
+  gap: 2px;
+}
+.nc-play-screen .nc-command-deck .nc-tabs button {
+  min-height: 44px;
+  min-width: 44px;
+  font-size: 11px;
+  touch-action: manipulation;
+}
+.nc-play-screen .nc-command-deck .nc-tabs button[aria-selected="true"] {
+  box-shadow: inset 0 -2px hsl(var(--nc-accent));
+  font-weight: 600;
+}
+.nc-play-screen .nc-wave-message {
+  z-index: 2;
+  top: 76px;
+}
+.nc-play-screen .nc-wave-message button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 5px;
+  background: hsl(215 35% 8% / 0.9);
+}
+.nc-play-screen .nc-wave-badge small {
+  color: hsl(200 18% 55%);
+  font-size: 13px;
+}
+.nc-storage-notice {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 55px;
+  z-index: 5;
+  font-size: 11px;
+  text-align: center;
+  padding: 8px;
+  border: 1px solid hsl(var(--nc-gold) / 0.4);
+  border-radius: 7px;
+  color: hsl(var(--nc-gold));
+  background: hsl(215 35% 8% / 0.98);
+}
+.nc-entry-reveal {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(
+    circle,
+    hsl(192 60% 10% / 0.7),
+    hsl(218 42% 5% / 0.95)
+  );
+  color: hsl(var(--nc-accent));
+  animation: nc-reveal 1.1s both;
+}
+.nc-entry-reveal span {
+  font:
+    500 11px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.3em;
+}
+@keyframes nc-reveal {
+  0%,
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.nc-entering .nc-arena {
+  animation: nc-arena-arrive 1.1s both;
+}
+@keyframes nc-arena-arrive {
+  from {
+    opacity: 0.2;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Modal menus remain reachable and scroll independently of the battlefield. */
+.nx-mode.nc-shell.nc-game-dialog {
+  --nc-safe-top: env(safe-area-inset-top, 0px);
+  --nc-safe-bottom: env(safe-area-inset-bottom, 0px);
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 90dvh;
+  max-width: 460px;
+  width: calc(100% - 32px);
+  padding: 24px;
+  border: 1px solid hsl(var(--nc-accent) / 0.25);
+  border-radius: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: hsl(215 35% 8%);
+}
+.nc-game-dialog::before,
+.nc-game-dialog::after {
+  display: none;
+}
+.nx-mode.nc-shell.nc-game-dialog h2 {
+  font:
+    500 28px/1.15 "Space Grotesk",
+    sans-serif;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+.nx-mode.nc-shell.nc-game-dialog p {
+  font-size: 12px;
+  line-height: 1.65;
+  margin: 0;
+  color: hsl(200 18% 68%);
+}
+.nx-mode.nc-shell.nc-game-dialog .nc-button {
+  width: 100%;
+  flex-shrink: 0;
+  min-height: 52px;
+  margin: 0;
+}
+.nc-sheet-grip {
+  width: 32px;
+  height: 3px;
+  border-radius: 2px;
+  background: hsl(200 18% 40%);
+  align-self: center;
+  margin: -9px 0 4px;
+  flex-shrink: 0;
+}
+.nc-pause-dialog {
+  text-align: left;
+}
+.nc-pause-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 14px 0;
+  border-block: 1px solid hsl(190 30% 40% / 0.2);
+}
+.nc-pause-stats span {
+  font-size: 10px;
+  color: hsl(200 18% 65%);
+}
+.nc-pause-stats strong {
+  display: block;
+  font:
+    500 24px "Space Grotesk",
+    sans-serif;
+  margin-bottom: 5px;
+  color: hsl(200 18% 92%);
+}
+.nc-menu-actions {
+  display: flex;
+  gap: 8px;
+}
+.nc-menu-actions button {
+  min-height: 44px;
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid hsl(190 30% 40% / 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  color: hsl(200 18% 77%);
+}
+.nc-systems-scroll {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.nc-systems-dialog .nc-systems {
+  padding: 12px 0;
+  margin: 0;
+  background: transparent;
+  border: 0;
+}
+.nc-systems-dialog .nc-systems summary {
+  min-height: 44px;
+}
+.nc-systems-dialog .nc-system button {
+  min-height: 44px;
+}
+.nc-systems-dialog .nc-targeting {
+  margin: 12px 0;
+}
+.nc-systems-dialog .nc-targeting select {
+  min-height: 44px;
+}
+.nc-systems-dialog > button:last-child {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 12px;
+  right: 12px;
+}
+.nx-mode.nc-shell.nc-deployment-dialog {
+  text-align: center;
+  padding: 32px;
+  gap: 20px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 50% 30%,
+      hsl(188 65% 18% / 0.7),
+      transparent 65%
+    ),
+    hsl(218 42% 5%);
+}
+.nc-deployment-label {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: hsl(var(--nc-accent));
+  font:
+    500 9px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.16em;
+}
+.nc-deployment-seal {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  margin: 10px auto;
+  color: hsl(var(--nc-accent));
+}
+.nc-deployment-seal i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid hsl(var(--nc-accent) / 0.18);
+}
+.nc-deployment-seal i:nth-child(2) {
+  inset: 18px;
+  border-style: dashed;
+  border-color: hsl(var(--nc-accent) / 0.4);
+  animation: nc-seal-orbit 25s linear infinite;
+}
+.nc-deployment-seal::after {
+  position: absolute;
+  content: "";
+  inset: 25%;
+  background: hsl(var(--nc-accent) / 0.2);
+  filter: blur(25px);
+  z-index: -1;
+}
+.nc-deployment-seal span {
+  position: absolute;
+  font:
+    500 24px "Space Grotesk",
+    sans-serif;
+}
+@keyframes nc-seal-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.nc-deployment-copy .nc-eyebrow {
+  justify-content: center;
+  margin-bottom: 8px;
+  font-size: 9px;
+}
+.nx-mode.nc-shell.nc-deployment-dialog .nc-deployment-copy h2 {
+  font-size: 38px;
+  margin-bottom: 10px;
+}
+.nc-deployment-systems {
+  display: flex;
+  justify-content: space-around;
+  gap: 10px;
+  border-block: 1px solid hsl(190 30% 40% / 0.2);
+  padding: 18px 0;
+}
+.nc-deployment-systems span {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  font:
+    400 8px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.1em;
+  color: hsl(200 18% 70%);
+}
+.nc-deployment-systems svg {
+  color: hsl(var(--nc-accent));
+}
+.nc-deployment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.nc-deployment-actions > p {
+  max-width: 300px;
+  align-self: center;
+  font-size: 11px;
+}
+.nc-deployment-actions .nc-back {
+  align-self: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: -6px 0 -14px;
+}
+
+@media (max-width: 799px) and (orientation: portrait) {
+  .nc-play-screen .nc-battle-top {
+    flex-basis: 46px;
+    padding: 0 16px;
+  }
+  .nc-play-screen .nc-battle-top h1 {
+    font-size: 13px;
+  }
+  .nc-play-screen .nc-battle-grid {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    max-width: none;
+  }
+  .nc-play-screen .nc-live-stage {
+    flex: 1;
+    min-height: 0;
+  }
+  .nc-play-screen .nc-field {
+    border: 0;
+    border-radius: 0;
+  }
+  .nc-play-screen .nc-field .nc-svg-label {
+    display: none;
+  }
+  .nc-play-screen .nc-wave-badge {
+    left: 16px;
+    top: 12px;
+  }
+  .nc-play-screen .nc-wave-badge strong {
+    font-size: 25px;
+  }
+  .nc-play-screen .nc-threat-count {
+    right: 16px;
+    top: 16px;
+    font-size: 10px;
+  }
+  .nc-play-screen .nc-vitals {
+    border: 0;
+    border-top: 1px solid hsl(190 30% 40% / 0.17);
+    border-radius: 0;
+    padding: 9px 16px;
+    gap: 20px;
+  }
+  .nc-play-screen .nc-meter-label {
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  .nc-play-screen .nc-meter {
+    height: 3px;
+  }
+  .nc-play-screen .nc-command-deck {
+    flex: none;
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px max(8px, var(--nc-safe-bottom));
+    border-inline: 0;
+    border-radius: 0;
+    border-bottom: 0;
+  }
+  .nc-play-screen .nc-ability {
+    min-height: 52px;
+    padding: 8px 10px;
+  }
+  .nc-play-screen .nc-ability strong {
+    font-size: 12px;
+  }
+  .nc-play-screen .nc-ability small {
+    font-size: 9px;
+  }
+  .nc-play-screen .nc-upgrade-heading {
+    margin-top: -3px;
+  }
+  .nc-swipe-hint {
+    display: flex;
+  }
+  .nc-play-screen .nc-upgrade-list {
+    flex: none;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    padding: 2px;
+    margin: 0 -2px;
+    gap: 8px;
+    height: 92px;
+  }
+  .nc-play-screen .nc-upgrade-list::-webkit-scrollbar {
+    display: none;
+  }
+  .nc-play-screen .nc-upgrade {
+    flex: 0 0 62%;
+    width: auto;
+    max-width: 260px;
+    min-width: 195px;
+    min-height: 0;
+    height: 86px;
+    scroll-snap-align: start;
+    padding: 10px;
+    gap: 8px;
+  }
+  .nc-play-screen .nc-upgrade > svg {
+    width: 17px;
+    height: 17px;
+  }
+  .nc-play-screen .nc-upgrade-copy strong {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .nc-play-screen .nc-upgrade-copy small {
+    font-size: 9px;
+    line-height: 1.45;
+    margin-top: 4px;
+  }
+  .nc-play-screen .nc-upgrade-price {
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .nc-play-screen .nc-command-deck .nc-tabs {
+    border: 0;
+    background: hsl(210 25% 10%);
+    padding: 0;
+    border-radius: 6px;
+  }
+  .nc-play-screen .nc-command-deck .nc-tabs button {
+    min-height: 44px;
+    font-size: 11px;
+  }
+  .nc-play-screen .nc-wave-message {
+    top: 56px;
+    gap: 0;
+  }
+  .nc-play-screen .nc-wave-message span {
+    font-size: 10px;
+  }
+  .nx-mode.nc-shell.nc-pause-dialog,
+  .nx-mode.nc-shell.nc-systems-dialog {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    max-height: 86dvh;
+    border-radius: 20px 20px 0 0;
+    padding: 22px 20px max(20px, var(--nc-safe-bottom));
+  }
+  .nx-mode.nc-shell.nc-deployment-dialog {
+    inset: 0;
+    transform: none;
+    border: 0;
+    border-radius: 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    height: 100dvh;
+    padding: max(32px, var(--nc-safe-top)) 26px max(22px, var(--nc-safe-bottom));
+    justify-content: center;
+    gap: 24px;
+  }
+  .nc-deployment-label {
+    position: absolute;
+    top: max(34px, var(--nc-safe-top));
+    left: 20px;
+    right: 20px;
+  }
+  .nc-deployment-seal {
+    width: 180px;
+    height: 180px;
+    margin-top: auto;
+  }
+  .nx-mode.nc-shell.nc-deployment-dialog .nc-deployment-copy h2 {
+    font-size: 42px;
+  }
+  .nc-deployment-systems {
+    margin-bottom: 0;
+  }
+  .nc-deployment-actions {
+    margin-top: auto;
+  }
+  .nc-deployment-actions .nc-button {
+    min-height: 56px;
+  }
+  .nc-deployment-actions .nc-back {
+    margin-bottom: -8px;
+  }
+}
+@media (max-width: 799px) and (orientation: portrait) and (max-height: 680px) {
+  .nc-play-screen .nc-battle-top {
+    flex-basis: 40px;
+  }
+  .nc-play-screen .nc-command-deck {
+    gap: 6px;
+    padding-top: 8px;
+  }
+  .nc-play-screen .nc-ability {
+    min-height: 48px;
+  }
+  .nc-play-screen .nc-ability small {
+    display: none;
+  }
+  .nc-play-screen .nc-upgrade-list {
+    height: 80px;
+  }
+  .nc-play-screen .nc-upgrade {
+    height: 74px;
+  }
+  .nc-play-screen .nc-vitals {
+    padding-block: 7px;
+  }
+  .nc-deployment-seal {
+    width: 120px;
+    height: 120px;
+  }
+  .nx-mode.nc-shell.nc-deployment-dialog .nc-deployment-copy h2 {
+    font-size: 34px;
+  }
+  .nx-mode.nc-shell.nc-deployment-dialog {
+    gap: 16px;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .nc-play-screen .nc-battle-top {
+    flex-basis: 38px;
+    padding-inline: 16px;
+  }
+  .nc-play-screen .nc-battle-grid {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    padding: 0 8px max(4px, env(safe-area-inset-bottom, 0px));
+  }
+  .nc-play-screen .nc-command-deck {
+    gap: 5px;
+    padding: 7px;
+  }
+  .nc-play-screen .nc-ability {
+    min-height: 44px;
+    padding: 6px;
+  }
+  .nc-play-screen .nc-ability small {
+    display: none;
+  }
+  .nc-play-screen .nc-upgrade {
+    min-height: 64px;
+  }
+  .nc-play-screen .nc-wave-badge {
+    top: 10px;
+    left: 12px;
+  }
+  .nc-play-screen .nc-wave-badge strong {
+    font-size: 22px;
+  }
+  .nc-play-screen .nc-vitals {
+    padding: 8px 12px;
+  }
+  .nc-game-dialog {
+    max-height: 94dvh;
+  }
+  .nx-mode.nc-shell.nc-deployment-dialog {
+    max-width: 560px;
+    padding: 22px;
+    gap: 10px;
+    display: grid;
+    grid-template-columns: 140px minmax(0, 1fr);
+    text-align: left;
+  }
+  .nc-deployment-label {
+    grid-column: 1/-1;
+    justify-content: flex-start;
+  }
+  .nc-deployment-seal {
+    grid-column: 1;
+    grid-row: 2/5;
+    width: 120px;
+    height: 120px;
+  }
+  .nc-deployment-copy .nc-eyebrow {
+    justify-content: flex-start;
+  }
+  .nx-mode.nc-shell.nc-deployment-dialog .nc-deployment-copy h2 {
+    font-size: 28px;
+  }
+  .nc-deployment-systems {
+    display: none;
+  }
+  .nc-deployment-actions {
+    gap: 8px;
+  }
+  .nc-deployment-actions > p {
+    display: none;
+  }
+  .nc-deployment-actions .nc-back {
+    margin: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nc-entry-reveal {
+    display: none;
+  }
+  .nc-deployment-seal i {
+    animation: none;
+  }
+}
+
+.nx-mode.nc-shell.nc-deployment-dialog[data-state="open"] {
+  animation: nc-deployment-fade 0.25s ease-out;
+}
+@keyframes nc-deployment-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 799px) and (orientation: portrait) {
+  .nx-mode.nc-shell.nc-pause-dialog[data-state="open"],
+  .nx-mode.nc-shell.nc-systems-dialog[data-state="open"] {
+    animation: nc-sheet-enter 0.22s ease-out;
+  }
+  .nx-mode.nc-shell.nc-pause-dialog[data-state="closed"],
+  .nx-mode.nc-shell.nc-systems-dialog[data-state="closed"] {
+    animation: nc-sheet-exit 0.16s ease-in;
+  }
+}
+@keyframes nc-sheet-enter {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes nc-sheet-exit {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@media (max-width: 799px) and (orientation: portrait) {
+  .nc-play-screen .nc-ability small {
+    display: none;
+  }
+  .nc-play-screen .nc-ability strong {
+    font-size: 12px;
+  }
+  .nc-play-screen .nc-upgrade-copy small {
+    font-size: 10.5px;
+    line-height: 1.3;
+  }
+}
+@media (max-width: 799px) and (orientation: portrait) and (max-height: 680px) {
+  .nc-play-screen .nc-upgrade-copy small {
+    font-size: 9.5px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .nx-mode.nc-shell.nc-pause-dialog {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+    padding: 20px;
+    max-width: 600px;
+    max-height: calc(100dvh - 16px);
+  }
+  .nc-pause-dialog .nc-sheet-grip {
+    display: none;
+  }
+  .nc-pause-dialog > .nc-eyebrow {
+    grid-column: 1/-1;
+  }
+  .nc-pause-dialog > h2 {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 26px;
+  }
+  .nc-pause-dialog > p {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .nc-pause-dialog > .nc-pause-stats {
+    grid-column: 1;
+    grid-row: 4;
+    padding: 8px 0;
+  }
+  .nc-pause-dialog > .nc-pause-stats strong {
+    font-size: 20px;
+  }
+  .nc-pause-dialog > .nc-menu-actions {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .nc-pause-dialog > .nc-button {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .nc-pause-dialog > .nc-button-secondary {
+    grid-column: 2;
+    grid-row: 4;
+  }
+}

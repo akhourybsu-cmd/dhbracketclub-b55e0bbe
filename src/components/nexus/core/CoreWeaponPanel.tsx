@@ -5,10 +5,12 @@ export function CoreWeaponPanel({
   run,
   scenario,
   onInstall,
+  expanded = false,
 }: {
   run: CoreRun;
   scenario: CoreScenario;
   onInstall: () => void;
+  expanded?: boolean;
 }) {
   const v = stats(run, scenario);
   const systems: {
@@ -48,7 +50,7 @@ export function CoreWeaponPanel({
     },
   ];
   return (
-    <details className="nc-systems nc-panel">
+    <details className="nc-systems nc-panel" open={expanded}>
       <summary>
         Weapon systems
         <span>{systems.filter((s) => s.active).length} / 4 online</span>
