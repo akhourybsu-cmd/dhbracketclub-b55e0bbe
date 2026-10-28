@@ -137,8 +137,24 @@ export default function CreateDraftPage() {
         </motion.div>
       </div>
 
-      <motion.form onSubmit={handleCreate} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
-        <div className="da-glass da-ledger-section p-5 space-y-5">
+      <motion.form onSubmit={(e) => { if (step < STEPS.length - 1) { e.preventDefault(); if (topic.trim()) setStep(step + 1); return; } handleCreate(e); }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
+        <ol className="flex items-center gap-1.5" aria-label="Steps">
+          {STEPS.map((label, i) => (
+            <li key={label} className="flex-1">
+              <button type="button" disabled={i > 0 && !topic.trim()} onClick={() => setStep(i)}
+                className="w-full text-left min-h-[44px] disabled:opacity-50" aria-current={i === step ? 'step' : undefined}>
+                <span className="block h-1 rounded-full overflow-hidden bg-muted">
+                  <motion.span className="block h-full bg-[hsl(var(--da-gold))]" initial={false} animate={{ width: i <= step ? '100%' : '0%' }} transition={{ duration: 0.3 }} />
+                </span>
+                <span className={`mt-1.5 block text-[10px] font-extrabold uppercase tracking-wider ${i === step ? 'text-[hsl(var(--da-gold))]' : 'text-muted-foreground'}`}>{label}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div key={step} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}
+          className="da-glass da-ledger-section p-5 space-y-5">
+          {step === 0 && (<>
           <div>
             <label className="form-label">Topic</label>
             <Input
@@ -160,6 +176,8 @@ export default function CreateDraftPage() {
               className="form-input"
             />
           </div>
+          </>)}
+          {step === 1 && (<>
           {/* AI Judging Context — elevated into a gold "smart-assist" panel so
               it reads as the field that steers how the AI report judges picks,
               distinct from the plain topic/description inputs. */}
@@ -187,6 +205,8 @@ export default function CreateDraftPage() {
             </p>
           </div>
 
+          </>)}
+          {step === 2 && (<>
           {/* Live draft hosting — host the room in person, project the board. */}
           {liveEnabled && (
             <div
@@ -314,12 +334,28 @@ export default function CreateDraftPage() {
               ))}
             </div>
           </div>
-        </div>
+          </>)}
+          {step === 3 && (
+            <div>
+              <p className="form-label">Review</p>
+              <DaInfoRow icon={Bookmark} label="Topic" value={topic.trim() || '—'} />
+              {description.trim() && <DaInfoRow icon={Bookmark} label="Description" value={description.trim()} />}
+              <DaInfoRow icon={Sparkles} label="AI judging context" value={aiContext.trim() ? 'Added' : 'None'} />
+              <DaInfoRow icon={Bookmark} label="Rounds" value={`${numRounds} picks each`} />
+              {liveEnabled && <DaInfoRow icon={Radio} label="Live draft" value={isLive ? `On · ${pickSeconds >= 60 ? `${pickSeconds / 60}m` : `${pickSeconds}s`} per pick` : 'Off'} />}
+            </div>
+          )}
+        </motion.div>
+        </AnimatePresence>
 
+        <div className="flex gap-2">
+        {step > 0 && (
+          <button type="button" onClick={() => setStep(step - 1)} className="h-12 px-5 rounded-lg border border-border font-bold text-[13px] btn-press">Back</button>
+        )}
         <button
           type="submit"
           disabled={loading || !topic.trim()}
-          className="w-full h-12 rounded-lg font-black uppercase tracking-[0.14em] text-[13px] btn-press transition-all disabled:cursor-not-allowed"
+          className="flex-1 h-12 rounded-lg font-black uppercase tracking-[0.14em] text-[13px] btn-press transition-all disabled:cursor-not-allowed"
           style={{
              color: loading || !topic.trim() ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
             background: loading || !topic.trim()
@@ -334,8 +370,9 @@ export default function CreateDraftPage() {
             opacity: loading || !topic.trim() ? 0.9 : 1,
           }}
         >
-          {loading ? 'Creating…' : 'Create Draft'}
+          {loading ? 'Creating…' : step < STEPS.length - 1 ? 'Next' : 'Create Draft'}
         </button>
+        </div>
       </motion.form>
     </div>
   );
