@@ -95,7 +95,7 @@ export function HomeWidgetHub({
         variants={container}
         initial="hidden"
         animate="show"
-        className="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-4"
+        className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr))]"
       >
         {installedSlugs.has('portfolio-wars') && (
           <PortfolioWidget variants={reduce ? reducedItem : item} />
@@ -124,7 +124,7 @@ export function HomeWidgetHub({
           variants={container}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+          className="grid grid-cols-2 gap-2 [grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr))]"
         >
           {launchers.map(({ path, label, icon: Icon }) => (
             <motion.div key={path} variants={reduce ? reducedItem : item}>
