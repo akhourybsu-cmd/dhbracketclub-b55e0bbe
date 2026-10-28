@@ -1,119 +1,91 @@
-import { TOWER_LIST } from '@/lib/nexus/towers';
-import { ENEMY_LIST } from '@/lib/nexus/enemies';
-import { ABILITY_LIST } from '@/lib/nexus/abilities';
-import { TowerIcon } from '@/components/nexus/TowerIcon';
-import { Crosshair, Skull, Zap } from 'lucide-react';
-import type { TowerKind } from '@/lib/nexus/types';
+import { Crosshair, Hexagon, Orbit, Shield, Zap } from "lucide-react";
+import { ENEMIES } from "@/lib/nexus/core/catalog";
+import { CoreBack, CoreHeading } from "@/components/nexus/core/CoreUI";
 
 export default function NexusCodexPage() {
   return (
-    <div className="max-w-md mx-auto pb-6 px-3 pt-2">
-      {/* Header */}
-      <div className="mb-4 relative nx-panel nx-clip p-3">
-        <span className="nx-bracket nx-bracket-tl" />
-        <span className="nx-bracket nx-bracket-br" />
-        <div className="text-[10px] uppercase tracking-[0.25em] text-cyan-300/70 font-bold">
-          ▌ Field Manual
-        </div>
-        <h1 className="text-2xl font-black mt-0.5 tracking-tight">Codex</h1>
-        <p className="text-[11px] text-cyan-100/60 mt-0.5">Towers, hostiles, and tactical abilities.</p>
+    <>
+      <CoreBack />
+      <CoreHeading
+        eyebrow="Field guide / core protocol"
+        title="Know your perimeter."
+      >
+        One nexus at the center. Enemies approach from all directions at
+        different speeds. Your weapons aim automatically; your decisions shape
+        the defense.
+      </CoreHeading>
+      <div className="nc-mode-grid">
+        <section className="nc-panel nc-mode-card">
+          <Crosshair size={23} />
+          <h2>Build while you fight</h2>
+          <p>
+            Neutralize enemies for energy. Spend it immediately on damage, fire
+            rate, multishot, or fortifications. Nearest-to-core targeting is the
+            safest starting point.
+          </p>
+        </section>
+        <section className="nc-panel nc-mode-card">
+          <Shield size={23} />
+          <h2>Layer your defense</h2>
+          <p>
+            Shields absorb hits before hull. Enemies keep attacking when they
+            reach the core. Armor reduces incoming damage; nanites repair hull.
+            Orbitals and stasis protect the inner ring.
+          </p>
+        </section>
+        <section className="nc-panel nc-mode-card">
+          <Zap size={23} />
+          <h2>Choose your moment</h2>
+          <p>
+            Nova damages enemies within 350 range and pushes them back. It
+            recharges in 20 seconds. Overdrive gives 2.2× fire rate for 6
+            seconds, with a 30-second recharge.
+          </p>
+        </section>
       </div>
-
-      <Section title="Defense Systems" icon={<Crosshair className="w-3 h-3" />} accent="cyan">
-        {TOWER_LIST.map(t => (
-          <TowerCard key={t.kind} kind={t.kind} title={t.name} desc={t.tagline}
-                stats={[`⚡ ${t.cost}`, `DMG ${t.damage}`, `RNG ${t.range}`, `${t.fireRate}/s`]} />
-        ))}
-      </Section>
-
-      <Section title="Hostiles" icon={<Skull className="w-3 h-3" />} accent="rose">
-        {ENEMY_LIST.map(e => (
-          <Card key={e.kind} glyph={e.glyph} title={e.name}
-                desc={e.kind === 'drone' ? 'Fast and fragile. Comes in waves.' :
-                      e.kind === 'walker' ? 'Heavy armor, slow speed. Bring armor-pierce.' :
-                      e.kind === 'shielded' ? 'Energy shield absorbs first damage. Burst it or EMP it.' :
-                      e.kind === 'stealth' ? 'Only Rail Battery can target it.' :
-                      e.kind === 'runner' ? 'Extremely fast, low HP. Slow fields + splash catch it.' :
-                      e.kind === 'brute' ? 'Enormous HP wall. Sustained fire + snipers.' :
-                      e.kind === 'flyer' ? 'Airborne — only Flak and Rail can hit it.' :
-                      e.kind === 'healer' ? 'Heals nearby enemies. Kill it first.' :
-                      e.kind === 'splitter' ? 'Bursts into fast runners on death.' :
-                      'Boss. Massive HP and shield. Bring everything.'}
-                accent="rose"
-                stats={[`HP ${e.hp}`, `SPD ${e.speed}`, e.armor ? `ARM ${e.armor}` : '', e.shield ? `SHD ${e.shield}` : ''].filter(Boolean) as string[]} />
-        ))}
-      </Section>
-
-      <Section title="Tactical Abilities" icon={<Zap className="w-3 h-3" />} accent="amber">
-        {ABILITY_LIST.map(a => (
-          <Card key={a.kind} glyph={a.glyph} title={a.name} desc={a.tagline} accent="amber"
-                stats={[`CD ${a.cooldownMs/1000}s`]} />
-        ))}
-      </Section>
-    </div>
-  );
-}
-
-function Section({ title, icon, accent, children }: {
-  title: string; icon: React.ReactNode; accent: 'cyan' | 'rose' | 'amber'; children: React.ReactNode;
-}) {
-  const tint = { cyan: 'text-cyan-300', rose: 'text-rose-300', amber: 'text-amber-300' }[accent];
-  return (
-    <section className="mb-5">
-      <h2 className={`text-[10px] font-bold uppercase tracking-[0.25em] mb-2 flex items-center gap-1.5 ${tint}`}>
-        {icon} {title}
-      </h2>
-      <div className="space-y-1.5">{children}</div>
-    </section>
-  );
-}
-
-function TowerCard({ kind, title, desc, stats }: { kind: TowerKind; title: string; desc: string; stats: string[] }) {
-  return (
-    <div className="relative p-2.5 nx-clip border border-cyan-400/25 bg-cyan-500/[0.04]">
-      <div className="flex items-start gap-2.5">
-        <div className="w-11 h-11 nx-clip border border-cyan-400/40 bg-cyan-500/10 flex items-center justify-center shrink-0">
-          <TowerIcon kind={kind} className="w-7 h-7 text-cyan-300" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-white">{title}</div>
-          <div className="text-[11px] text-cyan-100/65 leading-snug">{desc}</div>
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {stats.map(s => (
-              <span key={s} className="text-[9px] font-mono px-1.5 py-0.5 rounded-sm bg-cyan-500/10 border border-cyan-400/20 text-cyan-200">
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
+      <div className="nc-section-label">
+        Threat signatures<span>6 enemy classes</span>
       </div>
-    </div>
-  );
-}
-
-function Card({ glyph, title, desc, stats, accent }: { glyph: string; title: string; desc: string; stats: string[]; accent: 'rose' | 'amber' }) {
-  const colors = {
-    rose: { border: 'border-rose-400/25 bg-rose-500/[0.04]', glyph: 'border-rose-400/40 bg-rose-500/10 text-rose-200', chip: 'bg-rose-500/10 border-rose-400/20 text-rose-200' },
-    amber: { border: 'border-amber-400/25 bg-amber-500/[0.04]', glyph: 'border-amber-400/40 bg-amber-500/10 text-amber-200', chip: 'bg-amber-500/10 border-amber-400/20 text-amber-200' },
-  }[accent];
-  return (
-    <div className={`relative p-2.5 nx-clip border ${colors.border}`}>
-      <div className="flex items-start gap-2.5">
-        <div className={`w-11 h-11 nx-clip border flex items-center justify-center font-black text-base shrink-0 ${colors.glyph}`}>
-          {glyph}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-white">{title}</div>
-          <div className="text-[11px] text-cyan-100/65 leading-snug">{desc}</div>
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {stats.map(s => (
-              <span key={s} className={`text-[9px] font-mono px-1.5 py-0.5 rounded-sm border ${colors.chip}`}>
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
+      <div className="nc-enemy-list">
+        {Object.entries(ENEMIES).map(([kind, e]) => (
+          <section className="nc-panel nc-enemy-entry" key={kind}>
+            <div className="nc-enemy-glyph" style={{ color: e.color }}>
+              <Hexagon
+                size={kind === "boss" ? 38 : 28}
+                fill="currentColor"
+                fillOpacity={0.15}
+              />
+            </div>
+            <div>
+              <h3 style={{ color: e.color }}>{e.name}</h3>
+              <p>{e.detail}</p>
+              <small>
+                Base speed {e.speed} · Energy {e.bounty}
+                {kind === "boss" ? " · Also guards each sector finale" : ""}
+              </small>
+            </div>
+          </section>
+        ))}
       </div>
-    </div>
+      <div className="nc-section-label">
+        A core that grows with you
+        <Orbit size={16} />
+      </div>
+      <div className="nc-panel" style={{ padding: 24 }}>
+        <p className="nc-note">
+          Campaign sectors unlock in order. Finish at 40% hull for two stars or
+          80% for three. Endless is available from the start, with a boss every
+          fifth wave. Four challenges change the rules and award their own clear
+          bonuses.
+        </p>
+        <p className="nc-note" style={{ marginTop: 12 }}>
+          Earn 5 research credits for finishing a run, plus 6 per cleared wave
+          (wave rewards cap at 500). Sector and challenge victories add a bonus.
+          Spend credits in the core lab on permanent upgrades. Active runs save
+          on this device and pause when you switch away; research and completed
+          records sync to your account.
+        </p>
+      </div>
+    </>
   );
 }

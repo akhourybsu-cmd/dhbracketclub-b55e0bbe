@@ -133,12 +133,8 @@ const NexusBattlePage = lazyWithRetry(() => import("./pages/NexusBattlePage"));
 const NexusResultsPage = lazyWithRetry(() => import("./pages/NexusResultsPage"));
 const NexusLeaderboardPage = lazyWithRetry(() => import("./pages/NexusLeaderboardPage"));
 const NexusCodexPage = lazyWithRetry(() => import("./pages/NexusCodexPage"));
-const NexusBalancePage = lazyWithRetry(() => import("./pages/NexusBalancePage"));
-const NexusCalibrationPage = lazyWithRetry(() => import("./pages/NexusCalibrationPage"));
-const NexusOperationPage = lazyWithRetry(() => import("./pages/NexusOperationPage"));
+const NexusResearchPage = lazyWithRetry(() => import("./pages/NexusResearchPage"));
 const NexusSigilVaultPage = lazyWithRetry(() => import("./pages/NexusSigilVaultPage"));
-const NexusSimulatorPage = lazyWithRetry(() => import("./pages/NexusSimulatorPage"));
-const NexusMissionWorkshopPage = lazyWithRetry(() => import("./pages/NexusMissionWorkshopPage"));
 const PortfolioWarsPage = lazyWithRetry(() => import("./pages/PortfolioWarsPage"));
 const PwTradePage = lazyWithRetry(() => import("./pages/PwTradePage"));
 const PwLeaderboardPage = lazyWithRetry(() => import("./pages/PwLeaderboardPage"));
@@ -317,22 +313,23 @@ function AnimatedRoutes() {
         <Route path="/rune-delve/simulator" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveSimulatorPage /></ProtectedPage>} />
         <Route path="/rune-delve/balance" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveBalanceReportPage /></ProtectedPage>} />
 
-        {/* Nexus Defense — sci-fi tower defense (full-screen game shell) */}
+        {/* Nexus Defense — central-core survival (full-screen game shell) */}
         <Route path="/nexus" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusHomePage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/missions" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusMissionsPage /></NexusLayout></ProtectedPage>} />
+        <Route path="/nexus/challenges" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusMissionsPage /></NexusLayout></ProtectedPage>} />
+        <Route path="/nexus/research" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusResearchPage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/loadout/:missionId" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusLoadoutPage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/battle/:missionId" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusBattlePage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/results/:missionId" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusResultsPage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/leaderboard" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusLeaderboardPage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/codex" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusCodexPage /></NexusLayout></ProtectedPage>} />
-        <Route path="/nexus/operation" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusOperationPage /></NexusLayout></ProtectedPage>} />
+        <Route path="/nexus/operation" element={<Navigate to="/nexus/challenges" replace />} />
         <Route path="/nexus/sigils" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusSigilVaultPage /></NexusLayout></ProtectedPage>} />
-        {/* Admin tuning tools — reachable only from the platform admin area,
-            not the player-facing Nexus hub (trim-hard pass). */}
-        <Route path="/nexus/balance" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusBalancePage /></NexusLayout></ProtectedPage>} />
-        <Route path="/nexus/calibration" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusCalibrationPage /></NexusLayout></ProtectedPage>} />
-        <Route path="/nexus/simulator" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusSimulatorPage /></NexusLayout></ProtectedPage>} />
-        <Route path="/nexus/mission-workshop" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusMissionWorkshopPage /></NexusLayout></ProtectedPage>} />
+        {/* Old path-game tuning URLs no longer control the v2 simulation. */}
+        <Route path="/nexus/balance" element={<Navigate to="/nexus/leaderboard" replace />} />
+        <Route path="/nexus/calibration" element={<Navigate to="/nexus/research" replace />} />
+        <Route path="/nexus/simulator" element={<Navigate to="/nexus/codex" replace />} />
+        <Route path="/nexus/mission-workshop" element={<Navigate to="/nexus/missions" replace />} />
 
         <Route path="/profile" element={<ProtectedPage><ProfilePage /></ProtectedPage>} />
         <Route path="/notifications" element={<ProtectedPage><NotificationsPage /></ProtectedPage>} />

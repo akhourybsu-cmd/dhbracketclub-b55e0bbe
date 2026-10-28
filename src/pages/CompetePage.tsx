@@ -250,7 +250,7 @@ function NexusDefenseCompeteCard() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(190 90% 72%)' }}>◆ Tower Defense</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(190 90% 72%)' }}>◆ 360° Core Survival</span>
               </div>
               <h2 className="font-extrabold text-[22px] leading-none tracking-tight mb-2.5"
                 style={{ background: 'linear-gradient(180deg, hsl(195 30% 98%), hsl(195 90% 70%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 0 18px hsl(195 95% 45% / 0.45)' }}>

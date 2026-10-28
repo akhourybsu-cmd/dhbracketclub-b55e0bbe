@@ -26,9 +26,7 @@ export default function AdminCompetitionsPage() {
         Nexus Defense
       </p>
       <div className="space-y-2">
-        <AdminSectionCard to="/nexus/balance" icon={BarChart3} label="Balance" description="Mission, tower & ability telemetry" color="primary" />
-        <AdminSectionCard to="/nexus/calibration" icon={Sliders} label="Mission Calibration" description="Tune live mission difficulty" color="warning" />
-        <AdminSectionCard to="/nexus/operation" icon={Users} label="Co-op Operations" description="Start, monitor & end club operations" color="accent" />
+        <AdminSectionCard to="/nexus/leaderboard" icon={BarChart3} label="Core Defense Records" description="Campaign, challenge & endless results" color="primary" />
       </div>
     </AdminLayout>
   );

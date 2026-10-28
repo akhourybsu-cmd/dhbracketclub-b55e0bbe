@@ -1,249 +1,178 @@
-import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Users, Infinity as InfinityIcon } from 'lucide-react';
-import { useResolvedMission } from '@/hooks/useMissionCalibrations';
-import { TOWER_LIST } from '@/lib/nexus/towers';
-import { ABILITY_LIST } from '@/lib/nexus/abilities';
-import { TowerIcon } from '@/components/nexus/TowerIcon';
-import { TowerKind } from '@/lib/nexus/types';
-import { resolveModifiers, modifierTone } from '@/lib/nexus/modifiers';
-import { ENDLESS_MISSION_ID } from '@/lib/nexus/endless';
-import { useActiveOperation } from '@/hooks/useNexusOperation';
-import { NexusBoostPicker } from '@/components/nexus/NexusBoostPicker';
-import { MissionBriefingCard } from '@/components/nexus/MissionBriefingCard';
-import { EndlessMapSelector, useEndlessLayout } from '@/components/nexus/EndlessMapSelector';
-import { getBriefing } from '@/lib/nexus/missionBriefings';
-import { getLayout } from '@/lib/nexus/mapLayouts';
-
-const TOWER_HSL: Record<TowerKind, { c: string; bg: string; text: string }> = {
-  pulse: { c: 'hsl(188 92% 56%)', bg: 'hsl(188 92% 56% / 0.12)', text: 'hsl(188 92% 78%)' },
-  arc:   { c: 'hsl(265 80% 70%)', bg: 'hsl(265 80% 70% / 0.12)', text: 'hsl(265 80% 84%)' },
-  cryo:  { c: 'hsl(200 95% 70%)', bg: 'hsl(200 95% 70% / 0.12)', text: 'hsl(200 95% 84%)' },
-  rail:  { c: 'hsl(38 95% 60%)',  bg: 'hsl(38 95% 60% / 0.12)',  text: 'hsl(38 95% 78%)' },
-  flak:  { c: 'hsl(150 80% 55%)', bg: 'hsl(150 80% 55% / 0.12)', text: 'hsl(150 80% 78%)' },
-  mortar:{ c: 'hsl(350 85% 62%)', bg: 'hsl(350 85% 62% / 0.12)', text: 'hsl(350 85% 80%)' },
-  amp:   { c: 'hsl(300 85% 68%)', bg: 'hsl(300 85% 68% / 0.12)', text: 'hsl(300 85% 84%)' },
-};
+import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowRight, Crosshair, Heart, Orbit, Shield, Zap } from "lucide-react";
+import { CAMPAIGN, getScenario } from "@/lib/nexus/core/catalog";
+import { createRun, isFinished, stats } from "@/lib/nexus/core/engine";
+import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
+import { useNexusCore } from "@/hooks/useNexusCore";
+import { CoreArena } from "@/components/nexus/core/CoreArena";
+import {
+  CoreBack,
+  CoreHeading,
+  CoreLink,
+  CoreProfileGate,
+} from "@/components/nexus/core/CoreUI";
 
 export default function NexusLoadoutPage() {
-  const { missionId } = useParams<{ missionId: string }>();
-  const navigate = useNavigate();
-  const id = parseInt(missionId || '1', 10);
-  const { mission, loading } = useResolvedMission(id);
-  const isEndless = id === ENDLESS_MISSION_ID;
-  const { operation } = useActiveOperation();
-  // Endless layout selection — read once at the top so the hook order stays
-  // stable across loading → loaded → error transitions.
-  const [endlessLayoutId] = useEndlessLayout();
-  // Endless runs auto-contribute to whichever op is active when the run finishes
-  // (server-side resolution). Banner just reflects current state.
-  const contributingToOp = isEndless && operation?.status === 'active';
-
-  if (loading) return <div className="p-6 text-center text-muted-foreground">Loading mission…</div>;
-  if (!mission) return <div className="p-6">Mission not found.</div>;
-
-  const baseBriefing = getBriefing(mission.id);
-  // For endless runs, override the briefing's layout with the player's saved
-  // map-selector choice so the briefing card and result page agree.
-  const briefing = baseBriefing && isEndless
-    ? { ...baseBriefing, layoutId: endlessLayoutId, tagline: getLayout(endlessLayoutId)?.tagline ?? baseBriefing.tagline }
-    : baseBriefing;
-
   return (
-    <div className="max-w-[600px] mx-auto pb-6 px-1">
-      {briefing && (
-        <div className="mt-1 mb-3">
-          <MissionBriefingCard
-            briefing={briefing}
-            missionNumber={mission.id === ENDLESS_MISSION_ID ? undefined : mission.id}
-            title={mission.name}
-          />
-        </div>
-      )}
-
-      {/* Endless players get a map-selector card right under the briefing */}
-      {isEndless && <EndlessMapSelector />}
-      <div className="mb-4 mt-1">
-        {!briefing && (
-          <>
-            <div className="nx-title text-[9px]" style={{ color: 'hsl(var(--nx-cyan))' }}>MISSION {String(mission.id).padStart(2, '0')}</div>
-            <h1 className="text-2xl font-black tracking-tight">{mission.name}</h1>
-          </>
-        )}
-
-        {isEndless && (
-          contributingToOp && operation ? (
-            <div
-              className="mt-2.5 p-2.5 nx-clip-sm flex items-start gap-2.5"
-              style={{
-                background: 'linear-gradient(180deg, hsl(280 50% 14%), hsl(280 60% 8%))',
-                border: '1px solid hsl(280 80% 65% / 0.5)',
-                boxShadow: '0 0 12px -6px hsl(280 80% 60% / 0.5)',
-              }}
-            >
-              <div
-                className="shrink-0 w-8 h-8 nx-clip-sm flex items-center justify-center"
-                style={{ background: 'hsl(280 80% 65% / 0.2)', border: '1px solid hsl(280 80% 65%)', color: 'hsl(280 90% 80%)' }}
+    <CoreProfileGate>
+      <Deployment />
+    </CoreProfileGate>
+  );
+}
+function Deployment() {
+  const { missionId } = useParams();
+  const { profile, userId, clubId } = useNexusCore();
+  const navigate = useNavigate();
+  const scenario = getScenario(missionId);
+  const [replace, setReplace] = useState(false);
+  const preview = useMemo(
+    () =>
+      scenario ? createRun(scenario, profile?.research, "preview", 1) : null,
+    [scenario, profile?.research],
+  );
+  if (!profile) return null;
+  if (!scenario || !preview)
+    return (
+      <>
+        <CoreBack />
+        <CoreHeading eyebrow="Unknown signal" title="Sector not found." />
+        <CoreLink to="/nexus/missions">Choose a sector</CoreLink>
+      </>
+    );
+  const locked =
+    scenario.mode === "campaign" &&
+    Number(scenario.id) > 1 &&
+    !profile.campaign[String(Number(scenario.id) - 1)];
+  const saved = readCoreRun(userId, clubId);
+  const activeSave = saved && !isFinished(saved);
+  const unclaimed = saved && isFinished(saved) && !saved.rewardClaimed;
+  const v = stats(preview, scenario);
+  const deploy = () => {
+    const run = createRun(scenario, profile.research);
+    saveCoreRun(run, userId, clubId);
+    navigate(`/nexus/battle/${scenario.id}`, { state: { freshRun: run } });
+  };
+  return (
+    <>
+      <CoreBack
+        to={
+          scenario.mode === "campaign"
+            ? "/nexus/missions"
+            : scenario.mode === "challenge"
+              ? "/nexus/challenges"
+              : "/nexus"
+        }
+      />
+      <div className="nc-deploy">
+        <div>
+          <CoreHeading eyebrow={scenario.subtitle} title={scenario.title}>
+            {scenario.description}
+          </CoreHeading>
+          {scenario.rule && (
+            <div className="nc-rule">
+              {scenario.rule === "glass"
+                ? "One hull point. Defensive systems disabled. Weapons deal double damage."
+                : scenario.rule === "blackout"
+                  ? "Hull repair and shield recharge disabled. Capacity upgrades still refill their added capacity."
+                  : scenario.rule === "rush"
+                    ? "Enemy movement speed increased by 60%."
+                    : "Bulwarks appear from wave one. A siege engine arrives every third wave."}
+            </div>
+          )}
+          <div className="nc-sector-info">
+            <span>
+              {scenario.waves ? `${scenario.waves} waves` : "Unlimited waves"}
+            </span>
+            <span>
+              {scenario.reward
+                ? `+${scenario.reward} clear bonus`
+                : "6 credits per wave"}
+            </span>
+          </div>
+          <ul className="nc-deploy-rules">
+            <li>
+              <Crosshair size={17} />
+              Your core aims and fires automatically. Enemies attack from every
+              direction.
+            </li>
+            <li>
+              <Zap size={17} />
+              Spend energy during combat to upgrade your weapons and
+              fortifications.
+            </li>
+            <li>
+              <Orbit size={17} />
+              Use nova to push enemies back, or overdrive to accelerate your
+              fire rate.
+            </li>
+          </ul>
+          {locked ? (
+            <div className="nc-rule">
+              Clear {CAMPAIGN[Number(scenario.id) - 2].title} first.
+            </div>
+          ) : unclaimed ? (
+            <div className="nc-panel" style={{ padding: 18 }}>
+              <p className="nc-note" style={{ marginBottom: 14 }}>
+                Your last run has credits waiting to sync. Save its rewards
+                before starting another defense.
+              </p>
+              <CoreLink to={`/nexus/results/${saved.scenarioId}`}>
+                Sync last run
+              </CoreLink>
+            </div>
+          ) : activeSave && !replace ? (
+            <div className="nc-panel" style={{ padding: 18 }}>
+              <p className="nc-note" style={{ marginBottom: 14 }}>
+                You have an unfinished run. Resume it, or replace it with this
+                deployment. An unfinished run earns no credits.
+              </p>
+              <CoreLink to={`/nexus/battle/${saved.scenarioId}`}>
+                Resume saved run
+              </CoreLink>
+              <button
+                className="nc-back"
+                style={{ display: "flex", marginTop: 8 }}
+                onClick={() => setReplace(true)}
               >
-                <Users className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="nx-title text-[9px]" style={{ color: 'hsl(280 90% 78%)', letterSpacing: '0.2em' }}>
-                  CONTRIBUTING TO CO-OP OP
-                </div>
-                <div className="text-[12px] font-black truncate text-foreground">{operation.name}</div>
-                <div className="text-[10px] text-foreground/70 mt-0.5">
-                  Phase {operation.current_phase} · this run's score, kills & boss damage push club progress.
-                </div>
-              </div>
+                Replace saved run
+              </button>
             </div>
           ) : (
-            <div
-              className="mt-2.5 p-2.5 nx-clip-sm flex items-start gap-2.5"
-              style={{
-                background: 'linear-gradient(180deg, hsl(38 30% 10%), hsl(38 40% 6%))',
-                border: '1px dashed hsl(var(--nx-amber) / 0.4)',
-              }}
-            >
-              <div
-                className="shrink-0 w-8 h-8 nx-clip-sm flex items-center justify-center"
-                style={{ background: 'hsl(var(--nx-amber) / 0.18)', border: '1px solid hsl(var(--nx-amber))', color: 'hsl(var(--nx-amber))' }}
-              >
-                <InfinityIcon className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="nx-title text-[9px]" style={{ color: 'hsl(var(--nx-amber))', letterSpacing: '0.2em' }}>
-                  SOLO ENDLESS RUN
-                </div>
-                <div className="text-[11px] text-foreground/80 mt-0.5">
-                  No active club operation. Standalone score only.
-                </div>
-              </div>
-            </div>
-          )
-        )}
-        {(() => {
-          const mods = resolveModifiers(mission.modifierIds);
-          if (mods.length === 0 && !mission.modifier) return null;
-          return (
-            <div className="mt-2.5 space-y-1.5">
-              <div className="nx-title text-[9px]" style={{ color: 'hsl(var(--nx-amber))', letterSpacing: '0.2em' }}>
-                ▲ TACTICAL INTEL · {mods.length} MODIFIER{mods.length === 1 ? '' : 'S'}
-              </div>
-              {mods.length > 0 ? (
-                mods.map(mod => {
-                  const t = modifierTone(mod.tone);
-                  return (
-                    <div
-                      key={mod.id}
-                      className="p-2.5 nx-clip-sm flex items-start gap-2.5"
-                      style={{
-                        background: `linear-gradient(180deg, ${t.bg}, hsl(218 50% 6% / 0.85))`,
-                        border: `1px solid ${t.border}`,
-                      }}
-                    >
-                      <div
-                        className="shrink-0 w-8 h-8 nx-clip-sm flex items-center justify-center text-base font-black"
-                        style={{ background: t.bg, border: `1px solid ${t.border}`, color: t.fg }}
-                      >
-                        {mod.glyph}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[11px] font-black tracking-wide" style={{ color: t.fg }}>
-                          {mod.label.toUpperCase()}
-                        </span>
-                        <div className="text-[11px] mt-0.5" style={{ color: 'hsl(0 0% 100% / 0.8)' }}>
-                          {mod.short}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                mission.modifier && (
-                  <div
-                    className="p-2.5 nx-clip-sm"
-                    style={{
-                      background: 'linear-gradient(180deg, hsl(var(--nx-amber) / 0.15), hsl(var(--nx-amber) / 0.05))',
-                      border: '1px solid hsl(var(--nx-amber) / 0.45)',
-                    }}
-                  >
-                    <div className="nx-title text-[9px]" style={{ color: 'hsl(var(--nx-amber))' }}>{mission.modifier.label}</div>
-                    <div className="text-xs text-amber-100/85 mt-0.5">{mission.modifier.description}</div>
-                  </div>
-                )
-              )}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Arsenal at a glance — icons only; details live in the Codex, and
-          you learn everything in-battle. No reading required to deploy. */}
-      <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="nx-title text-[9px]" style={{ color: 'hsl(0 0% 100% / 0.55)' }}>◢ ARSENAL · ALL UNLOCKED</h2>
-          <button onClick={() => navigate('/nexus/codex')} className="nx-title text-[8px]" style={{ color: 'hsl(var(--nx-cyan))' }}>
-            CODEX ›
-          </button>
+            <button className="nc-button" onClick={deploy}>
+              Deploy nexus
+              <ArrowRight size={17} />
+            </button>
+          )}
+          <p className="nc-note" style={{ fontSize: 10, marginTop: 16 }}>
+            Research and completed records sync across devices. Active runs save
+            on this device.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {TOWER_LIST.map(t => {
-            const c = TOWER_HSL[t.kind];
-            return (
-              <div key={t.kind} title={`${t.name} — ${t.tagline}`}
-                className="w-9 h-9 rounded-md flex items-center justify-center shrink-0"
-                style={{ background: c.bg, border: `1px solid ${c.c}`, color: c.c }}>
-                <TowerIcon kind={t.kind} size={20} />
-              </div>
-            );
-          })}
-          <div className="w-px h-7 mx-0.5" style={{ background: 'hsl(0 0% 100% / 0.14)' }} />
-          {ABILITY_LIST.map(a => (
-            <div key={a.kind} title={`${a.name} — ${a.tagline}`}
-              className="w-9 h-9 rounded-md flex items-center justify-center font-black text-sm shrink-0"
-              style={{ background: 'hsl(var(--nx-amber) / 0.15)', border: '1px solid hsl(var(--nx-amber) / 0.5)', color: 'hsl(var(--nx-amber))' }}>
-              {a.glyph}
+        <div>
+          <CoreArena run={preview} scenario={scenario} showcase />
+          <div className="nc-stat-strip" style={{ marginBottom: 0 }}>
+            <div>
+              <strong>{v.maxHp}</strong>
+              <span>
+                <Heart size={10} className="inline" /> Hull
+              </span>
             </div>
-          ))}
+            <div>
+              <strong>{v.maxShield}</strong>
+              <span>
+                <Shield size={10} className="inline" /> Shield
+              </span>
+            </div>
+            <div>
+              <strong>{preview.energy}</strong>
+              <span>
+                <Zap size={10} className="inline" /> Energy
+              </span>
+            </div>
+          </div>
         </div>
-      </motion.section>
-
-      <NexusBoostPicker />
-
-      <div className="grid grid-cols-3 gap-2 text-center mb-4">
-        <Stat label="Start ⚡" value={mission.startEnergy} />
-        <Stat label="Base HP" value={mission.baseHp} />
-        <Stat label="Waves" value={mission.waves.length} />
       </div>
-
-      <button
-        onClick={() => navigate(`/nexus/battle/${mission.id}`)}
-        className="w-full py-3.5 nx-clip-sm font-black text-sm active:scale-95 nx-title relative overflow-hidden"
-        style={{
-          background: 'linear-gradient(180deg, hsl(150 80% 55%), hsl(150 80% 42%))',
-          color: 'hsl(150 30% 8%)',
-          boxShadow: '0 0 18px hsl(150 80% 55% / 0.55), inset 0 1px 0 hsl(0 0% 100% / 0.35)',
-        }}
-      >
-        ▶  DEPLOY
-      </button>
-    </div>
+    </>
   );
 }
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div
-      className="p-2.5 nx-clip-sm"
-      style={{
-        background: 'hsl(218 35% 7%)',
-        border: '1px solid hsl(var(--nx-cyan) / 0.18)',
-      }}
-    >
-      <div className="nx-title text-[9px]" style={{ color: 'hsl(0 0% 100% / 0.55)' }}>{label}</div>
-      <div className="text-base font-black tabular-nums" style={{ color: 'hsl(var(--nx-cyan))' }}>{value}</div>
-    </div>
-  );
-}
-

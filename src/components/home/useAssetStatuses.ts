@@ -15,7 +15,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getDerivedDraftTurn } from '@/lib/draftTurn';
 import { useAuth } from '@/contexts/AuthContext';
-import { ENDLESS_MISSION_ID } from '@/lib/nexus/endless';
+import { readCoreRun } from '@/lib/nexus/core/persistence';
+import { useClub } from '@/contexts/ClubContext';
 
 export type AssetStatusTone = 'live' | 'urgent' | 'info' | 'idle';
 
@@ -28,7 +29,6 @@ export interface AssetStatus {
 
 export type AssetStatusMap = Partial<Record<string, AssetStatus | null>>;
 
-const NEXUS_SAVE_PREFIX = 'nexus_run_state_v1';
 
 /**
  * Fetch one-line status chips for each installed slug. Returns a map keyed
@@ -37,6 +37,7 @@ const NEXUS_SAVE_PREFIX = 'nexus_run_state_v1';
  */
 export function useAssetStatuses(installedSlugs: string[]): { statuses: AssetStatusMap; loading: boolean } {
   const { user } = useAuth();
+  const { club } = useClub();
   const [statuses, setStatuses] = useState<AssetStatusMap>({});
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +55,7 @@ export function useAssetStatuses(installedSlugs: string[]): { statuses: AssetSta
       tasks.push(loadDraftArenaStatus(user.id).then(s => ['draft-arena', s] as const));
     }
     if (installedSlugs.includes('nexus-defense')) {
-      tasks.push(loadNexusStatus(user.id).then(s => ['nexus-defense', s] as const));
+      tasks.push(loadNexusStatus(user.id, club?.id).then(s => ['nexus-defense', s] as const));
     }
     if (installedSlugs.includes('nfl-pickem')) {
       tasks.push(loadPickemStatus(user.id).then(s => ['nfl-pickem', s] as const));
@@ -81,7 +82,7 @@ export function useAssetStatuses(installedSlugs: string[]): { statuses: AssetSta
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, key]);
+  }, [user, key, club?.id]);
 
   return { statuses, loading };
 }
@@ -122,35 +123,11 @@ async function loadDraftArenaStatus(userId: string): Promise<AssetStatus | null>
   return null;
 }
 
-async function loadNexusStatus(userId: string): Promise<AssetStatus | null> {
-  // Resumable run on this device wins.
-  if (typeof window !== 'undefined') {
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const k = window.localStorage.key(i);
-      if (!k?.startsWith(`${NEXUS_SAVE_PREFIX}:${userId}:`)) continue;
-      try {
-        const raw = window.localStorage.getItem(k);
-        const parsed = raw ? JSON.parse(raw) : null;
-        if (parsed?.state && parsed.state.status !== 'victory' && parsed.state.status !== 'defeat') {
-          if (parsed.missionId === ENDLESS_MISSION_ID) {
-            return { text: `W${(parsed.state.waveIndex ?? 0) + 1}`, tone: 'urgent' };
-          }
-          return { text: 'Resume', tone: 'urgent' };
-        }
-      } catch { /* ignore corrupted */ }
-    }
+async function loadNexusStatus(userId: string, clubId?: string): Promise<AssetStatus | null> {
+  const run = readCoreRun(userId, clubId);
+  if (run && !['victory','defeat'].includes(run.phase)) {
+    return { text: `Resume W${run.wave || 1}`, tone: 'urgent' };
   }
-
-  // Active club operation.
-  try {
-    const { data: op } = await (supabase as any)
-      .from('nexus_operations')
-      .select('id, current_phase')
-      .eq('status', 'active')
-      .maybeSingle();
-    if (op) return { text: `Op P${op.current_phase}`, tone: 'live' };
-  } catch { /* table may not exist in older clubs */ }
-
   return null;
 }
 
