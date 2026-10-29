@@ -222,7 +222,7 @@ export function rankNextActions(input: RankInput): NextAction[] {
       priority: 65,
       label: 'Resume your run',
       sub: `${input.endlessSavedRun.missionName} · ${input.endlessSavedRun.waveLabel}`,
-      to: '/nexus/battle/100',
+      to: '/nexus/battle/endless',
       icon: Sparkles,
       accent: 'warning',
       assetSlug: 'nexus-defense',

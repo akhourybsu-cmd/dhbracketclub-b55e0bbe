@@ -94,6 +94,11 @@ export default function DailyFindPage() {
     setParams(p => { p.set('tab', t); return p; }, { replace: true });
   };
   const [composeOpen, setComposeOpen] = useState(false);
+  useEffect(()=>{
+    if(params.get('compose')!=='1')return;
+    setComposeOpen(true);
+    setParams(previous=>{const next=new URLSearchParams(previous);next.delete('compose');next.set('tab','club');return next;},{replace:true});
+  },[params,setParams]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [shared, setShared] = useState<{ title: string; url: string; note: string } | null>(null);
 
@@ -137,7 +142,7 @@ export default function DailyFindPage() {
   const monthQ = useDailyFinds(monthRange);
   const search = useSearchFinds(term, tag);
 
-  const recent = feed.data ?? [];
+  const recent = useMemo(()=>feed.data??[],[feed.data]);
   const mine = recent.filter(f => f.user_id === user?.id);
   const myToday = mine.find(f => f.find_date === today);
   const streak = currentStreak(mine.map(f => f.find_date));

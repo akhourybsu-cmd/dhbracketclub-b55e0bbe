@@ -18,7 +18,7 @@ import { useUnreadChannels } from '@/hooks/useUnreadChannels';
 
 import { MobileHome } from '@/components/home/MobileHome';
 import { buildHomeUpdates } from '@/lib/home/mobileHome';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useHomeSignals } from '@/hooks/useHomeSignals';
 import { memberErrorMessage } from '@/lib/memberData';
 import { useQuickBar } from '@/components/home/useQuickBar';
 import { FeaturedModule } from '@/components/home/FeaturedModule';
@@ -27,18 +27,15 @@ import { DiscoverStrip } from '@/components/home/DiscoverStrip';
 import { EmptyClubState } from '@/components/home/EmptyClubState';
 import { HomeWidgetHub } from '@/components/home/HomeWidgetHub';
 
-import { HomeDashboard } from '@/components/home/dashboard/HomeDashboard';
-import { DashboardErrorBoundary } from '@/components/home/dashboard/DashboardErrorBoundary';
+
 
 import { ClubOnboardingFlow } from '@/components/onboarding/ClubOnboardingFlow';
 import { WhatIsNewCard } from '@/components/onboarding/WhatIsNewCard';
 import { useClubOnboarding, useNewFeatures } from '@/hooks/useOnboarding';
 import { rankNextActions } from '@/lib/home/nextAction';
 import { getDerivedDraftTurn } from '@/lib/draftTurn';
-import { ENDLESS_MISSION_ID } from '@/lib/nexus/endless';
 import { HYDRATE_TIMEOUT_MS, QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
-const NEXUS_SAVE_PREFIX = 'nexus_run_state_v1';
 const PWA_DISMISS_KEY = 'dh_pwa_install_dismissed_v1';
 
 function readPwaDismissed(): boolean {
@@ -46,30 +43,12 @@ function readPwaDismissed(): boolean {
   try { return window.localStorage.getItem(PWA_DISMISS_KEY) === '1'; } catch { return false; }
 }
 
-function findEndlessSavedRun(userId: string | undefined): { missionName: string; waveLabel: string } | null {
-  if (!userId || typeof window === 'undefined') return null;
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const k = window.localStorage.key(i);
-    if (!k?.startsWith(`${NEXUS_SAVE_PREFIX}:${userId}:`)) continue;
-    try {
-      const raw = window.localStorage.getItem(k);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (!parsed?.state || parsed.state.status === 'victory' || parsed.state.status === 'defeat') continue;
-      const isEndless = parsed.missionId === ENDLESS_MISSION_ID;
-      return {
-        missionName: isEndless ? 'Endless Defense' : `Mission ${parsed.missionId}`,
-        waveLabel: `Wave ${(parsed.state.waveIndex ?? 0) + 1}`,
-      };
-    } catch { /* ignore */ }
-  }
-  return null;
-}
-
 interface DraftRow { id: string; topic: string; status: string; current_pick_user_id: string | null }
 interface ActivityRow {
   id: string; event_type: string; created_at: string;
   target_type?: string | null; target_id?: string | null;
   profiles?: { display_name?: string } | null;
+  metadata?:Record<string,unknown>|null;
 }
 interface EventRow { id: string; title: string; starts_at: string }
 
@@ -80,7 +59,6 @@ export default function DashboardPage() {
 }
 
 function DashboardHome() {
-  const desktop = useMediaQuery('(min-width: 1024px)');
   const { user } = useAuth();
   const { club, isClubAdmin } = useClub();
   const { installedAssets, allAssets, loading: assetsLoading, isInstalled, isVisible } = useClubAssets();
@@ -159,7 +137,7 @@ function DashboardHome() {
     const activityPromise = hasFeed
       ? supabase
           .from('activity_feed')
-          .select('id, event_type, created_at, target_type, target_id, profiles:actor_user_id(display_name)')
+          .select('id, event_type, created_at, target_type, target_id, metadata, profiles:actor_user_id(display_name)')
           .eq('club_id', club.id)
           .order('created_at', { ascending: false })
           .limit(10)
@@ -176,8 +154,8 @@ function DashboardHome() {
       : Promise.resolve({ data: [] as EventRow[], error: null });
 
     try {
-      const [profileRes, draftsRes, activityRes, eventsRes] = await withTimeout(
-        Promise.all([
+      const settled = await withTimeout(
+        Promise.allSettled([
           withTimeout(profilePromise, QUERY_TIMEOUT_MS, 'home profile'),
           withTimeout(draftsPromise, QUERY_TIMEOUT_MS, 'home drafts'),
           withTimeout(activityPromise, QUERY_TIMEOUT_MS, 'home activity'),
@@ -188,11 +166,16 @@ function DashboardHome() {
       );
 
       if (version !== requestVersion.current) return;
-      for (const response of [profileRes,draftsRes,activityRes,eventsRes]) if (response.error) throw response.error;
+      const [profileRes,draftsRes,activityRes,eventsRes]=settled.map(response=>response.status==='fulfilled'?response.value:{data:null,error:response.reason});
+      const issue=[profileRes,draftsRes,activityRes,eventsRes].find(response=>response.error)?.error;
+      if(issue)setLoadError(memberErrorMessage(issue));
       if ('data' in profileRes && profileRes.data) {
         setDisplayName(profileRes.data.display_name ?? '');
         setAvatarUrl(profileRes.data.avatar_url ?? null);
       }
+      if(!activityRes.error)setActivity((activityRes.data as ActivityRow[])??[]);
+      if(!eventsRes.error)setEvents((eventsRes.data as EventRow[])??[]);
+      if(draftsRes.error)return;
 
     // Derive the true current picker for in-progress drafts (DB column can be
     // stale if a pick insert succeeded but the drafts row update was missed).
@@ -233,8 +216,6 @@ function DashboardHome() {
       }
       if (version !== requestVersion.current) return;
       setDrafts(derivedDrafts);
-      setActivity(((activityRes as any).data as ActivityRow[]) ?? []);
-      setEvents(((eventsRes as any).data as EventRow[]) ?? []);
     } catch (error) {
       if (version === requestVersion.current) setLoadError(memberErrorMessage(error));
     } finally {
@@ -262,10 +243,8 @@ function DashboardHome() {
     return Math.max(0, target - completed);
   }, [season, seasonEntries]);
 
-  const endlessSavedRun = useMemo(
-    () => installedSlugs.has('nexus-defense') ? findEndlessSavedRun(user?.id) : null,
-    [user?.id, installedSlugs],
-  );
+  const homeSignals=useHomeSignals(installedSlugs);
+  const endlessSavedRun=homeSignals.data.checkpoint;
 
   const actions = useMemo(() => rankNextActions({
     userId: user?.id,
@@ -279,12 +258,12 @@ function DashboardHome() {
   }), [user?.id, installedSlugs, drafts, season, draftsRemaining, isClubAdmin, endlessSavedRun, unreadChannels]);
 
   const updates = useMemo(() => buildHomeUpdates({
-    installed:installedSlugs,activity,events,campaigns:narrativeCampaigns,drafts,
+    installed:installedSlugs,activity,events,campaigns:narrativeCampaigns,drafts,drops:homeSignals.data.drop.data||[],
     today:todayCelebrations,upcoming:upcomingCelebrations,showCelebrations:showCelebrationsOnHome,
-  }), [installedSlugs,activity,events,narrativeCampaigns,drafts,todayCelebrations,upcomingCelebrations,showCelebrationsOnHome]);
+  }), [installedSlugs,activity,events,narrativeCampaigns,drafts,todayCelebrations,upcomingCelebrations,showCelebrationsOnHome,homeSignals.data.drop.data]);
 
   const installedSlugsSet = installedSlugs;
-  const gameClassSlugs = ['draft-arena', 'rune-delve', 'nexus-defense', 'nfl-pickem', 'portfolio-wars', 'lockbox', 'brackets'];
+  const gameClassSlugs = ['draft-arena', 'rune-delve', 'nexus-defense', 'nfl-pickem', 'portfolio-wars', 'lockbox', 'brackets','workout-competition','readshift','narrative-rpg','splendid-journey'];
   const hasAnyGameInstalled = gameClassSlugs.some(s => installedSlugsSet.has(s));
   const isFreshClub = !loading && !assetsLoading && !hasAnyGameInstalled && !season && events.length === 0 && activity.length === 0;
 
@@ -292,14 +271,6 @@ function DashboardHome() {
   const seasonTarget = season ? getSeasonDraftTarget(season) : 0;
   const regularEntries = seasonEntries.filter(e => !e.is_playoff).length;
 
-  // Quick Access live-status feeders for the new desktop layout.
-  // MUST live above the loading early-return so hook order stays
-  // stable across renders (Rules of Hooks).
-  const activeDraftStatus = useMemo(() => {
-    const inProgress = drafts.filter(d => d.status === 'in_progress');
-    if (inProgress.length === 0) return null;
-    return inProgress.length === 1 ? '1 active draft' : `${inProgress.length} active drafts`;
-  }, [drafts]);
   const narrativeActiveCount = useMemo(
     () => narrativeCampaigns.filter(c => c.status === 'active').length,
     [narrativeCampaigns],
@@ -316,16 +287,8 @@ function DashboardHome() {
   </div>;
 
   return <div className="member-page">
-    {desktop ? <DashboardErrorBoundary>
-      {loadError&&<p role="alert" className="mb-3 rounded-xl border border-border p-3 text-sm">{loadError}<button onClick={()=>void fetchData()} className="ml-3 min-h-11 text-primary">Retry</button></p>}
-      <HomeDashboard club={club} displayName={displayName} avatarUrl={avatarUrl} installedSlugs={installedSlugs}
-        pendingActions={actions} narrativeActiveCount={narrativeActiveCount} activeDraftStatus={activeDraftStatus}
-        upcomingEventCount={events.length} season={hasDrafts?(season??null):null} seasonTarget={seasonTarget}
-        seasonCompleted={regularEntries} standings={standings} activity={activity} events={events} loading={loading}
-        extra={widgetHub} />
-    </DashboardErrorBoundary> : <MobileHome displayName={displayName} clubName={club?.name || 'your club'} installedSlugs={installedSlugs}
-      actions={actions} updates={updates} shortcuts={qb} refreshing={refreshing} error={loadError} onRefresh={()=>void fetchData()} widgets={widgetHub}>
-      {isFreshClub&&!loadError&&<EmptyClubState isAdmin={isClubAdmin} accent={accent} clubName={club?.name} />}
+    <MobileHome displayName={displayName} clubName={club?.name || 'your club'} installedSlugs={installedSlugs}
+      actions={actions} updates={updates} shortcuts={qb} signals={homeSignals.data} refreshing={refreshing||homeSignals.refreshing} error={loadError} onRefresh={()=>{void fetchData();void homeSignals.refresh();}} widgets={widgetHub} empty={isFreshClub&&!loadError?<EmptyClubState isAdmin={isClubAdmin} accent={accent} clubName={club?.name}/>:undefined}>
       {(hasDrafts&&season || installedSlugs.has('narrative-rpg')&&narrativeActiveCount>0)&&<details className="rounded-2xl border border-border/70 bg-card px-4">
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between text-sm font-semibold">Your season & stories<ChevronDown className="h-4 w-4 text-muted-foreground" /></summary>
         <FeaturedModule season={hasDrafts?season??null:null} standings={standings} regularEntries={regularEntries}
@@ -347,7 +310,7 @@ function DashboardHome() {
         <button type="button" onClick={doInstall} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 px-2 text-left text-xs font-medium"><Download className="h-4 w-4 shrink-0" />Keep DH on your home screen</button>
         <button type="button" onClick={dismissPwa} aria-label="Dismiss install prompt" className="flex h-11 w-11 shrink-0 items-center justify-center"><X className="h-4 w-4" /></button>
       </motion.div>}</AnimatePresence>
-    </MobileHome>}
+    </MobileHome>
     <ClubOnboardingFlow open={onboarding.needsFirstTime} club={club} displayName={displayName} installedAssets={enabledAssets}
       isAdmin={isClubAdmin} onComplete={onboarding.complete} onDismiss={onboarding.dismiss} />
   </div>;

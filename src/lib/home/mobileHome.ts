@@ -1,10 +1,11 @@
 import { Bookmark, CalendarDays, Cake, MessageCircle, Newspaper, ScrollText, Trophy, BarChart3, type LucideIcon } from 'lucide-react';
 import { APP_NAV_SECTIONS } from '@/lib/appNavigation';
 import { NAV_ASSET_SLUGS } from '@/types/assets';
+import type { HomeDrop } from './signals';
 
 export type HomeSection = 'latest' | 'upcoming' | 'playing';
 export interface HomeUpdate { id: string; section: HomeSection; title: string; detail?: string; at?: string; dateOnly?: boolean; label: string; to: string; icon: LucideIcon }
-interface Activity { id: string; event_type: string; created_at: string; target_type?: string|null; target_id?: string|null; profiles?: {display_name?:string}|null }
+interface Activity { id: string; event_type: string; created_at: string; target_type?: string|null; target_id?: string|null; profiles?: {display_name?:string}|null; metadata?:Record<string,unknown>|null }
 interface Celebration { id: string; kind: string; title: string; daysAway?: number; subline?: string|null }
 const EVENTS: Record<string,{verb:string;slug:string;path:string;label:string;icon:LucideIcon}> = {
   draft_completed:{verb:'finished a draft',slug:'draft-arena',path:'/drafts',label:'Draft Arena',icon:Bookmark},
@@ -28,7 +29,7 @@ export function buildHomeUpdates(input: {
   campaigns: {id:string;title:string;pitch?:string|null;status:string}[];
   drafts: {id:string;topic:string;status:string}[];
   today: Celebration[]; upcoming: Celebration[]; showCelebrations:boolean;
-  now?:number;
+  now?:number; drops?:HomeDrop[];
 }): HomeUpdate[] {
   const now=input.now ?? Date.now();
   const rows:HomeUpdate[]=[];
@@ -38,9 +39,11 @@ export function buildHomeUpdates(input: {
     // An activity row may outlive its target. Never fabricate /undefined links.
     const target=activity.target_id ? encodeURIComponent(activity.target_id) : null;
     const to=meta.slug==='brackets' ? (target && activity.target_type==='pool' ? '/pools/'+target : '/brackets') : meta.path+(target?'/'+target:'');
+    const title=activity.metadata?.title||activity.metadata?.topic;
     rows.push({id:'activity-'+activity.id,section:'latest',title:(activity.profiles?.display_name || 'A club member')+' '+meta.verb,
-      label:meta.label,at:activity.created_at,to,icon:meta.icon});
+      detail:typeof title==='string'?title.slice(0,160):undefined,label:meta.label,at:activity.created_at,to,icon:meta.icon});
   }
+  if(input.installed.has('daily-find')) for(const drop of input.drops||[]) rows.push({id:'drop-'+drop.id,section:'latest',title:`${drop.profiles?.display_name||'A club member'} shared a Drop`,detail:drop.title,label:'The Drop',at:drop.created_at,to:'/finds/'+encodeURIComponent(drop.id),icon:Bookmark});
   if(input.installed.has('events')) for(const event of input.events) {
     if(!Number.isFinite(Date.parse(event.starts_at)) || Date.parse(event.starts_at)<now) continue;
     rows.push({id:'event-'+event.id,section:'upcoming',title:event.title,label:'Event',at:event.starts_at,to:'/events/'+encodeURIComponent(event.id),icon:CalendarDays});

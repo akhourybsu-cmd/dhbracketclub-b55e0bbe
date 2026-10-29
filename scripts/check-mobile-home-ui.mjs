@@ -11,7 +11,7 @@ console.log(`Screenshots: ${output}`);
 const server=await createServer({server:{host:'127.0.0.1',port:8094,strictPort:true},mode:'test'});
 let browser;
 try {
-  await server.listen();browser=await chromium.launch({channel:'chrome',headless:true});
+  await server.listen();browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
   const page=await browser.newPage();const errors=[];
   page.on('pageerror',error=>{errors.push(error.message);console.error('Browser error:',error.message);});
   page.on('requestfailed',request=>{if(new URL(request.url()).hostname==='127.0.0.1')console.error('Local request failed:',request.url(),request.failure()?.errorText);});

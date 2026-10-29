@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link,useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
@@ -290,6 +290,7 @@ function ClubBoard({ board }: { board: FeatBoard }) {
 }
 
 export default function DHFeatsPage() {
+  const [params]=useSearchParams();
   const result = useDHFeats(),
     { data: board } = result,
     { isInstalled } = useClubAssets(),
@@ -298,7 +299,7 @@ export default function DHFeatsPage() {
     [category, setCategory] = useState("all"),
     [status, setStatus] = useState("all"),
     [term, setTerm] = useState(""),
-    [selected, setSelected] = useState<string | null>(null),
+    [selected, setSelected] = useState<string | null>(()=>params.get('goal')),
     [help, setHelp] = useState(false),
     [reveal, setReveal] = useState<{
       items: FeatUnlock[];
@@ -616,7 +617,7 @@ export default function DHFeatsPage() {
         ))}
       </nav>
       <Dialog
-        open={!!feat}
+      open={!!feat&&!reveal}
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}

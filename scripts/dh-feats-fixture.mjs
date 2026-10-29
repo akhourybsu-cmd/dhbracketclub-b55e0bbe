@@ -43,6 +43,7 @@ export async function createFeatsFixture() {
       if (
         ![
           "dh_feats_summary",
+          "dh_home_progress",
           "dh_feats_board",
           "dh_feats_pin",
           "dh_feats_seen",
@@ -124,6 +125,11 @@ export async function createFeatsFixture() {
       run(async () => {
         await db.exec("reset role");
         return db.query(sql, args);
+      }),
+    ownerExec: (sql) =>
+      run(async () => {
+        await db.exec("reset role");
+        return db.exec(sql);
       }),
     close: () => run(() => db.close()),
   };
