@@ -1,6 +1,7 @@
+import { useCoreFeedback } from "@/hooks/useCoreFeedback";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Check, History, Info, Lock, Orbit, Trophy } from "lucide-react";
+import { Check, History, Lock, Orbit, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { RESEARCH } from "@/lib/nexus/core/catalog";
 import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
@@ -9,14 +10,19 @@ import { useNexusCore, useNexusLedger } from "@/hooks/useNexusCore";
 import { researchCost } from "@/lib/nexus/core/systems";
 import {
   CoreHeading,
-  CoreIcon,
+  CoreLink,
   CoreProfileGate,
 } from "@/components/nexus/core/CoreUI";
 import {
   CoreDetails,
   type CoreDetailItem,
 } from "@/components/nexus/core/CoreDetails";
-import { CoreEquipmentArt } from "@/components/nexus/core/CoreArtwork";
+import {
+  CoreBayArtwork,
+  CoreBayHeading,
+  CoreSelectionDeck,
+} from "@/components/nexus/core/CoreSelectionDeck";
+import { CoreFeedback } from "@/components/nexus/core/CoreMotion";
 import { EQUIPMENT_BRIEF } from "@/components/nexus/core/menuCopy";
 import {
   Dialog,
@@ -42,6 +48,7 @@ function Lab() {
     [inspected, setInspected] = useState<CoreDetailItem | null>(null),
     [panel, setPanel] = useState<"milestones" | "history" | null>(null);
   const busy = useRef(false);
+  const { feedback, trigger } = useCoreFeedback();
   if (!profile) return null;
   const buy = async (id: ResearchId | UnlockId, equipment = false) => {
     if (busy.current) return;
@@ -50,9 +57,7 @@ function Lab() {
     try {
       if (equipment) await unlock(id as UnlockId);
       else await research(id as ResearchId);
-      toast.success(
-        equipment ? "Unlocked. Ready to equip." : "Research upgraded.",
-      );
+      trigger(equipment ? "SYSTEM UNLOCKED" : "CORE UPGRADED");
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Purchase failed. Try again.",
@@ -62,8 +67,21 @@ function Lab() {
       setPending(null);
     }
   };
+  const equipment = ARMORY.filter((a) =>
+    tab === "support" ? a.kind === "module" : a.kind === "weapon",
+  );
+  const item =
+    equipment.find((a) => a.id === params.get("item")) || equipment[0];
+  const track =
+    RESEARCH.find((r) => r.id === params.get("item")) || RESEARCH[0];
+  const owned = profile.unlocks.includes(item.id),
+    eligible = profile.totalWaves >= item.waves;
+  const level = profile.research[track.id] || 0,
+    price = researchCost(track.id, level);
+  const choose = (id: string) =>
+    setParams({ tab, item: id }, { replace: true });
   return (
-    <>
+    <section className="nc-deck-screen nc-lab-screen">
       <div className="nc-menu-toolbar">
         <CoreHeading eyebrow="PERMANENT UPGRADES" title="Core lab" />
         <div className="nc-menu-toolbar-actions">
@@ -106,122 +124,124 @@ function Lab() {
         ))}
       </div>
       {tab !== "research" ? (
-        <div
-          className="nc-item-grid"
-          role="tabpanel"
-          id={`lab-${tab}`}
-          aria-labelledby={`lab-tab-${tab}`}
+        <CoreSelectionDeck
+          label="Inspect armory equipment"
+          value={item.id}
+          onChange={choose}
+          items={equipment.map((a) => ({
+            ...a,
+            icon: undefined,
+            locked: !profile.unlocks.includes(a.id),
+            installed: profile.unlocks.includes(a.id),
+          }))}
         >
-          {ARMORY.filter((a) =>
-            tab === "support" ? a.kind === "module" : a.kind === "weapon",
-          ).map((a) => {
-            const owned = profile.unlocks.includes(a.id),
-              eligible = profile.totalWaves >= a.waves;
-            return (
-              <section
-                className="nc-item nc-shop-item"
-                key={a.id}
-                data-owned={owned}
+          <CoreBayArtwork id={item.id} />
+          <CoreBayHeading
+            name={item.name}
+            role={item.role}
+            brief={EQUIPMENT_BRIEF[item.id]}
+            onInfo={() => setInspected(item)}
+          />
+          <div className="nc-bay-actions">
+            <div className="nc-bay-status">
+              <span>
+                {owned
+                  ? "READY TO EQUIP"
+                  : `${Math.min(profile.totalWaves, item.waves)}/${item.waves} lifetime waves`}
+              </span>
+              <strong>{owned ? "PERMANENT" : `${item.cost} credits`}</strong>
+            </div>
+            {!owned && (
+              <progress
+                value={Math.min(profile.totalWaves, item.waves)}
+                max={item.waves}
+                aria-label={`${item.name} lifetime wave progress`}
+              />
+            )}
+            <div className="nc-bay-action-row">
+              <button
+                className="nc-button"
+                aria-label={`Unlock ${item.name}`}
+                disabled={
+                  owned || !!pending || !eligible || profile.credits < item.cost
+                }
+                onClick={() => buy(item.id, true)}
               >
-                <button
-                  className="nc-item-info"
-                  aria-label={`About ${a.name}`}
-                  onClick={() => setInspected(a)}
-                >
-                  <Info size={16} />
-                </button>
-                {owned && <Check size={13} className="nc-item-mark" />}
-                <CoreEquipmentArt id={a.id} />
-                <strong>{a.name}</strong>
-                <span>{EQUIPMENT_BRIEF[a.id]}</span>
-                {!owned && !eligible && (
+                {pending === item.id ? (
+                  "UNLOCKING…"
+                ) : owned ? (
                   <>
-                    <div className="nc-item-progress">
-                      <i
-                        style={{
-                          width: `${Math.min(100, (profile.totalWaves / a.waves) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <small className="nc-shop-requirement">
-                      {profile.totalWaves}/{a.waves} lifetime waves
-                    </small>
+                    <Check size={15} />
+                    OWNED
+                  </>
+                ) : (
+                  <>
+                    {!eligible ? <Lock size={13} /> : <Orbit size={13} />}
+                    {item.cost} · UNLOCK
                   </>
                 )}
-                <button
-                  className="nc-button nc-button-secondary"
-                  aria-label={`Unlock ${a.name}`}
-                  disabled={
-                    owned || !!pending || !eligible || profile.credits < a.cost
-                  }
-                  onClick={() => buy(a.id, true)}
+              </button>
+              {owned && (
+                <CoreLink
+                  to={`/nexus/loadout/endless?item=${item.id}`}
+                  secondary
                 >
-                  {pending === a.id ? (
-                    "UNLOCKING…"
-                  ) : owned ? (
-                    <>
-                      <Check size={13} />
-                      OWNED
-                    </>
-                  ) : (
-                    <>
-                      {!eligible ? <Lock size={12} /> : <Orbit size={12} />}
-                      {a.cost}
-                    </>
-                  )}
-                </button>
-              </section>
-            );
-          })}
-        </div>
+                  Equip
+                </CoreLink>
+              )}
+            </div>
+          </div>
+          <CoreFeedback event={feedback} />
+        </CoreSelectionDeck>
       ) : (
-        <div
-          className="nc-item-grid nc-research-items"
-          role="tabpanel"
-          id="lab-research"
-          aria-labelledby="lab-tab-research"
+        <CoreSelectionDeck
+          label="Inspect research tracks"
+          value={track.id}
+          onChange={choose}
+          items={RESEARCH.map((r) => ({
+            ...r,
+            level: profile.research[r.id] || 0,
+          }))}
         >
-          {RESEARCH.map((r) => {
-            const level = profile.research[r.id] || 0,
-              price = researchCost(r.id, level);
-            return (
-              <section className="nc-item nc-shop-item" key={r.id}>
-                <div className="nc-research-glyph">
-                  <CoreIcon name={r.icon} size={30} />
-                </div>
-                <strong>{r.name}</strong>
-                <span>{r.description}</span>
-                <div className="nc-research-level">
-                  LEVEL {level} / {r.max}
-                </div>
-                <div className="nc-level-bar">
-                  {Array.from({ length: r.max }, (_, i) => (
-                    <i key={i} data-active={i < level} />
-                  ))}
-                </div>
-                <button
-                  className="nc-button nc-button-secondary"
-                  aria-label={`Research ${r.name}`}
-                  disabled={
-                    level >= r.max || !!pending || profile.credits < price
-                  }
-                  onClick={() => buy(r.id)}
-                >
-                  {pending === r.id ? (
-                    "UPGRADING…"
-                  ) : level >= r.max ? (
-                    "MAX"
-                  ) : (
-                    <>
-                      <Orbit size={12} />
-                      {price}
-                    </>
-                  )}
-                </button>
-              </section>
-            );
-          })}
-        </div>
+          <CoreBayArtwork id={track.id} icon={track.icon} />
+          <CoreBayHeading
+            name={track.name}
+            role={`CORE RESEARCH · LEVEL ${level} / ${track.max}`}
+            brief={track.description}
+          />
+          <div className="nc-bay-actions">
+            <div
+              className="nc-bay-level"
+              aria-label={`${track.name} level ${level} of ${track.max}`}
+            >
+              {Array.from({ length: track.max }, (_, i) => (
+                <i key={i} data-active={i < level} />
+              ))}
+            </div>
+            <div className="nc-bay-action-row">
+              <button
+                className="nc-button"
+                aria-label={`Research ${track.name}`}
+                disabled={
+                  level >= track.max || !!pending || profile.credits < price
+                }
+                onClick={() => buy(track.id)}
+              >
+                {pending === track.id ? (
+                  "UPGRADING…"
+                ) : level >= track.max ? (
+                  "MAXIMUM LEVEL"
+                ) : (
+                  <>
+                    <Orbit size={14} />
+                    {price} · UPGRADE
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          <CoreFeedback event={feedback} />
+        </CoreSelectionDeck>
       )}
       <p className="nc-menu-note">
         {tab === "research"
@@ -299,6 +319,6 @@ function Lab() {
           </button>
         </DialogContent>
       </Dialog>
-    </>
+    </section>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
+import { motion, MotionConfig, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
   BookOpen,
@@ -12,12 +13,15 @@ import {
   Trophy,
 } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
+import { CoreAtmosphere, CoreCounter } from "./CoreMotion";
 import "./core.css";
 import "./progression.css";
 import "./menus.css";
+import "./game-feel.css";
 
 export function CoreShell({ children }: { children: ReactNode }) {
   const { profile } = useNexusCore();
+  const reduced = useReducedMotion();
   const { pathname, key: menuKey } = useLocation();
   const content = useRef<HTMLElement>(null);
   const battle = pathname.startsWith("/nexus/battle/");
@@ -58,8 +62,9 @@ export function CoreShell({ children }: { children: ReactNode }) {
   ];
   return createPortal(
     <div
-      className={`nx-mode nc-shell nc-game-shell ${home ? "nc-title-shell" : pathname.includes("/loadout/") ? "nc-loadout-menu" : pathname.includes("/results/") ? "nc-result-menu" : ""}`}
+      className={`nx-mode nc-shell nc-game-shell ${home ? "nc-title-shell" : pathname.includes("/loadout/") ? "nc-loadout-menu nc-deck-menu" : pathname.includes("/results/") ? "nc-result-menu nc-deck-menu" : pathname === "/nexus/research" || pathname === "/nexus/leaderboard" ? "nc-deck-menu" : ""}`}
     >
+      <CoreAtmosphere />
       <header className="nc-game-header">
         <Link
           to={home ? "/compete" : "/nexus"}
@@ -85,21 +90,37 @@ export function CoreShell({ children }: { children: ReactNode }) {
           aria-label={`${profile?.credits ?? 0} credits. Open armory.`}
         >
           <Orbit size={15} />
-          {profile?.credits.toLocaleString() ?? "—"}
+          {profile ? <CoreCounter value={profile.credits} /> : "—"}
         </Link>
       </header>
-      <main
-        className="nc-menu-content"
-        ref={content}
-        key={pathname}
-        aria-label={home ? "Nexus title screen" : "Nexus game menu"}
-      >
-        {children}
-      </main>
+      <MotionConfig reducedMotion="user">
+        <motion.main
+          className="nc-menu-content"
+          ref={content}
+          key={pathname}
+          aria-label={home ? "Nexus title screen" : "Nexus game menu"}
+          initial={reduced ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.24 }}
+        >
+          {children}
+        </motion.main>
+      </MotionConfig>
       {!home && (
         <nav className="nc-game-nav" aria-label="Nexus navigation">
           {nav.map(({ to, label, icon: Icon, active }) => (
             <Link key={to} to={to} aria-current={active ? "page" : undefined}>
+              {active && (
+                <motion.i
+                  className="nc-nav-highlight"
+                  layoutId="nexus-active-menu"
+                  transition={
+                    reduced
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 380, damping: 30 }
+                  }
+                />
+              )}
               <Icon size={20} />
               <span>{label}</span>
             </Link>

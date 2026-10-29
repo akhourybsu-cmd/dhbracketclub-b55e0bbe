@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { ChevronDown, Orbit, Play, Shield, Trophy } from "lucide-react";
+import { BarChart3, ChevronRight, Orbit, Play, Shield } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
 import { ENDLESS, getScenario } from "@/lib/nexus/core/catalog";
 import { isFinished, runStars } from "@/lib/nexus/core/engine";
@@ -9,6 +9,18 @@ import type { CoreRun } from "@/lib/nexus/core/types";
 import { ARMORY } from "@/lib/nexus/core/progression";
 import { rewardBreakdown } from "@/lib/nexus/core/economy";
 import { CoreMenuActions } from "@/components/nexus/core/CoreMenuActions";
+import { CoreCounter } from "@/components/nexus/core/CoreMotion";
+import {
+  CoreSigil,
+  CoreEquipmentArt,
+} from "@/components/nexus/core/CoreArtwork";
+import { CoreDetails } from "@/components/nexus/core/CoreDetails";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { WEAPON_IDS, WEAPON_NAMES } from "@/lib/nexus/core/systems";
 import { useNavigate } from "react-router-dom";
 import { clearCoreRun } from "@/lib/nexus/core/persistence";
@@ -44,6 +56,7 @@ function Debrief() {
   const [sync, setSync] = useState<"saving" | "saved" | "error">("saving");
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const [panel, setPanel] = useState<"details" | "unlock" | null>(null);
   const [award, setAward] = useState<{
     reward: number;
     stars: number;
@@ -116,25 +129,32 @@ function Debrief() {
     }
   };
   return (
-    <section className="nc-result-screen">
-      <div className="nc-result-mark">
-        <Trophy size={30} />
+    <section className="nc-deck-screen nc-result-screen">
+      <div className="nc-result-hero">
+        <CoreSigil loadout={run.loadout} />
+        <div className="nc-result-heading">
+          <h1>{run.retired || won ? "RUN COMPLETE" : "CORE LOST"}</h1>
+          <div className="nc-result-wave">
+            <CoreCounter value={run.cleared} digits={2} fromZero />
+          </div>
+          <p className="nc-wave-caption">
+            WAVES CLEARED
+            {run.cleared > previousBest.current ? " · NEW BEST" : ""}
+          </p>
+        </div>
       </div>
-      <h1>{run.retired || won ? "RUN COMPLETE" : "CORE LOST"}</h1>
-      <div className="nc-result-wave">
-        {String(run.cleared).padStart(2, "0")}
-      </div>
-      <p className="nc-wave-caption">
-        WAVES CLEARED{run.cleared > previousBest.current ? " · NEW BEST" : ""}
-      </p>
       {won && <CoreStars count={stars} />}
       <div className="nc-result-grid">
         <div className="nc-panel">
-          <strong>{run.kills}</strong>
+          <strong>
+            <CoreCounter value={run.kills} fromZero />
+          </strong>
           <span>Kills</span>
         </div>
         <div className="nc-panel">
-          <strong>{run.score.toLocaleString()}</strong>
+          <strong>
+            <CoreCounter value={run.score} fromZero />
+          </strong>
           <span>Score</span>
         </div>
         <div className="nc-panel">
@@ -145,9 +165,18 @@ function Debrief() {
           <span>Survived</span>
         </div>
       </div>
+      {sync === "saved" && reward > 0 && (
+        <div className="nc-result-celebration" aria-hidden="true">
+          {Array.from({ length: 10 }, (_, i) => (
+            <i key={i} style={{ "--nc-i": i } as React.CSSProperties} />
+          ))}
+        </div>
+      )}
       <div className="nc-reward">
         <Orbit size={21} />
-        <strong>+{reward}</strong>
+        <strong>
+          +<CoreCounter value={reward} fromZero />
+        </strong>
         <span>CREDITS</span>
       </div>
       <p className="nc-menu-note">
@@ -183,25 +212,56 @@ function Debrief() {
           )}
         </div>
       )}
-      {nextUnlock && (
-        <section className="nc-panel nc-next-unlock">
-          <h2>
-            {nextUnlock.name}
-            <small>NEXT UNLOCK</small>
-          </h2>
-          <progress
-            aria-label={`${nextUnlock.name} credit progress`}
-            value={Math.min(profile?.credits || 0, nextUnlock.cost)}
-            max={nextUnlock.cost}
-          />
-          <span>
-            {Math.min(profile?.credits || 0, nextUnlock.cost)}/{nextUnlock.cost}{" "}
-            credits · {Math.min(profile?.totalWaves || 0, nextUnlock.waves)}/
-            {nextUnlock.waves} lifetime waves
-          </span>
-        </section>
-      )}
-      <CoreMenuActions label="Result actions">
+      <div className="nc-result-inspect">
+        {nextUnlock && (
+          <button
+            className="nc-next-system"
+            onClick={() => setPanel("unlock")}
+            aria-label={`Next unlock: ${nextUnlock.name}`}
+          >
+            <CoreEquipmentArt id={nextUnlock.id} />
+            <span>
+              <small>NEXT UNLOCK</small>
+              <strong>{nextUnlock.name}</strong>
+            </span>
+            <ChevronRight size={15} />
+          </button>
+        )}
+        {run.metrics && (
+          <button
+            className="nc-next-system"
+            onClick={() => setPanel("details")}
+          >
+            <BarChart3 size={20} />
+            <span>Run details</span>
+            <ChevronRight size={15} />
+          </button>
+        )}
+      </div>
+      <CoreDetails
+        item={panel === "unlock" && nextUnlock ? nextUnlock : null}
+        onClose={() => setPanel(null)}
+      >
+        {nextUnlock && (
+          <div className="nc-next-unlock">
+            <progress
+              aria-label={`${nextUnlock.name} credit progress`}
+              value={Math.min(profile?.credits || 0, nextUnlock.cost)}
+              max={nextUnlock.cost}
+            />
+            <p className="nc-menu-note">
+              {Math.min(profile?.credits || 0, nextUnlock.cost)}/
+              {nextUnlock.cost} credits ·{" "}
+              {Math.min(profile?.totalWaves || 0, nextUnlock.waves)}/
+              {nextUnlock.waves} lifetime waves
+            </p>
+          </div>
+        )}
+      </CoreDetails>
+      <CoreMenuActions
+        label="Result actions"
+        notice={playError ? <span role="alert">{playError}</span> : undefined}
+      >
         <button
           className="nc-button"
           disabled={sync !== "saved" || playing}
@@ -214,44 +274,47 @@ function Debrief() {
           Loadout
         </CoreLink>
       </CoreMenuActions>
-      {playError && (
-        <p className="nc-rule" role="alert">
-          {playError}
-        </p>
-      )}
       {run.metrics && (
-        <details>
-          <summary>
-            Run details
-            <ChevronDown size={16} />
-          </summary>
-          <section className="nc-panel nc-run-metrics">
-            <div className="nc-damage-list">
-              {WEAPON_IDS.filter((id) => run.metrics!.damage[id] > 0).map(
-                (id) => (
-                  <div key={id}>
-                    <div>
-                      <strong>{WEAPON_NAMES[id]}</strong>
-                      <span>
-                        {Math.round(run.metrics!.damage[id]).toLocaleString()}{" "}
-                        damage · {run.metrics!.kills[id]} kills
-                      </span>
+        <Dialog
+          open={panel === "details"}
+          onOpenChange={(open) => {
+            if (!open) setPanel(null);
+          }}
+        >
+          <DialogContent className="nx-mode nc-shell nc-menu-dialog">
+            <DialogTitle>Run details</DialogTitle>
+            <DialogDescription>Weapon output & energy</DialogDescription>
+            <section className="nc-dialog-scroll nc-run-metrics">
+              <div className="nc-damage-list">
+                {WEAPON_IDS.filter((id) => run.metrics!.damage[id] > 0).map(
+                  (id) => (
+                    <div key={id}>
+                      <div>
+                        <strong>{WEAPON_NAMES[id]}</strong>
+                        <span>
+                          {Math.round(run.metrics!.damage[id]).toLocaleString()}{" "}
+                          damage · {run.metrics!.kills[id]} kills
+                        </span>
+                      </div>
+                      <i
+                        style={{
+                          width: `${(run.metrics!.damage[id] / Math.max(1, ...Object.values(run.metrics!.damage))) * 100}%`,
+                        }}
+                      />
                     </div>
-                    <i
-                      style={{
-                        width: `${(run.metrics!.damage[id] / Math.max(1, ...Object.values(run.metrics!.damage))) * 100}%`,
-                      }}
-                    />
-                  </div>
-                ),
-              )}
-            </div>
-            <p className="nc-menu-note">
-              Energy {run.metrics.energyEarned} · Spent{" "}
-              {run.metrics.energySpent} · Remaining {run.energy}
-            </p>
-          </section>
-        </details>
+                  ),
+                )}
+              </div>
+              <p className="nc-menu-note">
+                Energy {run.metrics.energyEarned} · Spent{" "}
+                {run.metrics.energySpent} · Remaining {run.energy}
+              </p>
+            </section>
+            <button className="nc-button" onClick={() => setPanel(null)}>
+              Done
+            </button>
+          </DialogContent>
+        </Dialog>
       )}
     </section>
   );

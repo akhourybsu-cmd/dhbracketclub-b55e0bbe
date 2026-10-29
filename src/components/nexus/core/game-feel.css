@@ -1,0 +1,1445 @@
+/* Fixed game screens, animated equipment bays and responsive command panels. */
+.nc-atmosphere {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.nc-nebula {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(
+      ellipse at 30% 40%,
+      hsl(184 90% 35% / 0.1),
+      transparent 45%
+    ),
+    radial-gradient(
+      ellipse at 80% 70%,
+      hsl(265 90% 55% / 0.08),
+      transparent 40%
+    );
+  animation: nc-nebula-drift 18s ease-in-out infinite alternate;
+}
+.nc-radar-orbit {
+  position: absolute;
+  width: 80vmax;
+  height: 80vmax;
+  left: calc(50% - 40vmax);
+  top: calc(35% - 40vmax);
+  border: 1px dashed hsl(175 70% 70% / 0.07);
+  border-radius: 50%;
+  animation: nc-orbit-clock 90s linear infinite;
+}
+.nc-radar-orbit::before {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: 1px solid hsl(184 70% 65% / 0.04);
+  border-radius: 50%;
+}
+.nc-scan-line {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    transparent 48%,
+    hsl(178 90% 70% / 0.035) 50%,
+    transparent 52%
+  );
+  transform: translateY(-100%);
+  animation: nc-scan-pass 12s linear infinite;
+}
+.nc-atmosphere > i {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: hsl(174 90% 75%);
+  box-shadow: 0 0 7px hsl(174 90% 65% / 0.6);
+  opacity: 0;
+  animation: nc-dust-rise calc(8s + var(--nc-i) * 0.4s) linear infinite;
+  animation-delay: calc(var(--nc-i) * -0.8s);
+}
+.nc-game-nav a {
+  position: relative;
+  isolation: isolate;
+}
+.nc-nav-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid hsl(173 80% 70% / 0.14);
+  border-radius: 10px;
+  background: hsl(173 70% 70% / 0.06);
+}
+.nc-game-shell .nc-button,
+.nc-game-shell .nc-title-links a,
+.nc-selector-keys button,
+.nc-deck-control,
+.nc-ability {
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s,
+    scale 0.16s;
+}
+.nc-game-shell .nc-button:active,
+.nc-title-links a:active,
+.nc-selector-keys button:active,
+.nc-deck-control:active,
+.nc-ability:active {
+  scale: 0.96;
+}
+.nc-game-shell :focus-visible,
+.nc-menu-dialog :focus-visible {
+  outline: 2px solid hsl(174 90% 75%);
+  outline-offset: 3px;
+}
+.nc-title-wordmark {
+  animation: nc-menu-arrive 0.65s both;
+}
+.nc-title-visual {
+  animation: nc-title-materialize 0.85s both;
+}
+.nc-title-actions > * {
+  animation: nc-menu-arrive 0.5s both;
+}
+.nc-title-actions > :nth-child(2) {
+  animation-delay: 0.08s;
+}
+.nc-title-actions > :nth-child(3) {
+  animation-delay: 0.15s;
+}
+.nc-title-actions > :nth-child(4) {
+  animation-delay: 0.2s;
+}
+.nc-title-shell .nc-play-button {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 30px hsl(174 90% 65% / 0.13);
+}
+.nc-play-button::after {
+  content: "";
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  width: 25%;
+  left: -50%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(0 0% 100% / 0.3),
+    transparent
+  );
+  rotate: 18deg;
+  animation: nc-button-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+.nc-deck-menu .nc-menu-content {
+  overflow: hidden;
+  padding: 12px 16px 16px;
+}
+.nc-loadout-menu.nc-deck-menu .nc-menu-content,
+.nc-result-menu.nc-deck-menu .nc-menu-content {
+  padding-bottom: 86px;
+}
+.nc-deck-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 10px;
+}
+.nc-deck-screen > .nc-heading,
+.nc-deck-screen > .nc-menu-toolbar {
+  flex-shrink: 0;
+  margin: 0;
+}
+.nc-deck-screen > .nc-heading h1 {
+  font-size: 26px;
+}
+.nc-deck-screen > .nc-heading p {
+  margin-top: 4px;
+  font-size: 10px;
+}
+.nc-deck-screen .nc-menu-tabs {
+  flex-shrink: 0;
+  margin: 0;
+}
+.nc-deck-screen .nc-menu-note {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 10px;
+}
+.nc-loadout-editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.nc-deck-screen .nc-loadout-summary {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  min-height: 36px;
+  border: 0;
+  margin: 0;
+  background: hsl(174 50% 70% / 0.035);
+  border-radius: 9px;
+}
+.nc-deck-screen .nc-loadout-summary > div:first-child {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+.nc-deck-screen .nc-loadout-summary strong {
+  font-size: 11px;
+}
+.nc-deck-screen .nc-loadout-summary small {
+  display: none;
+}
+.nc-deck-screen .nc-power-budget {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.nc-deck-screen .nc-power-budget strong {
+  font-size: 12px;
+}
+.nc-deck-screen .nc-power-budget strong small {
+  display: inline;
+  font-size: 10px;
+}
+.nc-deck-screen .nc-power-budget > span {
+  font-size: 7px;
+}
+.nc-deck-screen .nc-power-budget > div {
+  width: 36px;
+  gap: 3px;
+  margin: 0;
+}
+.nc-deck-screen .nc-power-budget i {
+  height: 4px;
+}
+.nc-deck-screen .nc-loadout-slots {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  gap: 6px;
+}
+.nc-deck-screen .nc-loadout-slots > button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 0;
+  border: 1px dashed hsl(190 40% 55% / 0.3);
+  border-radius: 8px;
+  padding: 5px 8px;
+  text-align: left;
+  background: hsl(190 50% 50% / 0.025);
+}
+.nc-deck-screen .nc-loadout-slots > button[data-equipped="true"] {
+  border-style: solid;
+  border-color: hsl(173 70% 65% / 0.35);
+}
+.nc-deck-screen .nc-loadout-slots > button > svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.nc-deck-screen .nc-loadout-slots > button > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.nc-deck-screen .nc-loadout-slots small {
+  font-size: 7px;
+  color: hsl(174 65% 65%);
+  letter-spacing: 0.1em;
+}
+.nc-deck-screen .nc-loadout-slots strong {
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nc-deck-screen .nc-mini-stats {
+  flex-shrink: 0;
+  margin: 0;
+  gap: 20px;
+  min-height: 16px;
+}
+.nc-selection-deck {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.nc-equipment-bay {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(80px, 0.85fr) minmax(0, 1.15fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid hsl(184 45% 55% / 0.22);
+  border-radius: 16px;
+  background:
+    radial-gradient(
+      ellipse at 20% 35%,
+      hsl(181 70% 40% / 0.08),
+      transparent 70%
+    ),
+    hsl(217 35% 7% / 0.7);
+  overflow: hidden;
+}
+.nc-equipment-bay::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    transparent 40%,
+    hsl(174 90% 75% / 0.035) 50%,
+    transparent 60%
+  );
+  background-size: 250% 100%;
+  animation: nc-bay-shimmer 8s ease-in-out infinite;
+}
+.nc-bay-artwork {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  isolation: isolate;
+  color: hsl(173 88% 70%);
+}
+.nc-bay-artwork[data-system="arc"],
+.nc-bay-artwork[data-system="orbit"] {
+  color: hsl(263 100% 80%);
+}
+.nc-bay-artwork[data-system="rail"],
+.nc-bay-artwork[data-system="siphon"] {
+  color: hsl(42 100% 72%);
+}
+.nc-bay-artwork[data-system="mortar"] {
+  color: hsl(24 100% 75%);
+}
+.nc-bay-artwork > .nc-equipment-art {
+  width: 100%;
+  height: 100%;
+  max-height: 240px;
+  filter: drop-shadow(0 0 16px hsl(174 90% 70% / 0.2));
+  animation: nc-equipment-hover 4s ease-in-out infinite;
+}
+.nc-bay-artwork > svg:not(.nc-equipment-art) {
+  width: min(65%, 90px);
+  height: min(65%, 90px);
+  filter: drop-shadow(0 0 16px currentColor);
+  animation: nc-equipment-hover 4s ease-in-out infinite;
+}
+.nc-bay-orbits {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: -1;
+}
+.nc-bay-orbits > i {
+  position: absolute;
+  width: 90%;
+  max-width: 210px;
+  aspect-ratio: 1;
+  border: 1px dashed currentColor;
+  border-radius: 50%;
+  opacity: 0.15;
+  animation: nc-orbit-clock 36s linear infinite;
+}
+.nc-bay-orbits > i:nth-child(2) {
+  width: 73%;
+  max-width: 170px;
+  border-style: solid;
+  opacity: 0.08;
+  animation-duration: 23s;
+  animation-direction: reverse;
+}
+.nc-bay-orbits > i:nth-child(3) {
+  width: 53%;
+  max-width: 120px;
+  border-style: dotted;
+  border-width: 2px;
+  opacity: 0.13;
+  animation-duration: 15s;
+}
+.nc-bay-heading {
+  min-width: 0;
+  position: relative;
+  padding-right: 8px;
+}
+.nc-bay-heading > small {
+  display: block;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(173 70% 65%);
+  margin-bottom: 9px;
+}
+.nc-bay-heading h2 {
+  font:
+    500 clamp(20px, 3.5vw, 30px)/1.1 "Space Grotesk",
+    sans-serif;
+  letter-spacing: -0.035em;
+  color: hsl(195 35% 95%);
+  margin: 0;
+}
+.nc-bay-heading p {
+  font-size: 11px;
+  color: hsl(200 20% 68%);
+  line-height: 1.6;
+  margin: 9px 0 0;
+}
+.nc-bay-info {
+  position: absolute;
+  top: -18px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: hsl(200 25% 65%);
+}
+.nc-bay-actions {
+  position: relative;
+  z-index: 1;
+  grid-column: 1/-1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.nc-bay-action-row {
+  display: flex;
+  gap: 8px;
+}
+.nc-bay-actions .nc-button {
+  flex: 1;
+  justify-content: center;
+  min-height: 46px;
+  padding: 10px 12px;
+  font-size: 12px;
+}
+.nc-bay-actions .nc-bay-status {
+  font-size: 9px;
+  color: hsl(200 20% 65%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.nc-bay-actions .nc-bay-status strong {
+  color: hsl(42 95% 72%);
+  font-weight: 500;
+}
+.nc-bay-actions progress {
+  width: 100%;
+  height: 3px;
+  margin: 0;
+}
+.nc-selector-keys {
+  display: grid;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.nc-selector-keys button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 6px 2px;
+  border: 1px solid hsl(190 30% 45% / 0.24);
+  background: hsl(216 35% 9% / 0.75);
+  border-radius: 10px;
+  color: hsl(200 20% 63%);
+}
+.nc-selector-keys button > svg {
+  width: 31px;
+  height: 27px;
+}
+.nc-selector-keys button > span {
+  font-size: 9px;
+  line-height: 1;
+}
+.nc-selector-keys button[aria-selected="true"] {
+  color: hsl(173 90% 75%);
+  border-color: hsl(173 90% 70% / 0.6);
+  box-shadow:
+    inset 0 -2px hsl(173 90% 70% / 0.45),
+    0 0 18px hsl(173 90% 65% / 0.06);
+  background: hsl(174 60% 30% / 0.13);
+}
+.nc-selector-keys .nc-selector-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  font-size: 9px;
+}
+.nc-bay-level {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+.nc-bay-level > i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: hsl(190 25% 25%);
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
+}
+.nc-bay-level > i[data-active="true"] {
+  background: hsl(173 88% 70%);
+  box-shadow: 0 0 6px hsl(173 90% 60% / 0.3);
+}
+.nc-game-feedback {
+  position: absolute;
+  z-index: 8;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  padding: 11px 16px;
+  border: 1px solid hsl(174 95% 70% / 0.7);
+  border-radius: 10px;
+  background: hsl(181 55% 10% / 0.96);
+  color: hsl(173 90% 79%);
+  font:
+    600 10px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 35px hsl(173 90% 55% / 0.2);
+  animation: nc-feedback-in 1.6s both;
+  pointer-events: none;
+}
+.nc-feedback-burst {
+  position: absolute;
+  inset: 50% auto auto 50%;
+}
+.nc-feedback-burst i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: hsl(174 95% 75%);
+  border-radius: 50%;
+  animation: nc-reward-particle 0.8s ease-out both;
+}
+.nc-menu-actionbar {
+  flex-direction: column;
+}
+.nc-action-controls {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.nc-action-notice {
+  color: hsl(42 90% 75%);
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.4;
+  margin-bottom: 5px;
+}
+.nc-action-controls > .nc-icon-button {
+  min-width: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(190 40% 60% / 0.3);
+  border-radius: 10px;
+  color: hsl(200 30% 80%);
+}
+.nc-menu-dialog .nc-detail-content {
+  animation: nc-menu-arrive 0.24s both;
+}
+.nx-mode.nc-shell.nc-menu-dialog[data-state="open"] {
+  animation: nc-panel-rise 0.24s ease-out;
+}
+.nc-guide-section[open] > div {
+  animation: nc-menu-arrive 0.25s both;
+}
+@keyframes nc-nebula-drift {
+  to {
+    transform: translate3d(4%, -4%, 0) rotate(8deg) scale(1.12);
+  }
+}
+@keyframes nc-dust-rise {
+  15%,
+  75% {
+    opacity: 0.35;
+  }
+  to {
+    transform: translate3d(18px, -90px, 0);
+    opacity: 0;
+  }
+}
+@keyframes nc-scan-pass {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes nc-menu-arrive {
+  from {
+    opacity: 0;
+    translate: 0 12px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes nc-title-materialize {
+  from {
+    opacity: 0;
+    scale: 0.82;
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    filter: blur(0);
+  }
+}
+@keyframes nc-button-sweep {
+  30%,
+  100% {
+    left: 130%;
+  }
+}
+@keyframes nc-bay-shimmer {
+  0%,
+  100% {
+    background-position: 100% 0;
+  }
+  65% {
+    background-position: -100% 0;
+  }
+}
+@keyframes nc-equipment-hover {
+  50% {
+    translate: 0 -5px;
+    rotate: 2deg;
+  }
+}
+@keyframes nc-panel-rise {
+  from {
+    opacity: 0;
+    translate: 0 20px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes nc-feedback-in {
+  0% {
+    opacity: 0;
+    translate: 0 8px;
+    scale: 0.85;
+  }
+  15%,
+  80% {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -10px;
+  }
+}
+@keyframes nc-reward-particle {
+  from {
+    transform: rotate(calc(var(--nc-i) * 45deg)) translateX(10px);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(calc(var(--nc-i) * 45deg)) translateX(90px);
+    opacity: 0;
+  }
+}
+@media (min-width: 760px) and (min-height: 541px) {
+  .nc-deck-menu .nc-menu-content {
+    max-width: 960px;
+    padding-inline: 36px;
+  }
+  .nc-equipment-bay {
+    padding: 30px;
+    grid-template-columns: minmax(160px, 1fr) minmax(180px, 1fr);
+  }
+  .nc-selector-keys {
+    gap: 10px;
+  }
+  .nc-selector-keys button {
+    min-height: 70px;
+  }
+  .nc-selector-keys button > span {
+    font-size: 11px;
+  }
+}
+@media (max-height: 700px) and (orientation: portrait) {
+  .nc-deck-menu .nc-menu-content {
+    padding: 8px 12px 10px;
+  }
+  .nc-loadout-menu.nc-deck-menu .nc-menu-content,
+  .nc-result-menu.nc-deck-menu .nc-menu-content {
+    padding-bottom: 82px;
+  }
+  .nc-deck-screen {
+    gap: 6px;
+  }
+  .nc-deck-screen > .nc-heading h1,
+  .nc-deck-screen .nc-menu-toolbar h1 {
+    font-size: 22px;
+  }
+  .nc-deck-screen > .nc-heading .nc-eyebrow {
+    display: none;
+  }
+  .nc-deck-screen > .nc-heading p {
+    margin-top: 3px;
+  }
+  .nc-loadout-editor {
+    gap: 6px;
+  }
+  .nc-deck-screen .nc-menu-tabs {
+    padding: 2px;
+  }
+  .nc-deck-screen .nc-menu-tabs button {
+    padding: 5px;
+    min-height: 44px;
+  }
+  .nc-deck-screen .nc-loadout-summary {
+    min-height: 28px;
+    padding-block: 2px;
+  }
+  .nc-equipment-bay {
+    padding: 12px;
+    gap: 8px;
+  }
+  .nc-bay-heading h2 {
+    font-size: 20px;
+  }
+  .nc-bay-heading > small {
+    margin-bottom: 5px;
+    font-size: 7px;
+  }
+  .nc-bay-heading p {
+    font-size: 10px;
+    line-height: 1.4;
+    margin-top: 5px;
+  }
+  .nc-selector-keys button {
+    min-height: 48px;
+    padding-block: 4px;
+  }
+  .nc-selector-keys button > svg {
+    height: 22px;
+  }
+  .nc-bay-actions .nc-button {
+    min-height: 44px;
+  }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-deck-menu .nc-menu-content {
+    padding: 8px 16px;
+  }
+  .nc-loadout-menu.nc-deck-menu .nc-menu-content,
+  .nc-result-menu.nc-deck-menu .nc-menu-content {
+    padding-bottom: 70px;
+  }
+  .nc-deployment-screen {
+    display: grid;
+    grid-template-columns: 156px minmax(0, 1fr);
+    grid-template-rows: 32px minmax(0, 1fr);
+    gap: 5px 12px;
+  }
+  .nc-deployment-screen > .nc-heading {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .nc-deployment-screen > .nc-heading h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+  .nc-deployment-screen > .nc-heading .nc-eyebrow,
+  .nc-deployment-screen > .nc-heading p {
+    display: none;
+  }
+  .nc-deployment-screen .nc-loadout-editor {
+    display: contents;
+  }
+  .nc-deployment-screen .nc-loadout-summary {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    min-height: 26px;
+    padding: 0;
+    background: none;
+  }
+  .nc-deployment-screen .nc-loadout-summary > div:first-child > svg {
+    display: none;
+  }
+  .nc-deployment-screen .nc-power-budget > div,
+  .nc-deployment-screen .nc-power-budget > span {
+    display: none;
+  }
+  .nc-deployment-screen .nc-loadout-slots,
+  .nc-deployment-screen .nc-mini-stats {
+    display: none;
+  }
+  .nc-deployment-screen .nc-menu-tabs {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: end;
+    padding: 2px;
+  }
+  .nc-deck-screen .nc-menu-tabs button {
+    min-height: 44px;
+    padding: 4px;
+    font-size: 10px;
+  }
+  .nc-deployment-screen .nc-selection-deck {
+    grid-column: 2;
+    grid-row: 1/-1;
+  }
+  .nc-selection-deck {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 108px;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .nc-selector-keys {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px;
+    align-content: center;
+  }
+  .nc-selector-keys button {
+    min-height: 44px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .nc-selector-keys button > svg {
+    height: 19px;
+  }
+  .nc-selector-keys button > span {
+    font-size: 8px;
+  }
+  .nc-equipment-bay {
+    padding: 8px;
+    gap: 6px;
+    grid-template-columns: minmax(50px, 0.65fr) minmax(0, 1.35fr);
+    grid-template-rows: minmax(0, 1fr) 44px;
+    border-radius: 10px;
+  }
+  .nc-bay-artwork {
+    grid-column: 1;
+    grid-row: 1/-1;
+  }
+  .nc-bay-heading {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .nc-bay-heading h2 {
+    font-size: 17px;
+  }
+  .nc-bay-heading > small {
+    font-size: 7px;
+    margin-bottom: 4px;
+  }
+  .nc-bay-heading p {
+    font-size: 9px;
+    line-height: 1.3;
+    margin-top: 4px;
+  }
+  .nc-bay-heading .nc-bay-info {
+    top: -15px;
+    right: -8px;
+  }
+  .nc-bay-actions {
+    grid-column: 2;
+    grid-row: 2;
+    gap: 3px;
+  }
+  .nc-bay-actions .nc-button {
+    min-height: 44px;
+    padding: 5px;
+    font-size: 10px;
+  }
+  .nc-bay-actions .nc-bay-status {
+    font-size: 8px;
+  }
+  .nc-bay-actions progress {
+    display: none;
+  }
+  .nc-bay-actions:has(.nc-bay-status) {
+    grid-column: 1/-1;
+  }
+  .nc-bay-actions:has(.nc-bay-status) .nc-bay-status {
+    position: absolute;
+    bottom: 46px;
+    right: 0;
+  }
+  .nc-bay-actions:has(.nc-bay-status) .nc-bay-action-row {
+    margin-left: 34%;
+  }
+  .nc-lab-screen {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    grid-template-rows: 44px minmax(0, 1fr);
+    gap: 6px 10px;
+  }
+  .nc-lab-screen > .nc-menu-toolbar {
+    grid-column: 1/-1;
+    grid-row: 1;
+  }
+  .nc-lab-screen .nc-menu-toolbar .nc-heading h1 {
+    font-size: 20px;
+  }
+  .nc-lab-screen .nc-menu-toolbar .nc-eyebrow {
+    display: none;
+  }
+  .nc-lab-screen > .nc-menu-tabs {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    align-self: center;
+  }
+  .nc-lab-screen > .nc-selection-deck {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .nc-lab-screen > .nc-menu-note {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nc-game-shell *,
+  .nc-menu-dialog *,
+  .nc-menu-actionbar *,
+  .nc-menu-dialog[data-state] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.nc-result-screen.nc-deck-screen {
+  width: 100%;
+  max-width: 620px;
+  gap: 10px;
+  justify-content: center;
+}
+.nc-result-hero {
+  position: relative;
+  flex: 1;
+  min-height: 95px;
+  max-height: 260px;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+.nc-result-hero > .nc-sigil {
+  position: absolute;
+  height: 100%;
+  max-width: 300px;
+  opacity: 0.32;
+  z-index: -1;
+}
+.nc-result-heading h1 {
+  font-size: 12px;
+  letter-spacing: 0.17em;
+  color: hsl(200 25% 75%);
+}
+.nc-result-heading .nc-result-wave {
+  margin: 6px 0 2px;
+  font-size: clamp(64px, 12vh, 100px);
+  line-height: 1;
+}
+.nc-result-heading .nc-wave-caption {
+  margin: 0;
+  font-size: 8px;
+}
+.nc-result-screen .nc-result-grid {
+  flex-shrink: 0;
+}
+.nc-result-screen .nc-result-grid .nc-panel {
+  padding: 9px 5px;
+  background: hsl(190 35% 15% / 0.12);
+}
+.nc-result-screen.nc-deck-screen .nc-reward {
+  flex-shrink: 0;
+  margin: 0;
+}
+.nc-result-screen.nc-deck-screen .nc-reward strong {
+  font-size: 34px;
+}
+.nc-result-screen.nc-deck-screen > .nc-menu-note {
+  margin: -5px 0 0;
+}
+.nc-result-screen .nc-saved {
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nc-result-inspect {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.nc-next-system {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  border: 1px solid hsl(185 35% 45% / 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  text-align: left;
+  color: hsl(200 25% 78%);
+}
+.nc-next-system > svg:first-child {
+  flex-shrink: 0;
+  width: 26px;
+  height: 28px;
+}
+.nc-next-system > svg:last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.nc-next-system > span {
+  font-size: 10px;
+}
+.nc-next-system small {
+  display: block;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  color: hsl(173 65% 67%);
+  margin-bottom: 4px;
+}
+.nc-next-system strong {
+  font-size: 10px;
+  font-weight: 500;
+}
+.nc-result-celebration {
+  position: absolute;
+  inset: 28% 0 auto 50%;
+  pointer-events: none;
+}
+.nc-result-celebration i {
+  position: absolute;
+  width: 3px;
+  height: 5px;
+  border-radius: 1px;
+  background: hsl(42 100% 75%);
+  animation: nc-celebrate 1.2s ease-out both;
+  animation-delay: calc(var(--nc-i) * 0.025s);
+}
+.nc-records-screen .nc-heading {
+  margin-bottom: 4px;
+}
+.nc-records-screen .nc-empty {
+  min-height: 0;
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.nc-records-screen .nc-empty h2 {
+  font-size: 18px;
+}
+.nc-records-screen .nc-records-list {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 12px;
+}
+.nc-records-list .nc-record-row {
+  min-height: 62px;
+  height: 62px;
+  animation: nc-menu-arrive 0.22s both;
+}
+.nc-record-pages {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: hsl(200 25% 72%);
+}
+.nc-record-pages button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid hsl(190 30% 50% / 0.3);
+  border-radius: 10px;
+}
+.nc-play-screen .nc-field {
+  transition:
+    box-shadow 0.3s,
+    border-color 0.3s;
+}
+.nc-play-screen .nc-field[data-overdrive="true"] {
+  box-shadow: inset 0 0 60px hsl(42 100% 65% / 0.1);
+  border-color: hsl(42 100% 70% / 0.4);
+}
+.nc-wave-badge > strong {
+  display: block;
+  animation: nc-wave-number 0.35s ease-out;
+}
+.nc-wave-intro {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 24%;
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 28px;
+  border-block: 1px solid hsl(173 90% 70% / 0.4);
+  color: hsl(173 90% 75%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(190 60% 8% / 0.95) 15%,
+    hsl(190 60% 8% / 0.95) 85%,
+    transparent
+  );
+  width: max-content;
+  max-width: 95%;
+  pointer-events: none;
+  animation: nc-wave-intro 1.5s both;
+}
+.nc-wave-intro small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  margin-bottom: 5px;
+}
+.nc-wave-intro strong {
+  font:
+    500 28px/1 "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.1em;
+}
+.nc-boss-intro {
+  color: hsl(24 100% 75%);
+  border-color: hsl(24 95% 65% / 0.4);
+}
+.nc-boss-track {
+  position: absolute;
+  left: 50%;
+  bottom: 25px;
+  translate: -50% 0;
+  z-index: 3;
+  width: min(230px, 60%);
+  pointer-events: none;
+}
+.nc-boss-track > div {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  color: hsl(24 100% 75%);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  margin-bottom: 5px;
+}
+.nc-boss-track progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  accent-color: hsl(24 100% 70%);
+}
+.nc-boss-track progress::-webkit-progress-value {
+  background: hsl(24 100% 70%);
+  transition: width 0.2s;
+}
+.nc-impact-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 38px hsl(12 90% 60% / 0.28);
+  animation: nc-impact 0.45s ease-out both;
+}
+.nc-field > .nc-game-feedback {
+  top: auto;
+  bottom: 46px;
+}
+.nc-play-screen .nc-ability[data-ready="true"] {
+  animation: nc-ability-ready 3s ease-in-out infinite;
+}
+@keyframes nc-celebrate {
+  from {
+    transform: rotate(calc(var(--nc-i) * 36deg)) translateY(25px);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(calc(var(--nc-i) * 36deg)) translateY(170px)
+      rotate(100deg);
+    opacity: 0;
+  }
+}
+@keyframes nc-wave-number {
+  from {
+    scale: 1.16;
+    opacity: 0.4;
+  }
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+@keyframes nc-wave-intro {
+  0% {
+    opacity: 0;
+    scale: 0.9;
+  }
+  15%,
+  75% {
+    opacity: 1;
+    scale: 1;
+  }
+  100% {
+    opacity: 0;
+    scale: 1.04;
+  }
+}
+@keyframes nc-impact {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes nc-ability-ready {
+  50% {
+    box-shadow:
+      inset 0 0 15px hsl(173 90% 70% / 0.06),
+      0 0 12px hsl(173 90% 70% / 0.04);
+  }
+}
+@media (orientation: portrait) and (max-width: 600px) and (min-height: 701px) {
+  .nc-equipment-bay {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+  .nc-bay-artwork {
+    grid-column: 1;
+    grid-row: 1;
+    max-width: 260px;
+    justify-self: center;
+  }
+  .nc-bay-heading {
+    grid-column: 1;
+    grid-row: 2;
+    text-align: center;
+    padding: 0 20px;
+  }
+  .nc-bay-heading h2 {
+    font-size: 25px;
+  }
+  .nc-bay-heading > small {
+    margin-bottom: 5px;
+  }
+  .nc-bay-heading p {
+    margin-top: 6px;
+  }
+  .nc-bay-heading .nc-bay-info {
+    top: -3px;
+    right: -8px;
+  }
+  .nc-bay-actions {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+@media (orientation: portrait) and (max-height: 620px) {
+  .nc-deployment-screen .nc-loadout-slots,
+  .nc-deployment-screen > .nc-heading p {
+    display: none;
+  }
+  .nc-result-screen.nc-deck-screen {
+    gap: 7px;
+  }
+  .nc-result-screen .nc-result-heading .nc-result-wave {
+    font-size: 58px;
+  }
+  .nc-result-screen .nc-result-heading .nc-wave-caption {
+    margin: 0;
+  }
+  .nc-result-screen .nc-result-grid .nc-panel {
+    padding: 7px 4px;
+  }
+  .nc-result-screen .nc-result-grid strong {
+    font-size: 16px;
+  }
+  .nc-result-screen.nc-deck-screen .nc-reward strong {
+    font-size: 28px;
+  }
+  .nc-result-screen .nc-menu-note {
+    font-size: 9px;
+  }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-result-screen.nc-deck-screen {
+    max-width: none;
+    display: grid;
+    grid-template-columns: 36% minmax(0, 1fr);
+    grid-template-rows: 44px 40px minmax(0, 1fr);
+    gap: 5px 16px;
+    align-items: center;
+  }
+  .nc-result-screen > .nc-result-hero {
+    grid-column: 1;
+    grid-row: 1/-1;
+    height: 100%;
+    min-height: 0;
+  }
+  .nc-result-screen .nc-result-heading .nc-result-wave {
+    font-size: 64px;
+  }
+  .nc-result-screen .nc-result-heading .nc-wave-caption {
+    font-size: 7px;
+    margin: 0;
+  }
+  .nc-result-screen .nc-result-heading h1 {
+    font-size: 10px;
+  }
+  .nc-result-screen .nc-result-grid {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .nc-result-screen .nc-result-grid .nc-panel {
+    padding: 4px;
+  }
+  .nc-result-screen .nc-result-grid strong {
+    font-size: 15px;
+  }
+  .nc-result-screen .nc-result-grid span {
+    font-size: 8px;
+  }
+  .nc-result-screen.nc-deck-screen > .nc-reward {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: center;
+  }
+  .nc-result-screen.nc-deck-screen > .nc-reward strong {
+    font-size: 27px;
+  }
+  .nc-result-screen.nc-deck-screen > .nc-menu-note {
+    display: none;
+  }
+  .nc-result-screen > .nc-saved {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 36%;
+    font-size: 9px;
+  }
+  .nc-result-screen > .nc-rule {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .nc-result-inspect {
+    grid-column: 2;
+    grid-row: 3;
+    margin: 0;
+  }
+  .nc-next-system {
+    min-height: 44px;
+    padding: 5px 7px;
+    gap: 5px;
+  }
+  .nc-next-system small {
+    font-size: 6px;
+  }
+  .nc-next-system strong,
+  .nc-next-system > span {
+    font-size: 9px;
+  }
+  .nc-next-system > svg:first-child {
+    width: 20px;
+  }
+  .nc-guide-section {
+    width: calc(50% - 8px);
+    display: inline-block;
+    vertical-align: top;
+    margin-right: 8px;
+  }
+  .nc-quick-guide {
+    margin-bottom: 8px;
+  }
+  .nc-quick-guide > div {
+    padding: 8px;
+    gap: 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nc-wave-intro,
+  .nc-wave-badge > strong,
+  .nc-impact-vignette,
+  .nc-play-screen .nc-ability[data-ready="true"],
+  .nc-game-feedback {
+    animation: none;
+  }
+  .nc-impact-vignette {
+    display: none;
+  }
+}
+
+/* Keep reward rows and transient notices clear of neighboring controls. */
+.nc-field > .nc-game-feedback {
+  bottom: 72px;
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-result-screen.nc-deck-screen > .nc-reward {
+    height: 40px;
+    min-height: 0;
+    padding: 3px 8px;
+  }
+}

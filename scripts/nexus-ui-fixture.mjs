@@ -30,7 +30,7 @@ export async function installNexusFixture(page) {
     window.setNexusProfile=(patch)=>{window.nexusQa.profile={...window.nexusQa.profile,...patch};persist();};
     const log=(kind,delta,details)=>{const qa=window.nexusQa;qa.logs.unshift({id:qa.logs.length+1,kind,delta,balance:qa.profile.credits,details,created_at:new Date().toISOString()});};
     export const supabase={rpc:async(name,args)=>{
-      if(name==='nexus_core_records')return{data:[],error:null};
+      if(name==='nexus_core_records')return{data:JSON.parse(sessionStorage.getItem('nexus-qa-records')||'[]'),error:null};
       const qa=window.nexusQa;let data=qa.profile;
       const fail=(message)=>({data:null,error:{message}});
       if(name==='nexus_core_loadout'){

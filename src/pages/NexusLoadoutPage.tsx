@@ -1,7 +1,12 @@
+import { useCoreFeedback } from "@/hooks/useCoreFeedback";
 import { useMemo, useRef, useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Heart, Shield, Zap } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { ArrowRight, Heart, RotateCcw, Shield, Zap } from "lucide-react";
 import { ENDLESS } from "@/lib/nexus/core/catalog";
 import { createRun, isFinished, stats } from "@/lib/nexus/core/engine";
 import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
@@ -29,12 +34,14 @@ export default function NexusLoadoutPage() {
 function Deployment() {
   const { profile, userId, clubId, begin, saveLoadout } = useNexusCore();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const [loadout, setLoadout] = useState<CoreLoadout>(() => profile!.loadout);
   const [replace, setReplace] = useState(false);
   const [pending, setPending] = useState<"save" | "deploy" | null>(null);
   const [error, setError] = useState("");
   const deploymentId = useRef(crypto.randomUUID());
   const busy = useRef(false);
+  const { feedback, trigger } = useCoreFeedback();
   const preview = useMemo(
     () => createRun(ENDLESS, profile?.research, "preview", 1, loadout),
     [profile?.research, loadout],
@@ -52,7 +59,7 @@ function Deployment() {
     try {
       if (action === "save") {
         await saveLoadout(loadout);
-        toast.success("Loadout saved");
+        trigger("LOADOUT SAVED");
       } else {
         const run = await begin(ENDLESS, deploymentId.current, loadout);
         saveCoreRun(run, userId, clubId);
@@ -70,7 +77,7 @@ function Deployment() {
     }
   };
   return (
-    <>
+    <section className="nc-deck-screen nc-deployment-screen">
       <CoreHeading eyebrow="PREPARE YOUR CORE" title="Loadout">
         2 hardpoints · 4 power · 1 support
       </CoreHeading>
@@ -79,6 +86,9 @@ function Deployment() {
         value={loadout}
         onChange={setLoadout}
         disabled={!!pending}
+        focusId={params.get("item")}
+        feedback={feedback}
+        onFeedback={trigger}
       />
       <div className="nc-mini-stats">
         <span>
@@ -94,30 +104,21 @@ function Deployment() {
           {preview.energy}
         </span>
       </div>
-      {unclaimed ? (
-        <div className="nc-run-notice">
-          <p className="nc-note">Rewards waiting.</p>
-          <CoreLink to={`/nexus/results/${saved.scenarioId}`}>
-            Collect rewards
-          </CoreLink>
-        </div>
-      ) : active && !replace ? (
-        <div className="nc-run-notice">
-          <p className="nc-note">
-            Wave {saved.wave || 1} saved. A new run replaces this defense.
-          </p>
-          <CoreLink to={`/nexus/battle/${saved.scenarioId}`}>Resume</CoreLink>
-          <button className="nc-back" onClick={() => setReplace(true)}>
-            New run
-          </button>
-        </div>
-      ) : null}
-      {error && (
-        <p className="nc-rule" role="alert">
-          {error}
-        </p>
-      )}
-      <CoreMenuActions>
+      <CoreMenuActions
+        notice={
+          error ? (
+            <span role="alert">{error}</span>
+          ) : unclaimed ? (
+            "Rewards waiting"
+          ) : active ? (
+            replace ? (
+              `New run replaces saved wave ${saved.wave || 1}`
+            ) : (
+              `Wave ${saved.wave || 1} saved`
+            )
+          ) : undefined
+        }
+      >
         <button
           className="nc-button nc-button-secondary"
           aria-label="Save loadout"
@@ -126,6 +127,22 @@ function Deployment() {
         >
           {pending === "save" ? "Saving…" : "Save"}
         </button>
+        {unclaimed ? (
+          <CoreLink to={`/nexus/results/${saved.scenarioId}`}>
+            Collect rewards
+          </CoreLink>
+        ) : active && !replace ? (
+          <>
+            <CoreLink to={`/nexus/battle/${saved.scenarioId}`}>Resume</CoreLink>
+            <button
+              className="nc-icon-button"
+              aria-label="New run"
+              onClick={() => setReplace(true)}
+            >
+              <RotateCcw size={17} />
+            </button>
+          </>
+        ) : null}
         {!unclaimed && (!active || replace) && (
           <button
             className="nc-button"
@@ -137,6 +154,6 @@ function Deployment() {
           </button>
         )}
       </CoreMenuActions>
-    </>
+    </section>
   );
 }

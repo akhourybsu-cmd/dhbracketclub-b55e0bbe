@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import { useClub } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout, QUERY_TIMEOUT_MS } from "@/lib/asyncGuards";
@@ -16,6 +17,9 @@ interface RecordRow {
 export default function NexusLeaderboardPage() {
   const { club } = useClub();
   const mode = "endless";
+  const list = useRef<HTMLDivElement>(null);
+  const [page, setPage] = useState(0),
+    [pageSize, setPageSize] = useState(4);
   const query = useQuery({
     queryKey: ["nexus-core-records", club?.id, mode, BALANCE_VERSION],
     enabled: !!club,
@@ -33,8 +37,21 @@ export default function NexusLeaderboardPage() {
       return (data || []) as unknown as RecordRow[];
     },
   });
+  useEffect(() => {
+    if (!list.current) return;
+    const observer = new ResizeObserver(([entry]) =>
+      setPageSize(Math.max(1, Math.floor(entry.contentRect.height / 62))),
+    );
+    observer.observe(list.current);
+    return () => observer.disconnect();
+  }, [query.data?.length]);
+  const lastPage = Math.max(
+      0,
+      Math.ceil((query.data?.length || 0) / pageSize) - 1,
+    ),
+    current = Math.min(page, lastPage);
   return (
-    <>
+    <section className="nc-deck-screen nc-records-screen">
       <CoreHeading
         eyebrow={`${club?.name || "Club"} / records`}
         title="Club records"
@@ -64,24 +81,47 @@ export default function NexusLeaderboardPage() {
           <CoreLink to="/nexus">Play</CoreLink>
         </div>
       ) : (
-        <div className="nc-panel">
-          {query.data.map((r, i) => (
-            <div className="nc-record-row" key={r.user_id}>
-              <span className="nc-record-rank">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div className="nc-record-name">
-                {r.display_name || "Defender"}
-                <small>Endless · {r.waves} waves cleared</small>
-              </div>
-              <div className="nc-record-score">
-                {mode === "endless" ? r.waves : r.score.toLocaleString()}
-                <small>{mode === "endless" ? "WAVES" : "POINTS"}</small>
-              </div>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="nc-panel nc-records-list" ref={list}>
+            {query.data
+              .slice(current * pageSize, (current + 1) * pageSize)
+              .map((r, i) => (
+                <div className="nc-record-row" key={r.user_id}>
+                  <span className="nc-record-rank">
+                    {String(current * pageSize + i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="nc-record-name">
+                    {r.display_name || "Defender"}
+                    <small>Endless · {r.waves} waves cleared</small>
+                  </div>
+                  <div className="nc-record-score">
+                    {mode === "endless" ? r.waves : r.score.toLocaleString()}
+                    <small>{mode === "endless" ? "WAVES" : "POINTS"}</small>
+                  </div>
+                </div>
+              ))}
+          </div>
+          <div className="nc-record-pages" aria-label="Record pages">
+            <button
+              aria-label="Previous records"
+              disabled={current === 0}
+              onClick={() => setPage(current - 1)}
+            >
+              <ChevronLeft size={19} />
+            </button>
+            <span>
+              {current + 1} / {lastPage + 1}
+            </span>
+            <button
+              aria-label="Next records"
+              disabled={current === lastPage}
+              onClick={() => setPage(current + 1)}
+            >
+              <ChevronRight size={19} />
+            </button>
+          </div>
+        </>
       )}
-    </>
+    </section>
   );
 }

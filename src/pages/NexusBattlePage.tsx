@@ -1,3 +1,4 @@
+import { useCoreFeedback } from "@/hooks/useCoreFeedback";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -52,6 +53,8 @@ import type {
 import { useNexusCore } from "@/hooks/useNexusCore";
 import { useNexusSfx } from "@/hooks/useNexusSfx";
 import { CoreArena } from "@/components/nexus/core/CoreArena";
+import { CoreBattleCues } from "@/components/nexus/core/CoreBattleCues";
+import { CoreFeedback } from "@/components/nexus/core/CoreMotion";
 import {
   CoreBack,
   CoreHeading,
@@ -118,6 +121,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
     !!run && run.phase !== "ready" && !launch.autoStarted,
   );
   const [speed, setSpeed] = useState(1);
+  const { feedback, trigger } = useCoreFeedback();
   const [category, setCategory] = useState<
     "attack" | "weapons" | "defense" | "utility"
   >("attack");
@@ -276,6 +280,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
     const next = buyUpgrade(prev, scenario, id);
     if (next !== prev) {
       commit(next);
+      trigger("SYSTEM UPGRADED");
       if (!muted) sfx.play("upgrade");
     }
   };
@@ -283,6 +288,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
     const next = activateAbility(runRef.current!, scenario, ability);
     if (next !== runRef.current) {
       commit(next);
+      trigger(ability === "nova" ? "NOVA RELEASED" : "OVERDRIVE ONLINE");
       if (!muted)
         sfx.play(ability === "nova" ? "ability.cast.emp" : "ability.ready");
     }
@@ -347,9 +353,9 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
       </header>
       <div className="nc-battle-grid">
         <section className="nc-live-stage" aria-label="Battle arena">
-          <div className="nc-field">
+          <div className="nc-field" data-overdrive={run.overdriveTime > 0}>
             <div className="nc-wave-badge">
-              <strong>
+              <strong key={run.wave}>
                 {String(run.wave || 1).padStart(2, "0")}
                 <small>
                   {scenario.waves
@@ -374,6 +380,8 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               </div>
             )}
             <CoreArena run={run} scenario={scenario} />
+            <CoreBattleCues run={run} />
+            <CoreFeedback event={feedback} />
             {entering && (
               <div className="nc-entry-reveal" aria-hidden="true">
                 <Hexagon size={28} />
@@ -404,6 +412,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
           <div className="nc-ability-row">
             <button
               className="nc-ability"
+              data-ready={run.novaCd <= 0 && run.phase === "wave"}
               disabled={run.novaCd > 0 || run.phase !== "wave"}
               onClick={() => cast("nova")}
               aria-label={`Nova burst${run.novaCd > 0 ? ` ready in ${Math.ceil(run.novaCd)} seconds` : " ready"}`}
@@ -424,6 +433,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
             </button>
             <button
               className="nc-ability"
+              data-ready={run.overdriveCd <= 0 && run.phase === "wave"}
               disabled={run.overdriveCd > 0 || run.phase !== "wave"}
               onClick={() => cast("overdrive")}
               aria-label={`Overdrive${run.overdriveCd > 0 ? ` ready in ${Math.ceil(run.overdriveCd)} seconds` : " ready"}`}

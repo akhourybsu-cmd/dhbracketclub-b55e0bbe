@@ -24,7 +24,7 @@ export default function NexusCodexPage() {
           <span>Build your arsenal</span>
         </div>
       </div>
-      <details className="nc-guide-section">
+      <details className="nc-guide-section" {...{ name: "nexus-field-guide" }}>
         <summary>
           Combat & abilities
           <ChevronDown size={16} />
@@ -47,7 +47,7 @@ export default function NexusCodexPage() {
           </p>
         </div>
       </details>
-      <details className="nc-guide-section">
+      <details className="nc-guide-section" {...{ name: "nexus-field-guide" }}>
         <summary>
           Weapons & support
           <ChevronDown size={16} />
@@ -81,7 +81,7 @@ export default function NexusCodexPage() {
           </p>
         </div>
       </details>
-      <details className="nc-guide-section">
+      <details className="nc-guide-section" {...{ name: "nexus-field-guide" }}>
         <summary>
           Enemy intel
           <ChevronDown size={16} />
@@ -101,7 +101,7 @@ export default function NexusCodexPage() {
           ))}
         </div>
       </details>
-      <details className="nc-guide-section">
+      <details className="nc-guide-section" {...{ name: "nexus-field-guide" }}>
         <summary>
           Progression & rewards
           <ChevronDown size={16} />

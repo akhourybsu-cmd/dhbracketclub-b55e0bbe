@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Info, Lock, Orbit } from "lucide-react";
+import { ArrowUpRight, Check, Lock, Orbit } from "lucide-react";
 import {
   ARMORY,
   AUXILIARIES,
@@ -18,25 +18,65 @@ import type {
 import { CoreIcon } from "./CoreUI";
 import { CoreEquipmentArt } from "./CoreArtwork";
 import { CoreDetails } from "./CoreDetails";
+import {
+  CoreBayArtwork,
+  CoreBayHeading,
+  CoreSelectionDeck,
+} from "./CoreSelectionDeck";
+import { CoreFeedback } from "./CoreMotion";
+import type { CoreFeedbackEvent } from "@/hooks/useCoreFeedback";
+import { EQUIPMENT_BRIEF } from "./menuCopy";
+
 export function CoreLoadoutEditor({
   profile,
   value,
   onChange,
   disabled = false,
+  focusId,
+  feedback,
+  onFeedback,
 }: {
   profile: CoreProfile;
   value: CoreLoadout;
   onChange: (value: CoreLoadout) => void;
   disabled?: boolean;
+  focusId?: string | null;
+  feedback?: CoreFeedbackEvent | null;
+  onFeedback?: (label: string) => void;
 }) {
-  const [tab, setTab] = useState<"weapons" | "support">("weapons"),
-    [inspected, setInspected] = useState<(typeof ARMORY)[number] | null>(null);
-  const power = loadoutPower(value);
+  const focus = ARMORY.find((a) => a.id === focusId);
+  const [tab, setTab] = useState<"weapons" | "support">(
+    focus?.kind === "module" ? "support" : "weapons",
+  );
+  const [choices, setChoices] = useState({
+    weapons: focus?.kind === "weapon" ? focus.id : value.weapons[0] || "orbit",
+    support: focus?.kind === "module" ? focus.id : value.module || "repair",
+  });
+  const [inspected, setInspected] = useState<(typeof ARMORY)[number] | null>(
+    null,
+  );
+  const items = tab === "weapons" ? AUXILIARIES : MODULES;
+  const item = items.find((a) => a.id === choices[tab]) || items[0];
+  const power = loadoutPower(value),
+    weapon = item.kind === "weapon",
+    owned = profile.unlocks.includes(item.id);
+  const selected = weapon
+    ? value.weapons.includes(item.id as AuxiliaryId)
+    : value.module === item.id;
+  const next: CoreLoadout = weapon
+    ? {
+        ...value,
+        weapons: selected
+          ? value.weapons.filter((w) => w !== item.id)
+          : [...value.weapons, item.id as AuxiliaryId],
+      }
+    : { ...value, module: selected ? null : (item.id as ModuleId) };
+  const error = loadoutError(next);
   return (
     <section className="nc-loadout-editor" aria-label="Nexus loadout">
       <div className="nc-loadout-summary nc-panel">
         <div>
-          <CoreIcon name="Crosshair" size={23} />
+          <CoreIcon name="Crosshair" size={17} />
           <strong>Pulse cannon</strong>
           <small>PRIMARY · ALWAYS ONLINE</small>
         </div>
@@ -58,13 +98,35 @@ export function CoreLoadoutEditor({
       </div>
       <div className="nc-loadout-slots" aria-label="Auxiliary slots">
         {[0, 1].map((i) => {
-          const item = ARMORY.find((a) => a.id === value.weapons[i]);
+          const equipped = ARMORY.find((a) => a.id === value.weapons[i]);
           return (
-            <div key={i}>
-              <small>HARDPOINT {i + 1}</small>
-              <strong>{item?.name || "Empty"}</strong>
-              <span>{item ? `${item.power} power` : "Select a weapon"}</span>
-            </div>
+            <button
+              key={i}
+              data-equipped={!!equipped}
+              aria-label={`Hardpoint ${i + 1}: ${equipped?.name || "Empty"}`}
+              onClick={() => {
+                setTab("weapons");
+                setChoices((prev) => ({
+                  ...prev,
+                  weapons:
+                    equipped?.id ||
+                    AUXILIARIES.find(
+                      (a) => !value.weapons.includes(a.id as AuxiliaryId),
+                    )?.id ||
+                    "orbit",
+                }));
+              }}
+            >
+              {equipped ? (
+                <CoreEquipmentArt id={equipped.id} />
+              ) : (
+                <CoreIcon name="Crosshair" size={22} />
+              )}
+              <span>
+                <small>HARDPOINT {i + 1}</small>
+                <strong>{equipped?.name || "Empty"}</strong>
+              </span>
+            </button>
           );
         })}
       </div>
@@ -73,94 +135,94 @@ export function CoreLoadoutEditor({
         role="tablist"
         aria-label="Loadout equipment"
       >
-        <button
-          role="tab"
-          aria-selected={tab === "weapons"}
-          id="equip-weapons"
-          aria-controls="equip-grid"
-          onClick={() => setTab("weapons")}
-        >
-          Weapons <small>{value.weapons.length}/2</small>
-        </button>
-        <button
-          role="tab"
-          aria-selected={tab === "support"}
-          id="equip-support"
-          aria-controls="equip-grid"
-          onClick={() => setTab("support")}
-        >
-          Support <small>{value.module ? "1/1" : "0/1"}</small>
-        </button>
+        {(["weapons", "support"] as const).map((id) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+          >
+            {id === "weapons" ? "Weapons" : "Support"}{" "}
+            <small>
+              {id === "weapons"
+                ? `${value.weapons.length}/2`
+                : value.module
+                  ? "1/1"
+                  : "0/1"}
+            </small>
+          </button>
+        ))}
       </div>
-      <div
-        className="nc-item-grid"
-        id="equip-grid"
-        role="tabpanel"
-        aria-labelledby={`equip-${tab}`}
+      <CoreSelectionDeck
+        label="Inspect loadout equipment"
+        value={item.id}
+        onChange={(id) => setChoices((prev) => ({ ...prev, [tab]: id }))}
+        items={items.map((a) => ({
+          ...a,
+          icon: undefined,
+          locked: !profile.unlocks.includes(a.id),
+          installed:
+            a.kind === "weapon"
+              ? value.weapons.includes(a.id as AuxiliaryId)
+              : value.module === a.id,
+        }))}
       >
-        {(tab === "weapons" ? AUXILIARIES : MODULES).map((item) => {
-          const weapon = item.kind === "weapon",
-            owned = profile.unlocks.includes(item.id),
-            selected = weapon
-              ? value.weapons.includes(item.id as AuxiliaryId)
-              : value.module === item.id;
-          const next = weapon
-            ? {
-                ...value,
-                weapons: selected
-                  ? value.weapons.filter((w) => w !== item.id)
-                  : [...value.weapons, item.id as AuxiliaryId],
-              }
-            : { ...value, module: selected ? null : (item.id as ModuleId) };
-          const error = loadoutError(next);
-          return (
-            <div className="nc-item" data-selected={selected} key={item.id}>
-              <button
-                className="nc-item-select"
-                type="button"
-                aria-label={`${selected ? "Unequip" : "Equip"} ${item.name}`}
-                aria-pressed={selected}
-                disabled={disabled || !owned || (!selected && !!error)}
-                onClick={() => onChange(next)}
+        <CoreBayArtwork id={item.id} />
+        <CoreBayHeading
+          name={item.name}
+          role={item.role}
+          brief={EQUIPMENT_BRIEF[item.id]}
+          onInfo={() => setInspected(item)}
+        />
+        <div className="nc-bay-actions">
+          {owned && !selected && error && (
+            <div className="nc-bay-status">{error}</div>
+          )}
+          <div className="nc-bay-action-row">
+            <button
+              className="nc-button"
+              aria-label={`${selected ? "Unequip" : "Equip"} ${item.name}`}
+              aria-pressed={selected}
+              disabled={disabled || !owned || (!selected && !!error)}
+              onClick={() => {
+                onChange(next);
+                onFeedback?.(selected ? "SYSTEM REMOVED" : "SYSTEM EQUIPPED");
+              }}
+            >
+              {selected ? (
+                <>
+                  <Check size={16} /> EQUIPPED · REMOVE
+                </>
+              ) : !owned ? (
+                <>
+                  <Lock size={14} />
+                  <Orbit size={13} />
+                  {item.cost}
+                </>
+              ) : error ? (
+                power + item.power > POWER_BUDGET ? (
+                  "POWER LIMIT"
+                ) : (
+                  "SLOTS FULL"
+                )
+              ) : (
+                "EQUIP SYSTEM"
+              )}
+            </button>
+            {!owned && (
+              <Link
+                className="nc-button nc-button-secondary"
+                to={`/nexus/research?tab=${weapon ? "armory" : "support"}&item=${item.id}`}
+                aria-label={`Unlock ${item.name} in armory`}
               >
-                <CoreEquipmentArt id={item.id} />
-                <strong>{item.name}</strong>
-                <span>
-                  {item.role}
-                  {weapon ? ` · ${item.power} power` : ""}
-                </span>
-                <small>
-                  {selected ? (
-                    "EQUIPPED"
-                  ) : !owned ? (
-                    <span className="nc-item-price">
-                      <Lock size={10} />
-                      <Orbit size={10} />
-                      {item.cost}
-                    </span>
-                  ) : error ? (
-                    power + item.power > 4 ? (
-                      "POWER LIMIT"
-                    ) : (
-                      "SLOTS FULL"
-                    )
-                  ) : (
-                    "EQUIP"
-                  )}
-                </small>
-              </button>
-              {selected && <Check size={13} className="nc-item-mark" />}
-              <button
-                className="nc-item-info"
-                aria-label={`About ${item.name}`}
-                onClick={() => setInspected(item)}
-              >
-                <Info size={16} />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <ArrowUpRight size={17} />
+                Unlock
+              </Link>
+            )}
+          </div>
+        </div>
+        <CoreFeedback event={feedback || null} />
+      </CoreSelectionDeck>
       <CoreDetails item={inspected} onClose={() => setInspected(null)}>
         {inspected && !profile.unlocks.includes(inspected.id) && (
           <>
@@ -169,7 +231,7 @@ export function CoreLoadoutEditor({
             </p>
             <Link
               className="nc-button nc-button-secondary"
-              to="/nexus/research"
+              to={`/nexus/research?tab=${inspected.kind === "weapon" ? "armory" : "support"}&item=${inspected.id}`}
             >
               Open armory
             </Link>

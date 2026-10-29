@@ -17,6 +17,8 @@ try {
   const page = await browser.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
   await installNexusFixture(page);
+  const inspect = (name) =>
+    page.getByRole("tab", { name: `Inspect ${name}`, exact: true }).click();
   const go = (route = "/nexus") =>
     page.goto(
       `http://127.0.0.1:8080/scripts/fixtures/nexus-core.html?route=${encodeURIComponent(route)}`,
@@ -133,6 +135,7 @@ try {
   ]);
   assert.equal(await page.evaluate(() => window.nexusQa.profile.credits), 49);
   await go("/nexus/loadout/endless");
+  await inspect("Orbital blades");
   await page
     .getByRole("button", { name: "Equip Orbital blades", exact: true })
     .click();
@@ -140,7 +143,7 @@ try {
     page.getByRole("button", { name: "Unequip Orbital blades", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Save loadout", exact: true }).click();
-  await expect(page.getByText("Loadout saved")).toBeVisible();
+  await expect(page.getByText("LOADOUT SAVED", { exact: true })).toBeVisible();
   await go("/nexus/loadout/endless");
   await expect(
     page.getByRole("button", { name: "Unequip Orbital blades", exact: true }),
@@ -189,37 +192,47 @@ try {
     }),
   );
   await go("/nexus/loadout/endless");
+  await inspect("Rail lance");
   await page
     .getByRole("button", { name: "Equip Rail lance", exact: true })
     .click();
   await expect(page.getByLabel("4 of 4 power used")).toBeVisible();
+  await inspect("Chain arc");
   await expect(
     page.getByRole("button", { name: "Equip Chain arc", exact: true }),
   ).toBeDisabled();
+  await inspect("Rail lance");
+  await inspect("Rail lance");
   await page
     .getByRole("button", { name: "Unequip Rail lance", exact: true })
     .click();
+  await inspect("Orbital blades");
   await page
     .getByRole("button", { name: "Unequip Orbital blades", exact: true })
     .click();
+  await inspect("Chain arc");
   await page
     .getByRole("button", { name: "Equip Chain arc", exact: true })
     .click();
+  await inspect("Siege mortar");
   await page
     .getByRole("button", { name: "Equip Siege mortar", exact: true })
     .click();
   await page.getByRole("tab", { name: /Support/ }).click();
+  await inspect("Stasis field");
   await page
     .getByRole("button", { name: "Equip Stasis field", exact: true })
     .click();
+  await inspect("Repair nanites");
   await page
     .getByRole("button", { name: "Equip Repair nanites", exact: true })
     .click();
+  await inspect("Stasis field");
   await expect(
     page.getByRole("button", { name: "Equip Stasis field", exact: true }),
   ).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Save loadout", exact: true }).click();
-  await expect(page.getByText("Loadout saved")).toBeVisible();
+  await expect(page.getByText("LOADOUT SAVED", { exact: true })).toBeVisible();
   assert.deepEqual(await page.evaluate(() => window.nexusQa.profile.loadout), {
     weapons: ["arc", "mortar"],
     module: "repair",
@@ -234,7 +247,9 @@ try {
   await page
     .getByRole("button", { name: "Research Weapon amplifier", exact: true })
     .click();
-  await expect(page.getByText("LEVEL 1 / 10", { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("Weapon amplifier level 1 of 10", { exact: true }),
+  ).toBeVisible();
   assert.equal(
     await page.evaluate(() => window.nexusQa.profile.research.weapons),
     1,
