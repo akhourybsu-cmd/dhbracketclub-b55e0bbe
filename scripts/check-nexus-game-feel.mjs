@@ -251,9 +251,11 @@ try {
   await page
     .getByRole("button", { name: "Unlock Orbital blades", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("SYSTEM UNLOCKED");
+  await expect(
+    page.getByRole("dialog", { name: "Orbital blades", exact: true }),
+  ).toBeVisible();
   assert.equal(await page.evaluate(() => window.nexusQa.profile.credits), 910);
-  await page.getByRole("link", { name: "Equip", exact: true }).click();
+  await page.getByRole("link", { name: "Equip now", exact: true }).click();
   await page
     .getByRole("button", { name: "Equip Orbital blades", exact: true })
     .click();

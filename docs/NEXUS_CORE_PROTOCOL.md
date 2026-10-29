@@ -9,7 +9,7 @@ Nexus is one endless, mobile-first central-core survival game. Enemies approach 
 3. Deploy. Selected weapons start online at level 1 without costing battle energy. Only equipped weapons and the selected support module can receive their battle upgrades.
 4. Earn energy from kills and wave clears. Buy attack, weapon, defense and support upgrades. Trigger Nova (20-second cooldown) and Overdrive (six seconds, 30-second cooldown).
 5. End the run when the core falls, or choose **End run & collect** in the pause menu. Spend the permanent credits on equipment or core research. Save & exit preserves an unfinished local defense without collecting it.
-6. Repeat. Credits, research, equipment ownership and saved loadout sync across devices; active combat checkpoints stay on the current device.
+6. Repeat. Credits, research, equipment ownership and saved loadout sync across devices; active combat checkpoints stay on the current device. Lifetime waves advance eight defender ranks, while permanent achievements fill an eight-medal career collection. The title recommends a milestone, an affordable unlock or an owned weapon to equip. See [career progression](NEXUS_CAREER.md).
 
 ## Loadout choices
 
@@ -59,6 +59,7 @@ A first wave-10 run pays 42 + 55 = 97 credits; a repeat pays 42. A first wave-15
 | Engine and telemetry | `src/lib/nexus/core/engine.ts` |
 | Versioned combat rules | `src/lib/nexus/core/rules.ts` |
 | Weapon values, upgrade previews, research prices | `src/lib/nexus/core/systems.ts` |
+| Career ranks, medals and contextual goals | `src/lib/nexus/core/career.ts`, `CoreCareer.tsx`, `CoreUnlockReveal.tsx`, `career.css` |
 | Equipment, loadout validation, upgrade gates, milestones | `src/lib/nexus/core/progression.ts` |
 | Enemy/upgrade/research catalog and archived scenarios | `src/lib/nexus/core/catalog.ts` |
 | Checkpoint validation and migration | `src/lib/nexus/core/persistence.ts` |
@@ -104,3 +105,5 @@ The older database scripts reproduce historical migrations only. Use the Endless
 The dedicated menu browser check covers eight viewport sizes, a direct body portal, concise title copy, 44px controls, fixed Deploy/Play Again actions, modal geometry, safe areas, viewport resizing, one-tap fresh starts, replay, paused restores, exit cleanup and centered SVG animation with reduced-motion support.
 
 The game-feel browser check, `node scripts/check-nexus-game-feel.mjs`, verifies no vertical scrolling on the primary screens at all eight viewport sizes. It visits every equipment and research selection, checks 44px targets, keyboard focus, adaptive record pages, result dialogs, exclusive guide expansion, reduced motion, moving equipment/backgrounds and actual purchase/equip/combat feedback. `check-nexus-core-ui.mjs` follows the same selection workflow for economy and saved-loadout regression checks.
+
+`node scripts/check-nexus-career.mjs` covers ranks, medals, contextual objectives, acquisition reveals and direct equip links at all eight screen sizes. It checks zero credit grants from viewing career, failed purchases without acquisition feedback, promotion only after reward settlement, and receipt refresh without duplicate progression or celebrations. Career uses saved `total_waves`, `endless_best`, `unlocks` and `research`; ranks and medals grant no additional currency and require no new database schema.

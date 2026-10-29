@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import { motion, MotionConfig, useReducedMotion } from "framer-motion";
@@ -14,14 +14,19 @@ import {
 } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
 import { CoreAtmosphere, CoreCounter } from "./CoreMotion";
+import { CoreCareerDialog, CoreRankCrest } from "./CoreCareer";
+import { defenderRank } from "@/lib/nexus/core/career";
 import "./core.css";
 import "./progression.css";
 import "./menus.css";
 import "./game-feel.css";
+import "./career.css";
 
 export function CoreShell({ children }: { children: ReactNode }) {
   const { profile } = useNexusCore();
   const reduced = useReducedMotion();
+  const [careerOpen, setCareerOpen] = useState(false);
+  const rank = defenderRank(profile?.totalWaves || 0);
   const { pathname, key: menuKey } = useLocation();
   const content = useRef<HTMLElement>(null);
   const battle = pathname.startsWith("/nexus/battle/");
@@ -77,6 +82,15 @@ export function CoreShell({ children }: { children: ReactNode }) {
           <Hexagon size={19} />
           <span>NEXUS</span>
         </Link>
+        <button
+          className="nc-icon-button nc-career-button"
+          aria-label="Open defender career"
+          disabled={!profile}
+          onClick={() => setCareerOpen(true)}
+        >
+          <CoreRankCrest level={rank.level} />
+          <small>{rank.level}</small>
+        </button>
         <Link
           to="/nexus/codex"
           className="nc-icon-button"
@@ -126,6 +140,13 @@ export function CoreShell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
+      )}
+      {profile && (
+        <CoreCareerDialog
+          profile={profile}
+          open={careerOpen}
+          onClose={() => setCareerOpen(false)}
+        />
       )}
     </div>,
     document.body,

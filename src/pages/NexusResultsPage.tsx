@@ -16,6 +16,11 @@ import {
 } from "@/components/nexus/core/CoreArtwork";
 import { CoreDetails } from "@/components/nexus/core/CoreDetails";
 import {
+  CoreCareerDialog,
+  CoreCareerSummary,
+} from "@/components/nexus/core/CoreCareer";
+import { careerSnapshot, careerOutcome } from "@/lib/nexus/core/career";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -44,6 +49,8 @@ function Debrief() {
   const replayId = useRef(crypto.randomUUID());
   const replayBusy = useRef(false);
   const previousBest = useRef(profile?.bestWave || 0);
+  const previousCareer = useRef(profile ? careerSnapshot(profile) : null);
+  const [careerOpen, setCareerOpen] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playError, setPlayError] = useState("");
   const navigate = useNavigate();
@@ -107,6 +114,20 @@ function Debrief() {
   const stars = award?.stars ?? runStars(run, scenario);
   const breakdown = rewardBreakdown(run, scenario, profile);
   const reward = award?.reward ?? breakdown.total;
+  const career =
+    sync === "saved" &&
+    (run.balanceVersion || 0) >= 4 &&
+    profile &&
+    previousCareer.current
+      ? careerOutcome(previousCareer.current, profile)
+      : null;
+  const headline = career?.promoted
+    ? "RANK UP"
+    : career?.medals.length
+      ? `${career.medals.length === 1 ? "MEDAL" : `${career.medals.length} MEDALS`} EARNED`
+      : run.retired || won
+        ? "RUN COMPLETE"
+        : "CORE LOST";
   const nextUnlock = ARMORY.find((a) => !profile?.unlocks.includes(a.id));
   const replay = async () => {
     if (replayBusy.current || sync !== "saved") return;
@@ -130,10 +151,14 @@ function Debrief() {
   };
   return (
     <section className="nc-deck-screen nc-result-screen">
-      <div className="nc-result-hero">
+      <div
+        className="nc-result-hero"
+        data-promotion={career?.promoted}
+        data-medal={!!career?.medals.length}
+      >
         <CoreSigil loadout={run.loadout} />
         <div className="nc-result-heading">
-          <h1>{run.retired || won ? "RUN COMPLETE" : "CORE LOST"}</h1>
+          <h1>{headline}</h1>
           <div className="nc-result-wave">
             <CoreCounter value={run.cleared} digits={2} fromZero />
           </div>
@@ -173,11 +198,20 @@ function Debrief() {
         </div>
       )}
       <div className="nc-reward">
-        <Orbit size={21} />
-        <strong>
-          +<CoreCounter value={reward} fromZero />
-        </strong>
-        <span>CREDITS</span>
+        <div className="nc-reward-currency">
+          <Orbit size={21} />
+          <strong>
+            +<CoreCounter value={reward} fromZero />
+          </strong>
+          <span>CREDITS</span>
+        </div>
+        {profile && (
+          <CoreCareerSummary
+            profile={profile}
+            bankedWaves={career ? Math.min(run.cleared, career.bankedWaves) : 0}
+            onClick={() => setCareerOpen(true)}
+          />
+        )}
       </div>
       <p className="nc-menu-note">
         {award?.waves ?? breakdown.waves} waves
@@ -258,6 +292,13 @@ function Debrief() {
           </div>
         )}
       </CoreDetails>
+      {profile && (
+        <CoreCareerDialog
+          profile={profile}
+          open={careerOpen}
+          onClose={() => setCareerOpen(false)}
+        />
+      )}
       <CoreMenuActions
         label="Result actions"
         notice={playError ? <span role="alert">{playError}</span> : undefined}

@@ -380,7 +380,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               </div>
             )}
             <CoreArena run={run} scenario={scenario} />
-            <CoreBattleCues run={run} />
+            <CoreBattleCues run={run} bestWave={profile?.bestWave || 0} />
             <CoreFeedback event={feedback} />
             {entering && (
               <div className="nc-entry-reveal" aria-hidden="true">

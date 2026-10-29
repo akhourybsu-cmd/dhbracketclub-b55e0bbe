@@ -24,6 +24,7 @@ import {
 } from "@/components/nexus/core/CoreSelectionDeck";
 import { CoreFeedback } from "@/components/nexus/core/CoreMotion";
 import { EQUIPMENT_BRIEF } from "@/components/nexus/core/menuCopy";
+import { CoreUnlockReveal } from "@/components/nexus/core/CoreUnlockReveal";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,9 @@ function Lab() {
     [inspected, setInspected] = useState<CoreDetailItem | null>(null),
     [panel, setPanel] = useState<"milestones" | "history" | null>(null);
   const busy = useRef(false);
+  const [acquired, setAcquired] = useState<(typeof ARMORY)[number] | null>(
+    null,
+  );
   const { feedback, trigger } = useCoreFeedback();
   if (!profile) return null;
   const buy = async (id: ResearchId | UnlockId, equipment = false) => {
@@ -55,9 +59,14 @@ function Lab() {
     busy.current = true;
     setPending(id);
     try {
-      if (equipment) await unlock(id as UnlockId);
-      else await research(id as ResearchId);
-      trigger(equipment ? "SYSTEM UNLOCKED" : "CORE UPGRADED");
+      if (equipment) {
+        await unlock(id as UnlockId);
+        setAcquired(ARMORY.find((a) => a.id === id) || null);
+      } else {
+        const level = profile.research[id as ResearchId] || 0;
+        await research(id as ResearchId);
+        trigger(level >= 9 ? "RESEARCH MASTERED" : "CORE UPGRADED");
+      }
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Purchase failed. Try again.",
@@ -249,6 +258,7 @@ function Lab() {
           : `${profile.totalWaves} lifetime waves · Unlock, then equip in Loadout`}
       </p>
       <CoreDetails item={inspected} onClose={() => setInspected(null)} />
+      <CoreUnlockReveal item={acquired} onClose={() => setAcquired(null)} />
       <Dialog
         open={!!panel}
         onOpenChange={(open) => {

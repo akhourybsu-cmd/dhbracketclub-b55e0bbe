@@ -43,6 +43,7 @@ export async function installNexusFixture(page) {
         qa.tickets[args.p_id]=data;qa.profile={...qa.profile,loadout:data.loadout};
       }
       if(name==='nexus_core_unlock'){
+        if(qa.failUnlock)return fail('Armory offline');
         const item=ARMORY.find(a=>a.id===args.p_item);if(!item)return fail('Unknown equipment');
         if(!qa.profile.unlocks.includes(item.id)){
           if(qa.profile.total_waves<item.waves||qa.profile.credits<item.cost)return fail('Not enough progress or credits');

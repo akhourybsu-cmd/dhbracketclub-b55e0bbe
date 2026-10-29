@@ -1,0 +1,541 @@
+/* Permanent career uses existing account progression; the primary screens stay compact. */
+.nc-rank-crest {
+  width: 52px;
+  height: 52px;
+  color: hsl(173 90% 72%);
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 9px hsl(173 95% 60% / 0.17));
+}
+.nc-rank-crest[data-rank="4"],
+.nc-rank-crest[data-rank="5"] {
+  color: hsl(200 100% 76%);
+}
+.nc-rank-crest[data-rank="6"],
+.nc-rank-crest[data-rank="7"],
+.nc-rank-crest[data-rank="8"] {
+  color: hsl(42 100% 73%);
+}
+.nc-game-header {
+  gap: 4px;
+}
+.nc-game-header .nc-game-wallet {
+  padding-inline: 8px;
+  gap: 5px;
+}
+.nc-game-header .nc-game-brand span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+.nc-game-header .nc-career-button {
+  position: relative;
+  color: hsl(173 90% 72%);
+}
+.nc-career-button > .nc-rank-crest {
+  width: 34px;
+  height: 34px;
+}
+.nc-career-button > small {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  font:
+    500 8px "Space Grotesk",
+    sans-serif;
+  background: hsl(215 40% 8%);
+  color: hsl(42 95% 75%);
+  padding: 2px;
+  border-radius: 4px;
+}
+.nc-objective-strip {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 2px;
+  margin-top: 8px;
+  text-align: left;
+  border-top: 1px solid hsl(184 40% 50% / 0.14);
+}
+.nc-objective-strip > svg {
+  color: hsl(173 90% 72%);
+  flex-shrink: 0;
+}
+.nc-objective-strip > span {
+  font-size: 9px;
+  white-space: nowrap;
+}
+.nc-objective-strip > strong {
+  min-width: 30px;
+  justify-content: flex-end;
+}
+.nc-objective-strip > div > i {
+  transition: width 0.5s ease-out;
+}
+.nx-mode.nc-shell.nc-career-dialog {
+  max-width: 460px;
+  gap: 12px;
+}
+.nc-career-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.nc-career-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 2px 0 14px;
+}
+.nc-career-identity > .nc-rank-crest {
+  width: 64px;
+  height: 64px;
+}
+.nc-career-identity small {
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  color: hsl(173 65% 70%);
+}
+.nc-career-identity h3 {
+  font:
+    500 27px/1.1 "Space Grotesk",
+    sans-serif;
+  margin: 5px 0;
+  letter-spacing: -0.03em;
+  color: hsl(195 35% 96%);
+}
+.nc-career-identity span {
+  font-size: 10px;
+  color: hsl(200 20% 65%);
+}
+.nc-career-dialog .nc-menu-tabs {
+  margin: 0 0 12px;
+}
+.nc-career-dialog .nc-menu-tabs button {
+  min-height: 44px;
+}
+.nc-career-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.nc-rank-progress progress,
+.nc-medal-detail progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin: 0 0 6px;
+}
+.nc-rank-progress span {
+  display: block;
+  text-align: right;
+  font-size: 10px;
+  color: hsl(200 20% 70%);
+}
+.nc-career-objective {
+  padding: 14px;
+  border: 1px solid hsl(173 70% 60% / 0.22);
+  border-radius: 12px;
+  background: radial-gradient(at 0 0, hsl(173 70% 30% / 0.15), transparent 80%);
+}
+.nc-career-objective > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: hsl(173 80% 70%);
+  margin-bottom: 8px;
+}
+.nc-career-objective > div small {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+.nc-career-objective > strong {
+  display: block;
+  font:
+    500 18px/1.15 "Space Grotesk",
+    sans-serif;
+}
+.nc-career-objective > p {
+  font-size: 11px;
+  line-height: 1.5;
+  color: hsl(200 20% 72%);
+  margin: 6px 0 10px;
+}
+.nc-career-objective > .nc-button {
+  display: flex;
+  padding: 9px 12px;
+  min-height: 44px;
+  font-size: 12px;
+}
+.nc-next-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+}
+.nc-next-rank > .nc-rank-crest {
+  width: 36px;
+  height: 36px;
+}
+.nc-next-rank > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nc-next-rank small {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  color: hsl(200 20% 62%);
+}
+.nc-next-rank strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.nc-next-rank > span:last-child {
+  margin-left: auto;
+  font-size: 10px;
+  color: hsl(200 20% 65%);
+}
+.nc-medal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.nc-medal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 6px;
+  border: 1px solid hsl(190 30% 45% / 0.22);
+  border-radius: 12px;
+  color: hsl(200 20% 52%);
+  background: hsl(216 35% 9%);
+}
+.nc-medal > strong {
+  font:
+    500 11px "Space Grotesk",
+    sans-serif;
+  color: hsl(200 25% 80%);
+}
+.nc-medal > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 8px;
+}
+.nc-medal[data-earned="true"] {
+  color: hsl(42 100% 73%);
+  background: radial-gradient(at 50% 0, hsl(42 70% 45% / 0.1), transparent 80%);
+}
+.nc-medal[aria-pressed="true"] {
+  border-color: hsl(173 90% 70% / 0.6);
+  box-shadow: inset 0 -2px hsl(173 90% 70% / 0.3);
+}
+.nc-medal-detail {
+  min-height: 65px;
+  padding: 12px 2px 5px;
+}
+.nc-medal-detail strong {
+  font-size: 11px;
+  color: hsl(195 30% 90%);
+}
+.nc-medal-detail p {
+  font-size: 10px;
+  color: hsl(200 20% 67%);
+  margin: 4px 0 8px;
+  line-height: 1.5;
+}
+.nc-medal-page .nc-record-pages {
+  margin-top: 5px;
+}
+.nc-result-screen .nc-reward {
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+}
+.nc-reward-currency {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.nc-reward-currency > svg {
+  width: 17px;
+}
+.nc-reward-currency > span {
+  font-size: 8px;
+  letter-spacing: 0.06em;
+}
+.nc-career-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 0 0 12px;
+  border-left: 1px solid hsl(42 70% 60% / 0.18);
+  text-align: left;
+  color: hsl(173 85% 74%);
+}
+.nc-career-summary > .nc-rank-crest {
+  width: 32px;
+  height: 32px;
+}
+.nc-career-summary > span {
+  min-width: 65px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nc-result-screen .nc-reward .nc-career-summary strong {
+  font:
+    500 11px "Space Grotesk",
+    sans-serif;
+}
+.nc-career-summary small {
+  font-size: 8px;
+  color: hsl(200 20% 66%);
+  white-space: nowrap;
+}
+.nc-career-summary progress {
+  width: 100%;
+  height: 3px;
+  margin: 0;
+}
+.nc-career-summary > svg:last-child {
+  width: 11px;
+}
+.nc-result-hero[data-promotion="true"] > .nc-sigil {
+  color: hsl(42 100% 75%);
+  opacity: 0.6;
+  animation: nc-rank-arrive 1s ease-out both;
+}
+.nc-result-hero[data-promotion="true"] h1,
+.nc-result-hero[data-medal="true"] h1 {
+  color: hsl(42 100% 75%);
+  animation: nc-menu-arrive 0.4s both;
+}
+.nx-mode.nc-shell.nc-unlock-reveal {
+  text-align: center;
+  max-width: 440px;
+  gap: 10px;
+}
+.nc-unlock-reveal .nc-detail-role {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: hsl(42 100% 75%);
+}
+.nc-unlock-reveal h2 {
+  font-size: 29px;
+}
+.nc-unlock-reveal > p {
+  margin: 0;
+}
+.nc-unlock-art {
+  position: relative;
+  min-height: 80px;
+  height: min(26dvh, 220px);
+  isolation: isolate;
+}
+.nc-unlock-art > .nc-bay-artwork {
+  max-width: 270px;
+  margin: 0 auto;
+}
+.nc-unlock-ring {
+  position: absolute;
+  pointer-events: none;
+  inset: 50% auto auto 50%;
+  width: 120px;
+  height: 120px;
+  border: 1px solid hsl(42 95% 70% / 0.5);
+  border-radius: 50%;
+  animation: nc-unlock-expand 1.5s ease-out both;
+  z-index: -1;
+}
+.nc-unlock-ring:nth-last-child(1) {
+  animation-delay: 0.2s;
+}
+.nc-unlock-tag {
+  color: hsl(173 80% 72%);
+  font-size: 8px !important;
+  letter-spacing: 0.18em;
+}
+.nc-unlock-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.nc-unlock-actions > .nc-button {
+  min-height: 48px;
+  display: flex;
+}
+.nc-run-target {
+  position: absolute;
+  z-index: 2;
+  top: 16px;
+  left: 50%;
+  translate: -50% 0;
+  width: 92px;
+  color: hsl(173 70% 70%);
+  pointer-events: none;
+}
+.nc-run-target > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font:
+    500 8px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.1em;
+}
+.nc-run-target progress {
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin: 6px 0 0;
+  opacity: 0.65;
+}
+@keyframes nc-rank-arrive {
+  from {
+    scale: 0.6;
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    scale: 1;
+    opacity: 0.6;
+    filter: blur(0);
+  }
+}
+@keyframes nc-unlock-expand {
+  from {
+    transform: translate(-50%, -50%) scale(0.35);
+    opacity: 0.9;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(2.2);
+    opacity: 0;
+  }
+}
+@media (max-width: 360px) {
+  .nc-result-screen .nc-reward {
+    padding: 10px;
+    gap: 5px;
+  }
+  .nc-career-summary {
+    padding-left: 8px;
+    gap: 4px;
+  }
+  .nc-career-summary > .nc-rank-crest {
+    width: 26px;
+    height: 26px;
+  }
+  .nc-career-summary > svg:last-child {
+    display: none;
+  }
+  .nc-reward-currency {
+    gap: 4px;
+  }
+  .nc-result-screen.nc-deck-screen .nc-reward-currency strong {
+    font-size: 28px;
+  }
+}
+@media (max-height: 650px) and (orientation: portrait) {
+  .nx-mode.nc-shell.nc-career-dialog {
+    padding: 18px;
+    padding-bottom: max(18px, var(--nc-menu-safe-bottom));
+    gap: 8px;
+  }
+  .nc-career-dialog .nc-career-identity {
+    margin-bottom: 8px;
+    gap: 10px;
+  }
+  .nc-career-dialog .nc-menu-tabs {
+    margin-bottom: 6px;
+  }
+  .nc-career-identity > .nc-rank-crest {
+    width: 46px;
+    height: 46px;
+  }
+  .nc-career-identity h3 {
+    font-size: 23px;
+  }
+  .nc-career-overview {
+    gap: 8px;
+  }
+  .nc-career-objective {
+    padding: 10px;
+  }
+  .nc-career-objective > strong {
+    font-size: 16px;
+  }
+  .nc-career-objective > p {
+    font-size: 10px;
+    margin: 5px 0 8px;
+  }
+  .nc-medal {
+    padding: 9px 5px;
+    gap: 5px;
+  }
+  .nc-medal-detail {
+    padding-top: 8px;
+  }
+  .nc-title-shell .nc-title-screen {
+    grid-template-rows: auto minmax(85px, 1fr) auto;
+  }
+  .nc-objective-strip {
+    margin-top: 5px;
+  }
+}
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-result-screen .nc-career-summary {
+    display: none;
+  }
+  .nc-result-screen .nc-reward {
+    justify-content: center;
+  }
+  .nc-run-target {
+    top: 12px;
+  }
+  .nc-unlock-art {
+    height: 65px;
+    min-height: 65px;
+  }
+  .nc-unlock-reveal .nc-unlock-actions {
+    flex-direction: row;
+    margin-top: 2px;
+  }
+  .nc-unlock-actions > .nc-button {
+    flex: 1;
+    min-height: 44px;
+  }
+  .nc-unlock-reveal h2 {
+    font-size: 23px;
+  }
+  .nc-unlock-reveal .nc-unlock-tag {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nc-unlock-ring {
+    display: none;
+  }
+  .nc-result-hero[data-promotion="true"] > .nc-sigil,
+  .nc-result-hero[data-promotion="true"] h1,
+  .nc-result-hero[data-medal="true"] h1 {
+    animation: none;
+  }
+}
+
+.nc-game-header .nc-game-wallet {
+  min-width: 0;
+  flex-shrink: 1;
+}
+.nc-game-wallet > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

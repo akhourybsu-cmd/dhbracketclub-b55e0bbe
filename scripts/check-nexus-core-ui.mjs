@@ -129,6 +129,10 @@ try {
   });
   await expect(unlock).toBeEnabled();
   await unlock.click();
+  await expect(
+    page.getByRole("dialog", { name: "Orbital blades", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(unlock).toBeDisabled();
   assert.deepEqual(await page.evaluate(() => window.nexusQa.profile.unlocks), [
     "orbit",

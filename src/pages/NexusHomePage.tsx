@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Crosshair, FlaskConical, Orbit, Play, Trophy } from "lucide-react";
+import { Crosshair, FlaskConical, Play, Trophy } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
 import { ENDLESS } from "@/lib/nexus/core/catalog";
 import { isFinished } from "@/lib/nexus/core/engine";
 import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
-import { MILESTONES } from "@/lib/nexus/core/progression";
+import { CoreObjectiveStrip } from "@/components/nexus/core/CoreCareer";
 import { CoreProfileGate } from "@/components/nexus/core/CoreUI";
 import { CoreSigil } from "@/components/nexus/core/CoreArtwork";
 export default function NexusHomePage() {
@@ -26,7 +26,6 @@ function TitleScreen() {
     active = saved && !isFinished(saved),
     unclaimed = saved && isFinished(saved) && !saved.rewardClaimed;
   if (!profile) return null;
-  const next = MILESTONES.find((m) => m.wave > profile.bestWave);
   const play = async () => {
     if (busy.current) return;
     if (unclaimed) {
@@ -115,21 +114,7 @@ function TitleScreen() {
             <span>RECORDS</span>
           </Link>
         </div>
-        {next && (
-          <div className="nc-title-milestone">
-            <span>NEXT · WAVE {next.wave}</span>
-            <div>
-              <i
-                style={{
-                  width: `${Math.min(100, (profile.bestWave / next.wave) * 100)}%`,
-                }}
-              />
-            </div>
-            <strong>
-              <Orbit size={12} />+{next.credits}
-            </strong>
-          </div>
-        )}
+        <CoreObjectiveStrip profile={profile} />
       </div>
     </section>
   );
