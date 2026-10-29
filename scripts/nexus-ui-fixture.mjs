@@ -39,7 +39,7 @@ export async function installNexusFixture(page) {
       }
       if(name==='nexus_core_begin_endless'){
         const error=loadoutError(args.p_loadout,qa.profile.unlocks);if(error)return fail(error);
-        data=qa.tickets[args.p_id]||{id:args.p_id,seed:42,research:structuredClone(qa.profile.research),loadout:structuredClone(args.p_loadout)};
+        data=qa.tickets[args.p_id]||{id:args.p_id,seed:42,research:structuredClone(qa.profile.research),loadout:structuredClone(args.p_loadout),balance_version:args.p_balance_version??4};
         qa.tickets[args.p_id]=data;qa.profile={...qa.profile,loadout:data.loadout};
       }
       if(name==='nexus_core_unlock'){

@@ -15,6 +15,7 @@ import type {
   UnlockId,
 } from "@/lib/nexus/core/types";
 import { STARTER_LOADOUT } from "@/lib/nexus/core/progression";
+import { BALANCE_VERSION } from "@/lib/nexus/core/systems";
 
 interface ProfileRow {
   credits: number;
@@ -102,10 +103,12 @@ export function useNexusCore() {
       seed: number;
       research: Research;
       loadout: CoreLoadout;
+      balance_version: number;
     }>("nexus_core_begin_endless", {
       p_id: id,
       p_club_id: club.id,
       p_loadout: loadout,
+      p_balance_version: BALANCE_VERSION,
     });
     return {
       ...createRun(
@@ -114,6 +117,7 @@ export function useNexusCore() {
         ticket.id,
         ticket.seed,
         ticket.loadout,
+        ticket.balance_version,
       ),
       registered: true,
     };
@@ -135,6 +139,7 @@ export function useNexusCore() {
       p_club_id: club.id,
       p_run: {
         id: run.id,
+        balanceVersion: run.balanceVersion,
         scenarioId: scenario.id,
         phase: run.phase,
         cleared: run.cleared,

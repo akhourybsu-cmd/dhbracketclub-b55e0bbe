@@ -8,6 +8,7 @@ import {
 } from "./systems";
 import { rewardBreakdown } from "./economy";
 import { STARTER_LOADOUT, loadoutError, upgradeAvailable } from "./progression";
+import { combatRules } from "./rules";
 import type {
   CoreEnemy,
   CoreLoadout,
@@ -53,13 +54,14 @@ export function createRun(
   id: string = crypto.randomUUID(),
   seed = Date.now() >>> 0,
   loadout: CoreLoadout = STARTER_LOADOUT,
+  balanceVersion = BALANCE_VERSION,
 ): CoreRun {
   if (scenario.mode === "endless" && loadoutError(loadout))
     throw new Error(loadoutError(loadout)!);
   const energy = 80 + (research.salvage || 0) * 12;
   const s: CoreRun = {
     version: 2,
-    balanceVersion: scenario.mode === "endless" ? BALANCE_VERSION : 3,
+    balanceVersion: scenario.mode === "endless" ? balanceVersion : 3,
     id,
     scenarioId: scenario.id,
     seed,
@@ -176,15 +178,24 @@ function effect(
     fromY,
   });
 }
-export function enemyScale(wave: number, scenario: CoreScenario) {
+export function enemyScale(
+  wave: number,
+  scenario: CoreScenario,
+  balanceVersion = BALANCE_VERSION,
+) {
+  const rules = combatRules(scenario.mode === "endless" ? balanceVersion : 3);
   return (
     scenario.hp *
     waveDifficulty(wave, scenario) ** 0.85 *
-    (1 + (wave - 1) * 0.24 + Math.max(0, wave - 7) ** 1.4 * 0.1) *
+    (1 +
+      (wave - 1) * rules.hpStep +
+      Math.max(0, wave - 7) ** rules.hpCurve * rules.hpCurveWeight) *
     (scenario.mode === "campaign"
       ? 1 + (scenario.difficulty - 1) * Math.max(0, wave - 4) * 0.085
       : 1) *
-    (scenario.mode === "endless" ? 1.14 ** Math.max(0, wave - 8) : 1)
+    (scenario.mode === "endless"
+      ? rules.exponentialGrowth ** Math.max(0, wave - rules.exponentialStart)
+      : 1)
   );
 }
 function spawn(
@@ -193,17 +204,22 @@ function spawn(
   kind: EnemyType,
   position?: { x: number; y: number },
 ) {
+  const rules = combatRules(s.balanceVersion);
   const d = ENEMIES[kind],
     angle = random(s) * Math.PI * 2,
-    hp = d.hp * enemyScale(s.wave, scenario);
+    hp = d.hp * enemyScale(s.wave, scenario, s.balanceVersion || 3);
   s.enemies.push({
     id: ++s.nextId,
     kind,
-    x: position?.x ?? Math.cos(angle) * SPAWN_RADIUS,
-    y: position?.y ?? Math.sin(angle) * SPAWN_RADIUS,
+    x: position?.x ?? Math.cos(angle) * rules.spawnRadius,
+    y: position?.y ?? Math.sin(angle) * rules.spawnRadius,
     hp,
     maxHp: hp,
-    speed: d.speed * scenario.speed * (1 + Math.min(1, s.wave * 0.014)),
+    speed:
+      d.speed *
+      scenario.speed *
+      rules.enemySpeed *
+      (1 + Math.min(1, s.wave * 0.014)),
     damage: d.damage * (1 + (s.wave - 1) * 0.09),
     radius: d.radius,
     bounty: d.bounty,
@@ -344,7 +360,7 @@ function fireSystems(s: CoreRun, scenario: CoreScenario) {
       for (const e of s.enemies)
         if (
           e.hp > 0 &&
-          Math.hypot(e.x - x, e.y - y) <= SYSTEMS.orbitalHitRadius + e.radius
+          Math.hypot(e.x - x, e.y - y) <= v.orbitHitRadius + e.radius
         ) {
           hit(s, e, v.orbitDamage, "orbit");
           s.metrics!.shots.orbit++;
@@ -365,7 +381,7 @@ function fireSystems(s: CoreRun, scenario: CoreScenario) {
       for (let i = 0; i < v.arcTargets && next; i++) {
         visited.add(next.id);
         effect(s, "arc", next.x, next.y, 0.28, undefined, x, y);
-        hit(s, next, v.arcDamage * 0.82 ** i, "arc");
+        hit(s, next, v.arcDamage * v.arcFalloff ** i, "arc");
         x = next.x;
         y = next.y;
         next = s.enemies
@@ -577,7 +593,9 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
       scenario.waves !== null && s.wave >= scenario.waves
         ? "victory"
         : "intermission";
-    s.breakTime = 7;
+    const rules = combatRules(s.balanceVersion);
+    s.breakTime =
+      s.wave % 5 === 0 ? rules.bossIntermission : rules.intermission;
   }
   return s;
 }

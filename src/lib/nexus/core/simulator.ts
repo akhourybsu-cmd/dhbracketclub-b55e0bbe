@@ -13,7 +13,7 @@ import {
   upgradeBlocked,
 } from "./engine";
 import { rewardBreakdown } from "./economy";
-import { WEAPON_IDS, emptyMetrics } from "./systems";
+import { BALANCE_VERSION, WEAPON_IDS, emptyMetrics } from "./systems";
 import type { CoreLoadout, CoreScenario, Research, UpgradeId } from "./types";
 
 export type BuildStrategy =
@@ -113,15 +113,33 @@ export function simulateCore(
   research: Research = {},
   maxSeconds = 1800,
   loadout: CoreLoadout = STARTER_LOADOUT,
+  balanceVersion = BALANCE_VERSION,
 ) {
   let s = startWave(
-      createRun(scenario, research, "simulation", seed, loadout),
+      createRun(
+        scenario,
+        research,
+        "simulation",
+        seed,
+        loadout,
+        balanceVersion,
+      ),
       scenario,
     ),
     cursor = 0,
     nextDecision = 0;
   const plan = strategy === "idle" ? [] : BUILD_PLANS[strategy];
+  let firstShot: number | null = null,
+    firstKill: number | null = null,
+    firstBoss: number | null = null,
+    intermissionSeconds = 0,
+    approachSeconds = 0,
+    waveStarted = 0,
+    peakEnemies = 0;
+  const purchases: number[] = [],
+    waveSeconds: number[] = [];
   for (let i = 0; i < maxSeconds / 0.05 && !isFinished(s); i++) {
+    const spent = s.metrics!.energySpent;
     if (strategy !== "idle" && s.time >= nextDecision) {
       nextDecision = s.time + 0.75;
       // Emergency fortification costs compete with the planned weapon investment.
@@ -158,13 +176,32 @@ export function simulateCore(
       )
         s = activateAbility(s, scenario, "overdrive");
     }
+    if (s.metrics!.energySpent > spent) purchases.push(s.time);
+    const phase = s.phase,
+      cleared = s.cleared,
+      wave = s.wave;
+    if (phase === "intermission") intermissionSeconds += 0.05;
+    else {
+      const range = stats(s, scenario).range;
+      if (!s.enemies.some((e) => distance(e) <= range)) approachSeconds += 0.05;
+    }
     s = stepRun(s, scenario);
+    if (firstShot === null && WEAPON_IDS.some((id) => s.metrics!.shots[id] > 0))
+      firstShot = s.time;
+    if (firstKill === null && s.kills > 0) firstKill = s.time;
+    if (firstBoss === null && s.enemies.some((e) => e.kind === "boss"))
+      firstBoss = s.time;
+    if (s.cleared > cleared)
+      waveSeconds.push(Number((s.time - waveStarted).toFixed(2)));
+    if (s.wave > wave) waveStarted = s.time;
+    peakEnemies = Math.max(peakEnemies, s.enemies.length);
   }
   const metrics = s.metrics || emptyMetrics();
   return {
     scenario: scenario.id,
     strategy,
     seed,
+    balanceVersion: s.balanceVersion,
     finished: isFinished(s),
     victory: s.phase === "victory",
     waves: s.cleared,
@@ -184,6 +221,16 @@ export function simulateCore(
     ),
     upgrades: s.upgrades,
     loadout: s.loadout,
+    pacing: {
+      firstShot,
+      firstKill,
+      firstBoss,
+      intermissionSeconds: Math.round(intermissionSeconds),
+      approachSeconds: Math.round(approachSeconds),
+      peakEnemies,
+      purchases: purchases.map((t) => Number(t.toFixed(2))),
+      waveSeconds,
+    },
   };
 }
 export const ALL_SCENARIOS = [ENDLESS];

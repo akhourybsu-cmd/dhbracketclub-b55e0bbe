@@ -3,7 +3,7 @@ export const EQUIPMENT_BRIEF: Record<string, string> = {
   arc: "Chain lightning · 2 power",
   rail: "Armor breaker · 3 power",
   mortar: "Area blast · 2 power",
-  repair: "+0.5 hull / sec",
+  repair: "+20% hull · 2.5 repair / sec",
   siphon: "+10% battle energy",
-  stasis: "12% inner-ring slow",
+  stasis: "10% inner-ring slow",
 };

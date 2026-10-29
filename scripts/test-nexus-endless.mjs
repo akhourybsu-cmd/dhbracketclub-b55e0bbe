@@ -33,6 +33,12 @@ const migration = await readFile(
 );
 await db.exec(migration);
 await db.exec(migration);
+const pacingMigration = await readFile(
+  "supabase/migrations/20261029030000_nexus_combat_pacing.sql",
+  "utf8",
+);
+await db.exec(pacingMigration);
+await db.exec(pacingMigration);
 await db.exec("set role authenticated");
 const actor = (n) =>
   db.query("select set_config('test.user',$1,false)", [n ? id(n) : ""]);
@@ -67,9 +73,17 @@ const seed = async (n, patch) => {
   }
 };
 const begin = async (n, loadout = { weapons: [], module: null }, club = 10) =>
-  rpc("nexus_core_begin_endless", [id(n), id(club), JSON.stringify(loadout)]);
+  rpc("nexus_core_begin_endless", [
+    id(n),
+    id(club),
+    JSON.stringify(loadout),
+    5,
+  ]);
 const finish = (run, club = 10) =>
-  rpc("nexus_core_finish_endless", [JSON.stringify(run), id(club)]);
+  rpc("nexus_core_finish_endless", [
+    JSON.stringify({ balanceVersion: 5, ...run }),
+    id(club),
+  ]);
 const backdate = (n) =>
   owner(
     "update nexus_core_sessions set created_at=clock_timestamp()-interval '1 day' where id=$1",
@@ -77,6 +91,7 @@ const backdate = (n) =>
   );
 const payload = (n, run = contract.runs[0]) => ({
   id: id(n),
+  balanceVersion: run.balanceVersion,
   scenarioId: "endless",
   phase: "defeat",
   cleared: run.waves,
@@ -172,6 +187,7 @@ await check(
       a = await begin(100, loadout);
     await seed(2, { research: { weapons: 2 } });
     const b = await begin(100, { weapons: [], module: null });
+    assert.equal(a.balance_version, 5);
     assert.equal(a.seed, b.seed);
     assert.deepEqual(b.research, { weapons: 1 });
     assert.deepEqual(b.loadout, loadout);
@@ -192,6 +208,75 @@ await check("new runs cannot use the old reward protocol", async () => {
     /Endless reward protocol/,
   );
 });
+await check(
+  "cached ruleset-4 clients and original tickets still settle under their own rules",
+  async () => {
+    await seed(2, { research: {}, endless_best: 0, credits: 0 });
+    const n = counter++,
+      run = contract.archivedRuns[1];
+    const ticket = await rpc("nexus_core_begin_endless", [
+      id(n),
+      id(10),
+      JSON.stringify(run.loadout),
+    ]);
+    assert.equal(ticket.balance_version, 4);
+    assert.equal((await begin(n, run.loadout)).balance_version, 4);
+    await backdate(n);
+    await assert.rejects(
+      finish({ ...payload(n, run), balanceVersion: 5 }),
+      /Combat rules/,
+    );
+    const oldPayload = payload(n, run);
+    delete oldPayload.balanceVersion;
+    const receipt = await rpc("nexus_core_finish_endless", [
+      JSON.stringify(oldPayload),
+      id(10),
+    ]);
+    assert.ok(receipt.reward > 0);
+    // A cached client never sent the version field.
+    assert.equal(
+      (
+        await rpc("nexus_core_finish_endless", [
+          JSON.stringify(oldPayload),
+          id(10),
+        ])
+      ).reward,
+      receipt.reward,
+    );
+    assert.equal(
+      (
+        await db.query(
+          "select balance_version from nexus_core_runs where id=$1",
+          [id(n)],
+        )
+      ).rows[0].balance_version,
+      4,
+    );
+    for (const version of [null, 3, 6])
+      await assert.rejects(
+        rpc("nexus_core_begin_endless", [
+          id(counter++),
+          id(10),
+          JSON.stringify({ weapons: [], module: null }),
+          version,
+        ]),
+        /Unsupported/,
+      );
+    const current = counter++;
+    await begin(current);
+    await backdate(current);
+    await assert.rejects(
+      finish({ ...payload(current), balanceVersion: 4 }),
+      /Combat rules/,
+    );
+    const missing = payload(current);
+    delete missing.balanceVersion;
+    await assert.rejects(
+      rpc("nexus_core_finish_endless", [JSON.stringify(missing), id(10)]),
+      /Combat rules/,
+    );
+  },
+);
 await check(
   "real engine builds reconcile energy, free starting equipment, loadout snapshots and reward ledgers",
   async () => {
@@ -219,6 +304,15 @@ await check(
       assert.equal(r.reward, wavePay + bonus);
       assert.equal(r.profile.total_waves, before.total_waves + run.waves);
       assert.equal(r.profile.credits, before.credits + r.reward);
+      assert.equal(
+        (
+          await db.query(
+            "select balance_version from nexus_core_runs where id=$1",
+            [id(n)],
+          )
+        ).rows[0].balance_version,
+        5,
+      );
       const repeated = await finish(payload(n, run));
       assert.deepEqual(repeated, r);
     }
@@ -346,6 +440,10 @@ await check(
         [id(2)],
       ),
       /permission/,
+    );
+    await owner(
+      "insert into nexus_core_runs(id,user_id,club_id,scenario_id,mode,waves,score,balance_version,victory,kills,duration_seconds,stars,reward) values($1,$2,$3,'endless','endless',99999,999999,4,false,0,0,0,0)",
+      [id(counter++), id(1), id(10)],
     );
     await actor(1);
     const own = await db.query("select * from nexus_core_ledger");

@@ -4,6 +4,7 @@ import { useClub } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout, QUERY_TIMEOUT_MS } from "@/lib/asyncGuards";
 import { CoreHeading, CoreLink } from "@/components/nexus/core/CoreUI";
+import { BALANCE_VERSION } from "@/lib/nexus/core/systems";
 
 interface RecordRow {
   user_id: string;
@@ -16,7 +17,7 @@ export default function NexusLeaderboardPage() {
   const { club } = useClub();
   const mode = "endless";
   const query = useQuery({
-    queryKey: ["nexus-core-records", club?.id, mode],
+    queryKey: ["nexus-core-records", club?.id, mode, BALANCE_VERSION],
     enabled: !!club,
     retry: 1,
     queryFn: async () => {

@@ -1,5 +1,7 @@
 import { RESEARCH, UPGRADES } from "./catalog";
 import { upgradeAvailable } from "./progression";
+import { combatRules } from "./rules";
+export { BALANCE_VERSION } from "./rules";
 import type {
   CombatMetrics,
   CoreRun,
@@ -9,7 +11,6 @@ import type {
   WeaponId,
 } from "./types";
 
-export const BALANCE_VERSION = 4;
 export const WEAPON_IDS: WeaponId[] = [
   "pulse",
   "arc",
@@ -76,9 +77,13 @@ export function emptyMetrics(energy = 0): CombatMetrics {
 }
 
 export function stats(
-  s: Pick<CoreRun, "upgrades" | "research" | "overdriveTime" | "loadout">,
+  s: Pick<
+    CoreRun,
+    "upgrades" | "research" | "overdriveTime" | "loadout" | "balanceVersion"
+  >,
   scenario: CoreScenario,
 ) {
+  const rules = combatRules(s.balanceVersion);
   const u = (id: UpgradeId) =>
       upgradeAvailable(s, id) ? s.upgrades[id] || 0 : 0,
     r = s.research;
@@ -98,7 +103,8 @@ export function stats(
     critical: u("critical") * SYSTEMS.critStep,
     maxHp: glass
       ? 1
-      : SYSTEMS.hull + (r.plating || 0) * 20 + u("hull") * SYSTEMS.hullStep,
+      : (SYSTEMS.hull + (r.plating || 0) * 20 + u("hull") * SYSTEMS.hullStep) *
+        (s.loadout?.module === "repair" ? rules.repairHull : 1),
     maxShield: glass
       ? 0
       : SYSTEMS.shield +
@@ -108,7 +114,7 @@ export function stats(
       glass || scenario.rule === "blackout"
         ? 0
         : u("regen") * SYSTEMS.regenStep +
-          (s.loadout?.module === "repair" ? 0.5 : 0),
+          (s.loadout?.module === "repair" ? rules.repairRegen : 0),
     shieldRegen:
       glass || scenario.rule === "blackout"
         ? 0
@@ -119,25 +125,36 @@ export function stats(
       u("income") * SYSTEMS.incomeStep +
       (s.loadout?.module === "siphon" ? 0.1 : 0),
     orbit: u("orbit"),
-    orbitDamage: SYSTEMS.damage * power * 0.8 * boost,
+    orbitDamage: rules.orbitDamage * power * boost,
+    orbitHitRadius: rules.orbitHitRadius,
     slow:
-      u("frost") * SYSTEMS.slowStep +
-      (s.loadout?.module === "stasis" ? 0.12 : 0),
+      u("frost") * rules.slowStep +
+      (s.loadout?.module === "stasis" ? rules.stasis : 0),
     novaDamage:
       SYSTEMS.novaDamage * (1 + (r.nova || 0) * 0.15) * (1 + u("damage") * 0.1),
     arcDamage: u("arc")
-      ? (s.loadout ? 36 : 24) * power * (1 + (u("arc") - 1) * 0.3)
+      ? (s.loadout ? rules.arcDamage : 24) * power * (1 + (u("arc") - 1) * 0.3)
       : 0,
     arcTargets: u("arc") ? 2 + u("arc") : 0,
-    arcJump: 110,
-    arcInterval: 2.8 / reactor / boost,
+    arcJump: rules.arcJump,
+    arcFalloff: rules.arcFalloff,
+    arcInterval: rules.arcInterval / reactor / boost,
     railDamage: u("rail")
-      ? (s.loadout ? 140 : 62) * power * (1 + (u("rail") - 1) * 0.35)
+      ? (s.loadout ? rules.railDamage : 62) *
+        power *
+        (1 + (u("rail") - 1) * 0.35)
       : 0,
-    railInterval: Math.max(2.5, 4.8 - (u("rail") - 1) * 0.3) / reactor / boost,
-    mortarDamage: u("mortar") ? 75 * power * (1 + (u("mortar") - 1) * 0.32) : 0,
-    mortarRadius: 85 + Math.max(0, u("mortar") - 1) * 6,
-    mortarInterval: 3.8 / reactor / boost,
+    railInterval:
+      Math.max(2.5, rules.railInterval - (u("rail") - 1) * 0.3) /
+      reactor /
+      boost,
+    mortarDamage: u("mortar")
+      ? rules.mortarDamage * power * (1 + (u("mortar") - 1) * 0.32)
+      : 0,
+    mortarRadius:
+      rules.mortarRadius +
+      Math.max(0, u("mortar") - 1) * rules.mortarRadiusStep,
+    mortarInterval: rules.mortarInterval / reactor / boost,
   };
 }
 
@@ -177,7 +194,11 @@ export function upgradePreview(
     case "critical":
       return pair(a.critical * 100, b.critical * 100, "% · 2.5× pulse hits");
     case "hull":
-      return pair(a.maxHp, b.maxHp, " max hull · +45 restored");
+      return pair(
+        a.maxHp,
+        b.maxHp,
+        ` max hull · +${n(b.maxHp - a.maxHp)} restored`,
+      );
     case "shield":
       return pair(a.maxShield, b.maxShield, " max barrier · +30 restored");
     case "regen":

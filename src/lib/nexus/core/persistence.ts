@@ -1,6 +1,6 @@
 import { ENEMIES, RESEARCH, UPGRADES, getScenario } from "./catalog";
 import type { CoreRun } from "./types";
-import { WEAPON_IDS, emptyMetrics, stats } from "./systems";
+import { BALANCE_VERSION, WEAPON_IDS, emptyMetrics, stats } from "./systems";
 import { loadoutError, startingLevel, upgradeAvailable } from "./progression";
 
 const key = (userId: string, clubId: string) =>
@@ -20,6 +20,10 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
     if (
       !s ||
       s.version !== 2 ||
+      (s.balanceVersion !== undefined &&
+        (!Number.isInteger(s.balanceVersion) ||
+          s.balanceVersion < 1 ||
+          s.balanceVersion > BALANCE_VERSION)) ||
       !getScenario(s.scenarioId) ||
       typeof s.id !== "string" ||
       !["ready", "wave", "intermission", "victory", "defeat"].includes(

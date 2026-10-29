@@ -1,4 +1,4 @@
-# Nexus Defense — Endless Arsenal, ruleset 4
+# Nexus Defense — Endless Arsenal, ruleset 5
 
 Nexus is one endless, mobile-first central-core survival game. Enemies approach directly from every angle at different speeds. The player prepares a permanent equipment loadout, upgrades the core during combat, banks credits and returns with a stronger arsenal. There are no lanes, placed towers, campaign selections or challenge modes in the current player flow.
 
@@ -17,22 +17,24 @@ Nexus is one endless, mobile-first central-core survival game. Enemies approach 
 | --- | --- | --- | --- | --- |
 | Pulse cannon | Always equipped. Reliable homing shots; multishot and crit are pulse-specific. | 0 | Free | 0 |
 | Orbital blades | Repeated close-range collision damage; cannot reach distant threats. | 1 | 90 | 5 |
-| Chain arc | Instant chaining through distinct neighbors, 82% damage per subsequent jump. | 2 | 160 | 15 |
+| Chain arc | Instant chaining through distinct neighbors, 86% damage per subsequent jump. | 2 | 160 | 15 |
 | Rail lance | Heavy strongest-target beam, piercing aligned enemies and bypassing armor; slow cycle. | 3 | 300 | 35 |
 | Siege mortar | Delayed, stationary splash impact targets the densest cluster; fast enemies can escape. | 2 | 450 | 60 |
-| Repair nanites | 0.5 hull repaired/s at deployment; enables repair upgrades. | Support | 100 | 10 |
+| Repair nanites | +20% max hull and 2.5 hull repaired/s at deployment; enables repair upgrades. | Support | 100 | 10 |
 | Energy siphon | +10% kill/wave energy at deployment; enables income upgrades. | Support | 180 | 25 |
-| Stasis field | 12% inner-ring movement slow at deployment; enables stasis upgrades. | Support | 250 | 40 |
+| Stasis field | 10% inner-ring movement slow at deployment; enables stasis upgrades. | Support | 250 | 40 |
 
 Unlocks are permanent purchases, not consumables. Changing a loadout is free. Rail + orbit fits the power budget; rail + arc does not. Arc + mortar uses both slots and all 4 power. A support module replaces the other two support choices. Starting weapon levels are excluded from settlement spending; subsequent weapon upgrades use their level-1 price, not the installation price from the archived ruleset.
 
 ## Endless ramp and combat
 
-Wave 1 is drones only. Runners join at 2, swarms at 3, armored bulwarks at 4, and splitters at 6. Every fifth wave adds a siege boss. Splitters release three swarms. Wave size increases to 100 regular enemies; spawn cadence, movement speed, enemy damage and health increase with waves. Health compounds at 1.14 per wave after wave 8. There is no final wave or independent difficulty selector.
+Wave 1 is drones only. Runners join at 2, swarms at 3, armored bulwarks at 4, and splitters at 6. Every fifth wave adds a siege boss. Splitters release three swarms. Wave size increases to 100 regular enemies; spawn cadence, movement speed, enemy damage and health increase with waves. Health follows `1 + 0.20(w − 1) + 0.09 max(0, w − 7)^1.3`, then compounds at 1.12 per wave after wave 10. There is no final wave or independent difficulty selector.
+
+Enemies enter at radius 410 and move 30% faster than ruleset 4, producing first fire at about 6.65 seconds. Standard wave breaks last 3.5 seconds; a cleared boss wave gives 6.5 seconds for recovery. Players can pause to make upgrades at any point.
 
 The engine advances in deterministic 50ms steps. Cooldown overshoot carries forward. Pulse projectiles reserve lethal damage and retarget after a target dies. Rails pierce a line; arcs jump to distinct neighbors; orbitals collide with enemies, including hull attackers. Mortars mark a ground location, then hit after 0.65 seconds. All enemies within the blast receive full splash damage before armor mitigation. Armor reduces non-rail/non-Nova damage by 25% on bulwarks and bosses.
 
-Weapon power and amplifier research improve the arsenal. Pulse haste, multishot and crit affect only pulse. Overdrive doubles pulse fire rate, arc/rail/mortar recharge speed and orbital damage. Shields wait three seconds after the last hit before recharging. Actual damage, kills, shots, shield absorption and energy budgets are recorded. Fractional siphon income carries forward rather than disappearing to per-kill rounding.
+Weapon power improves the arsenal; amplifier research improves pulse and auxiliary damage. Nova uses its dedicated permanent research track. Pulse haste, multishot and crit affect only pulse. Overdrive doubles pulse fire rate, arc/rail/mortar recharge speed and orbital damage. Shields wait three seconds after the last hit before recharging. Actual damage, kills, shots, shield absorption and energy budgets are recorded. Fractional siphon income carries forward rather than disappearing to per-kill rounding.
 
 ## Currency and pacing
 
@@ -55,6 +57,7 @@ A first wave-10 run pays 42 + 55 = 97 credits; a repeat pays 42. A first wave-15
 | Concern | Source |
 | --- | --- |
 | Engine and telemetry | `src/lib/nexus/core/engine.ts` |
+| Versioned combat rules | `src/lib/nexus/core/rules.ts` |
 | Weapon values, upgrade previews, research prices | `src/lib/nexus/core/systems.ts` |
 | Equipment, loadout validation, upgrade gates, milestones | `src/lib/nexus/core/progression.ts` |
 | Enemy/upgrade/research catalog and archived scenarios | `src/lib/nexus/core/catalog.ts` |
@@ -62,9 +65,9 @@ A first wave-10 run pays 42 + 55 = 97 credits; a repeat pays 42. A first wave-15
 | Account RPCs and ledger | `src/hooks/useNexusCore.ts` |
 | Shared loadout editor | `src/components/nexus/core/CoreLoadoutEditor.tsx` |
 | Full-viewport combat and thumb controls | `src/pages/NexusBattlePage.tsx`, `src/components/nexus/core/battle.css` |
-| Database migration | `supabase/migrations/20261029020000_nexus_endless_loadouts.sql` |
+| Database migrations | `supabase/migrations/20261029020000_nexus_endless_loadouts.sql`, `20261029030000_nexus_combat_pacing.sql` |
 
-Current checkpoints retain `version: 2`, `balanceVersion: 4` and `nexus_core_run_v2:<user-id>:<club-id>`. They include the deployed loadout, mortar cooldown and in-flight ground-impact shells. Invalid loadouts, hidden unequipped upgrades and missing starting weapons are rejected on restore. Restores pause. The game pauses on blur/tab hide, and checkpoints flush on exit, backgrounding, purchases, abilities and completion. An unclaimed result must sync before another local deployment can overwrite it.
+Current checkpoints retain `version: 2`, `balanceVersion: 5` and `nexus_core_run_v2:<user-id>:<club-id>`. They include the deployed loadout, mortar cooldown and in-flight ground-impact shells. Invalid loadouts, hidden unequipped upgrades, unknown future rulesets and missing starting weapons are rejected on restore. Ruleset-4 checkpoints continue using their original weapon values, enemy ramp, approach speed and breaks. Restores pause. The game pauses on blur/tab hide, and checkpoints flush on exit, backgrounding, purchases, abilities and completion. An unclaimed result must sync before another local deployment can overwrite it.
 
 All game menus and combat own the dynamic viewport through portals to `document.body`, escaping page-transition transforms. `menus.css` defines the persistent game frame, animated SVG title core, compact item cards, bottom navigation and fixed deployment/replay actions. The title offers Play, Arsenal and Research without an introductory essay. Item mechanics live in info dialogs; milestones, history and run telemetry open on demand. The field guide starts folded. Menu content scrolls inside the frame and document scrolling is restored when Nexus unmounts.
 
@@ -76,13 +79,13 @@ Combat fills the screen. The app header is hidden, document scrolling is locked,
 
 The four core tables use RLS. Clients cannot directly write progression, sessions, runs or the credit ledger. Profile row locks serialize equipment purchases, research, loadout changes, deployments and settlement. Equipment prices, ownership and lifetime requirements are checked server-side. New deployments receive an immutable seed, research snapshot, loadout and ruleset version; only one active deployment exists per account. Retries reuse the original ticket even if the player changes equipment afterward.
 
-`nexus_core_begin_endless`, `nexus_core_finish_endless`, `nexus_core_unlock` and `nexus_core_loadout` implement the new protocol. Settlement validates membership, session ownership, phase, integer bounded counters, duration, upgrade eligibility/caps/prices, free starting levels and energy conservation. The server calculates wave pay and newly crossed milestone bonuses. Run UUIDs make duplicate claims idempotent. Every purchase and positive payout writes an account-scoped ledger receipt.
+`nexus_core_begin_endless(p_id, p_club_id, p_loadout, p_balance_version)`, `nexus_core_finish_endless`, `nexus_core_unlock` and `nexus_core_loadout` implement the new protocol. Settlement validates membership, session ownership, phase, integer bounded counters, duration, upgrade eligibility/caps/prices, free starting levels and energy conservation. The server calculates wave pay and newly crossed milestone bonuses. New clients request ruleset 5 and simulate the returned ticket version. The version parameter defaults to 4 for cached clients. Settlement accepts registered versions 4 and 5, requires matching version claims for version 5 and persists the ticket version on the result. Run UUIDs make duplicate claims idempotent. Every purchase and positive payout writes an account-scoped ledger receipt.
 
-Combat is client-simulated. The settlement checks are consistency checks, not authoritative anti-cheat. Club records select each member's best ruleset-4 Endless run by waves, then score, before limiting to 50 members.
+Combat is client-simulated. The settlement checks are consistency checks, not authoritative anti-cheat. Club records select each member's best ruleset-5 Endless run by waves, then score, before limiting to 50 members.
 
 ## Archived compatibility
 
-Existing credit balances and research are retained. Earlier campaign/challenge data, path-game tables and old Endless records remain archived. `best_wave` is historical; `endless_best` and `total_waves` track the current ramp. Old registered runs can finish with their prior receipt rules; older accounts retain their one legacy checkpoint import. The old deployment RPC rejects new non-import starts, and the old reward RPC rejects new ruleset-4 sessions. Mortars cannot be installed in archived runs.
+Existing credit balances and research are retained. Earlier campaign/challenge data, path-game tables and old Endless records remain archived. `best_wave` is historical; `endless_best` and `total_waves` retain account-wide Endless Arsenal progress across rulesets 4 and 5, so milestones cannot pay again after a balance release. Old registered runs can finish with their prior receipt rules; older accounts retain their one legacy checkpoint import. The old deployment RPC rejects new non-import starts, and the old reward RPC rejects ruleset-4/5 sessions. Mortars cannot be installed in archived runs.
 
 Campaign/challenge and old numeric loadout URLs redirect to the Endless loadout. Legacy battle/result URLs can finish existing local checkpoints. Keep the installed-asset gate on every active player route. The scoped game skin remains dark in both app themes.
 
@@ -91,9 +94,9 @@ Campaign/challenge and old numeric loadout URLs redirect to the Endless loadout.
 - `npx tsc -p tsconfig.app.json --noEmit`
 - `npm run test:unit`
 - `npm run build`
-- `node --import tsx scripts/balance-nexus-core.ts --output=/tmp/nexus-balance.json` — 864 actual-engine runs across six loadouts, six policies, eight seeds and three research tiers.
+- `node --import tsx scripts/balance-nexus-core.ts --all --output=/tmp/nexus-balance.json` — 3,456 actual-engine runs across all 36 legal weapon/support combinations, six policies, four seeds and four research tiers. `--version=4` reproduces archived tuning; the default six-build sweep remains available without `--all`.
 - Against Vite on port 8080: `node scripts/check-nexus-core-ui.mjs`, `node scripts/check-nexus-mobile.mjs` and `node scripts/check-nexus-menus.mjs`. These use production pages, hooks, CSS and engine with an isolated account backend, never live account mutations.
-- Generate `node --import tsx scripts/nexus-endless-contract.ts > /tmp/nexus-endless-contract.json`, then run `scripts/test-nexus-endless.mjs` with optional `@electric-sql/pglite` available. It applies the real migration twice and exercises real PostgreSQL constraints, all 103 upgrade-level points, 60 research prices, seven unlocks, free starting levels, loadout ownership/power, reward retries, milestones, archived-protocol isolation, ledger RLS and club records.
+- Generate `node --import tsx scripts/nexus-endless-contract.ts > /tmp/nexus-endless-contract.json`, then run `scripts/test-nexus-endless.mjs` with optional `@electric-sql/pglite` available. It applies the real loadout and pacing migrations twice and exercises real PostgreSQL constraints, all 103 upgrade-level points, 60 research prices, seven unlocks, free starting levels, loadout ownership/power, reward retries, milestones, archived-protocol isolation, ledger RLS and club records.
 
 The older database scripts reproduce historical migrations only. Use the Endless contract for the current protocol.
 

@@ -38,6 +38,9 @@ console.log(
       wave,
       credits: endlessCredits(wave),
     })),
+    archivedRuns: loadouts.map((loadout) =>
+      simulateCore(ENDLESS, "balanced", 42, {}, 1800, loadout, 4),
+    ),
     runs: loadouts.map((loadout) =>
       simulateCore(ENDLESS, "balanced", 42, {}, 1800, loadout),
     ),

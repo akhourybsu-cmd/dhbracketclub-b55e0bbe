@@ -80,7 +80,7 @@ export const ARMORY: {
     kind: "module",
     role: "Sustain",
     description:
-      "Start with 0.5 hull repaired per second. Unlocks the Nanite repair battle upgrade.",
+      "Fortify the core with +20% max hull and repair 2.5 hull per second. Unlocks further nanite repairs.",
     tradeoff: "Occupies your one support slot.",
     icon: "HeartPulse",
     cost: 100,
@@ -106,7 +106,7 @@ export const ARMORY: {
     kind: "module",
     role: "Control",
     description:
-      "Slow enemies by 12% inside the inner ring. Unlocks stronger stasis upgrades.",
+      "Slow enemies by 10% inside the inner ring. Unlocks stronger stasis upgrades.",
     tradeoff: "Inner-ring protection; sacrifices repair or extra income.",
     icon: "Snowflake",
     cost: 250,

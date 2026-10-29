@@ -141,7 +141,7 @@ export function CoreArena({
             transform={`translate(${Math.cos(a) * SYSTEMS.orbitalRadius} ${Math.sin(a) * SYSTEMS.orbitalRadius}) rotate(${(a * 180) / Math.PI})`}
           >
             <path d="M-5 -16 L7 0 L-5 16 L-1 0Z" fill="hsl(265 100% 80%)" />
-            <circle r="16" fill="hsl(265 100% 80% / .1)" />
+            <circle r={v.orbitHitRadius} fill="hsl(265 100% 80% / .07)" />
           </g>
         );
       })}

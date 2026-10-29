@@ -49,7 +49,7 @@ const advance = (s: CoreRun, seconds: number) => {
 describe("endless arsenal and progression", () => {
   it("starts with only a working pulse cannon and no unlocked support effects", () => {
     const s = createRun(ENDLESS);
-    expect(s.balanceVersion).toBe(4);
+    expect(s.balanceVersion).toBe(5);
     expect(s.loadout).toEqual({ weapons: [], module: null });
     expect(s.upgrades).toEqual({});
     expect(stats(s, ENDLESS)).toMatchObject({
@@ -110,9 +110,9 @@ describe("endless arsenal and progression", () => {
     expect(s.metrics!.energySpent).toBe(0);
     expect(s.energy).toBe(80);
     expect(stats(s, ENDLESS)).toMatchObject({
-      railDamage: 140,
+      railDamage: 170,
       orbit: 1,
-      regen: 0.5,
+      regen: 2.5,
     });
     s.energy = 1000;
     s.metrics = emptyMetrics(1000);
@@ -124,9 +124,9 @@ describe("endless arsenal and progression", () => {
   });
   it("gives each support module its own starting buff and exclusive upgrade path", () => {
     for (const [module, id, field, start] of [
-      ["repair", "regen", "regen", 0.5],
+      ["repair", "regen", "regen", 2.5],
       ["siphon", "income", "income", 1.1],
-      ["stasis", "frost", "slow", 0.12],
+      ["stasis", "frost", "slow", 0.1],
     ] as const) {
       const s = arena({ weapons: [], module });
       expect(stats(s, ENDLESS)[field]).toBeCloseTo(start);

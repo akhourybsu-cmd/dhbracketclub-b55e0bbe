@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { ENDLESS } from "@/lib/nexus/core/catalog";
+import { ENDLESS, UPGRADES } from "@/lib/nexus/core/catalog";
+import {
+  activateAbility,
+  buyUpgrade,
+  createRun,
+  distance,
+  isFinished,
+  startWave,
+  stepRun,
+} from "@/lib/nexus/core/engine";
 import { simulateCore, type BuildStrategy } from "@/lib/nexus/core/simulator";
 import { endlessCredits } from "@/lib/nexus/core/economy";
 import { milestoneCredits } from "@/lib/nexus/core/progression";
@@ -42,8 +51,9 @@ describe("Endless balance guardrails", () => {
     for (const seed of seeds)
       expect(simulateCore(ENDLESS, "idle", seed).waves).toBeLessThan(6);
   });
-  it("makes full loadouts useful while keeping different loadout types viable", () => {
-    for (const loadout of loadouts)
+  it.each(loadouts)(
+    "keeps deployed systems viable with loadout %j",
+    (loadout) => {
       for (const policy of policies) {
         const run = simulateCore(
           ENDLESS,
@@ -60,6 +70,9 @@ describe("Endless balance guardrails", () => {
         for (const weapon of loadout.weapons)
           expect(run.damage[weapon]).toBeGreaterThan(0);
       }
+    },
+  );
+  it("makes a full loadout stronger than the starter cannon", () => {
     const starter = simulateCore(ENDLESS, "balanced", 42),
       armed = simulateCore(ENDLESS, "balanced", 42, {}, 1800, loadouts[2]);
     expect(armed.waves).toBeGreaterThan(starter.waves);
@@ -102,5 +115,36 @@ describe("Endless balance guardrails", () => {
     expect(active.finished).toBe(true);
     expect(active.waves).toBeGreaterThanOrEqual(20);
     expect(active.waves).toBeLessThan(35);
+  });
+
+  it("keeps the ramp finite even with every deployed system at its cap, while allowing late milestones", () => {
+    const waves = [];
+    for (const loadout of loadouts) {
+      let s = createRun(ENDLESS, research(10), "capacity-test", 42, loadout);
+      s.energy = 1_000_000; // Capacity stress test, beyond a normally earned run budget.
+      for (const upgrade of UPGRADES)
+        for (let i = 0; i < upgrade.max; i++)
+          s = buyUpgrade(s, ENDLESS, upgrade.id);
+      s = startWave(s, ENDLESS);
+      for (let i = 0; i < 24000 && !isFinished(s); i++) {
+        if (i % 15 === 0) {
+          if (
+            s.enemies.filter((e) => distance(e) < 180).length >= 3 ||
+            s.enemies.some((e) => e.kind === "boss" && distance(e) < 150)
+          )
+            s = activateAbility(s, ENDLESS, "nova");
+          if (
+            s.enemies.filter((e) => distance(e) < 350).length >= 5 ||
+            s.enemies.some((e) => e.kind === "boss" && distance(e) < 250)
+          )
+            s = activateAbility(s, ENDLESS, "overdrive");
+        }
+        s = stepRun(s, ENDLESS);
+      }
+      expect(s.phase).toBe("defeat");
+      expect(s.cleared).toBeLessThan(40);
+      waves.push(s.cleared);
+    }
+    expect(Math.max(...waves)).toBeGreaterThanOrEqual(25);
   });
 });
