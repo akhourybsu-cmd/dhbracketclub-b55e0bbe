@@ -257,14 +257,14 @@ try {
     await page.getByRole("button", { name: "Pause defense" }).tap();
     await page.getByRole("button", { name: "Save & exit" }).tap();
     await expect(
-      page.getByRole("heading", { name: "Hold the core. Defy the swarm." }),
+      page.getByRole("heading", { name: "NEXUS DEFENSE" }),
     ).toBeVisible();
     assert.equal(
       await page.evaluate(() =>
         document.body.classList.contains("nc-battle-active"),
       ),
       false,
-      "Leaving combat restores page scrolling",
+      "Leaving combat restores the title menu",
     );
     await context.close();
   }

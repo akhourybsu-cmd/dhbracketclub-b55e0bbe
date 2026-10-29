@@ -3,7 +3,7 @@ import { Trophy } from "lucide-react";
 import { useClub } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout, QUERY_TIMEOUT_MS } from "@/lib/asyncGuards";
-import { CoreBack, CoreHeading } from "@/components/nexus/core/CoreUI";
+import { CoreHeading, CoreLink } from "@/components/nexus/core/CoreUI";
 
 interface RecordRow {
   user_id: string;
@@ -34,13 +34,11 @@ export default function NexusLeaderboardPage() {
   });
   return (
     <>
-      <CoreBack />
       <CoreHeading
         eyebrow={`${club?.name || "Club"} / records`}
-        title="Hold a little longer."
+        title="Club records"
       >
-        Best Endless run per club member, ranked by waves cleared, then score.
-        Records use the current loadout rules and wave ramp.
+        Best wave · Score breaks ties
       </CoreHeading>
       {query.isError ? (
         <div className="nc-empty">
@@ -60,11 +58,9 @@ export default function NexusLeaderboardPage() {
       ) : !query.data?.length ? (
         <div className="nc-empty">
           <Trophy size={32} />
-          <h2>The first record is yours to set.</h2>
-          <p>
-            Finish a run to appear here. Records from the original path game
-            stay separate.
-          </p>
+          <h2>No records yet</h2>
+          <p>Set the first club record.</p>
+          <CoreLink to="/nexus">Play</CoreLink>
         </div>
       ) : (
         <div className="nc-panel">

@@ -75,7 +75,7 @@ export function CoreWeaponPanel({
                 {s.active
                   ? s.info
                   : run.loadout
-                    ? "Not in this loadout"
+                    ? "Not equipped"
                     : "Not installed"}
               </p>
               {s.active ? (
@@ -87,16 +87,12 @@ export function CoreWeaponPanel({
               ) : !run.loadout ? (
                 <button onClick={onInstall}>Open Weapons →</button>
               ) : (
-                <small>Equip before your next deployment</small>
+                <small>—</small>
               )}
             </div>
           </div>
         ))}
       </div>
-      <p className="nc-note">
-        Weapon power amplifies every system. Fire rate, critical strike, and
-        multishot enhance the pulse cannon.
-      </p>
     </details>
   );
 }

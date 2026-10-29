@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Orbit } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Check, History, Info, Lock, Orbit, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { RESEARCH } from "@/lib/nexus/core/catalog";
 import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
@@ -8,12 +8,22 @@ import type { ResearchId, UnlockId } from "@/lib/nexus/core/types";
 import { useNexusCore, useNexusLedger } from "@/hooks/useNexusCore";
 import { researchCost } from "@/lib/nexus/core/systems";
 import {
-  CoreBack,
   CoreHeading,
   CoreIcon,
   CoreProfileGate,
 } from "@/components/nexus/core/CoreUI";
-
+import {
+  CoreDetails,
+  type CoreDetailItem,
+} from "@/components/nexus/core/CoreDetails";
+import { CoreEquipmentArt } from "@/components/nexus/core/CoreArtwork";
+import { EQUIPMENT_BRIEF } from "@/components/nexus/core/menuCopy";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 export default function NexusResearchPage() {
   return (
     <CoreProfileGate>
@@ -22,10 +32,15 @@ export default function NexusResearchPage() {
   );
 }
 function Lab() {
-  const { profile, research, unlock } = useNexusCore();
-  const ledger = useNexusLedger();
-  const [tab, setTab] = useState<"armory" | "research">("armory");
-  const [pending, setPending] = useState<string | null>(null);
+  const { profile, research, unlock } = useNexusCore(),
+    ledger = useNexusLedger();
+  const [params, setParams] = useSearchParams();
+  const selected = params.get("tab"),
+    tab =
+      selected === "research" || selected === "support" ? selected : "armory";
+  const [pending, setPending] = useState<string | null>(null),
+    [inspected, setInspected] = useState<CoreDetailItem | null>(null),
+    [panel, setPanel] = useState<"milestones" | "history" | null>(null);
   const busy = useRef(false);
   if (!profile) return null;
   const buy = async (id: ResearchId | UnlockId, equipment = false) => {
@@ -36,15 +51,11 @@ function Lab() {
       if (equipment) await unlock(id as UnlockId);
       else await research(id as ResearchId);
       toast.success(
-        equipment
-          ? "Equipment unlocked. Add it to your loadout."
-          : "Research installed. Applies to your next run.",
+        equipment ? "Unlocked. Ready to equip." : "Research upgraded.",
       );
     } catch (e) {
       toast.error(
-        e instanceof Error
-          ? e.message
-          : "Purchase could not be saved. Try again.",
+        e instanceof Error ? e.message : "Purchase failed. Try again.",
       );
     } finally {
       busy.current = false;
@@ -53,95 +64,90 @@ function Lab() {
   };
   return (
     <>
-      <CoreBack />
-      <CoreHeading
-        eyebrow="Armory / permanent progression"
-        title="Earn your arsenal."
-      >
-        Every cleared wave pays credits and counts toward equipment access. Save
-        for a new weapon or build up your core. Unlocks and research are
-        permanent; equip your discoveries before deploying.
-      </CoreHeading>
-      <div className="nc-section-label">
-        {profile.totalWaves} lifetime waves
-        <span className="nc-wallet">
-          <Orbit size={14} />
-          {profile.credits.toLocaleString()} credits
-        </span>
-      </div>
-      <Link
-        to="/nexus/loadout/endless"
-        className="nc-button nc-button-secondary"
-      >
-        Configure loadout →
-      </Link>
-      <div className="nc-section-label">
-        Personal milestones<span>One-time wave bonuses</span>
-      </div>
-      <div className="nc-milestone-strip" aria-label="Wave milestones">
-        {MILESTONES.map((m) => (
-          <div
-            key={m.wave}
-            className="nc-milestone"
-            data-complete={profile.bestWave >= m.wave}
+      <div className="nc-menu-toolbar">
+        <CoreHeading eyebrow="PERMANENT UPGRADES" title="Core lab" />
+        <div className="nc-menu-toolbar-actions">
+          <button
+            aria-label="Wave milestones"
+            onClick={() => setPanel("milestones")}
           >
-            <span>WAVE {m.wave}</span>
-            <strong>+{m.credits}</strong>
-            <span>bonus credits</span>
-            <small>
-              {profile.bestWave >= m.wave ? "Claimed" : "Clear in one run"}
-            </small>
-          </div>
-        ))}
+            <Trophy size={18} />
+          </button>
+          <button
+            aria-label="Credit history"
+            onClick={() => setPanel("history")}
+          >
+            <History size={18} />
+          </button>
+        </div>
       </div>
       <div
-        className="nc-tabs nc-lab-tabs"
+        className="nc-menu-tabs"
         role="tablist"
         aria-label="Laboratory section"
       >
-        {(["armory", "research"] as const).map((t) => (
+        {(
+          [
+            ["armory", "Weapons"],
+            ["support", "Support"],
+            ["research", "Research"],
+          ] as const
+        ).map(([id, label]) => (
           <button
-            key={t}
+            key={id}
             role="tab"
-            aria-selected={tab === t}
-            aria-controls={`lab-${t}`}
-            id={`lab-tab-${t}`}
-            onClick={() => setTab(t)}
+            id={`lab-tab-${id}`}
+            aria-controls={`lab-${id}`}
+            aria-selected={tab === id}
+            onClick={() => setParams({ tab: id }, { replace: true })}
           >
-            {t === "armory" ? "Weapons & modules" : "Core research"}
+            {label}
           </button>
         ))}
       </div>
-      {tab === "armory" ? (
+      {tab !== "research" ? (
         <div
-          className="nc-armory-grid"
+          className="nc-item-grid"
           role="tabpanel"
-          id="lab-armory"
-          aria-labelledby="lab-tab-armory"
+          id={`lab-${tab}`}
+          aria-labelledby={`lab-tab-${tab}`}
         >
-          {ARMORY.map((a) => {
+          {ARMORY.filter((a) =>
+            tab === "support" ? a.kind === "module" : a.kind === "weapon",
+          ).map((a) => {
             const owned = profile.unlocks.includes(a.id),
               eligible = profile.totalWaves >= a.waves;
             return (
               <section
-                className="nc-equipment nc-panel"
-                data-owned={owned}
+                className="nc-item nc-shop-item"
                 key={a.id}
+                data-owned={owned}
               >
-                <CoreIcon name={a.icon} size={26} />
-                <span className="nc-equipment-role">
-                  {a.kind === "weapon"
-                    ? `${a.role} · ${a.power} power`
-                    : `Support · ${a.role}`}
-                </span>
+                <button
+                  className="nc-item-info"
+                  aria-label={`About ${a.name}`}
+                  onClick={() => setInspected(a)}
+                >
+                  <Info size={16} />
+                </button>
+                {owned && <Check size={13} className="nc-item-mark" />}
+                <CoreEquipmentArt id={a.id} />
                 <strong>{a.name}</strong>
-                <p>{a.description}</p>
-                <small>{a.tradeoff}</small>
-                <small>
-                  {owned
-                    ? "Permanently unlocked"
-                    : `${Math.min(profile.totalWaves, a.waves)} / ${a.waves} lifetime waves · ${a.cost} credits`}
-                </small>
+                <span>{EQUIPMENT_BRIEF[a.id]}</span>
+                {!owned && !eligible && (
+                  <>
+                    <div className="nc-item-progress">
+                      <i
+                        style={{
+                          width: `${Math.min(100, (profile.totalWaves / a.waves) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <small className="nc-shop-requirement">
+                      {profile.totalWaves}/{a.waves} lifetime waves
+                    </small>
+                  </>
+                )}
                 <button
                   className="nc-button nc-button-secondary"
                   aria-label={`Unlock ${a.name}`}
@@ -150,13 +156,19 @@ function Lab() {
                   }
                   onClick={() => buy(a.id, true)}
                 >
-                  {pending === a.id
-                    ? "Unlocking…"
-                    : owned
-                      ? "Unlocked"
-                      : !eligible
-                        ? `${a.waves - profile.totalWaves} more lifetime waves`
-                        : `Unlock · ${a.cost} credits`}
+                  {pending === a.id ? (
+                    "UNLOCKING…"
+                  ) : owned ? (
+                    <>
+                      <Check size={13} />
+                      OWNED
+                    </>
+                  ) : (
+                    <>
+                      {!eligible ? <Lock size={12} /> : <Orbit size={12} />}
+                      {a.cost}
+                    </>
+                  )}
                 </button>
               </section>
             );
@@ -164,7 +176,7 @@ function Lab() {
         </div>
       ) : (
         <div
-          className="nc-research-grid"
+          className="nc-item-grid nc-research-items"
           role="tabpanel"
           id="lab-research"
           aria-labelledby="lab-tab-research"
@@ -173,10 +185,12 @@ function Lab() {
             const level = profile.research[r.id] || 0,
               price = researchCost(r.id, level);
             return (
-              <section className="nc-panel nc-research" key={r.id}>
-                <CoreIcon name={r.icon} size={26} />
-                <h2>{r.name}</h2>
-                <p>{r.description}</p>
+              <section className="nc-item nc-shop-item" key={r.id}>
+                <div className="nc-research-glyph">
+                  <CoreIcon name={r.icon} size={30} />
+                </div>
+                <strong>{r.name}</strong>
+                <span>{r.description}</span>
                 <div className="nc-research-level">
                   LEVEL {level} / {r.max}
                 </div>
@@ -194,13 +208,13 @@ function Lab() {
                   onClick={() => buy(r.id)}
                 >
                   {pending === r.id ? (
-                    "Installing…"
+                    "UPGRADING…"
                   ) : level >= r.max ? (
-                    "Fully researched"
+                    "MAX"
                   ) : (
                     <>
-                      <Orbit size={14} />
-                      {price} credits
+                      <Orbit size={12} />
+                      {price}
                     </>
                   )}
                 </button>
@@ -209,57 +223,82 @@ function Lab() {
           })}
         </div>
       )}
-      <p className="nc-note" style={{ marginTop: 22 }}>
-        Credits are earned when a run ends. Energy is for battle upgrades and
-        resets afterward. Zero-wave runs pay nothing. Milestones pay once;
-        repeat runs still pay wave credits.
+      <p className="nc-menu-note">
+        {tab === "research"
+          ? "Permanent boosts · active next run"
+          : `${profile.totalWaves} lifetime waves · Unlock, then equip in Loadout`}
       </p>
-      <details className="nc-history">
-        <summary>Credit history · Latest 12 transactions</summary>
-        <div className="nc-panel" aria-label="Credit history">
-          {ledger.isPending ? (
-            <p className="nc-note" style={{ padding: 18 }}>
-              Loading transactions…
-            </p>
-          ) : ledger.isError ? (
-            <div style={{ padding: 18 }}>
-              <p className="nc-note">Credit history is unavailable.</p>
-              <button className="nc-back" onClick={() => ledger.refetch()}>
-                Retry history →
-              </button>
-            </div>
-          ) : !ledger.data?.length ? (
-            <p className="nc-note" style={{ padding: 18 }}>
-              Equipment purchases, research and run earnings will appear here.
-            </p>
-          ) : (
-            ledger.data.map((e) => (
-              <div className="nc-record-row" key={e.id}>
-                <div className="nc-record-name">
-                  {e.kind === "research"
-                    ? `${RESEARCH.find((r) => r.id === e.details.track)?.name || "Research"} · Level ${e.details.level}`
-                    : e.kind === "unlock"
-                      ? `Unlocked · ${ARMORY.find((a) => a.id === e.details.item)?.name || e.details.item}`
-                      : "Run earnings · Endless"}
-                  <small>
-                    {e.details.milestones
-                      ? `Includes ${e.details.milestones} milestone credits · `
-                      : ""}
-                    {new Date(e.created_at).toLocaleDateString()} · Balance{" "}
-                    {e.balance}
-                  </small>
+      <CoreDetails item={inspected} onClose={() => setInspected(null)} />
+      <Dialog
+        open={!!panel}
+        onOpenChange={(open) => {
+          if (!open) setPanel(null);
+        }}
+      >
+        <DialogContent className="nx-mode nc-shell nc-menu-dialog">
+          <DialogTitle>
+            {panel === "milestones" ? "Wave milestones" : "Credit history"}
+          </DialogTitle>
+          <DialogDescription>
+            {panel === "milestones"
+              ? "Clear a new milestone. Claim a one-time bonus."
+              : "Your latest purchases and earnings."}
+          </DialogDescription>
+          <div className="nc-dialog-scroll">
+            {panel === "milestones" ? (
+              MILESTONES.map((m) => (
+                <div className="nc-milestone-row" key={m.wave}>
+                  <span>WAVE {String(m.wave).padStart(2, "0")}</span>
+                  <small>{profile.bestWave >= m.wave ? "CLAIMED" : ""}</small>
+                  <strong>
+                    <Orbit size={13} />+{m.credits}
+                  </strong>
                 </div>
-                <span
-                  className={`nc-credit-delta ${e.delta > 0 ? "nc-credit-earned" : ""}`}
-                >
-                  {e.delta > 0 ? "+" : ""}
-                  {e.delta}
-                </span>
+              ))
+            ) : (
+              <div aria-label="Credit history">
+                {ledger.isPending ? (
+                  <p className="nc-menu-note">Loading…</p>
+                ) : ledger.isError ? (
+                  <button
+                    className="nc-button"
+                    onClick={() => ledger.refetch()}
+                  >
+                    Retry
+                  </button>
+                ) : !ledger.data?.length ? (
+                  <p className="nc-menu-note">No transactions yet.</p>
+                ) : (
+                  ledger.data.map((e) => (
+                    <div className="nc-record-row" key={e.id}>
+                      <div className="nc-record-name">
+                        {e.kind === "research"
+                          ? `${RESEARCH.find((r) => r.id === e.details.track)?.name || "Research"} · ${e.details.level}`
+                          : e.kind === "unlock"
+                            ? `Unlocked · ${ARMORY.find((a) => a.id === e.details.item)?.name || e.details.item}`
+                            : "Endless earnings"}
+                        <small>
+                          {new Date(e.created_at).toLocaleDateString()} ·
+                          Balance {e.balance}
+                        </small>
+                      </div>
+                      <span
+                        className={`nc-credit-delta ${e.delta > 0 ? "nc-credit-earned" : ""}`}
+                      >
+                        {e.delta > 0 ? "+" : ""}
+                        {e.delta}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
-            ))
-          )}
-        </div>
-      </details>
+            )}
+          </div>
+          <button className="nc-button" onClick={() => setPanel(null)}>
+            Done
+          </button>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

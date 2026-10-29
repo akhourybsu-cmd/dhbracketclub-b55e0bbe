@@ -1,140 +1,139 @@
-import { Hexagon } from "lucide-react";
+import { ChevronDown, Crosshair, Hexagon, Orbit, Zap } from "lucide-react";
 import { ENEMIES } from "@/lib/nexus/core/catalog";
-import { ARMORY } from "@/lib/nexus/core/progression";
-import {
-  CoreBack,
-  CoreHeading,
-  CoreLink,
-} from "@/components/nexus/core/CoreUI";
+import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
+import { CoreHeading } from "@/components/nexus/core/CoreUI";
+import { CoreEquipmentArt } from "@/components/nexus/core/CoreArtwork";
 export default function NexusCodexPage() {
   return (
     <>
-      <CoreBack />
-      <CoreHeading eyebrow="Field guide / endless" title="Know your perimeter.">
-        One nexus. Enemies from every direction. Auto-aim handles the shooting;
-        your loadout, upgrades and ability timing shape the defense.
-      </CoreHeading>
-      <div className="nc-mode-grid">
-        <section className="nc-panel nc-mode-card">
-          <h2>Prepare your loadout</h2>
-          <p>
-            Start with the pulse cannon. Unlock up to four auxiliary weapon
-            types, then choose two within 4 power. Choose one support module.
-            Equipped weapons start online at level 1, and you can only upgrade
-            what you brought.
-          </p>
-        </section>
-        <section className="nc-panel nc-mode-card">
-          <h2>Build while you fight</h2>
-          <p>
-            Kills and wave clears supply energy. Spend it on weapon power, pulse
-            fire rate, range, multishot or fortifications. Shields recharge
-            after three seconds without a hit. Hull plating immediately restores
-            its added capacity.
-          </p>
-        </section>
-        <section className="nc-panel nc-mode-card">
-          <h2>Push one wave further</h2>
-          <p>
-            Runners join at wave 2, swarms at 3, armor at 4 and splitters at 6.
-            A siege engine arrives every fifth wave. Enemy health, attack
-            pressure, speed and spawn density increase; health compounds after
-            wave 8. There is no final wave or separate difficulty selector.
-          </p>
-        </section>
+      <CoreHeading eyebrow="FIELD GUIDE" title="Hold the core." />
+      <div className="nc-quick-guide">
+        <div>
+          <Crosshair size={24} />
+          <strong>DEFEND</strong>
+          <span>Auto-aim is on</span>
+        </div>
+        <div>
+          <Zap size={24} />
+          <strong>UPGRADE</strong>
+          <span>Spend energy</span>
+        </div>
+        <div>
+          <Orbit size={24} />
+          <strong>RETURN</strong>
+          <span>Build your arsenal</span>
+        </div>
       </div>
-      <div className="nc-section-label">
-        Your arsenal<span>Different tools for different threats</span>
-      </div>
-      <div className="nc-enemy-list">
-        <section className="nc-panel nc-enemy-entry">
-          <div>
-            <h3>Pulse cannon · always equipped</h3>
-            <p>
-              Homing rounds retarget when an enemy falls. Multishot attacks
-              different enemies. Critical strike grants a chance at 2.5× pulse
-              damage. Your reliable single-target backbone; no power cost.
-            </p>
-          </div>
-        </section>
-        {ARMORY.map((a) => (
-          <section className="nc-panel nc-enemy-entry" key={a.id}>
+      <details className="nc-guide-section">
+        <summary>
+          Combat & abilities
+          <ChevronDown size={16} />
+        </summary>
+        <div>
+          <p>
+            Your core fires automatically. Enemies attack from every direction
+            and keep hitting once they reach the hull.
+          </p>
+          <p>
+            <strong>Nova:</strong> Area damage, knockback and slow. 20s
+            cooldown.
+          </p>
+          <p>
+            <strong>Overdrive:</strong> 2× weapon output for 6s. 30s cooldown.
+          </p>
+          <p>
+            Shields recharge after 3 seconds without a hit. Hull and barrier
+            upgrades restore the capacity they add.
+          </p>
+        </div>
+      </details>
+      <details className="nc-guide-section">
+        <summary>
+          Weapons & support
+          <ChevronDown size={16} />
+        </summary>
+        <div>
+          <div className="nc-guide-entry">
+            <CoreEquipmentArt id="pulse" />
             <div>
-              <h3>
-                {a.name} · {a.role}
-              </h3>
+              <strong>Pulse cannon</strong>
               <p>
-                {a.description} {a.tradeoff}
+                Always equipped. Homing rounds, multishot and critical hits.
               </p>
-              <small>
-                {a.cost} credits · {a.waves} lifetime waves
-                {a.kind === "weapon"
-                  ? ` · ${a.power} power`
-                  : " · Support slot"}
-              </small>
             </div>
-          </section>
-        ))}
-      </div>
-      <div className="nc-section-label">
-        Active abilities<span>Timing makes a difference</span>
-      </div>
-      <div className="nc-panel" style={{ padding: 22 }}>
-        <p className="nc-note">
-          Nova damages enemies within 350 range, knocks them back and slows
-          them. It recharges in 20 seconds. Overdrive doubles pulse fire rate,
-          arc, rail and mortar recharge speed, and orbital damage for six
-          seconds, with a 30-second cooldown. Weapon power and amplifier
-          research improve the whole arsenal. Fire rate, critical strike and
-          multishot apply to pulse only.
-        </p>
-      </div>
-      <div className="nc-section-label">
-        Threat signatures<span>6 enemy classes</span>
-      </div>
-      <div className="nc-enemy-list">
-        {Object.entries(ENEMIES).map(([kind, e]) => (
-          <section className="nc-panel nc-enemy-entry" key={kind}>
-            <div className="nc-enemy-glyph" style={{ color: e.color }}>
-              <Hexagon
-                size={kind === "boss" ? 38 : 28}
-                fill="currentColor"
-                fillOpacity={0.15}
-              />
+          </div>
+          {ARMORY.map((a) => (
+            <div key={a.id} className="nc-guide-entry">
+              <CoreEquipmentArt id={a.id} />
+              <div>
+                <strong>{a.name}</strong>
+                <p>{a.description}</p>
+                <small>
+                  {a.kind === "weapon" ? `${a.power} power` : "Support slot"} ·{" "}
+                  {a.cost} credits
+                </small>
+              </div>
             </div>
-            <div>
-              <h3 style={{ color: e.color }}>{e.name}</h3>
-              <p>{e.detail}</p>
-              <small>
-                Base speed {e.speed} · Energy {e.bounty}
-              </small>
+          ))}
+          <p>
+            2 auxiliary slots. 4 power. 1 support module. Equipped weapons start
+            online; only deployed equipment can upgrade.
+          </p>
+        </div>
+      </details>
+      <details className="nc-guide-section">
+        <summary>
+          Enemy intel
+          <ChevronDown size={16} />
+        </summary>
+        <div>
+          {Object.entries(ENEMIES).map(([kind, e]) => (
+            <div className="nc-guide-entry" key={kind}>
+              <Hexagon size={32} style={{ color: e.color }} />
+              <div>
+                <strong>{e.name}</strong>
+                <p>{e.detail}</p>
+                <small>
+                  Speed {e.speed} · Energy {e.bounty}
+                </small>
+              </div>
             </div>
-          </section>
-        ))}
-      </div>
-      <div className="nc-section-label">
-        Progress that carries on<span>Play. Earn. Rebuild.</span>
-      </div>
-      <div className="nc-panel" style={{ padding: 22 }}>
-        <p className="nc-note">
-          At the end of a run, earn 3 credits per cleared wave plus floor(waves²
-          / 8), capped at 1,800 wave credits. Wave 5 pays 18, wave 10 pays 42,
-          and wave 20 pays 110. New personal milestones add one-time bonuses:
-          +20 at wave 5, +35 at 10, then larger rewards further out. Even short
-          runs count toward lifetime waves for equipment access. Zero-wave
-          losses earn nothing.
-        </p>
-        <p className="nc-note" style={{ marginTop: 12 }}>
-          Unlocks, saved loadouts, credits and six research tracks sync to your
-          account. Research costs rise by 35% per level and apply to your next
-          deployment. Run energy and battle upgrades reset each time. Active
-          runs save on this device and pause when you switch away. Old records
-          remain archived; the club leaderboard uses this Endless ramp.
-        </p>
-      </div>
-      <div style={{ marginTop: 22 }}>
-        <CoreLink to="/nexus/loadout/endless">Build your loadout</CoreLink>
-      </div>
+          ))}
+        </div>
+      </details>
+      <details className="nc-guide-section">
+        <summary>
+          Progression & rewards
+          <ChevronDown size={16} />
+        </summary>
+        <div>
+          <p>
+            Energy buys upgrades for this run. Credits unlock permanent weapons,
+            support and research. Bank earnings when the core falls or choose
+            End run & collect.
+          </p>
+          <p>
+            Every fifth wave brings a boss. Each wave gets harder. There's no
+            final wave.
+          </p>
+          <p>
+            Milestones pay once, on top of wave credits. Lifetime waves unlock
+            equipment access.
+          </p>
+          {MILESTONES.map((m) => (
+            <div className="nc-milestone-row" key={m.wave}>
+              <span>WAVE {m.wave}</span>
+              <strong>
+                <Orbit size={12} />+{m.credits}
+              </strong>
+            </div>
+          ))}
+          <p style={{ marginTop: 12 }}>
+            Equipment and research carry over. Battle upgrades reset. A run with
+            no cleared waves earns no credits.
+          </p>
+        </div>
+      </details>
     </>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useNexusCore } from "@/hooks/useNexusCore";
+import { CoreSigil } from "./CoreArtwork";
 import type { ReactNode } from "react";
 
 const icons = {
@@ -57,7 +58,7 @@ export function CoreHeading({
 }
 export function CoreBack({
   to = "/nexus",
-  children = "Command center",
+  children = "Home",
 }: {
   to?: string;
   children?: ReactNode;
@@ -106,16 +107,10 @@ export function CoreProfileGate({ children }: { children: ReactNode }) {
   const { profile, isError, refetch, isFetching } = useNexusCore();
   if (profile) return <>{children}</>;
   return (
-    <div className="nc-empty">
-      <Hexagon size={36} />
-      <h2>
-        {isError ? "Core connection interrupted" : "Connecting to your core"}
-      </h2>
-      <p>
-        {isError
-          ? "Your progress is safe. Reconnect to load your research and sector records."
-          : "Loading your upgrades and records…"}
-      </p>
+    <div className="nc-boot">
+      <CoreSigil />
+      <h2>{isError ? "Connection lost" : "POWERING UP"}</h2>
+      <p>{isError ? "Reconnect to continue." : "Loading your core…"}</p>
       <button
         className="nc-button nc-button-secondary"
         onClick={() => refetch()}

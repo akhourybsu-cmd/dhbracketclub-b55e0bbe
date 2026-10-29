@@ -4,7 +4,7 @@ Nexus is one endless, mobile-first central-core survival game. Enemies approach 
 
 ## Player loop
 
-1. Start with the pulse cannon, zero credits and no other equipment.
+1. Enter the full-screen title menu. Play launches the saved build directly. New players start with the pulse cannon, zero credits and no other equipment.
 2. Equip up to two unlocked auxiliary weapons within **4 power**, plus **one support module**. The pulse cannon is always equipped and uses no power. Empty slots are valid.
 3. Deploy. Selected weapons start online at level 1 without costing battle energy. Only equipped weapons and the selected support module can receive their battle upgrades.
 4. Earn energy from kills and wave clears. Buy attack, weapon, defense and support upgrades. Trigger Nova (20-second cooldown) and Overdrive (six seconds, 30-second cooldown).
@@ -66,7 +66,11 @@ A first wave-10 run pays 42 + 55 = 97 credits; a repeat pays 42. A first wave-15
 
 Current checkpoints retain `version: 2`, `balanceVersion: 4` and `nexus_core_run_v2:<user-id>:<club-id>`. They include the deployed loadout, mortar cooldown and in-flight ground-impact shells. Invalid loadouts, hidden unequipped upgrades and missing starting weapons are rejected on restore. Restores pause. The game pauses on blur/tab hide, and checkpoints flush on exit, backgrounding, purchases, abilities and completion. An unclaimed result must sync before another local deployment can overwrite it.
 
-Combat owns the dynamic viewport through a portal to `document.body`, escaping page-transition transforms. The app header is hidden, document scrolling is locked, and the lower portrait command deck contains 44px controls, abilities, speed, pause, systems and swipeable upgrades. Inspection pauses combat. Intro, pause and systems panels adapt to portrait, landscape, safe areas and dynamic browser height. Reduced motion suppresses the entry reveal. Exiting restores normal document scrolling.
+All game menus and combat own the dynamic viewport through portals to `document.body`, escaping page-transition transforms. `menus.css` defines the persistent game frame, animated SVG title core, compact item cards, bottom navigation and fixed deployment/replay actions. The title offers Play, Arsenal and Research without an introductory essay. Item mechanics live in info dialogs; milestones, history and run telemetry open on demand. The field guide starts folded. Menu content scrolls inside the frame and document scrolling is restored when Nexus unmounts.
+
+Play, Deploy and Play Again use a fresh server ticket and launch intent to enter wave one directly. Restoring an existing checkpoint always pauses. Fresh launch intent is accepted only for its matching ready checkpoint, so refreshing an active run cannot bypass pause. The ready-screen intro remains available for previously saved pre-launch checkpoints.
+
+Combat fills the screen. The app header is hidden, document scrolling is locked, and the lower portrait command deck contains 44px controls, abilities, speed, pause, systems and swipeable upgrades. Inspection pauses combat. Intro, pause and systems panels adapt to portrait, landscape, safe areas and dynamic browser height. Reduced motion suppresses the entry reveal. Leaving Nexus restores normal document scrolling.
 
 ## Server boundary
 
@@ -88,7 +92,9 @@ Campaign/challenge and old numeric loadout URLs redirect to the Endless loadout.
 - `npm run test:unit`
 - `npm run build`
 - `node --import tsx scripts/balance-nexus-core.ts --output=/tmp/nexus-balance.json` — 864 actual-engine runs across six loadouts, six policies, eight seeds and three research tiers.
-- Against Vite on port 8080: `node scripts/check-nexus-core-ui.mjs` and `node scripts/check-nexus-mobile.mjs`. Both use production pages, hooks, CSS and engine with an isolated account backend, never live account mutations.
+- Against Vite on port 8080: `node scripts/check-nexus-core-ui.mjs`, `node scripts/check-nexus-mobile.mjs` and `node scripts/check-nexus-menus.mjs`. These use production pages, hooks, CSS and engine with an isolated account backend, never live account mutations.
 - Generate `node --import tsx scripts/nexus-endless-contract.ts > /tmp/nexus-endless-contract.json`, then run `scripts/test-nexus-endless.mjs` with optional `@electric-sql/pglite` available. It applies the real migration twice and exercises real PostgreSQL constraints, all 103 upgrade-level points, 60 research prices, seven unlocks, free starting levels, loadout ownership/power, reward retries, milestones, archived-protocol isolation, ledger RLS and club records.
 
 The older database scripts reproduce historical migrations only. Use the Endless contract for the current protocol.
+
+The dedicated menu browser check covers eight viewport sizes, a direct body portal, concise title copy, 44px controls, fixed Deploy/Play Again actions, modal geometry, safe areas, viewport resizing, one-tap fresh starts, replay, paused restores, exit cleanup and centered SVG animation with reduced-motion support.

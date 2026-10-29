@@ -43,7 +43,7 @@ try {
         theme,
       );
       await expect(
-        page.getByRole("heading", { name: "Hold the core. Defy the swarm." }),
+        page.getByRole("heading", { name: "NEXUS DEFENSE" }),
       ).toBeVisible();
       await noOverflow();
       await page.screenshot({
@@ -52,7 +52,7 @@ try {
       });
       await go("/nexus/missions");
       await expect(
-        page.getByRole("heading", { name: "Build your defense." }),
+        page.getByRole("heading", { name: "Loadout" }),
       ).toBeVisible();
       await noOverflow();
       await expect(
@@ -64,7 +64,7 @@ try {
       });
       await go("/nexus/research");
       await expect(
-        page.getByRole("heading", { name: "Earn your arsenal." }),
+        page.getByRole("heading", { name: "Core lab" }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", {
@@ -77,9 +77,7 @@ try {
         path: join(output, `${width}-${theme}-armory.png`),
         fullPage: false,
       });
-      await page
-        .getByRole("tab", { name: "Core research", exact: true })
-        .click();
+      await page.getByRole("tab", { name: "Research", exact: true }).click();
       await expect(
         page.getByRole("button", {
           name: "Research Weapon amplifier",
@@ -105,18 +103,18 @@ try {
     sessionStorage.removeItem("nexus-qa-fail");
   });
   await page.getByRole("button", { name: "Retry sync" }).click();
-  await expect(page.getByText("Credits and record synced")).toBeVisible();
+  await expect(page.getByText("Rewards saved")).toBeVisible();
   assert.equal(await page.evaluate(() => window.nexusQa.profile.credits), 97);
   assert.equal(
     await page.evaluate(() => window.nexusQa.profile.total_waves),
     10,
   );
   await go("/nexus/results/endless");
-  await expect(page.getByText("Credits and record synced")).toBeVisible();
+  await expect(page.getByText("Rewards saved")).toBeVisible();
   assert.equal(await page.evaluate(() => window.nexusQa.profile.credits), 97);
   await page.evaluate(() => window.stageNexusResult());
   await go("/nexus/results/endless");
-  await expect(page.getByText("Credits and record synced")).toBeVisible();
+  await expect(page.getByText("Rewards saved")).toBeVisible();
   assert.equal(await page.evaluate(() => window.nexusQa.profile.credits), 139);
   await page.screenshot({
     path: join(output, "390-results.png"),
@@ -142,17 +140,16 @@ try {
     page.getByRole("button", { name: "Unequip Orbital blades", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Save loadout", exact: true }).click();
-  await expect(
-    page.getByText("Loadout synced. Ready for your next defense."),
-  ).toBeVisible();
+  await expect(page.getByText("Loadout saved")).toBeVisible();
   await go("/nexus/loadout/endless");
   await expect(
     page.getByRole("button", { name: "Unequip Orbital blades", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "Deploy nexus", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Start defense", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Deploy", exact: true }).click();
+  await expect(
+    page.getByRole("main", { name: "Nexus Defense battle" }),
+  ).toBeVisible();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
   const save = () =>
     page.evaluate(() =>
       JSON.parse(localStorage.getItem("nexus_core_run_v2:member:club")),
@@ -165,19 +162,21 @@ try {
   ).toBeVisible();
   assert.equal(await page.locator(".nc-upgrade").count(), 1);
   await page.getByRole("tab", { name: "Utility", exact: true }).click();
-  await expect(page.getByText(/No support module equipped/)).toBeVisible();
+  await expect(page.getByText(/No support equipped/)).toBeVisible();
   await page.getByRole("button", { name: "Open weapon systems" }).click();
   await expect(
     page.getByRole("dialog", { name: "Weapon systems", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Not in this loadout")).toHaveCount(3);
+  await expect(page.getByText("Not equipped")).toHaveCount(3);
   await page.getByRole("button", { name: "Return to defense" }).click();
   await page.getByRole("button", { name: "Pause defense" }).click();
   await page
     .getByRole("button", { name: "End run & collect", exact: true })
     .click();
-  await expect(page.getByText("Credits and record synced")).toBeVisible();
-  await expect(page.getByText(/Earnings banked/)).toBeVisible();
+  await expect(page.getByText("Rewards saved")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "RUN COMPLETE", exact: true }),
+  ).toBeVisible();
   assert.equal(await page.evaluate(() => window.nexusQa.profile.credits), 49);
   console.log(
     "PASS offline reward retry, milestone idempotency, repeat income, unlock debit, saved loadout, online weapon and cash out",
@@ -209,6 +208,7 @@ try {
   await page
     .getByRole("button", { name: "Equip Siege mortar", exact: true })
     .click();
+  await page.getByRole("tab", { name: /Support/ }).click();
   await page
     .getByRole("button", { name: "Equip Stasis field", exact: true })
     .click();
@@ -219,9 +219,7 @@ try {
     page.getByRole("button", { name: "Equip Stasis field", exact: true }),
   ).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Save loadout", exact: true }).click();
-  await expect(
-    page.getByText("Loadout synced. Ready for your next defense."),
-  ).toBeVisible();
+  await expect(page.getByText("Loadout saved")).toBeVisible();
   assert.deepEqual(await page.evaluate(() => window.nexusQa.profile.loadout), {
     weapons: ["arc", "mortar"],
     module: "repair",
@@ -232,7 +230,7 @@ try {
     fullPage: false,
   });
   await go("/nexus/research");
-  await page.getByRole("tab", { name: "Core research", exact: true }).click();
+  await page.getByRole("tab", { name: "Research", exact: true }).click();
   await page
     .getByRole("button", { name: "Research Weapon amplifier", exact: true })
     .click();
@@ -241,10 +239,12 @@ try {
     await page.evaluate(() => window.nexusQa.profile.research.weapons),
     1,
   );
-  await page.locator(".nc-history summary").click();
-  await expect(page.getByLabel("Credit history")).toContainText(
-    "Unlocked · Orbital blades",
-  );
+  await page
+    .getByRole("button", { name: "Credit history", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Credit history", exact: true }),
+  ).toContainText("Unlocked · Orbital blades");
   await go();
   await page.evaluate(() => window.stageNexusBattle());
   await go("/nexus/battle/endless");
@@ -286,17 +286,13 @@ try {
   await page.getByRole("button", { name: "Save & exit", exact: true }).click();
   await go("/nexus/codex");
   await expect(
-    page.getByRole("heading", { name: "Know your perimeter." }),
+    page.getByRole("heading", { name: "Hold the core." }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", {
-      name: "Siege mortar · Area bombardment",
-      exact: true,
-    }),
-  ).toBeVisible();
+  await page.getByText("Weapons & support", { exact: true }).click();
+  await expect(page.getByText("Siege mortar", { exact: true })).toBeVisible();
   await go("/nexus/leaderboard");
   await expect(
-    page.getByRole("heading", { name: "The first record is yours to set." }),
+    page.getByRole("heading", { name: "No records yet" }),
   ).toBeVisible();
   assert.deepEqual(errors, []);
   console.log(

@@ -89,21 +89,44 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
   const { userId, clubId, profile, registerLegacy } = useNexusCore();
   const navigate = useNavigate();
   const location = useLocation();
-  const [run, setRun] = useState<CoreRun | null>(() => {
+  const [launch] = useState(() => {
     const saved = readCoreRun(userId, clubId);
-    if (saved?.scenarioId === scenario.id) return saved;
-    const fresh = (location.state as { freshRun?: CoreRun } | null)?.freshRun;
-    return !saved && fresh?.scenarioId === scenario.id ? fresh : null;
+    const intent = location.state as {
+      freshRun?: CoreRun;
+      autoStart?: boolean;
+    } | null;
+    const fresh = intent?.freshRun;
+    const checkpoint =
+      saved?.scenarioId === scenario.id
+        ? saved
+        : !saved && fresh?.scenarioId === scenario.id
+          ? fresh
+          : null;
+    const autoStarted =
+      !!checkpoint &&
+      checkpoint.phase === "ready" &&
+      checkpoint.id === fresh?.id &&
+      intent?.autoStart === true;
+    return {
+      run: autoStarted ? startWave(checkpoint, scenario) : checkpoint,
+      autoStarted,
+    };
   });
+  const [run, setRun] = useState<CoreRun | null>(launch.run);
   const runRef = useRef(run);
-  const [paused, setPaused] = useState(!!run && run.phase !== "ready");
+  const [paused, setPaused] = useState(
+    !!run && run.phase !== "ready" && !launch.autoStarted,
+  );
   const [speed, setSpeed] = useState(1);
   const [category, setCategory] = useState<
     "attack" | "weapons" | "defense" | "utility"
   >("attack");
   const [muted, setMuted] = useState(true);
   const [systemsOpen, setSystemsOpen] = useState(false);
-  const [entering, setEntering] = useState(false);
+  const [entering, setEntering] = useState(
+    launch.autoStarted &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   const [nativeFullScreen, setNativeFullScreen] = useState(
     !!document.fullscreenElement,
   );
@@ -519,8 +542,8 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
             ) && (
               <p className="nc-upgrade-empty">
                 {category === "weapons"
-                  ? "Pulse cannon online. Unlock auxiliary weapons in the armory, then equip them before your next run."
-                  : "No support module equipped. Choose repair, extra energy or stasis in your next loadout."}
+                  ? "Pulse cannon online · Equip auxiliaries in Loadout"
+                  : "No support equipped"}
               </p>
             )}
           </div>
@@ -596,10 +619,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                 </span>
               </div>
               <div className="nc-deployment-actions">
-                <p>
-                  Your core fires automatically. Build upgrades with the energy
-                  you earn.
-                </p>
+                <p>Auto-aim online · Upgrade with energy</p>
                 <button
                   className="nc-button"
                   onClick={begin}
@@ -615,7 +635,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                     navigate("/nexus");
                   }}
                 >
-                  Back to command center
+                  Back to title
                 </button>
               </div>
             </>
@@ -623,9 +643,9 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
             <>
               <div className="nc-sheet-grip" />
               <div className="nc-eyebrow">CORE ON STANDBY</div>
-              <AlertDialogTitle>Defense paused.</AlertDialogTitle>
+              <AlertDialogTitle>PAUSED</AlertDialogTitle>
               <AlertDialogDescription>
-                {scenario.title} · Wave {run.wave} · Saved on this device
+                Wave {run.wave} · Checkpoint saved
               </AlertDialogDescription>
               <div className="nc-pause-stats">
                 <span>
@@ -707,9 +727,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
         >
           <div className="nc-sheet-grip" />
           <DialogTitle>Weapon systems</DialogTitle>
-          <DialogDescription>
-            Defense paused. Your deployed loadout is fixed for this run.
-          </DialogDescription>
+          <DialogDescription>Loadout locked · Defense paused</DialogDescription>
           <div className="nc-systems-scroll">
             <CoreWeaponPanel
               run={run}
@@ -725,7 +743,6 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                 Support:{" "}
                 {ARMORY.find((a) => a.id === run.loadout?.module)?.name ||
                   "None equipped"}
-                . Unlock and equip new equipment between runs.
               </p>
             )}
             <div className="nc-targeting">

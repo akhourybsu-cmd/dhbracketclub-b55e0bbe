@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { Orbit, Shield, ShieldOff } from "lucide-react";
+import { ChevronDown, Orbit, Play, Shield, Trophy } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
-import { getScenario } from "@/lib/nexus/core/catalog";
-import { isFinished, runReward, runStars } from "@/lib/nexus/core/engine";
+import { ENDLESS, getScenario } from "@/lib/nexus/core/catalog";
+import { isFinished, runStars } from "@/lib/nexus/core/engine";
 import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
 import type { CoreRun } from "@/lib/nexus/core/types";
-import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
+import { ARMORY } from "@/lib/nexus/core/progression";
 import { rewardBreakdown } from "@/lib/nexus/core/economy";
+import { CoreMenuActions } from "@/components/nexus/core/CoreMenuActions";
 import { WEAPON_IDS, WEAPON_NAMES } from "@/lib/nexus/core/systems";
 import { useNavigate } from "react-router-dom";
 import { clearCoreRun } from "@/lib/nexus/core/persistence";
 import {
-  CoreBack,
   CoreLink,
   CoreProfileGate,
   CoreSaved,
@@ -28,7 +28,12 @@ export default function NexusResultsPage() {
 }
 function Debrief() {
   const { missionId } = useParams();
-  const { userId, clubId, finish, profile } = useNexusCore();
+  const { userId, clubId, finish, profile, begin } = useNexusCore();
+  const replayId = useRef(crypto.randomUUID());
+  const replayBusy = useRef(false);
+  const previousBest = useRef(profile?.bestWave || 0);
+  const [playing, setPlaying] = useState(false);
+  const [playError, setPlayError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const [run] = useState(
@@ -76,7 +81,6 @@ function Debrief() {
   if (!valid)
     return (
       <>
-        <CoreBack />
         <div className="nc-empty">
           <Shield size={32} />
           <h2>No completed run on this device.</h2>
@@ -91,126 +95,137 @@ function Debrief() {
   const breakdown = rewardBreakdown(run, scenario, profile);
   const reward = award?.reward ?? breakdown.total;
   const nextUnlock = ARMORY.find((a) => !profile?.unlocks.includes(a.id));
-  const nextMilestone = MILESTONES.find(
-    (m) => m.wave > (profile?.bestWave || 0),
-  );
+  const replay = async () => {
+    if (replayBusy.current || sync !== "saved") return;
+    replayBusy.current = true;
+    setPlaying(true);
+    setPlayError("");
+    try {
+      const next = await begin(ENDLESS, replayId.current, profile!.loadout);
+      saveCoreRun(next, userId, clubId);
+      navigate("/nexus/battle/endless", {
+        state: { freshRun: next, autoStart: true },
+      });
+    } catch (e) {
+      setPlayError(
+        e instanceof Error ? e.message : "Connection lost. Try again.",
+      );
+    } finally {
+      replayBusy.current = false;
+      setPlaying(false);
+    }
+  };
   return (
-    <>
-      <CoreBack />
-      <div className="nc-result">
-        <div className="nc-result-seal">
-          {won ? <Shield size={38} /> : <ShieldOff size={38} />}
+    <section className="nc-result-screen">
+      <div className="nc-result-mark">
+        <Trophy size={30} />
+      </div>
+      <h1>{run.retired || won ? "RUN COMPLETE" : "CORE LOST"}</h1>
+      <div className="nc-result-wave">
+        {String(run.cleared).padStart(2, "0")}
+      </div>
+      <p className="nc-wave-caption">
+        WAVES CLEARED{run.cleared > previousBest.current ? " · NEW BEST" : ""}
+      </p>
+      {won && <CoreStars count={stars} />}
+      <div className="nc-result-grid">
+        <div className="nc-panel">
+          <strong>{run.kills}</strong>
+          <span>Kills</span>
         </div>
-        <div className="nc-eyebrow" style={{ justifyContent: "center" }}>
-          {scenario.subtitle} / After action
+        <div className="nc-panel">
+          <strong>{run.score.toLocaleString()}</strong>
+          <span>Score</span>
         </div>
-        <h1>
-          {won
-            ? "The core holds."
-            : scenario.mode === "endless"
-              ? "Every wave earned."
-              : "Rebuild. Return."}
-        </h1>
-        <p>
-          {scenario.title} ·{" "}
-          {won
-            ? "Perimeter secured."
-            : run.retired
-              ? "Earnings banked. Your arsenal carries on."
-              : "The nexus fell. Your arsenal carries on."}
+        <div className="nc-panel">
+          <strong>
+            {Math.floor(run.time / 60)}:
+            {String(Math.floor(run.time % 60)).padStart(2, "0")}
+          </strong>
+          <span>Survived</span>
+        </div>
+      </div>
+      <div className="nc-reward">
+        <Orbit size={21} />
+        <strong>+{reward}</strong>
+        <span>CREDITS</span>
+      </div>
+      <p className="nc-menu-note">
+        {award?.waves ?? breakdown.waves} waves
+        {(award?.bonus ?? breakdown.bonus) > 0
+          ? ` + ${award?.bonus ?? breakdown.bonus} milestone bonus`
+          : ""}
+      </p>
+      {sync === "saved" ? (
+        <CoreSaved text="Rewards saved" />
+      ) : sync === "saving" ? (
+        <p className="nc-menu-note" role="status">
+          Saving rewards…
         </p>
-        {won && <CoreStars count={stars} />}
-        <div className="nc-result-grid">
-          <div className="nc-panel">
-            <strong>{run.cleared}</strong>
-            <span>Waves cleared</span>
-          </div>
-          <div className="nc-panel">
-            <strong>{run.kills}</strong>
-            <span>Enemies neutralized</span>
-          </div>
-          <div className="nc-panel">
-            <strong>{run.score.toLocaleString()}</strong>
-            <span>Score</span>
-          </div>
-        </div>
-        <div className="nc-reward">
-          <Orbit size={18} />
-          <strong>+{reward}</strong> credits
-        </div>
-        <p className="nc-note">
-          {award?.waves ?? breakdown.waves} wave credits
-          {(award?.bonus ?? breakdown.bonus) > 0
-            ? ` + ${award?.bonus ?? breakdown.bonus} milestone bonus`
-            : ""}
-        </p>
-        {sync === "saved" ? (
-          <CoreSaved text="Credits and record synced" />
-        ) : sync === "saving" ? (
-          <p className="nc-note" role="status">
-            Syncing your run…
-          </p>
-        ) : (
-          <div className="nc-rule" role="alert">
-            {error}. Your run is saved on this device.
-            <br />
+      ) : (
+        <div className="nc-rule" role="alert">
+          {error}. Run saved on this device.
+          <button className="nc-back" onClick={() => setAttempt((n) => n + 1)}>
+            Retry sync
+          </button>
+          {/Deploy your nexus before|Deployment already closed|no legacy checkpoint/.test(
+            error,
+          ) && (
             <button
               className="nc-back"
-              onClick={() => setAttempt((n) => n + 1)}
+              onClick={() => {
+                clearCoreRun(userId, clubId);
+                navigate("/nexus");
+              }}
             >
-              Retry sync →
+              Discard record
             </button>
-            {/Deploy your nexus before|Deployment already closed|no legacy checkpoint/.test(
-              error,
-            ) && (
-              <button
-                className="nc-back"
-                onClick={() => {
-                  clearCoreRun(userId, clubId);
-                  navigate("/nexus");
-                }}
-              >
-                Discard this unsaved record →
-              </button>
-            )}
-          </div>
-        )}
-        <div className="nc-result-actions">
-          {sync === "saved" && (
-            <CoreLink to="/nexus/loadout/endless">
-              Refine loadout & return
-            </CoreLink>
           )}
-          <CoreLink to="/nexus/research" secondary>
-            Unlock & upgrade
-          </CoreLink>
         </div>
-        {nextUnlock && (
-          <section className="nc-panel nc-next-unlock">
-            <div className="nc-eyebrow">Build toward your next unlock</div>
-            <h2>{nextUnlock.name}</h2>
-            <p className="nc-note">
-              {Math.min(profile?.totalWaves || 0, nextUnlock.waves)} /{" "}
-              {nextUnlock.waves} lifetime waves ·{" "}
-              {Math.min(profile?.credits || 0, nextUnlock.cost)} /{" "}
-              {nextUnlock.cost} credits
-            </p>
-            <progress
-              aria-label={`${nextUnlock.name} credit progress`}
-              value={Math.min(profile?.credits || 0, nextUnlock.cost)}
-              max={nextUnlock.cost}
-            />
-            {nextMilestone && (
-              <p className="nc-note">
-                Clear wave {nextMilestone.wave} in one run for +
-                {nextMilestone.credits} bonus credits.
-              </p>
-            )}
-          </section>
-        )}
-        {run.metrics && (
+      )}
+      {nextUnlock && (
+        <section className="nc-panel nc-next-unlock">
+          <h2>
+            {nextUnlock.name}
+            <small>NEXT UNLOCK</small>
+          </h2>
+          <progress
+            aria-label={`${nextUnlock.name} credit progress`}
+            value={Math.min(profile?.credits || 0, nextUnlock.cost)}
+            max={nextUnlock.cost}
+          />
+          <span>
+            {Math.min(profile?.credits || 0, nextUnlock.cost)}/{nextUnlock.cost}{" "}
+            credits · {Math.min(profile?.totalWaves || 0, nextUnlock.waves)}/
+            {nextUnlock.waves} lifetime waves
+          </span>
+        </section>
+      )}
+      <CoreMenuActions label="Result actions">
+        <button
+          className="nc-button"
+          disabled={sync !== "saved" || playing}
+          onClick={replay}
+        >
+          <Play size={17} />
+          {playing ? "CONNECTING…" : "PLAY AGAIN"}
+        </button>
+        <CoreLink to="/nexus/loadout/endless" secondary>
+          Loadout
+        </CoreLink>
+      </CoreMenuActions>
+      {playError && (
+        <p className="nc-rule" role="alert">
+          {playError}
+        </p>
+      )}
+      {run.metrics && (
+        <details>
+          <summary>
+            Run details
+            <ChevronDown size={16} />
+          </summary>
           <section className="nc-panel nc-run-metrics">
-            <h2>Build performance</h2>
             <div className="nc-damage-list">
               {WEAPON_IDS.filter((id) => run.metrics!.damage[id] > 0).map(
                 (id) => (
@@ -231,17 +246,13 @@ function Debrief() {
                 ),
               )}
             </div>
-            <p className="nc-note">
-              Energy supplied {run.metrics.energyEarned} · Spent{" "}
-              {run.metrics.energySpent} · Unspent {run.energy}
+            <p className="nc-menu-note">
+              Energy {run.metrics.energyEarned} · Spent{" "}
+              {run.metrics.energySpent} · Remaining {run.energy}
             </p>
           </section>
-        )}
-        <p className="nc-note">
-          {Math.floor(run.time / 60)}m {Math.floor(run.time % 60)}s survived ·
-          In-battle upgrades reset for your next deployment.
-        </p>
-      </div>
-    </>
+        </details>
+      )}
+    </section>
   );
 }

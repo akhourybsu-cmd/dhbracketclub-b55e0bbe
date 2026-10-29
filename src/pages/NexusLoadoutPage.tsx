@@ -7,8 +7,8 @@ import { createRun, isFinished, stats } from "@/lib/nexus/core/engine";
 import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
 import { useNexusCore } from "@/hooks/useNexusCore";
 import { CoreLoadoutEditor } from "@/components/nexus/core/CoreLoadoutEditor";
+import { CoreMenuActions } from "@/components/nexus/core/CoreMenuActions";
 import {
-  CoreBack,
   CoreHeading,
   CoreLink,
   CoreProfileGate,
@@ -52,11 +52,13 @@ function Deployment() {
     try {
       if (action === "save") {
         await saveLoadout(loadout);
-        toast.success("Loadout synced. Ready for your next defense.");
+        toast.success("Loadout saved");
       } else {
         const run = await begin(ENDLESS, deploymentId.current, loadout);
         saveCoreRun(run, userId, clubId);
-        navigate("/nexus/battle/endless", { state: { freshRun: run } });
+        navigate("/nexus/battle/endless", {
+          state: { freshRun: run, autoStart: true },
+        });
       }
     } catch (e) {
       setError(
@@ -69,63 +71,44 @@ function Deployment() {
   };
   return (
     <>
-      <CoreBack />
-      <CoreHeading eyebrow="Endless / deployment" title="Build your defense.">
-        Your pulse cannon is always ready. Choose up to two auxiliary weapons
-        within 4 power, plus one support module. Every weapon you bring starts
-        online.
+      <CoreHeading eyebrow="PREPARE YOUR CORE" title="Loadout">
+        2 hardpoints · 4 power · 1 support
       </CoreHeading>
-      <div className="nc-endless-rules">
-        <span>Unlimited waves</span>
-        <span>Boss every 5 waves</span>
-        <span>Difficulty increases every wave</span>
-      </div>
       <CoreLoadoutEditor
         profile={profile}
         value={loadout}
         onChange={setLoadout}
         disabled={!!pending}
       />
-      <div className="nc-stat-strip">
-        <div>
-          <strong>{v.maxHp}</strong>
-          <span>
-            <Heart size={10} className="inline" /> Starting hull
-          </span>
-        </div>
-        <div>
-          <strong>{v.maxShield}</strong>
-          <span>
-            <Shield size={10} className="inline" /> Starting barrier
-          </span>
-        </div>
-        <div>
-          <strong>{preview.energy}</strong>
-          <span>
-            <Zap size={10} className="inline" /> Starting energy
-          </span>
-        </div>
+      <div className="nc-mini-stats">
+        <span>
+          <Heart size={13} />
+          {v.maxHp}
+        </span>
+        <span>
+          <Shield size={13} />
+          {v.maxShield}
+        </span>
+        <span>
+          <Zap size={13} />
+          {preview.energy}
+        </span>
       </div>
       {unclaimed ? (
-        <div className="nc-panel" style={{ padding: 18 }}>
-          <p className="nc-note">
-            Sync your completed run before deploying again.
-          </p>
+        <div className="nc-run-notice">
+          <p className="nc-note">Rewards waiting.</p>
           <CoreLink to={`/nexus/results/${saved.scenarioId}`}>
-            Sync last run
+            Collect rewards
           </CoreLink>
         </div>
       ) : active && !replace ? (
-        <div className="nc-panel" style={{ padding: 18 }}>
+        <div className="nc-run-notice">
           <p className="nc-note">
-            A defense is saved on this device. Replacing it forfeits its
-            unclaimed earnings.
+            Wave {saved.wave || 1} saved. A new run replaces this defense.
           </p>
-          <CoreLink to={`/nexus/battle/${saved.scenarioId}`}>
-            Resume saved run
-          </CoreLink>
+          <CoreLink to={`/nexus/battle/${saved.scenarioId}`}>Resume</CoreLink>
           <button className="nc-back" onClick={() => setReplace(true)}>
-            Replace saved run
+            New run
           </button>
         </div>
       ) : null}
@@ -134,13 +117,14 @@ function Deployment() {
           {error}
         </p>
       )}
-      <div className="nc-deploy-actions">
+      <CoreMenuActions>
         <button
           className="nc-button nc-button-secondary"
+          aria-label="Save loadout"
           disabled={!!pending || !!loadoutError(loadout, profile.unlocks)}
           onClick={() => act("save")}
         >
-          {pending === "save" ? "Saving…" : "Save loadout"}
+          {pending === "save" ? "Saving…" : "Save"}
         </button>
         {!unclaimed && (!active || replace) && (
           <button
@@ -148,15 +132,11 @@ function Deployment() {
             disabled={!!pending || !!loadoutError(loadout, profile.unlocks)}
             onClick={() => act("deploy")}
           >
-            {pending === "deploy" ? "Deploying…" : "Deploy nexus"}
+            {pending === "deploy" ? "Deploying…" : "Deploy"}
             <ArrowRight size={17} />
           </button>
         )}
-      </div>
-      <p className="nc-note">
-        Weapons, modules, credits and research sync to your account. Battle
-        energy and upgrades reset each run. Active defenses save on this device.
-      </p>
+      </CoreMenuActions>
     </>
   );
 }
