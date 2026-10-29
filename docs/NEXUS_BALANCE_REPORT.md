@@ -1,68 +1,72 @@
-# Nexus Defense — balance audit, ruleset 3
+# Nexus Defense — Endless balance audit, ruleset 4
 
-The final sweep uses the actual fixed-step combat engine: 1,248 runs, 13 scenarios, six policies, eight seeds, and fresh / level-3 permanent research. Policies make purchase and ability decisions every 0.75 simulated seconds. Seeded geometry, critical hits, actual projectiles, chained hits, armor, and currency spending are included. This is a repeatable tuning benchmark; it does not replace human playtesting.
+The sweep ran the actual deterministic combat engine **864 times**: six equipment loadouts × six purchase/ability policies × eight seeds × three research tiers (0, 3 and 10 in all tracks). Policies act every 0.75 simulated seconds. The outcome includes real projectiles, mortar impacts, chains, collisions, armor, abilities, purchases and energy accounting. These are repeatable automated policies, not optimal human play or live telemetry.
 
-## Campaign clear rates
+## Survival by loadout
 
-Five active build policies per research tier; unattended runs are tracked separately.
+Medians below combine five active purchase policies and eight seeds per research tier (40 runs per cell). Idle runs are reported separately.
 
-| Sector | Fresh core clears | Level-3 research clears |
-| --- | --- | --- |
-| 1 | 40/40 | 40/40 |
-| 2 | 40/40 | 40/40 |
-| 3 | 40/40 | 40/40 |
-| 4 | 40/40 | 40/40 |
-| 5 | 40/40 | 40/40 |
-| 6 | 40/40 | 40/40 |
-| 7 | 16/40 | 40/40 |
-| 8 | 2/40 | 28/40 |
+| Loadout | Fresh median wave (range) | Level-3 research | Level-10 research | Fresh median minutes |
+| --- | --- | --- | --- | --- |
+| Starter pulse only | 14 (13–16) | 16 (14–18) | 19 (18–20) | 10.2 |
+| Orbit + repair | 14 (14–17) | 17 (16–19) | 19 (19–21) | 11.6 |
+| Arc + orbit + stasis | 17 (15–18) | 19 (17–21) | 22 (20–23) | 14.3 |
+| Rail + orbit + repair | 16 (16–17) | 18 (17–19) | 21 (21–23) | 11.5 |
+| Arc + mortar + siphon | 17 (15–19) | 19 (18–20) | 22 (21–23) | 12.3 |
+| Mortar + orbit + stasis | 19 (16–20) | 20 (19–22) | 23 (21–25) | 15.2 |
 
-The opening sector was cleared by every active policy; idle cores failed all eight seeds. The last two sectors raise pressure during the run rather than overwhelming every defensive build in wave one. Fresh balanced cores cleared the finale in 2/8 seeds. With level-3 research, balanced and bulwark policies cleared 8/8, control and economy 6/8. Pure gunner policies failed the finale at this tier: players must add fortification, adjust their build, or research further.
+Every run ended before the 30-minute simulation ceiling. Every run conserved its energy budget: earned = spent + unspent. Fresh active starter builds clear 13–16 waves; more advanced loadouts push further. Research improves survival across every loadout. The strongest tested maximum-research run reached wave 25.
 
-## Endless survival
+## Purchase and ability policy sensitivity
 
-| Policy | Fresh median wave | Level-3 median wave | Level-3 range |
+Medians combine all six loadouts and eight seeds for each policy.
+
+| Policy | Fresh median wave | Level-3 median | Level-10 median |
 | --- | --- | --- | --- |
-| Balanced | 19 | 21 | 21–21 |
-| Gunner | 16 | 19 | 19–19 |
-| Bulwark | 17 | 19 | 19–19 |
-| Control | 17.5 | 19 | 19–19 |
-| Economy | 16.5 | 18.5 | 18–19 |
-| Idle | 2 | 4 | 4–4 |
+| Balanced | 17 | 19 | 23 |
+| Gunner | 17 | 19 | 21 |
+| Bulwark | 16 | 18 | 21.5 |
+| Control | 16 | 18 | 21.5 |
+| Economy | 16 | 17 | 21 |
+| Idle | 4 | 6 | 9 |
 
-All endless runs terminated. Active level-3 policies stayed within approximately three waves of one another; idle play was substantially weaker. These policies are static examples, not optimal play.
+## Equipment tradeoffs
 
-## Challenge clear rates
+- Rail uses 3 power, so only the 1-power orbit fits beside it. It does concentrated armor-piercing damage to bosses, while orbit handles hull attackers.
+- Arc and mortar fit together at 4 power. Arc applies immediate chained damage; mortar delivers delayed splash to clustered enemies. Siphon trades protection for more run upgrades.
+- Mortar + orbit + stasis was the strongest general-purpose combination in this benchmark. The slower first line and dense inner ring favor area damage. This is a known tuning bias, not a claim that every combination is equally strong.
+- Orbit + repair adds an inner defensive layer and improves several policies, but has the same fresh median as starter when all policies are combined. Buying additional blade/repair levels early can delay pulse investment. Its lower power cost and later pairing with rail/mortar are part of its value.
+- Idle policies clear materially fewer waves than active ones and cannot create an immortal core, even at maximum research.
 
-| Challenge | Fresh clears | Level-3 clears |
-| --- | --- | --- |
-| Rush | 40/40 | 40/40 |
-| Glass | 40/40 | 40/40 |
-| Siege | 40/40 | 40/40 |
-| Blackout | 40/40 | 40/40 |
+## Permanent progression pacing
 
-Challenges are currently alternate rulesets that are accessible with competent builds, rather than endgame difficulty gates. No-upgrade policies failed all of them.
+The wave payout is `min(1800, 3w + floor(w²/8))`; personal wave milestones 5/10/15/20/25 pay 20/35/55/85/120 once. Zero-wave runs pay nothing. Equipment costs 1,530 credits in total, and six level-3 research tracks cost 878.
 
-## Currency pacing
+Four sequential progression journeys (two seeds, arsenal-first and research-first priorities) use real balanced-policy combat outcomes. They bank each run, buy equipment/research at the real prices and change the next loadout as weapons become available. They are illustrative savings paths, not fixed promises for players.
 
-- Energy is an integer run budget. Fractional siphon bonuses carry forward instead of disappearing to per-kill rounding. Starting energy + collected energy = purchased upgrades + unspent energy. There is no conversion into permanent credits.
-- First six campaign clears pay 932 research credits. Level 3 in all six research tracks costs 878 credits, putting the intended research tier within reach before the final two sectors.
-- First-clear bonuses are paid once per account/scenario. Repeat victories still pay for waves: 20 for sector 1, 96 for sector 8.
-- Endless payouts increase with depth: 65 at wave 10, 180 at wave 20, capped at 1,500. A zero-wave loss pays zero.
-- Research costs grow by 1.35 per level. All 60 displayed research prices and 83 cumulative in-battle upgrade prices were compared against real PostgreSQL settlement logic.
+| Savings policy | First auxiliary | All equipment | All research tracks at level 3 | Total simulated play for both goals |
+| --- | --- | --- | --- | --- |
+| Arsenal first | Run 1 | Run 17 | Run 24 | 5.5–5.5 hours |
+| Research first | Run 1 | Run 25 | Run 10 | 5.5–5.5 hours |
 
-## Correctness fixes behind the tuning
+Both journey seeds produce the same purchase-run milestones. The arsenal-first path unlocks everything by run 17, while the research-first path reaches level-3 core research by run 10 and completes the armory at run 25. These choices intentionally compete for the same permanent currency. Early cash-outs and different purchases change the timing. Faster 2× combat reduces wall-clock play time; the table uses simulated 1× time.
 
-- Cooldown overshoot is preserved, so fire-rate improvements match displayed shots per second, including overdrive.
-- Pulse shots reserve expected lethal damage and retarget if their enemy dies.
-- Arc chains visit each target once; rail beams pierce their line and bypass armor. Orbital collision reaches enemies attacking the hull.
-- Damage counters record actual HP removed, including armor and overkill; kills are credited to the responsible system.
-- Shield regeneration waits three seconds after a hit. Stasis and nova use the stronger movement slow.
-- Server-issued deployment IDs, immutable research snapshots, bounded run counters, and an energy ledger guard credit settlement. First-clear allocation and research spending are serialized by profile row locks.
-- Every new credit debit/award has an account-scoped receipt; duplicate result retries reuse the existing award. Combat remains client-simulated, rather than being an authoritative anti-cheat server.
+## Verification and limits
+
+- 363 unit tests across 42 files passed, including current loadout/progression guardrails, real mortar geometry and delayed hits, archived weapon mechanics and checkpoint validation.
+- Isolated PostgreSQL tests apply the migration twice and compare all 103 upgrade-level points, all 60 research prices and all seven equipment unlocks with the client. Free initial weapon levels, module restrictions, power budgets, ownership, milestone retries, old-protocol isolation, ledger RLS and club records are covered.
+- Browser checks use actual production UI/hooks/engine with an isolated backend. They cover starter locks, earning/purchasing/equipping, loadout persistence, cash-out, offline reward retry, actual weapon damage, abilities and both themes. Touch checks span eight portrait/landscape/tablet/desktop sizes and dynamic safe areas.
+- Combat remains client-simulated. Server settlement checks accounting and session consistency; it is not authoritative anti-cheat.
+- Human testing is still needed to assess the feel of 10–16 minute runs, the late-game mortar/stasis bias, first-weapon impact and long-term retention. This is a measured first balance pass.
 
 ## Reproduce
 
-`node --import tsx scripts/balance-nexus-core.ts --output=/tmp/nexus-balance.json`
+```sh
+node --import tsx scripts/balance-nexus-core.ts --output=/tmp/nexus-balance.json
+node --import tsx scripts/balance-nexus-progression.ts
+node --import tsx scripts/nexus-endless-contract.ts > /tmp/nexus-endless-contract.json
+# With optional @electric-sql/pglite available:
+node scripts/test-nexus-endless.mjs
+```
 
-`src/test/nexus/coreBalance.test.ts` guards onboarding viability, research progression, survival bands, and finite maximum-research endless runs. The JSON report includes per-run purchases, damage by weapon, budgets, score, duration, and outcomes.
+`src/test/nexus/coreBalance.test.ts` guards starter viability, access to the first weapon, loadout contribution, research gains, survival bands and finite endgame runs. Full sweep JSON includes per-run wave, duration, damage, purchases and currency budgets.

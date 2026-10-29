@@ -127,7 +127,6 @@ import { AdminRoute } from "./components/auth/AdminRoute";
 import { ClubAdminRoute } from "./components/auth/ClubAdminRoute";
 import { AssetGuard } from "./components/auth/AssetGuard";
 const NexusHomePage = lazyWithRetry(() => import("./pages/NexusHomePage"));
-const NexusMissionsPage = lazyWithRetry(() => import("./pages/NexusMissionsPage"));
 const NexusLoadoutPage = lazyWithRetry(() => import("./pages/NexusLoadoutPage"));
 const NexusBattlePage = lazyWithRetry(() => import("./pages/NexusBattlePage"));
 const NexusResultsPage = lazyWithRetry(() => import("./pages/NexusResultsPage"));
@@ -315,8 +314,8 @@ function AnimatedRoutes() {
 
         {/* Nexus Defense — central-core survival (full-screen game shell) */}
         <Route path="/nexus" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusHomePage /></NexusLayout></ProtectedPage>} />
-        <Route path="/nexus/missions" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusMissionsPage /></NexusLayout></ProtectedPage>} />
-        <Route path="/nexus/challenges" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusMissionsPage /></NexusLayout></ProtectedPage>} />
+        <Route path="/nexus/missions" element={<Navigate to="/nexus/loadout/endless" replace />} />
+        <Route path="/nexus/challenges" element={<Navigate to="/nexus/loadout/endless" replace />} />
         <Route path="/nexus/research" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusResearchPage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/loadout/:missionId" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusLoadoutPage /></NexusLayout></ProtectedPage>} />
         <Route path="/nexus/battle/:missionId" element={<ProtectedPage assetSlug="nexus-defense"><NexusLayout><NexusBattlePage /></NexusLayout></ProtectedPage>} />

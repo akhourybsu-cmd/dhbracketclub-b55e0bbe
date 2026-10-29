@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import { useClub } from "@/contexts/ClubContext";
 import { supabase } from "@/integrations/supabase/client";
 import { withTimeout, QUERY_TIMEOUT_MS } from "@/lib/asyncGuards";
 import { CoreBack, CoreHeading } from "@/components/nexus/core/CoreUI";
-import type { CoreMode } from "@/lib/nexus/core/types";
 
 interface RecordRow {
   user_id: string;
@@ -16,7 +14,7 @@ interface RecordRow {
 }
 export default function NexusLeaderboardPage() {
   const { club } = useClub();
-  const [mode, setMode] = useState<CoreMode>("endless");
+  const mode = "endless";
   const query = useQuery({
     queryKey: ["nexus-core-records", club?.id, mode],
     enabled: !!club,
@@ -41,21 +39,9 @@ export default function NexusLeaderboardPage() {
         eyebrow={`${club?.name || "Club"} / records`}
         title="Hold a little longer."
       >
-        Best run per club member. Endless ranks by waves cleared, then score.
-        Campaign and challenges rank by score.
+        Best Endless run per club member, ranked by waves cleared, then score.
+        Records use the current loadout rules and wave ramp.
       </CoreHeading>
-      <div className="nc-tabs" role="tablist" aria-label="Record mode">
-        {(["endless", "campaign", "challenge"] as const).map((m) => (
-          <button
-            key={m}
-            role="tab"
-            aria-selected={mode === m}
-            onClick={() => setMode(m)}
-          >
-            {m === "challenge" ? "Challenges" : m[0].toUpperCase() + m.slice(1)}
-          </button>
-        ))}
-      </div>
       {query.isError ? (
         <div className="nc-empty">
           <h2>Records unavailable</h2>
@@ -89,14 +75,7 @@ export default function NexusLeaderboardPage() {
               </span>
               <div className="nc-record-name">
                 {r.display_name || "Defender"}
-                <small>
-                  {mode === "endless"
-                    ? "Endless"
-                    : mode === "campaign"
-                      ? `Sector ${r.scenario_id}`
-                      : r.scenario_id}{" "}
-                  · {r.waves} waves cleared
-                </small>
+                <small>Endless · {r.waves} waves cleared</small>
               </div>
               <div className="nc-record-score">
                 {mode === "endless" ? r.waves : r.score.toLocaleString()}

@@ -1,6 +1,7 @@
 import { ENEMIES, RESEARCH, UPGRADES, getScenario } from "./catalog";
 import type { CoreRun } from "./types";
 import { WEAPON_IDS, emptyMetrics, stats } from "./systems";
+import { loadoutError, startingLevel, upgradeAvailable } from "./progression";
 
 const key = (userId: string, clubId: string) =>
   `nexus_core_run_v2:${userId}:${clubId}`;
@@ -51,6 +52,8 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
       !Array.isArray(s.effects) ||
       !s.upgrades ||
       !s.research ||
+      (s.balanceVersion >= 4 &&
+        (s.scenarioId !== "endless" || !!loadoutError(s.loadout))) ||
       !["nearest", "strongest", "fastest"].includes(s.targeting) ||
       !Object.entries(s.research).every(
         ([k, v]) =>
@@ -65,7 +68,7 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
           !!def && Number.isInteger(v) && Number(v) >= 0 && Number(v) <= def.max
         );
       }) ||
-      !["arcCd", "railCd", "shieldDelay", "energyRemainder"].every(
+      !["arcCd", "railCd", "mortarCd", "shieldDelay", "energyRemainder"].every(
         (k) => s[k] === undefined || Number.isFinite(s[k]),
       ) ||
       (s.metrics &&
@@ -78,10 +81,22 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
               s.metrics[k] &&
               WEAPON_IDS.every(
                 (id) =>
-                  Number.isFinite(s.metrics[k][id]) && s.metrics[k][id] >= 0,
+                  (id === "mortar" &&
+                    (s.balanceVersion || 0) < 4 &&
+                    s.metrics[k][id] === undefined) ||
+                  (Number.isFinite(s.metrics[k][id]) && s.metrics[k][id] >= 0),
               ),
           )
         )) ||
+      (s.shells !== undefined &&
+        (!Array.isArray(s.shells) ||
+          !s.shells.every(
+            (p) =>
+              p &&
+              ["id", "x", "y", "delay", "damage", "radius"].every((k) =>
+                Number.isFinite(p[k]),
+              ),
+          ))) ||
       !s.toSpawn.every((k) =>
         Object.prototype.hasOwnProperty.call(ENEMIES, k),
       ) ||
@@ -123,10 +138,27 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
       ...s,
       arcCd: s.arcCd ?? 0,
       railCd: s.railCd ?? 0,
+      mortarCd: s.mortarCd ?? 0,
+      shells: s.shells ?? [],
       shieldDelay: s.shieldDelay ?? 0,
       energyRemainder: s.energyRemainder ?? 0,
       metrics: s.metrics ?? emptyMetrics(s.energy),
     } as CoreRun;
+    if (
+      migrated.balanceVersion! >= 4 &&
+      UPGRADES.some(
+        (u) =>
+          (!upgradeAvailable(migrated, u.id) &&
+            (migrated.upgrades[u.id] || 0) > 0) ||
+          (migrated.upgrades[u.id] || 0) < startingLevel(migrated, u.id),
+      )
+    )
+      return null;
+    for (const field of ["damage", "kills", "shots"] as const)
+      migrated.metrics![field] = {
+        ...emptyMetrics()[field],
+        ...migrated.metrics![field],
+      };
     const max = stats(migrated, getScenario(s.scenarioId)!);
     migrated.hp = Math.min(migrated.hp, max.maxHp);
     migrated.shield = Math.min(migrated.shield, max.maxShield);

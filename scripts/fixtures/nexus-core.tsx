@@ -14,7 +14,7 @@ import NexusCodexPage from "../../src/pages/NexusCodexPage";
 import NexusLeaderboardPage from "../../src/pages/NexusLeaderboardPage";
 import { NexusLayout } from "../../src/components/nexus/NexusLayout";
 import { createRun } from "../../src/lib/nexus/core/engine";
-import { CAMPAIGN, ENDLESS } from "../../src/lib/nexus/core/catalog";
+import { ENDLESS } from "../../src/lib/nexus/core/catalog";
 import { emptyMetrics } from "../../src/lib/nexus/core/systems";
 import { saveCoreRun } from "../../src/lib/nexus/core/persistence";
 import "@fontsource/dm-sans/400.css";
@@ -27,12 +27,15 @@ import "../../src/index.css";
 // The browser check can stage a completed run without waiting several minutes.
 Object.assign(window, {
   stageNexusReady: () => {
-    const run = createRun(CAMPAIGN[0]);
+    const run = createRun(ENDLESS);
     run.registered = true;
     saveCoreRun(run, "member", "club");
   },
   stageNexusBattle: () => {
-    const run = createRun(ENDLESS);
+    const run = createRun(ENDLESS, {}, crypto.randomUUID(), 42, {
+      weapons: ["arc", "mortar"],
+      module: "stasis",
+    });
     Object.assign(run, {
       registered: true,
       phase: "wave",
@@ -40,7 +43,7 @@ Object.assign(window, {
       cleared: 4,
       energy: 5000,
       metrics: emptyMetrics(5000),
-      upgrades: { arc: 1, rail: 1, orbit: 2 },
+      upgrades: { arc: 1, mortar: 1 },
       enemies: [
         {
           id: 901,
@@ -89,12 +92,12 @@ Object.assign(window, {
     saveCoreRun(run, "member", "club");
   },
   stageNexusResult: () => {
-    const run = createRun(CAMPAIGN[0]);
+    const run = createRun(ENDLESS);
     Object.assign(run, {
-      phase: "victory",
-      wave: 5,
-      cleared: 5,
-      hp: 170,
+      phase: "defeat",
+      wave: 11,
+      cleared: 10,
+      hp: 0,
       kills: 85,
       score: 5000,
       time: 140,

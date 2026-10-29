@@ -1,20 +1,12 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  Crosshair,
-  FlaskConical,
-  Infinity as InfinityIcon,
-  Play,
-  Shield,
-  Swords,
-  Trophy,
-} from "lucide-react";
+import { ArrowRight, FlaskConical, Play, Shield, Trophy } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
-import { CAMPAIGN, ENDLESS, getScenario } from "@/lib/nexus/core/catalog";
+import { ENDLESS, getScenario } from "@/lib/nexus/core/catalog";
 import { createRun, isFinished } from "@/lib/nexus/core/engine";
 import { readCoreRun } from "@/lib/nexus/core/persistence";
 import { CoreArena } from "@/components/nexus/core/CoreArena";
+import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
 import { CoreProfileGate } from "@/components/nexus/core/CoreUI";
 
 export default function NexusHomePage() {
@@ -57,10 +49,8 @@ function CommandCenter() {
     return s;
   }, []);
   if (!profile) return null;
-  const cleared = Object.keys(profile.campaign).length;
-  const next =
-    CAMPAIGN.find((s) => !profile.campaign[s.id]) ??
-    CAMPAIGN[CAMPAIGN.length - 1];
+  const nextUnlock = ARMORY.find((a) => !profile.unlocks.includes(a.id));
+  const milestone = MILESTONES.find((m) => m.wave > profile.bestWave);
   const activeSave = saved && !isFinished(saved);
   return (
     <>
@@ -99,11 +89,11 @@ function CommandCenter() {
             <em>Defy the swarm.</em>
           </h1>
           <p>
-            They come from everywhere. Build a nexus that can take it. One
-            upgrade, one wave, one more chance to survive.
+            Start with a pulse cannon. Earn your arsenal. Build a nexus that
+            holds a little longer every time you return.
           </p>
-          <Link to={`/nexus/loadout/${next.id}`} className="nc-button">
-            {cleared ? "Continue campaign" : "Begin your defense"}
+          <Link to="/nexus/loadout/endless" className="nc-button">
+            Build your loadout
             <ArrowRight size={17} />
           </Link>
           <div className="nc-hero-meta">
@@ -118,72 +108,61 @@ function CommandCenter() {
       </section>
       <div className="nc-stat-strip">
         <div>
-          <strong>
-            {cleared}
-            <small style={{ fontSize: 14, color: "hsl(200 18% 50%)" }}>
-              {" "}
-              / 8
-            </small>
-          </strong>
-          <span>Sectors secured</span>
+          <strong>{String(profile.bestWave).padStart(2, "0")}</strong>
+          <span>Best wave</span>
         </div>
         <div>
-          <strong>{profile.bestWave.toString().padStart(2, "0")}</strong>
-          <span>Endless best wave</span>
+          <strong>{profile.totalWaves}</strong>
+          <span>Lifetime waves</span>
         </div>
         <div>
           <strong>
-            {Object.keys(profile.challenges).length}
-            <small style={{ fontSize: 14, color: "hsl(200 18% 50%)" }}>
-              {" "}
-              / 4
-            </small>
+            {profile.unlocks.length}
+            <small style={{ fontSize: 14 }}> / 7</small>
           </strong>
-          <span>Challenges cleared</span>
+          <span>Equipment unlocked</span>
         </div>
       </div>
       <div className="nc-section-label">
-        Choose your front<span>Three ways to hold</span>
+        One endless defense<span>A stronger next run</span>
       </div>
-      <div className="nc-mode-grid">
-        <Link to="/nexus/missions" className="nc-mode-card nc-panel">
-          <Crosshair size={23} />
-          <h2>Campaign</h2>
-          <p>
-            Eight sectors. Escalating threats. Find the build that gets you
-            home.
+      <div className="nc-endless-rules">
+        <span>360° auto combat</span>
+        <span>Boss every 5 waves</span>
+        <span>2 auxiliary slots · 4 power</span>
+        <span>1 support module</span>
+      </div>
+      {nextUnlock && (
+        <section className="nc-panel nc-next-unlock">
+          <div className="nc-eyebrow">Your next discovery</div>
+          <h2>{nextUnlock.name}</h2>
+          <p className="nc-note">{nextUnlock.description}</p>
+          <p className="nc-note">
+            {Math.min(profile.totalWaves, nextUnlock.waves)} /{" "}
+            {nextUnlock.waves} lifetime waves ·{" "}
+            {Math.min(profile.credits, nextUnlock.cost)} / {nextUnlock.cost}{" "}
+            credits
           </p>
-          <footer>
-            <span>
-              {cleared === 8 ? "All sectors secured" : `Next: ${next.title}`}
-            </span>
-            <ArrowRight size={15} />
-          </footer>
-        </Link>
-        <Link to="/nexus/loadout/endless" className="nc-mode-card nc-panel">
-          <InfinityIcon size={25} />
-          <h2>Endless</h2>
-          <p>No finish line. Push your nexus until the swarm pushes back.</p>
-          <footer>
-            <span>Available from the start</span>
-            <ArrowRight size={15} />
-          </footer>
-        </Link>
-        <Link to="/nexus/challenges" className="nc-mode-card nc-panel">
-          <Swords size={23} />
-          <h2>Challenges</h2>
-          <p>Faster enemies. Fragile cores. New rules, different decisions.</p>
-          <footer>
-            <span>4 distinct rulesets</span>
-            <ArrowRight size={15} />
-          </footer>
-        </Link>
-      </div>
+          <Link to="/nexus/research" className="nc-back">
+            Explore the armory <ArrowRight size={15} />
+          </Link>
+        </section>
+      )}
+      {milestone && (
+        <p className="nc-note">
+          Next personal milestone: clear wave {milestone.wave} for +
+          {milestone.credits} bonus credits. Paid once, on top of every run’s
+          wave earnings.
+        </p>
+      )}
       <Link to="/nexus/research" className="nc-lab-callout nc-panel">
         <FlaskConical size={24} />
         <div>
-          <h2>A stronger core. Every run.</h2>
-          <p>Spend research credits on permanent nexus upgrades.</p>
+          <h2>Your arsenal. Your advantage.</h2>
+          <p>
+            Unlock weapons and support modules, or invest in permanent core
+            research.
+          </p>
         </div>
         <ArrowRight size={18} />
       </Link>

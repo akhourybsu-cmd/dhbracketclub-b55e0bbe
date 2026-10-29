@@ -215,6 +215,24 @@ export function CoreArena({
           )}
         </g>
       ))}
+      {(run.shells || []).map((p) => (
+        <g key={p.id} transform={`translate(${p.x} ${p.y})`}>
+          <circle
+            r={p.radius}
+            fill="hsl(24 100% 65% / .04)"
+            stroke="hsl(24 100% 65%)"
+            strokeDasharray="6 8"
+            opacity={0.35}
+          />
+          <circle
+            r={6 + p.delay * 14}
+            fill="none"
+            stroke="hsl(24 100% 78%)"
+            strokeWidth="2"
+          />
+          <path d="M-10 0H10M0 -10V10" stroke="hsl(24 100% 75%)" />
+        </g>
+      ))}
       {run.projectiles.map((p) => {
         const a = Math.atan2(p.y, p.x);
         return (
@@ -276,6 +294,19 @@ export function CoreArena({
       )}
       {run.effects.map((e) => {
         const life = e.life / e.maxLife;
+        if (e.kind === "mortar")
+          return (
+            <circle
+              key={e.id}
+              cx={e.x}
+              cy={e.y}
+              r={(e.value || 85) * (1 - life)}
+              fill="hsl(24 100% 65% / .12)"
+              stroke="hsl(24 100% 72%)"
+              strokeWidth={life * 5}
+              opacity={life}
+            />
+          );
         if (e.kind === "arc")
           return (
             <path

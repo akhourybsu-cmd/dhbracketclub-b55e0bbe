@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { Orbit, Shield, ShieldOff } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
-import { CAMPAIGN, getScenario } from "@/lib/nexus/core/catalog";
+import { getScenario } from "@/lib/nexus/core/catalog";
 import { isFinished, runReward, runStars } from "@/lib/nexus/core/engine";
 import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
 import type { CoreRun } from "@/lib/nexus/core/types";
+import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
 import { rewardBreakdown } from "@/lib/nexus/core/economy";
 import { WEAPON_IDS, WEAPON_NAMES } from "@/lib/nexus/core/systems";
 import { useNavigate } from "react-router-dom";
@@ -89,10 +90,10 @@ function Debrief() {
   const stars = award?.stars ?? runStars(run, scenario);
   const breakdown = rewardBreakdown(run, scenario, profile);
   const reward = award?.reward ?? breakdown.total;
-  const next =
-    scenario.mode === "campaign"
-      ? CAMPAIGN.find((s) => Number(s.id) === Number(scenario.id) + 1)
-      : null;
+  const nextUnlock = ARMORY.find((a) => !profile?.unlocks.includes(a.id));
+  const nextMilestone = MILESTONES.find(
+    (m) => m.wave > (profile?.bestWave || 0),
+  );
   return (
     <>
       <CoreBack />
@@ -114,7 +115,9 @@ function Debrief() {
           {scenario.title} ·{" "}
           {won
             ? "Perimeter secured."
-            : "The nexus fell. Your research carries on."}
+            : run.retired
+              ? "Earnings banked. Your arsenal carries on."
+              : "The nexus fell. Your arsenal carries on."}
         </p>
         {won && <CoreStars count={stars} />}
         <div className="nc-result-grid">
@@ -133,12 +136,12 @@ function Debrief() {
         </div>
         <div className="nc-reward">
           <Orbit size={18} />
-          <strong>+{reward}</strong> research credits
+          <strong>+{reward}</strong> credits
         </div>
         <p className="nc-note">
           {award?.waves ?? breakdown.waves} wave credits
           {(award?.bonus ?? breakdown.bonus) > 0
-            ? ` + ${award?.bonus ?? breakdown.bonus} first-clear bonus`
+            ? ` + ${award?.bonus ?? breakdown.bonus} milestone bonus`
             : ""}
         </p>
         {sync === "saved" ? (
@@ -173,20 +176,38 @@ function Debrief() {
           </div>
         )}
         <div className="nc-result-actions">
-          {sync === "saved" &&
-            (next && won ? (
-              <CoreLink to={`/nexus/loadout/${next.id}`}>
-                Next sector: {next.title}
-              </CoreLink>
-            ) : (
-              <CoreLink to={`/nexus/loadout/${scenario.id}`}>
-                Deploy again
-              </CoreLink>
-            ))}
+          {sync === "saved" && (
+            <CoreLink to="/nexus/loadout/endless">
+              Refine loadout & return
+            </CoreLink>
+          )}
           <CoreLink to="/nexus/research" secondary>
-            Upgrade in the core lab
+            Unlock & upgrade
           </CoreLink>
         </div>
+        {nextUnlock && (
+          <section className="nc-panel nc-next-unlock">
+            <div className="nc-eyebrow">Build toward your next unlock</div>
+            <h2>{nextUnlock.name}</h2>
+            <p className="nc-note">
+              {Math.min(profile?.totalWaves || 0, nextUnlock.waves)} /{" "}
+              {nextUnlock.waves} lifetime waves ·{" "}
+              {Math.min(profile?.credits || 0, nextUnlock.cost)} /{" "}
+              {nextUnlock.cost} credits
+            </p>
+            <progress
+              aria-label={`${nextUnlock.name} credit progress`}
+              value={Math.min(profile?.credits || 0, nextUnlock.cost)}
+              max={nextUnlock.cost}
+            />
+            {nextMilestone && (
+              <p className="nc-note">
+                Clear wave {nextMilestone.wave} in one run for +
+                {nextMilestone.credits} bonus credits.
+              </p>
+            )}
+          </section>
+        )}
         {run.metrics && (
           <section className="nc-panel nc-run-metrics">
             <h2>Build performance</h2>

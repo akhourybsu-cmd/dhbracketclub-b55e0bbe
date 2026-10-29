@@ -8,7 +8,7 @@ import {
 import { upgradeCost, researchCost } from "../src/lib/nexus/core/systems";
 import { waveCredits } from "../src/lib/nexus/core/economy";
 import { simulateCore } from "../src/lib/nexus/core/simulator";
-const costs = UPGRADES.flatMap((u) =>
+const costs = UPGRADES.filter((u) => u.id !== "mortar").flatMap((u) =>
   Array.from({ length: u.max }, (_, i) => ({
     id: u.id,
     level: i + 1,

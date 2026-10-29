@@ -1,4 +1,5 @@
 import { RESEARCH, UPGRADES } from "./catalog";
+import { upgradeAvailable } from "./progression";
 import type {
   CombatMetrics,
   CoreRun,
@@ -8,14 +9,22 @@ import type {
   WeaponId,
 } from "./types";
 
-export const BALANCE_VERSION = 3;
-export const WEAPON_IDS: WeaponId[] = ["pulse", "arc", "rail", "orbit", "nova"];
+export const BALANCE_VERSION = 4;
+export const WEAPON_IDS: WeaponId[] = [
+  "pulse",
+  "arc",
+  "rail",
+  "orbit",
+  "mortar",
+  "nova",
+];
 export const WEAPON_NAMES: Record<WeaponId, string> = {
   pulse: "Pulse cannon",
   arc: "Chain arc",
   rail: "Rail lance",
   orbit: "Orbital blades",
   nova: "Nova burst",
+  mortar: "Siege mortar",
 };
 export const SYSTEMS = {
   damage: 16,
@@ -67,10 +76,11 @@ export function emptyMetrics(energy = 0): CombatMetrics {
 }
 
 export function stats(
-  s: Pick<CoreRun, "upgrades" | "research" | "overdriveTime">,
+  s: Pick<CoreRun, "upgrades" | "research" | "overdriveTime" | "loadout">,
   scenario: CoreScenario,
 ) {
-  const u = (id: UpgradeId) => s.upgrades[id] || 0,
+  const u = (id: UpgradeId) =>
+      upgradeAvailable(s, id) ? s.upgrades[id] || 0 : 0,
     r = s.research;
   const glass = scenario.rule === "glass",
     boost = s.overdriveTime > 0 ? SYSTEMS.overdriveMultiplier : 1;
@@ -80,7 +90,7 @@ export function stats(
     (glass ? 2 : 1);
   const reactor = 1 + (r.reactor || 0) * 0.05;
   return {
-    damage: SYSTEMS.damage * power,
+    damage: (s.loadout ? 11 : SYSTEMS.damage) * power,
     fireRate:
       SYSTEMS.fireRate * (1 + u("haste") * SYSTEMS.hasteStep) * reactor * boost,
     range: SYSTEMS.range + u("range") * SYSTEMS.rangeStep,
@@ -97,24 +107,37 @@ export function stats(
     regen:
       glass || scenario.rule === "blackout"
         ? 0
-        : u("regen") * SYSTEMS.regenStep,
+        : u("regen") * SYSTEMS.regenStep +
+          (s.loadout?.module === "repair" ? 0.5 : 0),
     shieldRegen:
       glass || scenario.rule === "blackout"
         ? 0
         : SYSTEMS.shieldRegen + u("shield") * SYSTEMS.shieldRegenStep,
     armor: glass ? 0 : u("armor") * SYSTEMS.armorStep,
-    income: 1 + u("income") * SYSTEMS.incomeStep,
+    income:
+      1 +
+      u("income") * SYSTEMS.incomeStep +
+      (s.loadout?.module === "siphon" ? 0.1 : 0),
     orbit: u("orbit"),
     orbitDamage: SYSTEMS.damage * power * 0.8 * boost,
-    slow: u("frost") * SYSTEMS.slowStep,
+    slow:
+      u("frost") * SYSTEMS.slowStep +
+      (s.loadout?.module === "stasis" ? 0.12 : 0),
     novaDamage:
       SYSTEMS.novaDamage * (1 + (r.nova || 0) * 0.15) * (1 + u("damage") * 0.1),
-    arcDamage: u("arc") ? 24 * power * (1 + (u("arc") - 1) * 0.3) : 0,
+    arcDamage: u("arc")
+      ? (s.loadout ? 36 : 24) * power * (1 + (u("arc") - 1) * 0.3)
+      : 0,
     arcTargets: u("arc") ? 2 + u("arc") : 0,
     arcJump: 110,
     arcInterval: 2.8 / reactor / boost,
-    railDamage: u("rail") ? 62 * power * (1 + (u("rail") - 1) * 0.35) : 0,
+    railDamage: u("rail")
+      ? (s.loadout ? 140 : 62) * power * (1 + (u("rail") - 1) * 0.35)
+      : 0,
     railInterval: Math.max(2.5, 4.8 - (u("rail") - 1) * 0.3) / reactor / boost,
+    mortarDamage: u("mortar") ? 75 * power * (1 + (u("mortar") - 1) * 0.32) : 0,
+    mortarRadius: 85 + Math.max(0, u("mortar") - 1) * 6,
+    mortarInterval: 3.8 / reactor / boost,
   };
 }
 
@@ -175,5 +198,7 @@ export function upgradePreview(
       return `${n(b.arcDamage)} damage · ${b.arcTargets} targets · ${n(b.arcInterval)}s recharge`;
     case "rail":
       return `${n(b.railDamage)} piercing damage · ${n(b.railInterval)}s recharge`;
+    case "mortar":
+      return `${n(b.mortarDamage)} splash damage · ${b.mortarRadius} blast radius · ${n(b.mortarInterval)}s cycle`;
   }
 }

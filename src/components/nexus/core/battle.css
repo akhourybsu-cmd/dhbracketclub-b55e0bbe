@@ -980,4 +980,7 @@ body.nc-battle-active {
     grid-column: 2;
     grid-row: 4;
   }
+  .nc-pause-dialog > .nc-end-run {
+    grid-row: 5;
+  }
 }

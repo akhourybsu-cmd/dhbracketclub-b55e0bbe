@@ -113,7 +113,7 @@ export const ENDLESS: CoreScenario = {
   title: "Into the infinite",
   subtitle: "ENDLESS",
   description:
-    "No final wave. Every fifth wave brings a siege boss. Build, adapt, and set your next record.",
+    "One core. No final wave. Bring your loadout, build through the assault, and earn a stronger next run. Siege bosses arrive every fifth wave.",
   waves: null,
   difficulty: 1,
   reward: 0,
@@ -401,6 +401,16 @@ export const UPGRADES: {
     growth: 1.6,
     max: 5,
     icon: "Crosshair",
+  },
+  {
+    id: "mortar",
+    name: "Siege mortar",
+    category: "weapons",
+    description: "More splash damage and a wider blast zone",
+    cost: 115,
+    growth: 1.6,
+    max: 5,
+    icon: "Radar",
   },
 ];
 

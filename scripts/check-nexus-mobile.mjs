@@ -72,7 +72,7 @@ try {
     };
     await go();
     await page.evaluate(() => window.stageNexusReady());
-    await go("/nexus/battle/1");
+    await go("/nexus/battle/endless");
     await page.evaluate(() => document.fonts.ready);
     const intro = page.getByRole("alertdialog");
     await expect(intro).toBeVisible();
@@ -177,6 +177,10 @@ try {
     await within(
       page.getByRole("button", { name: "Save & exit" }),
       "Save and exit",
+    );
+    await within(
+      page.getByRole("button", { name: "End run & collect" }),
+      "End run and collect",
     );
     const saved = await page.evaluate(() =>
       localStorage.getItem("nexus_core_run_v2:member:club"),

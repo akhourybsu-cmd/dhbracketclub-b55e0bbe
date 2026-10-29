@@ -1,5 +1,6 @@
 // The real combat engine with deterministic player policies, not a DPS approximation.
-import { CAMPAIGN, CHALLENGES, ENDLESS, UPGRADES } from "./catalog";
+import { ENDLESS, UPGRADES } from "./catalog";
+import { STARTER_LOADOUT, upgradeAvailable } from "./progression";
 import {
   activateAbility,
   buyUpgrade,
@@ -13,7 +14,7 @@ import {
 } from "./engine";
 import { rewardBreakdown } from "./economy";
 import { WEAPON_IDS, emptyMetrics } from "./systems";
-import type { CoreScenario, Research, UpgradeId } from "./types";
+import type { CoreLoadout, CoreScenario, Research, UpgradeId } from "./types";
 
 export type BuildStrategy =
   "balanced" | "gunner" | "bulwark" | "control" | "economy" | "idle";
@@ -32,6 +33,7 @@ export const BUILD_PLANS: Record<
     "haste",
     "shield",
     "rail",
+    "mortar",
     "regen",
     "multishot",
     "frost",
@@ -53,6 +55,7 @@ export const BUILD_PLANS: Record<
     "rail",
     "hull",
     "arc",
+    "mortar",
   ],
   bulwark: [
     "orbit",
@@ -68,6 +71,7 @@ export const BUILD_PLANS: Record<
     "frost",
     "damage",
     "rail",
+    "mortar",
     "income",
   ],
   control: [
@@ -82,6 +86,7 @@ export const BUILD_PLANS: Record<
     "arc",
     "damage",
     "rail",
+    "mortar",
     "shield",
   ],
   economy: [
@@ -96,6 +101,7 @@ export const BUILD_PLANS: Record<
     "damage",
     "shield",
     "rail",
+    "mortar",
     "multishot",
     "regen",
   ],
@@ -106,9 +112,10 @@ export function simulateCore(
   seed: number,
   research: Research = {},
   maxSeconds = 1800,
+  loadout: CoreLoadout = STARTER_LOADOUT,
 ) {
   let s = startWave(
-      createRun(scenario, research, "simulation", seed),
+      createRun(scenario, research, "simulation", seed, loadout),
       scenario,
     ),
     cursor = 0,
@@ -124,7 +131,11 @@ export function simulateCore(
       while (attempts++ < plan.length) {
         const id = plan[cursor % plan.length],
           def = UPGRADES.find((u) => u.id === id)!;
-        if (upgradeBlocked(id, scenario) || (s.upgrades[id] || 0) >= def.max) {
+        if (
+          upgradeBlocked(id, scenario) ||
+          !upgradeAvailable(s, id) ||
+          (s.upgrades[id] || 0) >= def.max
+        ) {
           cursor++;
           continue;
         }
@@ -172,6 +183,7 @@ export function simulateCore(
       WEAPON_IDS.map((k) => [k, Math.round(metrics.damage[k])]),
     ),
     upgrades: s.upgrades,
+    loadout: s.loadout,
   };
 }
-export const ALL_SCENARIOS = [...CAMPAIGN, ...CHALLENGES, ENDLESS];
+export const ALL_SCENARIOS = [ENDLESS];

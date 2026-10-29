@@ -48,12 +48,19 @@ export function CoreWeaponPanel({
       info: `${v.orbit} blades · ${v.orbitDamage.toFixed(1)} damage/contact`,
       cooldown: 0,
     },
+    {
+      id: "mortar",
+      icon: "Radar",
+      active: !!v.mortarDamage,
+      info: `${v.mortarDamage.toFixed(0)} splash · ${v.mortarRadius} radius · ${v.mortarInterval.toFixed(1)}s cycle`,
+      cooldown: run.mortarCd || 0,
+    },
   ];
   return (
     <details className="nc-systems nc-panel" open={expanded}>
       <summary>
         Weapon systems
-        <span>{systems.filter((s) => s.active).length} / 4 online</span>
+        <span>{systems.filter((s) => s.active).length} / 5 online</span>
       </summary>
       <div className="nc-systems-grid">
         {systems.map((s) => (
@@ -64,15 +71,23 @@ export function CoreWeaponPanel({
             <CoreIcon name={s.icon} />
             <div>
               <strong>{WEAPON_NAMES[s.id]}</strong>
-              <p>{s.active ? s.info : "Not installed"}</p>
+              <p>
+                {s.active
+                  ? s.info
+                  : run.loadout
+                    ? "Not in this loadout"
+                    : "Not installed"}
+              </p>
               {s.active ? (
                 <small>
                   {s.cooldown > 0
                     ? `Recharging ${s.cooldown.toFixed(1)}s`
                     : "Online"}
                 </small>
-              ) : (
+              ) : !run.loadout ? (
                 <button onClick={onInstall}>Open Weapons →</button>
+              ) : (
+                <small>Equip before your next deployment</small>
               )}
             </div>
           </div>

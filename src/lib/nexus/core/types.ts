@@ -15,8 +15,16 @@ export type UpgradeId =
   | "orbit"
   | "frost"
   | "arc"
-  | "rail";
-export type WeaponId = "pulse" | "arc" | "rail" | "orbit" | "nova";
+  | "rail"
+  | "mortar";
+export type AuxiliaryId = "arc" | "rail" | "orbit" | "mortar";
+export type ModuleId = "repair" | "siphon" | "stasis";
+export type UnlockId = AuxiliaryId | ModuleId;
+export interface CoreLoadout {
+  weapons: AuxiliaryId[];
+  module: ModuleId | null;
+}
+export type WeaponId = "pulse" | AuxiliaryId | "nova";
 export interface CombatMetrics {
   damage: Record<WeaponId, number>;
   kills: Record<WeaponId, number>;
@@ -72,7 +80,7 @@ export interface Projectile {
 
 export interface CoreEffect {
   id: number;
-  kind: "hit" | "kill" | "nova" | "breach" | "shot" | "arc" | "rail";
+  kind: "hit" | "kill" | "nova" | "breach" | "shot" | "arc" | "rail" | "mortar";
   x: number;
   y: number;
   life: number;
@@ -88,6 +96,7 @@ export interface CoreRun {
   balanceVersion?: number;
   registered?: boolean;
   legacy?: boolean;
+  retired?: boolean;
   id: string;
   scenarioId: string;
   seed: number;
@@ -108,6 +117,7 @@ export interface CoreRun {
   damageTaken: number;
   upgrades: Levels;
   research: Research;
+  loadout?: CoreLoadout;
   enemies: CoreEnemy[];
   projectiles: Projectile[];
   effects: CoreEffect[];
@@ -118,6 +128,15 @@ export interface CoreRun {
   orbitalCd: number;
   arcCd?: number;
   railCd?: number;
+  mortarCd?: number;
+  shells?: {
+    id: number;
+    x: number;
+    y: number;
+    delay: number;
+    damage: number;
+    radius: number;
+  }[];
   shieldDelay?: number;
   energyRemainder?: number;
   metrics?: CombatMetrics;
@@ -131,6 +150,9 @@ export interface CoreProfile {
   challenges: Record<string, number>;
   bestWave: number;
   totalRuns: number;
+  totalWaves: number;
+  unlocks: UnlockId[];
+  loadout: CoreLoadout;
 }
 
 export interface CoreResult {

@@ -39,6 +39,8 @@ function enemy(kind: EnemyType, x: number, y: number, id = 100): CoreEnemy {
 }
 function battle(scenario = ENDLESS) {
   const s = startWave(createRun(scenario, {}, "test", 19), scenario);
+  delete s.loadout;
+  s.balanceVersion = 3;
   s.toSpawn = [];
   s.spawnCd = 999;
   s.fireCd = 999;
@@ -46,6 +48,8 @@ function battle(scenario = ENDLESS) {
 }
 function simulate(scenario: CoreScenario, invest = true, research = {}) {
   let s = startWave(createRun(scenario, research, "balance", 42), scenario);
+  delete s.loadout;
+  s.balanceVersion = 3;
   // A simple mobile-player policy: alternate offense, defenses and utility.
   const plan: UpgradeId[] = [
     "damage",

@@ -7,8 +7,10 @@ import {
   upgradeCost,
 } from "./systems";
 import { rewardBreakdown } from "./economy";
+import { STARTER_LOADOUT, loadoutError, upgradeAvailable } from "./progression";
 import type {
   CoreEnemy,
+  CoreLoadout,
   CoreRun,
   CoreScenario,
   EnemyType,
@@ -38,10 +40,11 @@ function copy(s: CoreRun): CoreRun {
     toSpawn: [...s.toSpawn],
     metrics: {
       ...m,
-      damage: { ...m.damage },
-      kills: { ...m.kills },
-      shots: { ...m.shots },
+      damage: { ...m.damage, mortar: m.damage.mortar || 0 },
+      kills: { ...m.kills, mortar: m.kills.mortar || 0 },
+      shots: { ...m.shots, mortar: m.shots.mortar || 0 },
     },
+    shells: (s.shells || []).map((p) => ({ ...p })),
   };
 }
 export function createRun(
@@ -49,11 +52,14 @@ export function createRun(
   research: Research = {},
   id: string = crypto.randomUUID(),
   seed = Date.now() >>> 0,
+  loadout: CoreLoadout = STARTER_LOADOUT,
 ): CoreRun {
+  if (scenario.mode === "endless" && loadoutError(loadout))
+    throw new Error(loadoutError(loadout)!);
   const energy = 80 + (research.salvage || 0) * 12;
   const s: CoreRun = {
     version: 2,
-    balanceVersion: BALANCE_VERSION,
+    balanceVersion: scenario.mode === "endless" ? BALANCE_VERSION : 3,
     id,
     scenarioId: scenario.id,
     seed,
@@ -72,7 +78,13 @@ export function createRun(
     kills: 0,
     score: 0,
     damageTaken: 0,
-    upgrades: {},
+    upgrades:
+      scenario.mode === "endless"
+        ? Object.fromEntries(loadout.weapons.map((id) => [id, 1]))
+        : {},
+    ...(scenario.mode === "endless"
+      ? { loadout: { weapons: [...loadout.weapons], module: loadout.module } }
+      : {}),
     research: { ...research },
     enemies: [],
     projectiles: [],
@@ -84,6 +96,8 @@ export function createRun(
     orbitalCd: 0,
     arcCd: 0,
     railCd: 0,
+    mortarCd: 0,
+    shells: [],
     shieldDelay: 0,
     energyRemainder: 0,
     metrics: emptyMetrics(energy),
@@ -105,7 +119,12 @@ export function waveEnemies(wave: number, scenario: CoreScenario): EnemyType[] {
     Math.round((6 + wave * 2.6) * waveDifficulty(wave, scenario)),
   );
   const kinds: EnemyType[] = [];
-  const sector = scenario.mode === "campaign" ? Number(scenario.id) : 8;
+  const sector =
+    scenario.mode === "campaign"
+      ? Number(scenario.id)
+      : scenario.mode === "endless"
+        ? 1
+        : 8;
   for (let i = 0; i < count; i++) {
     let kind: EnemyType = "drone";
     if ((wave >= 2 || sector >= 2) && i % 4 === 1) kind = "runner";
@@ -241,7 +260,13 @@ export function buyUpgrade(
   id: UpgradeId,
 ): CoreRun {
   const def = UPGRADES.find((u) => u.id === id);
-  if (!def || isFinished(s) || upgradeBlocked(id, scenario)) return s;
+  if (
+    !def ||
+    isFinished(s) ||
+    upgradeBlocked(id, scenario) ||
+    !upgradeAvailable(s, id)
+  )
+    return s;
   const lv = s.upgrades[id] || 0,
     cost = upgradeCost(id, lv);
   if (lv >= def.max || s.energy < cost) return s;
@@ -258,6 +283,9 @@ export function buyUpgrade(
     (Math.max(0, n.arcCd || 0) * after.arcInterval) / before.arcInterval;
   n.railCd =
     (Math.max(0, n.railCd || 0) * after.railInterval) / before.railInterval;
+  n.mortarCd =
+    (Math.max(0, n.mortarCd || 0) * after.mortarInterval) /
+    before.mortarInterval;
   return n;
 }
 export function activateAbility(
@@ -276,6 +304,7 @@ export function activateAbility(
       fireCd: n.fireCd / SYSTEMS.overdriveMultiplier,
       arcCd: (n.arcCd || 0) / SYSTEMS.overdriveMultiplier,
       railCd: (n.railCd || 0) / SYSTEMS.overdriveMultiplier,
+      mortarCd: (n.mortarCd || 0) / SYSTEMS.overdriveMultiplier,
     };
   n.novaCd = SYSTEMS.novaCooldown;
   n.metrics!.shots.nova++;
@@ -379,6 +408,47 @@ function fireSystems(s: CoreRun, scenario: CoreScenario) {
       effect(s, "rail", dx * length, dy * length, 0.35);
     } else s.railCd = 0;
   } else if (!v.railDamage) s.railCd = 0;
+  // Mortars target the densest cluster, then commit to a delayed ground impact.
+  // Enemies can escape; a shot never follows its original target.
+  s.mortarCd = (s.mortarCd || 0) - STEP;
+  if (v.mortarDamage && s.mortarCd <= 0) {
+    const targets = s.enemies.filter((e) => e.hp > 0 && distance(e) <= v.range);
+    const target = targets
+      .map((e) => ({
+        enemy: e,
+        count: s.enemies.filter(
+          (n) => n.hp > 0 && Math.hypot(e.x - n.x, e.y - n.y) <= v.mortarRadius,
+        ).length,
+      }))
+      .sort(
+        (a, b) => b.count - a.count || distance(a.enemy) - distance(b.enemy),
+      )[0]?.enemy;
+    if (target) {
+      s.mortarCd += v.mortarInterval;
+      s.metrics!.shots.mortar++;
+      s.shells!.push({
+        id: ++s.nextId,
+        x: target.x,
+        y: target.y,
+        delay: 0.65,
+        damage: v.mortarDamage,
+        radius: v.mortarRadius,
+      });
+    } else s.mortarCd = 0;
+  } else if (!v.mortarDamage) s.mortarCd = 0;
+  for (const shell of s.shells!) {
+    shell.delay -= STEP;
+    if (shell.delay <= 0) {
+      for (const e of s.enemies)
+        if (
+          e.hp > 0 &&
+          Math.hypot(e.x - shell.x, e.y - shell.y) <= shell.radius + e.radius
+        )
+          hit(s, e, shell.damage, "mortar");
+      effect(s, "mortar", shell.x, shell.y, 0.55, shell.radius);
+    }
+  }
+  s.shells = s.shells!.filter((p) => p.delay > 0);
   s.fireCd -= STEP;
   while (s.fireCd <= 1e-9) {
     const targets = s.enemies
@@ -445,6 +515,7 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
     s.fireCd *= SYSTEMS.overdriveMultiplier;
     s.arcCd = (s.arcCd || 0) * SYSTEMS.overdriveMultiplier;
     s.railCd = (s.railCd || 0) * SYSTEMS.overdriveMultiplier;
+    s.mortarCd = (s.mortarCd || 0) * SYSTEMS.overdriveMultiplier;
   }
   const v = stats(s, scenario);
   s.hp = Math.min(v.maxHp, s.hp + v.regen * STEP);
@@ -501,6 +572,7 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
     creditEnergy(s, (25 + s.wave * 5) * v.income);
     s.score += s.wave * 100;
     s.projectiles = [];
+    s.shells = [];
     s.phase =
       scenario.waves !== null && s.wave >= scenario.waves
         ? "victory"

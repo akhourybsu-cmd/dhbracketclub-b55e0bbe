@@ -7,11 +7,14 @@ import { createRun, stats } from "@/lib/nexus/core/engine";
 import { getScenario } from "@/lib/nexus/core/catalog";
 import type {
   CoreProfile,
+  CoreLoadout,
   CoreRun,
   CoreScenario,
   Research,
   ResearchId,
+  UnlockId,
 } from "@/lib/nexus/core/types";
+import { STARTER_LOADOUT } from "@/lib/nexus/core/progression";
 
 interface ProfileRow {
   credits: number;
@@ -20,6 +23,10 @@ interface ProfileRow {
   challenges: Record<string, number>;
   best_wave: number;
   total_runs: number;
+  endless_best: number;
+  total_waves: number;
+  unlocks: UnlockId[];
+  loadout: CoreLoadout;
 }
 function profileFromRow(row: ProfileRow): CoreProfile {
   return {
@@ -27,8 +34,11 @@ function profileFromRow(row: ProfileRow): CoreProfile {
     research: row.research || {},
     campaign: row.campaign || {},
     challenges: row.challenges || {},
-    bestWave: row.best_wave,
+    bestWave: row.endless_best || 0,
     totalRuns: row.total_runs,
+    totalWaves: row.total_waves || 0,
+    unlocks: row.unlocks || [],
+    loadout: row.loadout || STARTER_LOADOUT,
   };
 }
 
@@ -67,14 +77,44 @@ export function useNexusCore() {
       queryKey: ["nexus-core-ledger", user?.id],
     });
   }
-  async function begin(scenario: CoreScenario, id: string) {
+  async function unlock(item: UnlockId) {
+    const row = await rpc<ProfileRow>("nexus_core_unlock", { p_item: item });
+    client.setQueryData(queryKey, profileFromRow(row));
+    void client.invalidateQueries({
+      queryKey: ["nexus-core-ledger", user?.id],
+    });
+  }
+  async function saveLoadout(loadout: CoreLoadout) {
+    const row = await rpc<ProfileRow>("nexus_core_loadout", {
+      p_loadout: loadout,
+    });
+    client.setQueryData(queryKey, profileFromRow(row));
+  }
+  async function begin(
+    scenario: CoreScenario,
+    id: string,
+    loadout: CoreLoadout = query.data?.loadout || STARTER_LOADOUT,
+  ) {
     if (!club) throw new Error("Choose a club before deploying");
-    const ticket = await rpc<{ id: string; seed: number; research: Research }>(
-      "nexus_core_begin",
-      { p_id: id, p_scenario: scenario.id, p_club_id: club.id },
-    );
+    if (scenario.mode !== "endless") throw new Error("Deploy in Endless mode");
+    const ticket = await rpc<{
+      id: string;
+      seed: number;
+      research: Research;
+      loadout: CoreLoadout;
+    }>("nexus_core_begin_endless", {
+      p_id: id,
+      p_club_id: club.id,
+      p_loadout: loadout,
+    });
     return {
-      ...createRun(scenario, ticket.research, ticket.id, ticket.seed),
+      ...createRun(
+        scenario,
+        ticket.research,
+        ticket.id,
+        ticket.seed,
+        ticket.loadout,
+      ),
       registered: true,
     };
   }
@@ -117,7 +157,12 @@ export function useNexusCore() {
     };
     let result: Receipt;
     try {
-      result = await rpc<Receipt>("nexus_core_finish", payload);
+      result = await rpc<Receipt>(
+        (run.balanceVersion || 0) >= 4
+          ? "nexus_core_finish_endless"
+          : "nexus_core_finish",
+        payload,
+      );
     } catch (e) {
       if (
         !run.balanceVersion &&
@@ -147,6 +192,8 @@ export function useNexusCore() {
     userId: user?.id,
     clubId: club?.id,
     research,
+    unlock,
+    saveLoadout,
     begin,
     registerLegacy,
     finish,
@@ -155,7 +202,7 @@ export function useNexusCore() {
 
 export interface CreditEntry {
   id: number;
-  kind: "run" | "research";
+  kind: "run" | "research" | "unlock";
   delta: number;
   balance: number;
   details: {
@@ -163,6 +210,8 @@ export interface CreditEntry {
     track?: string;
     level?: number;
     first_clear?: number;
+    milestones?: number;
+    item?: UnlockId;
   };
   created_at: string;
 }

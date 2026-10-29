@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, BookOpen, Hexagon, Orbit } from "lucide-react";
 import { useNexusCore } from "@/hooks/useNexusCore";
 import "./core.css";
+import "./progression.css";
 
 export function CoreShell({ children }: { children: ReactNode }) {
   const { profile } = useNexusCore();
@@ -25,7 +26,7 @@ export function CoreShell({ children }: { children: ReactNode }) {
             </span>
             <div>
               <strong>Nexus Defense</strong>
-              <small>Core protocol / 02</small>
+              <small>Endless / Arsenal</small>
             </div>
           </Link>
           <Link
@@ -39,7 +40,7 @@ export function CoreShell({ children }: { children: ReactNode }) {
           <Link
             to="/nexus/research"
             className="nc-wallet"
-            aria-label={`${profile?.credits ?? 0} research credits. Open core lab.`}
+            aria-label={`${profile?.credits ?? 0} credits. Open armory.`}
           >
             <Orbit size={14} />
             {profile?.credits.toLocaleString() ?? "—"}

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { UPGRADES, getScenario } from "@/lib/nexus/core/catalog";
 import { upgradePreview } from "@/lib/nexus/core/systems";
+import { ARMORY, upgradeAvailable } from "@/lib/nexus/core/progression";
 import { CoreWeaponPanel } from "@/components/nexus/core/CoreWeaponPanel";
 import { toast } from "sonner";
 import {
@@ -74,7 +75,7 @@ export default function NexusBattlePage() {
       <div className="nc-main">
         <CoreBack />
         <CoreHeading eyebrow="No signal" title="Choose your deployment." />
-        <CoreLink to="/nexus/missions">Campaign sectors</CoreLink>
+        <CoreLink to="/nexus/loadout/endless">Build your loadout</CoreLink>
       </div>
     );
   return (
@@ -469,7 +470,9 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
             role="tabpanel"
             aria-labelledby={`tab-${category}`}
           >
-            {UPGRADES.filter((u) => u.category === category).map((u) => {
+            {UPGRADES.filter(
+              (u) => u.category === category && upgradeAvailable(run, u.id),
+            ).map((u) => {
               const level = run.upgrades[u.id] || 0,
                 price = upgradeCost(u.id, level),
                 max = level >= u.max,
@@ -511,6 +514,15 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                 </button>
               );
             })}
+            {!UPGRADES.some(
+              (u) => u.category === category && upgradeAvailable(run, u.id),
+            ) && (
+              <p className="nc-upgrade-empty">
+                {category === "weapons"
+                  ? "Pulse cannon online. Unlock auxiliary weapons in the armory, then equip them before your next run."
+                  : "No support module equipped. Choose repair, extra energy or stasis in your next loadout."}
+              </p>
+            )}
           </div>
           <div className="nc-tabs" role="tablist" aria-label="Upgrade category">
             {(["attack", "weapons", "defense", "utility"] as const).map((c) => (
@@ -661,6 +673,26 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                 <ArrowLeft size={16} />
                 Save & exit
               </button>
+              {(run.balanceVersion || 0) >= 4 && (
+                <button
+                  className="nc-button nc-button-secondary nc-end-run"
+                  onClick={() => {
+                    const completed = {
+                      ...runRef.current!,
+                      phase: "defeat" as const,
+                      hp: 0,
+                      retired: true,
+                    };
+                    commit(completed);
+                    navigate("/nexus/results/endless", {
+                      replace: true,
+                      state: { completedRun: completed },
+                    });
+                  }}
+                >
+                  End run & collect
+                </button>
+              )}
             </>
           )}
         </AlertDialogContent>
@@ -676,7 +708,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
           <div className="nc-sheet-grip" />
           <DialogTitle>Weapon systems</DialogTitle>
           <DialogDescription>
-            Defense paused while you inspect your core.
+            Defense paused. Your deployed loadout is fixed for this run.
           </DialogDescription>
           <div className="nc-systems-scroll">
             <CoreWeaponPanel
@@ -688,6 +720,14 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                 setSystemsOpen(false);
               }}
             />
+            {run.loadout && (
+              <p className="nc-note">
+                Support:{" "}
+                {ARMORY.find((a) => a.id === run.loadout?.module)?.name ||
+                  "None equipped"}
+                . Unlock and equip new equipment between runs.
+              </p>
+            )}
             <div className="nc-targeting">
               <Crosshair size={16} />
               <label htmlFor="core-priority">Prioritize</label>
