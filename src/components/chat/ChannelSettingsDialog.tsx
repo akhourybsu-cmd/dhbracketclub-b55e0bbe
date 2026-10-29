@@ -11,7 +11,7 @@ import { Trash2, Bell, AtSign, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { chatToast as toast } from '@/lib/chatToast';
 import type { Channel, Category, ChannelType, PostPermission, NotificationMode } from './types';
 import { CHANNEL_TYPE_META, CHANNEL_TYPE_ORDER } from './channelTypeMeta';
 

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { Flag, Check, X, Loader2, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { toast } from 'sonner';
+import { chatToast as toast } from '@/lib/chatToast';
 
 interface ReportRow {
   id: string;

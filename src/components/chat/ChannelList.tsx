@@ -84,12 +84,16 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
           }
         }}
         role="button"
+        aria-current={isCurrent ? 'page' : undefined}
+        aria-label={`${ch.name}${unreadCount ? `, ${unreadCount} unread` : ''}${mentionCount ? `, ${mentionCount} mentions` : ''}`}
+        data-selected={isCurrent}
+        data-unread={isUnread}
         tabIndex={0}
         className={cn(
           // Discord-style row: a thin left-edge accent bar appears
           // on the active channel via a pseudo-element. Inactive rows
           // get the standard hover-tint; unread rows lift slightly.
-            "relative w-full min-h-[62px] flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors duration-150 cursor-pointer group active:bg-muted/50 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "chat-channel-row relative w-full min-h-[62px] flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors duration-150 cursor-pointer group active:bg-muted/50 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           // Active state — stronger bg + dedicated treatment
           isCurrent
             ? "bg-primary/12 hover:bg-primary/15"
@@ -104,7 +108,7 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
           <span
             aria-hidden
             className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-primary"
-            style={{ boxShadow: '0 0 8px hsl(var(--primary) / 0.6)' }}
+
           />
         )}
 
@@ -142,7 +146,7 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
               )}
             </span>
             {meta?.lastMessageAt && (
-              <span className={cn(
+              <span data-channel-time className={cn(
                 "text-[10px] font-medium flex-shrink-0 tabular-nums",
                 isUnread ? "text-primary font-semibold" : "text-muted-foreground/55",
               )}>
@@ -152,7 +156,7 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
           </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             {hasPreview ? (
-              <p className={cn(
+              <p data-channel-preview className={cn(
                 "text-[12px] truncate flex-1 min-w-0",
                 isUnread ? "text-foreground/85 font-medium" : "text-muted-foreground/65",
               )}>
@@ -160,7 +164,7 @@ const ChannelRow = memo(function ChannelRow({ ch, meta, isCurrent, currentUserId
                 {previewText}
               </p>
             ) : (
-              <p className="text-[11px] text-muted-foreground/45 truncate flex-1 italic">
+              <p data-channel-preview className="text-[11px] text-muted-foreground/45 truncate flex-1 italic">
                 {ch.description || 'No messages yet'}
               </p>
             )}
@@ -319,7 +323,7 @@ export function ChannelList({
 
   return (
     <div
-      className="px-3 pb-6 lg:pb-4 lg:px-4"
+      className="chat-channel-directory px-3 pb-6 lg:pb-4 lg:px-4"
       style={{
         touchAction: 'pan-y',
         WebkitOverflowScrolling: 'touch',
@@ -334,7 +338,7 @@ export function ChannelList({
             shrunk to text-[17px] / sm:text-lg and tightened the
             vertical chrome (pb-2 mb-3) so the channel list reads
             as the primary content of this column. */}
-        <div className="flex items-center gap-2 border-b border-border/10 pb-2 mb-3 px-1">
+        <div className="chat-directory-header flex items-center gap-2 border-b border-border/10 pb-2 mb-3 px-1">
           <button
             type="button"
             aria-label="Open navigation menu"
@@ -346,7 +350,7 @@ export function ChannelList({
           <div className="flex-1 min-w-0">
             <h1 className="text-[17px] sm:text-lg font-extrabold tracking-tight leading-tight">Chat</h1>
             <p className="text-[10.5px] text-muted-foreground/55 font-medium leading-none mt-0.5 truncate">
-              {clubName || 'Club conversations'} · {onlineCount} online
+              {clubName || 'Club conversations'}{onlineCount > 0 ? ` · ${onlineCount} online` : ''}
             </p>
           </div>
           {isAdmin && (
@@ -363,7 +367,7 @@ export function ChannelList({
           )}
         </div>
 
-        <div className="relative mb-3 px-1">
+        <div className="chat-channel-search relative mb-3 px-1">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/45" />
           <Input
             value={channelQuery}

@@ -19,8 +19,8 @@ export function ChatBottomSheet({ open, onOpenChange, title, description, childr
         side="bottom"
         className={cn(
           'z-[80] max-h-[82dvh] overflow-y-auto rounded-t-2xl border-border/60 bg-background px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-2xl',
-          mobileOnly && 'sm:hidden',
-          'data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:duration-0',
+          mobileOnly && 'md:hidden',
+          'data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:duration-0 motion-reduce:animate-none motion-reduce:transition-none',
           className,
         )}
       >

@@ -59,6 +59,7 @@ export function ChatSearchPanel({
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/45" />
               <Input
+            type="search"
                 value={query}
                 onChange={event => onQueryChange(event.target.value)}
                 placeholder="Search messages"
@@ -116,9 +117,9 @@ export function ChatSearchPanel({
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                 <Search className="h-6 w-6 text-primary/70" />
               </div>
-              <h3 className="text-sm font-bold">Find anything your club shared</h3>
+              <h3 className="text-sm font-bold">Find a message</h3>
               <p className="mt-1 max-w-xs text-[11px] leading-relaxed text-muted-foreground/65">
-                Search conversations, links, filenames, mentions, and shared notes. Enter at least two characters.
+                Search this channel or the whole club.
               </p>
               <span className="mt-4 hidden rounded-md border border-border/25 bg-muted/20 px-2 py-1 font-mono text-[9px] text-muted-foreground/55 sm:inline-flex">
                 Ctrl / ⌘ + K

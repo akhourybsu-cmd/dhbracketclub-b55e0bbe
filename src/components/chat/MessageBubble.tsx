@@ -8,7 +8,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { chatToast as toast } from '@/lib/chatToast';
 import { UserAvatar, getUserColor } from './UserAvatar';
 import type { Message } from './types';
 import { QUICK_EMOJIS } from './types';
@@ -312,6 +312,7 @@ interface MessageBubbleProps {
   onEditContentChange: (content: string) => void;
   onCancelEdit: () => void;
   isOverlayOpen?: boolean;
+  keyboardEntry?: boolean;
   onToggleOverlay?: (msgId: string | null) => void;
   /** Optional — set true to render a green presence dot on this
    *  message's avatar. The parent passes this from a shared
@@ -328,7 +329,7 @@ function MessageBubbleInner({
   onToggleReaction, onReply, onReplyJump, onTogglePin,
   onStartEditing, onDeleteMessage, onSaveEdit,
   editingMessageId, editContent, onEditContentChange, onCancelEdit,
-  isOverlayOpen, onToggleOverlay,
+  isOverlayOpen, onToggleOverlay, keyboardEntry,
   isAuthorOnline,
 }: MessageBubbleProps) {
   const showOverlay = !!isOverlayOpen;
@@ -546,10 +547,26 @@ function MessageBubbleInner({
     <>
       <motion.div
         className={cn(
-          "group relative",
+          "chat-message group relative",
           sameAuthor ? "py-[1px]" : "pt-1",
           msg._optimistic && "opacity-90"
         )}
+        data-own={isOwn}
+        tabIndex={keyboardEntry?0:-1}
+        data-chat-message-focus
+        role="article"
+        aria-label={`Message from ${isOwn?'you':msg.profiles?.display_name||'a club member'}`}
+        aria-describedby="chat-message-keyboard-help"
+        onKeyDown={event=>{
+          if(event.target!==event.currentTarget || isBeingEdited)return;
+          if(event.key==='Enter'||(event.shiftKey&&event.key==='F10')){event.preventDefault();openOverlay();}
+          if(event.key==='ArrowUp'||event.key==='ArrowDown'){
+            event.preventDefault();
+            const row=event.currentTarget.closest('[data-message-id]');
+            const neighbor=event.key==='ArrowUp'?row?.previousElementSibling:row?.nextElementSibling;
+            neighbor?.querySelector<HTMLElement>('[data-chat-message-focus]')?.focus();
+          }
+        }}
         style={{ x: dragX }}
         initial={enterInitial}
         animate={enterAnimate}
@@ -600,14 +617,14 @@ function MessageBubbleInner({
           )}
 
           {/* Bubble column */}
-          <div ref={bubbleWrapperRef} className="relative max-w-[80%] min-w-[60px]">
+          <div ref={bubbleWrapperRef} className="chat-message-column relative max-w-[80%] min-w-[60px]">
             {/* Sender name — first message of other user's block */}
             {!isOwn && isFirstInBlock && (
               <div className="flex items-baseline gap-2 mb-0.5 pl-1">
-                <span className="text-[12px] font-semibold truncate" style={{ color: senderColor }}>
+                <span className="chat-message-author text-[12px] font-semibold truncate" style={{ color: senderColor }}>
                   {msg.profiles?.display_name || 'Unknown'}
                 </span>
-                <span className="text-[10px] text-muted-foreground/45 font-medium flex-shrink-0">
+                <span className="chat-message-time text-[10px] text-muted-foreground/45 font-medium flex-shrink-0">
                   {format(new Date(msg.created_at), 'h:mm a')}
                 </span>
               </div>
@@ -639,7 +656,7 @@ function MessageBubbleInner({
               <div
                 className={cn(
                   bubbleCorners,
-                  "px-3 py-2 relative",
+                  "chat-message-bubble px-3.5 py-2.5 relative",
                   isOwn
                     ? "text-foreground/95"
                     : "border border-border/10 text-foreground/90"
@@ -657,18 +674,19 @@ function MessageBubbleInner({
                       value={editContent}
                       onChange={e => onEditContentChange(e.target.value)}
                       onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSaveEdit(msg.id, editContent); }
+                        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode!==229 && !isMobile) { e.preventDefault(); onSaveEdit(msg.id, editContent); }
                         if (e.key === 'Escape') onCancelEdit();
                       }}
+                      aria-label="Edit message"
                       className="chat-mobile-input flex-1 resize-none text-[13px] bg-background/30 border border-border/25 rounded-lg px-2 py-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20"
                       rows={1}
                       autoFocus
                       style={{ minHeight: 28, maxHeight: 120 }}
                     />
-                    <button onClick={() => onSaveEdit(msg.id, editContent)} className="p-1 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors">
+                    <button type="button" aria-label="Save edit" onClick={() => onSaveEdit(msg.id, editContent)} className="min-h-11 min-w-11 flex items-center justify-center p-1 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors">
                       <Check className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={onCancelEdit} className="p-1 rounded-lg hover:bg-muted/50 transition-colors">
+                    <button type="button" aria-label="Cancel edit" onClick={onCancelEdit} className="min-h-11 min-w-11 flex items-center justify-center p-1 rounded-lg hover:bg-muted/50 transition-colors">
                       <X className="w-3.5 h-3.5 text-muted-foreground/70" />
                     </button>
                   </div>
@@ -752,7 +770,7 @@ function MessageBubbleInner({
                           // Mobile: h-7 (28px) for reliable tap target.
                           // Desktop keeps the original h-6 (24px) so
                           // reaction rows stay dense alongside text.
-                          "inline-flex items-center gap-1 h-7 lg:h-6 px-2 lg:px-1.5 rounded-full text-[11px] border shadow-sm backdrop-blur-sm transition-colors duration-150 active:scale-90",
+                          "chat-reaction relative inline-flex items-center gap-1 h-7 lg:h-6 px-2 lg:px-1.5 rounded-full text-[11px] border shadow-sm backdrop-blur-sm transition-colors duration-150 active:scale-90",
                           r.user_reacted
                             ? "border-primary/30 bg-primary/15 text-primary"
                             : "border-border/30 bg-background/95 text-foreground/80 hover:bg-background"
@@ -769,7 +787,7 @@ function MessageBubbleInner({
             {/* Timestamp for own messages — last in block */}
             {isOwn && isLastInBlock && !isBeingEdited && (
               <div className="flex justify-end mt-1 pr-1">
-                <span className="text-[10px] text-muted-foreground/40 font-medium">
+                <span className="chat-message-time text-[10px] text-muted-foreground/40 font-medium">
                   {format(new Date(msg.created_at), 'h:mm a')}
                 </span>
               </div>
@@ -914,13 +932,14 @@ function MessageBubbleInner({
       {isMobile && (
         <>
           <ChatBottomSheet open={showOverlay} onOpenChange={setShowOverlay} title="Message actions" description={chatMessagePreview(msg.content, 80)}>
-            <div className="mb-3 flex items-center justify-between gap-1 rounded-lg bg-muted/25 p-1" aria-label="Quick reactions">
+            <div className="mb-3 grid grid-cols-6 gap-1 rounded-lg bg-muted/25 p-1" aria-label="Quick reactions">
               {QUICK_EMOJIS.map(emoji => (
                 <button key={emoji} type="button" onClick={event => handleReaction(emoji, event)} className="flex h-11 min-w-10 flex-1 items-center justify-center rounded-lg text-lg active:scale-90" aria-label={`React with ${emoji}`}>{emoji}</button>
               ))}
-              <button type="button" onClick={() => { setShowOverlay(false); setShowReactPicker(true); }} className="flex h-11 min-w-10 flex-1 items-center justify-center rounded-lg active:scale-90" aria-label="More reactions"><SmilePlus className="h-5 w-5" /></button>
+
             </div>
             <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => {setShowOverlay(false);setShowReactPicker(true);}} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><SmilePlus className="h-4 w-4 text-primary"/> More emoji</button>
               <button type="button" onClick={() => { onReply(msg); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Reply className="h-4 w-4 text-primary" /> Reply</button>
               <button type="button" onClick={() => { onTogglePin(msg); setShowOverlay(false); }} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Pin className="h-4 w-4 text-primary" /> {msg.is_pinned ? 'Unpin' : 'Pin'}</button>
               {stripAttachmentUrls(msg.content) && <button type="button" onClick={handleCopy} className="flex h-12 items-center gap-3 rounded-lg bg-muted/30 px-3 font-semibold"><Copy className="h-4 w-4 text-primary" /> Copy</button>}
@@ -987,6 +1006,11 @@ export const MessageBubble = memo(MessageBubbleInner, (prev, next) => {
     prev.msg.reply_count === next.msg.reply_count &&
     prev.msg._optimistic === next.msg._optimistic &&
     prev.isOwn === next.isOwn &&
+    prev.keyboardEntry===next.keyboardEntry &&
+    prev.currentUserId===next.currentUserId &&
+    prev.currentDisplayName===next.currentDisplayName &&
+    prev.msg.profiles?.display_name===next.msg.profiles?.display_name &&
+    prev.msg.profiles?.avatar_url===next.msg.profiles?.avatar_url &&
     prev.sameAuthor === next.sameAuthor &&
     prev.nextSameAuthor === next.nextSameAuthor &&
     prev.editingMessageId === next.editingMessageId &&
