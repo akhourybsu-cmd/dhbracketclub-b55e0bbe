@@ -20,6 +20,10 @@ Legend: **🌐 Anyone** = anonymous + authenticated. **Owner** = `auth.uid() = u
 | `channels` | Admin + Club member | Conditional | — | Admin | Admin + Club member |
 | `club_installed_assets` | Owner + Club member | — | — | — | Admin + Owner + Club member |
 | `club_members` | Admin + Club member | — | — | — | Admin + Club admin |
+| `dh_feat_accounts` | Owner | — | — | — | — |
+| `dh_feat_catalog` | Authenticated | — | — | — | — |
+| `dh_feat_progress` | Owner | — | — | — | — |
+| `dh_feat_unlocks` | Owner | — | — | — | — |
 | `club_requests` | Admin | Conditional | Admin | — | — |
 | `clubs` | Admin + Club member | Admin | Admin + Club admin | — | — |
 | `competitions` | Admin + Club member | Conditional | Admin | Admin | Admin + Club member |

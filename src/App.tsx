@@ -38,6 +38,7 @@ const RuneDelveSimulatorPage = lazyWithRetry(() => import("./pages/RuneDelveSimu
 const RuneDelveBalanceReportPage = lazyWithRetry(() => import("./pages/RuneDelveBalanceReportPage"));
 const GameCenterPage = lazyWithRetry(() => import("./pages/GameCenterPage"));
 const ProfilePage = lazyWithRetry(() => import("./pages/ProfilePage"));
+const DHFeatsPage = lazyWithRetry(() => import("./pages/DHFeatsPage"));
 const NotificationsPage = lazyWithRetry(() => import("./pages/NotificationsPage"));
 const ResetPasswordPage = lazyWithRetry(() => import("./pages/ResetPasswordPage"));
 const RankingsListPage = lazyWithRetry(() => import("./pages/RankingsListPage"));
@@ -331,6 +332,7 @@ function AnimatedRoutes() {
         <Route path="/nexus/mission-workshop" element={<Navigate to="/nexus/missions" replace />} />
 
         <Route path="/profile" element={<ProtectedPage><ProfilePage /></ProtectedPage>} />
+        <Route path="/feats" element={<ProtectedPage><DHFeatsPage /></ProtectedPage>} />
         <Route path="/notifications" element={<ProtectedPage><NotificationsPage /></ProtectedPage>} />
         <Route path="/celebrations" element={<ProtectedPage assetSlug="birthdays-milestones"><CelebrationsPage /></ProtectedPage>} />
         <Route path="/workouts" element={<ProtectedPage assetSlug="workout-competition"><ForgeLayout><WorkoutPage /></ForgeLayout></ProtectedPage>} />

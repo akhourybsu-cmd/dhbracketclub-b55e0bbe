@@ -85,7 +85,10 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
   },
   {
     label: 'Account',
-    items: [{ path: '/profile', label: 'Profile', shortLabel: 'You', icon: User }],
+    items: [
+      { path: '/feats', label: 'DH Score', shortLabel: 'Feats', icon: Trophy },
+      { path: '/profile', label: 'Profile', shortLabel: 'You', icon: User },
+    ],
   },
 ];
 
@@ -99,6 +102,7 @@ export const MOBILE_PRIMARY_NAV: AppNavItem[] = [
 ];
 
 const ROUTE_TITLES: Array<[RegExp, string]> = [
+  [/^\/feats/, 'DH Score'],
   [/^\/dashboard/, 'Home'],
   [/^\/chat/, 'Chat'],
   [/^\/compete/, 'Compete'],
@@ -160,6 +164,7 @@ export function isMobilePrimaryActive(pathname: string, path: string): boolean {
 }
 
 export const GAME_SHELL_PREFIXES = [
+  '/feats',
   '/rune-delve',
   '/nexus',
   '/nfl',

@@ -20,6 +20,7 @@ import { MobileAppHeader } from '@/components/mobile/MobileAppHeader';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { countUnreadChatChannels } from '@/lib/chatExperience';
+import { DHScoreSync } from '@/components/feats/DHScoreCard';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -111,6 +112,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col">
+      <DHScoreSync />
       {showMobileHeader && !desktop && <MobileAppHeader title={isDashboard ? club?.name || 'Home' : mobileTitle}
         onOpenMenu={() => { play('tap'); setDrawerOpen(true); }} />}
 

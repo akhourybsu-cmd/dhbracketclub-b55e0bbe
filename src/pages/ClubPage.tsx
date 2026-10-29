@@ -5,6 +5,7 @@ import { useClubAssets } from '@/hooks/useClubAssets';
 import { APP_NAV_SECTIONS } from '@/lib/appNavigation';
 import { ScreenHeader } from '@/components/mobile/ScreenHeader';
 import { AppSurface } from '@/components/mobile/AppSurface';
+import { DHScoreCard } from '@/components/feats/DHScoreCard';
 
 export default function ClubPage() {
   const { club, isClubAdmin } = useClub();
@@ -30,6 +31,7 @@ export default function ClubPage() {
         ) : undefined}
       />
 
+      <DHScoreCard />
       {visibleItems.length > 0 ? (
         <AppSurface className="overflow-hidden lg:grid lg:grid-cols-2 lg:gap-3 lg:overflow-visible lg:border-0 lg:bg-transparent lg:shadow-none">
           {visibleItems.map((item, index) => {

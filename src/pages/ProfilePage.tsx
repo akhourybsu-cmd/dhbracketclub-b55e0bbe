@@ -21,6 +21,7 @@ import { validateImageFile, sanitizeUploadError } from '@/lib/uploadValidation';
 import SoundSettingsCard from '@/components/profile/SoundSettingsCard';
 import { ProfileCelebrationsSection } from '@/components/celebrations/ProfileCelebrationsSection';
 import { ProfileReadshiftSection } from '@/components/readshift/ProfileReadshiftSection';
+import { DHScoreCard } from '@/components/feats/DHScoreCard';
 import LinkedAccounts from '@/components/profile/LinkedAccounts';
 import { MemberLoadError } from '@/components/member/MemberLoadError';
 import { memberData, memberErrorMessage } from '@/lib/memberData';
@@ -193,6 +194,7 @@ export default function ProfilePage() {
             RIGHT (1fr) — Your Stats + Recent Activity  (what you've done)
           Page header above stays full-width. Settings + Sound +
           Sign Out follow below the grid as a full-width block. */}
+      <DHScoreCard />
       <div className="flex flex-col gap-0 lg:grid lg:grid-cols-2 lg:gap-5 lg:items-start">
         <div className="min-w-0">
 
