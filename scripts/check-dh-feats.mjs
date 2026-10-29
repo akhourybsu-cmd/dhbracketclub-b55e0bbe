@@ -66,10 +66,26 @@ const noScroll = async (page) => {
     r.sh <= r.h + 1 && r.sw <= r.w + 1,
     `No primary-screen scrolling ${JSON.stringify(r)}`,
   );
-  for (const card of await page.locator(".dh-feat-card").all()) {
-    await fits(page, card, "Feat card");
-    const c = await card.boundingBox(),
-      a = await page.locator(".dh-list-space").boundingBox();
+  // Read a single layout snapshot: responsive pagination can replace cards.
+  const cards = await page.locator(".dh-feat-card").evaluateAll((elements) =>
+    elements.map((element) => {
+      const c = element.getBoundingClientRect(),
+        a = element.closest(".dh-list-space").getBoundingClientRect();
+      return {
+        c: { x: c.x, y: c.y, width: c.width, height: c.height },
+        a: { x: a.x, y: a.y, width: a.width, height: a.height },
+      };
+    }),
+  );
+  for (const { c, a } of cards) {
+    const v = page.viewportSize();
+    assert.ok(
+      c.x >= -1 &&
+        c.y >= -1 &&
+        c.x + c.width <= v.width + 1 &&
+        c.y + c.height <= v.height + 1,
+      "Feat card fits viewport",
+    );
     assert.ok(
       c.y + c.height <= a.y + a.height + 1,
       `Feat is fully visible in its list ${JSON.stringify({ c, a })}`,
@@ -188,12 +204,21 @@ try {
       page.getByRole("heading", { name: "Dry My Horse", exact: true }),
     ).toBeVisible();
     await noScroll(page);
+    await expect(page.locator('.dh-leader[data-you="true"]')).toHaveCount(1);
+    await touch(
+      page,
+      page.getByRole("button", { name: /Find me/ }),
+      "Find my single standing",
+    );
+    await page.getByRole("button", { name: /Find me/ }).tap();
+    await expect(page.locator('.dh-leader[data-you="true"]')).toHaveCount(1);
     await touch(
       page,
       page.getByRole("button", { name: "This month", exact: true }),
       "Monthly leaderboard",
     );
     await page.getByRole("button", { name: "This month", exact: true }).tap();
+    await expect(page.locator('.dh-leader[data-you="true"]')).toHaveCount(1);
     await noScroll(page);
     await page.screenshot({ path: join(output, `${width}-club.png`) });
     await backend.rpc("dh_feats_pin", { p_keys: [] });

@@ -610,17 +610,25 @@ body.dh-feats-active {
   font-size: 7px;
   color: hsl(var(--dh-muted));
 }
-.dh-your-rank {
-  flex-shrink: 0;
-  border: 1px solid hsl(var(--dh-accent) / 0.3);
+.dh-leader[data-you="true"] {
   border-radius: 12px;
-  background: hsl(var(--dh-accent) / 0.04);
-  margin-bottom: 8px;
+  background: hsl(var(--dh-accent) / 0.07);
 }
-.dh-your-rank .dh-leader {
-  border: 0;
+.dh-find-me {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: hsl(var(--dh-accent));
+  font-size: 11px;
+  font-weight: 700;
 }
-.dh-your-rank .dh-leader-place,
+.dh-find-me span {
+  margin-left: 4px;
+}
+.dh-find-me:hover {
+  background: hsl(var(--dh-accent) / 0.08);
+}
+.dh-leader[data-you="true"] .dh-leader-place,
 .dh-leader[data-you="true"] .dh-leader-name > strong {
   color: hsl(var(--dh-accent));
 }
@@ -1109,9 +1117,6 @@ body.dh-feats-active {
     min-height: 44px;
   }
   .dh-collection-link {
-    display: none;
-  }
-  .dh-your-rank {
     display: none;
   }
   .dh-board-note {

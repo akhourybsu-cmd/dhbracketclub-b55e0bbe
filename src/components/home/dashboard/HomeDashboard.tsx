@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClubPresence } from '@/hooks/useClubPresence';
 import type { Club } from '@/contexts/ClubContext';
 import type { NextAction } from '@/lib/home/nextAction';
 
@@ -53,11 +54,7 @@ interface StandingsEntry {
   display_name?: string | null;
   avatar_url?: string | null;
 }
-interface PresenceMeta {
-  user_id?: unknown;
-  display_name?: unknown;
-  avatar_url?: unknown;
-}
+
 
 interface Props {
   club: Club | null;
@@ -102,51 +99,12 @@ export function HomeDashboard({
   const accent = club?.accent_color ?? '152 72% 46%';
   const { user } = useAuth();
 
-  /* ─── Online presence + club member count ───────────────────
-     NOTE: MembersOnline (in the mobile/tablet branch) also opens a
-     `online-presence:{club.id}` channel. Because both branches mount
-     simultaneously (`lg:hidden` / `hidden lg:block` are CSS only),
-     subscribing the same channel topic twice from one supabase client
-     can wedge the realtime socket. We use a distinct topic suffix here
-     to avoid colliding with MembersOnline. */
-  const [online, setOnline] = useState<ActiveMember[]>([]);
+  const { users: presence } = useClubPresence({ displayName, avatarUrl });
+  const online: ActiveMember[] = presence.map(member => ({
+    id: member.user_id, name: member.display_name || 'Club member',
+    avatar_url: member.avatar_url || null, online: true,
+  }));
   const [memberCount, setMemberCount] = useState(0);
-
-  useEffect(() => {
-    if (!user || !displayName || !club?.id) return;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    try {
-      channel = supabase.channel(`online-presence-rail:${club.id}`, {
-        config: { presence: { key: user.id } },
-      });
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          try {
-            const state = channel!.presenceState();
-            const flat = Object.values(state).flat().map((record) => {
-              const p = record as PresenceMeta;
-              return {
-              id: typeof p.user_id === 'string' ? p.user_id : '',
-              name: typeof p.display_name === 'string' ? p.display_name : 'Member',
-              avatar_url: typeof p.avatar_url === 'string' ? p.avatar_url : null,
-              online: true,
-            }; }).filter(member => member.id);
-            const seen = new Set<string>();
-            setOnline(flat.filter(u => seen.has(u.id) ? false : (seen.add(u.id), true)));
-          } catch { /* swallow */ }
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            try { await channel!.track({ user_id: user.id, display_name: displayName, avatar_url: avatarUrl }); }
-            catch { /* swallow */ }
-          }
-        });
-    } catch { /* swallow */ }
-    return () => {
-      if (!channel) return;
-      try { supabase.removeChannel(channel); } catch { /* channel already closed */ }
-    };
-  }, [user, displayName, avatarUrl, club?.id]);
 
   useEffect(() => {
     if (!club?.id) return;

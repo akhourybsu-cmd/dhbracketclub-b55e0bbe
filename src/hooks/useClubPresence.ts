@@ -6,17 +6,14 @@
 // strip, chat avatar dots, etc.) share one truth without each
 // opening its own channel.
 //
-// The presence join is per-mount: the first hook instance to mount
-// in the session joins the channel and tracks the current user;
-// subsequent instances on the same `clubId` re-use the same data via
-// the Supabase channel's own dedup. That said, having multiple
-// subscribers is cheap and works correctly — Supabase only opens one
-// WebSocket per channel name regardless of how many subscribers join.
+// Presence identities and labels come from the verified club directory.
 
-import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useClub } from '@/contexts/ClubContext';
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
+import { QUERY_TIMEOUT_MS, withTimeout } from "@/lib/asyncGuards";
+import { visiblePresence, type DirectoryMember } from "@/lib/clubPresence";
 
 interface PresenceMeta {
   user_id: string;
@@ -25,9 +22,7 @@ interface PresenceMeta {
 }
 
 interface UseClubPresenceOptions {
-  /** Optional display name to broadcast as part of this user's
-   *  presence. If omitted, no display_name is tracked (other hooks
-   *  that need the name should pass it in). */
+  /** Refresh the canonical directory when the member changes their name. */
   displayName?: string;
   /** Optional avatar URL to broadcast. */
   avatarUrl?: string | null;
@@ -44,44 +39,76 @@ interface UseClubPresenceResult {
   users: PresenceMeta[];
 }
 
-export function useClubPresence(opts: UseClubPresenceOptions = {}): UseClubPresenceResult {
+export function useClubPresence(
+  opts: UseClubPresenceOptions = {},
+): UseClubPresenceResult {
   const { user } = useAuth();
+  const userId = user?.id;
   const { club } = useClub();
   const [users, setUsers] = useState<PresenceMeta[]>([]);
   const { displayName, avatarUrl, track = true } = opts;
 
   useEffect(() => {
-    if (!user || !club?.id) return;
-    const channel = supabase.channel(
-      `online-presence:${club.id}`,
-      { config: { presence: { key: user.id } } },
-    );
+    setUsers([]);
+    if (!userId || !club?.id) return;
+    let alive = true;
+    let directory: DirectoryMember[] = [];
+    let subscribed = false;
+    const channel = supabase.channel(`online-presence:${club.id}`, {
+      config: { presence: { key: userId } },
+    });
 
+    const sync = () => {
+      if (alive) setUsers(visiblePresence(channel.presenceState(), directory));
+    };
+    const trackVerified = async () => {
+      if (!alive || !subscribed || !track) return;
+      const member = directory.find((row) => row.id === userId);
+      if (member)
+        await channel.track({
+          user_id: member.id,
+          display_name: member.display_name,
+          avatar_url: member.avatar_url,
+        });
+    };
+    const rpc = supabase.rpc as unknown as (
+      name: string,
+      args: { p_club_id: string },
+    ) => PromiseLike<{ data: DirectoryMember[] | null; error: unknown }>;
+    void withTimeout(
+      rpc("dh_presence_directory", { p_club_id: club.id }),
+      QUERY_TIMEOUT_MS,
+      "club presence directory",
+    )
+      .then(({ data, error }) => {
+        if (!alive || error || !Array.isArray(data)) return;
+        directory = data;
+        sync();
+        void trackVerified().catch(() => {});
+      })
+      .catch(() => {});
     channel
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const flat = Object.values(state).flat().map((p: any) => ({
-          user_id: p.user_id as string,
-          display_name: p.display_name as string | undefined,
-          avatar_url: p.avatar_url as string | null | undefined,
-        }));
-        // Dedupe across devices for a single user.
-        const seen = new Set<string>();
-        setUsers(flat.filter(u => seen.has(u.user_id) ? false : (seen.add(u.user_id), true)));
+      .on("presence", { event: "sync" }, () => {
+        sync();
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && track) {
-          await channel.track({
-            user_id: user.id,
-            display_name: displayName,
-            avatar_url: avatarUrl,
-          });
+        subscribed = status === "SUBSCRIBED";
+        try {
+          await trackVerified();
+        } catch {
+          /* Presence is optional. */
         }
       });
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id, club?.id, displayName, avatarUrl, track]);
+    return () => {
+      alive = false;
+      supabase.removeChannel(channel);
+    };
+  }, [userId, club?.id, displayName, avatarUrl, track]);
 
-  const onlineIds = useMemo(() => new Set(users.map(u => u.user_id)), [users]);
+  const onlineIds = useMemo(
+    () => new Set(users.map((u) => u.user_id)),
+    [users],
+  );
   return { onlineIds, users };
 }

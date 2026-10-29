@@ -23,7 +23,7 @@ export interface HomeGoal {
 export interface HomeProgress {
   score: number;
   unlocked: number;
-  club_rank: number;
+  club_rank: number | null;
   goals: HomeGoal[];
 }
 export interface HomeDrop {

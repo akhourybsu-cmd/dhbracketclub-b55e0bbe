@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link,useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowLeft,
@@ -23,6 +23,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useClubAssets } from "@/hooks/useClubAssets";
 import { useDHFeats } from "@/hooks/useDHFeats";
+import { leaderboardMembers } from "@/lib/feats/leaderboard";
 import {
   dhRank,
   FEAT_CATEGORIES,
@@ -144,33 +145,30 @@ function PagedFeats({
   empty: string;
 }) {
   const area = useRef<HTMLDivElement>(null),
-    [capacity, setCapacity] = useState(3),
+    [capacity, setCapacity] = useState(1),
     [page, setPage] = useState(0);
   const signature = feats.map((f) => f.key).join("|");
   useEffect(() => {
     setPage(0);
   }, [signature, capacity]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!area.current) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const columns =
-        entry.contentRect.width >= 1000
-          ? 3
-          : entry.contentRect.width >= 630
-            ? 2
-            : 1;
+    const measure = () => {
+      if (!area.current) return;
+      const bounds = area.current.getBoundingClientRect();
+      const columns = bounds.width >= 1000 ? 3 : bounds.width >= 630 ? 2 : 1;
       const short =
         window.innerHeight <= 540 && window.innerWidth > window.innerHeight;
       setCapacity(
-        Math.max(
-          1,
-          Math.floor((entry.contentRect.height + 8) / (short ? 76 : 96)),
-        ) * columns,
+        Math.max(1, Math.floor((bounds.height + 8) / (short ? 76 : 96))) *
+          columns,
       );
-    });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(area.current);
     return () => observer.disconnect();
-  }, []);
+  }, [signature, board.pinned.length]);
   const total = Math.ceil(feats.length / capacity),
     current = Math.min(page, Math.max(0, total - 1));
   return (
@@ -208,8 +206,11 @@ function ClubBoard({ board }: { board: FeatBoard }) {
     [page, setPage] = useState(0),
     [size, setSize] = useState(4),
     area = useRef<HTMLDivElement>(null);
-  const rows = monthly ? board.monthly_leaders : board.leaders,
-    me = monthly ? board.monthly_me : board.me;
+  const me = monthly ? board.monthly_me : board.me,
+    rows = leaderboardMembers(
+      monthly ? board.monthly_leaders : board.leaders,
+      me,
+    );
   useEffect(() => {
     if (!area.current) return;
     const observer = new ResizeObserver(([entry]) =>
@@ -221,11 +222,11 @@ function ClubBoard({ board }: { board: FeatBoard }) {
   useEffect(() => setPage(0), [size, monthly]);
   const total = Math.ceil(rows.length / size),
     current = Math.min(page, Math.max(0, total - 1));
-  const row = (member: FeatLeader, mine = false) => (
+  const row = (member: FeatLeader) => (
     <div
       className="dh-leader"
       key={member.user_id}
-      data-you={mine || member.user_id === user?.id}
+      data-you={member.user_id === user?.id}
     >
       <span className="dh-leader-place">
         {member.rank <= 3 ? (
@@ -259,7 +260,23 @@ function ClubBoard({ board }: { board: FeatBoard }) {
     <section className="dh-panel dh-club-panel">
       <div className="dh-panel-heading">
         <h2>{club?.name || "Your club"}</h2>
-        <small>{board.members} members</small>
+        {me ? (
+          <button
+            className="dh-find-me"
+            onClick={() =>
+              setPage(
+                Math.floor(
+                  rows.findIndex((member) => member.user_id === me.user_id) /
+                    size,
+                ),
+              )
+            }
+          >
+            Find me <span>#{me.rank}</span>
+          </button>
+        ) : (
+          <small>{board.members} members</small>
+        )}
       </div>
       <div className="dh-segment" role="group" aria-label="Leaderboard period">
         <button aria-pressed={!monthly} onClick={() => setMonthly(false)}>
@@ -269,12 +286,13 @@ function ClubBoard({ board }: { board: FeatBoard }) {
           This month
         </button>
       </div>
-      {me && (
-        <div className="dh-your-rank" aria-label="Your club standing">
-          {row(me, true)}
-        </div>
-      )}
       <div className="dh-leader-space" ref={area}>
+        {rows.length === 0 && (
+          <div className="dh-empty">
+            <Trophy />
+            <strong>No club standings yet</strong>
+          </div>
+        )}
         {rows
           .slice(current * size, (current + 1) * size)
           .map((member) => row(member))}
@@ -290,7 +308,7 @@ function ClubBoard({ board }: { board: FeatBoard }) {
 }
 
 export default function DHFeatsPage() {
-  const [params]=useSearchParams();
+  const [params] = useSearchParams();
   const result = useDHFeats(),
     { data: board } = result,
     { isInstalled } = useClubAssets(),
@@ -299,7 +317,7 @@ export default function DHFeatsPage() {
     [category, setCategory] = useState("all"),
     [status, setStatus] = useState("all"),
     [term, setTerm] = useState(""),
-    [selected, setSelected] = useState<string | null>(()=>params.get('goal')),
+    [selected, setSelected] = useState<string | null>(() => params.get("goal")),
     [help, setHelp] = useState(false),
     [reveal, setReveal] = useState<{
       items: FeatUnlock[];
@@ -617,7 +635,7 @@ export default function DHFeatsPage() {
         ))}
       </nav>
       <Dialog
-      open={!!feat&&!reveal}
+        open={!!feat && !reveal}
         onOpenChange={(open) => {
           if (!open) setSelected(null);
         }}

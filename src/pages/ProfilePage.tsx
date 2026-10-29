@@ -238,7 +238,7 @@ export default function ProfilePage() {
           />
           <div>
             <p className="font-bold text-lg leading-tight">{displayName}</p>
-            <p className="text-[11px] text-muted-foreground/60 font-medium mt-0.5">{user?.email}</p>
+            <p className="text-[11px] text-muted-foreground/60 font-medium mt-0.5">Your club profile</p>
             <p className="text-[10px] text-primary/60 font-medium mt-0.5">Tap photo to change</p>
           </div>
         </div>

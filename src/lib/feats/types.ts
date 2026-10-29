@@ -38,8 +38,8 @@ export interface FeatBoard {
   unlocks: FeatUnlock[];
   leaders: FeatLeader[];
   monthly_leaders: FeatLeader[];
-  me: FeatLeader;
-  monthly_me: FeatLeader;
+  me: FeatLeader | null;
+  monthly_me: FeatLeader | null;
   members: number;
 }
 export interface DHScoreSummary {

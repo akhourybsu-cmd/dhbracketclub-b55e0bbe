@@ -23,7 +23,7 @@ interface AppDrawerProps {
 
 export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawerProps) {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { club, isClubAdmin, isPlatformOwner, isAppAdmin } = useClub();
   const { play } = useSoundEffect();
   const { filterNavPaths, installedAssets, isVisible } = useClubAssets();
@@ -97,7 +97,7 @@ export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawer
               {club?.name ?? 'DH Club'}
             </h2>
             <p className="text-[10px] text-muted-foreground/80 font-semibold uppercase tracking-[0.14em] mt-0.5 truncate">
-              {user?.email ?? 'Compete With Your Crew'}
+              Compete With Your Crew
             </p>
           </div>
         </div>

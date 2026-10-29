@@ -80,7 +80,7 @@ export function HomeProgressCard({
             ? `${data.unlocked} feats unlocked`
             : "Your next chapter starts here"}
         </span>
-        {data && data.score > 0 && <span>#{data.club_rank} in club</span>}
+        {data && data.score > 0 && data.club_rank != null && <span>#{data.club_rank} in club</span>}
       </div>
       {rank && (
         <div className="home-rank-progress">

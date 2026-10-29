@@ -45,3 +45,14 @@ create table public.journey_campaign_runs (id uuid primary key default gen_rando
 create table public.pw_market_holidays (holiday_date date, label text, early_close boolean);
 alter table club_members add unique(user_id,club_id);
 alter table pw_daily_values add unique(portfolio_id,trading_date);
+
+-- Club identity/isolation shapes used by the current migrations.
+create table public.clubs (id uuid primary key default gen_random_uuid(), name text not null, slug text not null unique, owner_admin_id uuid references profiles(id), visibility text default 'private', settings jsonb default '{}');
+create table public.club_installed_assets (id uuid primary key default gen_random_uuid(), club_id uuid references clubs(id), asset_id uuid, installed_by uuid, enabled boolean default true, visible_to_members boolean default true, configuration_json jsonb default '{}', sort_order integer default 0, unique(club_id,asset_id));
+create table public.notifications (id uuid primary key default gen_random_uuid(), user_id uuid, club_id uuid, actor_user_id uuid, title text, body text);
+create table public.pool_members (id uuid primary key default gen_random_uuid(), pool_id uuid references pools(id), user_id uuid, role text, joined_at timestamptz, club_id uuid);
+alter table daily_find_comments add foreign key(find_id) references daily_finds(id) on delete cascade;
+alter table daily_find_reactions add foreign key(find_id) references daily_finds(id) on delete cascade;
+
+create table public.readshift_answers (id uuid primary key default gen_random_uuid(), club_id uuid, round_id uuid, user_id uuid, body text, locked boolean, created_at timestamptz default now(), updated_at timestamptz default now());
+create table public.readshift_guesses (id uuid primary key default gen_random_uuid(), club_id uuid, round_id uuid, reader_user_id uuid, answer_id uuid, guessed_user_id uuid, is_strong_read boolean, explanation text, created_at timestamptz default now(), updated_at timestamptz default now());

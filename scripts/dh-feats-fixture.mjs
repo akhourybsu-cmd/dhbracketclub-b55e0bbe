@@ -17,6 +17,9 @@ export async function createFeatsFixture() {
     `create role anon;create role authenticated;create schema auth;create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.user',true),'')::uuid$$;grant usage on schema public,auth to authenticated,anon;`,
   );
   await db.exec(
+    "create table auth.users(id uuid primary key, raw_user_meta_data jsonb default '{}',raw_app_meta_data jsonb default '{}');",
+  );
+  await db.exec(
     await readFile("scripts/fixtures/dh-feats-sources.sql", "utf8"),
   );
   await db.exec(
@@ -25,6 +28,16 @@ export async function createFeatsFixture() {
   await db.exec(
     await readFile("supabase/migrations/20261029040000_dh_feats.sql", "utf8"),
   );
+  await db.exec(
+    `insert into clubs(id,name,slug) values('${id(10)}','Dry My Horse','dh-club');`,
+  );
+  for (const file of [
+    "20261029050000_dh_home_progress.sql",
+    "20261029060000_private_sessions.sql",
+    "20261029070000_dh_score_reconciliation.sql",
+  ]) {
+    await db.exec(await readFile("supabase/migrations/" + file, "utf8"));
+  }
   const seed = (table, row) =>
     run(async () => {
       const record = { id: id(seq++), ...row },

@@ -11,6 +11,12 @@ const migration = await readFile(
 try {
   await backend.ownerExec(migration);
   await backend.ownerExec(migration);
+  await backend.ownerExec(
+    await readFile(
+      "supabase/migrations/20261029070000_dh_score_reconciliation.sql",
+      "utf8",
+    ),
+  );
   const home = async () => {
     const r = await backend.rpc("dh_home_progress", { p_club_id: id(10) });
     assert.equal(r.error, null);
