@@ -14,6 +14,7 @@ interface Props {
   onClick?: () => void;
   onClear?: () => void;
   disabled?: boolean;
+  slotNumber?: number;
 }
 
 export function LoadoutSlot({
@@ -24,6 +25,7 @@ export function LoadoutSlot({
   onClick,
   onClear,
   disabled,
+  slotNumber,
 }: Props) {
   if (locked) {
     return (
@@ -42,11 +44,12 @@ export function LoadoutSlot({
         disabled={disabled || !onClick}
         onClick={onClick}
         aria-label="Choose a relic for this empty slot"
+        aria-description={slotNumber ? `Slot ${slotNumber}` : undefined}
         className="w-full rounded-xl border border-dashed border-border/70 p-3 flex flex-col items-center justify-center text-center min-h-[88px] btn-press hover:border-primary/40 transition-colors bg-muted/10"
       >
         <Plus className="w-4 h-4 text-foreground/60 mb-1" />
         <p className="text-[11px] font-extrabold text-foreground/75">
-          Empty slot
+          {slotNumber ? `Slot ${slotNumber} · Empty` : "Empty slot"}
         </p>
       </button>
     );
@@ -75,26 +78,37 @@ export function LoadoutSlot({
           <X className="w-3 h-3" />
         </button>
       )}
-      <div className="relative">
-        <RelicGlyph
-          relic={relic}
-          className="!h-11 !w-11 !rounded-xl mb-2 [&>svg]:!h-6 [&>svg]:!w-6"
-        />
-        {rank != null && rank > 1 && (
-          <span
-            className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-extrabold flex items-center justify-center tabular-nums shadow-sm"
-            style={{
-              background: "hsl(var(--gold))",
-              color: "hsl(var(--background))",
-            }}
-          >
-            R{rank}
-          </span>
-        )}
-      </div>
-      <p className="font-extrabold text-[12px] leading-tight truncate w-full px-1 text-foreground">
-        {relic.name}
-      </p>
+      <button
+        type="button"
+        className="rd-loadout-slot-choice w-full min-h-11 flex flex-col items-center justify-center rounded-lg"
+        aria-label={`Choose a replacement for ${relic.name}${slotNumber ? ` in slot ${slotNumber}` : ""}`}
+        onClick={onClick}
+        disabled={disabled || !onClick}
+      >
+        <div className="relative">
+          <RelicGlyph
+            relic={relic}
+            className="!h-11 !w-11 !rounded-xl mb-2 [&>svg]:!h-6 [&>svg]:!w-6"
+          />
+          {rank != null && rank > 1 && (
+            <span
+              className="absolute -top-2 -right-3 min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-extrabold flex items-center justify-center tabular-nums shadow-sm"
+              style={{
+                background: "hsl(var(--gold))",
+                color: "hsl(var(--background))",
+              }}
+            >
+              R{rank}
+            </span>
+          )}
+        </div>
+        <p
+          className="font-extrabold text-[12px] leading-tight line-clamp-2 break-words w-full px-1 text-foreground"
+          title={relic.name}
+        >
+          {relic.name}
+        </p>
+      </button>
       <p className="text-[10px] font-bold text-foreground/65 mt-0.5">
         {cat.label}
       </p>

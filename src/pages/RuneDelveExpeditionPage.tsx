@@ -1,3 +1,5 @@
+import { progressionRewardItems } from "@/lib/runedelve/rewardPresentation";
+import { useRuneRewardReveal } from "@/hooks/useRuneRewardReveal";
 import {
   useEffect,
   useRef,
@@ -154,6 +156,7 @@ function RoomTrail({ run }: { run: ExpeditionRun }) {
   );
 }
 export default function RuneDelveExpeditionPage() {
+  const { reveal } = useRuneRewardReveal();
   const game = useRuneExpedition();
   const { data: hero } = useRuneDelveHero();
   const [heroClass, setHeroClass] = useState<HeroClass>("warrior");
@@ -316,6 +319,14 @@ export default function RuneDelveExpeditionPage() {
       const result = await game.finish(run);
       if (activeScope.current !== scope) return;
       setReceipt(result);
+      const unlocks = progressionRewardItems(run.heroClass, result);
+      if (unlocks.length)
+        reveal({
+          id: `expedition:${run.id}:progression`,
+          title: "Your legend grows",
+          eyebrow: "Expedition progression",
+          items: unlocks,
+        });
       setPaused(false);
       clearExpedition(storageKey);
     } catch (err) {
@@ -661,7 +672,29 @@ export default function RuneDelveExpeditionPage() {
                       key={boon.id}
                       data-testid={`expedition-boon-${boon.id}`}
                       className="rd-exp-boon-choice"
-                      onClick={() => setRun(chooseExpeditionBoon(run, boon.id))}
+                      onClick={() => {
+                        const next = chooseExpeditionBoon(run, boon.id);
+                        if (next === run || next.phase !== "route") return;
+                        setRun(next);
+                        reveal({
+                          id: `blessing:${run.id}:${run.room}`,
+                          title: boon.name,
+                          eyebrow: "Blessing acquired",
+                          detail:
+                            "Your build grows stronger for this expedition.",
+                          items: [
+                            {
+                              kind: "blessing",
+                              glyph: boon.icon,
+                              label: `Rank ${next.boons[boon.id]}`,
+                              detail: expeditionBoonDescription(
+                                boon.id,
+                                next.boons[boon.id] ?? 1,
+                              ),
+                            },
+                          ],
+                        });
+                      }}
                     >
                       <span
                         className="rd-exp-boon-symbol"
@@ -738,7 +771,7 @@ export default function RuneDelveExpeditionPage() {
           )}
           {isOver && (
             <section
-              className="rd-exp-summary"
+              className={`rd-exp-summary${receipt ? " rd-reward-receipt is-new" : ""}`}
               data-testid="expedition-summary"
             >
               <div

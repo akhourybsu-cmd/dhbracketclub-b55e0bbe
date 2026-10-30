@@ -168,9 +168,11 @@
   font-size: 10px;
   color: hsl(var(--muted-foreground));
 }
-.rd-dialog-inspection-art {
-  width: 108px;
-  height: 108px;
+.rd-paged-dialog .rd-dialog-inspection-art {
+  width: clamp(108px, 26dvh, 184px);
+  height: clamp(108px, 26dvh, 184px);
+  max-width: 100%;
+  border-radius: 14px;
   margin: 0 auto;
   flex: 0 0 auto;
 }
@@ -291,7 +293,7 @@
     font-size: 11px;
     line-height: 1.35;
   }
-  .rd-dialog-inspection-art {
+  .rd-paged-dialog .rd-dialog-inspection-art {
     width: 78px;
     height: 78px;
   }

@@ -26,6 +26,7 @@ import { useMyProgress } from "@/hooks/useRuneDelveCampaign";
 import { buildCharacterSheet } from "@/lib/runedelve/characterStats";
 import { RuneBuildPages } from "@/components/runedelve/RuneBuildPages";
 import { RunePager } from "@/components/runedelve/RunePager";
+import { RuneMenuTabs } from "@/components/runedelve/RuneMenuTabs";
 import { useRuneViewport } from "@/hooks/useRuneViewport";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
 import "@/components/runedelve/runeMenus.css";
@@ -44,6 +45,7 @@ export default function RuneDelveArmoryPage() {
   const { play: rdSfx } = useRuneDelveSfx();
   const [activeClass, setActiveClass] = useState<HeroClass | null>(null);
   const [view, setView] = useState<"loadout" | "relics" | "stats">("loadout");
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const viewport = useRuneViewport();
@@ -66,9 +68,8 @@ export default function RuneDelveArmoryPage() {
       unlockSlot.isError
     )
       return;
-    unlockSlot.mutate(desiredSlots, {
-      onSuccess: () => toast.success("Third relic slot unlocked"),
-    });
+    // Reconcile restored server entitlement without replaying its celebration.
+    unlockSlot.mutate(desiredSlots);
   }, [wallet, desiredSlots, unlockSlot]);
 
   const slotsUnlocked = wallet?.slots_unlocked ?? 2;
@@ -101,7 +102,7 @@ export default function RuneDelveArmoryPage() {
     rankById,
   });
   const save = async (slots: (string | null)[]) => {
-    if (savingRef.current) return;
+    if (savingRef.current) return false;
     savingRef.current = true;
     setSaving(true);
     try {
@@ -111,10 +112,12 @@ export default function RuneDelveArmoryPage() {
         slot_2: slots[1] ?? null,
         slot_3: slots[2] ?? null,
       });
+      return true;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not update loadout",
       );
+      return false;
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -127,9 +130,10 @@ export default function RuneDelveArmoryPage() {
       await save(equipped.map((s) => (s === relicId ? null : s)));
       return;
     }
-    const firstEmpty = equipped.findIndex(
-      (s, i) => s === null && i < slotsUnlocked,
-    );
+    const firstEmpty =
+      selectedSlot !== null && selectedSlot < slotsUnlocked
+        ? selectedSlot
+        : equipped.findIndex((s, i) => s === null && i < slotsUnlocked);
     if (firstEmpty === -1) {
       rdSfx("rune.invalid");
       toast("Remove a relic from your loadout to make room.");
@@ -138,7 +142,11 @@ export default function RuneDelveArmoryPage() {
     const next = [...equipped];
     next[firstEmpty] = relicId;
     rdSfx("relic.equip");
-    await save(next);
+    if (await save(next)) {
+      setSelectedSlot(null);
+      setView("loadout");
+      document.getElementById("rd-armory-view-loadout")?.focus();
+    }
   };
   const queries = [heroQuery, walletQuery, collectionQuery, loadoutQuery];
   if (queries.some((q) => q.isError))
@@ -179,6 +187,7 @@ export default function RuneDelveArmoryPage() {
           disabled={saving}
           onChange={(event) => {
             setActiveClass(event.target.value as HeroClass);
+            setSelectedSlot(null);
             setPage(0);
           }}
           className="rd-class-select"
@@ -193,37 +202,37 @@ export default function RuneDelveArmoryPage() {
           <ShoppingBag size={14} /> Shop
         </Link>
       </div>
+      <RuneMenuTabs
+        id="rd-armory-view"
+        label="Armory view"
+        value={view}
+        options={
+          [
+            { value: "loadout", label: "Loadout" },
+            {
+              value: "relics",
+              label:
+                selectedSlot === null
+                  ? `Collection · ${ownedRelics.length}`
+                  : `Slot ${selectedSlot + 1} · Choose`,
+            },
+            { value: "stats", label: "Combat stats" },
+          ] as const
+        }
+        onChange={(next) => {
+          setSelectedSlot(null);
+          setView(next);
+        }}
+        panelId="rd-armory-panel"
+        className="grid-cols-3"
+      />
       <div
-        role="tablist"
-        aria-label="Armory view"
-        className="rd-menu-tabs rd-fit-tabs grid-cols-3"
+        className="rd-fit-content rd-menu-content-enter"
+        key={`${cls}-${view}`}
+        role="tabpanel"
+        id="rd-armory-panel"
+        aria-labelledby={`rd-armory-view-${view}`}
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "loadout"}
-          onClick={() => setView("loadout")}
-        >
-          Loadout
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "relics"}
-          onClick={() => setView("relics")}
-        >
-          Collection · {ownedRelics.length}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "stats"}
-          onClick={() => setView("stats")}
-        >
-          Combat stats
-        </button>
-      </div>
-      <div className="rd-fit-content">
         {view === "loadout" ? (
           <div className="rd-loadout-view">
             <section
@@ -249,14 +258,19 @@ export default function RuneDelveArmoryPage() {
                   return (
                     <LoadoutSlot
                       key={i}
+                      slotNumber={i + 1}
                       relic={relic}
                       rank={relic ? rankById.get(relic.id) : undefined}
                       locked={i >= slotsUnlocked}
                       disabled={saving}
                       unlockHint={`Class Lv ${THIRD_SLOT_UNLOCK_LEVEL}`}
                       onClick={() => {
+                        setSelectedSlot(i);
                         setView("relics");
                         setPage(0);
+                        document
+                          .getElementById("rd-armory-view-relics")
+                          ?.focus();
                       }}
                       onClear={
                         relic
@@ -280,7 +294,10 @@ export default function RuneDelveArmoryPage() {
             <button
               type="button"
               className="rd-menu-link"
-              onClick={() => setView("relics")}
+              onClick={() => {
+                setSelectedSlot(null);
+                setView("relics");
+              }}
             >
               Choose relics <ArrowRight size={14} />
             </button>
@@ -299,9 +316,10 @@ export default function RuneDelveArmoryPage() {
           >
             {ownedRelics.length ? (
               <div
-                className="rd-relic-grid rd-fit-relic-grid"
+                className="rd-relic-grid rd-fit-relic-grid rd-motion-collection"
                 data-rows={pageSize > 3 ? 2 : 1}
                 data-cols={pageSize === 6 ? 3 : pageSize === 1 ? 1 : 2}
+                key={`${cls}-${currentPage}`}
               >
                 {ownedRelics
                   .slice(currentPage * pageSize, (currentPage + 1) * pageSize)

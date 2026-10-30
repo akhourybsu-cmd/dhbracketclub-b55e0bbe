@@ -19,6 +19,9 @@ vi.mock("@/hooks/useRuneDelveSfx", () => ({
   useRuneDelveSfx: () => ({ play: preferences.play }),
 }));
 vi.mock("@/hooks/useQuests", () => ({ useActiveQuests: () => undefined }));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: "member" } }),
+}));
 vi.mock("@/components/runedelve/RuneDelveHUD", () => ({
   RuneDelveHUD: () => null,
 }));
@@ -102,6 +105,22 @@ afterEach(() => {
 });
 
 describe("shell motion lifecycle", () => {
+  it("releases pointer and keyboard press feedback without adding another timer", () => {
+    render(<Shell />);
+    const button = screen.getByRole("button", { name: "Ripple" });
+    fireEvent.pointerDown(button);
+    expect(button).toHaveAttribute("data-rd-press", "true");
+    expect(vi.getTimerCount()).toBe(1);
+    fireEvent.pointerUp(window);
+    expect(button).not.toHaveAttribute("data-rd-press");
+    fireEvent.keyDown(button, { key: "Enter" });
+    expect(button).toHaveAttribute("data-rd-press", "true");
+    expect(button.style.getPropertyValue("--rd-ripple-x")).toBe("50%");
+    fireEvent.keyUp(window, { key: "Enter" });
+    expect(button).not.toHaveAttribute("data-rd-press");
+    visibility(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it("keeps one ripple timer per control and clears it on hide or unmount in StrictMode", () => {
     const view = render(<Shell />);
     expect(document.documentElement).toHaveClass("rd-viewport-active");

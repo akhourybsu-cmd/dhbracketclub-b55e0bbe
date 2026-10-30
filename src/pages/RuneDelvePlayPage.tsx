@@ -1,3 +1,8 @@
+import { progressionRewardItems } from "@/lib/runedelve/rewardPresentation";
+import {
+  RuneRewardGallery,
+  type RuneRewardItem,
+} from "@/components/runedelve/RuneRewardReveal";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
 import { RunePager } from "@/components/runedelve/RunePager";
@@ -73,7 +78,6 @@ import {
 import {
   levelFromXp,
   getClass,
-  newTitleUnlocked,
   titleForLevel,
 } from "@/lib/runedelve/classConfig";
 import { useLoadout } from "@/hooks/useLoadout";
@@ -153,7 +157,7 @@ import {
 import { RunModifierPicker } from "@/components/runedelve/RunModifierPicker";
 import { todayUtcDateString } from "@/lib/runedelve/dailyChallenge";
 import { markDailyChamberPlayed } from "@/lib/runedelve/dailyChamber";
-import { getRelic, type RelicDef } from "@/lib/runedelve/relics";
+import { getRelic } from "@/lib/runedelve/relics";
 import {
   getPathVariant,
   resolvePathEffect,
@@ -221,7 +225,6 @@ import {
 // play never enters daily mode — `isDailyMode` is always false here.
 import {
   getActiveMasteries,
-  masteryUnlockedAt,
   type MasteryId,
 } from "@/lib/runedelve/classMastery";
 import {
@@ -343,9 +346,10 @@ export default function RuneDelvePlayPage() {
   const { data: loadout, isLoading: loadoutLoading } = useLoadout(hero?.class);
   const { data: ownedRelics, isLoading: ownedRelicsLoading } =
     useRelicCollection();
-  // R7: a relic dropped on this clear (if any). Surfaced in the
-  // endState card so the player sees the find.
-  const [droppedRelic, setDroppedRelic] = useState<RelicDef | null>(null);
+  // Confirmed acquisitions share one centered, paged result stage.
+  const [settlementRewards, setSettlementRewards] = useState<RuneRewardItem[]>(
+    [],
+  );
   // R5: per-enemy boss phase tracker. Bosses + mini-bosses progress
   // through phases as their HP drops; the map records the highest
   // phase each enemy has entered so we can detect new transitions
@@ -398,6 +402,7 @@ export default function RuneDelvePlayPage() {
     score: number;
     isNewBest: boolean;
     shards: number;
+    xp?: number;
     improvedChain?: boolean;
     improvedTurns?: boolean;
     improvedHp?: boolean;
@@ -690,7 +695,7 @@ export default function RuneDelvePlayPage() {
     if (initializedRunRef.current === identity) return;
     initializedRunRef.current = identity;
     setEndState(null);
-    setDroppedRelic(null);
+    setSettlementRewards([]);
     finalizeBusyRef.current = false;
     settlementConfirmedRef.current = false;
     resumedScoreCheckRef.current = false;
@@ -2805,6 +2810,7 @@ export default function RuneDelvePlayPage() {
               ...prev,
               isNewBest: serverWasNewBest,
               shards: result.shardsAwarded,
+              xp: result.xpAwarded,
               improvedChain,
               improvedTurns,
               improvedHp,
@@ -2859,25 +2865,26 @@ export default function RuneDelvePlayPage() {
       } catch {
         /* Storage is optional; server run and rewards are committed. */
       }
-      const titleUnlock = newTitleUnlocked(
-        hero.class,
-        result.previousClassLevel,
-        result.classLevel,
-      );
-      if (titleUnlock)
-        toast.success(`New title · ${titleUnlock.next}`, { duration: 5000 });
-      const newMastery = masteryUnlockedAt(
-        hero.class,
-        result.previousClassLevel,
-        result.classLevel,
-      );
-      if (newMastery)
-        toast.success(`Mastery unlocked · ${newMastery.name}`, {
-          description: newMastery.summary,
-          duration: 5500,
+      const acquisitions: RuneRewardItem[] = [];
+      const drop = result.relicDrop
+        ? getRelic(result.relicDrop.relic_id)
+        : null;
+      if (drop)
+        acquisitions.push({
+          kind: "relic",
+          relicId: drop.id,
+          rank: result.relicDrop?.rank ?? 1,
+          label: drop.name,
+          detail: drop.description,
         });
-      if (result.slotsUnlocked > (wallet?.slots_unlocked ?? 2))
-        toast.success("3rd relic slot unlocked");
+      acquisitions.push(
+        ...progressionRewardItems(
+          hero.class,
+          result,
+          wallet?.slots_unlocked ?? 2,
+        ),
+      );
+      setSettlementRewards(acquisitions);
       // R4: if this was a Daily Chamber run (entered with ?dailyMod
       // query param), mark today's daily as played so the home card
       // gates against re-entry until UTC midnight. We mark on finalize
@@ -2889,8 +2896,7 @@ export default function RuneDelvePlayPage() {
       }
       // Loot is rolled and owned atomically by the same settlement receipt.
       // Retries display its confirmed drop without a second client-side roll.
-      if (result.relicDrop)
-        setDroppedRelic(getRelic(result.relicDrop.relic_id));
+      // Any confirmed relic drop is already included in the centered acquisition gallery.
 
       // ── Bestiary: record defeats from this run ─────────────────────────
       try {
@@ -2915,14 +2921,15 @@ export default function RuneDelvePlayPage() {
                 text: `📖 Bestiary updated: ${name}`,
               })),
             );
-            const names = allNames.slice(0, 3);
-            const more = newlyDiscovered.length - names.length;
-            toast.success(
-              newlyDiscovered.length === 1
-                ? `📖 Bestiary: ${names[0]} discovered!`
-                : `📖 Bestiary: ${names.join(", ")}${more > 0 ? ` +${more} more` : ""}`,
-              { duration: 4000 },
-            );
+            setSettlementRewards((current) => [
+              ...current,
+              ...allNames.map((name) => ({
+                kind: "discovery" as const,
+                label: name,
+                detail:
+                  "Added to your Bestiary. Discover its tactics and rewards.",
+              })),
+            ]);
           }
         }
       } catch {
@@ -3475,7 +3482,7 @@ export default function RuneDelvePlayPage() {
                 >
                   {endState.score.toLocaleString()}
                 </p>
-                {endState.shards > 0 && (
+                {(endState.shards > 0 || (endState.xp ?? 0) > 0) && (
                   <div
                     className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold"
                     style={{
@@ -3485,56 +3492,19 @@ export default function RuneDelvePlayPage() {
                   >
                     💠 {submitting ? "Saving " : saveError ? "Pending " : "+"}
                     {endState.shards} Rune Shards
+                    {!submitting && !saveError && endState.xp
+                      ? ` · +${endState.xp} XP`
+                      : ""}
                   </div>
                 )}
                 {/* R7: relic drop banner — celebratory card when the
                   clear rolled a free unlock. Sits below the shard
                   bonus so the visual order is: score → shards → relic. */}
               </div>
-              {droppedRelic && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.92, y: 6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 280,
-                    damping: 22,
-                    delay: 0.15,
-                  }}
-                  className="rd-settlement-drop mt-3 rounded-xl p-3 flex items-center gap-3 text-left"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, hsl(var(--gold) / 0.18), hsl(var(--gold) / 0.05))",
-                    border: "1px solid hsl(var(--gold) / 0.45)",
-                    boxShadow: "0 0 24px -6px hsl(var(--gold) / 0.45)",
-                  }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, hsl(var(--gold) / 0.28), hsl(var(--gold) / 0.08))",
-                      border: "1px solid hsl(var(--gold) / 0.55)",
-                    }}
-                    aria-hidden
-                  >
-                    {droppedRelic.icon}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="text-[9px] font-extrabold uppercase tracking-[0.22em]"
-                      style={{ color: "hsl(var(--gold))" }}
-                    >
-                      ✨ Relic dropped
-                    </p>
-                    <p className="text-[13px] font-extrabold tracking-tight leading-tight mt-0.5">
-                      {droppedRelic.name}
-                    </p>
-                    <p className="text-[10.5px] text-foreground/70 leading-snug mt-0.5 line-clamp-2">
-                      {droppedRelic.description}
-                    </p>
-                  </div>
-                </motion.div>
+              {settlementRewards.length > 0 && !submitting && !saveError && (
+                <div className="rd-settlement-rewards">
+                  <RuneRewardGallery compact items={settlementRewards} />
+                </div>
               )}
               {saveError && (
                 <p

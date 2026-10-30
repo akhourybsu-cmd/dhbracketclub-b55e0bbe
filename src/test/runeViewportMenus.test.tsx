@@ -19,6 +19,11 @@ const state = vi.hoisted(() => ({
   updateHero: vi.fn().mockResolvedValue({}),
   updateLoadout: vi.fn().mockResolvedValue({}),
   purchase: vi.fn().mockResolvedValue({}),
+  loadout: { slot_1: null, slot_2: null, slot_3: null } as {
+    slot_1: string | null;
+    slot_2: string | null;
+    slot_3: string | null;
+  },
 }));
 vi.mock("@/hooks/useRuneViewport", () => ({
   useRuneViewport: () => state.viewport,
@@ -71,7 +76,7 @@ vi.mock("@/hooks/useRelicCollection", () => ({
   usePurchaseRelicUpgrade: () => ({ mutateAsync: vi.fn() }),
 }));
 vi.mock("@/hooks/useLoadout", () => ({
-  useLoadout: () => ({ data: { slot_1: null, slot_2: null, slot_3: null } }),
+  useLoadout: () => ({ data: state.loadout }),
   useUpdateLoadout: () => ({ mutateAsync: state.updateLoadout }),
 }));
 vi.mock("@/hooks/useRuneDelveSfx", () => ({
@@ -86,11 +91,106 @@ vi.mock("@/components/runedelve/RelicUpgradeSheet", () => ({
 
 beforeEach(() => {
   state.viewport = { width: 320, height: 568, short: true, landscape: false };
+  state.loadout = { slot_1: null, slot_2: null, slot_3: null };
   vi.clearAllMocks();
 });
 afterEach(cleanup);
 
 describe("viewport menu navigation", () => {
+  it("replaces a chosen filled slot without clearing the other equipped relic", async () => {
+    state.loadout = {
+      slot_1: "ember_edge",
+      slot_2: "aether_spark",
+      slot_3: null,
+    };
+    render(
+      <MemoryRouter>
+        <RuneDelveArmoryPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Choose a replacement for Aether Spark in slot 2",
+      }),
+    );
+    expect(screen.getByRole("tab", { name: "Slot 2 · Choose" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Next relics page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next relics page" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Iron Resolve\./ }));
+    await waitFor(() =>
+      expect(state.updateLoadout).toHaveBeenCalledWith({
+        cls: "warrior",
+        slot_1: "ember_edge",
+        slot_2: "iron_resolve",
+        slot_3: null,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Loadout" })).toHaveFocus(),
+    );
+  });
+  it("equips into the empty slot the player selected, then returns to their loadout", async () => {
+    render(
+      <MemoryRouter>
+        <RuneDelveArmoryPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: "Choose a relic for this empty slot",
+      })[1],
+    );
+    expect(
+      screen.getByRole("tab", { name: "Slot 2 · Choose" }),
+    ).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("button", { name: /^Ember Edge\./ }));
+    await waitFor(() =>
+      expect(state.updateLoadout).toHaveBeenCalledWith({
+        cls: "warrior",
+        slot_1: null,
+        slot_2: "ember_edge",
+        slot_3: null,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("tab", { name: "Loadout" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      ),
+    );
+  });
+
+  it("retains the selected slot when saving fails so a retry cannot move the relic", async () => {
+    state.updateLoadout.mockRejectedValueOnce(new Error("offline"));
+    render(
+      <MemoryRouter>
+        <RuneDelveArmoryPage />
+      </MemoryRouter>,
+    );
+    fireEvent.click(
+      screen.getAllByRole("button", {
+        name: "Choose a relic for this empty slot",
+      })[1],
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Ember Edge\./ }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /^Ember Edge\./ }),
+      ).not.toBeDisabled(),
+    );
+    expect(
+      screen.getByRole("tab", { name: "Slot 2 · Choose" }),
+    ).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("button", { name: /^Ember Edge\./ }));
+    await waitFor(() => expect(state.updateLoadout).toHaveBeenCalledTimes(2));
+    expect(state.updateLoadout.mock.calls[1][0]).toEqual({
+      cls: "warrior",
+      slot_1: null,
+      slot_2: "ember_edge",
+      slot_3: null,
+    });
+  });
+
   it("keeps rename and all four classes reachable on separate hero screens", async () => {
     render(
       <MemoryRouter>

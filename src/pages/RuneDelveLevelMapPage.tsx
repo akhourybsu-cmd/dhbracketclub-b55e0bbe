@@ -189,7 +189,7 @@ export default function RuneDelveLevelMapPage() {
         </div>
         {levelsQuery.isLoading || !levels ? (
           <div
-            className="rd-path-grid rd-map-nodes"
+            className="rd-path-grid rd-map-nodes rd-motion-collection"
             data-columns={pageSize === 10 ? 5 : 3}
           >
             {Array.from({ length: pageSize }, (_, i) => (
@@ -201,7 +201,7 @@ export default function RuneDelveLevelMapPage() {
           </div>
         ) : (
           <div
-            className="rd-path-grid rd-map-nodes"
+            className="rd-path-grid rd-map-nodes rd-motion-collection"
             data-columns={pageSize === 10 ? 5 : 3}
             key={`${chapter}-${stage}-${page}`}
           >

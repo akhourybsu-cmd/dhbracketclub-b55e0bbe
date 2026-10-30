@@ -7,13 +7,17 @@ import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
 import {
   dailyPeriodKey,
   weeklyPeriodKey,
-  scopeLabel,
   type QuestDefinition,
   type ActiveQuest,
   type QuestProgressEvent,
   type QuestScope,
 } from "@/lib/runedelve/quests";
 import { toast } from "sonner";
+import {
+  progressionRewardItems,
+  type RuneProgressionReceipt,
+} from "@/lib/runedelve/rewardPresentation";
+import { useRuneRewardReveal } from "@/hooks/useRuneRewardReveal";
 
 const DEFS_QK = ["rd-quest-defs"];
 const ACTIVE_QK = (uid: string | undefined) => ["rd-active-quests", uid];
@@ -95,6 +99,8 @@ export function useReportQuestProgress() {
 
 /** Claim a completed quest — pays out shards (+ XP) and marks it claimed. */
 export function useClaimQuest() {
+  const { data: hero } = useRuneDelveHero();
+  const { reveal } = useRuneRewardReveal();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -107,13 +113,16 @@ export function useClaimQuest() {
 
       // Status change and both currencies commit together. A lost response
       // can be retried safely: claimed quests return zero additional reward.
-      const { data } = await runeRpc<{
-        shards: number;
-        xp: number;
-        title: string;
-        scope: QuestScope;
-        alreadyClaimed?: boolean;
-      }>(
+      const rewardClass = def.hero_class ?? hero?.class;
+      const { data } = await runeRpc<
+        RuneProgressionReceipt & {
+          shards: number;
+          xp: number;
+          title: string;
+          scope: QuestScope;
+          alreadyClaimed?: boolean;
+        }
+      >(
         "rune_delve_claim_quest",
         {
           p_quest_id: quest.id,
@@ -121,23 +130,41 @@ export function useClaimQuest() {
         "Claim quest reward",
       );
       if (!data) throw new Error("Reward was not confirmed. Please retry.");
-      return data as {
-        shards: number;
-        xp: number;
-        title: string;
-        scope: QuestScope;
-        alreadyClaimed?: boolean;
-      };
+      return { ...data, rewardClass };
     },
-    onSuccess: (result) => {
-      const xpSuffix = result.xp > 0 ? ` · +${result.xp} XP` : "";
-      toast.success(
-        `+${result.shards} 💎${xpSuffix} — ${scopeLabel(result.scope)} Reward`,
-        {
-          description: result.title,
-          duration: 4000,
-        },
-      );
+    onSuccess: (result, quest) => {
+      if (!result.alreadyClaimed && (result.shards > 0 || result.xp > 0))
+        reveal({
+          id: `quest:${quest.id}`,
+          title: "Quest complete",
+          eyebrow: `${result.scope === "weekly" ? "Weekly" : "Daily"} reward claimed`,
+          detail: result.title,
+          items: [
+            ...(result.rewardClass
+              ? progressionRewardItems(result.rewardClass, result)
+              : []),
+            ...(result.shards > 0
+              ? [
+                  {
+                    kind: "shards" as const,
+                    label: "Rune Shards",
+                    amount: result.shards,
+                    detail: "Ready to spend in the forge.",
+                  },
+                ]
+              : []),
+            ...(result.xp > 0
+              ? [
+                  {
+                    kind: "xp" as const,
+                    label: "Class XP",
+                    amount: result.xp,
+                    detail: "Progress toward your next mastery.",
+                  },
+                ]
+              : []),
+          ],
+        });
       qc.invalidateQueries({ queryKey: ["rd-active-quests"] });
       qc.invalidateQueries({ queryKey: ["rune-delve-wallet"] });
       qc.invalidateQueries({ queryKey: ["rune-delve-class-progress"] });

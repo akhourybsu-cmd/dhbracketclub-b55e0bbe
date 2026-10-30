@@ -1,0 +1,304 @@
+/* Quick, finite menu feedback. The deck geometry and touch targets stay fixed. */
+.rd-shell :is(button, a)[data-rd-press="true"]:not([data-rune-cell]) {
+  scale: 0.975;
+  filter: brightness(1.15);
+}
+.rd-shell :is(button, a):not([data-rune-cell]) {
+  -webkit-tap-highlight-color: transparent;
+}
+.rd-game-nav a {
+  position: relative;
+  border: 1px solid transparent;
+  transition:
+    color 160ms,
+    background 160ms,
+    border-color 160ms;
+}
+.rd-game-nav a[aria-current="page"] {
+  color: hsl(var(--rd-ivory, 42 40% 89%));
+  border-color: hsl(var(--primary) / 0.24);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--primary) / 0.17),
+    hsl(var(--primary) / 0.035)
+  );
+  box-shadow: inset 0 1px 0 hsl(var(--primary) / 0.22);
+}
+.rd-game-nav a[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 30% 0;
+  height: 2px;
+  border-radius: 2px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.45);
+  pointer-events: none;
+}
+.rd-menu-content-enter,
+.rd-codex-tab-content[data-state="active"] {
+  animation: rd-panel-unseal 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+:is(
+    .rd-motion-collection,
+    .rd-codex-record-grid,
+    .rd-bestiary-grid,
+    .rd-exp-boon-choices,
+    .rd-exp-route-choices
+  )
+  > :not(.rd-pager) {
+  animation: rd-card-deal 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+:is(
+    .rd-motion-collection,
+    .rd-codex-record-grid,
+    .rd-bestiary-grid,
+    .rd-exp-boon-choices,
+    .rd-exp-route-choices
+  )
+  > :nth-child(2) {
+  animation-delay: 25ms;
+}
+:is(
+    .rd-motion-collection,
+    .rd-codex-record-grid,
+    .rd-bestiary-grid,
+    .rd-exp-boon-choices,
+    .rd-exp-route-choices
+  )
+  > :nth-child(3) {
+  animation-delay: 45ms;
+}
+:is(
+    .rd-motion-collection,
+    .rd-codex-record-grid,
+    .rd-bestiary-grid,
+    .rd-exp-boon-choices,
+    .rd-exp-route-choices
+  )
+  > :nth-child(4) {
+  animation-delay: 65ms;
+}
+:is(
+    .rd-motion-collection,
+    .rd-codex-record-grid,
+    .rd-bestiary-grid,
+    .rd-exp-boon-choices,
+    .rd-exp-route-choices
+  )
+  > :nth-child(n + 5) {
+  animation-delay: 80ms;
+}
+.rd-shell[data-rd-motion="full"]
+  :is(
+    .rd-menu-tabs > button[aria-selected="true"],
+    .rd-class-choice[aria-pressed="true"],
+    .rd-daily-tabs > [role="tab"][data-state="active"],
+    .rd-codex-tabbar > button[data-state="active"],
+    .rd-bestiary-chapters > button[aria-pressed="true"],
+    .rd-exp-class-grid > button.is-selected,
+    .rd-exp-ascensions > button.is-selected,
+    .rd-route-stages > button[aria-current="step"],
+    .rd-game-nav a[aria-current="page"]
+  ) {
+  animation: rd-choice-ignite 380ms ease-out;
+}
+html.rd-viewport-active[data-rd-motion="full"]
+  .rd-dialog-theme
+  :is(.rd-dialog-tabs, .rd-codex-tabbar)
+  > [role="tab"][data-state="active"] {
+  animation: rd-choice-ignite 380ms ease-out;
+}
+.rd-dialog-theme .rd-dialog-body > article {
+  animation: rd-panel-unseal 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.rd-dialog-theme :is(button, a):active:not(:disabled) {
+  scale: 0.975;
+  filter: brightness(1.12);
+}
+.rd-pager > button {
+  color: hsl(var(--rd-ivory, 42 40% 89%));
+  background: linear-gradient(155deg, hsl(186 26% 16%), hsl(191 27% 9%));
+  border-color: hsl(var(--rd-brass, 39 47% 58%) / 0.3);
+  box-shadow: inset 0 1px 0 hsl(var(--rd-brass, 39 47% 58%) / 0.13);
+  transition:
+    border-color 160ms,
+    filter 160ms,
+    scale 120ms;
+}
+.rd-pager > button:disabled {
+  opacity: 0.3;
+  box-shadow: none;
+}
+.rd-pager .rd-pager-position {
+  display: grid;
+  gap: 5px;
+  min-width: 72px;
+  padding-block: 3px;
+}
+.rd-pager-count {
+  display: block;
+  line-height: 16px;
+  animation: rd-page-count 180ms ease-out;
+}
+.rd-pager-progress {
+  display: block;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: hsl(var(--primary) / 0.12);
+}
+.rd-pager-progress > i {
+  display: block;
+  height: 100%;
+  width: var(--rd-page-progress);
+  border-radius: inherit;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.3);
+  transition: width 180ms ease-out;
+}
+@keyframes rd-panel-unseal {
+  from {
+    opacity: 0.55;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes rd-card-deal {
+  from {
+    opacity: 0.4;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes rd-choice-ignite {
+  0% {
+    filter: brightness(1.3);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+@keyframes rd-page-count {
+  from {
+    opacity: 0.5;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .rd-pager > button:hover:not(:disabled) {
+    border-color: hsl(var(--primary) / 0.7);
+    filter: brightness(1.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-menu-content-enter,
+  .rd-codex-tab-content[data-state="active"],
+  :is(
+      .rd-motion-collection,
+      .rd-codex-record-grid,
+      .rd-bestiary-grid,
+      .rd-exp-boon-choices,
+      .rd-exp-route-choices
+    )
+    > *,
+  .rd-pager *,
+  .rd-game-nav a,
+  .rd-shell[data-rd-motion="full"]
+    :is(
+      .rd-menu-tabs > button,
+      .rd-class-choice,
+      .rd-daily-tabs > button,
+      .rd-route-stages > button,
+      .rd-codex-tabbar > button,
+      .rd-bestiary-chapters > button,
+      .rd-exp-class-grid > button,
+      .rd-exp-ascensions > button
+    ) {
+    animation: none !important;
+    transition: none !important;
+  }
+  .rd-shell :is(button, a)[data-rd-press="true"] {
+    scale: none;
+    filter: none;
+  }
+  html.rd-viewport-active
+    .rd-dialog-theme
+    :is(.rd-dialog-tabs, .rd-codex-tabbar)
+    > [role="tab"],
+  .rd-dialog-theme .rd-dialog-body > article {
+    animation: none !important;
+    transition: none !important;
+  }
+  .rd-dialog-theme :is(button, a):active:not(:disabled) {
+    scale: none;
+    filter: none;
+  }
+}
+.rd-shell:is([data-rd-motion="reduced"], [data-document-hidden="true"])
+  :is(
+    .rd-menu-content-enter,
+    .rd-codex-tab-content[data-state="active"],
+    .rd-motion-collection > *,
+    .rd-codex-record-grid > *,
+    .rd-bestiary-grid > *,
+    .rd-exp-boon-choices > *,
+    .rd-exp-route-choices > *,
+    .rd-pager *,
+    .rd-game-nav a
+  ) {
+  animation: none !important;
+  transition: none !important;
+}
+.rd-shell:is([data-rd-motion="reduced"], [data-document-hidden="true"])
+  :is(button, a)[data-rd-press="true"] {
+  scale: none;
+  filter: none;
+}
+
+html[data-rd-hidden="true"] .rd-dialog-theme .rd-pager * {
+  animation: none !important;
+  transition: none !important;
+}
+html:is([data-rd-motion="reduced"], [data-rd-hidden="true"])
+  .rd-dialog-theme
+  :is(.rd-dialog-tabs, .rd-codex-tabbar)
+  > [role="tab"],
+html:is([data-rd-motion="reduced"], [data-rd-hidden="true"])
+  .rd-dialog-theme
+  .rd-dialog-body
+  > article {
+  animation: none !important;
+  transition: none !important;
+}
+html:is([data-rd-motion="reduced"], [data-rd-hidden="true"])
+  .rd-dialog-theme
+  :is(button, a):active:not(:disabled) {
+  scale: none;
+  filter: none;
+}
+
+.rd-hud-compact-title {
+  display: none;
+}
+@media (max-width: 359px) {
+  .rd-hud-home > :first-child,
+  .rd-hud-hero-title {
+    display: none;
+  }
+  .rd-hud-compact-title {
+    display: inline;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+}

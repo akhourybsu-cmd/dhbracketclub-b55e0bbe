@@ -76,6 +76,8 @@ function EnemyTile({
         <RuneEnemyArt
           archetypeId={e.archetypeId}
           name={e.name}
+          tier={e.tier}
+          enemyId={e.id}
           className="rd-enemy-art"
         />
         {dead && (
@@ -252,6 +254,9 @@ export function EnemyDisplay({
                     <RuneEnemyArt
                       archetypeId={inspected.archetypeId}
                       name={inspected.name}
+                      tier={inspected.tier}
+                      enemyId={inspected.id}
+                      decorative={false}
                       className="rd-dialog-inspection-art"
                     />
                     <div className="rd-dialog-stats">

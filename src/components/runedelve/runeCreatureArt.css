@@ -1,0 +1,46 @@
+/* Exact square atlas cells: each portrait belongs to its displayed species. */
+.rd-monster-portrait {
+  background: radial-gradient(
+    ellipse at 50% 42%,
+    hsl(187 35% 16%),
+    hsl(208 42% 5%) 75%
+  );
+  contain: paint;
+}
+.rd-monster-portrait .rd-creature-illustration {
+  pointer-events: none;
+  background-size: 400% 400%;
+}
+.rd-monster-regalia {
+  position: absolute;
+  z-index: 1;
+  right: 6%;
+  bottom: 6%;
+  display: grid;
+  place-items: center;
+  width: 22%;
+  min-width: 15px;
+  aspect-ratio: 1;
+  border: 1px solid hsl(41 75% 65% / 0.8);
+  border-radius: 50%;
+  color: hsl(43 90% 78%);
+  background: hsl(209 40% 6% / 0.85);
+  font-size: clamp(10px, 1.1em, 24px);
+  line-height: 1;
+  box-shadow: 0 0 12px hsl(38 75% 45% / 0.25);
+  pointer-events: none;
+}
+.rd-monster-portrait[data-promotion="boss"]::after {
+  box-shadow:
+    inset 0 0 0 2px hsl(38 85% 64% / 0.85),
+    inset 0 -14px 20px -12px hsl(194 40% 4% / 0.8);
+}
+.rd-monster-portrait[data-promotion="mini"]::after {
+  box-shadow:
+    inset 0 0 0 1px hsl(171 70% 68% / 0.85),
+    inset 0 -12px 20px -12px hsl(194 40% 4% / 0.8);
+}
+.rd-monster-portrait[data-echo="true"] .rd-creature-illustration {
+  filter: hue-rotate(25deg) saturate(0.75);
+  opacity: 0.72;
+}

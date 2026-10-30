@@ -12,6 +12,8 @@ import { useActiveQuests } from "@/hooks/useQuests";
 import { RuneWorldScene } from "./RuneWorldScene";
 import { useRuneViewport } from "@/hooks/useRuneViewport";
 import "./runeViewport.css";
+import "./runeMenuMotion.css";
+import { RuneRewardProvider } from "./RuneRewardReveal";
 
 /**
  * Full-screen game shell for Rune Delve. Applies the `.rd-mode` skin to the
@@ -43,10 +45,14 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     document.documentElement.dataset.rdHidden = String(hidden);
+    document.documentElement.dataset.rdMotion = reducedMotion
+      ? "reduced"
+      : "full";
     return () => {
       delete document.documentElement.dataset.rdHidden;
+      delete document.documentElement.dataset.rdMotion;
     };
-  }, [hidden]);
+  }, [hidden, reducedMotion]);
   const isBattle =
     pathname.startsWith("/rune-delve/play/") ||
     pathname === "/rune-delve/endless" ||
@@ -59,6 +65,11 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
     const root = document.querySelector(".rd-mode");
     if (!root) return;
     const rippleTimers = new Map<HTMLElement, number>();
+    const pressedControls = new Set<HTMLElement>();
+    const releasePresses = () => {
+      for (const element of pressedControls) delete element.dataset.rdPress;
+      pressedControls.clear();
+    };
     const clearRipple = (element: HTMLElement) => {
       window.clearTimeout(rippleTimers.get(element));
       rippleTimers.delete(element);
@@ -66,12 +77,15 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
     };
     const clearRipples = () => {
       for (const element of rippleTimers.keys()) clearRipple(element);
+      releasePresses();
     };
     const onVisibility = () => {
       if (document.hidden) clearRipples();
     };
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as HTMLElement | null;
+    const press = (
+      target: HTMLElement | null,
+      position?: { x: number; y: number },
+    ) => {
       if (!target) return;
       const btn = target.closest(
         '.rd-btn-juice, .btn-press, button, [role="button"], a',
@@ -88,6 +102,10 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
         btn.closest('[aria-hidden="true"]')
       )
         return;
+      if (!reducedMotion && !document.hidden) {
+        btn.dataset.rdPress = "true";
+        pressedControls.add(btn);
+      }
       // Apply ripple if the element has the juice class; otherwise just play sound.
       if (
         btn.classList.contains("rd-btn-juice") &&
@@ -97,8 +115,12 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
         try {
           clearRipple(btn);
           const rect = btn.getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width) * 100;
-          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          const x = position
+            ? ((position.x - rect.left) / rect.width) * 100
+            : 50;
+          const y = position
+            ? ((position.y - rect.top) / rect.height) * 100
+            : 50;
           btn.style.setProperty("--rd-ripple-x", `${x}%`);
           btn.style.setProperty("--rd-ripple-y", `${y}%`);
           btn.classList.remove("is-rippling");
@@ -106,7 +128,11 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
           btn.classList.add("is-rippling");
           rippleTimers.set(
             btn,
-            window.setTimeout(() => clearRipple(btn), 520),
+            window.setTimeout(() => {
+              clearRipple(btn);
+              delete btn.dataset.rdPress;
+              pressedControls.delete(btn);
+            }, 520),
           );
         } catch {
           /* noop */
@@ -114,12 +140,38 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
       }
       play("ui.tap", { skipHaptic: true });
     };
+    const onDown = (event: PointerEvent) => {
+      press(event.target as HTMLElement | null, {
+        x: event.clientX,
+        y: event.clientY,
+      });
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey)
+        return;
+      const target = event.target as HTMLElement | null;
+      if (
+        event.key === "Enter" ||
+        (event.key === " " && target?.closest('button, [role="button"]'))
+      )
+        press(target);
+    };
     root.addEventListener("pointerdown", onDown as EventListener, {
       passive: true,
     });
+    root.addEventListener("keydown", onKey as EventListener);
+    window.addEventListener("pointerup", releasePresses);
+    window.addEventListener("pointercancel", releasePresses);
+    window.addEventListener("keyup", releasePresses);
+    window.addEventListener("blur", clearRipples);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       root.removeEventListener("pointerdown", onDown as EventListener);
+      root.removeEventListener("keydown", onKey as EventListener);
+      window.removeEventListener("pointerup", releasePresses);
+      window.removeEventListener("pointercancel", releasePresses);
+      window.removeEventListener("keyup", releasePresses);
+      window.removeEventListener("blur", clearRipples);
       document.removeEventListener("visibilitychange", onVisibility);
       clearRipples();
     };
@@ -141,15 +193,17 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
 
       <RuneDelveHUD />
 
-      <main
-        className={cn(
-          "rd-main mx-auto",
-          isBattle && "is-battle",
-          pathname === "/rune-delve" && "is-home",
-        )}
-      >
-        {children}
-      </main>
+      <RuneRewardProvider>
+        <main
+          className={cn(
+            "rd-main mx-auto",
+            isBattle && "is-battle",
+            pathname === "/rune-delve" && "is-home",
+          )}
+        >
+          {children}
+        </main>
+      </RuneRewardProvider>
 
       {!isBattle && (
         <nav className="rd-game-nav" aria-label="Rune Delve navigation">

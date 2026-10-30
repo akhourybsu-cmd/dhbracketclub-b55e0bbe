@@ -167,7 +167,7 @@ export default function RuneDelveHomePage() {
             </button>
           ))}
         </div>
-        <div className="rd-class-info">
+        <div className="rd-class-info rd-menu-content-enter" key={picking}>
           <Icon />
           <div>
             <strong>

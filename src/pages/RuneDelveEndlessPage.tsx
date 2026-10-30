@@ -1,3 +1,6 @@
+import { useRuneRewardReveal } from "@/hooks/useRuneRewardReveal";
+import { progressionRewardItems } from "@/lib/runedelve/rewardPresentation";
+import "@/components/runedelve/runeRewards.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Flame, Pause, Play, Skull, Sparkles, Timer } from "lucide-react";
@@ -51,6 +54,7 @@ function readRun(key: string): ArenaRun | null {
 
 /** Timed daily arena: class-only combat with active-play time and a single atomic result receipt. */
 export default function RuneDelveEndlessPage() {
+  const { reveal } = useRuneRewardReveal();
   const { user } = useAuth();
   const heroQuery = useRuneDelveHero();
   const dailyQuery = useMyDailyRun();
@@ -164,6 +168,14 @@ export default function RuneDelveEndlessPage() {
       });
       if (activeScope.current !== scope) return;
       setSaved(receipt);
+      const unlocks = progressionRewardItems(current.cls, receipt);
+      if (unlocks.length)
+        reveal({
+          id: `arena:${current.requestId}:progression`,
+          title: "Your legend grows",
+          eyebrow: "Arena progression",
+          items: unlocks,
+        });
       try {
         sessionStorage.removeItem(key);
       } catch {
@@ -177,7 +189,7 @@ export default function RuneDelveEndlessPage() {
         setSaving(false);
       }
     }
-  }, [key, saveDaily, scope]);
+  }, [key, saveDaily, scope, reveal]);
 
   useEffect(() => {
     if (run?.result && runRef.current === run && !autoSubmitted.current) {
@@ -433,7 +445,9 @@ export default function RuneDelveEndlessPage() {
         </>
       )}
       {run?.result && (
-        <div className="glass-card p-5 space-y-4 text-center">
+        <div
+          className={`glass-card p-5 space-y-4 text-center${saved ? " rd-reward-receipt is-new" : ""}`}
+        >
           <p className="rd-eyebrow justify-center">
             {run.result.reason === "defeated" ? (
               <Skull size={14} />
@@ -476,6 +490,9 @@ export default function RuneDelveEndlessPage() {
             </div>
           ) : saved ? (
             <p className="text-sm text-primary">
+              <strong className="rd-reward-receipt-title">
+                {saved.rewarded ? "Rewards secured" : "Daily best preserved"}
+              </strong>
               {saved.rewarded
                 ? `+${saved.reward.shards} shards · +${saved.reward.xp} XP`
                 : "Best retained · reach a higher tier for more rewards"}

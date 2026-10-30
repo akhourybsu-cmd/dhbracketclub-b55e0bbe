@@ -14,6 +14,7 @@ import { useMyProgress } from "@/hooks/useRuneDelveCampaign";
 import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
 import {
   RELIC_CATALOG,
+  describeRelicAtRank,
   CATEGORY_META,
   tierUnlockedForChapter,
   MAX_RANK,
@@ -26,6 +27,7 @@ import { RelicCard } from "@/components/runedelve/RelicCard";
 import { RelicUpgradeSheet } from "@/components/runedelve/RelicUpgradeSheet";
 import { ShardBalance } from "@/components/runedelve/ShardBalance";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
+import { useRuneRewardReveal } from "@/hooks/useRuneRewardReveal";
 import { RunePager } from "@/components/runedelve/RunePager";
 import { useRuneViewport } from "@/hooks/useRuneViewport";
 import "@/components/runedelve/runeMenus.css";
@@ -50,6 +52,7 @@ export default function RuneDelveShopPage() {
   const { data: hero } = heroQuery;
   const progressQuery = useMyProgress(hero?.class);
   const { data: progress } = progressQuery;
+  const { reveal } = useRuneRewardReveal();
   const purchase = usePurchaseRelic();
   const upgrade = usePurchaseRelicUpgrade();
   const sfx = useSoundEffect();
@@ -85,14 +88,26 @@ export default function RuneDelveShopPage() {
     pendingRef.current = true;
     setPendingId(relic.id);
     try {
-      await purchase.mutateAsync({
+      const confirmed = await purchase.mutateAsync({
         relic_id: relic.id,
         level: progress?.highest_unlocked_level ?? 1,
       });
       sfx.play("achievement");
       rdSfx("relic.equip");
-      toast.success(`${relic.name} unlocked`, {
-        description: "Ready to equip in the Armory.",
+      reveal({
+        id: `relic:${relic.id}:${confirmed.rank ?? 1}`,
+        title: "A new power is yours",
+        eyebrow: "Relic unlocked",
+        detail: "Saved to your collection. Equip it in the Armory.",
+        items: [
+          {
+            kind: "relic",
+            label: relic.name,
+            relicId: relic.id,
+            rank: confirmed.rank ?? 1,
+            detail: relic.description,
+          },
+        ],
       });
     } catch (error) {
       toast.error(
@@ -112,14 +127,31 @@ export default function RuneDelveShopPage() {
     pendingRef.current = true;
     setPendingId(upgradeRelic.id);
     try {
-      await upgrade.mutateAsync({
+      const confirmed = await upgrade.mutateAsync({
         relic_id: upgradeRelic.id,
         expected_rank: expectedRank,
       });
       sfx.play("success");
       rdSfx("levelup.fanfare");
-      toast.success(`${upgradeRelic.name} · Rank ${expectedRank + 1}`);
       setUpgradeRelic(null);
+      reveal({
+        id: `relic:${upgradeRelic.id}:${confirmed.rank ?? expectedRank + 1}`,
+        title: "Forged stronger",
+        eyebrow: "Relic upgraded",
+        detail: "Your equipped relics use their new rank immediately.",
+        items: [
+          {
+            kind: "relic",
+            label: upgradeRelic.name,
+            relicId: upgradeRelic.id,
+            rank: confirmed.rank ?? expectedRank + 1,
+            detail: describeRelicAtRank(
+              upgradeRelic,
+              confirmed.rank ?? expectedRank + 1,
+            ),
+          },
+        ],
+      });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -226,10 +258,10 @@ export default function RuneDelveShopPage() {
         >
           {visible.length ? (
             <div
-              className="rd-relic-grid rd-fit-relic-grid"
+              className="rd-relic-grid rd-fit-relic-grid rd-motion-collection"
               data-rows={pageSize > 3 ? 2 : 1}
               data-cols={pageSize === 6 ? 3 : pageSize === 1 ? 1 : 2}
-              key={`${tier}-${cat}`}
+              key={`${tier}-${cat}-${currentPage}`}
             >
               {visible
                 .slice(currentPage * pageSize, (currentPage + 1) * pageSize)

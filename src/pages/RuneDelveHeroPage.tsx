@@ -25,6 +25,7 @@ import {
 import { MASTERY_TIERS, nextMasteryFor } from "@/lib/runedelve/classMastery";
 import { RuneBuildPages } from "@/components/runedelve/RuneBuildPages";
 import { RunePager } from "@/components/runedelve/RunePager";
+import { RuneMenuTabs } from "@/components/runedelve/RuneMenuTabs";
 import { useRuneViewport } from "@/hooks/useRuneViewport";
 import { RuneHeroArt } from "@/components/runedelve/RuneArtwork";
 import { RuneMenuSigil } from "@/components/runedelve/RuneMenuSigil";
@@ -166,33 +167,29 @@ export default function RuneDelveHeroPage() {
           Tune loadout <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-      <div
-        role="tablist"
-        aria-label="Hero view"
-        className="rd-menu-tabs rd-fit-tabs grid-cols-4"
-      >
-        {(["profile", "build", "classes", "prestige"] as const).map((tab) => (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === tab}
-            key={tab}
-            onClick={() => setView(tab)}
-          >
-            {tab === "profile"
-              ? "Profile"
-              : tab === "build"
-                ? "Build"
-                : tab === "classes"
-                  ? "Classes"
-                  : "Legacy"}
-          </button>
-        ))}
-      </div>
+      <RuneMenuTabs
+        id="rd-hero-view"
+        label="Hero view"
+        value={view}
+        options={
+          [
+            { value: "profile", label: "Profile" },
+            { value: "build", label: "Build" },
+            { value: "classes", label: "Classes" },
+            { value: "prestige", label: "Legacy" },
+          ] as const
+        }
+        onChange={setView}
+        panelId="rd-hero-panel"
+        className="grid-cols-4"
+      />
       {view === "profile" && (
         <section
-          className="rd-profile-view rd-fit-content"
+          className="rd-profile-view rd-fit-content rd-menu-content-enter"
           aria-label="Hero profile"
+          role="tabpanel"
+          id="rd-hero-panel"
+          aria-labelledby="rd-hero-view-profile"
         >
           {editingName ? (
             <form
@@ -297,7 +294,12 @@ export default function RuneDelveHeroPage() {
         </section>
       )}
       {view === "build" && (
-        <div className="rd-fit-content">
+        <div
+          className="rd-fit-content rd-menu-content-enter"
+          role="tabpanel"
+          id="rd-hero-panel"
+          aria-labelledby="rd-hero-view-build"
+        >
           <RuneBuildPages
             key={hero.class}
             sheet={characterSheet}
@@ -308,12 +310,16 @@ export default function RuneDelveHeroPage() {
       )}
       {view === "classes" && (
         <section
-          className="rd-page-stack rd-fit-content"
+          className="rd-page-stack rd-fit-content rd-menu-content-enter"
           aria-label="Class selection"
+          role="tabpanel"
+          id="rd-hero-panel"
+          aria-labelledby="rd-hero-view-classes"
         >
           <div
-            className="rd-fit-class-grid"
+            className="rd-fit-class-grid rd-motion-collection"
             data-rows={classSize === 4 ? 2 : 1}
+            key={classIndex}
           >
             {CLASS_LIST.slice(
               classIndex * classSize,
@@ -377,7 +383,12 @@ export default function RuneDelveHeroPage() {
         </section>
       )}
       {view === "prestige" && (
-        <section className="rd-page-stack rd-fit-content">
+        <section
+          className="rd-page-stack rd-fit-content rd-menu-content-enter"
+          role="tabpanel"
+          id="rd-hero-panel"
+          aria-labelledby="rd-hero-view-prestige"
+        >
           <div className="rd-legacy-content">
             <div className="rd-menu-surface rd-legacy-stats">
               <div>
@@ -396,7 +407,10 @@ export default function RuneDelveHeroPage() {
                 <span>Score</span>
               </div>
             </div>
-            <div className="rd-legacy-titles">
+            <div
+              className="rd-legacy-titles rd-motion-collection"
+              key={legacyIndex}
+            >
               {ladder
                 .slice(legacyIndex * legacySize, (legacyIndex + 1) * legacySize)
                 .map(({ level, title: label }) => (

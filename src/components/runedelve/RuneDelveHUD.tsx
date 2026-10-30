@@ -83,7 +83,8 @@ export function RuneDelveHUD() {
 
           <Link
             to="/rune-delve"
-            className="flex-1 min-w-0 min-h-11 flex items-center gap-2 btn-press"
+            aria-label="Return to Rune Delve Sanctum"
+            className="rd-hud-home flex-1 min-w-0 min-h-11 flex items-center gap-2 btn-press"
           >
             {hero ? (
               <ClassBadge cls={hero.class} size="sm" />
@@ -100,7 +101,10 @@ export function RuneDelveHUD() {
             )}
             <div className="flex-1 min-w-0 leading-tight">
               <p className="font-rd-display text-[13px] font-extrabold truncate tracking-wide">
-                {hero?.hero_name ?? "Rune Delve"}
+                <span className="rd-hud-hero-title">
+                  {hero?.hero_name ?? "Rune Delve"}
+                </span>
+                <span className="rd-hud-compact-title">Rune Delve</span>
               </p>
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/70 truncate">
                 {location.pathname === "/rune-delve/expedition"

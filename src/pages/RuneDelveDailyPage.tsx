@@ -176,7 +176,10 @@ export default function RuneDelveDailyPage() {
                   The arena awaits its first challenger.
                 </p>
               ) : (
-                <div className="rd-daily-standings">
+                <div
+                  className="rd-daily-standings rd-motion-collection"
+                  key={currentBoardPage}
+                >
                   {rows.map((row) => (
                     <article
                       key={row.id}
@@ -214,7 +217,10 @@ export default function RuneDelveDailyPage() {
               <h2>
                 <Gem size={15} aria-hidden /> Your best daily reward
               </h2>
-              <div className="rd-daily-rewards">
+              <div
+                className="rd-daily-rewards rd-motion-collection"
+                key={currentRewardPage}
+              >
                 {rewards.map((kills) => (
                   <article
                     key={kills}

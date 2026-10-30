@@ -1,0 +1,417 @@
+{
+  "grid": "Each atlas is square, four columns by four rows, row-major order, sixteen unique centered portraits, no lettering or borders.",
+  "atlases": [
+    {
+      "atlas": "/images/rune-delve/monsters-ember.webp",
+      "columns": 4,
+      "rows": 4,
+      "cells": [
+        {
+          "cell": 0,
+          "id": "cave_bat",
+          "name": "Cave Bat",
+          "brief": "A small leathery cave bat, broad membranous wings, large pointed ears, tiny amber eyes; unmistakably a bat."
+        },
+        {
+          "cell": 1,
+          "id": "goblin_scout",
+          "name": "Goblin Scout",
+          "brief": "Lean green goblin scout with long pointed ears, ragged leather hood and chipped short blade."
+        },
+        {
+          "cell": 2,
+          "id": "ember_slime",
+          "name": "Ember Slime",
+          "brief": "Rounded translucent orange-red slime, molten ember core and soot bubbles; soft gelatinous body."
+        },
+        {
+          "cell": 3,
+          "id": "shadow_imp",
+          "name": "Shadow Imp",
+          "brief": "Small violet horned imp with narrow grin, wispy shadow wings and long curling tail."
+        },
+        {
+          "cell": 4,
+          "id": "crystal_spider",
+          "name": "Crystal Spider",
+          "brief": "Eight-legged spider with jagged translucent quartz limbs and a faceted crystal abdomen."
+        },
+        {
+          "cell": 5,
+          "id": "ember_rat",
+          "name": "Ember Rat",
+          "brief": "A soot-black rat with long bare tail, whiskers, ember-red eyes and glowing scorched fur tips."
+        },
+        {
+          "cell": 6,
+          "id": "tunnel_kobold",
+          "name": "Tunnel Kobold",
+          "brief": "Small copper-scaled reptilian kobold, long snout, miner headlamp and curved mining knife."
+        },
+        {
+          "cell": 7,
+          "id": "cave_lizard",
+          "name": "Cave Lizard",
+          "brief": "Low slate-blue lizard with four splayed legs, ridged back, long tail and luminous throat."
+        },
+        {
+          "cell": 8,
+          "id": "mossback_toad",
+          "name": "Mossback Toad",
+          "brief": "Squat broad toad with bulging eyes and thick living moss on a wart-covered green back."
+        },
+        {
+          "cell": 9,
+          "id": "lantern_moth",
+          "name": "Lantern Moth",
+          "brief": "Delicate moth with feathery antennae, broad patterned cream wings and a warm lantern-glowing abdomen."
+        },
+        {
+          "cell": 10,
+          "id": "goblin_brute",
+          "name": "Goblin Brute",
+          "brief": "Stocky muscular goblin with heavy jaw, oversized shoulder armor and a crude leg-bone club."
+        },
+        {
+          "cell": 11,
+          "id": "cave_crab",
+          "name": "Cave Crab",
+          "brief": "Broad stone-shelled cave crab with two huge pincers, eyestalks and clearly visible segmented legs."
+        },
+        {
+          "cell": 12,
+          "id": "ember_pup",
+          "name": "Ember Pup",
+          "brief": "Young wolf-like hound with alert ears, charcoal fur, glowing orange chest and ember breath."
+        },
+        {
+          "cell": 13,
+          "id": "dust_wisp",
+          "name": "Dust Wisp",
+          "brief": "Tiny airy spirit formed from pale sand and dust, swirling ribbon body and two pinprick eyes."
+        },
+        {
+          "cell": 14,
+          "id": "feral_imp",
+          "name": "Feral Imp",
+          "brief": "Wild red horned imp, shaggy mane, outsized claws and teeth, crouched animal posture."
+        },
+        {
+          "cell": 15,
+          "id": "bone_husk",
+          "name": "Bone Husk",
+          "brief": "Fragile hunched skeletal minion made of mismatched bones, exposed rib cage and dim skull glow; no armor."
+        }
+      ]
+    },
+    {
+      "atlas": "/images/rune-delve/monsters-crystal.webp",
+      "columns": 4,
+      "rows": 4,
+      "cells": [
+        {
+          "cell": 0,
+          "id": "skeleton_warrior",
+          "name": "Skeleton Warrior",
+          "brief": "Upright skeleton soldier in rusted helmet and partial iron armor, carrying a chipped sword."
+        },
+        {
+          "cell": 1,
+          "id": "rune_wraith",
+          "name": "Rune Wraith",
+          "brief": "Floating blue-violet hooded specter with hollow face and luminous runes orbiting ragged robes."
+        },
+        {
+          "cell": 2,
+          "id": "frost_revenant",
+          "name": "Frost Revenant",
+          "brief": "Pale frozen undead warrior, ice-crusted skin and cracked blue ice armor, cold mist around face."
+        },
+        {
+          "cell": 3,
+          "id": "cult_warden",
+          "name": "Cult Warden",
+          "brief": "Living masked cult guardian in crimson ceremonial armor holding a broad ward-marked shield."
+        },
+        {
+          "cell": 4,
+          "id": "cult_chanter",
+          "name": "Cult Chanter",
+          "brief": "Hooded cult priest holding several small candles, chanting mouth visible, warm healing sigils."
+        },
+        {
+          "cell": 5,
+          "id": "stone_golem",
+          "name": "Stone Golem",
+          "brief": "Massive blocky stone humanoid with granite fists, moss-filled joints and a teal rune heart."
+        },
+        {
+          "cell": 6,
+          "id": "frost_acolyte",
+          "name": "Frost Acolyte",
+          "brief": "Young pale-robed ice cult mage holding a frost-tipped staff, crystalline snowflake halo."
+        },
+        {
+          "cell": 7,
+          "id": "bone_archer",
+          "name": "Bone Archer",
+          "brief": "Gaunt skeleton archer holding a bone bow and pale arrows, ragged hunter cloak."
+        },
+        {
+          "cell": 8,
+          "id": "crystal_construct",
+          "name": "Crystal Construct",
+          "brief": "Angular humanoid construct made entirely of clear violet quartz facets, no stone body."
+        },
+        {
+          "cell": 9,
+          "id": "glacial_imp",
+          "name": "Glacial Imp",
+          "brief": "Small icy blue imp with icicle horns, frost-covered wings and a sharp mischievous grin."
+        },
+        {
+          "cell": 10,
+          "id": "cult_seer",
+          "name": "Cult Seer",
+          "brief": "Blindfolded crimson-robed cult oracle with a floating golden third eye above the brow."
+        },
+        {
+          "cell": 11,
+          "id": "revenant_thrall",
+          "name": "Revenant Thrall",
+          "brief": "Decayed shambling undead soldier in torn burial cloth, sagging jaw and broken chain."
+        },
+        {
+          "cell": 12,
+          "id": "hollow_shrieker",
+          "name": "Hollow Shrieker",
+          "brief": "Elongated spectral humanoid with enormous open screaming mouth, pale stretched face and flowing tattered shroud."
+        },
+        {
+          "cell": 13,
+          "id": "quartz_serpent",
+          "name": "Quartz Serpent",
+          "brief": "Coiled snake with translucent white quartz scales, diamond-shaped head and tiny cold eyes."
+        },
+        {
+          "cell": 14,
+          "id": "frost_warden",
+          "name": "Frost Warden",
+          "brief": "Undead armored guard with a thick ice shield, frozen skull and heavy pale-blue plate."
+        },
+        {
+          "cell": 15,
+          "id": "whisper_witch",
+          "name": "Whisper Witch",
+          "brief": "Gaunt hooded witch with long silver hair, crooked fingers, green whispered spell ribbons."
+        }
+      ]
+    },
+    {
+      "atlas": "/images/rune-delve/monsters-vault.webp",
+      "columns": 4,
+      "rows": 4,
+      "cells": [
+        {
+          "cell": 0,
+          "id": "cursed_knight",
+          "name": "Cursed Knight",
+          "brief": "Blackened full-plate undead knight, sealed helm, cursed violet cracks and a broken long sword."
+        },
+        {
+          "cell": 1,
+          "id": "voidspawn",
+          "name": "Voidspawn",
+          "brief": "Inhuman amorphous violet-black creature with branching tendrils and a single glowing void core."
+        },
+        {
+          "cell": 2,
+          "id": "bone_summoner",
+          "name": "Bone Summoner",
+          "brief": "Skeletal necromancer in bone-trimmed robes, skull staff, small levitating ribs in one hand."
+        },
+        {
+          "cell": 3,
+          "id": "shadow_assassin",
+          "name": "Shadow Assassin",
+          "brief": "Slender masked humanoid assassin in dark leather with two curved daggers and trailing smoke."
+        },
+        {
+          "cell": 4,
+          "id": "arcane_caster",
+          "name": "Arcane Caster",
+          "brief": "Tall mystic in indigo robes, face hidden behind a glowing arcane visor, hovering spell orb."
+        },
+        {
+          "cell": 5,
+          "id": "ancient_drake",
+          "name": "Ancient Drake",
+          "brief": "Ancient green-bronze dragon with long horned head, heavy scales and folded leathery wings."
+        },
+        {
+          "cell": 6,
+          "id": "void_acolyte",
+          "name": "Void Acolyte",
+          "brief": "Hooded novice void mage with dark violet robes, faint human face and small contained black star."
+        },
+        {
+          "cell": 7,
+          "id": "wraith_lord",
+          "name": "Wraith Lord",
+          "brief": "Regal spectral lord with a jagged floating crown, long ghostly mantle and purple skeletal face."
+        },
+        {
+          "cell": 8,
+          "id": "sundered_titan",
+          "name": "Sundered Titan",
+          "brief": "Enormous fractured stone titan with one broken shoulder, deep golden fissures and mountain-like silhouette."
+        },
+        {
+          "cell": 9,
+          "id": "void_stalker",
+          "name": "Void Stalker",
+          "brief": "Low predatory four-limbed void beast with elongated limbs, eyeless angular face and violet claw tips."
+        },
+        {
+          "cell": 10,
+          "id": "dread_summoner",
+          "name": "Dread Summoner",
+          "brief": "Towering deathly necromancer with antler-like bone headdress, dark skull mask and shadow summons."
+        },
+        {
+          "cell": 11,
+          "id": "arcane_warden",
+          "name": "Arcane Warden",
+          "brief": "Armored magical sentinel with woven turquoise spell shields around its arms and a sealed rune helm."
+        },
+        {
+          "cell": 12,
+          "id": "bone_juggernaut",
+          "name": "Bone Juggernaut",
+          "brief": "Huge heavy humanoid assembled from layered ribs, massive bone shoulder plates and thick skeletal fists."
+        },
+        {
+          "cell": 13,
+          "id": "void_seer",
+          "name": "Void Seer",
+          "brief": "Floating faceless oracle draped in purple veils, many small violet eyes surrounding a healing sigil."
+        },
+        {
+          "cell": 14,
+          "id": "gloom_wisp",
+          "name": "Gloom Wisp",
+          "brief": "Dark smoky wisp formed from deep violet vault fog, two turquoise eyes and long trailing vapor."
+        },
+        {
+          "cell": 15,
+          "id": "vault_revenant",
+          "name": "Vault Revenant",
+          "brief": "Tarnished gold-armored undead vault guard with a coffin-shaped shield and a haunted pale face."
+        }
+      ]
+    },
+    {
+      "atlas": "/images/rune-delve/monsters-legends.webp",
+      "columns": 4,
+      "rows": 4,
+      "cells": [
+        {
+          "cell": 0,
+          "id": "crypt_sentinel",
+          "name": "Crypt Sentinel",
+          "brief": "Skeletal crypt guard with a square tomb-stone shield, bronze funerary helmet and a long ceremonial spear."
+        },
+        {
+          "cell": 1,
+          "id": "cave_stalker",
+          "name": "Cave Stalker",
+          "brief": "Low stalking cave arachnid with matte midnight shell, long hooked legs and a subtle red eye cluster; distinct from quartz spider."
+        },
+        {
+          "cell": 2,
+          "id": "ashborn_raider",
+          "name": "Ashborn Raider",
+          "brief": "Ash-grey goblinoid raider with scorched leather, burning hatchet and ember-orange facial scars."
+        },
+        {
+          "cell": 3,
+          "id": "stone_guardian",
+          "name": "Stone Guardian",
+          "brief": "Carved temple guardian with smooth rounded sandstone plates, broad shoulders and an ancient gold sigil; distinct from rough golem."
+        },
+        {
+          "cell": 4,
+          "id": "void_sovereign",
+          "name": "The Hollow Sovereign",
+          "brief": "The Hollow Sovereign: majestic dark fantasy monarch with black horned crown, ivory faceless mask, floating violet armor and eclipsed halo."
+        },
+        {
+          "cell": 5,
+          "id": "legacy_skeleton",
+          "name": "Skeleton",
+          "brief": "Unarmored simple skeleton with a clean skull, visible thin rib cage and a small rusty dagger; distinct from armored warrior."
+        },
+        {
+          "cell": 6,
+          "id": "legacy_slime",
+          "name": "Slime",
+          "brief": "Small luminous jade-green jelly slime with a rounded dome, tiny bubble eyes and translucent droplets; no fire."
+        },
+        {
+          "cell": 7,
+          "id": "cave_bat__boss",
+          "name": "Boss Cave Bat",
+          "brief": "A small leathery cave bat, broad membranous wings, large pointed ears, tiny amber eyes; unmistakably a bat. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 8,
+          "id": "goblin_scout__boss",
+          "name": "Boss Goblin Scout",
+          "brief": "Lean green goblin scout with long pointed ears, ragged leather hood and chipped short blade. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 9,
+          "id": "ember_slime__boss",
+          "name": "Boss Ember Slime",
+          "brief": "Rounded translucent orange-red slime, molten ember core and soot bubbles; soft gelatinous body. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 10,
+          "id": "skeleton_warrior__boss",
+          "name": "Boss Skeleton Warrior",
+          "brief": "Upright skeleton soldier in rusted helmet and partial iron armor, carrying a chipped sword. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 11,
+          "id": "stone_golem__boss",
+          "name": "Boss Stone Golem",
+          "brief": "Massive blocky stone humanoid with granite fists, moss-filled joints and a teal rune heart. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 12,
+          "id": "cursed_knight__boss",
+          "name": "Boss Cursed Knight",
+          "brief": "Blackened full-plate undead knight, sealed helm, cursed violet cracks and a broken long sword. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 13,
+          "id": "ancient_drake__boss",
+          "name": "Boss Ancient Drake",
+          "brief": "Ancient green-bronze dragon with long horned head, heavy scales and folded leathery wings. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 14,
+          "id": "voidspawn__boss",
+          "name": "Boss Voidspawn",
+          "brief": "Inhuman amorphous violet-black creature with branching tendrils and a single glowing void core. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        },
+        {
+          "cell": 15,
+          "id": "rune_wraith__boss",
+          "name": "Boss Rune Wraith",
+          "brief": "Floating blue-violet hooded specter with hollow face and luminous runes orbiting ragged robes. Boss version: visibly grander, a unique ornate crown or head crest, gilded menace and a radiant crimson-gold power aura; same unmistakable creature species."
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,11 @@ import { useId } from "react";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
 import { cn } from "@/lib/utils";
 import "./runeWorld.css";
+import "./runeCreatureArt.css";
+import {
+  resolveMonsterPortrait,
+  monsterPortraitPosition,
+} from "@/lib/runedelve/monsterPortraits";
 
 export const RUNE_PORTAL_ART = "/images/rune-delve/sanctum.webp";
 
@@ -30,27 +35,94 @@ export function RuneHeroArt({
 }
 
 function creatureFor(id: string) {
-  if (/bat|moth|wing/.test(id)) return "wing";
-  if (/spider|crab|scarab|crawler/.test(id)) return "spider";
-  if (/slime|ooze|toad/.test(id)) return "slime";
-  if (/wolf|hound|pup|rat|lizard|beast|serpent|wyrm/.test(id)) return "beast";
-  if (/wisp|wraith|ghost|shade|spirit|specter|revenant/.test(id))
+  if (/moth/.test(id)) return "moth";
+  if (/crab/.test(id)) return "crab";
+  if (/toad/.test(id)) return "toad";
+  if (/rat/.test(id)) return "rat";
+  if (/lizard/.test(id)) return "lizard";
+  if (/serpent|wyrm/.test(id)) return "serpent";
+  if (/drake|dragon/.test(id)) return "dragon";
+  if (/bat|wing/.test(id)) return "wing";
+  if (/spider|scarab|crawler|cave_stalker/.test(id)) return "spider";
+  if (/slime|ooze/.test(id)) return "slime";
+  if (/wolf|hound|pup|beast/.test(id)) return "beast";
+  if (/wisp|wraith|ghost|shade|spirit|specter|revenant|shrieker/.test(id))
     return "spirit";
-  if (/skeleton|lich|bone|skull/.test(id)) return "undead";
-  if (/golem|sentinel|warden|guardian|titan|colossus/.test(id))
+  if (/skeleton|lich|bone|skull|crypt_sentinel/.test(id)) return "undead";
+  if (/golem|sentinel|warden|guardian|titan|colossus|construct/.test(id))
     return "sentinel";
-  return "fiend";
+  if (
+    /imp|goblin|kobold|cult|witch|knight|assassin|caster|acolyte|stalker|seer|void|raider|sovereign/.test(
+      id,
+    )
+  )
+    return "fiend";
+  return "unknown";
 }
 
-const CREATURE_OFFSET: Record<string, number> = { wing: 0, spider: 1, slime: 2, beast: 3, spirit: 4, undead: 5, sentinel: 6, fiend: 7 };
-
-/** One local illustrated atlas, with vector silhouettes underneath if artwork cannot load. */
-export function RuneEnemyArt({ archetypeId, name, className }: { archetypeId?: string; name?: string; className?: string }) {
-  const index = CREATURE_OFFSET[creatureFor((archetypeId ?? name ?? '').toLowerCase())];
-  return <span className={cn('rd-enemy-art rd-creature-art', className)} aria-hidden="true">
-    <RuneEnemyVector archetypeId={archetypeId} name={name} className="rd-enemy-vector"/>
-    <span className="rd-creature-illustration" style={{ backgroundPosition: `${(index % 4) * 100 / 3}% ${index > 3 ? 100 : 0}%`, backgroundSize: `400% ${index > 3 ? 180 : 225}%` }}/>
-  </span>;
+/** Every named species resolves to its own local portrait; promotions retain
+ * the species, with dedicated legendary artwork where available. */
+export function RuneEnemyArt({
+  archetypeId,
+  name,
+  tier,
+  enemyId,
+  decorative = true,
+  className,
+}: {
+  archetypeId?: string;
+  name?: string;
+  tier?: "mini" | "boss";
+  enemyId?: string;
+  decorative?: boolean;
+  className?: string;
+}) {
+  const { portrait, promotion, echo } = resolveMonsterPortrait({
+    archetypeId,
+    name,
+    tier,
+    enemyId,
+  });
+  return (
+    <span
+      className={cn(
+        "rd-enemy-art rd-creature-art rd-monster-portrait",
+        className,
+      )}
+      aria-hidden={decorative || undefined}
+      role={decorative ? undefined : "img"}
+      aria-label={
+        decorative
+          ? undefined
+          : `${name ?? portrait?.name ?? "Unknown creature"} portrait`
+      }
+      data-monster-portrait={portrait?.id ?? "unknown"}
+      data-promotion={promotion ?? undefined}
+      data-echo={echo || undefined}
+    >
+      <RuneEnemyVector
+        archetypeId={portrait?.id ?? "unknown"}
+        name={name}
+        className="rd-enemy-vector"
+      />
+      {portrait && (
+        <span
+          aria-hidden="true"
+          className="rd-creature-illustration"
+          style={{
+            backgroundImage: `url("${portrait.atlas}")`,
+            backgroundPosition: monsterPortraitPosition(portrait.cell),
+            backgroundSize: "400% 400%",
+          }}
+        />
+      )}
+      {promotion && (
+        <span className="rd-monster-regalia" aria-hidden="true">
+          {promotion === "boss" ? "♛" : "✦"}
+        </span>
+      )}
+    </span>
+  );
 }
 
 /** Original vector creature portraits remain available as a lightweight fallback. */
@@ -206,6 +278,98 @@ function RuneEnemyVector({
             <path d="m60 79 8 9-8 11-8-11Z" fill="hsl(175 90% 67%)" />
           </>
         )}
+        {creature === "moth" && (
+          <>
+            <path d="M55 52C28 9 4 26 16 60c-7 37 24 40 41 13M65 52c27-43 51-26 39 8 7 37-24 40-41 13" />
+            <path d="m53 52 7-17 7 17-2 38H55Z" />
+            <path
+              d="m57 40-9-14m15 14 9-14M26 44l18 13-17 13m67-26L76 57l17 13"
+              fill="none"
+              strokeWidth="3"
+            />
+          </>
+        )}
+        {creature === "crab" && (
+          <>
+            <path d="m28 63 10-18h44l10 18-8 23H36Z" />
+            <path
+              d="m36 73-22 8-7 18m34-18L24 96m60-23 22 8 7 18m-34-18 17 15M35 54 18 42m67 12 17-12"
+              fill="none"
+              strokeWidth="5"
+            />
+            <path d="M23 45 7 36l3-18 9 12 10-10 3 18Zm74 0 16-9-3-18-9 12-10-10-3 18Z" />
+            <path d="m47 48-3-16m29 16 3-16" fill="none" strokeWidth="5" />
+          </>
+        )}
+        {creature === "toad" && (
+          <>
+            <path d="M24 89c-9-13-5-35 8-41-4-25 26-29 28-10 4-19 33-15 28 9 17 8 20 28 8 43Z" />
+            <path
+              d="m31 73-20 19 24 7m54-26 20 19-24 7M38 75q22 17 44 0"
+              fill="none"
+              strokeWidth="5"
+            />
+            <circle cx="40" cy="40" r="5" fill="hsl(45 85% 65%)" />
+            <circle cx="80" cy="40" r="5" fill="hsl(45 85% 65%)" />
+          </>
+        )}
+        {creature === "rat" && (
+          <>
+            <path d="M80 90c39 4 31-29 17-21" fill="none" strokeWidth="4" />
+            <path d="M27 86c-5-19 3-34 19-37 15-19 36-5 38 17l9 20-13 14H41Z" />
+            <circle cx="42" cy="43" r="12" />
+            <circle cx="68" cy="43" r="12" />
+            <path
+              d="m45 75 14 13 14-13M31 77l-19-6m20 14-20 4m62-12 20-6m-20 14 20 4"
+              fill="none"
+              strokeWidth="2"
+            />
+          </>
+        )}
+        {creature === "lizard" && (
+          <>
+            <path d="M76 80c34 11 43-5 32-19-1 16-20 9-24 2L66 41 48 27 28 38l7 22 17 17Z" />
+            <path
+              d="m45 59-23 4-10 14m43 1-13 19-17 1m42-40 22-12 12 3m-24 25 7 19 13 3"
+              fill="none"
+              strokeWidth="6"
+            />
+            <path d="m32 38 11 4m2-9 9 12" fill="none" strokeWidth="2" />
+          </>
+        )}
+        {creature === "serpent" && (
+          <>
+            <path d="M38 86c-30 24 63 28 62 0-2-14-41-10-44-22-3-15 22-16 21-34L62 17 45 30c-3 17-23 24-17 43 5 19 44 8 47 16-2 8-27 5-37-3Z" />
+            <path
+              d="m51 31 10 5 10-5m-9 6 1 13 8 4"
+              fill="none"
+              strokeWidth="2"
+            />
+          </>
+        )}
+        {creature === "dragon" && (
+          <>
+            <path d="m46 52-27-26L4 74l26-11 14 20m30-31 27-26 15 48-26-11-14 20" />
+            <path d="m40 44-9-23 23 12 18-12 9 29-5 31-18 22-23-22Z" />
+            <path
+              d="m43 55 14 5-6 11m24-16-11 5 5 11m-20 13 12 6 12-6"
+              fill="none"
+              strokeWidth="3"
+            />
+          </>
+        )}
+        {creature === "unknown" && (
+          <>
+            <path d="m60 18 38 42-38 43-38-43Z" fill={`url(#${id}-plate)`} />
+            <path
+              d="M49 47c1-17 27-17 25 0-1 8-14 10-14 21m0 10v4"
+              fill="none"
+              stroke="hsl(175 75% 75%)"
+              strokeWidth="5"
+              strokeLinecap="round"
+            />
+          </>
+        )}
         {creature === "fiend" && (
           <>
             <path d="m33 50-9-33 25 16 12-6 12 6 25-16-9 33-5 29-23 21-23-21Z" />
@@ -218,7 +382,15 @@ function RuneEnemyVector({
           </>
         )}
       </g>
-      {creature !== "sentinel" && (
+      {[
+        "wing",
+        "spider",
+        "slime",
+        "beast",
+        "spirit",
+        "undead",
+        "fiend",
+      ].includes(creature) && (
         <g fill={`hsl(${hue} 95% 82%)`}>
           <ellipse
             cx={creature === "slime" ? 51 : 49}
