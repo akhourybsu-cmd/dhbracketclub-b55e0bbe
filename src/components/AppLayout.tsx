@@ -105,6 +105,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   // Mobile header is hidden inside game shells (they own the viewport) and in chat
   // (chat owns its own compact header, including a hamburger button).
   const showMobileHeader = !isGameShell && !isChatRoute;
+  const showMobileBottomNav = !isGameShell;
   const isDashboard = location.pathname === '/dashboard';
   const mobileTitle = getRouteTitle(location.pathname);
   const isNavAvailable = useCallback((path: string) => filterNavPaths([path]).length > 0, [filterNavPaths]);
@@ -119,9 +120,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       {/* Drawer */}
       <AppDrawer open={drawerOpen} onOpenChange={setDrawerOpen} unreadChatCount={unreadChatCount} />
 
-      {/* Persistent mobile bottom tab bar — shown on the same surfaces as the
-          mobile header (not in chat / full-screen game shells). */}
-      {showMobileHeader && <BottomTabBar unreadChatCount={unreadChatCount} items={mobileNavItems}
+      {/* Chat keeps its compact header and the shared bottom destinations.
+          Full-screen game shells retain their own navigation. */}
+      {showMobileBottomNav && <BottomTabBar unreadChatCount={unreadChatCount} items={mobileNavItems}
         onOpenMore={() => setDrawerOpen(true)} />}
 
       {/* Main Content */}

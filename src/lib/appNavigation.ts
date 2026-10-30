@@ -200,8 +200,8 @@ export function navPathForRoute(pathname: string, items: AppNavItem[] = ALL_NAV_
 }
 
 /**
- * Home is always first, then the member's most visited destinations
- * (ties keep the default order), padded from DEFAULT_TAB_ORDER.
+ * Home and installed Chat are anchored first. Remaining slots use the member's
+ * most visited destinations (ties keep the default order).
  */
 export function pickMostUsedTabs(
   usage: Record<string, number>,
@@ -209,15 +209,17 @@ export function pickMostUsedTabs(
   slots = MOBILE_USAGE_SLOTS,
 ): AppNavItem[] {
   const home = available.find((item) => item.path === '/dashboard');
-  const pool = available.filter((item) => item.path !== '/dashboard' && item.path !== '/profile');
+  const chat = available.find((item) => item.path === '/chat');
+  const anchored = [home, chat].filter((item): item is AppNavItem => Boolean(item));
+  const pool = available.filter((item) => !['/dashboard', '/chat', '/profile'].includes(item.path));
   const rank = (path: string) => {
     const i = DEFAULT_TAB_ORDER.indexOf(path);
     return i === -1 ? DEFAULT_TAB_ORDER.length : i;
   };
   const chosen = [...pool]
     .sort((a, b) => (usage[b.path] ?? 0) - (usage[a.path] ?? 0) || rank(a.path) - rank(b.path))
-    .slice(0, slots);
-  return home ? [home, ...chosen] : chosen;
+    .slice(0, Math.max(0, slots - (chat ? 1 : 0)));
+  return [...anchored, ...chosen];
 }
 
 /** Picks the single tab that should light up, preferring exact destinations over hubs. */

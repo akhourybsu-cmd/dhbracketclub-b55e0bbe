@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect, Fragment, me
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { tokenizeChatInline } from '@/lib/chatMarkdown';
 import { format } from 'date-fns';
 import {
   Pin, Reply, Trash2, Pencil, Check, X, MessageSquare, Loader2, Flag, SmilePlus, Copy,
@@ -73,46 +74,9 @@ const MENTION_RE = /@([\w\s]+?)(?=\s@|\s|$)/g;
  */
 
 const CODE_BLOCK_RE = /```([a-zA-Z0-9_-]*)\r?\n?([\s\S]*?)```/g;
-const INLINE_TOKEN_PATTERNS: Array<{ type: 'code' | 'bold' | 'strike' | 'italic' | 'spoiler'; re: RegExp }> = [
-  // Order matters: `code` first so backtick-wrapped content is opaque,
-  // ||spoiler|| before *bold/italic* so its inner text stays intact,
-  // **bold** before *italic* so ** isn't confused with two italic *s,
-  // ~~strike~~ standalone.
-  { type: 'code',    re: /`([^`\n]+?)`/ },
-  { type: 'spoiler', re: /\|\|([^\n]+?)\|\|/ },
-  { type: 'bold',    re: /\*\*([^*\n]+?)\*\*/ },
-  { type: 'strike',  re: /~~([^~\n]+?)~~/ },
-  { type: 'italic',  re: /(?<!\*)\*([^*\n]+?)\*(?!\*)/ },
-];
-
-interface InlineToken { type: 'text' | 'code' | 'bold' | 'strike' | 'italic' | 'spoiler'; value: string }
-
-function tokenizeInline(text: string): InlineToken[] {
-  const tokens: InlineToken[] = [];
-  let cursor = 0;
-  while (cursor < text.length) {
-    let earliest: { idx: number; type: InlineToken['type']; raw: string; inner: string } | null = null;
-    for (const p of INLINE_TOKEN_PATTERNS) {
-      const re = new RegExp(p.re.source, 'g');
-      re.lastIndex = cursor;
-      const m = re.exec(text);
-      if (m && (!earliest || m.index < earliest.idx)) {
-        earliest = { idx: m.index, type: p.type, raw: m[0], inner: m[1] };
-      }
-    }
-    if (!earliest) {
-      tokens.push({ type: 'text', value: text.slice(cursor) });
-      break;
-    }
-    if (earliest.idx > cursor) tokens.push({ type: 'text', value: text.slice(cursor, earliest.idx) });
-    tokens.push({ type: earliest.type, value: earliest.inner });
-    cursor = earliest.idx + earliest.raw.length;
-  }
-  return tokens;
-}
 
 function renderInlineTokens(text: string, currentDisplayName?: string, keyPrefix = ''): React.ReactNode[] {
-  const tokens = tokenizeInline(text);
+  const tokens = tokenizeChatInline(text);
   return tokens.map((t, i) => {
     const k = `${keyPrefix}-tok-${i}`;
     switch (t.type) {

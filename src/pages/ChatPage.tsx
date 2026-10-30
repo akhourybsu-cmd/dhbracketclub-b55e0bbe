@@ -364,8 +364,10 @@ function ChatWorkspace() {
     setSearchParams({}, { replace: true });
   }, [channels, searchParams, setSearchParams]);
 
+  const directoryRequest = useRef(0);
   const fetchChannels = useCallback(async () => {
     if (!user) return;
+    const request = ++directoryRequest.current;
     setLoading(true);
     setChannelError(null);
     try {
@@ -374,7 +376,10 @@ function ChatWorkspace() {
           memberData(
             supabase.from("channel_categories").select("*").order("position"),
             "Load chat categories",
-          ),
+          ).catch((error) => {
+            console.warn("[ChatPage] category labels unavailable", error);
+            return [];
+          }),
           memberData(
             supabase.from("channels").select("*").order("position"),
             "Load chat channels",
@@ -383,6 +388,7 @@ function ChatWorkspace() {
         HYDRATE_TIMEOUT_MS,
         "chat channel hydrate",
       );
+      if (request !== directoryRequest.current) return;
       setCategories(cats ?? []);
       if (chs) {
         // Hide admin_only channels from non-admins (RLS doesn't gate this — channels are club-scoped only).
@@ -390,6 +396,33 @@ function ChatWorkspace() {
           (c) => c.channel_type !== "admin_only" || isClubAdmin,
         );
         setChannels(visibleChs);
+        setLoading(false);
+        // Only auto-select on initial load (no channel selected yet).
+        // On mobile we keep the user on the channel-list view so nothing feels artificially "active";
+        // on desktop we auto-open the saved/default channel because the sidebar always shows the list.
+        if (!selectedChannelRef.current) {
+          const isDesktop =
+            typeof window !== "undefined" &&
+            window.matchMedia("(min-width: 1024px)").matches;
+          let target: Channel | undefined;
+          try {
+            const savedId = localStorage.getItem("last_chat_channel_id");
+            if (savedId) target = visibleChs.find((c) => c.id === savedId);
+          } catch {}
+          if (!target)
+            target = visibleChs.find((c) => c.is_default) || visibleChs[0];
+          if (target && isDesktop) {
+            setSelectedChannel(target);
+            setNewMessage(readChatDraft(user.id, target.id));
+            if (isDesktop) setShowChannelList(false);
+          }
+        } else {
+          // If the currently selected channel still exists, refresh its data from the fetch
+          const refreshed = visibleChs.find(
+            (c) => c.id === selectedChannelRef.current!.id,
+          );
+          if (refreshed) setSelectedChannel(refreshed);
+        }
         const chIds = visibleChs.map((c: any) => c.id);
         const lastMsgs =
           chIds.length > 0
@@ -404,7 +437,10 @@ function ChatWorkspace() {
                   .order("created_at", { ascending: false })
                   .limit(500),
                 "Load chat previews",
-              )
+              ).catch((error) => {
+                console.warn("[ChatPage] previews unavailable", error);
+                return [];
+              })
             : [];
 
         let readStatesMap = new Map<string, string>();
@@ -426,6 +462,7 @@ function ChatWorkspace() {
             );
         } catch {}
 
+        if (request !== directoryRequest.current) return;
         const meta = new Map<string, ChannelMeta>();
         const mentionName =
           currentDisplayName ||
@@ -466,40 +503,13 @@ function ChatWorkspace() {
             meta.set(id, { unread: false, unreadCount: 0, mentionCount: 0 });
         });
         setChannelMeta(meta);
-
-        // Only auto-select on initial load (no channel selected yet).
-        // On mobile we keep the user on the channel-list view so nothing feels artificially "active";
-        // on desktop we auto-open the saved/default channel because the sidebar always shows the list.
-        if (!selectedChannelRef.current) {
-          const isDesktop =
-            typeof window !== "undefined" &&
-            window.matchMedia("(min-width: 1024px)").matches;
-          let target: Channel | undefined;
-          try {
-            const savedId = localStorage.getItem("last_chat_channel_id");
-            if (savedId) target = visibleChs.find((c) => c.id === savedId);
-          } catch {}
-          if (!target)
-            target =
-              visibleChs.find((c) => c.is_default) || (chs[0] as Channel);
-          if (target && isDesktop) {
-            setSelectedChannel(target);
-            setNewMessage(readChatDraft(user.id, target.id));
-            if (isDesktop) setShowChannelList(false);
-          }
-        } else {
-          // If the currently selected channel still exists, refresh its data from the fetch
-          const refreshed = visibleChs.find(
-            (c) => c.id === selectedChannelRef.current!.id,
-          );
-          if (refreshed) setSelectedChannel(refreshed);
-        }
       }
     } catch (error) {
+      if (request !== directoryRequest.current) return;
       console.error("[ChatPage] channel hydrate failed", error);
       setChannelError(memberErrorMessage(error));
     } finally {
-      setLoading(false);
+      if (request === directoryRequest.current) setLoading(false);
     }
   }, [user, isClubAdmin, currentDisplayName]);
 

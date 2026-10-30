@@ -133,7 +133,8 @@ export const qa = {
   tables,
   writes: [] as any[],
   queries: [] as any[],
-  failTables: [] as string[],
+  failTables: ((window as any).__chatFailTables || []) as string[],
+  failPreviews: Boolean((window as any).__chatFailPreviews),
   failSend: false,
   failUpload: false,
   delayReactions: 0,
@@ -295,6 +296,11 @@ function from(table: string) {
       await new Promise((r) => setTimeout(r, qa.delayMessages));
     if (
       qa.failTables.includes(table) ||
+      (qa.failPreviews &&
+        table === "messages" &&
+        cols
+          .replace(/\s/g, "")
+          .startsWith("channel_id,content,created_at,user_id")) ||
       (table === "messages" && verb === "insert" && qa.failSend)
     )
       return {

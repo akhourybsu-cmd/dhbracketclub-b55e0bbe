@@ -21,9 +21,24 @@ describe('shared app navigation', () => {
     expect(pickMostUsedTabs({}, ALL_NAV_ITEMS).map((i) => i.path)).toEqual(['/dashboard', '/chat', '/finds', '/compete']);
   });
 
-  it('promotes the three most used destinations after Home', () => {
+  it('keeps Chat after Home and promotes the two most used remaining destinations', () => {
     const tabs = pickMostUsedTabs({ '/drafts': 9, '/portfolio-wars': 5, '/chat': 2, '/finds': 1 }, ALL_NAV_ITEMS);
-    expect(tabs.map((i) => i.path)).toEqual(['/dashboard', '/drafts', '/portfolio-wars', '/chat']);
+    expect(tabs.map((i) => i.path)).toEqual(['/dashboard', '/chat', '/drafts', '/portfolio-wars']);
+  });
+
+  it('never lets usage history displace or duplicate Chat', () => {
+    const tabs = pickMostUsedTabs({ '/drafts': 100, '/portfolio-wars': 90, '/workouts': 80, '/finds': 70 }, ALL_NAV_ITEMS);
+    expect(tabs.map((i) => i.path)).toEqual(['/dashboard', '/chat', '/drafts', '/portfolio-wars']);
+    expect(tabs.filter((i) => i.path === '/chat')).toHaveLength(1);
+  });
+
+  it('keeps Chat anchored even when fewer usage slots are requested', () => {
+    expect(pickMostUsedTabs({ '/drafts': 100 }, ALL_NAV_ITEMS, 1).map((i) => i.path)).toEqual(['/dashboard', '/chat']);
+  });
+
+  it('respects an unavailable Chat asset and fills the freed slot', () => {
+    const available = ALL_NAV_ITEMS.filter((i) => i.path !== '/chat');
+    expect(pickMostUsedTabs({ '/chat': 100 }, available).map((i) => i.path)).toEqual(['/dashboard', '/finds', '/compete', '/club']);
   });
 
   it('never offers an uninstalled app as a tab', () => {

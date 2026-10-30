@@ -401,6 +401,14 @@
     --chat-composer-safe-bottom: 0px;
   }
 
+  html.chat-bottom-nav-visible .chat-viewport {
+    --chat-composer-safe-bottom: 0px;
+  }
+
+  @media (max-width: 1023px) {
+    html.chat-keyboard-open [data-mobile-bottom-nav] { display: none; }
+  }
+
   .chat-composer {
     padding-bottom: calc(0.375rem + var(--chat-composer-safe-bottom)) !important;
     scrollbar-width: none;

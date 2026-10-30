@@ -118,6 +118,22 @@ try {
       await open(page, theme);
       await latest(page);
       await noPageScroll(page);
+      const nav = page.locator("[data-mobile-bottom-nav]");
+      if (width < 1024) {
+        await expect(nav).toBeVisible();
+        await expect(
+          nav.getByRole("button", { name: "Chat", exact: true }),
+        ).toHaveAttribute("aria-current", "page");
+        await expect
+          .poll(async () => {
+            const input = await page
+              .getByRole("textbox", { name: "Message", exact: true })
+              .boundingBox();
+            const bar = await nav.boundingBox();
+            return input.y + input.height <= bar.y + 1;
+          })
+          .toBe(true);
+      } else await expect(nav).toBeHidden();
       await fits(
         page,
         page.getByRole("textbox", { name: "Message", exact: true }),
@@ -399,6 +415,7 @@ try {
     "data-keyboard-open",
     "true",
   );
+  await expect(page.locator("[data-mobile-bottom-nav]")).toBeHidden();
   assert.ok(
     (await input.boundingBox()).y + (await input.boundingBox()).height <= 524,
     "Composer stays above keyboard",
@@ -419,6 +436,7 @@ try {
     "data-keyboard-open",
     "false",
   );
+  await expect(page.locator("[data-mobile-bottom-nav]")).toBeVisible();
   assert.deepEqual(errors, []);
   await page.close();
   console.log(

@@ -6,7 +6,7 @@ import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { activeTabPath, type AppNavItem } from '@/lib/appNavigation';
 
 /**
- * Floating mobile tab bar: Home + the member's most used destinations + More
+ * Floating mobile tab bar: Home + installed Chat + most used destinations + More
  * (opens the full app drawer). Tapping the active tab scrolls back to top.
  */
 export function BottomTabBar({ unreadChatCount = 0, items, onOpenMore }: {
@@ -28,6 +28,7 @@ export function BottomTabBar({ unreadChatCount = 0, items, onOpenMore }: {
 
   return (
     <nav
+      data-mobile-bottom-nav
       className="lg:hidden fixed inset-x-0 bottom-0 z-40 px-3 pointer-events-none"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
       aria-label="Primary"
