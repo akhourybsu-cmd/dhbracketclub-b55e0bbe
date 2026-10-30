@@ -71,12 +71,14 @@ export function useClubPresence(
           avatar_url: member.avatar_url,
         });
     };
-    const rpc = supabase.rpc as unknown as (
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
       name: string,
       args: { p_club_id: string },
     ) => PromiseLike<{ data: DirectoryMember[] | null; error: unknown }>;
     void withTimeout(
-      rpc("dh_presence_directory", { p_club_id: club.id }),
+      Promise.resolve().then(() =>
+        rpc("dh_presence_directory", { p_club_id: club.id }),
+      ),
       QUERY_TIMEOUT_MS,
       "club presence directory",
     )
