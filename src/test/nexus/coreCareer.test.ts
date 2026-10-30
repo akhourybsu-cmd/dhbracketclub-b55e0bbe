@@ -28,7 +28,7 @@ describe("defender career", () => {
       expect(defenderRank(rank.waves).index).toBe(i);
       if (i) expect(defenderRank(rank.waves - 1).index).toBe(i - 1);
     }
-    for (let waves = 0; waves < 3000; waves += 7) {
+    for (let waves = 0; waves < 17000; waves += 7) {
       const r = defenderRank(waves);
       expect(r.progress).toBeGreaterThanOrEqual(0);
       expect(r.progress).toBeLessThanOrEqual(1);
@@ -36,6 +36,10 @@ describe("defender career", () => {
     }
     expect(defenderRank(2500)).toMatchObject({
       name: "Nexus Prime",
+      next: { name: "Starforged", waves: 4200 },
+    });
+    expect(defenderRank(15000)).toMatchObject({
+      name: "Infinite",
       next: null,
       progress: 1,
     });
@@ -63,7 +67,31 @@ describe("defender career", () => {
     const earned = careerMedals(p)
       .filter((m) => m.unlocked)
       .map((m) => m.id);
-    expect(earned).toEqual(["armed", "arsenal", "tactician"]);
+    expect(earned).toEqual([
+      "armed",
+      "arsenal",
+      "tactician",
+      "arsenal-master",
+      "support-master",
+    ]);
+  });
+  it("keeps original collection medals when the catalog expands", () => {
+    const earned = careerMedals(
+      profile({
+        unlocks: [
+          "orbit",
+          "arc",
+          "rail",
+          "mortar",
+          "repair",
+          "siphon",
+          "stasis",
+        ],
+      }),
+    );
+    expect(earned.find((m) => m.id === "arsenal")?.unlocked).toBe(true);
+    expect(earned.find((m) => m.id === "tactician")?.unlocked).toBe(true);
+    expect(earned.find((m) => m.id === "arsenal-master")?.unlocked).toBe(false);
   });
   it("counts actual research levels and caps each known track", () => {
     const p = profile({ research: { weapons: 10, reactor: 5 } });
@@ -75,7 +103,7 @@ describe("defender career", () => {
       careerMedals(profile({ research: { weapons: 100 } })).find(
         (m) => m.id === "engineer",
       ),
-    ).toMatchObject({ unlocked: false, current: 10 });
+    ).toMatchObject({ unlocked: true, current: 15 });
   });
   it("celebrates a promotion and newly earned medals only when saved progression advances", () => {
     const before = profile({ totalWaves: 20, bestWave: 10 });

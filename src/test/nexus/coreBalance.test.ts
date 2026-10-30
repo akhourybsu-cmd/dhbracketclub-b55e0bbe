@@ -9,10 +9,18 @@ import {
   startWave,
   stepRun,
 } from "@/lib/nexus/core/engine";
-import { simulateCore, type BuildStrategy } from "@/lib/nexus/core/simulator";
+import {
+  simulateCore as simulateRuleset,
+  type BuildStrategy,
+} from "@/lib/nexus/core/simulator";
 import { endlessCredits } from "@/lib/nexus/core/economy";
 import { milestoneCredits } from "@/lib/nexus/core/progression";
 import type { CoreLoadout } from "@/lib/nexus/core/types";
+// Archive guardrails deliberately remain fixed to the released ruleset.
+function simulateCore(...args: Parameters<typeof simulateRuleset>) {
+  args[6] = 5;
+  return simulateRuleset(...args);
+}
 const seeds = [42, 7961];
 const policies: BuildStrategy[] = [
   "balanced",
@@ -35,7 +43,7 @@ const loadouts: CoreLoadout[] = [
   { weapons: ["arc", "mortar"], module: "siphon" },
   { weapons: ["mortar", "orbit"], module: "stasis" },
 ];
-describe("Endless balance guardrails", () => {
+describe("Archived ruleset-5 Endless balance guardrails", () => {
   it("supports active starter builds and puts the first weapon within two completed runs", () => {
     for (const policy of policies)
       for (const seed of seeds) {
@@ -120,7 +128,7 @@ describe("Endless balance guardrails", () => {
   it("keeps the ramp finite even with every deployed system at its cap, while allowing late milestones", () => {
     const waves = [];
     for (const loadout of loadouts) {
-      let s = createRun(ENDLESS, research(10), "capacity-test", 42, loadout);
+      let s = createRun(ENDLESS, research(10), "capacity-test", 42, loadout, 5);
       s.energy = 1_000_000; // Capacity stress test, beyond a normally earned run budget.
       for (const upgrade of UPGRADES)
         for (let i = 0; i < upgrade.max; i++)

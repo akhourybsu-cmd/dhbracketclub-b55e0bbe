@@ -1,5 +1,5 @@
 // The real combat engine with deterministic player policies, not a DPS approximation.
-import { ENDLESS, UPGRADES } from "./catalog";
+import { ENDLESS } from "./catalog";
 import { STARTER_LOADOUT, upgradeAvailable } from "./progression";
 import {
   activateAbility,
@@ -13,7 +13,12 @@ import {
   upgradeBlocked,
 } from "./engine";
 import { rewardBreakdown } from "./economy";
-import { BALANCE_VERSION, WEAPON_IDS, emptyMetrics } from "./systems";
+import {
+  BALANCE_VERSION,
+  WEAPON_IDS,
+  emptyMetrics,
+  upgradeCap,
+} from "./systems";
 import type { CoreLoadout, CoreScenario, Research, UpgradeId } from "./types";
 
 export type BuildStrategy =
@@ -23,6 +28,11 @@ export const BUILD_PLANS: Record<
   UpgradeId[]
 > = {
   balanced: [
+    "laser",
+    "venom",
+    "flak",
+    "cooldown",
+    "thorns",
     "damage",
     "haste",
     "orbit",
@@ -43,6 +53,11 @@ export const BUILD_PLANS: Record<
     "range",
   ],
   gunner: [
+    "laser",
+    "venom",
+    "flak",
+    "cooldown",
+    "thorns",
     "damage",
     "haste",
     "damage",
@@ -58,6 +73,11 @@ export const BUILD_PLANS: Record<
     "mortar",
   ],
   bulwark: [
+    "laser",
+    "venom",
+    "flak",
+    "cooldown",
+    "thorns",
     "orbit",
     "damage",
     "hull",
@@ -75,6 +95,11 @@ export const BUILD_PLANS: Record<
     "income",
   ],
   control: [
+    "laser",
+    "venom",
+    "flak",
+    "cooldown",
+    "thorns",
     "arc",
     "damage",
     "haste",
@@ -90,6 +115,11 @@ export const BUILD_PLANS: Record<
     "shield",
   ],
   economy: [
+    "laser",
+    "venom",
+    "flak",
+    "cooldown",
+    "thorns",
     "income",
     "damage",
     "haste",
@@ -114,6 +144,7 @@ export function simulateCore(
   maxSeconds = 1800,
   loadout: CoreLoadout = STARTER_LOADOUT,
   balanceVersion = BALANCE_VERSION,
+  difficulty = 1,
 ) {
   let s = startWave(
       createRun(
@@ -123,6 +154,7 @@ export function simulateCore(
         seed,
         loadout,
         balanceVersion,
+        difficulty,
       ),
       scenario,
     ),
@@ -147,12 +179,11 @@ export function simulateCore(
         s = buyUpgrade(s, scenario, "hull");
       let attempts = 0;
       while (attempts++ < plan.length) {
-        const id = plan[cursor % plan.length],
-          def = UPGRADES.find((u) => u.id === id)!;
+        const id = plan[cursor % plan.length];
         if (
           upgradeBlocked(id, scenario) ||
           !upgradeAvailable(s, id) ||
-          (s.upgrades[id] || 0) >= def.max
+          (s.upgrades[id] || 0) >= upgradeCap(id, s.balanceVersion || 3)
         ) {
           cursor++;
           continue;
@@ -202,6 +233,7 @@ export function simulateCore(
     strategy,
     seed,
     balanceVersion: s.balanceVersion,
+    difficulty: s.difficulty || 1,
     finished: isFinished(s),
     victory: s.phase === "victory",
     waves: s.cleared,

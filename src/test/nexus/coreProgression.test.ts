@@ -49,7 +49,7 @@ const advance = (s: CoreRun, seconds: number) => {
 describe("endless arsenal and progression", () => {
   it("starts with only a working pulse cannon and no unlocked support effects", () => {
     const s = createRun(ENDLESS);
-    expect(s.balanceVersion).toBe(5);
+    expect(s.balanceVersion).toBe(6);
     expect(s.loadout).toEqual({ weapons: [], module: null });
     expect(s.upgrades).toEqual({});
     expect(stats(s, ENDLESS)).toMatchObject({

@@ -16,15 +16,21 @@ export type UpgradeId =
   | "frost"
   | "arc"
   | "rail"
-  | "mortar";
-export type AuxiliaryId = "arc" | "rail" | "orbit" | "mortar";
-export type ModuleId = "repair" | "siphon" | "stasis";
+  | "mortar"
+  | "laser"
+  | "venom"
+  | "flak"
+  | "cooldown"
+  | "thorns";
+export type AuxiliaryId =
+  "arc" | "rail" | "orbit" | "mortar" | "laser" | "venom" | "flak";
+export type ModuleId = "repair" | "siphon" | "stasis" | "capacitor" | "thorns";
 export type UnlockId = AuxiliaryId | ModuleId;
 export interface CoreLoadout {
   weapons: AuxiliaryId[];
   module: ModuleId | null;
 }
-export type WeaponId = "pulse" | AuxiliaryId | "nova";
+export type WeaponId = "pulse" | AuxiliaryId | "nova" | "thorns";
 export interface CombatMetrics {
   damage: Record<WeaponId, number>;
   kills: Record<WeaponId, number>;
@@ -47,6 +53,7 @@ export interface CoreScenario {
   description: string;
   waves: number | null;
   difficulty: number;
+  threat?: number;
   reward: number;
   speed: number;
   hp: number;
@@ -67,6 +74,8 @@ export interface CoreEnemy {
   attackCd: number;
   slowed: number;
   lastHit?: WeaponId;
+  venomTime?: number;
+  venomDps?: number;
 }
 
 export interface Projectile {
@@ -80,7 +89,18 @@ export interface Projectile {
 
 export interface CoreEffect {
   id: number;
-  kind: "hit" | "kill" | "nova" | "breach" | "shot" | "arc" | "rail" | "mortar";
+  kind:
+    | "hit"
+    | "kill"
+    | "nova"
+    | "breach"
+    | "shot"
+    | "arc"
+    | "rail"
+    | "mortar"
+    | "laser"
+    | "venom"
+    | "flak";
   x: number;
   y: number;
   life: number;
@@ -94,6 +114,7 @@ export interface CoreRun {
   version: 2;
   rewardClaimed?: boolean;
   balanceVersion?: number;
+  difficulty?: number;
   registered?: boolean;
   legacy?: boolean;
   retired?: boolean;
@@ -129,6 +150,11 @@ export interface CoreRun {
   arcCd?: number;
   railCd?: number;
   mortarCd?: number;
+  laserCd?: number;
+  laserTarget?: number;
+  laserHeat?: number;
+  venomCd?: number;
+  flakCd?: number;
   shells?: {
     id: number;
     x: number;

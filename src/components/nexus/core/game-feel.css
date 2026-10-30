@@ -466,6 +466,7 @@
 }
 .nc-selector-keys {
   display: grid;
+  grid-template-columns: repeat(var(--nc-choices), minmax(44px, 1fr));
   gap: 6px;
   flex-shrink: 0;
 }
@@ -510,11 +511,12 @@
 }
 .nc-bay-level {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-top: 8px;
 }
 .nc-bay-level > i {
-  flex: 1;
+  flex: 1 0 calc(100% / 10 - 4px);
   height: 4px;
   border-radius: 2px;
   background: hsl(190 25% 25%);
@@ -705,6 +707,7 @@
     grid-template-columns: minmax(160px, 1fr) minmax(180px, 1fr);
   }
   .nc-selector-keys {
+    grid-template-columns: repeat(var(--nc-wide-choices), minmax(44px, 1fr));
     gap: 10px;
   }
   .nc-selector-keys button {
@@ -1441,5 +1444,121 @@
     height: 40px;
     min-height: 0;
     padding: 3px 8px;
+  }
+}
+
+/* New arsenals keep a distinct visual signature in the equipment bay. */
+.nc-bay-artwork[data-system="laser"],
+.nc-bay-artwork[data-system="capacitor"] {
+  color: hsl(195 100% 75%);
+}
+.nc-bay-artwork[data-system="venom"],
+.nc-bay-artwork[data-system="thorns"] {
+  color: hsl(105 80% 72%);
+}
+.nc-bay-artwork[data-system="flak"] {
+  color: hsl(32 100% 73%);
+}
+
+/* Small phones reserve the bay for readable equipment and its action. */
+@media (orientation: portrait) and (max-height: 760px) {
+  .nc-deployment-screen .nc-mini-stats,
+  .nc-deployment-screen .nc-bay-artwork {
+    display: none;
+  }
+  .nc-deployment-screen .nc-equipment-bay {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: space-between;
+    gap: 8px;
+    padding: 8px;
+  }
+  .nc-deployment-screen .nc-bay-heading {
+    grid-column: 1;
+    grid-row: 1;
+    padding-right: 36px;
+  }
+  .nc-deployment-screen .nc-bay-heading > small {
+    display: none;
+  }
+  .nc-deployment-screen .nc-bay-heading h2 {
+    font-size: 18px;
+  }
+  .nc-deployment-screen .nc-bay-heading p {
+    margin-top: 4px;
+  }
+  .nc-deployment-screen .nc-bay-info {
+    top: -4px;
+    right: -4px;
+  }
+  .nc-deployment-screen .nc-bay-actions {
+    grid-column: 1;
+    grid-row: 2;
+  }
+}
+
+@media (orientation: portrait) and (max-height: 620px) {
+  .nc-deployment-screen .nc-loadout-summary {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-selector-keys button:active {
+    scale: 1;
+    box-shadow: inset 0 0 12px hsl(173 70% 70% / 0.12);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-equipment-bay {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 360px) {
+  .nc-selection-deck {
+    grid-template-columns: minmax(0, 1fr) 140px;
+  }
+  .nc-selector-keys {
+    grid-template-columns: repeat(3, minmax(44px, 1fr)) !important;
+  }
+  .nc-equipment-bay {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nc-bay-artwork {
+    display: none;
+  }
+  .nc-bay-heading,
+  .nc-bay-actions {
+    grid-column: 1;
+  }
+  .nc-bay-actions:has(.nc-bay-status) .nc-bay-action-row {
+    margin-left: 0;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .nc-deployment-screen > .nc-threat-heading {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: start;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .nc-deployment-screen .nc-threat-heading h1 {
+    font-size: 20px;
+  }
+  .nc-deployment-screen .nc-threat-heading .nc-eyebrow,
+  .nc-deployment-screen .nc-loadout-summary {
+    display: none;
+  }
+  .nc-deployment-screen .nc-threat-control {
+    max-width: 100%;
+    width: 100%;
+  }
+  .nc-deployment-screen .nc-threat-control label {
+    flex: 1;
   }
 }

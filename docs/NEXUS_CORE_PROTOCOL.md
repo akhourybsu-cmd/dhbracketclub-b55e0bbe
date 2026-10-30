@@ -1,4 +1,33 @@
-# Nexus Defense — Endless Arsenal, ruleset 5
+# Nexus Defense — Endless Arsenal, ruleset 6
+
+## Current release: long-game progression
+
+Nexus remains **one endless central-core mode**. The six threat tiers change its opening pressure, enemy mechanics and wave-credit multiplier; they do not create separate campaign modes. Choose the threat in Loadout. The title's Play button uses that device/account/club preference. Replay retains the completed run's threat. Active checkpoints always retain the server ticket's immutable threat and ruleset.
+
+Attack, Weapons, Defense and Utility now use a fixed upgrade grid. Every deployed upgrade in a selected category is visible without horizontal or vertical scrolling, with 44px purchase targets. Portrait reserves three rows; short landscape combines abilities and toolbar controls to leave the grid visible. Systems inspection pauses combat and shows exact mechanics. Equipped weapons alone appear in the Weapons category; a support module enables its own upgrade.
+
+Ruleset 6 adds **Prism laser** (strongest-target sustained heat, reaching 3× damage after three seconds), **Corrosive injector** (four-second armor-bypassing damage, refreshed rather than stacked), and **Flak battery** (fastest-target short-range splash). Seven auxiliary weapons still compete for two hardpoints and four power. Five support modules compete for one slot: repair, siphon, stasis, the new **Pulse capacitor** (15% shorter ability cooldowns plus cycling upgrades), or **Retaliation grid** (returns damage on actual enemy attacks, with bounded max-health scaling). The pulse cannon, Nova and Overdrive remain standard equipment. New weapons have their own damage telemetry and visuals.
+
+All six research tracks now reach **level 30**, for 180 permanent purchases. First-ten-level prices stay unchanged; subsequent levels use `round(base × 1.35^min(level,10) × 1.16^max(0,level−10))`. The server uses the identical formula. Larger battle caps allow continued in-run investment; `upgradeCap(id, balanceVersion)` preserves archived limits. Armor caps at 60%, stasis at 65%; corrosion and retaliation cannot stack without bound. Ruleset-6 enemy health compounds by 1.07 after wave 15, while archived versions keep their original curves.
+
+| Threat | Lifetime waves required | Wave-credit multiplier | Added pressure (cumulative) |
+| --- | ---: | ---: | --- |
+| 1 · Frontier | 0 | 1× | Baseline endless ramp |
+| 2 · Incursion | 150 | 1.25× | Twin bosses every tenth wave |
+| 3 · Onslaught | 600 | 1.6× | Faster runners |
+| 4 · Cataclysm | 1,800 | 2.1× | Regenerating armored enemies |
+| 5 · Oblivion | 4,200 | 2.8× | Faster boss attacks |
+| 6 · Singularity | 9,000 | 3.6× | Additional splitter spawn |
+
+Enemy health, attack damage and speed also rise with threat; exact values live in `difficulty.ts`. Wave credits are `floor(endlessCredits(cleared) × threat.reward)`. One-time personal wave milestones retain their existing values/history and receive no multiplier. Zero-wave runs still pay zero. Career extends to 15,000 lifetime waves and twelve medals; existing medal thresholds stay unchanged. Viewing career grants no currency.
+
+`20261030000000_nexus_long_game.sql` adds bounded difficulty fields to sessions/results, extends atomic research/equipment RPCs, validates all current battle caps and costs, and separates current club records by threat. `nexus_core_begin_endless(..., p_balance_version, p_difficulty)` defaults to legacy ruleset 4 / tier 1 for cached clients. The finish RPC validates tier/version against the stored ticket and computes credits itself. Rulesets 4 and 5 remain settleable; their snapshots exclude new equipment/research beyond their original caps. RLS and private-account restrictions remain in force.
+
+**Checkpoints:** existing version-2 storage keys remain; new checkpoints carry `balanceVersion: 6` and `difficulty: 1..6`, plus weapon cooldown/heat/corrosion state. Unknown versions and invalid tier/loadout/upgrade/research values are rejected. Restores pause. The threat preference uses `nexus_threat_v1:<user>:<club>` and cannot grant access to a locked tier.
+
+See [long-game pacing and validation](NEXUS_LONG_GAME.md) for the measured career model, assumptions and reproduction commands. The balance report for ruleset 5 remains an archived comparison. The following sections describe that release's original protocol; the current release changes above take precedence.
+
+## Archived ruleset-5 reference
 
 Nexus is one endless, mobile-first central-core survival game. Enemies approach directly from every angle at different speeds. The player prepares a permanent equipment loadout, upgrades the core during combat, banks credits and returns with a stronger arsenal. There are no lanes, placed towers, campaign selections or challenge modes in the current player flow.
 

@@ -55,12 +55,39 @@ export function CoreWeaponPanel({
       info: `${v.mortarDamage.toFixed(0)} splash · ${v.mortarRadius} radius · ${v.mortarInterval.toFixed(1)}s cycle`,
       cooldown: run.mortarCd || 0,
     },
+    ...((run.balanceVersion || 0) >= 6
+      ? [
+          {
+            id: "laser" as const,
+            icon: "Crosshair",
+            active: !!v.laserDamage,
+            info: `${v.laserDamage.toFixed(1)} damage/s · ramps to 3× on one target`,
+            cooldown: 0,
+          },
+          {
+            id: "venom" as const,
+            icon: "Droplets",
+            active: !!v.venomDps,
+            info: `${v.venomDps.toFixed(1)} armor-bypassing damage/s · ${v.venomTargets} target${v.venomTargets > 1 ? "s" : ""} · ${v.venomInterval.toFixed(1)}s cycle`,
+            cooldown: run.venomCd || 0,
+          },
+          {
+            id: "flak" as const,
+            icon: "Radar",
+            active: !!v.flakDamage,
+            info: `${v.flakDamage.toFixed(1)} splash · ${v.flakRange} reach · ${v.flakInterval.toFixed(1)}s cycle`,
+            cooldown: run.flakCd || 0,
+          },
+        ]
+      : []),
   ];
   return (
     <details className="nc-systems nc-panel" open={expanded}>
       <summary>
         Weapon systems
-        <span>{systems.filter((s) => s.active).length} / 5 online</span>
+        <span>
+          {systems.filter((s) => s.active).length} / {systems.length} online
+        </span>
       </summary>
       <div className="nc-systems-grid">
         {systems.map((s) => (

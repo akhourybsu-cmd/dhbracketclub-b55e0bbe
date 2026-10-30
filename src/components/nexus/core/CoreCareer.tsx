@@ -154,7 +154,7 @@ export function CoreCareerDialog({
                 <span>
                   {rank.next
                     ? `${rank.remaining} waves to ${rank.next.name}`
-                    : "NEXUS PRIME · MAX RANK"}
+                    : `${rank.name.toUpperCase()} · MAX RANK`}
                 </span>
               </div>
               <div className="nc-career-objective">

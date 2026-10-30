@@ -1,4 +1,5 @@
 import type { CoreProfile, CoreRun, CoreScenario } from "./types";
+import { getDifficulty } from "./difficulty";
 import { milestoneCredits } from "./progression";
 
 export function endlessCredits(waves: number) {
@@ -18,13 +19,18 @@ export function waveCredits(scenario: CoreScenario, waves: number) {
   );
 }
 export function rewardBreakdown(
-  run: Pick<CoreRun, "phase" | "cleared" | "balanceVersion">,
+  run: Pick<CoreRun, "phase" | "cleared" | "balanceVersion" | "difficulty">,
   scenario: CoreScenario,
   profile?: Pick<CoreProfile, "campaign" | "challenges"> &
     Partial<Pick<CoreProfile, "bestWave">>,
 ) {
   if ((run.balanceVersion || 0) >= 4 && scenario.mode === "endless") {
-    const waves = endlessCredits(run.cleared);
+    const waves = Math.floor(
+      endlessCredits(run.cleared) *
+        ((run.balanceVersion || 0) >= 6
+          ? getDifficulty(run.difficulty).reward
+          : 1),
+    );
     const bonus = milestoneCredits(run.cleared, profile?.bestWave || 0);
     return { waves, bonus, total: waves + bonus, firstClear: !!bonus };
   }

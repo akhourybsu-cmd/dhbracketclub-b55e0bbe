@@ -6,7 +6,11 @@ import {
   type BuildStrategy,
 } from "../src/lib/nexus/core/simulator";
 import type { CoreLoadout } from "../src/lib/nexus/core/types";
-import { AUXILIARIES, loadoutError } from "../src/lib/nexus/core/progression";
+import {
+  AUXILIARIES,
+  MODULES,
+  loadoutError,
+} from "../src/lib/nexus/core/progression";
 import { BALANCE_VERSION } from "../src/lib/nexus/core/systems";
 const quick = process.argv.includes("--quick");
 const all = process.argv.includes("--all");
@@ -34,16 +38,21 @@ const loadouts: Record<string, CoreLoadout> = {
 };
 if (all) {
   for (const key of Object.keys(loadouts)) delete loadouts[key];
-  const weapons = AUXILIARIES.map(
-    (a) => a.id as CoreLoadout["weapons"][number],
-  );
+  const weapons = AUXILIARIES.filter(
+    (a) => version >= 6 || !["laser", "venom", "flak"].includes(a.id),
+  ).map((a) => a.id as CoreLoadout["weapons"][number]);
   const sets = [
     [],
     ...weapons.map((id) => [id]),
     ...weapons.flatMap((a, i) => weapons.slice(i + 1).map((b) => [a, b])),
   ];
   for (const set of sets)
-    for (const module of [null, "repair", "siphon", "stasis"] as const) {
+    for (const module of [
+      null,
+      ...MODULES.filter(
+        (m) => version >= 6 || !["capacitor", "thorns"].includes(m.id),
+      ).map((m) => m.id as CoreLoadout["module"]),
+    ]) {
       const loadout: CoreLoadout = { weapons: set, module };
       if (!loadoutError(loadout))
         loadouts[`${set.join("+") || "pulse"}/${module || "none"}`] = loadout;

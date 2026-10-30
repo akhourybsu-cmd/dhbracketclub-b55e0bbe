@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { UPGRADES, getScenario } from "@/lib/nexus/core/catalog";
-import { upgradePreview } from "@/lib/nexus/core/systems";
+import { upgradePreview, upgradeCap } from "@/lib/nexus/core/systems";
 import { ARMORY, upgradeAvailable } from "@/lib/nexus/core/progression";
 import { CoreWeaponPanel } from "@/components/nexus/core/CoreWeaponPanel";
 import { toast } from "sonner";
@@ -141,13 +141,6 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
   }, []);
   const pauseButton = useRef<HTMLButtonElement>(null);
   const systemsButton = useRef<HTMLButtonElement>(null);
-  const upgradeList = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (upgradeList.current) {
-      upgradeList.current.scrollLeft = 0;
-      upgradeList.current.scrollTop = 0;
-    }
-  }, [category]);
   useEffect(() => {
     if (!entering) return;
     const timer = window.setTimeout(() => setEntering(false), 1100);
@@ -340,7 +333,12 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
       <header className="nc-battle-top">
         <div>
           <h1>{scenario.title}</h1>
-          <p>{scenario.subtitle}</p>
+          <p>
+            {scenario.subtitle}
+            {run.balanceVersion && run.balanceVersion >= 6
+              ? ` · THREAT ${run.difficulty || 1}`
+              : ""}
+          </p>
         </div>
         <div className="nc-session-state">
           <i className="nc-live-dot" />
@@ -418,7 +416,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               aria-label={`Nova burst${run.novaCd > 0 ? ` ready in ${Math.ceil(run.novaCd)} seconds` : " ready"}`}
               style={
                 {
-                  "--nc-charge": `${(1 - run.novaCd / 20) * 100}%`,
+                  "--nc-charge": `${Math.max(0, 1 - run.novaCd / v.novaCooldown) * 100}%`,
                 } as React.CSSProperties
               }
             >
@@ -439,7 +437,7 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               aria-label={`Overdrive${run.overdriveCd > 0 ? ` ready in ${Math.ceil(run.overdriveCd)} seconds` : " ready"}`}
               style={
                 {
-                  "--nc-charge": `${(1 - run.overdriveCd / 30) * 100}%`,
+                  "--nc-charge": `${Math.max(0, 1 - run.overdriveCd / v.overdriveCooldown) * 100}%`,
                 } as React.CSSProperties
               }
             >
@@ -490,15 +488,8 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
               <SlidersHorizontal size={18} />
             </button>
           </div>
-          <div className="nc-upgrade-heading">
-            <span>UPGRADE YOUR CORE</span>
-            <span className="nc-swipe-hint">
-              Swipe for more <ChevronRight size={12} />
-            </span>
-          </div>
           <div
             className="nc-upgrade-list"
-            ref={upgradeList}
             id="core-upgrades"
             role="tabpanel"
             aria-labelledby={`tab-${category}`}
@@ -508,7 +499,8 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
             ).map((u) => {
               const level = run.upgrades[u.id] || 0,
                 price = upgradeCost(u.id, level),
-                max = level >= u.max,
+                cap = upgradeCap(u.id, run.balanceVersion || 3),
+                max = level >= cap,
                 blocked = upgradeBlocked(u.id, scenario);
               return (
                 <button
@@ -516,20 +508,26 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                   className="nc-upgrade"
                   disabled={max || blocked || run.energy < price}
                   onClick={() => buy(u.id)}
-                  aria-label={`${u.name}, level ${level}, ${blocked ? "disabled in this challenge" : max ? "maximum level" : `${price} energy`}`}
+                  title={
+                    blocked
+                      ? "Offline for this challenge"
+                      : max
+                        ? u.description
+                        : upgradePreview(run, scenario, u.id)
+                  }
+                  aria-label={`${u.name}, level ${level}, ${blocked ? "disabled in this challenge" : max ? "maximum level" : `${price} energy. ${upgradePreview(run, scenario, u.id)}`}`}
                 >
                   <CoreIcon name={u.icon} />
                   <span className="nc-upgrade-copy">
-                    <strong>
-                      {u.name}
-                      <em>{level > 0 ? `L${level}` : ""}</em>
-                    </strong>
+                    <strong>{compactUpgradeName(u.id, u.name)}</strong>
                     <small>
                       {blocked
-                        ? "Offline for this challenge"
+                        ? "Offline"
                         : max
-                          ? u.description
-                          : upgradePreview(run, scenario, u.id)}
+                          ? "Fully upgraded"
+                          : compactUpgradePreview(
+                              upgradePreview(run, scenario, u.id),
+                            )}
                     </small>
                   </span>
                   <span className="nc-upgrade-price">
@@ -543,6 +541,10 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
                         {price}
                       </>
                     )}
+                    <em>
+                      L{level}
+                      {max ? "" : `/${cap}`}
+                    </em>
                   </span>
                 </button>
               );
@@ -783,6 +785,46 @@ function Combat({ scenario }: { scenario: CoreScenario }) {
     </main>,
     document.body,
   );
+}
+
+function compactUpgradeName(id: UpgradeId, fallback: string) {
+  const names: Partial<Record<UpgradeId, string>> = {
+    range: "Range",
+    critical: "Critical strike",
+    hull: "Hull plating",
+    regen: "Nanite repair",
+    armor: "Reactive armor",
+    income: "Energy siphon",
+    frost: "Stasis field",
+  };
+  return names[id] || fallback;
+}
+
+// Keep the numeric effect on the button; the full mechanical explanation remains
+// in its accessible name, tooltip and the paused Systems panel.
+function compactUpgradePreview(preview: string) {
+  return preview
+    .replace(" pulse damage · all weapons scale", " dmg")
+    .replace(" pulse shots/s", " shots/s")
+    .replace(" detection radius", " range")
+    .replace(" pulse targets", " targets")
+    .replace("% · 2.5× pulse hits", "% crit")
+    .replace(/ max hull ·.*$/, " hull")
+    .replace(/ max barrier ·.*$/, " shield")
+    .replace(" hull repaired/s", " hp/s")
+    .replace("% damage reduction", "% resist")
+    .replace("× energy earned", "× energy")
+    .replace(/% slow within \d+/, "% slow")
+    .replace(/ blades ·.*$/, " blades")
+    .replace(" piercing damage", " pierce")
+    .replace(" splash damage", " blast")
+    .replace(" damage", " dmg")
+    .replace(" blast radius", " radius")
+    .replace(" recharge", "")
+    .replace(" cycle", "")
+    .split(" · ")
+    .slice(0, 2)
+    .join(" · ");
 }
 
 function Meter({

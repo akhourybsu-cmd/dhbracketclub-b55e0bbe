@@ -95,6 +95,7 @@ export function useNexusCore() {
     scenario: CoreScenario,
     id: string,
     loadout: CoreLoadout = query.data?.loadout || STARTER_LOADOUT,
+    difficulty = 1,
   ) {
     if (!club) throw new Error("Choose a club before deploying");
     if (scenario.mode !== "endless") throw new Error("Deploy in Endless mode");
@@ -104,11 +105,13 @@ export function useNexusCore() {
       research: Research;
       loadout: CoreLoadout;
       balance_version: number;
+      difficulty: number;
     }>("nexus_core_begin_endless", {
       p_id: id,
       p_club_id: club.id,
       p_loadout: loadout,
       p_balance_version: BALANCE_VERSION,
+      p_difficulty: difficulty,
     });
     return {
       ...createRun(
@@ -118,6 +121,7 @@ export function useNexusCore() {
         ticket.seed,
         ticket.loadout,
         ticket.balance_version,
+        ticket.difficulty ?? 1,
       ),
       registered: true,
     };
@@ -140,6 +144,7 @@ export function useNexusCore() {
       p_run: {
         id: run.id,
         balanceVersion: run.balanceVersion,
+        difficulty: run.difficulty ?? 1,
         scenarioId: scenario.id,
         phase: run.phase,
         cleared: run.cleared,

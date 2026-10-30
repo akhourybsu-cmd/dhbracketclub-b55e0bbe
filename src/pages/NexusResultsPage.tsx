@@ -135,7 +135,12 @@ function Debrief() {
     setPlaying(true);
     setPlayError("");
     try {
-      const next = await begin(ENDLESS, replayId.current, profile!.loadout);
+      const next = await begin(
+        ENDLESS,
+        replayId.current,
+        profile!.loadout,
+        run.difficulty || 1,
+      );
       saveCoreRun(next, userId, clubId);
       navigate("/nexus/battle/endless", {
         state: { freshRun: next, autoStart: true },
@@ -163,7 +168,7 @@ function Debrief() {
             <CoreCounter value={run.cleared} digits={2} fromZero />
           </div>
           <p className="nc-wave-caption">
-            WAVES CLEARED
+            WAVES CLEARED · THREAT {run.difficulty || 1}
             {run.cleared > previousBest.current ? " · NEW BEST" : ""}
           </p>
         </div>

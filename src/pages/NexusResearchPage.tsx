@@ -65,7 +65,8 @@ function Lab() {
       } else {
         const level = profile.research[id as ResearchId] || 0;
         await research(id as ResearchId);
-        trigger(level >= 9 ? "RESEARCH MASTERED" : "CORE UPGRADED");
+        const max = RESEARCH.find((r) => r.id === id)?.max || 30;
+        trigger(level + 1 >= max ? "RESEARCH MASTERED" : "CORE UPGRADED");
       }
     } catch (e) {
       toast.error(
@@ -221,6 +222,10 @@ function Lab() {
           <div className="nc-bay-actions">
             <div
               className="nc-bay-level"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={track.max}
+              aria-valuenow={level}
               aria-label={`${track.name} level ${level} of ${track.max}`}
             >
               {Array.from({ length: track.max }, (_, i) => (

@@ -24,6 +24,7 @@ export async function installNexusFixture(page) {
     import { ARMORY, STARTER_LOADOUT, loadoutError, milestoneCredits } from '/src/lib/nexus/core/progression.ts';
     import { researchCost } from '/src/lib/nexus/core/systems.ts';
     import { endlessCredits } from '/src/lib/nexus/core/economy.ts';
+    import { getDifficulty } from '/src/lib/nexus/core/difficulty.ts';
     const initial={credits:0,research:{},campaign:{},challenges:{},best_wave:0,endless_best:0,total_runs:0,total_waves:0,unlocks:[],loadout:STARTER_LOADOUT};
     window.nexusQa={tickets:JSON.parse(sessionStorage.getItem('nexus-qa-tickets')||'{}'),logs:JSON.parse(sessionStorage.getItem('nexus-qa-logs')||'[]'),profile:JSON.parse(sessionStorage.getItem('nexus-qa-profile')||'null')||initial,claims:0,failClaims:sessionStorage.getItem('nexus-qa-fail')==='1',claimed:JSON.parse(sessionStorage.getItem('nexus-qa-claimed')||'{}')};
     const persist=()=>{for(const [key,value] of Object.entries({profile:window.nexusQa.profile,tickets:window.nexusQa.tickets,logs:window.nexusQa.logs,claimed:window.nexusQa.claimed}))sessionStorage.setItem('nexus-qa-'+key,JSON.stringify(value));};
@@ -39,7 +40,8 @@ export async function installNexusFixture(page) {
       }
       if(name==='nexus_core_begin_endless'){
         const error=loadoutError(args.p_loadout,qa.profile.unlocks);if(error)return fail(error);
-        data=qa.tickets[args.p_id]||{id:args.p_id,seed:42,research:structuredClone(qa.profile.research),loadout:structuredClone(args.p_loadout),balance_version:args.p_balance_version??4};
+        const difficulty=getDifficulty(args.p_difficulty??1);if(qa.profile.total_waves<difficulty.waves)return fail('Threat level locked');
+        data=qa.tickets[args.p_id]||{id:args.p_id,seed:42,research:structuredClone(qa.profile.research),loadout:structuredClone(args.p_loadout),balance_version:args.p_balance_version??4,difficulty:difficulty.id};
         qa.tickets[args.p_id]=data;qa.profile={...qa.profile,loadout:data.loadout};
       }
       if(name==='nexus_core_unlock'){
@@ -60,7 +62,7 @@ export async function installNexusFixture(page) {
         qa.claims++;if(qa.failClaims)return fail('Offline');
         const run=args.p_run;
         if(!qa.claimed[run.id]){
-          const waves=endlessCredits(run.cleared),bonus=milestoneCredits(run.cleared,qa.profile.endless_best),reward=waves+bonus,stars=0;
+          const waves=Math.floor(endlessCredits(run.cleared)*((run.balanceVersion??4)>=6?getDifficulty(run.difficulty??1).reward:1)),bonus=milestoneCredits(run.cleared,qa.profile.endless_best),reward=waves+bonus,stars=0;
           qa.profile={...qa.profile,credits:qa.profile.credits+reward,total_runs:qa.profile.total_runs+1,total_waves:qa.profile.total_waves+run.cleared,endless_best:Math.max(qa.profile.endless_best,run.cleared)};
           qa.claimed[run.id]={reward,stars,waves,bonus};if(reward)log('run',reward,{scenario:'endless',milestones:bonus});
         }

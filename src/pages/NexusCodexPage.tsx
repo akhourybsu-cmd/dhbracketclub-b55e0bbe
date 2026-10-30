@@ -3,6 +3,7 @@ import { ENEMIES } from "@/lib/nexus/core/catalog";
 import { ARMORY, MILESTONES } from "@/lib/nexus/core/progression";
 import { CoreHeading } from "@/components/nexus/core/CoreUI";
 import { CoreEquipmentArt } from "@/components/nexus/core/CoreArtwork";
+import { DIFFICULTIES } from "@/lib/nexus/core/difficulty";
 export default function NexusCodexPage() {
   return (
     <>
@@ -40,6 +41,10 @@ export default function NexusCodexPage() {
           </p>
           <p>
             <strong>Overdrive:</strong> 2× weapon output for 6s. 30s cooldown.
+          </p>
+          <p>
+            Capacitor support shortens both ability cooldowns. Its battle
+            upgrades let you trigger Nova and Overdrive more often.
           </p>
           <p>
             Shields recharge after 3 seconds without a hit. Hull and barrier
@@ -119,6 +124,28 @@ export default function NexusCodexPage() {
           <p>
             Milestones pay once, on top of wave credits. Lifetime waves unlock
             equipment access.
+          </p>
+          <p>
+            Six threat tiers share the same endless mode. Choose a tier in
+            Loadout; higher tiers add enemy mechanics and multiply wave credits.
+            Your saved run keeps its deployed threat. Club records are separate
+            for each tier.
+          </p>
+          {DIFFICULTIES.map((d) => (
+            <div className="nc-guide-entry" key={d.id}>
+              <div>
+                <strong>
+                  {d.id} · {d.name} · ×{d.reward} credits
+                </strong>
+                <p>{d.description}</p>
+                <small>{d.waves.toLocaleString()} lifetime waves</small>
+              </div>
+            </div>
+          ))}
+          <p>
+            Each of the six permanent research tracks has 30 levels. Research
+            applies to your next deployment. Equip different weapon pairs and
+            support modules to find builds for each threat.
           </p>
           {MILESTONES.map((m) => (
             <div className="nc-milestone-row" key={m.wave}>

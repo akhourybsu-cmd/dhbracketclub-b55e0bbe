@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { withTimeout, QUERY_TIMEOUT_MS } from "@/lib/asyncGuards";
 import { CoreHeading, CoreLink } from "@/components/nexus/core/CoreUI";
 import { BALANCE_VERSION } from "@/lib/nexus/core/systems";
+import { DIFFICULTIES } from "@/lib/nexus/core/difficulty";
+import "@/components/nexus/core/threat.css";
 
 interface RecordRow {
   user_id: string;
@@ -17,18 +19,29 @@ interface RecordRow {
 export default function NexusLeaderboardPage() {
   const { club } = useClub();
   const mode = "endless";
+  const [difficulty, setDifficulty] = useState(1);
   const list = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0),
     [pageSize, setPageSize] = useState(4);
   const query = useQuery({
-    queryKey: ["nexus-core-records", club?.id, mode, BALANCE_VERSION],
+    queryKey: [
+      "nexus-core-records",
+      club?.id,
+      mode,
+      BALANCE_VERSION,
+      difficulty,
+    ],
     enabled: !!club,
     retry: 1,
     queryFn: async () => {
       const { data, error } = await withTimeout(
         supabase.rpc(
           "nexus_core_records" as never,
-          { p_club_id: club!.id, p_mode: mode } as never,
+          {
+            p_club_id: club!.id,
+            p_mode: mode,
+            p_difficulty: difficulty,
+          } as never,
         ),
         QUERY_TIMEOUT_MS,
         "core records",
@@ -58,6 +71,25 @@ export default function NexusLeaderboardPage() {
       >
         Best wave · Score breaks ties
       </CoreHeading>
+      <div className="nc-threat-control">
+        <label>
+          <span>RECORD THREAT</span>
+          <select
+            aria-label="Record threat level"
+            value={difficulty}
+            onChange={(e) => {
+              setDifficulty(Number(e.target.value));
+              setPage(0);
+            }}
+          >
+            {DIFFICULTIES.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.id} · {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       {query.isError ? (
         <div className="nc-empty">
           <h2>Records unavailable</h2>

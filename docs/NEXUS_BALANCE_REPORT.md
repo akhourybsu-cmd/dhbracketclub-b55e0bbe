@@ -1,5 +1,7 @@
 # Nexus Defense — Endless balance audit, ruleset 5
 
+Archived benchmark. Current ruleset-6 progression, weapon additions and measured career pacing are documented in [NEXUS_LONG_GAME.md](NEXUS_LONG_GAME.md).
+
 The final sweep ran the actual deterministic combat engine **3,456 times**: all 36 legal weapon/support combinations × six purchase/ability policies × four seeds × four research tiers (0, 3, 6 and 10 in every track). Policies act every 0.75 simulated seconds. Outcomes include real projectiles, delayed mortar impacts, chains, collisions, armor, abilities, purchases and energy accounting. These are repeatable automated policies, not optimal human play or a forecast of live performance.
 
 ## Pace of play

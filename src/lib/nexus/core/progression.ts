@@ -75,6 +75,45 @@ export const ARMORY: {
     power: 2,
   },
   {
+    id: "flak",
+    name: "Flak battery",
+    kind: "weapon",
+    role: "Fast interception",
+    description:
+      "Proximity bursts prioritize the fastest enemy inside range and damage its neighbors.",
+    tradeoff: "Short range and modest damage against isolated armor.",
+    icon: "Radar",
+    cost: 850,
+    waves: 140,
+    power: 1,
+  },
+  {
+    id: "laser",
+    name: "Prism laser",
+    kind: "weapon",
+    role: "Sustained boss damage",
+    description:
+      "A continuous beam locks the strongest target. Damage ramps to three times its initial output over three seconds.",
+    tradeoff: "Heat resets when the target dies or leaves range.",
+    icon: "Crosshair",
+    cost: 1400,
+    waves: 250,
+    power: 2,
+  },
+  {
+    id: "venom",
+    name: "Corrosive injector",
+    kind: "weapon",
+    role: "Armor attrition",
+    description:
+      "Coats a fresh target with four seconds of corrosion that bypasses armor. Upgrades spread it to more enemies.",
+    tradeoff: "Damage takes time. Reapplying refreshes rather than stacking.",
+    icon: "Sparkles",
+    cost: 2800,
+    waves: 650,
+    power: 2,
+  },
+  {
     id: "repair",
     name: "Repair nanites",
     kind: "module",
@@ -111,6 +150,33 @@ export const ARMORY: {
     icon: "Snowflake",
     cost: 250,
     waves: 40,
+    power: 0,
+  },
+  {
+    id: "capacitor",
+    name: "Pulse capacitor",
+    kind: "module",
+    role: "Active abilities",
+    description:
+      "Nova and Overdrive recharge 15% faster. Unlocks ability-cycling upgrades.",
+    tradeoff:
+      "Requires active ability use; replaces economy and repair support.",
+    icon: "Zap",
+    cost: 1800,
+    waves: 400,
+    power: 0,
+  },
+  {
+    id: "thorns",
+    name: "Retaliation grid",
+    kind: "module",
+    role: "Contact defense",
+    description:
+      "Return 30 armor-piercing damage plus 1% of the attacker's max hull, with the hull bonus capped at four times the base return. Unlocks stronger retaliation.",
+    tradeoff: "Only fires after a hit. Does not prevent incoming damage.",
+    icon: "Hexagon",
+    cost: 3500,
+    waves: 1000,
     power: 0,
   },
 ];
@@ -159,8 +225,18 @@ const moduleUpgrades: Partial<Record<UpgradeId, ModuleId>> = {
   regen: "repair",
   income: "siphon",
   frost: "stasis",
+  cooldown: "capacitor",
+  thorns: "thorns",
 };
-export function upgradeAvailable(run: Pick<CoreRun, "loadout">, id: UpgradeId) {
+export function upgradeAvailable(
+  run: Pick<CoreRun, "loadout" | "balanceVersion">,
+  id: UpgradeId,
+) {
+  if (
+    (run.balanceVersion || 0) < 6 &&
+    ["laser", "venom", "flak", "cooldown", "thorns"].includes(id)
+  )
+    return false;
   if (!run.loadout) return id !== "mortar"; // Archived runs keep their original arsenal.
   if (AUXILIARIES.some((a) => a.id === id))
     return run.loadout.weapons.includes(id as AuxiliaryId);

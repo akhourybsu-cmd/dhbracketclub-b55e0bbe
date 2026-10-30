@@ -277,7 +277,7 @@ export const UPGRADES: {
     category: "attack",
     description: "+22% base damage for all weapons",
     cost: 28,
-    max: 10,
+    max: 30,
     icon: "Crosshair",
   },
   {
@@ -286,7 +286,7 @@ export const UPGRADES: {
     category: "attack",
     description: "+16% base pulse fire rate",
     cost: 34,
-    max: 8,
+    max: 16,
     icon: "Zap",
   },
   {
@@ -295,7 +295,7 @@ export const UPGRADES: {
     category: "attack",
     description: "+20 detection radius",
     cost: 40,
-    max: 6,
+    max: 8,
     icon: "Radar",
   },
   {
@@ -305,7 +305,7 @@ export const UPGRADES: {
     description: "+1 simultaneous target",
     cost: 110,
     growth: 1.85,
-    max: 3,
+    max: 4,
     icon: "Split",
   },
   {
@@ -314,7 +314,7 @@ export const UPGRADES: {
     category: "attack",
     description: "+6% chance of 2.5× pulse damage",
     cost: 30,
-    max: 5,
+    max: 10,
     icon: "Sparkles",
   },
   {
@@ -323,7 +323,7 @@ export const UPGRADES: {
     category: "defense",
     description: "Increase max hull and restore the added plating",
     cost: 36,
-    max: 8,
+    max: 30,
     icon: "Heart",
   },
   {
@@ -332,7 +332,7 @@ export const UPGRADES: {
     category: "defense",
     description: "+30 shield · restores 30",
     cost: 40,
-    max: 8,
+    max: 30,
     icon: "Shield",
   },
   {
@@ -341,7 +341,7 @@ export const UPGRADES: {
     category: "defense",
     description: "+1.1 hull repaired per second",
     cost: 60,
-    max: 5,
+    max: 15,
     icon: "HeartPulse",
   },
   {
@@ -350,7 +350,7 @@ export const UPGRADES: {
     category: "defense",
     description: "+6% damage reduction per level",
     cost: 50,
-    max: 6,
+    max: 10,
     icon: "Hexagon",
   },
   {
@@ -360,7 +360,7 @@ export const UPGRADES: {
     description: "+10% energy from kills & waves",
     cost: 50,
     growth: 1.75,
-    max: 6,
+    max: 12,
     icon: "BatteryCharging",
   },
   {
@@ -370,7 +370,7 @@ export const UPGRADES: {
     description: "Add an orbiting close-range weapon",
     cost: 75,
     growth: 1.65,
-    max: 4,
+    max: 8,
     icon: "Orbit",
   },
   {
@@ -379,7 +379,7 @@ export const UPGRADES: {
     category: "utility",
     description: "Stronger inner-ring movement slow",
     cost: 65,
-    max: 4,
+    max: 8,
     icon: "Snowflake",
   },
   {
@@ -389,7 +389,7 @@ export const UPGRADES: {
     description: "Lightning jumps between nearby enemies",
     cost: 100,
     growth: 1.6,
-    max: 5,
+    max: 10,
     icon: "Zap",
   },
   {
@@ -399,7 +399,7 @@ export const UPGRADES: {
     description: "Piercing beam bypasses armor",
     cost: 135,
     growth: 1.6,
-    max: 5,
+    max: 10,
     icon: "Crosshair",
   },
   {
@@ -409,8 +409,56 @@ export const UPGRADES: {
     description: "More splash damage and a wider blast zone",
     cost: 115,
     growth: 1.6,
-    max: 5,
+    max: 10,
     icon: "Radar",
+  },
+  {
+    id: "laser",
+    name: "Prism laser",
+    category: "weapons",
+    description: "Sustained beam builds heat against one target",
+    cost: 140,
+    growth: 1.6,
+    max: 10,
+    icon: "Crosshair",
+  },
+  {
+    id: "venom",
+    name: "Corrosive injector",
+    category: "weapons",
+    description: "Spread armor-piercing corrosion over time",
+    cost: 120,
+    growth: 1.6,
+    max: 10,
+    icon: "Sparkles",
+  },
+  {
+    id: "flak",
+    name: "Flak battery",
+    category: "weapons",
+    description: "Rapid proximity bursts intercept the fastest threat",
+    cost: 95,
+    growth: 1.6,
+    max: 10,
+    icon: "Radar",
+  },
+  {
+    id: "cooldown",
+    name: "Ability cycling",
+    category: "utility",
+    description: "Shorter Nova and Overdrive cooldowns",
+    cost: 90,
+    max: 8,
+    icon: "Zap",
+  },
+  {
+    id: "thorns",
+    name: "Retaliation grid",
+    category: "defense",
+    description: "Return damage whenever enemies strike the core",
+    cost: 85,
+    max: 8,
+    icon: "Hexagon",
   },
 ];
 
@@ -427,7 +475,7 @@ export const RESEARCH: {
     name: "Weapon amplifier",
     description: "+8% pulse and auxiliary weapon damage",
     cost: 35,
-    max: 10,
+    max: 30,
     icon: "Crosshair",
   },
   {
@@ -435,7 +483,7 @@ export const RESEARCH: {
     name: "Reactor tuning",
     description: "+5% starting fire rate per level",
     cost: 40,
-    max: 10,
+    max: 30,
     icon: "Zap",
   },
   {
@@ -443,7 +491,7 @@ export const RESEARCH: {
     name: "Core structure",
     description: "+20 starting hull per level",
     cost: 30,
-    max: 10,
+    max: 30,
     icon: "Heart",
   },
   {
@@ -451,7 +499,7 @@ export const RESEARCH: {
     name: "Shield matrix",
     description: "+15 starting shield per level",
     cost: 30,
-    max: 10,
+    max: 30,
     icon: "Shield",
   },
   {
@@ -459,7 +507,7 @@ export const RESEARCH: {
     name: "Energy reserves",
     description: "+12 starting energy per level",
     cost: 35,
-    max: 10,
+    max: 30,
     icon: "BatteryCharging",
   },
   {
@@ -467,7 +515,7 @@ export const RESEARCH: {
     name: "Nova capacitor",
     description: "+15% nova damage per level",
     cost: 40,
-    max: 10,
+    max: 30,
     icon: "Orbit",
   },
 ];

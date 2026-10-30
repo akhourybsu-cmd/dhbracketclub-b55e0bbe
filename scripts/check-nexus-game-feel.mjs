@@ -15,7 +15,8 @@ const browser = await chromium.launch({
 const errors = [];
 const go = (page, route = "/nexus") =>
   page.goto(
-    "http://127.0.0.1:8080/scripts/fixtures/nexus-core.html?route=" +
+    (process.env.NEXUS_QA_URL || "http://127.0.0.1:8080") +
+      "/scripts/fixtures/nexus-core.html?route=" +
       encodeURIComponent(route),
     { waitUntil: "networkidle" },
   );
@@ -86,6 +87,9 @@ try {
       "Chain arc",
       "Rail lance",
       "Siege mortar",
+      "Flak battery",
+      "Prism laser",
+      "Corrosive injector",
     ]) {
       const key = page.getByRole("tab", {
         name: "Inspect " + name,
@@ -108,7 +112,13 @@ try {
       .getByRole("tab", { name: "Inspect Orbital blades", exact: true })
       .tap();
     await page.getByRole("tab", { name: /^Support/ }).tap();
-    for (const name of ["Repair nanites", "Energy siphon", "Stasis field"]) {
+    for (const name of [
+      "Repair nanites",
+      "Energy siphon",
+      "Stasis field",
+      "Pulse capacitor",
+      "Retaliation grid",
+    ]) {
       await page
         .getByRole("tab", { name: "Inspect " + name, exact: true })
         .tap();

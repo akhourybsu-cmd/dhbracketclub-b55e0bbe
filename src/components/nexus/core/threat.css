@@ -1,0 +1,113 @@
+.nc-threat-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  max-width: 60%;
+}
+.nc-threat-control label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+.nc-threat-control label > span {
+  position: absolute;
+  left: 10px;
+  top: 4px;
+  pointer-events: none;
+  font:
+    500 8px "Space Grotesk",
+    sans-serif;
+  letter-spacing: 0.12em;
+  color: hsl(var(--nc-accent));
+}
+.nc-threat-control select {
+  min-height: 44px;
+  width: 150px;
+  max-width: 100%;
+  padding: 14px 18px 2px 9px;
+  border: 1px solid hsl(var(--nc-accent) / 0.25);
+  border-radius: 7px;
+  color: hsl(200 18% 90%);
+  background: hsl(215 35% 9%);
+  font:
+    500 11px "Space Grotesk",
+    sans-serif;
+}
+.nc-threat-control > button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  color: hsl(200 18% 70%);
+}
+.nc-threat-control :focus-visible {
+  outline: 2px solid hsl(var(--nc-accent));
+  outline-offset: 2px;
+}
+.nc-threat-roadmap section {
+  padding: 12px;
+  border: 1px solid hsl(var(--nc-accent) / 0.15);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.nc-threat-roadmap section[data-current="true"] {
+  border-color: hsl(var(--nc-accent) / 0.65);
+}
+.nc-threat-roadmap section > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.nc-threat-roadmap section > div span {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  color: hsl(var(--nc-gold));
+  font-size: 11px;
+}
+.nc-threat-roadmap small {
+  font-size: 9px;
+  color: hsl(var(--nc-accent));
+}
+.nc-threat-roadmap progress {
+  width: 100%;
+  height: 3px;
+  accent-color: hsl(var(--nc-accent));
+  display: block;
+  margin-top: 5px;
+}
+.nc-threat-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.nc-threat-heading .nc-heading {
+  min-width: 0;
+  margin: 0;
+}
+.nc-deployment-screen > .nc-threat-heading h1 {
+  font-size: clamp(20px, 4vw, 30px);
+}
+.nc-deployment-screen > .nc-threat-heading .nc-eyebrow {
+  font-size: 8px;
+}
+.nc-records-screen > .nc-threat-control {
+  max-width: 100%;
+}
+@media (max-height: 600px) {
+  .nc-threat-heading .nc-eyebrow {
+    display: none;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .nc-deployment-screen > .nc-threat-heading {
+    grid-column: 1/-1;
+  }
+}

@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
 import { installNexusFixture } from "./nexus-ui-fixture.mjs";
+const baseUrl = process.env.NEXUS_QA_URL || "http://127.0.0.1:8080";
 const output = await mkdtemp(join(tmpdir(), "nexus-mobile-"));
 console.log("Screenshots:", output);
 const browser = await chromium.launch({
@@ -36,7 +37,7 @@ try {
     await installNexusFixture(page);
     const go = async (route = "/nexus") =>
       page.goto(
-        `http://127.0.0.1:8080/scripts/fixtures/nexus-core.html?route=${encodeURIComponent(route)}`,
+        `${baseUrl}/scripts/fixtures/nexus-core.html?route=${encodeURIComponent(route)}`,
         { waitUntil: "networkidle" },
       );
     const within = async (locator, label) => {
@@ -143,26 +144,46 @@ try {
       page.getByRole("button", { name: /Hull plating/ }),
     ).toBeVisible();
     await page.getByRole("tab", { name: "Attack", exact: true }).tap();
-    if (width < 800 && height > width) {
-      const strip = await page.locator(".nc-upgrade-list").boundingBox();
-      const cdp = await context.newCDPSession(page);
-      await cdp.send("Input.synthesizeScrollGesture", {
-        x: Math.round(strip.x + strip.width * 0.7),
-        y: Math.round(strip.y + strip.height * 0.5),
-        xDistance: -240,
-        yDistance: 0,
-        gestureSourceType: "touch",
-      });
-      await expect
-        .poll(() =>
-          page.locator(".nc-upgrade-list").evaluate((el) => el.scrollLeft),
-        )
-        .toBeGreaterThan(0);
-      await within(
-        page.getByRole("tab", { name: "Utility", exact: true }),
-        "Tabs after a swipe",
+    for (const tab of ["Attack", "Weapons", "Defense", "Utility"]) {
+      await page.getByRole("tab", { name: tab, exact: true }).tap();
+      const panel = page.locator(".nc-upgrade-list");
+      await within(panel, `${tab} complete panel`);
+      for (const upgrade of await panel.locator("button").all()) {
+        await within(upgrade, `${tab} upgrade`);
+        const r = await upgrade.boundingBox();
+        assert.ok(
+          r.width >= 44 && r.height >= 44,
+          `${tab} upgrade touch target`,
+        );
+        assert.ok(
+          await upgrade.evaluate((el) => {
+            const panel = el
+              .closest(".nc-upgrade-list")
+              .getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            return (
+              r.top >= panel.top - 1 &&
+              r.bottom <= panel.bottom + 1 &&
+              r.left >= panel.left - 1 &&
+              r.right <= panel.right + 1
+            );
+          }),
+          `${tab} every upgrade fits inside its panel`,
+        );
+      }
+      assert.ok(
+        await panel.evaluate(
+          (el) =>
+            el.scrollWidth <= el.clientWidth + 1 &&
+            el.scrollHeight <= el.clientHeight + 1,
+        ),
+        `${tab} needs no scrolling in either direction`,
       );
+      await page.screenshot({
+        path: join(output, `${width}-${height}-${tab.toLowerCase()}.png`),
+      });
     }
+    await page.getByRole("tab", { name: "Attack", exact: true }).tap();
     await page.screenshot({
       path: join(output, `${width}-${height}-battle.png`),
     });
@@ -270,7 +291,7 @@ try {
   }
   assert.deepEqual(errors, [], "No browser runtime errors");
   console.log(
-    "PASS immersive entry, full viewport, thumb targets, touch swipe, upgrades, pause, systems, safe areas, viewport resize, landscape, desktop, and exit cleanup",
+    "PASS immersive entry, full viewport, thumb targets, every upgrade category without scrolling, upgrades, pause, systems, safe areas, viewport resize, landscape, desktop, and exit cleanup",
   );
 } finally {
   await browser.close();

@@ -147,6 +147,14 @@ export function CoreArena({
       })}
       {run.enemies.map((e) => (
         <g key={e.id} transform={`translate(${e.x} ${e.y})`}>
+          {(e.venomTime || 0) > 0 && (
+            <circle
+              r={e.radius + 6}
+              fill="hsl(95 85% 65% / .1)"
+              stroke="hsl(95 85% 65%)"
+              strokeDasharray="3 5"
+            />
+          )}
           <circle
             r={e.radius * 2.3}
             fill={ENEMIES[e.kind].color}
@@ -294,6 +302,42 @@ export function CoreArena({
       )}
       {run.effects.map((e) => {
         const life = e.life / e.maxLife;
+        if (e.kind === "laser" || e.kind === "venom")
+          return (
+            <line
+              key={e.id}
+              x1="0"
+              y1="0"
+              x2={e.x}
+              y2={e.y}
+              stroke={
+                e.kind === "laser" ? "hsl(340 100% 78%)" : "hsl(95 85% 65%)"
+              }
+              strokeWidth={e.kind === "laser" ? 3 + (e.value || 0) : 2}
+              strokeDasharray={e.kind === "venom" ? "8 6" : undefined}
+              opacity={life * 0.8}
+            />
+          );
+        if (e.kind === "flak")
+          return (
+            <g key={e.id} transform={`translate(${e.x} ${e.y})`} opacity={life}>
+              <circle
+                r={(e.value || 48) * (1 - life)}
+                fill="hsl(205 100% 75% / .12)"
+                stroke="hsl(205 100% 80%)"
+                strokeWidth={life * 3}
+              />
+              {[0, 60, 120, 180, 240, 300].map((a) => (
+                <path
+                  key={a}
+                  transform={`rotate(${a})`}
+                  d={`M${12 + (1 - life) * 30} 0h12`}
+                  stroke="hsl(205 100% 85%)"
+                  strokeWidth="2"
+                />
+              ))}
+            </g>
+          );
         if (e.kind === "mortar")
           return (
             <circle

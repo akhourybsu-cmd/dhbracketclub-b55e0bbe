@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Check, Info, Lock } from "lucide-react";
 import { CoreEquipmentArt } from "./CoreArtwork";
@@ -17,6 +17,11 @@ const shortNames: Record<string, string> = {
   arc: "Arc",
   rail: "Rail",
   mortar: "Mortar",
+  laser: "Laser",
+  venom: "Venom",
+  flak: "Flak",
+  capacitor: "Charge",
+  thorns: "Thorns",
   repair: "Repair",
   siphon: "Siphon",
   stasis: "Stasis",
@@ -61,9 +66,12 @@ export function CoreSelectionDeck({
         className="nc-selector-keys"
         role="tablist"
         aria-label={label}
-        style={{
-          gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`,
-        }}
+        style={
+          {
+            "--nc-choices": items.length > 6 ? 4 : items.length,
+            "--nc-wide-choices": items.length,
+          } as CSSProperties
+        }
       >
         {items.map((item, index) => (
           <button

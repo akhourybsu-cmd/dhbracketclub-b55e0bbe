@@ -984,3 +984,218 @@ body.nc-battle-active {
     grid-row: 5;
   }
 }
+
+/* Every category is a complete control surface, never a swipe carousel. */
+.nc-play-screen .nc-upgrade-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 76px;
+  align-content: start;
+  overflow: visible;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  gap: 6px;
+}
+.nc-play-screen .nc-upgrade {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  min-height: 44px;
+  height: 100%;
+  padding: 8px;
+  gap: 6px;
+  touch-action: manipulation;
+}
+.nc-play-screen .nc-upgrade > svg {
+  display: none;
+}
+.nc-play-screen .nc-upgrade-copy strong {
+  font-size: 11px;
+  line-height: 1.2;
+}
+.nc-play-screen .nc-upgrade-copy small {
+  font-size: 10px;
+  line-height: 1.25;
+  margin-top: 4px;
+}
+.nc-play-screen .nc-upgrade-price {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1;
+}
+.nc-play-screen .nc-upgrade-price > svg {
+  display: none;
+}
+.nc-play-screen .nc-upgrade-price em {
+  font:
+    400 9px/1 "DM Sans",
+    sans-serif;
+  color: hsl(200 18% 65%);
+}
+.nc-play-screen .nc-upgrade-empty {
+  grid-column: 1 / -1;
+  display: grid;
+  place-content: center;
+  margin: 0;
+  padding: 10px;
+  border: 1px dashed hsl(var(--nc-accent) / 0.2);
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: hsl(200 18% 65%);
+}
+.nc-play-screen .nc-upgrade:focus-visible {
+  outline: 2px solid hsl(var(--nc-accent));
+  outline-offset: 2px;
+}
+
+@media (max-width: 799px) and (orientation: portrait) {
+  .nc-play-screen .nc-command-deck {
+    gap: 6px;
+    padding: 8px 10px max(8px, var(--nc-safe-bottom));
+  }
+  .nc-play-screen .nc-ability {
+    min-height: 44px;
+    height: 44px;
+    padding: 6px 8px;
+  }
+  .nc-play-screen .nc-ability strong {
+    font-size: 11px;
+  }
+  .nc-play-screen .nc-upgrade-list {
+    flex: none;
+    height: 156px;
+    grid-auto-rows: 48px;
+    gap: 6px;
+  }
+  .nc-play-screen .nc-upgrade {
+    flex: initial;
+    padding: 5px 7px;
+    height: 48px;
+  }
+  .nc-play-screen .nc-upgrade-copy strong {
+    font-size: 10.5px;
+  }
+  .nc-play-screen .nc-upgrade-copy small {
+    font-size: 9.5px;
+    margin-top: 3px;
+  }
+  .nc-play-screen .nc-upgrade-price {
+    font-size: 11px;
+  }
+  .nc-play-screen .nc-vitals {
+    padding-block: 7px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .nc-play-screen .nc-battle-top {
+    flex-basis: 32px;
+  }
+  .nc-play-screen .nc-battle-grid {
+    grid-template-columns: minmax(0, 1fr) 318px;
+    padding: 0 4px max(4px, env(safe-area-inset-bottom, 0px));
+  }
+  .nc-play-screen .nc-command-deck {
+    display: grid;
+    grid-template-columns: 94px minmax(0, 1fr);
+    grid-template-rows: 44px minmax(0, 1fr) 44px;
+    align-content: start;
+    gap: 6px;
+    padding: 6px;
+  }
+  .nc-play-screen .nc-command-deck .nc-ability-row {
+    grid-column: 1;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: 44px 44px;
+    gap: 6px;
+  }
+  .nc-play-screen .nc-ability {
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+    padding: 4px;
+    justify-content: center;
+  }
+  .nc-play-screen .nc-ability > span {
+    display: none;
+  }
+  .nc-play-screen .nc-command-toolbar {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 3px;
+  }
+  .nc-play-screen .nc-command-toolbar .nc-energy {
+    flex-direction: column;
+    padding: 0;
+    gap: 2px;
+    min-width: 32px;
+  }
+  .nc-play-screen .nc-command-toolbar .nc-energy strong {
+    font-size: 13px;
+  }
+  .nc-play-screen .nc-command-toolbar .nc-energy small {
+    font-size: 6px;
+    margin: 0;
+  }
+  .nc-play-screen .nc-command-toolbar .nc-energy > svg {
+    display: none;
+  }
+  .nc-play-screen .nc-upgrade-list {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-auto-rows: 48px;
+    gap: 4px;
+  }
+  .nc-play-screen .nc-upgrade {
+    min-height: 44px;
+    height: 48px;
+    padding: 5px 7px;
+  }
+  .nc-play-screen .nc-upgrade-copy strong {
+    font-size: 10.5px;
+  }
+  .nc-play-screen .nc-upgrade-copy small {
+    font-size: 9.5px;
+    margin-top: 3px;
+  }
+  .nc-play-screen .nc-command-deck .nc-tabs {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    align-self: end;
+  }
+  .nc-play-screen .nc-field {
+    min-width: 0;
+  }
+  .nc-play-screen .nc-vitals {
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .nc-play-screen .nc-meter-label {
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 799px) and (orientation: portrait) and (max-height: 680px) {
+  .nc-play-screen .nc-vitals {
+    padding-block: 6px;
+  }
+}
+@media (max-width: 799px) and (orientation: portrait) and (max-height: 680px) {
+  .nc-play-screen .nc-upgrade-list {
+    height: 144px;
+    grid-auto-rows: 44px;
+  }
+  .nc-play-screen .nc-upgrade {
+    height: 44px;
+  }
+}

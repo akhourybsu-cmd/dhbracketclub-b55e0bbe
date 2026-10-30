@@ -4,6 +4,8 @@ import {
   Check,
   ChevronLeft,
   Crosshair,
+  Droplets,
+  Timer,
   Heart,
   HeartPulse,
   Hexagon,
@@ -24,6 +26,8 @@ import type { ReactNode } from "react";
 const icons = {
   BatteryCharging,
   Crosshair,
+  Droplets,
+  Timer,
   Heart,
   HeartPulse,
   Hexagon,

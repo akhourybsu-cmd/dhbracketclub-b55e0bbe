@@ -1,6 +1,12 @@
 import { ENEMIES, RESEARCH, UPGRADES, getScenario } from "./catalog";
 import type { CoreRun } from "./types";
-import { BALANCE_VERSION, WEAPON_IDS, emptyMetrics, stats } from "./systems";
+import {
+  BALANCE_VERSION,
+  WEAPON_IDS,
+  emptyMetrics,
+  stats,
+  upgradeCap,
+} from "./systems";
 import { loadoutError, startingLevel, upgradeAvailable } from "./progression";
 
 const key = (userId: string, clubId: string) =>
@@ -25,6 +31,18 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
           s.balanceVersion < 1 ||
           s.balanceVersion > BALANCE_VERSION)) ||
       !getScenario(s.scenarioId) ||
+      (s.balanceVersion >= 6 &&
+        (!Number.isInteger(s.difficulty) ||
+          s.difficulty < 1 ||
+          s.difficulty > 6)) ||
+      ((s.balanceVersion || 0) < 6 &&
+        s.difficulty !== undefined &&
+        s.difficulty !== 1) ||
+      ((s.balanceVersion || 0) < 6 &&
+        s.loadout &&
+        [...(s.loadout.weapons || []), s.loadout.module].some((id) =>
+          ["laser", "venom", "flak", "capacitor", "thorns"].includes(id),
+        )) ||
       typeof s.id !== "string" ||
       !["ready", "wave", "intermission", "victory", "defeat"].includes(
         s.phase,
@@ -64,17 +82,29 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
           RESEARCH.some((r) => r.id === k) &&
           Number.isInteger(v) &&
           Number(v) >= 0 &&
-          Number(v) <= 10,
+          Number(v) <= ((s.balanceVersion || 0) >= 6 ? 30 : 10),
       ) ||
       !Object.entries(s.upgrades).every(([k, v]) => {
         const def = UPGRADES.find((u) => u.id === k);
         return (
-          !!def && Number.isInteger(v) && Number(v) >= 0 && Number(v) <= def.max
+          !!def &&
+          Number.isInteger(v) &&
+          Number(v) >= 0 &&
+          Number(v) <= upgradeCap(def.id, s.balanceVersion || 3)
         );
       }) ||
-      !["arcCd", "railCd", "mortarCd", "shieldDelay", "energyRemainder"].every(
-        (k) => s[k] === undefined || Number.isFinite(s[k]),
-      ) ||
+      ![
+        "arcCd",
+        "railCd",
+        "mortarCd",
+        "laserCd",
+        "laserTarget",
+        "laserHeat",
+        "venomCd",
+        "flakCd",
+        "shieldDelay",
+        "energyRemainder",
+      ].every((k) => s[k] === undefined || Number.isFinite(s[k])) ||
       (s.metrics &&
         !(
           ["energyEarned", "energySpent", "shieldAbsorbed"].every(
@@ -85,8 +115,9 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
               s.metrics[k] &&
               WEAPON_IDS.every(
                 (id) =>
-                  (id === "mortar" &&
-                    (s.balanceVersion || 0) < 4 &&
+                  (((id === "mortar" && (s.balanceVersion || 0) < 4) ||
+                    (["laser", "venom", "flak", "thorns"].includes(id) &&
+                      (s.balanceVersion || 0) < 6)) &&
                     s.metrics[k][id] === undefined) ||
                   (Number.isFinite(s.metrics[k][id]) && s.metrics[k][id] >= 0),
               ),
@@ -120,7 +151,11 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
             "bounty",
             "attackCd",
             "slowed",
-          ].every((k) => Number.isFinite(e[k])),
+          ].every((k) => Number.isFinite(e[k])) &&
+          ["venomTime", "venomDps"].every(
+            (k) => e[k] === undefined || (Number.isFinite(e[k]) && e[k] >= 0),
+          ) &&
+          (e.venomTime === undefined || e.venomTime <= 4),
       ) ||
       !s.projectiles.every(
         (p) =>
@@ -143,6 +178,10 @@ export function readCoreRun(userId?: string, clubId?: string): CoreRun | null {
       arcCd: s.arcCd ?? 0,
       railCd: s.railCd ?? 0,
       mortarCd: s.mortarCd ?? 0,
+      laserCd: s.laserCd ?? 0,
+      laserHeat: s.laserHeat ?? 0,
+      venomCd: s.venomCd ?? 0,
+      flakCd: s.flakCd ?? 0,
       shells: s.shells ?? [],
       shieldDelay: s.shieldDelay ?? 0,
       energyRemainder: s.energyRemainder ?? 0,

@@ -5,10 +5,12 @@ import {
   emptyMetrics,
   stats,
   upgradeCost,
+  upgradeCap,
 } from "./systems";
 import { rewardBreakdown } from "./economy";
 import { STARTER_LOADOUT, loadoutError, upgradeAvailable } from "./progression";
 import { combatRules } from "./rules";
+import { getDifficulty, scenarioForRun } from "./difficulty";
 import type {
   CoreEnemy,
   CoreLoadout,
@@ -41,9 +43,9 @@ function copy(s: CoreRun): CoreRun {
     toSpawn: [...s.toSpawn],
     metrics: {
       ...m,
-      damage: { ...m.damage, mortar: m.damage.mortar || 0 },
-      kills: { ...m.kills, mortar: m.kills.mortar || 0 },
-      shots: { ...m.shots, mortar: m.shots.mortar || 0 },
+      damage: { ...emptyMetrics().damage, ...m.damage },
+      kills: { ...emptyMetrics().kills, ...m.kills },
+      shots: { ...emptyMetrics().shots, ...m.shots },
     },
     shells: (s.shells || []).map((p) => ({ ...p })),
   };
@@ -55,13 +57,31 @@ export function createRun(
   seed = Date.now() >>> 0,
   loadout: CoreLoadout = STARTER_LOADOUT,
   balanceVersion = BALANCE_VERSION,
+  difficulty = 1,
 ): CoreRun {
   if (scenario.mode === "endless" && loadoutError(loadout))
     throw new Error(loadoutError(loadout)!);
+  if (
+    balanceVersion < 6 &&
+    [...loadout.weapons, loadout.module].some((id) =>
+      ["laser", "venom", "flak", "capacitor", "thorns"].includes(id || ""),
+    )
+  )
+    throw new Error("Equipment requires the current ruleset");
+  if (
+    !Number.isInteger(difficulty) ||
+    difficulty < 1 ||
+    difficulty > 6 ||
+    (balanceVersion < 6 && difficulty !== 1)
+  )
+    throw new Error("Unknown threat level");
   const energy = 80 + (research.salvage || 0) * 12;
   const s: CoreRun = {
     version: 2,
     balanceVersion: scenario.mode === "endless" ? balanceVersion : 3,
+    ...(scenario.mode === "endless" && balanceVersion >= 6
+      ? { difficulty }
+      : {}),
     id,
     scenarioId: scenario.id,
     seed,
@@ -99,6 +119,10 @@ export function createRun(
     arcCd: 0,
     railCd: 0,
     mortarCd: 0,
+    laserCd: 0,
+    laserHeat: 0,
+    venomCd: 0,
+    flakCd: 0,
     shells: [],
     shieldDelay: 0,
     energyRemainder: 0,
@@ -145,13 +169,20 @@ export function waveEnemies(wave: number, scenario: CoreScenario): EnemyType[] {
 
 export function startWave(s: CoreRun, scenario: CoreScenario): CoreRun {
   if (s.phase !== "ready" && s.phase !== "intermission") return s;
+  const enemies = waveEnemies(s.wave + 1, scenario);
+  if (
+    (s.balanceVersion || 0) >= 6 &&
+    (s.difficulty || 1) >= 2 &&
+    (s.wave + 1) % 10 === 0
+  )
+    enemies.push("boss");
   return {
     ...s,
     phase: "wave",
     wave: s.wave + 1,
     waveTime: 0,
     breakTime: 0,
-    toSpawn: waveEnemies(s.wave + 1, scenario),
+    toSpawn: enemies,
     spawnCd: 0.4,
   };
 }
@@ -205,6 +236,11 @@ function spawn(
   position?: { x: number; y: number },
 ) {
   const rules = combatRules(s.balanceVersion);
+  scenario = scenarioForRun(scenario, s);
+  const threat =
+    (s.balanceVersion || 0) >= 6
+      ? getDifficulty(s.difficulty)
+      : getDifficulty();
   const d = ENEMIES[kind],
     angle = random(s) * Math.PI * 2,
     hp = d.hp * enemyScale(s.wave, scenario, s.balanceVersion || 3);
@@ -219,8 +255,9 @@ function spawn(
       d.speed *
       scenario.speed *
       rules.enemySpeed *
-      (1 + Math.min(1, s.wave * 0.014)),
-    damage: d.damage * (1 + (s.wave - 1) * 0.09),
+      (1 + Math.min(1, s.wave * 0.014)) *
+      (threat.id >= 3 && kind === "runner" ? 1.15 : 1),
+    damage: d.damage * (1 + (s.wave - 1) * 0.09) * threat.damage,
     radius: d.radius,
     bounty: d.bounty,
     attackCd: 0.5,
@@ -228,18 +265,27 @@ function spawn(
   });
 }
 const armorMultiplier = (e: CoreEnemy, source: WeaponId) =>
-  source === "rail" || source === "nova"
+  source === "rail" ||
+  source === "nova" ||
+  source === "venom" ||
+  source === "thorns"
     ? 1
     : e.kind === "tank" || e.kind === "boss"
       ? 0.75
       : 1;
-function hit(s: CoreRun, e: CoreEnemy, amount: number, source: WeaponId) {
+function hit(
+  s: CoreRun,
+  e: CoreEnemy,
+  amount: number,
+  source: WeaponId,
+  quiet = false,
+) {
   if (e.hp <= 0) return;
   const actual = Math.min(e.hp, amount * armorMultiplier(e, source));
   e.hp -= actual;
   e.lastHit = source;
   s.metrics!.damage[source] += actual;
-  effect(s, "hit", e.x, e.y, 0.18, actual);
+  if (!quiet) effect(s, "hit", e.x, e.y, 0.18, actual);
 }
 function creditEnergy(s: CoreRun, amount: number) {
   const total = (s.energyRemainder || 0) + amount,
@@ -258,7 +304,11 @@ function harvest(s: CoreRun, scenario: CoreScenario) {
     s.score += e.bounty * 10;
     effect(s, "kill", e.x, e.y, 0.5, e.bounty);
     if (e.kind === "splitter")
-      for (let i = 0; i < 3; i++)
+      for (
+        let i = 0;
+        i < ((s.balanceVersion || 0) >= 6 && (s.difficulty || 1) >= 6 ? 4 : 3);
+        i++
+      )
         spawn(s, scenario, "swarm", { x: e.x + (i - 1) * 12, y: e.y + 12 });
   }
   s.enemies = s.enemies.filter((e) => e.hp > 0);
@@ -285,7 +335,7 @@ export function buyUpgrade(
     return s;
   const lv = s.upgrades[id] || 0,
     cost = upgradeCost(id, lv);
-  if (lv >= def.max || s.energy < cost) return s;
+  if (lv >= upgradeCap(id, s.balanceVersion || 3) || s.energy < cost) return s;
   const before = stats(s, scenario),
     n = copy(s);
   n.energy -= cost;
@@ -302,6 +352,13 @@ export function buyUpgrade(
   n.mortarCd =
     (Math.max(0, n.mortarCd || 0) * after.mortarInterval) /
     before.mortarInterval;
+  n.venomCd =
+    (Math.max(0, n.venomCd || 0) * after.venomInterval) / before.venomInterval;
+  n.flakCd =
+    (Math.max(0, n.flakCd || 0) * after.flakInterval) / before.flakInterval;
+  n.novaCd = (n.novaCd * after.novaCooldown) / before.novaCooldown;
+  n.overdriveCd =
+    (n.overdriveCd * after.overdriveCooldown) / before.overdriveCooldown;
   return n;
 }
 export function activateAbility(
@@ -316,13 +373,15 @@ export function activateAbility(
     return {
       ...n,
       overdriveTime: SYSTEMS.overdriveDuration,
-      overdriveCd: SYSTEMS.overdriveCooldown,
+      overdriveCd: stats(n, scenario).overdriveCooldown,
       fireCd: n.fireCd / SYSTEMS.overdriveMultiplier,
       arcCd: (n.arcCd || 0) / SYSTEMS.overdriveMultiplier,
       railCd: (n.railCd || 0) / SYSTEMS.overdriveMultiplier,
       mortarCd: (n.mortarCd || 0) / SYSTEMS.overdriveMultiplier,
+      venomCd: (n.venomCd || 0) / SYSTEMS.overdriveMultiplier,
+      flakCd: (n.flakCd || 0) / SYSTEMS.overdriveMultiplier,
     };
-  n.novaCd = SYSTEMS.novaCooldown;
+  n.novaCd = stats(n, scenario).novaCooldown;
   n.metrics!.shots.nova++;
   effect(n, "nova", 0, 0, 0.85);
   for (const e of n.enemies)
@@ -465,6 +524,86 @@ function fireSystems(s: CoreRun, scenario: CoreScenario) {
     }
   }
   s.shells = s.shells!.filter((p) => p.delay > 0);
+  // Corrosion is a bounded per-enemy timer, never an accumulating stack list.
+  for (const e of s.enemies) {
+    if ((e.venomTime || 0) > 0) {
+      hit(
+        s,
+        e,
+        (e.venomDps || 0) * Math.min(STEP, e.venomTime!),
+        "venom",
+        true,
+      );
+      e.venomTime = Math.max(0, e.venomTime! - STEP);
+    }
+  }
+  s.venomCd = (s.venomCd || 0) - STEP;
+  if (v.venomDps && s.venomCd <= 0) {
+    const targets = s.enemies
+      .filter((e) => e.hp > 0 && distance(e) <= v.range)
+      .sort((a, b) => (a.venomTime || 0) - (b.venomTime || 0) || b.hp - a.hp)
+      .slice(0, v.venomTargets);
+    if (targets.length) {
+      s.venomCd += v.venomInterval;
+      s.metrics!.shots.venom++;
+      for (const e of targets) {
+        e.venomTime = 4;
+        e.venomDps = v.venomDps;
+        effect(s, "venom", e.x, e.y, 0.35, undefined, 0, 0);
+      }
+    } else s.venomCd = 0;
+  } else if (!v.venomDps) s.venomCd = 0;
+  // A laser holds its target until death or loss of range; heat resets on a new lock.
+  const lock = s.enemies.find(
+    (e) => e.id === s.laserTarget && e.hp > 0 && distance(e) <= v.range,
+  );
+  const laser =
+    lock ||
+    s.enemies
+      .filter((e) => e.hp > 0 && distance(e) <= v.range)
+      .sort((a, b) => b.hp - a.hp)[0];
+  if (v.laserDamage && laser) {
+    if (laser.id !== s.laserTarget) {
+      s.laserHeat = 0;
+      s.laserCd = 0;
+    }
+    s.laserTarget = laser.id;
+    s.laserHeat = Math.min(3, (s.laserHeat || 0) + STEP);
+    s.laserCd = (s.laserCd || 0) - STEP;
+    if (s.laserCd <= 0) {
+      s.laserCd += 0.2;
+      hit(
+        s,
+        laser,
+        v.laserDamage * (1 + s.laserHeat / 1.5) * 0.2,
+        "laser",
+        true,
+      );
+      s.metrics!.shots.laser++;
+      effect(s, "laser", laser.x, laser.y, 0.24, s.laserHeat);
+    }
+  } else {
+    s.laserHeat = 0;
+    s.laserTarget = undefined;
+    s.laserCd = 0;
+  }
+  s.flakCd = (s.flakCd || 0) - STEP;
+  if (v.flakDamage && s.flakCd <= 0) {
+    const target = s.enemies
+      .filter((e) => e.hp > 0 && distance(e) <= v.flakRange)
+      .sort((a, b) => b.speed - a.speed || distance(a) - distance(b))[0];
+    if (target) {
+      s.flakCd += v.flakInterval;
+      s.metrics!.shots.flak++;
+      for (const e of s.enemies)
+        if (
+          e.hp > 0 &&
+          Math.hypot(e.x - target.x, e.y - target.y) <= v.flakRadius + e.radius
+        )
+          hit(s, e, v.flakDamage, "flak");
+      effect(s, "flak", target.x, target.y, 0.3, v.flakRadius);
+    } else s.flakCd = 0;
+  } else if (!v.flakDamage) s.flakCd = 0;
   s.fireCd -= STEP;
   while (s.fireCd <= 1e-9) {
     const targets = s.enemies
@@ -532,6 +671,8 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
     s.arcCd = (s.arcCd || 0) * SYSTEMS.overdriveMultiplier;
     s.railCd = (s.railCd || 0) * SYSTEMS.overdriveMultiplier;
     s.mortarCd = (s.mortarCd || 0) * SYSTEMS.overdriveMultiplier;
+    s.venomCd = (s.venomCd || 0) * SYSTEMS.overdriveMultiplier;
+    s.flakCd = (s.flakCd || 0) * SYSTEMS.overdriveMultiplier;
   }
   const v = stats(s, scenario);
   s.hp = Math.min(v.maxHp, s.hp + v.regen * STEP);
@@ -551,6 +692,12 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
       Math.min(waveDifficulty(s.wave, scenario), 1.6);
   }
   for (const e of s.enemies) {
+    if (
+      (s.balanceVersion || 0) >= 6 &&
+      (s.difficulty || 1) >= 4 &&
+      (e.kind === "tank" || e.kind === "boss")
+    )
+      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.004 * STEP);
     const d = distance(e);
     e.slowed = Math.max(0, e.slowed - STEP);
     const field = d < SYSTEMS.slowRadius ? 1 - v.slow : 1,
@@ -565,10 +712,15 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
   fireSystems(s, scenario);
   harvest(s, scenario);
   for (const e of s.enemies)
-    if (distance(e) <= CORE_RADIUS + e.radius + 1) {
+    if (e.hp > 0 && distance(e) <= CORE_RADIUS + e.radius + 1) {
       e.attackCd -= STEP;
       if (e.attackCd <= 0) {
-        e.attackCd += 1;
+        e.attackCd +=
+          (s.balanceVersion || 0) >= 6 &&
+          (s.difficulty || 1) >= 5 &&
+          e.kind === "boss"
+            ? 0.8
+            : 1;
         const damage = e.damage * (1 - v.armor),
           absorbed = Math.min(s.shield, damage);
         s.shield -= absorbed;
@@ -577,12 +729,20 @@ export function stepRun(state: CoreRun, scenario: CoreScenario): CoreRun {
         s.hp = Math.max(0, s.hp - (damage - absorbed));
         s.damageTaken += damage - absorbed;
         effect(s, "breach", e.x, e.y, 0.3);
+        if (v.thornsDamage) {
+          // Contact defense scales into later sieges without reflecting an
+          // unbounded percentage of a boss's health or preventing its attack.
+          const retaliation = v.thornsDamage + Math.min(v.thornsDamage * 4, e.maxHp * 0.01);
+          hit(s, e, retaliation, "thorns");
+          s.metrics!.shots.thorns++;
+        }
         if (s.hp <= 0) {
           s.phase = "defeat";
           return s;
         }
       }
     }
+  if (v.thornsDamage) harvest(s, scenario);
   if (!s.toSpawn.length && !s.enemies.length) {
     s.cleared = s.wave;
     creditEnergy(s, (25 + s.wave * 5) * v.income);

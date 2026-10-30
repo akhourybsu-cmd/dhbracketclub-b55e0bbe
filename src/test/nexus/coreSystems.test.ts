@@ -19,6 +19,7 @@ import {
   researchCost,
   SYSTEMS,
   upgradePreview,
+  upgradeCap,
 } from "@/lib/nexus/core/systems";
 import { rewardBreakdown, waveCredits } from "@/lib/nexus/core/economy";
 import type { CoreEnemy, CoreRun } from "@/lib/nexus/core/types";
@@ -238,11 +239,13 @@ describe("weapon systems and upgrade contracts", () => {
     );
   });
   it("every upgrade has a working purchase, increasing integer cost, accurate preview, and a cap", () => {
-    for (const u of UPGRADES.filter((u) => u.id !== "mortar")) {
+    for (const u of UPGRADES.filter(
+      (u) => u.id !== "mortar" && upgradeCap(u.id, 3) > 0,
+    )) {
       let s = arena();
       s.energy = 1000000;
       s.metrics = emptyMetrics(s.energy);
-      for (let lv = 0; lv < u.max; lv++) {
+      for (let lv = 0; lv < upgradeCap(u.id, 3); lv++) {
         const cost = upgradeCost(u.id, lv);
         expect(Number.isInteger(cost)).toBe(true);
         if (lv) expect(cost).toBeGreaterThan(upgradeCost(u.id, lv - 1));

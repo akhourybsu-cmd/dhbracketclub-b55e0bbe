@@ -20,6 +20,8 @@ import {
 } from "@/components/nexus/core/CoreUI";
 import { loadoutError } from "@/lib/nexus/core/progression";
 import type { CoreLoadout } from "@/lib/nexus/core/types";
+import { useNexusThreat } from "@/hooks/useNexusThreat";
+import { CoreThreatControl } from "@/components/nexus/core/CoreThreatControl";
 
 export default function NexusLoadoutPage() {
   const { missionId } = useParams();
@@ -33,6 +35,11 @@ export default function NexusLoadoutPage() {
 }
 function Deployment() {
   const { profile, userId, clubId, begin, saveLoadout } = useNexusCore();
+  const { threat, choose } = useNexusThreat(
+    userId,
+    clubId,
+    profile?.totalWaves || 0,
+  );
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [loadout, setLoadout] = useState<CoreLoadout>(() => profile!.loadout);
@@ -61,7 +68,12 @@ function Deployment() {
         await saveLoadout(loadout);
         trigger("LOADOUT SAVED");
       } else {
-        const run = await begin(ENDLESS, deploymentId.current, loadout);
+        const run = await begin(
+          ENDLESS,
+          deploymentId.current,
+          loadout,
+          threat.id,
+        );
         saveCoreRun(run, userId, clubId);
         navigate("/nexus/battle/endless", {
           state: { freshRun: run, autoStart: true },
@@ -78,9 +90,18 @@ function Deployment() {
   };
   return (
     <section className="nc-deck-screen nc-deployment-screen">
-      <CoreHeading eyebrow="PREPARE YOUR CORE" title="Loadout">
-        2 hardpoints · 4 power · 1 support
-      </CoreHeading>
+      <div className="nc-threat-heading">
+        <CoreHeading eyebrow="PREPARE YOUR CORE" title="Loadout" />
+        <CoreThreatControl
+          value={threat.id}
+          waves={profile.totalWaves}
+          disabled={!!pending}
+          onChange={(id) => {
+            choose(id);
+            deploymentId.current = crypto.randomUUID();
+          }}
+        />
+      </div>
       <CoreLoadoutEditor
         profile={profile}
         value={loadout}

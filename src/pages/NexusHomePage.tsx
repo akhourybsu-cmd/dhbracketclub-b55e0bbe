@@ -8,6 +8,7 @@ import { readCoreRun, saveCoreRun } from "@/lib/nexus/core/persistence";
 import { CoreObjectiveStrip } from "@/components/nexus/core/CoreCareer";
 import { CoreProfileGate } from "@/components/nexus/core/CoreUI";
 import { CoreSigil } from "@/components/nexus/core/CoreArtwork";
+import { useNexusThreat } from "@/hooks/useNexusThreat";
 export default function NexusHomePage() {
   return (
     <CoreProfileGate>
@@ -17,6 +18,7 @@ export default function NexusHomePage() {
 }
 function TitleScreen() {
   const { profile, userId, clubId, begin } = useNexusCore();
+  const { threat } = useNexusThreat(userId, clubId, profile?.totalWaves || 0);
   const navigate = useNavigate();
   const [pending, setPending] = useState(false),
     [error, setError] = useState("");
@@ -40,7 +42,12 @@ function TitleScreen() {
     setPending(true);
     setError("");
     try {
-      const run = await begin(ENDLESS, deploymentId.current, profile.loadout);
+      const run = await begin(
+        ENDLESS,
+        deploymentId.current,
+        profile.loadout,
+        threat.id,
+      );
       saveCoreRun(run, userId, clubId);
       navigate("/nexus/battle/endless", {
         state: { freshRun: run, autoStart: true },
@@ -55,7 +62,9 @@ function TitleScreen() {
   return (
     <section className="nc-title-screen">
       <div className="nc-title-wordmark">
-        <span className="nc-title-kicker">ENDLESS SURVIVAL</span>
+        <span className="nc-title-kicker">
+          ENDLESS SURVIVAL · THREAT {threat.id}
+        </span>
         <h1>
           NEXUS<span>DEFENSE</span>
         </h1>
@@ -71,7 +80,7 @@ function TitleScreen() {
       <div className="nc-title-actions">
         <Link to="/nexus/loadout/endless" className="nc-title-build">
           <Crosshair size={16} />
-          <span>LOADOUT</span>
+          <span>{threat.name.toUpperCase()}</span>
           <strong>
             Pulse
             {profile.loadout.weapons.length

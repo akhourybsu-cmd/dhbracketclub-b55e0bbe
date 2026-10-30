@@ -46,7 +46,7 @@ describe("versioned combat pacing", () => {
   });
 
   it("starts combat promptly, introduces a boss early and retains upgrade decisions", () => {
-    const s = simulateCore(ENDLESS, "balanced", 42);
+    const s = simulateCore(ENDLESS, "balanced", 42, {}, 1800, undefined, 5);
     expect(s.pacing.firstShot).toBeGreaterThan(4);
     expect(s.pacing.firstShot).toBeLessThan(7);
     expect(s.pacing.firstKill).toBeLessThan(9);
@@ -183,7 +183,7 @@ describe("versioned combat pacing", () => {
       railDamage: 140,
       slow: 0.12,
     });
-    saveCoreRun({ ...s, balanceVersion: 6 }, "version-test", "club");
+    saveCoreRun({ ...s, balanceVersion: 7 }, "version-test", "club");
     expect(readCoreRun("version-test", "club")).toBeNull();
   });
 });

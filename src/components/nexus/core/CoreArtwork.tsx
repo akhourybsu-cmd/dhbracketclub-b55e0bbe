@@ -170,6 +170,78 @@ export function CoreEquipmentArt({ id }: { id: string }) {
             <circle cx="99" cy="40" r="3" fill="currentColor" />
           </>
         )}
+        {id === "laser" && (
+          <>
+            <path
+              d="M24 38h26v16H24ZM50 30h18v32H50ZM53 24h12m-12 44h12M68 38l16 6-16 6"
+              fill="currentColor"
+              fillOpacity=".12"
+            />
+            <path d="M84 44h24" strokeWidth="4" />
+            <path
+              d="M91 34l9-5m-9 25 9 5M31 31v-8m10 8v-8"
+              strokeOpacity=".65"
+            />
+            <circle cx="59" cy="44" r="5" fill="currentColor" />
+          </>
+        )}
+        {id === "venom" && (
+          <>
+            <path d="M48 17h24m-19 0v21L36 63q-3 8 5 8h38q8 0 5-8L67 38V17" />
+            <path
+              d="M46 52h28l9 14H37Z"
+              fill="currentColor"
+              fillOpacity=".2"
+              strokeOpacity=".4"
+            />
+            <circle cx="54" cy="59" r="3" fill="currentColor" />
+            <circle cx="66" cy="49" r="2" fill="currentColor" />
+            <path
+              d="m88 21 5 8-5 5-5-5Z"
+              fill="currentColor"
+              fillOpacity=".3"
+            />
+          </>
+        )}
+        {id === "flak" && (
+          <>
+            <path
+              d="M25 64h56l-8-15H37ZM44 48 38 25l12-3 9 26M61 48l5-26 12 3-3 24M35 64v8m36-8v8"
+              fill="currentColor"
+              fillOpacity=".12"
+            />
+            <path
+              d="m84 18 3-9m3 16 10-5m-11 14 10 5M28 20l-8-6m7 17-11 2"
+              strokeDasharray="3 3"
+            />
+            <circle cx="90" cy="12" r="2" fill="currentColor" />
+          </>
+        )}
+        {id === "capacitor" && (
+          <>
+            <path d="M38 27h44v35H38ZM45 21h30M45 68h30M27 37h11m-11 15h11m44-15h11M82 52h11" />
+            <path
+              d="m63 31-14 17h13l-4 12 14-18H59Z"
+              fill="currentColor"
+              fillOpacity=".25"
+            />
+            <path
+              d="M25 20a40 40 0 0 1 70 0M25 20l-1-10m1 10 11-1"
+              strokeOpacity=".45"
+            />
+          </>
+        )}
+        {id === "thorns" && (
+          <>
+            <path
+              d="m60 20 22 11v22L60 70 38 53V31Z"
+              fill="currentColor"
+              fillOpacity=".1"
+            />
+            <path d="m49 25-7-15 16 10m15 5 9-15-3 18M38 37l-15-3 15 15m44-12 15-3-15 15M48 61l-3 15 13-8m14-7 3 15-13-8" />
+            <path d="m49 43 8 10 15-19" strokeWidth="3" />
+          </>
+        )}
         {id === "repair" && (
           <>
             <path d="m60 13 27 15v32L60 75 33 60V28Z" strokeOpacity=".6" />
@@ -208,6 +280,11 @@ export function CoreEquipmentArt({ id }: { id: string }) {
           "rail",
           "orbit",
           "mortar",
+          "laser",
+          "venom",
+          "flak",
+          "capacitor",
+          "thorns",
           "repair",
           "siphon",
           "stasis",

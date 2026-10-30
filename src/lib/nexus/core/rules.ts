@@ -1,5 +1,5 @@
 // A deployed run keeps its rules, including checkpoints from earlier releases.
-export const BALANCE_VERSION = 5;
+export const BALANCE_VERSION = 6;
 const archived = {
   spawnRadius: 455,
   enemySpeed: 1,
@@ -55,6 +55,11 @@ const current = {
   repairHull: 1.2,
   slowStep: 0.06,
 };
+const expanded = { ...current, exponentialStart: 15, exponentialGrowth: 1.07 };
 export function combatRules(balanceVersion = 3) {
-  return balanceVersion >= 5 ? current : archived;
+  return balanceVersion >= 6
+    ? expanded
+    : balanceVersion >= 5
+      ? current
+      : archived;
 }
