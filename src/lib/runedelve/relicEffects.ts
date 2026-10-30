@@ -6,7 +6,12 @@
 // relics.ts. All damage/heal/shield outputs are rounded to whole integers.
 
 import type { CombatState } from "./combatEngine";
-import { effectValue, clampRank } from "./relics";
+import {
+  effectValue,
+  clampRank,
+  relicRankMaxHpBonus,
+  RELIC_BY_ID,
+} from "./relics";
 
 export interface ActiveRelics {
   /** id -> rank (1..5). Presence implies equipped/owned at that rank. */
@@ -35,6 +40,38 @@ export function buildActive(
 export const has = (a: ActiveRelics, id: string) => a.ranks.has(id);
 export const rankOf = (a: ActiveRelics, id: string): number =>
   a.ranks.get(id) ?? 0;
+
+/** Three equipped R5 relics contribute at most 24 max HP. Unknown IDs add nothing. */
+export function getRelicRankMaxHpBonus(a: ActiveRelics): number {
+  const bonus = [...a.ranks].reduce(
+    (sum, [id, rank]) =>
+      sum +
+      (Object.prototype.hasOwnProperty.call(RELIC_BY_ID, id)
+        ? relicRankMaxHpBonus(rank)
+        : 0),
+    0,
+  );
+  return Math.min(24, bonus);
+}
+
+/** Healing uses actual HP damage and cannot exceed a fifth of max HP per action. */
+export function getLifestealHealAmount(
+  a: ActiveRelics,
+  actualRedDamage: number,
+  maxHp: number,
+): number {
+  if (
+    !has(a, "vampiric_sigil") ||
+    !Number.isFinite(actualRedDamage) ||
+    !Number.isFinite(maxHp)
+  )
+    return 0;
+  const fraction = effectValue("vampiric_sigil", rankOf(a, "vampiric_sigil"));
+  return Math.max(
+    0,
+    Math.min(Math.round(actualRedDamage * fraction), Math.floor(maxHp * 0.2)),
+  );
+}
 
 // ── Pre-run modifiers ────────────────────────────────────────────────────
 export function getStartingMana(a: ActiveRelics): number {
@@ -158,7 +195,7 @@ export function computeChainMods(
     if (
       has(a, "crimson_tide") &&
       ctx.redChainCountSoFar > 0 &&
-      ctx.redChainCountSoFar % 5 === 0
+      ctx.redChainCountSoFar % 3 === 0
     ) {
       m.bonusDamageMult *= effectValue(
         "crimson_tide",

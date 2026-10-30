@@ -1,8 +1,9 @@
-import { runeRequest, runeRpc } from "@/lib/runedelve/request";
+import { runeRequest } from "@/lib/runedelve/request";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
+import { bootstrapRuneDelve } from "@/hooks/useRuneDelveHero";
 
 export interface RuneWallet {
   user_id: string;
@@ -29,84 +30,31 @@ export function useRuneWallet() {
       );
       if (error && error.code !== "PGRST116") throw error;
       if (data) return data as RuneWallet;
-      // Lazy create with defaults.
-      const { data: created, error: insErr } = await runeRequest(
-        supabase
-          .from("rune_delve_wallet")
-          .upsert(
-            {
-              user_id: user.id,
-              shards: 0,
-              lifetime_shards_earned: 0,
-              slots_unlocked: 2,
-            },
-            { onConflict: "user_id", ignoreDuplicates: true },
-          )
-          .select()
-          .maybeSingle(),
-      );
-      if (insErr) throw insErr;
-      if (created) return created as RuneWallet;
-      const { data: canonical } = await runeRequest(
-        supabase
-          .from("rune_delve_wallet")
-          .select("*")
-          .eq("user_id", user.id)
-          .single(),
-      );
-      return canonical as RuneWallet;
+      const { wallet } = await bootstrapRuneDelve();
+      if (wallet.user_id !== user.id)
+        throw new Error("Wallet was not confirmed. Please retry.");
+      return wallet;
+    },
+  });
+}
+
+/** Legacy imports cannot credit/debit arbitrary amounts outside settlement. */
+function useServerManagedShards() {
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (_amount: number): Promise<RuneWallet> => {
+      if (!user) throw new Error("Not authenticated");
+      throw new Error("Rune Shards are managed by the server. Please refresh.");
     },
   });
 }
 
 export function useEarnShards() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (amount: number): Promise<RuneWallet> => {
-      if (!user) throw new Error("Not authenticated");
-      if (amount <= 0) throw new Error("Amount must be positive");
-      // Atomic server-side add (relative arithmetic) — no read-modify-write race.
-      const { data, error } = await runeRpc<RuneWallet | RuneWallet[]>(
-        "rune_delve_earn_shards",
-        { p_amount: amount },
-      );
-      if (error) throw error;
-      // Postgres functions returning a composite come back as the row object.
-      return (Array.isArray(data) ? data[0] : data) as RuneWallet;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["rune-delve-wallet", user?.id] });
-    },
-  });
+  return useServerManagedShards();
 }
 
 export function useSpendShards() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (amount: number): Promise<RuneWallet> => {
-      if (!user) throw new Error("Not authenticated");
-      if (amount <= 0) throw new Error("Amount must be positive");
-      // Atomic server-side deduct with an overdraw guard — the WHERE clause runs
-      // under the row lock, so two concurrent spends can never both succeed.
-      const { data, error } = await runeRpc<RuneWallet | RuneWallet[]>(
-        "rune_delve_spend_shards",
-        { p_amount: amount },
-      );
-      if (error) {
-        // Normalize the DB guard message to the player-facing copy callers expect.
-        if (String(error.message ?? "").includes("insufficient_shards")) {
-          throw new Error("Not enough Rune Shards");
-        }
-        throw error;
-      }
-      return (Array.isArray(data) ? data[0] : data) as RuneWallet;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["rune-delve-wallet", user?.id] });
-    },
-  });
+  return useServerManagedShards();
 }
 
 export function useUnlockSlot() {
@@ -115,16 +63,14 @@ export function useUnlockSlot() {
   return useMutation({
     mutationFn: async (newSlotCount: number): Promise<RuneWallet> => {
       if (!user) throw new Error("Not authenticated");
-      const { data, error } = await runeRequest(
-        supabase
-          .from("rune_delve_wallet")
-          .update({ slots_unlocked: newSlotCount })
-          .eq("user_id", user.id)
-          .select()
-          .single(),
-      );
-      if (error) throw error;
-      return data as RuneWallet;
+      // Bootstrap derives slots from canonical class levels. Never forward
+      // the requested count from a cached character sheet.
+      const { wallet } = await bootstrapRuneDelve();
+      if (wallet.user_id !== user.id)
+        throw new Error("Relic slots were not confirmed. Please retry.");
+      if (wallet.slots_unlocked < newSlotCount)
+        throw new Error("The third relic slot unlocks at class level 25.");
+      return wallet;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["rune-delve-wallet", user?.id] });
@@ -166,81 +112,29 @@ export function useFailureRow(
   });
 }
 
+type FailureParams = { levelNumber: number; heroClass: HeroClass };
+
+/** Failure counters are written only alongside an acknowledged run. */
 export function useBumpFailure() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      levelNumber,
-      heroClass,
-    }: {
-      levelNumber: number;
-      heroClass: HeroClass;
-    }): Promise<number> => {
+    mutationFn: async (_params: FailureParams): Promise<number> => {
       if (!user) throw new Error("Not authenticated");
-      const { data: existing } = await runeRequest(
-        supabase
-          .from("rune_delve_failure_rewards")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("level_number", levelNumber)
-          .eq("hero_class", heroClass)
-          .maybeSingle(),
+      throw new Error(
+        "Failure rewards are managed by the server. Please refresh.",
       );
-      const next = (existing?.failure_count ?? 0) + 1;
-      const { error } = await runeRequest(
-        supabase.from("rune_delve_failure_rewards").upsert(
-          {
-            user_id: user.id,
-            level_number: levelNumber,
-            hero_class: heroClass,
-            failure_count: next,
-            last_awarded_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,level_number,hero_class" },
-        ),
-      );
-      if (error) throw error;
-      return next;
-    },
-    onSuccess: (_, { levelNumber, heroClass }) => {
-      qc.invalidateQueries({
-        queryKey: ["rune-delve-failure", user?.id, heroClass, levelNumber],
-      });
     },
   });
 }
 
 export function useResetFailure() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      levelNumber,
-      heroClass,
-    }: {
-      levelNumber: number;
-      heroClass: HeroClass;
-    }) => {
+    mutationFn: async (_params: FailureParams): Promise<void> => {
       if (!user) throw new Error("Not authenticated");
-      // Just zero it — don't delete, so we keep timestamps for analytics later.
-      await runeRequest(
-        supabase.from("rune_delve_failure_rewards").upsert(
-          {
-            user_id: user.id,
-            level_number: levelNumber,
-            hero_class: heroClass,
-            failure_count: 0,
-            last_awarded_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id,level_number,hero_class" },
-        ),
+      throw new Error(
+        "Failure rewards are managed by the server. Please refresh.",
       );
-    },
-    onSuccess: (_, { levelNumber, heroClass }) => {
-      qc.invalidateQueries({
-        queryKey: ["rune-delve-failure", user?.id, heroClass, levelNumber],
-      });
     },
   });
 }

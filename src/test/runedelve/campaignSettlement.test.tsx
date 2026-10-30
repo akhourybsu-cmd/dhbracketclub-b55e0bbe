@@ -23,7 +23,7 @@ import type { Enemy, RuneType } from "@/lib/runedelve/dungeonGenerator";
 import { calculateScore } from "@/lib/runedelve/scoring";
 import {
   TREASURE_SCORE_BONUS,
-  TREASURE_SHARD_BONUS,
+  treasureShardValue,
 } from "@/lib/runedelve/layoutZones";
 
 const fixture = vi.hoisted(() => ({
@@ -236,6 +236,8 @@ beforeEach(() => {
   fixture.combat = null;
   fixture.enemies = [];
   fixture.showIntro = false;
+  level.objective_type = "defeat_all";
+  level.objective_target = 0;
   level.modifiers.intro_mechanic = undefined;
   fixture.submit.mockReset().mockResolvedValue({
     wasNewBest: true,
@@ -250,6 +252,153 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("campaign production action settlement", () => {
+  it("casts Shadowstep for two mana without spending an enemy turn", () => {
+    checkpoint(
+      "blue",
+      {
+        ...initialCombat([{ ...enemy, hp: 500, maxHp: 500 }], 10),
+        mana: 2,
+      },
+      { masteryIds: [] },
+    );
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test ability" }));
+    expect(fixture.combat).toMatchObject({
+      mana: 0,
+      turnsRemaining: 10,
+      shadowstepActive: true,
+    });
+    expect(fixture.submit).not.toHaveBeenCalled();
+  });
+
+  it("preserves Opening Strike through a resource opener and spends it on the first red chain", () => {
+    checkpoint("blue", initialCombat([{ ...enemy, hp: 500, maxHp: 500 }], 10), {
+      masteryIds: ["rogue_t2_first_crit"],
+    });
+    const key = snapshotKey("player", level.id, fixture.heroClass);
+    const firstMount = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test chain" }));
+    const afterResource = loadSnapshot(key, 123)!;
+    expect(afterResource.redChainCount).toBe(0);
+    expect(afterResource.chainCountTotal).toBe(1);
+    firstMount.unmount();
+    afterResource.grid = Array.from({ length: 5 }, () =>
+      Array<RuneType>(5).fill("red"),
+    );
+    saveSnapshot(key, afterResource);
+    const secondMount = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test chain" }));
+    const afterRed = loadSnapshot(key, 123)!;
+    // Chamber101: three red runes round to38damage; Opening Strike pays57.
+    expect(afterRed.combat.totalDamage).toBe(57);
+    expect(afterRed.redChainCount).toBe(1);
+    secondMount.unmount();
+    afterRed.grid = afterResource.grid;
+    saveSnapshot(key, afterRed);
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test chain" }));
+    expect(loadSnapshot(key, 123)?.combat.totalDamage).toBe(95);
+  });
+
+  it("pays each treasure coordinate once for score and shards across a resume", async () => {
+    checkpoint("blue", initialCombat([{ ...enemy, hp: 500, maxHp: 500 }], 10), {
+      masteryIds: [],
+    });
+    const firstMount = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test chain" }));
+    const key = snapshotKey("player", level.id, fixture.heroClass);
+    const first = loadSnapshot(key, 123)!;
+    expect(first.bonusScoreFromTreasure).toBe(3 * TREASURE_SCORE_BONUS);
+    expect(first.bonusShardsFromTreasure).toBe(3 * treasureShardValue(101));
+    expect(first.consumedTreasureCells).toEqual(["0-0", "0-1", "0-2"]);
+    firstMount.unmount();
+    // Present another legal resource chain through the same positions after
+    // gravity. The checkpoint's pickup ledger must survive independently.
+    first.grid = Array.from({ length: 5 }, () =>
+      Array<RuneType>(5).fill("blue"),
+    );
+    saveSnapshot(key, first);
+    mount();
+    await act(async () =>
+      fireEvent.click(screen.getByRole("button", { name: "Test chain" })),
+    );
+    const resumed = loadSnapshot(key, 123)!;
+    expect(resumed.bonusScoreFromTreasure).toBe(first.bonusScoreFromTreasure);
+    expect(resumed.bonusShardsFromTreasure).toBe(first.bonusShardsFromTreasure);
+    expect(resumed.consumedTreasureCells).toEqual(first.consumedTreasureCells);
+    expect(fixture.submit).not.toHaveBeenCalled();
+  });
+
+  it("preserves old treasure totals without replenishing unknown consumed coordinates", () => {
+    checkpoint("blue", initialCombat([{ ...enemy, hp: 500, maxHp: 500 }], 10), {
+      masteryIds: [],
+      bonusScoreFromTreasure: 75,
+      bonusShardsFromTreasure: 5,
+    });
+    const key = snapshotKey("player", level.id, fixture.heroClass);
+    const legacy = loadSnapshot(key, 123)!;
+    delete legacy.consumedTreasureCells;
+    saveSnapshot(key, legacy);
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test chain" }));
+    const resumed = loadSnapshot(key, 123)!;
+    expect(resumed.bonusScoreFromTreasure).toBe(75);
+    expect(resumed.bonusShardsFromTreasure).toBe(5);
+    expect(resumed.consumedTreasureCells).toEqual(["0-0", "0-1", "0-2"]);
+  });
+
+  it("displays a relic confirmed in the settlement receipt", async () => {
+    fixture.submit.mockResolvedValueOnce({
+      wasNewBest: true,
+      shardsAwarded: 10,
+      xpAwarded: 30,
+      relicDrop: { id: "owned-relic", relic_id: "ember_edge", rank: 1 },
+    });
+    checkpoint("red", initialCombat([enemy], 10));
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Test chain" }));
+    const drop = await screen.findByText("Ember Edge");
+    await waitFor(() => expect(drop).toBeVisible());
+    expect(fixture.submit).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a high-health legacy score checkpoint playable without granting a free clear", () => {
+    level.objective_type = "reach_score";
+    level.objective_target = 1_425;
+    checkpoint("blue", {
+      ...initialCombat([{ ...enemy, hp: 200, maxHp: 200 }], 17),
+      hp: 130,
+      maxHp: 130,
+    });
+    mount();
+    expect(screen.getByRole("button", { name: "Test chain" })).toBeEnabled();
+    expect(fixture.submit).not.toHaveBeenCalled();
+  });
+
+  it("settles earned work from a legacy score checkpoint once and preserves its retry receipt", async () => {
+    level.objective_type = "reach_score";
+    level.objective_target = 1_425;
+    checkpoint("blue", {
+      ...initialCombat([{ ...enemy, hp: 20, maxHp: 200 }], 10),
+      totalDamage: 180,
+      longestChain: 6,
+    });
+    fixture.submit.mockRejectedValueOnce(new Error("Retry earned result"));
+    const firstMount = mount();
+    await screen.findByRole("button", { name: "Retry save" });
+    expect(fixture.submit).toHaveBeenCalledOnce();
+    const input = fixture.submit.mock.calls[0][0];
+    expect(input).toMatchObject({ dungeon_cleared: true, total_damage: 180 });
+    const key = snapshotKey("player", level.id, fixture.heroClass);
+    expect(loadSnapshot(key, 123)?.pendingSettlement?.input).toEqual(input);
+    firstMount.unmount();
+    mount();
+    expect(fixture.submit).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+    await waitFor(() => expect(fixture.submit).toHaveBeenCalledTimes(2));
+    expect(fixture.submit.mock.calls[1][0]).toEqual(input);
+  });
+
   it("shows the introduction before pending bargains and preserves the offer until an explicit choice", async () => {
     fixture.heroClass = "mage";
     fixture.showIntro = true;
@@ -311,7 +460,7 @@ describe("campaign production action settlement", () => {
     await waitFor(() => expect(fixture.submit).toHaveBeenCalledTimes(1));
     const input = fixture.submit.mock.calls[0][0];
     expect(input.reward_context).toMatchObject({
-      treasure_shards: 3 * TREASURE_SHARD_BONUS,
+      treasure_shards: 3 * treasureShardValue(101),
       mastery_shards: 1,
     });
     const final = fixture.combat!;

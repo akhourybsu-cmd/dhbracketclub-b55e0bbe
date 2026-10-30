@@ -44,6 +44,7 @@ function checkpoint() {
     bonusShardsFromMastery: 9,
     bonusShardsFromTreasure: 10,
     bonusScoreFromTreasure: 150,
+    consumedTreasureCells: new Set(["0-0", "0-1"]),
     totalManaSpent: 5,
     goldRunesCleared: 11,
     braceFired: true,
@@ -72,6 +73,7 @@ describe("complete Rune Delve battle checkpoints", () => {
       ["4-4", "0-0"],
     ]);
     expect(loaded?.bonusShardsFromTreasure).toBe(10);
+    expect(loaded?.consumedTreasureCells).toEqual(["0-0", "0-1"]);
     expect(loaded?.aegisFired).toBe(true);
     expect(loaded?.bossPhases).toEqual([["boss-1", 3]]);
   });

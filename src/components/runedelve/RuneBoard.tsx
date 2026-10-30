@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { RuneCell } from "./RuneCell";
 import { RuneSigil } from "./RuneSigil";
 import { BOARD_SIZE, type RuneType } from "@/lib/runedelve/dungeonGenerator";
+import { BASE_RUNE_DAMAGE } from "@/lib/runedelve/combatEngine";
 import { cellKey, type Cell } from "@/lib/runedelve/boardEngine";
 import {
   advanceChainSelection,
@@ -17,7 +18,7 @@ const RUNE_PREVIEW: Record<
   RuneType,
   { label: string; effect: (n: number) => string }
 > = {
-  red: { label: "Attack", effect: (n) => `${n * 8} dmg` },
+  red: { label: "Attack", effect: (n) => `${n * BASE_RUNE_DAMAGE} dmg` },
   blue: {
     label: "Mana",
     effect: (n) => `+${n >= 5 ? 2 : 1} orb${n >= 5 ? "s" : ""}`,

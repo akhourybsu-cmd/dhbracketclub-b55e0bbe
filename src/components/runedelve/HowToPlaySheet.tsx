@@ -58,8 +58,8 @@ export function HowToPlaySheet({ open, onOpenChange, heroClass }: Props) {
         ability and countdown.
       </p>
       <p>
-        Class abilities are free actions. Chain 6+ to hit harder; 7+ can earn
-        one bonus action per enemy cycle.
+        Class abilities are free actions. Chain 6+ to hit harder. In campaign,
+        7+ can earn one bonus action per enemy cycle.
       </p>
     </article>,
     <article className="rd-dialog-card" key="resonance">

@@ -7,8 +7,9 @@
 // specific problems or favour a build — they never trivialise a chapter.
 //
 // ── Ranks (R1 base → R5 max) ───────────────────────────────────────────────
-// Owned relics can be upgraded with shards. Each rank applies a small bump
-// (≤10–15% of base). All damage/heal/shield outputs round to whole integers.
+// Owned relics can be upgraded with shards. Each equipped rank above R1
+// adds 2 max HP; primary powers use bounded percentage or integer steps.
+// All damage/heal/shield outputs round to whole integers.
 
 import type { HeroClass } from './classConfig';
 
@@ -29,7 +30,7 @@ export interface RelicDef {
 export const RELIC_CATALOG: RelicDef[] = [
   // ── Tier 1 — gentle helpers (chapter 1+) ──────────────────────────────
   { id: 'ember_edge',       name: 'Ember Edge',        category: 'offense',   tier: 1, cost: 100, icon: '🔥', description: 'First red chain each run deals +50% damage.' },
-  { id: 'aether_spark',     name: 'Aether Spark',      category: 'mana',      tier: 1, cost: 100, icon: '💠', description: 'Start each run with 2 mana.' },
+  { id: 'aether_spark',     name: 'Aether Spark',      category: 'mana',      tier: 1, cost: 100, icon: '💠', description: 'Start each run with 1 mana.' },
   { id: 'iron_resolve',     name: 'Iron Resolve',      category: 'survival',  tier: 1, cost: 120, icon: '🛡️', description: 'Start each run with a 1-turn shield.' },
   { id: 'verdant_heart',    name: 'Verdant Heart',     category: 'survival',  tier: 1, cost: 100, icon: '🌿', description: 'Green chains heal +1 HP per rune.' },
   { id: 'keysight',         name: 'Keysight',          category: 'board',     tier: 1, cost: 120, icon: '🗝️', description: 'Break 1 sealed rune when a campaign chamber opens.' },
@@ -38,19 +39,19 @@ export const RELIC_CATALOG: RelicDef[] = [
   { id: 'wanderers_compass',name: "Wanderer's Compass",category: 'objective', tier: 1, cost: 150, icon: '🧭', description: '+15% Rune Shards from this run.' },
   // NEW T1
   { id: 'mirror_shard',     name: 'Mirror Shard',      category: 'offense',   tier: 1, cost: 140, icon: '🪞', description: 'Every 2nd chain deals +30% damage (red) or grants a bonus orb / heal / shield (others).' },
-  { id: 'brambleward',      name: 'Brambleward',       category: 'survival',  tier: 1, cost: 130, icon: '🌵', description: 'Shield Thorns reflect +15% more damage. Stacks with Spiked Aegis.' },
+  { id: 'brambleward',      name: 'Brambleward',       category: 'survival',  tier: 1, cost: 130, icon: '🌵', description: 'Shield Thorns reflect +5% more damage. Stacks with Spiked Aegis.' },
 
   // ── Tier 2 — mechanic-aware (chapter 2+) ──────────────────────────────
-  { id: 'crimson_tide',     name: 'Crimson Tide',      category: 'offense',   tier: 2, cost: 280, icon: '🩸', description: 'Every 5th red chain deals +75% damage.' },
+  { id: 'crimson_tide',     name: 'Crimson Tide',      category: 'offense',   tier: 2, cost: 280, icon: '🩸', description: 'Every 3rd red chain deals +60% damage.' },
   { id: 'sapphire_flow',    name: 'Sapphire Flow',     category: 'mana',      tier: 2, cost: 300, icon: '💎', description: 'Blue chains grant +1 mana on chains of 4+.' },
   { id: 'last_stand',       name: 'Last Stand',        category: 'survival',  tier: 2, cost: 380, icon: '💔', description: 'Once per run, survive lethal damage at 1 HP.' },
   { id: 'cleansing_touch',  name: 'Cleansing Touch',   category: 'board',     tier: 2, cost: 320, icon: '✨', description: 'First corrupted source cleared each run is free (no HP cost).' },
   { id: 'momentum',         name: 'Momentum',          category: 'tempo',     tier: 2, cost: 280, icon: '⚡', description: "Rogue's chain bonus threshold becomes 4+ (was 5+). Other classes: chains of 4+ score +10%." },
   { id: 'foresight',        name: 'Foresight',         category: 'objective', tier: 2, cost: 350, icon: '👁️', description: 'Telegraphed heavy strikes take 1 extra turn to charge.' },
   { id: 'bulwark',          name: 'Bulwark',           category: 'survival',  tier: 2, cost: 320, icon: '🪨', description: 'Gold chains grant +1 shield turn.' },
-  { id: 'spiked_aegis',     name: 'Spiked Aegis',      category: 'survival',  tier: 2, cost: 340, icon: '🌵', description: 'Shield reflects more damage back at attackers (+10% / +20% / +35%).' },
+  { id: 'spiked_aegis',     name: 'Spiked Aegis',      category: 'survival',  tier: 2, cost: 340, icon: '🌵', description: 'Shield Thorns reflect +10% more damage. Stacks with Brambleward.' },
   // NEW T2
-  { id: 'vampiric_sigil',   name: 'Vampiric Sigil',    category: 'survival',  tier: 2, cost: 360, icon: '🧛', description: 'Heal 20% of red-chain damage dealt back as HP.' },
+  { id: 'vampiric_sigil',   name: 'Vampiric Sigil',    category: 'survival',  tier: 2, cost: 360, icon: '🧛', description: 'Heal 12% of red-chain damage dealt, capped at 20% max HP per action.' },
   { id: 'rune_echo',        name: 'Rune Echo',         category: 'tempo',     tier: 2, cost: 340, icon: '🌀', description: 'Every 4th chain repeats its effect at 50% strength.' },
 
   // ── Tier 3 — specialised synergy (chapter 3+) ─────────────────────────
@@ -105,6 +106,12 @@ export function relicAllowedForClass(_relic: RelicDef, _cls: HeroClass): boolean
 // ─── Ranks ────────────────────────────────────────────────────────────────
 
 export const MAX_RANK = 5;
+/** Equipped ranks add visible vitality even when a coarse primary effect plateaus. */
+export const RELIC_RANK_HP_PER_RANK = 2;
+
+export function relicRankMaxHpBonus(rank: number): number {
+  return (clampRank(rank) - 1) * RELIC_RANK_HP_PER_RANK;
+}
 
 /** Cost in shards to upgrade FROM (rank-1) TO `rank`. R1 is the unlock cost,
  *  not a rank-up. Returns 0 if rank <= 1 or rank > MAX_RANK. */
@@ -125,18 +132,17 @@ export function totalRankCost(baseCost: number, throughRank: number): number {
 export type RankTable = readonly [number, number, number, number, number];
 
 export const RANK_EFFECTS: Record<string, RankTable> = {
-  // Offense (multipliers — small +0.05 bumps)
+  // Offense multipliers
   ember_edge:        [1.50, 1.55, 1.60, 1.65, 1.70],
-  crimson_tide:      [1.75, 1.80, 1.85, 1.90, 1.95],
+  crimson_tide:      [1.60, 1.68, 1.75, 1.83, 1.90],
   executioners_mark: [1.30, 1.36, 1.42, 1.48, 1.55],
   desperate_surge:   [1.25, 1.30, 1.36, 1.42, 1.50],
 
   // Mana (flat — integer breakpoints)
-  // Values above the 3-mana cap convert to opening shield turns, so every
-  // rank remains a real upgrade instead of silently wasting overflow.
-  aether_spark:      [2,    3,    4,    5,    6   ],
+  // Coarse resource breakpoints are supplemented by the explicit rank HP bonus.
+  aether_spark:      [1,    1,    2,    2,    3   ],
   sapphire_flow:     [1,    1,    2,    2,    3   ],
-  first_light:       [1,    1,    2,    2,    3   ], // free uses
+  first_light:       [1,    1,    1,    2,    2   ], // free uses
 
   // Survival
   iron_resolve:      [1,    2,    2,    3,    3   ], // shield turns
@@ -144,7 +150,7 @@ export const RANK_EFFECTS: Record<string, RankTable> = {
   bloodbond:         [4,    5,    6,    7,    8   ], // HP heal on kill
   last_stand:        [1,    1,    2,    2,    3   ], // uses per run
   bulwark:           [1,    2,    2,    3,    3   ], // shield turns added on gold
-  spiked_aegis:      [1.10, 1.15, 1.20, 1.28, 1.35], // thorns multiplier (composes with class base)
+  spiked_aegis:      [1.10, 1.15, 1.20, 1.25, 1.30], // thorns multiplier (composes with class base)
 
   // Board / tempo / utility
   keysight:          [1,    2,    2,    3,    3   ], // opening seals broken
@@ -158,8 +164,8 @@ export const RANK_EFFECTS: Record<string, RankTable> = {
 
   // ── New relics ─────────────────────────────────────────────────────────
   mirror_shard:      [1.30, 1.35, 1.40, 1.45, 1.50], // bonus mult on every 2nd chain
-  brambleward:       [1.15, 1.20, 1.25, 1.32, 1.40], // extra thorns multiplier
-  vampiric_sigil:    [0.20, 0.24, 0.28, 0.32, 0.40], // lifesteal % of red dmg
+  brambleward:       [1.05, 1.08, 1.11, 1.14, 1.17], // extra thorns multiplier
+  vampiric_sigil:    [0.12, 0.14, 0.16, 0.18, 0.20], // lifesteal % of red dmg
   rune_echo:         [0.50, 0.55, 0.60, 0.70, 0.80], // echo strength on every 4th chain
   foreseers_lens:    [1,    1,    2,    2,    3   ], // bonus turns per level
   void_pact:         [1.20, 1.24, 1.28, 1.34, 1.40], // damage mult on all chains
@@ -201,7 +207,7 @@ function turnsLabel(n: number): string {
 /** Produces a rank-aware description string for a relic.
  *  Falls back to the static description if the relic has no rank table or
  *  no rank-aware template. */
-export function describeRelicAtRank(relic: RelicDef, rank: number): string {
+function describePrimaryRelicEffect(relic: RelicDef, rank: number): string {
   const r = clampRank(rank);
   const v = RANK_EFFECTS[relic.id]?.[r - 1];
   if (v == null) return relic.description;
@@ -211,7 +217,7 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
     case 'ember_edge':
       return `First red chain each run deals +${pctBonus(v)}% damage.`;
     case 'crimson_tide':
-      return `Every 5th red chain deals +${pctBonus(v)}% damage.`;
+      return `Every 3rd red chain deals +${pctBonus(v)}% damage.`;
     case 'executioners_mark':
       return `+${pctBonus(v)}% damage vs enemies below 25% HP.`;
     case 'desperate_surge':
@@ -225,14 +231,14 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
 
     // Mana
     case 'aether_spark':
-      return v <= 3
-        ? `Start each run with ${Math.round(v)} mana.`
-        : `Start at full mana; ${Math.round(v - 3)} overflow becomes shield turn${v - 3 === 1 ? '' : 's'}.`;
+      return `Start each run with ${Math.round(v)} mana (maximum 3).`;
     case 'sapphire_flow':
       return `Blue chains grant +${Math.round(v)} mana on chains of 4+.`;
     case 'first_light': {
       const n = Math.round(v);
-      return `First ${n} class ability use${n === 1 ? '' : 's'} each run cost 0 mana.`;
+      return n === 1
+        ? 'First class ability use each run costs 0 mana.'
+        : `First ${n} class ability uses each run cost 0 mana.`;
     }
 
     // Survival
@@ -249,11 +255,11 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
     case 'bulwark':
       return `Gold chains grant +${turnsLabel(Math.round(v))} of shield.`;
     case 'spiked_aegis':
-      return `Shield reflects +${pctBonus(v)}% damage back at attackers.`;
+      return `Shield Thorns reflect +${pctBonus(v)}% more damage. Stacks with Brambleward.`;
     case 'brambleward':
       return `Shield Thorns reflect +${pctBonus(v)}% more damage. Stacks with Spiked Aegis.`;
     case 'vampiric_sigil':
-      return `Heal ${Math.round(v * 100)}% of red-chain damage dealt back as HP.`;
+      return `Heal ${Math.round(v * 100)}% of red-chain damage dealt, capped at 20% max HP per action.`;
     case 'phoenix_heart':
       return `Once per run, on lethal damage, revive at ${Math.round(v * 100)}% HP.`;
 
@@ -282,4 +288,11 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
     default:
       return relic.description;
   }
+}
+
+/** Primary power and the equipped rank's vitality are both visible to the player. */
+export function describeRelicAtRank(relic: RelicDef, rank: number): string {
+  const primary = describePrimaryRelicEffect(relic, rank);
+  const vitality = relicRankMaxHpBonus(rank);
+  return vitality > 0 ? `${primary} +${vitality} max HP while equipped.` : primary;
 }

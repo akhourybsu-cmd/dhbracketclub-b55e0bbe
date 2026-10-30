@@ -107,26 +107,27 @@ describe("compact daily arena", () => {
     expect(screen.getAllByRole("article")).toHaveLength(2);
     expect(
       screen.getByRole("article", { name: "0+ slain reward" }),
-    ).toHaveTextContent("25 shards");
+    ).toHaveTextContent("0 shards");
     const next = screen.getByRole("button", {
       name: "Next arena rewards page",
     });
     fireEvent.click(next);
     fireEvent.click(next);
-    const thirdStar = screen.getByRole("article", { name: "25+ slain reward" });
+    fireEvent.click(next);
+    const thirdStar = screen.getByRole("article", { name: "16+ slain reward" });
     expect(within(thirdStar).getByLabelText("3 stars")).toBeVisible();
     expect(thirdStar).toHaveTextContent("400 shards");
     fireEvent.click(next);
     expect(
-      screen.getByRole("article", { name: "50+ slain reward" }),
+      screen.getByRole("article", { name: "30+ slain reward" }),
     ).toHaveTextContent("900 shards");
     expect(next).toBeDisabled();
-    expect(screen.getByText(/Your first result banks/)).toHaveTextContent(
-      "XP is 10 per kill, up to 500",
-    );
+    expect(
+      screen.getByText(/Better tiers pay the difference/),
+    ).toHaveTextContent("Up to 900 shards and 500 XP each day");
   });
 
-  it("preserves the one-result daily entry gate", () => {
+  it("offers a daily best retry without discarding the previous result", () => {
     const { rerender } = mount();
     expect(
       screen.getByRole("link", { name: "Enter daily arena" }),
@@ -141,8 +142,8 @@ describe("compact daily arena", () => {
     );
     expect(screen.getByRole("heading", { name: "17 slain." })).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Take on an Expedition" }),
-    ).toHaveAttribute("href", "/rune-delve/expedition");
+      screen.getByRole("link", { name: "Improve today's best" }),
+    ).toHaveAttribute("href", "/rune-delve/endless");
     expect(
       screen.queryByRole("link", { name: "Enter daily arena" }),
     ).toBeNull();

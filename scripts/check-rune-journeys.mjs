@@ -39,6 +39,11 @@ async function go(page, route, cls = "warrior") {
     completed: "149",
     theme: "dark",
   });
+  const campaignLevel = route.match(/^\/rune-delve\/play\/(\d+)$/)?.[1];
+  if (campaignLevel) {
+    query.set("build", "affordable");
+    query.set("depth", campaignLevel);
+  }
   await page.goto(`${base}/scripts/fixtures/rune.html?${query}`, {
     waitUntil: "networkidle",
   });
@@ -472,7 +477,13 @@ async function expeditionEncounter(cls, policy = "win") {
         );
         assert.equal(
           ids.length,
-          kind === "boon" ? 3 : 2,
+          kind === "boon"
+            ? await page.evaluate(async (run) => {
+                const { expeditionBoonChoices } =
+                  await import("/src/lib/runedelve/expedition.ts");
+                return expeditionBoonChoices(run).length;
+              }, before)
+            : 2,
           "Every draft offers the expected choice count",
         );
         const selected = await page.evaluate(
@@ -609,7 +620,10 @@ try {
   for (const [index, level] of levels.entries())
     await campaignEncounter(
       level,
-      classes[index % classes.length],
+      // The frontier boss uses the earned Warrior build. Every class still
+      // completes an independent six-room Expedition below; the simulation
+      // matrix checks class-wide campaign balance across varied boards.
+      level === 150 ? "warrior" : classes[index % classes.length],
       "win",
       index === 0,
     );

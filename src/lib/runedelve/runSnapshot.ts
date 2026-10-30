@@ -80,6 +80,8 @@ export interface RunSnapshot {
   bonusShardsFromMastery?: number;
   bonusScoreFromTreasure?: number;
   bonusShardsFromTreasure?: number;
+  /** Claimed board coordinates; gravity/refills cannot replenish treasure. */
+  consumedTreasureCells?: string[];
   totalManaSpent?: number;
   goldRunesCleared?: number;
   braceFired?: boolean;
@@ -130,6 +132,7 @@ export interface BuildSnapshotInput {
   bonusShardsFromMastery?: number;
   bonusScoreFromTreasure?: number;
   bonusShardsFromTreasure?: number;
+  consumedTreasureCells?: Set<string>;
   totalManaSpent?: number;
   goldRunesCleared?: number;
   braceFired?: boolean;
@@ -179,6 +182,7 @@ export function buildSnapshot(input: BuildSnapshotInput): RunSnapshot {
     bonusShardsFromMastery: input.bonusShardsFromMastery ?? 0,
     bonusScoreFromTreasure: input.bonusScoreFromTreasure ?? 0,
     bonusShardsFromTreasure: input.bonusShardsFromTreasure ?? 0,
+    consumedTreasureCells: Array.from(input.consumedTreasureCells ?? []),
     totalManaSpent: input.totalManaSpent ?? 0,
     goldRunesCleared: input.goldRunesCleared ?? 0,
     braceFired: input.braceFired ?? false,

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
-import { titleForLevel } from "@/lib/runedelve/classConfig";
+import { bootstrapRuneDelve } from "@/hooks/useRuneDelveHero";
 
 /**
  * Per-class progression track. One row per (user_id, class).
@@ -46,87 +46,39 @@ export function useAllClassProgress() {
   });
 }
 
-/** Pull a single class's track, lazily creating a fresh one if missing. */
+/** Let SQL restore legacy state or create a fresh class with safe defaults. */
 export function useEnsureClassProgress() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (cls: HeroClass): Promise<ClassProgress> => {
       if (!user) throw new Error("Not authenticated");
-      const { data: existing } = await runeRequest(
-        supabase
-          .from("rune_delve_class_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("class", cls)
-          .maybeSingle(),
-      );
-      if (existing) return existing as ClassProgress;
-      const { data, error } = await runeRequest(
-        supabase
-          .from("rune_delve_class_progress")
-          .upsert(
-            {
-              user_id: user.id,
-              class: cls,
-              xp: 0,
-              level: 1,
-              cosmetic_title: titleForLevel(1, cls),
-            },
-            { onConflict: "user_id,class", ignoreDuplicates: true },
-          )
-          .select()
-          .maybeSingle(),
-      );
-      if (error) throw error;
-      if (data) return data as ClassProgress;
-      const { data: canonical } = await runeRequest(
-        supabase
-          .from("rune_delve_class_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("class", cls)
-          .single(),
-      );
-      return canonical as ClassProgress;
+      const { track } = await bootstrapRuneDelve({ cls });
+      if (!track?.id || track.user_id !== user.id || track.class !== cls)
+        throw new Error("Class progress was not confirmed. Please retry.");
+      return track;
     },
     onSuccess: () => {
       qc.invalidateQueries({
         queryKey: ["rune-delve-class-progress", user?.id],
       });
+      qc.invalidateQueries({ queryKey: ["rune-delve-wallet", user?.id] });
     },
   });
 }
 
-/** Apply XP / level / title / lifetime totals to a specific class track. */
+/** Retained for old imports; only acknowledged settlements can credit XP. */
 export function useUpdateClassProgress() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: {
       cls: HeroClass;
       patch: Partial<ClassProgress>;
-    }) => {
+    }): Promise<ClassProgress> => {
       if (!user) throw new Error("Not authenticated");
-      // Upsert keeps this safe if a class row hasn't been created yet (e.g.
-      // legacy hero whose backfill missed an edge case).
-      const { data, error } = await runeRequest(
-        supabase
-          .from("rune_delve_class_progress")
-          .upsert(
-            { ...params.patch, user_id: user.id, class: params.cls },
-            { onConflict: "user_id,class" },
-          )
-          .select()
-          .single(),
+      throw new Error(
+        "Class progress is managed by the server. Please refresh.",
       );
-      if (error) throw error;
-      return data as ClassProgress;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({
-        queryKey: ["rune-delve-class-progress", user?.id],
-      });
     },
   });
 }

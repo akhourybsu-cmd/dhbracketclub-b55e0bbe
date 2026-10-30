@@ -227,8 +227,8 @@ export default function RuneDelveHomePage() {
 
   const progress = progressQuery.data!;
   const track = tracks?.find((t) => t.class === hero.class);
-  const xp = levelFromXp(track?.xp ?? hero.xp);
   const classLevel = track?.level ?? hero.level;
+  const xp = levelFromXp(track?.xp ?? hero.xp, classLevel);
   const nextLevel = progress.highest_unlocked_level;
   const chapter = chapterFor(nextLevel);
   const meta = chapterMeta(chapter);

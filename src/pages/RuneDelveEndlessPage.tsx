@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Flame,
-  Pause,
-  Play,
-  Skull,
-  Sparkles,
-  Timer,
-  Trophy,
-} from "lucide-react";
+import { Flame, Pause, Play, Skull, Sparkles, Timer } from "lucide-react";
 import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
 import { useMyDailyRun, useSubmitDailyRun } from "@/hooks/useDailyChallenge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,10 +17,8 @@ import {
 import { generateBoard } from "@/lib/runedelve/dungeonGenerator";
 import {
   ENDLESS_TIME_LIMIT_SEC,
-  endlessScore,
   endlessStarsFor,
   enemyTickIntervalMs,
-  spawnBatch,
   waveForElapsed,
 } from "@/lib/runedelve/endlessMode";
 import { mulberry32 } from "@/lib/runedelve/prng";
@@ -36,6 +26,8 @@ import {
   arenaStorageKey,
   parseArenaRun,
   previewArenaChain,
+  advanceArenaClock,
+  spawnArenaEnemies,
   type ArenaRun,
 } from "@/lib/runedelve/arenaState";
 import { RuneBoard } from "@/components/runedelve/RuneBoard";
@@ -137,70 +129,9 @@ export default function RuneDelveEndlessPage() {
         lastTick.current = now;
         return;
       }
-      const elapsed = Math.min(
-        ENDLESS_TIME_LIMIT_SEC,
-        current.elapsed + Math.min(1, (now - lastTick.current) / 1000),
-      );
+      const delta = (now - lastTick.current) / 1000;
       lastTick.current = now;
-      const next = { ...current, elapsed };
-      if (elapsed >= ENDLESS_TIME_LIMIT_SEC) {
-        next.result = {
-          reason: "timeout",
-          kills: next.combat.enemiesDefeated,
-          score: endlessScore(
-            next.combat.enemiesDefeated,
-            next.combat.totalDamage,
-          ),
-        };
-      } else if (
-        elapsed >= current.attackAt &&
-        current.combat.enemies.some((e) => e.hp > 0)
-      ) {
-        // Arena enemies have one readable real-time attack; terrain abilities belong to campaign/Expedition.
-        const incoming = current.combat.enemies
-          .filter((e) => e.hp > 0)
-          .reduce((sum, e) => sum + e.damage, 0);
-        const damage =
-          current.combat.shieldTurns > 0
-            ? Math.round(incoming * 0.4)
-            : incoming;
-        next.combat = {
-          ...current.combat,
-          hp: Math.max(0, current.combat.hp - damage),
-          shieldTurns: Math.max(0, current.combat.shieldTurns - 1),
-        };
-        next.attackAt = elapsed + enemyTickIntervalMs(elapsed) / 1000;
-        if (next.combat.hp <= 0)
-          next.result = {
-            reason: "defeated",
-            kills: next.combat.enemiesDefeated,
-            score: endlessScore(
-              next.combat.enemiesDefeated,
-              next.combat.totalDamage,
-            ),
-          };
-      }
-      if (!next.result && next.combat.enemies.every((e) => e.hp <= 0)) {
-        if (next.spawnAt === null)
-          next.spawnAt =
-            elapsed + waveForElapsed(elapsed).respawnDelayMs / 1000;
-        else if (elapsed >= next.spawnAt) {
-          next.tick += 1;
-          next.combat = {
-            ...next.combat,
-            enemies: spawnBatch(elapsed, next.seed ^ next.tick).map((e) => ({
-              ...e,
-              ability: undefined,
-              abilityCooldown: undefined,
-              abilityCooldownMax: undefined,
-              telegraphLabel: undefined,
-            })),
-          };
-          next.spawnAt = null;
-          next.attackAt = elapsed + enemyTickIntervalMs(elapsed) / 1000;
-        }
-      }
-      commit(next);
+      commit(advanceArenaClock(current, delta));
     }, 100);
     const pause = () => {
       if (runRef.current && !runRef.current.result)
@@ -256,24 +187,12 @@ export default function RuneDelveEndlessPage() {
   }, [run, saveResult]);
 
   function start() {
-    if (
-      !hero ||
-      runRef.current ||
-      dailyQuery.isLoading ||
-      dailyQuery.isError ||
-      dailyQuery.data
-    )
+    if (!hero || runRef.current || dailyQuery.isLoading || dailyQuery.isError)
       return;
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     const rng = mulberry32(seed);
     const grid = ensurePlayableBoard(generateBoard(rng), rng).grid;
-    const enemies = spawnBatch(0, seed).map((e) => ({
-      ...e,
-      ability: undefined,
-      abilityCooldown: undefined,
-      abilityCooldownMax: undefined,
-      telegraphLabel: undefined,
-    }));
+    const enemies = spawnArenaEnemies(0, seed);
     commit({
       version: 1,
       requestId: crypto.randomUUID(),
@@ -397,17 +316,10 @@ export default function RuneDelveEndlessPage() {
                 Every rune counts.
               </h1>
               <p>Pure class combat. No relic or mastery advantage.</p>
-              {dailyQuery.data ? (
-                <Link to="/rune-delve/daily" className="rd-primary-action">
-                  <Trophy />
-                  Today’s result
-                </Link>
-              ) : (
-                <button className="rd-primary-action btn-press" onClick={start}>
-                  <Play />
-                  Begin arena
-                </button>
-              )}
+              <button className="rd-primary-action btn-press" onClick={start}>
+                <Play />
+                {dailyQuery.data ? "Improve today's best" : "Begin arena"}
+              </button>
             </div>
           </div>
           <div className="rd-class-info">
@@ -417,7 +329,9 @@ export default function RuneDelveEndlessPage() {
             <div>
               <strong>{getClass(cls).name}</strong>
               <small>
-                Chain to act. Enemies strike on a timer. Backgrounding pauses.
+                {dailyQuery.data
+                  ? `Best today: ${dailyQuery.data.kills_count ?? 0} slain. Better tiers pay the difference.`
+                  : "Chain to act. Enemies strike on a timer. Backgrounding pauses."}
               </small>
             </div>
           </div>
@@ -564,7 +478,7 @@ export default function RuneDelveEndlessPage() {
             <p className="text-sm text-primary">
               {saved.rewarded
                 ? `+${saved.reward.shards} shards · +${saved.reward.xp} XP`
-                : "Daily result confirmed · reward already claimed"}
+                : "Best retained · reach a higher tier for more rewards"}
             </p>
           ) : null}
           <Link className="rd-primary-action" to="/rune-delve/daily">

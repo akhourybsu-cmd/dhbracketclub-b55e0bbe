@@ -1,0 +1,1099 @@
+{
+  "date": "2026-10-30",
+  "campaign": {
+    "modelVersion": 4,
+    "curveId": "2026-10-balanced-campaign",
+    "affordableBuild": "earned-affordable uses class anchors1/5/12/24/40 at chambers1/15/50/100/150 and R1\u20133 gear. Rogue Ember+Iron; others Ember+Aether. Class25 adds the remaining item in the unlocked third slot. Mage purchases Aether first. Authoritative class ability costs and first-red Opening Strike are modelled. Historical progression/earned-proposal preserve their two-item comparison loadouts.",
+    "model": "Deterministic attentive-player heuristic driving the shared combat and board engines. Includes combat-earned objectives/legacy goal normalization, all authored reinforcement waves and turn grants, armor/enemy abilities, telegraphs, phase damage transitions, seals/eclipse/linked pairs/shifting/corruption, layout hazard damage, chain tiers/free actions, Convergence, and dead-board/seal-topology recovery. Naked is class level 1 with no equipment. Progression interpolates class levels 1/5/12/20/25 at chambers 1/15/50/100/150 and uses up to two explicitly modelled R1\u20133 relics plus mastery tiers 1\u20132. Separately selected earned-proposal uses proposed class anchors 12/24/40 at50/100/150, including tier-three abilities via the shared engine; this does not change the progression baseline.",
+    "limitations": [
+      "Each sample varies board RNG from the fixed seed; this estimates board variance, not the exact canonical production board/refill sequence. Use --canonical for the campaign opening/refill seeds.",
+      "The heuristic caps searched chains at nine runes, uses immediate utility, and does not optimize several turns ahead or reserve mana across authored waves.",
+      "Steady path, no bargain, Daily modifiers, secondary-goal rewards, settlement treasure score/shards, or persistence. Those rewards do not alter the simulated primary combat goal.",
+      "Profiles reject unsupported equipment and class level 50+ rather than silently omit echo, revival, random critical, First Light, or higher-tier page-level mastery procs. Preset gear is an affordable comparison loadout, not best in slot or a live-account reconstruction. Historical progression/earned-proposal deliberately keep two slots; earned-affordable equips the unlocked third slot."
+    ],
+    "seed": 864542,
+    "boardMode": "varied",
+    "runsPerClassLevel": 24,
+    "totalRuns": 14400,
+    "summary": [
+      {
+        "cls": "warrior",
+        "profile": "earned-affordable",
+        "chapterMetrics": [
+          {
+            "clearRate": 0.998,
+            "minHp": 70.17,
+            "turnsUsed": 4.59,
+            "turnsRemaining": 9.87,
+            "incomingPerTurn": 9.33
+          },
+          {
+            "clearRate": 0.854,
+            "minHp": 41.3,
+            "turnsUsed": 6.18,
+            "turnsRemaining": 9.45,
+            "incomingPerTurn": 19.3
+          },
+          {
+            "clearRate": 0.905,
+            "minHp": 54.71,
+            "turnsUsed": 6.92,
+            "turnsRemaining": 9.05,
+            "incomingPerTurn": 17.45
+          }
+        ],
+        "chapter1": 0.998,
+        "chapter2": 0.854,
+        "chapter3": 0.905,
+        "lowest": [
+          {
+            "level": 87,
+            "clearRate": 0.375
+          },
+          {
+            "level": 80,
+            "clearRate": 0.4166666666666667
+          },
+          {
+            "level": 70,
+            "clearRate": 0.4583333333333333
+          },
+          {
+            "level": 101,
+            "clearRate": 0.5416666666666666
+          },
+          {
+            "level": 97,
+            "clearRate": 0.5833333333333334
+          }
+        ]
+      },
+      {
+        "cls": "mage",
+        "profile": "earned-affordable",
+        "chapterMetrics": [
+          {
+            "clearRate": 1,
+            "minHp": 69.04,
+            "turnsUsed": 4.6,
+            "turnsRemaining": 9.87,
+            "incomingPerTurn": 9.43
+          },
+          {
+            "clearRate": 0.875,
+            "minHp": 38.56,
+            "turnsUsed": 6.59,
+            "turnsRemaining": 9.04,
+            "incomingPerTurn": 18.25
+          },
+          {
+            "clearRate": 0.935,
+            "minHp": 54.49,
+            "turnsUsed": 6.73,
+            "turnsRemaining": 9.25,
+            "incomingPerTurn": 15.68
+          }
+        ],
+        "chapter1": 1,
+        "chapter2": 0.875,
+        "chapter3": 0.935,
+        "lowest": [
+          {
+            "level": 80,
+            "clearRate": 0.4583333333333333
+          },
+          {
+            "level": 87,
+            "clearRate": 0.5416666666666666
+          },
+          {
+            "level": 101,
+            "clearRate": 0.5833333333333334
+          },
+          {
+            "level": 150,
+            "clearRate": 0.5833333333333334
+          },
+          {
+            "level": 70,
+            "clearRate": 0.625
+          }
+        ]
+      },
+      {
+        "cls": "rogue",
+        "profile": "earned-affordable",
+        "chapterMetrics": [
+          {
+            "clearRate": 0.999,
+            "minHp": 71.83,
+            "turnsUsed": 6.47,
+            "turnsRemaining": 7.99,
+            "incomingPerTurn": 7.27
+          },
+          {
+            "clearRate": 0.922,
+            "minHp": 49.24,
+            "turnsUsed": 8.69,
+            "turnsRemaining": 6.96,
+            "incomingPerTurn": 12.76
+          },
+          {
+            "clearRate": 0.905,
+            "minHp": 49.16,
+            "turnsUsed": 9.21,
+            "turnsRemaining": 6.76,
+            "incomingPerTurn": 14.2
+          }
+        ],
+        "chapter1": 0.999,
+        "chapter2": 0.922,
+        "chapter3": 0.905,
+        "lowest": [
+          {
+            "level": 87,
+            "clearRate": 0.5416666666666666
+          },
+          {
+            "level": 70,
+            "clearRate": 0.5833333333333334
+          },
+          {
+            "level": 137,
+            "clearRate": 0.5833333333333334
+          },
+          {
+            "level": 110,
+            "clearRate": 0.625
+          },
+          {
+            "level": 150,
+            "clearRate": 0.625
+          }
+        ]
+      },
+      {
+        "cls": "cleric",
+        "profile": "earned-affordable",
+        "chapterMetrics": [
+          {
+            "clearRate": 0.999,
+            "minHp": 76.1,
+            "turnsUsed": 5.71,
+            "turnsRemaining": 8.75,
+            "incomingPerTurn": 8.32
+          },
+          {
+            "clearRate": 0.98,
+            "minHp": 54.78,
+            "turnsUsed": 8.38,
+            "turnsRemaining": 7.27,
+            "incomingPerTurn": 15.63
+          },
+          {
+            "clearRate": 0.981,
+            "minHp": 61.85,
+            "turnsUsed": 10.02,
+            "turnsRemaining": 5.96,
+            "incomingPerTurn": 15.4
+          }
+        ],
+        "chapter1": 0.999,
+        "chapter2": 0.98,
+        "chapter3": 0.981,
+        "lowest": [
+          {
+            "level": 130,
+            "clearRate": 0.625
+          },
+          {
+            "level": 137,
+            "clearRate": 0.75
+          },
+          {
+            "level": 80,
+            "clearRate": 0.8333333333333334
+          },
+          {
+            "level": 72,
+            "clearRate": 0.875
+          },
+          {
+            "level": 87,
+            "clearRate": 0.875
+          }
+        ]
+      }
+    ],
+    "finalBoss": [
+      {
+        "cls": "warrior",
+        "profile": "earned-affordable",
+        "classLevel": 40,
+        "slots": ["ember_edge", "aether_spark", "iron_resolve"],
+        "ranks": {
+          "ember_edge": 3,
+          "aether_spark": 3,
+          "iron_resolve": 3
+        },
+        "level": 150,
+        "clearRate": 0.7083333333333334,
+        "avgHpRemaining": 35.375,
+        "avgTurnsUsed": 11.5,
+        "avgTurnsRemaining": 9.5,
+        "avgTurnBudget": 21,
+        "hpPerTurnBudget": 49.857142857142854,
+        "nearDeathRate": 0.5,
+        "avgMinHp": 29.708333333333332,
+        "avgIncomingPerTurn": 18.696327746327746,
+        "wavesSpawned": 1,
+        "phaseTransitions": 1.7916666666666667,
+        "failures": {
+          "hp": 7,
+          "turns": 0,
+          "objective": 0,
+          "board": 0,
+          "safety": 0
+        },
+        "resonanceBursts": 2.7083333333333335,
+        "bonusActions": 4.125,
+        "heavyStrikeFires": 0
+      },
+      {
+        "cls": "mage",
+        "profile": "earned-affordable",
+        "classLevel": 40,
+        "slots": ["ember_edge", "aether_spark", "iron_resolve"],
+        "ranks": {
+          "ember_edge": 3,
+          "aether_spark": 3,
+          "iron_resolve": 3
+        },
+        "level": 150,
+        "clearRate": 0.5833333333333334,
+        "avgHpRemaining": 33.541666666666664,
+        "avgTurnsUsed": 10.083333333333334,
+        "avgTurnsRemaining": 10.916666666666666,
+        "avgTurnBudget": 21,
+        "hpPerTurnBudget": 49.857142857142854,
+        "nearDeathRate": 0.5416666666666666,
+        "avgMinHp": 25.166666666666668,
+        "avgIncomingPerTurn": 18.870577339327337,
+        "wavesSpawned": 1,
+        "phaseTransitions": 1.875,
+        "failures": {
+          "hp": 10,
+          "turns": 0,
+          "objective": 0,
+          "board": 0,
+          "safety": 0
+        },
+        "resonanceBursts": 2.2916666666666665,
+        "bonusActions": 3.5833333333333335,
+        "heavyStrikeFires": 0
+      },
+      {
+        "cls": "rogue",
+        "profile": "earned-affordable",
+        "classLevel": 40,
+        "slots": ["ember_edge", "iron_resolve", "aether_spark"],
+        "ranks": {
+          "ember_edge": 3,
+          "aether_spark": 3,
+          "iron_resolve": 3
+        },
+        "level": 150,
+        "clearRate": 0.625,
+        "avgHpRemaining": 32.375,
+        "avgTurnsUsed": 12.125,
+        "avgTurnsRemaining": 8.875,
+        "avgTurnBudget": 21,
+        "hpPerTurnBudget": 49.857142857142854,
+        "nearDeathRate": 0.5833333333333334,
+        "avgMinHp": 24.666666666666668,
+        "avgIncomingPerTurn": 16.806389175231086,
+        "wavesSpawned": 1,
+        "phaseTransitions": 1.7083333333333333,
+        "failures": {
+          "hp": 9,
+          "turns": 0,
+          "objective": 0,
+          "board": 0,
+          "safety": 0
+        },
+        "resonanceBursts": 2.9583333333333335,
+        "bonusActions": 4.75,
+        "heavyStrikeFires": 0
+      },
+      {
+        "cls": "cleric",
+        "profile": "earned-affordable",
+        "classLevel": 40,
+        "slots": ["ember_edge", "aether_spark", "iron_resolve"],
+        "ranks": {
+          "ember_edge": 3,
+          "aether_spark": 3,
+          "iron_resolve": 3
+        },
+        "level": 150,
+        "clearRate": 1,
+        "avgHpRemaining": 83.41666666666667,
+        "avgTurnsUsed": 16.458333333333332,
+        "avgTurnsRemaining": 4.541666666666667,
+        "avgTurnBudget": 21,
+        "hpPerTurnBudget": 49.857142857142854,
+        "nearDeathRate": 0.08333333333333333,
+        "avgMinHp": 48.75,
+        "avgIncomingPerTurn": 16.886448906485672,
+        "wavesSpawned": 1,
+        "phaseTransitions": 2,
+        "failures": {
+          "hp": 0,
+          "turns": 0,
+          "objective": 0,
+          "board": 0,
+          "safety": 0
+        },
+        "resonanceBursts": 4.375,
+        "bonusActions": 7.291666666666667,
+        "heavyStrikeFires": 0
+      }
+    ]
+  },
+  "expedition": {
+    "samplesPerClass": 100,
+    "ascension": 8,
+    "seed": 728391,
+    "seedStep": 1777,
+    "model": "Class-aware immediate-utility legal chain search, bounded separately at each start, deterministic route/blessing decisions; no purchased power or multi-turn planning.",
+    "rows": [
+      {
+        "ascension": 8,
+        "class": "warrior",
+        "policy": "smart",
+        "samples": 100,
+        "clearRate": 69,
+        "averageRooms": 5.66,
+        "averageTurns": 56.86,
+        "averageHP": 30.45,
+        "averageWinnerHPpct": 41.93,
+        "averageReward": 203.74,
+        "hpDeaths": 31,
+        "moveDeaths": 0,
+        "failureRooms": {
+          "3": 1,
+          "6": 30
+        },
+        "distinctBuilds": 99,
+        "boonsOffered": {
+          "siphon": 112,
+          "tempest": 134,
+          "verdant": 127,
+          "ember": 130,
+          "thorns": 132,
+          "fury": 145,
+          "battery": 106,
+          "hourglass": 153,
+          "phoenix": 82,
+          "echo": 154,
+          "firstlight": 127,
+          "bastion": 117
+        },
+        "boonsPicked": {
+          "tempest": 110,
+          "ember": 65,
+          "battery": 7,
+          "phoenix": 60,
+          "echo": 112,
+          "firstlight": 28,
+          "verdant": 22,
+          "fury": 25,
+          "siphon": 6,
+          "bastion": 26,
+          "thorns": 30,
+          "hourglass": 6
+        },
+        "routesOffered": {
+          "vault": 198,
+          "hunt": 196,
+          "shrine": 294,
+          "crypt": 306
+        },
+        "routesPicked": {
+          "hunt": 168,
+          "crypt": 184,
+          "shrine": 117,
+          "vault": 28
+        },
+        "survival": [
+          {
+            "room": 1,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 6.06
+          },
+          {
+            "room": 2,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 9.85
+          },
+          {
+            "room": 3,
+            "entered": 100,
+            "cleared": 99,
+            "turns": 9.91
+          },
+          {
+            "room": 4,
+            "entered": 99,
+            "cleared": 99,
+            "turns": 9.99
+          },
+          {
+            "room": 5,
+            "entered": 99,
+            "cleared": 99,
+            "turns": 10.29
+          },
+          {
+            "room": 6,
+            "entered": 99,
+            "cleared": 69,
+            "turns": 11.07
+          }
+        ]
+      },
+      {
+        "ascension": 8,
+        "class": "mage",
+        "policy": "smart",
+        "samples": 100,
+        "clearRate": 65,
+        "averageRooms": 5.58,
+        "averageTurns": 55.56,
+        "averageHP": 24.88,
+        "averageWinnerHPpct": 36.82,
+        "averageReward": 198.38,
+        "hpDeaths": 35,
+        "moveDeaths": 0,
+        "failureRooms": {
+          "4": 3,
+          "5": 1,
+          "6": 31
+        },
+        "distinctBuilds": 96,
+        "boonsOffered": {
+          "siphon": 111,
+          "tempest": 132,
+          "verdant": 128,
+          "ember": 132,
+          "thorns": 128,
+          "fury": 143,
+          "battery": 105,
+          "hourglass": 154,
+          "phoenix": 84,
+          "echo": 152,
+          "firstlight": 126,
+          "bastion": 114
+        },
+        "boonsPicked": {
+          "tempest": 110,
+          "ember": 68,
+          "verdant": 26,
+          "phoenix": 61,
+          "echo": 113,
+          "battery": 18,
+          "fury": 59,
+          "hourglass": 18,
+          "firstlight": 10,
+          "siphon": 6,
+          "bastion": 4
+        },
+        "routesOffered": {
+          "vault": 198,
+          "hunt": 197,
+          "shrine": 291,
+          "crypt": 300
+        },
+        "routesPicked": {
+          "hunt": 162,
+          "shrine": 127,
+          "crypt": 172,
+          "vault": 32
+        },
+        "survival": [
+          {
+            "room": 1,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 5.22
+          },
+          {
+            "room": 2,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 9.8
+          },
+          {
+            "room": 3,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 9.91
+          },
+          {
+            "room": 4,
+            "entered": 100,
+            "cleared": 97,
+            "turns": 10.04
+          },
+          {
+            "room": 5,
+            "entered": 97,
+            "cleared": 96,
+            "turns": 10.18
+          },
+          {
+            "room": 6,
+            "entered": 96,
+            "cleared": 65,
+            "turns": 11.17
+          }
+        ]
+      },
+      {
+        "ascension": 8,
+        "class": "rogue",
+        "policy": "smart",
+        "samples": 100,
+        "clearRate": 75,
+        "averageRooms": 5.71,
+        "averageTurns": 56.53,
+        "averageHP": 42.37,
+        "averageWinnerHPpct": 55.05,
+        "averageReward": 209.96,
+        "hpDeaths": 25,
+        "moveDeaths": 0,
+        "failureRooms": {
+          "4": 1,
+          "5": 2,
+          "6": 22
+        },
+        "distinctBuilds": 96,
+        "boonsOffered": {
+          "siphon": 105,
+          "tempest": 134,
+          "verdant": 129,
+          "ember": 122,
+          "thorns": 127,
+          "fury": 149,
+          "battery": 102,
+          "hourglass": 150,
+          "phoenix": 114,
+          "echo": 150,
+          "firstlight": 121,
+          "bastion": 115
+        },
+        "boonsPicked": {
+          "tempest": 121,
+          "ember": 77,
+          "hourglass": 130,
+          "echo": 88,
+          "fury": 26,
+          "verdant": 8,
+          "firstlight": 18,
+          "phoenix": 20,
+          "siphon": 3,
+          "battery": 5
+        },
+        "routesOffered": {
+          "vault": 199,
+          "hunt": 197,
+          "shrine": 293,
+          "crypt": 303
+        },
+        "routesPicked": {
+          "hunt": 185,
+          "crypt": 196,
+          "shrine": 83,
+          "vault": 32
+        },
+        "survival": [
+          {
+            "room": 1,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 5.81
+          },
+          {
+            "room": 2,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 10.36
+          },
+          {
+            "room": 3,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 10.36
+          },
+          {
+            "room": 4,
+            "entered": 100,
+            "cleared": 99,
+            "turns": 10.1
+          },
+          {
+            "room": 5,
+            "entered": 99,
+            "cleared": 97,
+            "turns": 9.87
+          },
+          {
+            "room": 6,
+            "entered": 97,
+            "cleared": 75,
+            "turns": 10.44
+          }
+        ]
+      },
+      {
+        "ascension": 8,
+        "class": "cleric",
+        "policy": "smart",
+        "samples": 100,
+        "clearRate": 74,
+        "averageRooms": 5.72,
+        "averageTurns": 70.1,
+        "averageHP": 49.22,
+        "averageWinnerHPpct": 66.39,
+        "averageReward": 209.4,
+        "hpDeaths": 26,
+        "moveDeaths": 0,
+        "failureRooms": {
+          "5": 2,
+          "6": 24
+        },
+        "distinctBuilds": 95,
+        "boonsOffered": {
+          "siphon": 104,
+          "tempest": 139,
+          "verdant": 127,
+          "ember": 120,
+          "thorns": 131,
+          "fury": 150,
+          "battery": 98,
+          "hourglass": 153,
+          "phoenix": 119,
+          "echo": 154,
+          "firstlight": 123,
+          "bastion": 113
+        },
+        "boonsPicked": {
+          "tempest": 111,
+          "ember": 64,
+          "battery": 15,
+          "hourglass": 149,
+          "echo": 112,
+          "fury": 30,
+          "firstlight": 12,
+          "verdant": 4,
+          "phoenix": 1
+        },
+        "routesOffered": {
+          "vault": 200,
+          "hunt": 197,
+          "shrine": 294,
+          "crypt": 305
+        },
+        "routesPicked": {
+          "hunt": 193,
+          "crypt": 204,
+          "shrine": 64,
+          "vault": 37
+        },
+        "survival": [
+          {
+            "room": 1,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 7.48
+          },
+          {
+            "room": 2,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 12.29
+          },
+          {
+            "room": 3,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 12.56
+          },
+          {
+            "room": 4,
+            "entered": 100,
+            "cleared": 100,
+            "turns": 12.59
+          },
+          {
+            "room": 5,
+            "entered": 100,
+            "cleared": 98,
+            "turns": 12.54
+          },
+          {
+            "room": 6,
+            "entered": 98,
+            "cleared": 74,
+            "turns": 12.9
+          }
+        ]
+      }
+    ]
+  },
+  "arena": {
+    "model": "Production Arena clock, class-only chain/ability helpers, 100ms time steps. Bounded greedy 3\u20138-rune search; fixed 1.3/2/3.5/5-second decision cadences and 300ms ready-ability taps. Does not model human touch errors or inspection planning.",
+    "seed": 728391,
+    "totalRuns": 1200,
+    "rows": [
+      {
+        "cls": "warrior",
+        "cadence": 1.3,
+        "samples": 75,
+        "survival": 1,
+        "kills": 19.44,
+        "p10": 17,
+        "p90": 22,
+        "elapsed": 120,
+        "hp": 89.27,
+        "casts": 13.07,
+        "actions": 101.13,
+        "shards": 433.33,
+        "killsByWave": [4.03, 4.05, 3.05, 3.77, 3.52],
+        "chains": {
+          "red": 21.36,
+          "blue": 21.79,
+          "green": 23.39,
+          "gold": 21.53
+        }
+      },
+      {
+        "cls": "mage",
+        "cadence": 1.3,
+        "samples": 75,
+        "survival": 1,
+        "kills": 21.47,
+        "p10": 19,
+        "p90": 24,
+        "elapsed": 120,
+        "hp": 91.07,
+        "casts": 19.23,
+        "actions": 104.53,
+        "shards": 480,
+        "killsByWave": [5.12, 4.47, 3.33, 4.47, 3.65],
+        "chains": {
+          "red": 19.39,
+          "blue": 21.95,
+          "green": 23.15,
+          "gold": 20.83
+        }
+      },
+      {
+        "cls": "rogue",
+        "cadence": 1.3,
+        "samples": 75,
+        "survival": 1,
+        "kills": 15.16,
+        "p10": 13,
+        "p90": 17,
+        "elapsed": 120,
+        "hp": 88.59,
+        "casts": 18.27,
+        "actions": 106.32,
+        "shards": 346,
+        "killsByWave": [3.56, 2.87, 2.51, 3.23, 2.49],
+        "chains": {
+          "red": 21.68,
+          "blue": 21.04,
+          "green": 23.49,
+          "gold": 21.84
+        }
+      },
+      {
+        "cls": "cleric",
+        "cadence": 1.3,
+        "samples": 75,
+        "survival": 1,
+        "kills": 15.56,
+        "p10": 14,
+        "p90": 17,
+        "elapsed": 120,
+        "hp": 95.33,
+        "casts": 13.12,
+        "actions": 101.77,
+        "shards": 356,
+        "killsByWave": [3.36, 3.45, 2.55, 3.15, 2.51],
+        "chains": {
+          "red": 21.35,
+          "blue": 21.91,
+          "green": 23.43,
+          "gold": 21.97
+        }
+      },
+      {
+        "cls": "warrior",
+        "cadence": 2,
+        "samples": 75,
+        "survival": 1,
+        "kills": 13.65,
+        "p10": 12,
+        "p90": 16,
+        "elapsed": 120,
+        "hp": 75.77,
+        "casts": 8.6,
+        "actions": 66.87,
+        "shards": 290,
+        "killsByWave": [2.75, 2.55, 2.25, 2.75, 2.4],
+        "chains": {
+          "red": 14.36,
+          "blue": 14.51,
+          "green": 14.8,
+          "gold": 14.6
+        }
+      },
+      {
+        "cls": "mage",
+        "cadence": 2,
+        "samples": 75,
+        "survival": 0.99,
+        "kills": 14.88,
+        "p10": 13,
+        "p90": 16,
+        "elapsed": 119.95,
+        "hp": 73.89,
+        "casts": 12.84,
+        "actions": 69.97,
+        "shards": 334,
+        "killsByWave": [3.45, 3.07, 2.53, 3, 2.45],
+        "chains": {
+          "red": 13.17,
+          "blue": 14.93,
+          "green": 14.71,
+          "gold": 14.32
+        }
+      },
+      {
+        "cls": "rogue",
+        "cadence": 2,
+        "samples": 75,
+        "survival": 0.99,
+        "kills": 10.36,
+        "p10": 9,
+        "p90": 12,
+        "elapsed": 119.91,
+        "hp": 71.95,
+        "casts": 12.2,
+        "actions": 70.27,
+        "shards": 227.33,
+        "killsByWave": [2.45, 1.83, 1.6, 2.17, 1.83],
+        "chains": {
+          "red": 14.83,
+          "blue": 13.84,
+          "green": 14.67,
+          "gold": 14.73
+        }
+      },
+      {
+        "cls": "cleric",
+        "cadence": 2,
+        "samples": 75,
+        "survival": 1,
+        "kills": 10.56,
+        "p10": 9,
+        "p90": 12,
+        "elapsed": 120,
+        "hp": 90.27,
+        "casts": 8.44,
+        "actions": 67.08,
+        "shards": 228.67,
+        "killsByWave": [2.28, 2.16, 1.71, 2.04, 1.77],
+        "chains": {
+          "red": 14.4,
+          "blue": 14.45,
+          "green": 14.93,
+          "gold": 14.85
+        }
+      },
+      {
+        "cls": "warrior",
+        "cadence": 3.5,
+        "samples": 75,
+        "survival": 0.68,
+        "kills": 7.97,
+        "p10": 7,
+        "p90": 10,
+        "elapsed": 116.59,
+        "hp": 31.29,
+        "casts": 4.88,
+        "actions": 37.89,
+        "shards": 161,
+        "killsByWave": [1.63, 1.52, 1.44, 1.63, 1.36],
+        "chains": {
+          "red": 8.52,
+          "blue": 8.52,
+          "green": 8.07,
+          "gold": 7.91
+        }
+      },
+      {
+        "cls": "mage",
+        "cadence": 3.5,
+        "samples": 75,
+        "survival": 0.68,
+        "kills": 9.19,
+        "p10": 8,
+        "p90": 11,
+        "elapsed": 117.94,
+        "hp": 27.41,
+        "casts": 7.67,
+        "actions": 40.48,
+        "shards": 191.33,
+        "killsByWave": [2.33, 1.68, 1.45, 1.84, 1.59],
+        "chains": {
+          "red": 8.01,
+          "blue": 9.08,
+          "green": 7.93,
+          "gold": 7.79
+        }
+      },
+      {
+        "cls": "rogue",
+        "cadence": 3.5,
+        "samples": 75,
+        "survival": 0.73,
+        "kills": 6.45,
+        "p10": 5,
+        "p90": 8,
+        "elapsed": 117.06,
+        "hp": 40.43,
+        "casts": 6.97,
+        "actions": 40.12,
+        "shards": 133,
+        "killsByWave": [1.44, 1.17, 1.15, 1.41, 1],
+        "chains": {
+          "red": 8.77,
+          "blue": 8.11,
+          "green": 8.12,
+          "gold": 8.15
+        }
+      },
+      {
+        "cls": "cleric",
+        "cadence": 3.5,
+        "samples": 75,
+        "survival": 0.96,
+        "kills": 6.4,
+        "p10": 5,
+        "p90": 7,
+        "elapsed": 119.82,
+        "hp": 77.24,
+        "casts": 4.81,
+        "actions": 38.77,
+        "shards": 139,
+        "killsByWave": [1.32, 1.27, 1.17, 1.2, 1.05],
+        "chains": {
+          "red": 8.43,
+          "blue": 8.47,
+          "green": 8.56,
+          "gold": 8.51
+        }
+      },
+      {
+        "cls": "warrior",
+        "cadence": 5,
+        "samples": 75,
+        "survival": 0.33,
+        "kills": 5.67,
+        "p10": 4,
+        "p90": 7,
+        "elapsed": 109.51,
+        "hp": 8.83,
+        "casts": 3.15,
+        "actions": 25.05,
+        "shards": 117.33,
+        "killsByWave": [0.99, 1.28, 1.04, 1.27, 0.8],
+        "chains": {
+          "red": 6,
+          "blue": 5.79,
+          "green": 5.36,
+          "gold": 4.76
+        }
+      },
+      {
+        "cls": "mage",
+        "cadence": 5,
+        "samples": 75,
+        "survival": 0.32,
+        "kills": 6.72,
+        "p10": 5,
+        "p90": 8,
+        "elapsed": 111.03,
+        "hp": 11.11,
+        "casts": 5.11,
+        "actions": 27.08,
+        "shards": 140.67,
+        "killsByWave": [1.44, 1.43, 1.23, 1.39, 0.95],
+        "chains": {
+          "red": 5.4,
+          "blue": 6.29,
+          "green": 5.41,
+          "gold": 4.87
+        }
+      },
+      {
+        "cls": "rogue",
+        "cadence": 5,
+        "samples": 75,
+        "survival": 0.33,
+        "kills": 4.49,
+        "p10": 3,
+        "p90": 6,
+        "elapsed": 110.11,
+        "hp": 12.53,
+        "casts": 4.57,
+        "actions": 26.57,
+        "shards": 87.33,
+        "killsByWave": [0.93, 0.91, 0.85, 0.96, 0.6],
+        "chains": {
+          "red": 6.08,
+          "blue": 5.61,
+          "green": 5.35,
+          "gold": 4.96
+        }
+      },
+      {
+        "cls": "cleric",
+        "cadence": 5,
+        "samples": 75,
+        "survival": 0.84,
+        "kills": 4.69,
+        "p10": 4,
+        "p90": 6,
+        "elapsed": 118.47,
+        "hp": 56.39,
+        "casts": 3.31,
+        "actions": 27.03,
+        "shards": 92,
+        "killsByWave": [0.84, 0.92, 0.95, 0.87, 0.85],
+        "chains": {
+          "red": 5.93,
+          "blue": 6.16,
+          "green": 6.23,
+          "gold": 5.4
+        }
+      }
+    ]
+  }
+}

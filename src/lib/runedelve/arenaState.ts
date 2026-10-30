@@ -1,6 +1,19 @@
-import { applyChain, MAX_HP, MAX_MANA, type CombatState } from "./combatEngine";
+import {
+  applyChain,
+  chainTier,
+  enemiesAttack,
+  MAX_HP,
+  MAX_MANA,
+  type CombatState,
+} from "./combatEngine";
 import { advanceResonance } from "./resonance";
-import { ENDLESS_TIME_LIMIT_SEC, endlessScore } from "./endlessMode";
+import {
+  ENDLESS_TIME_LIMIT_SEC,
+  endlessScore,
+  enemyTickIntervalMs,
+  spawnBatch,
+  waveForElapsed,
+} from "./endlessMode";
 import { RUNE_TYPES, type Enemy, type RuneType } from "./dungeonGenerator";
 import type { HeroClass } from "./classConfig";
 
@@ -25,6 +38,75 @@ export interface ArenaRun {
     kills: number;
     score: number;
   };
+}
+
+/** Arena pressure is real time; campaign terrain abilities never fire here. */
+export function spawnArenaEnemies(elapsed: number, seed: number): Enemy[] {
+  return spawnBatch(elapsed, seed).map((enemy) => ({
+    ...enemy,
+    ability: undefined,
+    abilityCooldown: undefined,
+    abilityCooldownMax: undefined,
+    telegraphLabel: undefined,
+  }));
+}
+
+/** One active-time clock step, shared by the game and the balance harness. */
+export function advanceArenaClock(
+  current: ArenaRun,
+  deltaSeconds: number,
+): ArenaRun {
+  if (
+    current.paused ||
+    current.result ||
+    !Number.isFinite(deltaSeconds) ||
+    deltaSeconds <= 0
+  )
+    return current;
+  const elapsed = Math.min(
+    ENDLESS_TIME_LIMIT_SEC,
+    current.elapsed + Math.min(1, deltaSeconds),
+  );
+  const next = { ...current, elapsed };
+  if (elapsed >= ENDLESS_TIME_LIMIT_SEC) {
+    next.result = {
+      reason: "timeout",
+      kills: next.combat.enemiesDefeated,
+      score: endlessScore(next.combat.enemiesDefeated, next.combat.totalDamage),
+    };
+  } else if (
+    elapsed >= current.attackAt &&
+    current.combat.enemies.some((enemy) => enemy.hp > 0)
+  ) {
+    // Use the common guarded attack and reflection rules, without terrain abilities.
+    next.combat = enemiesAttack(current.combat, false, null, 0, {
+      cls: current.cls,
+    });
+    next.attackAt = elapsed + enemyTickIntervalMs(elapsed) / 1000;
+    if (next.combat.hp <= 0)
+      next.result = {
+        reason: "defeated",
+        kills: next.combat.enemiesDefeated,
+        score: endlessScore(
+          next.combat.enemiesDefeated,
+          next.combat.totalDamage,
+        ),
+      };
+  }
+  if (!next.result && next.combat.enemies.every((enemy) => enemy.hp <= 0)) {
+    if (next.spawnAt === null)
+      next.spawnAt = elapsed + waveForElapsed(elapsed).respawnDelayMs / 1000;
+    else if (elapsed >= next.spawnAt) {
+      next.tick += 1;
+      next.combat = {
+        ...next.combat,
+        enemies: spawnArenaEnemies(elapsed, next.seed ^ next.tick),
+      };
+      next.spawnAt = null;
+      next.attackAt = elapsed + enemyTickIntervalMs(elapsed) / 1000;
+    }
+  }
+  return next;
 }
 
 /** An active arena belongs to the account. Midnight must not discard a live board. */
@@ -221,7 +303,9 @@ export function previewArenaChain(
   type: RuneType,
   length: number,
 ) {
-  const applied = applyChain(run.combat, type, length, run.cls);
+  const applied = applyChain(run.combat, type, length, run.cls, null, 5, 1, {
+    tierMultiplier: chainTier(length).damageMultiplier,
+  });
   const resonance = advanceResonance(applied.next, type);
   const next = {
     ...resonance.next,

@@ -8,7 +8,7 @@ import {
   getMasteryAbilityManaCost,
   getMasteryChainDamageMult,
   getMasteryCleaveDamage,
-  getMasteryHpPerChapter,
+  getMasteryMaxHpBonus,
   getMasterySanctuaryHeal,
   getMasteryShieldBonus,
   getMasteryStartingMana,
@@ -25,6 +25,7 @@ import {
   buildActive,
   computeChainMods,
   getForeseerBonusTurns,
+  getRelicRankMaxHpBonus,
   getStartingMana,
   getStartingShieldTurns,
   getVoidPactHpCost,
@@ -145,10 +146,13 @@ export function buildCharacterSheet(
 
   const chaptersCleared = Math.max(0, chapter - 1);
   const baseHp = MAX_HP;
-  const masteryHp = getMasteryHpPerChapter(activeMasteries) * chaptersCleared;
+  const masteryHp = getMasteryMaxHpBonus(activeMasteries, chaptersCleared);
   const effectiveHp = Math.max(
     10,
-    baseHp + masteryHp - getVoidPactHpCost(activeRelics),
+    baseHp +
+      masteryHp +
+      getRelicRankMaxHpBonus(activeRelics) -
+      getVoidPactHpCost(activeRelics),
   );
 
   const baseStrike = redChainDamage(
@@ -177,8 +181,7 @@ export function buildCharacterSheet(
   const openingManaPower =
     getStartingMana(activeRelics) + getMasteryStartingMana(activeMasteries);
   const startingMana = Math.min(MAX_MANA, openingManaPower);
-  const overflowShield = Math.max(0, openingManaPower - MAX_MANA);
-  const startingShield = getStartingShieldTurns(activeRelics) + overflowShield;
+  const startingShield = getStartingShieldTurns(activeRelics);
 
   const baseThorns = input.cls === "warrior" ? 40 : 25;
   const effectiveThorns = Math.round(

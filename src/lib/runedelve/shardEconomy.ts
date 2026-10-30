@@ -37,15 +37,15 @@ export interface ShardBreakdown {
 // Early-game (L1-15) gets a flat +5 bump so the first relic is reachable
 // in ~6-8 clears instead of ~12. Beyond L15 the curve is unchanged.
 const baseClearValue = (level: number) => 10 + level + (level <= 15 ? 5 : 0);
-const baseReplayValue = (level: number) => 3 + Math.floor(level / 10);
+const baseReplayValue = (level: number) => 6 + Math.floor(level / 5);
 
 export function computeClearShards(args: ClearShardArgs): ShardBreakdown {
   const base = args.isFirstClear
     ? baseClearValue(args.levelNumber)
     : baseReplayValue(args.levelNumber);
   const bonuses: { label: string; amount: number }[] = [];
-  if (args.bossClear) bonuses.push({ label: "Boss bonus", amount: 50 });
-  if (args.chapterCleared)
+  if (args.bossClear) bonuses.push({ label: "Boss bonus", amount: args.isFirstClear ? 50 : 8 });
+  if (args.chapterCleared && args.isFirstClear)
     bonuses.push({ label: "Chapter complete", amount: 200 });
   const multiplier = args.compassEquipped
     ? (args.compassMultiplier ?? 1.15)
@@ -65,21 +65,19 @@ export function failureMultiplier(failureCount: number): number {
   return 0.15;
 }
 
+export function failureProgress(args: Pick<FailShardArgs,
+  "enemiesKilled" | "totalEnemies" | "turnsUsed" | "turnLimit" | "bossPhaseReached" | "bossHasRule"
+>): number {
+  const bounded = (value: number) => Math.max(0, Math.min(1, value));
+  const enemy = args.totalEnemies > 0 ? bounded(args.enemiesKilled / args.totalEnemies) : 0;
+  const turns = args.turnLimit > 0 ? bounded(args.turnsUsed / args.turnLimit) : 0;
+  const boss = args.bossHasRule ? bounded(args.bossPhaseReached / 3) : enemy;
+  return 0.4 + 0.6 * (enemy * 0.4 + boss * 0.4 + turns * 0.2);
+}
+
 export function computeFailureShards(args: FailShardArgs): ShardBreakdown {
   // Progress factor 0.4..1.0 — even a feeble attempt earns something (40%).
-  const boundedProgress = (value: number) => Math.max(0, Math.min(1, value));
-  const enemyP =
-    args.totalEnemies > 0
-      ? boundedProgress(args.enemiesKilled / args.totalEnemies)
-      : 0;
-  const turnP =
-    args.turnLimit > 0 ? boundedProgress(args.turnsUsed / args.turnLimit) : 0;
-  const bossP = args.bossHasRule
-    ? boundedProgress(args.bossPhaseReached / 3)
-    : 0;
-  const objectiveP = args.bossHasRule ? bossP : enemyP;
-
-  const progress = 0.4 + 0.6 * (enemyP * 0.4 + objectiveP * 0.4 + turnP * 0.2);
+  const progress = failureProgress(args);
 
   // Gentle: 20% of clear value scaled by progress.
   const baseClearVal = baseClearValue(args.levelNumber);

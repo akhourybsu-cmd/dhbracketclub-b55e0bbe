@@ -13,7 +13,11 @@ import { initialCombat } from "@/lib/runedelve/combatEngine";
 import { endlessScore } from "@/lib/runedelve/endlessMode";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
 
-const state = vi.hoisted(() => ({ userId: "alice", save: vi.fn() }));
+const state = vi.hoisted(() => ({
+  userId: "alice",
+  save: vi.fn(),
+  priorRun: null as null | { kills_count: number },
+}));
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: state.userId } }),
 }));
@@ -25,7 +29,11 @@ vi.mock("@/hooks/useRuneDelveHero", () => ({
   }),
 }));
 vi.mock("@/hooks/useDailyChallenge", () => ({
-  useMyDailyRun: () => ({ data: null, isLoading: false, isError: false }),
+  useMyDailyRun: () => ({
+    data: state.priorRun,
+    isLoading: false,
+    isError: false,
+  }),
   useSubmitDailyRun: () => ({ mutateAsync: state.save }),
 }));
 vi.mock("@/components/runedelve/RuneBoard", () => ({
@@ -129,6 +137,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-30T23:59:50Z"));
   state.userId = "alice";
+  state.priorRun = null;
   state.save.mockReset();
   state.save.mockResolvedValue({
     rewarded: true,
@@ -144,6 +153,18 @@ afterEach(() => {
 });
 
 describe("Daily arena lifecycle", () => {
+  it("starts a fresh checkpoint when improving a previous daily result", () => {
+    state.priorRun = { kills_count: 10 };
+    render(view());
+    expect(screen.getByText(/Best today: 10 slain/)).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /Improve today's best/ }),
+    );
+    expect(checkpoint().elapsed).toBe(0);
+    expect(checkpoint().result).toBeNull();
+    expect(checkpoint().requestId).toMatch(/^[\da-f-]{36}$/);
+    expect(state.save).not.toHaveBeenCalled();
+  });
   it("counts active play, stops for inspection and header exit decisions, and restores paused", () => {
     put(fresh());
     render(view());
@@ -206,7 +227,7 @@ describe("Daily arena lifecycle", () => {
       );
       fireEvent.click(screen.getByRole("button", { name: "Cast ability" }));
       const next = checkpoint();
-      expect(next.combat.mana).toBe(0);
+      expect(next.combat.mana).toBe(cls === "rogue" ? 1 : 0);
       expect(next.elapsed).toBe(0);
       expect(next.attackAt).toBe(4.5);
       expect(next.combat.hp).toBe(cls === "cleric" ? 80 : 50);

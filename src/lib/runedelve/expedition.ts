@@ -1,5 +1,6 @@
 import {
   applyChain,
+  chainTier,
   damageEnemies,
   enemiesAttack,
   endTurn,
@@ -110,7 +111,7 @@ export const EXPEDITION_BOONS: ExpeditionBoon[] = [
   {
     id: "fury",
     name: "Last flame",
-    description: "Attack chains deal 35% more damage below 40% HP.",
+    description: "Attack chains deal 8% more damage, or 35% below 50% HP.",
     icon: "flame",
     color: "destructive",
   },
@@ -147,15 +148,15 @@ export function expeditionBoonDescription(
     case "siphon":
       return `Each defeated foe restores ${8 * n} HP.`;
     case "firstlight":
-      return `Enter every room with ${n} extra mana (cap 3).`;
+      return `Enter every room with ${Math.min(3, n)} extra mana (cap 3).`;
     case "tempest":
       return `Chains of 5+ strike every foe for ${10 * n} damage.`;
     case "battery":
-      return `Healing chains of 4+ grant ${n} mana (cap 3).`;
+      return `Healing chains of 4+ grant ${Math.min(3, n)} mana (cap 3).`;
     case "thorns":
       return `Guard reflects ${50 * n}% more damage.`;
     case "fury":
-      return `Attack chains deal ${35 * n}% more damage below 40% HP.`;
+      return `Attack chains deal ${8 * n}% more damage, or ${35 * n}% below 50% HP.`;
     case "phoenix":
       return "Once per run, survive a fatal hit at 40% HP.";
     case "hourglass":
@@ -173,14 +174,14 @@ export const EXPEDITION_ROUTES = {
   hunt: {
     name: "Blood hunt",
     description: "Stronger foes · empowered boon",
-    detail: "Stackable blessings gain two ranks.",
+    detail: "Stackable blessings gain two ranks, up to their cap.",
     icon: "swords",
     biome: "forge",
   },
   vault: {
     name: "Sunken vault",
-    description: "Extra foe · bonus score",
-    detail: "Clear the room for 250 extra score.",
+    description: "Extra foe · richer draft",
+    detail: "+3 moves. Clear for 250 bonus score and four blessing choices.",
     icon: "gem",
     biome: "vault",
   },
@@ -214,6 +215,8 @@ export interface ExpeditionRun {
   combat: CombatState;
   rngTick: number;
   totalTurns: number;
+  /** Optional in v1 checkpoints written before encounter pressure existed. */
+  roomStartTurns?: number;
   score: number;
   totalKills: number;
   phoenixUsed: boolean;
@@ -255,6 +258,54 @@ const ENEMIES = [
   },
 ];
 const rank = (run: ExpeditionRun, id: ExpeditionBoonId) => run.boons[id] ?? 0;
+
+/** Existing v1 ranks remain intact; only future offers and gains use caps. */
+export function expeditionBoonRankCap(id: ExpeditionBoonId): number {
+  return id === "phoenix"
+    ? 1
+    : id === "firstlight" || id === "battery"
+      ? 3
+      : 10;
+}
+export function expeditionBoonGain(
+  run: ExpeditionRun,
+  id: ExpeditionBoonId,
+): number {
+  return Math.max(
+    0,
+    Math.min(
+      run.route === "hunt" && id !== "phoenix" ? 2 : 1,
+      expeditionBoonRankCap(id) - rank(run, id),
+    ),
+  );
+}
+
+/** Higher tiers need room to assemble a build, rather than a fixed move wall. */
+export function expeditionMoveBudget(
+  room: number,
+  ascension: number,
+  route: ExpeditionRouteId = "crypt",
+): number {
+  const tier = Math.max(0, Math.min(7, Math.floor(ascension)));
+  const base =
+    room === 1
+      ? 10 + tier
+      : room === 6
+        ? 16 + tier
+        : 12 + Math.floor(tier * 0.85);
+  return base + (route === "vault" && room > 1 && room < 6 ? 3 : 0);
+}
+export function expeditionPressureStart(ascension: number): number {
+  return 11 - Math.max(0, Math.min(3, Math.floor(ascension)));
+}
+/** Escalation every two moves; later tiers steadily raise the pressure. */
+export function expeditionPressureStep(
+  ascension: number,
+  boss = false,
+): number {
+  const tier = Math.max(0, Math.min(7, Math.floor(ascension)));
+  return Math.max(boss ? 2 : 1, 1 + Math.floor(tier / 2));
+}
 export function expeditionReward(
   rooms: number,
   ascension: number,
@@ -304,6 +355,10 @@ export function expeditionEnemies(
       intentMax: boss ? 3 : 3 + i,
       tier: boss ? "boss" : route === "hunt" && i === 0 ? "mini" : undefined,
       armor: route === "shrine" ? 4 : 0,
+      telegraphLabel:
+        room === 1
+          ? `Heavy strike every ${3 + i} moves.`
+          : `${boss ? "Below half health: heavy every 2 moves. " : ""}Pressure after ${expeditionPressureStart(ascension)} moves: +${expeditionPressureStep(ascension, boss)} attack every 2 moves.`,
     };
   });
 }
@@ -325,10 +380,11 @@ export function createExpedition(ticket: ExpeditionTicket): ExpeditionRun {
     grid,
     combat: initialCombat(
       expeditionEnemies(ticket.seed, 1, ticket.ascension, "crypt"),
-      16,
+      expeditionMoveBudget(1, ticket.ascension),
     ),
     rngTick: 0,
     totalTurns: 0,
+    roomStartTurns: expeditionMoveBudget(1, ticket.ascension),
     score: 0,
     totalKills: 0,
     phoenixUsed: false,
@@ -343,14 +399,28 @@ export function expeditionBoonChoices(run: ExpeditionRun): ExpeditionBoon[] {
     (run.seed ^ Math.imul(run.room, 81721) ^ 0x991a) >>> 0,
   );
   const eligible = EXPEDITION_BOONS.filter(
-    (boon) => boon.id !== "phoenix" || !rank(run, "phoenix"),
+    (boon) => expeditionBoonGain(run, boon.id) > 0,
   );
   const shuffled = [...eligible];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return shuffled.slice(0, 3);
+  const choices = shuffled.slice(0, run.route === "vault" ? 4 : 3);
+  // Every draft offers a way to advance the encounter; sustain-only draws
+  // otherwise strand healthy builds against the room's move limit.
+  const tempo = new Set<ExpeditionBoonId>([
+    "ember",
+    "echo",
+    "tempest",
+    "fury",
+    "hourglass",
+  ]);
+  if (!choices.some((boon) => tempo.has(boon.id))) {
+    const progress = shuffled.find((boon) => tempo.has(boon.id));
+    if (progress) choices[choices.length - 1] = progress;
+  }
+  return choices;
 }
 export function expeditionRouteChoices(
   run: ExpeditionRun,
@@ -373,7 +443,7 @@ export function chooseExpeditionBoon(
     !expeditionBoonChoices(run).some((b) => b.id === id)
   )
     return run;
-  const gain = run.route === "hunt" && id !== "phoenix" ? 2 : 1;
+  const gain = expeditionBoonGain(run, id);
   const combat = { ...run.combat };
   if (id === "verdant") {
     combat.maxHp += 15 * gain;
@@ -399,7 +469,8 @@ export function chooseExpeditionRoute(
   const rng = mulberry32((run.seed ^ Math.imul(room, 17771)) >>> 0);
   const combat = initialCombat(
     expeditionEnemies(run.seed, room, run.ascension, route),
-    (room === 6 ? 22 : 17) + rank(run, "hourglass") * 2,
+    expeditionMoveBudget(room, run.ascension, route) +
+      rank(run, "hourglass") * 2,
     { bonusMaxHp: run.combat.maxHp - 100 },
   );
   combat.hp = Math.min(
@@ -413,6 +484,7 @@ export function chooseExpeditionRoute(
     room,
     route,
     combat,
+    roomStartTurns: combat.turnsRemaining,
     grid: ensurePlayableBoard(generateBoard(rng), rng).grid,
     phase: "combat",
     notice: "",
@@ -437,6 +509,18 @@ function finishAction(
     combat.enemiesDefeated - run.combat.enemiesDefeated,
   );
   let next = beforeEnemyPhase(run, combat);
+  const enraged =
+    run.room === 6 &&
+    next.enemies.some(
+      (enemy, i) =>
+        enemy.tier === "boss" &&
+        enemy.intentMax === 2 &&
+        run.combat.enemies[i]?.intentMax !== 2,
+    );
+  const pressured = next.enemies.some(
+    (enemy, i) =>
+      enemy.damage > (run.combat.enemies[i]?.damage ?? enemy.damage),
+  );
   const killed = next.enemies.every((e) => e.hp <= 0);
   if (killed) next = endTurn(next);
   else if (!freeAction)
@@ -485,7 +569,15 @@ function finishAction(
       : lost
         ? "lost"
         : "combat",
-    lastAction: cleared ? "Chamber cleared" : label,
+    lastAction: cleared
+      ? "Chamber cleared"
+      : label.startsWith("Phoenix")
+        ? label
+        : enraged
+          ? "Sovereign enraged · heavy strikes every 2 moves"
+          : pressured
+            ? "Chamber pressure · enemy attacks grow stronger"
+            : label,
     notice: "",
     savedAt: Date.now(),
   };
@@ -498,8 +590,48 @@ function beforeEnemyPhase(
     0,
     combat.enemiesDefeated - run.combat.enemiesDefeated,
   );
+  const oldBudget =
+    (run.room === 1 ? 16 : run.room === 6 ? 22 : 17) +
+    rank(run, "hourglass") * 2;
+  const spent = Math.max(
+    0,
+    (run.roomStartTurns ?? oldBudget) - run.combat.turnsRemaining,
+  );
+  const threshold = expeditionPressureStart(run.ascension);
+  const pressure =
+    run.room > 1 && spent >= threshold
+      ? 1 + Math.floor((spent - threshold) / 2)
+      : 0;
+  const templates = pressure
+    ? expeditionEnemies(run.seed, run.room, run.ascension, run.route)
+    : [];
   return {
     ...combat,
+    enemies: combat.enemies.map((enemy) => {
+      if (enemy.hp <= 0) return enemy;
+      const base = templates.find((template) => template.id === enemy.id);
+      const damage = base
+        ? Math.max(
+            enemy.damage,
+            base.damage +
+              pressure *
+                expeditionPressureStep(run.ascension, enemy.tier === "boss"),
+          )
+        : enemy.damage;
+      const enraged =
+        run.room === 6 && enemy.tier === "boss" && enemy.hp <= enemy.maxHp / 2;
+      return {
+        ...enemy,
+        damage,
+        ...(enraged
+          ? {
+              intent: Math.min(enemy.intent ?? 2, 2),
+              intentMax: 2,
+              telegraphLabel: `Enraged · heavy every 2 moves; pressure after ${threshold} moves`,
+            }
+          : {}),
+      };
+    }),
     hp: Math.min(
       combat.maxHp,
       combat.hp + playerKills * rank(run, "siphon") * 8,
@@ -511,7 +643,8 @@ function chainPower(run: ExpeditionRun, type: RuneType, length: number) {
   const multiplier =
     1 +
     rank(run, "ember") * 0.18 +
-    (run.combat.hp / run.combat.maxHp < 0.4 ? rank(run, "fury") * 0.35 : 0);
+    rank(run, "fury") *
+      (0.08 + (run.combat.hp / run.combat.maxHp < 0.5 ? 0.27 : 0));
   let { next: combat } = applyChain(
     run.combat,
     type,
@@ -520,7 +653,10 @@ function chainPower(run: ExpeditionRun, type: RuneType, length: number) {
     null,
     5,
     1,
-    { combatMultiplier: multiplier },
+    {
+      combatMultiplier: multiplier,
+      tierMultiplier: chainTier(length).damageMultiplier,
+    },
   );
   if (type === "green")
     combat = {
@@ -669,6 +805,11 @@ export function loadExpedition(key: string): ExpeditionRun | null {
       typeof run.boons !== "object" ||
       !Number.isInteger(run.rngTick) ||
       !Number.isInteger(run.totalTurns) ||
+      (run.roomStartTurns !== undefined &&
+        (!Number.isInteger(run.roomStartTurns) ||
+          run.roomStartTurns < 1 ||
+          run.roomStartTurns > 50 ||
+          run.roomStartTurns < run.combat.turnsRemaining)) ||
       !Number.isFinite(run.score) ||
       !Number.isInteger(run.totalKills) ||
       run.totalKills < 0 ||

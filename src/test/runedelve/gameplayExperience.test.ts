@@ -12,8 +12,13 @@ import {
   evaluateObjective,
   getObjectiveProgress,
   getPriorityEnemy,
+  normalizeScoreObjectiveTarget,
 } from "@/lib/runedelve/objectives";
-import { liveScore } from "@/lib/runedelve/scoring";
+import {
+  combatObjectiveScore,
+  liveScore,
+  scoreTargetForEnemies,
+} from "@/lib/runedelve/scoring";
 import { simulateLevel } from "@/lib/runedelve/simulator";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
 import { buildSnapshot } from "@/lib/runedelve/runSnapshot";
@@ -135,7 +140,7 @@ describe("Rune Delve · device-friendly chain controls", () => {
 });
 
 describe("Rune Delve · objective truth", () => {
-  it("uses one live score formula for the HUD and score objective", () => {
+  it("keeps earned combat objectives separate from final health and turn rewards", () => {
     const state = combat({
       hp: 72,
       turnsRemaining: 4,
@@ -144,17 +149,25 @@ describe("Rune Delve · objective truth", () => {
       longestChain: 6,
     });
     expect(liveScore(state)).toBe(1_265);
-    expect(evaluateObjective(state, 10, "reach_score", 1_265)).toEqual({
+    expect(combatObjectiveScore(state)).toBe(395);
+    expect(evaluateObjective(state, 10, "reach_score", 395)).toEqual({
       over: true,
       cleared: true,
     });
-    expect(evaluateObjective(state, 10, "reach_score", 1_266)).toEqual({
+    expect(evaluateObjective(state, 10, "reach_score", 396)).toEqual({
       over: false,
       cleared: false,
     });
-    expect(getObjectiveProgress(state, 10, "reach_score", 1_500).current).toBe(
-      1_265,
+    expect(getObjectiveProgress(state, 10, "reach_score", 500).current).toBe(
+      395,
     );
+    expect(
+      combatObjectiveScore({
+        ...state,
+        hp: 1,
+        turnsRemaining: 0,
+      } as CombatState),
+    ).toBe(395);
   });
 
   it("clears a champion objective when the champion falls, even with a minion alive", () => {
@@ -266,7 +279,6 @@ describe("Rune Delve · combat clarity and campaign integrity", () => {
           level.enemy_config,
           level.turn_limit,
         );
-        const startingScore = liveScore(startingState);
         expect(
           evaluateObjective(
             startingState,
@@ -276,10 +288,14 @@ describe("Rune Delve · combat clarity and campaign integrity", () => {
           ).over,
           `level ${levelNumber} must not start at or above its score target`,
         ).toBe(false);
-        expect(level.objective_target - startingScore).toBeGreaterThanOrEqual(
-          225,
+        expect(level.modifiers.score_objective_version).toBe(2);
+        expect(level.objective_target).toBe(scoreTargetForEnemies(allEnemies));
+        expect(normalizeScoreObjectiveTarget(level)).toBe(
+          level.objective_target,
         );
-        expect(level.objective_target - startingScore).toBeLessThanOrEqual(325);
+        expect(level.objective_target).toBeLessThanOrEqual(
+          allEnemies.reduce((sum, enemy) => sum + enemy.maxHp + 100, 0),
+        );
       }
 
       const mechanics = level.modifiers.mechanics ?? [];
@@ -339,20 +355,27 @@ describe("Rune Delve · combat clarity and campaign integrity", () => {
     expect(getPriorityEnemy(bossWave)?.id).toBe(bossWave[1].id);
   });
 
-  it("budgets reinforcement turns for ordinary summoner rooms", () => {
-    const level = generateLevel(106);
-    expect(
-      level.enemy_config.some((foe) => foe.ability === "summon_minion"),
-    ).toBe(true);
-    expect(level.turn_limit).toBe(17);
+  it("budgets recovery turns for every ordinary summoner room", () => {
+    const summonerRooms = Array.from({ length: 150 }, (_, index) =>
+      generateLevel(index + 1),
+    ).filter(
+      (level) =>
+        level.objective_type === "defeat_all" &&
+        !level.modifiers.boss_kind &&
+        level.enemy_config.some((foe) => foe.ability === "summon_minion"),
+    );
+    expect(summonerRooms.length).toBeGreaterThan(0);
+    for (const level of summonerRooms) expect(level.turn_limit).toBe(17);
   });
 
-  it("keeps the final boss from rolling support-level threat", () => {
+  it("makes the final flagship a native combat threat with full phase room", () => {
     const level = generateLevel(150);
     const boss = getPriorityEnemy(level.modifiers.waves?.[0]?.enemies ?? []);
     expect(level.turn_limit).toBe(19);
-    expect(boss?.maxHp).toBe(400);
-    expect(boss?.damage).toBeGreaterThanOrEqual(20);
+    expect(boss?.maxHp).toBeGreaterThanOrEqual(600);
+    expect(boss?.damage).toBeGreaterThanOrEqual(30);
+    expect(boss?.role).not.toBe("support");
+    expect(boss?.role).not.toBe("swarm");
   });
 
   it("keeps chamber briefings faithful to fixed board zones", () => {

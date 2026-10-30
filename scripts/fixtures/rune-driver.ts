@@ -14,6 +14,7 @@ import {
   type ExpeditionRun,
 } from "../../src/lib/runedelve/expedition";
 import type { HeroClass } from "../../src/lib/runedelve/classConfig";
+import { getClass } from "../../src/lib/runedelve/classConfig";
 import type { RuneType } from "../../src/lib/runedelve/dungeonGenerator";
 import type { Cell } from "../../src/lib/runedelve/boardEngine";
 import type { RunSnapshot } from "../../src/lib/runedelve/runSnapshot";
@@ -30,7 +31,7 @@ function candidates(
   const best: Partial<Record<RuneType, Cell[][]>> = {};
   // Separate budgets keep one large component from starving other colors.
   for (const type of ["red", "blue", "green", "gold"] as const) {
-    let budget = 3500;
+    let budget = 0;
     function visit(path: Cell[], seen: Set<string>) {
       if (--budget < 0) return;
       const last = path[path.length - 1];
@@ -58,8 +59,10 @@ function candidates(
     for (let r = 0; r < 5; r++)
       for (let c = 0; c < 5; c++) {
         const key = `${r}-${c}`;
-        if (grid[r][c] === type && !sealed.has(key) && !noStart.has(key))
+        if (grid[r][c] === type && !sealed.has(key) && !noStart.has(key)) {
+          budget = 200;
           visit([{ r, c }], new Set([key]));
+        }
       }
   }
   return Object.values(best).flat();
@@ -121,7 +124,10 @@ export function campaignAction(
     const path = [...paths].sort((a, b) => score(b) - score(a))[0];
     return { kind: "chain", cells: path.slice(0, 3) };
   }
-  if (snapshot.combat.mana >= 3) {
+  if (
+    snapshot.combat.mana >= getClass(cls).abilityCost &&
+    !(cls === "rogue" && snapshot.combat.shadowstepActive)
+  ) {
     const ability = castAbility(
       snapshot.combat,
       cls,

@@ -1,7 +1,37 @@
 import type { CombatState } from "./combatEngine";
 import type { Enemy } from "./dungeonGenerator";
 import type { ObjectiveType } from "./levelGenerator";
-import { liveScore } from "./scoring";
+import { combatObjectiveScore, scoreTargetForEnemies } from "./scoring";
+
+interface ScoreEncounter {
+  objective_type: string;
+  objective_target: number;
+  enemy_config: Array<Pick<Enemy, "hp"> & Partial<Pick<Enemy, "maxHp">>>;
+  modifiers?: unknown;
+}
+
+/** Old persisted level rows used opening HP/turn points as their score goal.
+ * Normalize them at the read boundary; active checkpoints keep all earned
+ * damage/kills and no stored progress, result, or level row is rewritten. */
+export function normalizeScoreObjectiveTarget(level: ScoreEncounter): number {
+  if (level.objective_type !== "reach_score") return level.objective_target;
+  const modifiers = level.modifiers as
+    | {
+        score_objective_version?: number;
+        waves?: Array<{ enemies?: ScoreEncounter["enemy_config"] }>;
+      }
+    | undefined;
+  if (
+    modifiers?.score_objective_version === 2 &&
+    Number.isFinite(level.objective_target) &&
+    level.objective_target > 0
+  )
+    return Math.max(1, Math.round(level.objective_target));
+  return scoreTargetForEnemies([
+    ...level.enemy_config,
+    ...(modifiers?.waves ?? []).flatMap((wave) => wave.enemies ?? []),
+  ]);
+}
 
 export interface ObjectiveStatus {
   over: boolean;
@@ -16,6 +46,9 @@ export interface ObjectiveProgress {
 }
 
 export function isPriorityEnemy(enemy: Enemy): boolean {
+  // Splitter copies retain their source tier for artwork/phases, but the
+  // authored champion remains the objective and rule owner after a split.
+  if (/-echo(?:$|-)/.test(enemy.id) || /^Echo of /.test(enemy.name)) return false;
   return (
     enemy.tier === "boss" ||
     enemy.tier === "mini" ||
@@ -49,7 +82,8 @@ export function evaluateObjective(
   }
 
   if (type === "reach_score") {
-    if (liveScore(state) >= target) return { over: true, cleared: true };
+    if (combatObjectiveScore(state) >= Math.max(1, target))
+      return { over: true, cleared: true };
     if (
       state.turnsRemaining <= 0 ||
       state.enemies.every((enemy) => enemy.hp <= 0)
@@ -102,7 +136,7 @@ export function getObjectiveProgress(
         ? `${remaining} turn${remaining === 1 ? "" : "s"} to endure`
         : "Survived";
   } else if (type === "reach_score") {
-    current = liveScore(state);
+    current = combatObjectiveScore(state);
     total = Math.max(1, target);
     text = `${current.toLocaleString()} / ${total.toLocaleString()}`;
   } else if (type === "defeat_elite") {

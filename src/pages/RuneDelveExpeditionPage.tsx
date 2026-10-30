@@ -54,6 +54,7 @@ import {
   expeditionAbility,
   expeditionBoonChoices,
   expeditionBoonDescription,
+  expeditionBoonGain,
   expeditionChain,
   expeditionReward,
   expeditionRouteChoices,
@@ -674,18 +675,14 @@ export default function RuneDelveExpeditionPage() {
                           {expeditionBoonDescription(
                             boon.id,
                             (run.boons[boon.id] ?? 0) +
-                              (run.route === "hunt" && boon.id !== "phoenix"
-                                ? 2
-                                : 1),
+                              expeditionBoonGain(run, boon.id),
                           )}
                         </small>
                         {run.boons[boon.id] ? (
                           <em>
                             Rank {run.boons[boon.id]} →{" "}
                             {run.boons[boon.id]! +
-                              (run.route === "hunt" && boon.id !== "phoenix"
-                                ? 2
-                                : 1)}
+                              expeditionBoonGain(run, boon.id)}
                           </em>
                         ) : null}
                       </span>
@@ -783,6 +780,17 @@ export default function RuneDelveExpeditionPage() {
                       run.phase === "won",
                     )}
                   <small>{receipt ? "SHARDS BANKED" : "SHARDS TO BANK"}</small>
+                  <small>
+                    +
+                    {receipt
+                      ? (receipt.xpAwarded ?? 0)
+                      : expeditionReward(
+                          run.roomsCleared,
+                          run.ascension,
+                          run.phase === "won",
+                        )}{" "}
+                    class XP
+                  </small>
                 </span>
               </div>
               {receipt && run.phase === "won" && run.ascension < 7 && (

@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   generateLevel,
-  chapterFor,
   type LevelDefinition,
 } from "@/lib/runedelve/levelGenerator";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
@@ -231,31 +230,25 @@ export function useMyProgress(heroClass: HeroClass | undefined) {
         };
       }
 
-      const { data: created, error } = await runeRequest(
-        supabase
-          .from("rune_delve_class_progress")
-          .upsert(
-            { user_id: user.id, class: heroClass },
-            { onConflict: "user_id,class", ignoreDuplicates: true },
-          )
-          .select()
-          .maybeSingle(),
+      const { data: account } = await runeRpc<{
+        track: RuneDelveProgress | null;
+      }>(
+        "rune_delve_bootstrap",
+        {
+          p_class: heroClass,
+          p_hero_name: null,
+          p_create_hero: false,
+        },
+        "Load class campaign",
       );
-      if (error) throw error;
-      const canonical =
-        created ??
-        (
-          await runeRequest(
-            supabase
-              .from("rune_delve_class_progress")
-              .select("*")
-              .eq("user_id", user.id)
-              .eq("class", heroClass)
-              .single(),
-          )
-        ).data;
-      if (!canonical)
-        throw new Error("Could not load class progress. Please retry.");
+      const canonical = account?.track;
+      if (
+        !canonical?.id ||
+        canonical.user_id !== user.id ||
+        canonical.class !== heroClass ||
+        typeof canonical.highest_unlocked_level !== "number"
+      )
+        throw new Error("Class campaign was not confirmed. Please retry.");
       qc.invalidateQueries({
         queryKey: ["rune-delve-class-progress", user.id],
       });
@@ -405,6 +398,12 @@ export interface SavedLevelRun {
   cosmeticTitle: string | null;
   slotsUnlocked: number;
   completedQuests?: string[];
+  relicDrop?: {
+    id: string;
+    relic_id: string;
+    rank: number;
+    acquired_at_level: number;
+  } | null;
 }
 
 export function useSubmitLevelRun() {
@@ -444,6 +443,7 @@ export function useSubmitLevelRun() {
         "rune-delve-class-progress",
         "rune-delve-hero",
         "rune-delve-wallet",
+        "rune-delve-relics",
         "rune-delve-failure",
         "rd-active-quests",
         "home-signals",
@@ -456,148 +456,16 @@ export function useSubmitLevelRun() {
   });
 }
 
-// Advance progress after a successful clear: unlocks the next level.
+/** Legacy imports cannot unlock chambers outside an acknowledged run. */
 export function useAdvanceProgress() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      clearedLevel,
-      heroClass,
-    }: {
+    mutationFn: async (_args: {
       clearedLevel: number;
       heroClass: HeroClass;
-    }) => {
-      if (!user) throw new Error("Not authenticated");
-      const { data: classExisting, error: classReadError } = await runeRequest(
-        supabase
-          .from("rune_delve_class_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("class", heroClass)
-          .maybeSingle(),
+    }): Promise<never> => {
+      throw new Error(
+        "Campaign progress is managed by the server. Please refresh.",
       );
-      if (classReadError) throw classReadError;
-
-      let classCampaignReady =
-        classExisting == null ||
-        typeof classExisting.highest_unlocked_level === "number";
-      const classCompleted = classCampaignReady
-        ? (classExisting?.highest_completed_level ?? 0)
-        : 0;
-      const classUnlocked = classCampaignReady
-        ? (classExisting?.highest_unlocked_level ?? 1)
-        : 1;
-      const classTotal = classCampaignReady
-        ? (classExisting?.total_levels_cleared ?? 0)
-        : 0;
-      const isNewClassClear = clearedLevel > classCompleted;
-      const classPayload = {
-        highest_unlocked_level: Math.max(classUnlocked, clearedLevel + 1),
-        highest_completed_level: Math.max(classCompleted, clearedLevel),
-        total_levels_cleared: classTotal + (isNewClassClear ? 1 : 0),
-        current_chapter: chapterFor(Math.max(classUnlocked, clearedLevel + 1)),
-      };
-
-      let savedClass: RuneDelveProgress | null = null;
-      if (classCampaignReady) {
-        if (classExisting) {
-          const { data, error } = await runeRequest(
-            supabase
-              .from("rune_delve_class_progress")
-              .update(classPayload)
-              .eq("user_id", user.id)
-              .eq("class", heroClass)
-              .select()
-              .single(),
-          );
-          if (error) throw error;
-          savedClass = data as unknown as RuneDelveProgress;
-        } else {
-          const { data, error } = await runeRequest(
-            supabase
-              .from("rune_delve_class_progress")
-              .insert({ user_id: user.id, class: heroClass, ...classPayload })
-              .select()
-              .single(),
-          );
-          if (error) {
-            // Staged-deploy bridge: the old schema rejects the new campaign
-            // fields. Keep global progression working until the SQL is applied.
-            const message = String(error.message ?? "").toLowerCase();
-            if (
-              error.code === "PGRST204" ||
-              message.includes("highest_unlocked_level")
-            ) {
-              classCampaignReady = false;
-            } else {
-              throw error;
-            }
-          } else {
-            savedClass = data as unknown as RuneDelveProgress;
-          }
-        }
-      }
-
-      // Keep the original per-user row as an aggregate leaderboard record:
-      // furthest depth across all classes + total first-clears across builds.
-      const { data: globalExisting } = await runeRequest(
-        supabase
-          .from("rune_delve_progress")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-      );
-      const globalCompleted = globalExisting?.highest_completed_level ?? 0;
-      const globalUnlocked = globalExisting?.highest_unlocked_level ?? 1;
-      const globalTotal = globalExisting?.total_levels_cleared ?? 0;
-      const countsAsNew = classCampaignReady
-        ? isNewClassClear
-        : clearedLevel > globalCompleted;
-      const aggregatePayload = {
-        highest_unlocked_level: Math.max(globalUnlocked, clearedLevel + 1),
-        highest_completed_level: Math.max(globalCompleted, clearedLevel),
-        total_levels_cleared: globalTotal + (countsAsNew ? 1 : 0),
-        current_chapter: chapterFor(Math.max(globalUnlocked, clearedLevel + 1)),
-      };
-      if (globalExisting) {
-        const { error } = await runeRequest(
-          supabase
-            .from("rune_delve_progress")
-            .update(aggregatePayload)
-            .eq("user_id", user.id),
-        );
-        if (error) throw error;
-      } else {
-        const { error } = await runeRequest(
-          supabase
-            .from("rune_delve_progress")
-            .insert({ user_id: user.id, ...aggregatePayload }),
-        );
-        if (error) throw error;
-      }
-
-      // Before the migration, class campaign columns do not exist. Returning
-      // the aggregate preserves legacy behavior until the provided SQL lands.
-      return (
-        savedClass ??
-        ({
-          id: globalExisting?.id ?? "",
-          user_id: user.id,
-          class: heroClass,
-          highest_unlocked_level: aggregatePayload.highest_unlocked_level,
-          highest_completed_level: aggregatePayload.highest_completed_level,
-          total_levels_cleared: aggregatePayload.total_levels_cleared,
-          current_chapter: aggregatePayload.current_chapter,
-        } as RuneDelveProgress)
-      );
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["rune-delve-progress"] });
-      qc.invalidateQueries({
-        queryKey: ["rune-delve-class-progress", user?.id],
-      });
-      qc.invalidateQueries({ queryKey: ["rune-delve-progress-leaderboard"] });
     },
   });
 }

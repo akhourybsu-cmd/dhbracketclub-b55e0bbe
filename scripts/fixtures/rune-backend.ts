@@ -1,13 +1,33 @@
 // Isolated Rune Delve transport. All mutations stay inside this browser fixture.
 import { generateLevel } from "../../src/lib/runedelve/levelGenerator";
-import { CLASS_LIST, titleForLevel } from "../../src/lib/runedelve/classConfig";
+import {
+  CLASS_LIST,
+  levelFromXp,
+  titleForLevel,
+  xpForLevel,
+  type HeroClass,
+} from "../../src/lib/runedelve/classConfig";
 import { RELIC_CATALOG, rankCost } from "../../src/lib/runedelve/relics";
 import { expeditionReward } from "../../src/lib/runedelve/expedition";
 import { BESTIARY_ROSTER } from "../../src/lib/runedelve/enemyRoster";
+import { affordableSimProfile } from "../../src/lib/runedelve/simulator";
 import {
   dailyPeriodKey,
+  rollQuestSet,
   weeklyPeriodKey,
 } from "../../src/lib/runedelve/quests";
+import {
+  campaignXpForAttempt,
+  dailyRewardDelta,
+} from "../../src/lib/runedelve/economyProgression";
+import {
+  computeClearShards,
+  computeFailureShards,
+  failureMultiplier,
+} from "../../src/lib/runedelve/shardEconomy";
+import { treasureShardValue } from "../../src/lib/runedelve/layoutZones";
+import { getLayoutForLevel } from "../../src/lib/runedelve/chamberAssignment";
+import { rollRelicDrop } from "../../src/lib/runedelve/relicDrops";
 import {
   endlessRewardFor,
   endlessStarsFor,
@@ -27,7 +47,7 @@ const progress = (id: string, userId = uid, cap = completed) => ({
   highest_unlocked_level: cap + 1,
   highest_completed_level: cap,
   total_levels_cleared: cap,
-  current_chapter: 1,
+  current_chapter: Math.floor(cap / 50) + 1,
 });
 const tables: Record<string, any[]> = {
   profiles: [
@@ -65,27 +85,37 @@ const tables: Record<string, any[]> = {
             xp: 2200,
           },
         ],
-  rune_delve_class_progress: CLASS_LIST.map((cls, i) => ({
-    ...progress("track-" + cls.id, uid, cls.id === heroClass ? completed : 0),
-    class: cls.id,
-    xp: i ? 0 : 1600,
-    level: i ? 1 : 8,
-    cosmetic_title: titleForLevel(i ? 1 : 8, cls.id),
-    lifetime_runs: i ? 0 : 23,
-    lifetime_score: i ? 0 : 32400,
-  })),
+  rune_delve_class_progress:
+    scenario === "new"
+      ? []
+      : CLASS_LIST.map((cls) => ({
+          ...progress(
+            "track-" + cls.id,
+            uid,
+            cls.id === heroClass ? completed : 0,
+          ),
+          class: cls.id,
+          xp: cls.id === heroClass ? 1600 : 0,
+          level: cls.id === heroClass ? 8 : 1,
+          cosmetic_title: titleForLevel(cls.id === heroClass ? 8 : 1, cls.id),
+          lifetime_runs: cls.id === heroClass ? 23 : 0,
+          lifetime_score: cls.id === heroClass ? 32400 : 0,
+        })),
   rune_delve_progress: [
-    progress("progress"),
+    ...(scenario === "new" ? [] : [progress("progress")]),
     progress("progress-jordan", "jordan", 23),
   ],
-  rune_delve_wallet: [
-    {
-      user_id: uid,
-      shards: 2400,
-      lifetime_shards_earned: 6100,
-      slots_unlocked: 2,
-    },
-  ],
+  rune_delve_wallet:
+    scenario === "new"
+      ? []
+      : [
+          {
+            user_id: uid,
+            shards: 2400,
+            lifetime_shards_earned: 6100,
+            slots_unlocked: 2,
+          },
+        ],
   rune_delve_loadouts: CLASS_LIST.map((cls) => ({
     id: "loadout-" + cls.id,
     user_id: uid,
@@ -94,7 +124,10 @@ const tables: Record<string, any[]> = {
     slot_2: null,
     slot_3: null,
   })),
-  rune_delve_relic_unlocks: RELIC_CATALOG.slice(0, 4).map((relic, i) => ({
+  rune_delve_relic_unlocks: (scenario === "new"
+    ? []
+    : RELIC_CATALOG.slice(0, 4)
+  ).map((relic, i) => ({
     id: "relic-" + i,
     user_id: uid,
     relic_id: relic.id,
@@ -108,6 +141,9 @@ const tables: Record<string, any[]> = {
     status: "active",
   })),
   rune_delve_runs: [],
+  rune_delve_action_receipts: [],
+  rune_delve_expedition_progress: [],
+  rune_delve_expedition_runs: [],
   rune_delve_failure_rewards: [],
   rune_delve_quest_definitions: [],
   rune_delve_active_quests: [],
@@ -132,6 +168,56 @@ const tables: Record<string, any[]> = {
   channel_notification_prefs: [],
   dh_feat_accounts: [],
 };
+// Complete late-game browser encounters with the same earned progression and
+// equipment used by the balance sweeps. The default menu/economy fixture stays
+// unchanged, and no live encounter state is altered by this opt-in setup.
+if (scenario !== "new" && params.get("build") === "affordable") {
+  const depth = Math.max(1, Math.min(150, Number(params.get("depth") || 1)));
+  const build = affordableSimProfile(depth, heroClass as HeroClass);
+  const xp = Array.from({ length: build.classLevel - 1 }, (_, i) =>
+    xpForLevel(i + 1),
+  ).reduce((total, cost) => total + cost, 0);
+  const advancement = {
+    level: build.classLevel,
+    xp,
+    cosmetic_title: titleForLevel(build.classLevel, heroClass as HeroClass),
+  };
+  Object.assign(
+    tables.rune_delve_heroes.find((row) => row.user_id === uid),
+    advancement,
+  );
+  Object.assign(
+    tables.rune_delve_class_progress.find((row) => row.class === heroClass),
+    advancement,
+  );
+  tables.rune_delve_wallet[0].slots_unlocked = build.classLevel >= 25 ? 3 : 2;
+  for (const relicId of build.slots ?? []) {
+    const owned = tables.rune_delve_relic_unlocks.find(
+      (row) => row.relic_id === relicId,
+    );
+    const relic = {
+      user_id: uid,
+      relic_id: relicId,
+      rank: build.ranks?.[relicId] ?? 1,
+    };
+    if (owned) Object.assign(owned, relic);
+    else
+      tables.rune_delve_relic_unlocks.push({
+        ...relic,
+        id: `earned-${relicId}`,
+        acquired_at: date,
+        acquired_at_level: depth,
+      });
+  }
+  Object.assign(
+    tables.rune_delve_loadouts.find((row) => row.class === heroClass),
+    {
+      slot_1: build.slots?.[0] ?? null,
+      slot_2: build.slots?.[1] ?? null,
+      slot_3: build.slots?.[2] ?? null,
+    },
+  );
+}
 // Rich records are opt-in so the existing empty-state and economy checks keep
 // their own baseline. These are data fixtures; gameplay is never replaced.
 if (scenario === "archive") {
@@ -229,6 +315,167 @@ const savedTickets = JSON.parse(
 const persistTickets = () =>
   localStorage.setItem("__rune-qa-tickets", JSON.stringify(savedTickets));
 const fail = (message: string) => ({ data: null, error: { message } });
+const protectedTables = new Set([
+  "rune_delve_heroes",
+  "rune_delve_wallet",
+  "rune_delve_relic_unlocks",
+  "rune_delve_class_progress",
+  "rune_delve_progress",
+  "rune_delve_runs",
+  "rune_delve_daily_runs",
+  "rune_delve_daily_streaks",
+  "rune_delve_failure_rewards",
+  "rune_delve_loadouts",
+  "rune_delve_quest_definitions",
+  "rune_delve_active_quests",
+  "rune_delve_action_receipts",
+  "rune_delve_expedition_runs",
+  "rune_delve_expedition_progress",
+]);
+const isClass = (value: unknown): value is HeroClass =>
+  CLASS_LIST.some((cls) => cls.id === value);
+const ownHero = () =>
+  tables.rune_delve_heroes.find((row) => row.user_id === uid);
+const canonical = (value: any): string =>
+  JSON.stringify(value, (_key, entry) =>
+    entry && typeof entry === "object" && !Array.isArray(entry)
+      ? Object.fromEntries(
+          Object.keys(entry)
+            .sort()
+            .map((key) => [key, entry[key]]),
+        )
+      : entry,
+  );
+function priorReceipt(kind: string, id: string, input: any) {
+  if (!id) return fail("missing_request_id");
+  const old = receipts.get(id);
+  if (!old) return null;
+  if (old.kind !== kind || canonical(old.input) !== canonical(input))
+    return fail("request_id_reused");
+  return { data: structuredClone(old.result), error: null };
+}
+function saveReceipt(kind: string, id: string, input: any, result: any) {
+  receipts.set(id, structuredClone({ kind, input, result }));
+  tables.rune_delve_action_receipts.push({
+    user_id: uid,
+    request_id: id,
+    action_kind: kind,
+    action_key: structuredClone(input),
+    result: structuredClone(result),
+    created_at: date,
+  });
+}
+function ensureWallet() {
+  let wallet = tables.rune_delve_wallet.find((row) => row.user_id === uid);
+  if (!wallet) {
+    wallet = {
+      user_id: uid,
+      shards: 0,
+      lifetime_shards_earned: 0,
+      slots_unlocked: 2,
+    };
+    tables.rune_delve_wallet.push(wallet);
+  }
+  const maxLevel = Math.max(
+    1,
+    ...tables.rune_delve_class_progress
+      .filter((row) => row.user_id === uid)
+      .map((row) => row.level),
+  );
+  wallet.slots_unlocked = Math.max(
+    wallet.slots_unlocked,
+    maxLevel >= 25 ? 3 : 2,
+  );
+  return wallet;
+}
+function ensureTrack(cls: HeroClass) {
+  let track = tables.rune_delve_class_progress.find(
+    (row) => row.user_id === uid && row.class === cls,
+  );
+  if (!track) {
+    const hero = ownHero();
+    const inherits = hero?.class === cls;
+    const legacy =
+      inherits && tables.rune_delve_progress.find((row) => row.user_id === uid);
+    track = {
+      ...progress(crypto.randomUUID(), uid, 0),
+      ...(legacy || {}),
+      id: crypto.randomUUID(),
+      user_id: uid,
+      class: cls,
+      xp: inherits ? hero.xp : 0,
+      level: inherits ? hero.level : 1,
+      cosmetic_title: inherits ? hero.cosmetic_title : titleForLevel(1, cls),
+      lifetime_runs: inherits ? hero.lifetime_runs || 0 : 0,
+      lifetime_score: inherits ? hero.lifetime_score || 0 : 0,
+    };
+    tables.rune_delve_class_progress.push(track);
+  }
+  return track;
+}
+function creditXp(cls: HeroClass, amount: number) {
+  const track = ensureTrack(cls);
+  const previousClassLevel = track.level;
+  track.xp += Math.max(0, amount);
+  track.level = Math.max(previousClassLevel, levelFromXp(track.xp).level);
+  track.cosmetic_title = titleForLevel(track.level, cls);
+  const hero = ownHero();
+  if (hero?.class === cls)
+    Object.assign(hero, {
+      xp: track.xp,
+      level: track.level,
+      cosmetic_title: track.cosmetic_title,
+    });
+  return {
+    previousClassLevel,
+    classLevel: track.level,
+    classXp: track.xp,
+    cosmeticTitle: track.cosmetic_title,
+    slotsUnlocked: ensureWallet().slots_unlocked,
+  };
+}
+function creditShards(amount: number) {
+  const wallet = ensureWallet();
+  wallet.shards += amount;
+  wallet.lifetime_shards_earned += amount;
+}
+function reportQuest(
+  type: string,
+  amount: number,
+  cls: string,
+  meta: any = {},
+) {
+  for (const quest of tables.rune_delve_active_quests) {
+    const definition = tables.rune_delve_quest_definitions.find(
+      (row) => row.id === quest.quest_id,
+    );
+    if (
+      quest.user_id !== uid ||
+      quest.status !== "active" ||
+      definition?.objective_type !== type ||
+      ![dailyPeriodKey(), weeklyPeriodKey()].includes(quest.period_key) ||
+      (definition.is_personal &&
+        definition.hero_class &&
+        definition.hero_class !== cls)
+    )
+      continue;
+    if (type === "high_level_clears" && meta.levelNumber < 30) continue;
+    if (type === "bosses_defeated" && !meta.isBoss) continue;
+    quest.progress = Math.min(
+      quest.target_value,
+      type === "longest_chain"
+        ? Math.max(quest.progress, amount)
+        : quest.progress + amount,
+    );
+    if (quest.progress >= quest.target_value) quest.status = "completed";
+  }
+}
+function requestSeed(id: string) {
+  let seed = 2166136261;
+  for (const letter of id)
+    seed = Math.imul(seed ^ letter.charCodeAt(0), 16777619);
+  return seed >>> 0;
+}
 function from(table: string) {
   const filters: Array<(row: any) => boolean> = [];
   const sorts: Array<{ key: string; ascending: boolean }> = [];
@@ -343,6 +590,18 @@ function from(table: string) {
     );
     if (verb !== "select") {
       qa.writes.push({ table, verb, body: structuredClone(body) });
+      if (protectedTables.has(table)) {
+        if (
+          table !== "rune_delve_heroes" ||
+          verb !== "update" ||
+          Object.keys(body || {}).length !== 1 ||
+          typeof body.hero_name !== "string" ||
+          body.hero_name.trim().length < 2 ||
+          body.hero_name.trim().length > 24
+        )
+          return fail(`permission denied for table ${table}`);
+        rows = rows.filter((row) => row.user_id === uid);
+      }
       if (verb === "upsert")
         rows = (Array.isArray(body) ? body : [body]).map((value) => {
           const existing = (tables[table] || []).find((row) =>
@@ -414,12 +673,131 @@ async function rpc(name: string, args: any = {}) {
     return { data: tables.profiles, error: null };
   if (name === "dh_feats_summary")
     return { data: { score: 0, unlocked: 0 }, error: null };
-  if (name === "rune_delve_report_quest") return { data: [], error: null };
+  if (
+    [
+      "rune_delve_earn_shards",
+      "rune_delve_spend_shards",
+      "rune_delve_report_quest",
+      "rune_delve_advance_progress",
+    ].includes(name)
+  )
+    return fail(`permission denied for function ${name}`);
+  if (name === "rune_delve_bootstrap") {
+    if (args.p_class != null && !isClass(args.p_class))
+      return fail("Invalid class");
+    let hero = ownHero();
+    if (!hero && args.p_create_hero === true) {
+      const cls = args.p_class || "warrior";
+      const heroName = (args.p_hero_name ?? "Adventurer").trim();
+      if (heroName.length < 2 || heroName.length > 24)
+        return fail("Invalid hero name");
+      hero = {
+        id: crypto.randomUUID(),
+        user_id: uid,
+        hero_name: heroName,
+        class: cls,
+        level: 1,
+        xp: 0,
+        current_streak: 0,
+        best_streak: 0,
+        lifetime_runs: 0,
+        lifetime_score: 0,
+        cosmetic_title: titleForLevel(1, cls),
+        last_run_date: null,
+      };
+      tables.rune_delve_heroes.push(hero);
+    }
+    const track = hero ? ensureTrack(args.p_class || hero.class) : null;
+    return {
+      data: structuredClone({
+        hero: hero || null,
+        track,
+        wallet: ensureWallet(),
+        progress:
+          tables.rune_delve_progress.find((row) => row.user_id === uid) || null,
+      }),
+      error: null,
+    };
+  }
+  if (name === "rune_delve_select_class") {
+    if (!isClass(args.p_class)) return fail("Invalid class");
+    const hero = ownHero();
+    if (!hero) return fail("Create a hero first");
+    const track = ensureTrack(args.p_class);
+    Object.assign(hero, {
+      class: args.p_class,
+      xp: track.xp,
+      level: track.level,
+      cosmetic_title: track.cosmetic_title,
+    });
+    ensureWallet();
+    return { data: structuredClone(hero), error: null };
+  }
+  if (name === "rune_delve_assign_quests") {
+    const hero = ownHero();
+    if (!hero) return fail("Create a hero first");
+    const assigned = [];
+    for (const scope of ["daily", "weekly"] as const) {
+      const periodKey =
+        scope === "daily" ? dailyPeriodKey() : weeklyPeriodKey();
+      const definitions = rollQuestSet({
+        defs: tables.rune_delve_quest_definitions,
+        scope,
+        periodKey,
+        userId: uid,
+        heroClass: hero.class,
+      });
+      for (const definition of definitions) {
+        let quest = tables.rune_delve_active_quests.find(
+          (row) =>
+            row.user_id === uid &&
+            row.quest_id === definition.id &&
+            row.period_key === periodKey,
+        );
+        if (!quest) {
+          quest = {
+            id: crypto.randomUUID(),
+            user_id: uid,
+            quest_id: definition.id,
+            scope,
+            period_key: periodKey,
+            progress: 0,
+            target_value: definition.target_value,
+            status: "active",
+            claimed_at: null,
+          };
+          tables.rune_delve_active_quests.push(quest);
+        }
+        assigned.push(quest);
+      }
+    }
+    return { data: structuredClone(assigned), error: null };
+  }
   if (name === "rune_delve_equip") {
-    const loadout = tables.rune_delve_loadouts.find(
-      (row) => row.class === args.p_class,
+    if (!isClass(args.p_class)) return fail("Invalid class");
+    const slots = [args.p_slot_1, args.p_slot_2, args.p_slot_3].filter(
+      (slot) => slot != null,
     );
-    if (!loadout) return fail("Loadout unavailable");
+    if (new Set(slots).size !== slots.length)
+      return fail("Each relic can only be equipped once.");
+    if (args.p_slot_3 != null && ensureWallet().slots_unlocked < 3)
+      return fail("Third relic slot is still locked");
+    if (
+      slots.some(
+        (slot) =>
+          !tables.rune_delve_relic_unlocks.some(
+            (row) => row.user_id === uid && row.relic_id === slot,
+          ),
+      )
+    )
+      return fail("Unlock a relic before equipping it");
+    let loadout = tables.rune_delve_loadouts.find(
+      (row) => row.user_id === uid && row.class === args.p_class,
+    );
+    if (!loadout) {
+      loadout = { id: crypto.randomUUID(), user_id: uid, class: args.p_class };
+      tables.rune_delve_loadouts.push(loadout);
+    }
     Object.assign(loadout, {
       slot_1: args.p_slot_1,
       slot_2: args.p_slot_2,
@@ -430,32 +808,61 @@ async function rpc(name: string, args: any = {}) {
   }
   if (name === "rune_delve_ensure_level") {
     const definition = args.p_definition;
-    const row = tables.rune_delve_levels.find(
+    if (
+      !Number.isInteger(definition?.level_number) ||
+      definition.level_number < 1 ||
+      definition.level_number > 100000
+    )
+      return fail("invalid_level");
+    let row = tables.rune_delve_levels.find(
       (level) => level.level_number === definition.level_number,
-    ) || {
-      id: levelId(definition.level_number),
-      ...definition,
-      status: "active",
-    };
-    return { data: row, error: null };
+    );
+    if (!row) {
+      row = {
+        id: levelId(definition.level_number),
+        ...generateLevel(definition.level_number),
+        status: "active",
+      };
+      tables.rune_delve_levels.push(row);
+    }
+    return { data: structuredClone(row), error: null };
   }
   if (name === "rune_delve_buy_relic") {
-    if (receipts.has(args.p_request_id))
-      return { data: receipts.get(args.p_request_id), error: null };
+    const input = {
+      relic: args.p_relic_id,
+      rank: args.p_expected_rank ?? null,
+    };
+    const prior = priorReceipt("relic", args.p_request_id, input);
+    if (prior) return prior;
     const relic = RELIC_CATALOG.find((relic) => relic.id === args.p_relic_id);
     if (!relic) return fail("Relic unavailable");
     const owned = tables.rune_delve_relic_unlocks.find(
-      (row) => row.relic_id === relic.id,
+      (row) => row.user_id === uid && row.relic_id === relic.id,
     );
-    if (owned && args.p_expected_rank == null)
-      return fail("Relic already owned");
+    if (owned && args.p_expected_rank == null) {
+      saveReceipt("relic", args.p_request_id, input, owned);
+      return { data: structuredClone(owned), error: null };
+    }
     if (args.p_expected_rank != null && owned?.rank !== args.p_expected_rank)
       return fail("Rank changed — please retry");
+    if (
+      args.p_expected_rank != null &&
+      (owned.rank >= 5 || args.p_expected_rank < 1)
+    )
+      return fail("Already at max rank");
+    const hero = ownHero();
+    if (!hero) return fail("Create a hero first");
+    const depth = ensureTrack(hero.class).highest_unlocked_level;
+    if (
+      args.p_expected_rank == null &&
+      Math.floor((depth - 1) / 50) + 1 < relic.tier
+    )
+      return fail("Relic tier is still locked");
     const cost =
       args.p_expected_rank == null
         ? relic.cost
         : rankCost(relic.cost, args.p_expected_rank + 1);
-    const wallet = tables.rune_delve_wallet[0];
+    const wallet = ensureWallet();
     if (wallet.shards < cost) return fail("Not enough Rune Shards");
     wallet.shards -= cost;
     const row = owned || {
@@ -464,177 +871,515 @@ async function rpc(name: string, args: any = {}) {
       relic_id: relic.id,
       rank: 1,
       acquired_at: date,
-      acquired_at_level: completed + 1,
+      acquired_at_level: hero.level,
     };
     if (owned) owned.rank += 1;
     else tables.rune_delve_relic_unlocks.push(row);
-    receipts.set(args.p_request_id, structuredClone(row));
+    saveReceipt("relic", args.p_request_id, input, row);
     qa.writes.push({ table: "atomic-purchase", body: args });
     return { data: structuredClone(row), error: null };
   }
   if (name === "rune_delve_save_run") {
-    if (receipts.has(args.p_request_id))
-      return { data: receipts.get(args.p_request_id), error: null };
     const run = args.p_run;
+    const prior = priorReceipt("run", args.p_request_id, run);
+    if (prior) return prior;
+    if (!ownHero() || !run || !isClass(run.hero_class))
+      return fail("invalid_run");
+    const n = run.level_number;
+    if (
+      !Number.isInteger(n) ||
+      n < 1 ||
+      n > 100000 ||
+      !tables.rune_delve_levels.some(
+        (row) => row.id === run.level_id && row.level_number === n,
+      )
+    )
+      return fail("Chamber is unavailable. Please reload.");
+    if (
+      [
+        "score",
+        "turns_used",
+        "total_damage",
+        "longest_chain",
+        "hp_remaining",
+        "enemies_defeated",
+      ].some((key) => !Number.isInteger(run[key]) || run[key] < 0)
+    )
+      return fail("invalid_run");
+    if (
+      run.score > 10000000 ||
+      run.turns_used > 1000 ||
+      run.total_damage > 10000000 ||
+      run.longest_chain > 25 ||
+      run.hp_remaining > 10000 ||
+      run.enemies_defeated > 10000
+    )
+      return fail("invalid_run");
+    const track = ensureTrack(run.hero_class);
+    if (n > track.highest_unlocked_level) return fail("Level is still locked");
+    const level = generateLevel(n);
+    const context = run.reward_context || {};
+    const turnLimit = level.turn_limit;
+    const totalEnemies =
+      level.enemy_config.length +
+      (level.modifiers.waves || []).reduce(
+        (sum, wave) => sum + wave.enemies.length,
+        0,
+      );
     const existing = tables.rune_delve_runs.find(
       (row) =>
-        row.level_id === run.level_id && row.hero_class === run.hero_class,
+        row.user_id === uid &&
+        row.level_id === run.level_id &&
+        row.hero_class === run.hero_class,
     );
-    const oldScore = existing?.score ?? 0;
-    const oldAttempts = existing?.attempts ?? 0;
-    const oldClears = existing?.clears ?? 0;
-    const oldBestTurns = existing?.best_turns_used;
-    const row = existing || {
-      id: crypto.randomUUID(),
-      user_id: uid,
-      ...run,
-      attempts: 0,
-      clears: 0,
+    const old = structuredClone(existing || {});
+    const cleared = !!run.dungeon_cleared;
+    const firstClear = cleared && !old.dungeon_cleared;
+    const meaningful =
+      cleared ||
+      (run.total_damage > 0 &&
+        (run.turns_used >= 2 || run.enemies_defeated > 0));
+    let failure = tables.rune_delve_failure_rewards.find(
+      (row) =>
+        row.user_id === uid &&
+        row.level_number === n &&
+        row.hero_class === run.hero_class,
+    );
+    if (!failure) {
+      failure = {
+        id: crypto.randomUUID(),
+        user_id: uid,
+        level_number: n,
+        hero_class: run.hero_class,
+        failure_count: 0,
+      };
+      tables.rune_delve_failure_rewards.push(failure);
+    }
+    const failureCount = failure.failure_count + 1;
+    failure.failure_count = cleared ? 0 : failureCount;
+    failure.last_awarded_at = date;
+    const xp = campaignXpForAttempt({
+      levelNumber: n,
+      score: run.score,
+      cleared,
+      isFirstClear: firstClear,
+      previousBestScore: old.score || 0,
+      failureCount,
+      meaningful,
+      enemiesKilled: run.enemies_defeated,
+      totalEnemies,
+      turnsUsed: run.turns_used,
+      turnLimit,
+      bossPhaseReached: Math.min(
+        3,
+        Math.max(0, context.boss_phase_reached || 0),
+      ),
+      bossHasRule: !!level.modifiers.boss_rule,
+    });
+    const equipped = tables.rune_delve_loadouts.find(
+      (row) => row.user_id === uid && row.class === run.hero_class,
+    );
+    const compass = tables.rune_delve_relic_unlocks.find(
+      (row) =>
+        row.user_id === uid &&
+        row.relic_id === "wanderers_compass" &&
+        [equipped?.slot_1, equipped?.slot_2, equipped?.slot_3].includes(
+          row.relic_id,
+        ),
+    );
+    const compassMultiplier = compass
+      ? 1.15 + 0.03 * (Math.max(1, Math.min(5, compass.rank)) - 1)
+      : 1;
+    const shardArgs = {
+      levelNumber: n,
+      compassEquipped: !!compass,
+      compassMultiplier,
     };
-    const isBest = !existing || run.score > oldScore;
-    const firstClear = run.dungeon_cleared && !existing?.dungeon_cleared;
+    let shards = cleared
+      ? computeClearShards({
+          ...shardArgs,
+          isFirstClear: firstClear,
+          bossClear: n % 25 === 0,
+          chapterCleared: firstClear && n % 50 === 0,
+        }).total
+      : computeFailureShards({
+          ...shardArgs,
+          failureCount,
+          enemiesKilled: run.enemies_defeated,
+          totalEnemies,
+          turnsUsed: run.turns_used,
+          turnLimit,
+          bossHasRule: !!level.modifiers.boss_rule,
+          bossPhaseReached: Math.min(
+            3,
+            Math.max(0, context.boss_phase_reached || 0),
+          ),
+        }).total;
+    const variantAllowed = n > 1 && (n % 10 === 0 || n % 50 === 1);
+    const path = variantAllowed ? context.path : null;
+    shards = Math.round(
+      shards * (path === "elite" ? 1.5 : path === "treasure" ? 1.25 : 1),
+    );
+    const treasureZones =
+      path === "treasure" ? 3 : getLayoutForLevel(n).preview.treasureZones;
+    const treasureCap =
+      treasureZones *
+      treasureShardValue(n) *
+      (n <= 10 && path !== "treasure" ? 1 : 3);
+    const treasure = Math.max(
+      0,
+      Math.min(treasureCap, Number(context.treasure_shards) || 0),
+    );
+    shards += cleared
+      ? treasure
+      : Math.round(treasure * failureMultiplier(failureCount));
+    const oldClassLevel = track.level;
+    if (run.hero_class === "rogue" && oldClassLevel >= 75)
+      shards += Math.max(
+        0,
+        Math.min(run.turns_used * 2 + 2, Number(context.mastery_shards) || 0),
+      );
+    if (cleared && context.secondary_met) shards += 10;
+    const row = existing || { id: crypto.randomUUID(), user_id: uid };
     Object.assign(row, run, {
-      score: Math.max(oldScore, run.score),
-      attempts: oldAttempts + 1,
-      clears: oldClears + Number(run.dungeon_cleared),
-      dungeon_cleared: !!existing?.dungeon_cleared || !!run.dungeon_cleared,
-      best_turns_used: run.dungeon_cleared
-        ? Math.min(oldBestTurns ?? Infinity, run.turns_used)
-        : (oldBestTurns ?? null),
+      score: Math.max(old.score || 0, run.score),
+      attempts: (old.attempts || 0) + 1,
+      clears: (old.clears || 0) + Number(cleared),
+      dungeon_cleared: !!old.dungeon_cleared || cleared,
+      total_damage: Math.max(old.total_damage || 0, run.total_damage),
+      enemies_defeated: Math.max(
+        old.enemies_defeated || 0,
+        run.enemies_defeated,
+      ),
+      longest_chain: Math.max(old.longest_chain || 0, run.longest_chain),
+      best_turns_used: cleared
+        ? Math.min(old.best_turns_used ?? Infinity, run.turns_used)
+        : (old.best_turns_used ?? null),
+      best_hp_remaining: Math.max(
+        old.best_hp_remaining || 0,
+        cleared ? run.hp_remaining : 0,
+      ),
+      xp_earned: Math.max(old.xp_earned || 0, xp),
       last_played_at: date,
       completed_at: date,
     });
     if (!existing) tables.rune_delve_runs.push(row);
-    const wallet = tables.rune_delve_wallet[0];
-    const shards = run.dungeon_cleared ? 60 : 12;
-    wallet.shards += shards;
-    wallet.lifetime_shards_earned += shards;
-    const track = tables.rune_delve_class_progress.find(
-      (entry) => entry.class === run.hero_class,
-    );
-    const previousClassLevel = track?.level ?? 1;
-    if (track) {
-      track.xp += run.xp_earned || 0;
-      track.lifetime_runs += 1;
-      track.lifetime_score += run.score;
-      if (run.dungeon_cleared) {
-        track.highest_completed_level = Math.max(
-          track.highest_completed_level,
-          run.level_number,
-        );
-        track.highest_unlocked_level = Math.max(
-          track.highest_unlocked_level,
-          Math.min(150, run.level_number + 1),
-        );
-        track.total_levels_cleared += Number(firstClear);
-      }
-    }
-    if (run.dungeon_cleared) {
-      const aggregate = tables.rune_delve_progress.find(
+    track.lifetime_runs += 1;
+    track.lifetime_score += run.score;
+    const hero = ownHero();
+    hero.lifetime_runs += 1;
+    hero.lifetime_score += run.score;
+    if (cleared) {
+      const newCampaign = n > track.highest_completed_level;
+      track.highest_completed_level = Math.max(
+        track.highest_completed_level,
+        n,
+      );
+      track.highest_unlocked_level = Math.max(
+        track.highest_unlocked_level,
+        n + 1,
+      );
+      track.total_levels_cleared += Number(newCampaign);
+      track.current_chapter =
+        Math.floor((track.highest_unlocked_level - 1) / 50) + 1;
+      let aggregate = tables.rune_delve_progress.find(
         (entry) => entry.user_id === uid,
       );
+      if (!aggregate) {
+        aggregate = progress(crypto.randomUUID(), uid, 0);
+        tables.rune_delve_progress.push(aggregate);
+      }
       aggregate.highest_completed_level = Math.max(
         aggregate.highest_completed_level,
-        run.level_number,
+        n,
       );
       aggregate.highest_unlocked_level = Math.max(
         aggregate.highest_unlocked_level,
-        Math.min(150, run.level_number + 1),
+        n + 1,
       );
-      aggregate.total_levels_cleared += Number(firstClear);
+      aggregate.total_levels_cleared += Number(newCampaign);
+      aggregate.current_chapter =
+        Math.floor((aggregate.highest_unlocked_level - 1) / 50) + 1;
+    }
+    const advancement = creditXp(run.hero_class, xp);
+    creditShards(shards);
+    let relicDrop = null;
+    if (cleared) {
+      const drop = rollRelicDrop({
+        cleared: true,
+        levelNumber: n,
+        seed: requestSeed(args.p_request_id),
+        ownedRelicIds: new Set(
+          tables.rune_delve_relic_unlocks
+            .filter((entry) => entry.user_id === uid)
+            .map((entry) => entry.relic_id),
+        ),
+        bonusChance: path === "elite" ? 0.08 : 0,
+      });
+      if (drop) {
+        relicDrop = {
+          id: crypto.randomUUID(),
+          user_id: uid,
+          relic_id: drop.relic.id,
+          rank: 1,
+          acquired_at: date,
+          acquired_at_level: n,
+        };
+        tables.rune_delve_relic_unlocks.push(relicDrop);
+      }
+    }
+    reportQuest("class_run_complete", 1, run.hero_class);
+    reportQuest("enemies_defeated", run.enemies_defeated, run.hero_class);
+    reportQuest("total_score", run.score, run.hero_class);
+    reportQuest("longest_chain", run.longest_chain, run.hero_class);
+    reportQuest("shards_earned", shards, run.hero_class);
+    reportQuest("class_xp_earned", xp, run.hero_class);
+    if (run.ability_used)
+      reportQuest(
+        "abilities_used",
+        Math.max(1, Math.min(1000, run.quest_context?.abilities_used || 1)),
+        run.hero_class,
+      );
+    reportQuest(
+      "bosses_defeated",
+      Math.max(
+        0,
+        Math.min(run.enemies_defeated, run.quest_context?.bosses_defeated || 0),
+      ),
+      run.hero_class,
+      { isBoss: true },
+    );
+    if (cleared) {
+      reportQuest("levels_cleared", 1, run.hero_class);
+      reportQuest("high_level_clears", 1, run.hero_class, { levelNumber: n });
+      if (run.quest_context?.no_damage_clear)
+        reportQuest("no_damage_clear", 1, run.hero_class);
     }
     const result = {
       row,
-      wasNewBest: isBest,
-      improvedChain: true,
-      improvedTurns: !!run.dungeon_cleared,
-      improvedHp: !!run.dungeon_cleared,
+      wasNewBest: !existing || run.score > (old.score || 0),
       firstClear,
+      improvedChain: run.longest_chain > (old.longest_chain || 0),
+      improvedTurns:
+        cleared &&
+        (old.best_turns_used == null || run.turns_used < old.best_turns_used),
+      improvedHp: cleared && run.hp_remaining > (old.best_hp_remaining || 0),
       shardsAwarded: shards,
-      xpAwarded: run.xp_earned || 0,
-      previousClassLevel,
-      classLevel: track?.level ?? 1,
-      classXp: track?.xp ?? 0,
-      cosmeticTitle: track?.cosmetic_title ?? null,
-      slotsUnlocked: 2,
+      xpAwarded: xp,
+      ...advancement,
+      relicDrop,
     };
-    receipts.set(args.p_request_id, structuredClone(result));
-    qa.writes.push({ table: "atomic-run", body: args });
+    saveReceipt("run", args.p_request_id, run, result);
+    qa.writes.push({ table: "atomic-run", body: structuredClone(args) });
     return { data: structuredClone(result), error: null };
   }
-  if (name === "rune_delve_advance_progress") {
-    const track = tables.rune_delve_class_progress.find(
-      (row) => row.class === (args.p_hero_class || args.p_class),
-    );
-    if (track) {
-      track.highest_completed_level = Math.max(
-        track.highest_completed_level,
-        args.p_level_number || 1,
-      );
-      track.highest_unlocked_level = track.highest_completed_level + 1;
-    }
-    return { data: track, error: null };
-  }
   if (name === "rune_delve_save_daily") {
-    if (receipts.has(args.p_request_id))
-      return { data: receipts.get(args.p_request_id), error: null };
+    const input = {
+      kills: args.p_kills,
+      score: args.p_score,
+      class: args.p_class,
+    };
+    const prior = priorReceipt("daily", args.p_request_id, input);
+    if (prior) return prior;
+    if (
+      !ownHero() ||
+      !isClass(args.p_class) ||
+      !Number.isInteger(args.p_kills) ||
+      args.p_kills < 0 ||
+      args.p_kills > 10000 ||
+      !Number.isInteger(args.p_score) ||
+      args.p_score < 0 ||
+      args.p_score > 10000000
+    )
+      return fail("invalid_daily");
     const dateStr = date.slice(0, 10);
-    const reward = endlessRewardFor(args.p_kills);
-    const stars = endlessStarsFor(args.p_kills);
     const existing = tables.rune_delve_daily_runs.find(
       (row) => row.daily_date === dateStr && row.user_id === uid,
     );
+    const firstAttempt = !existing;
+    const previousBestKills = existing?.kills_count ?? 0;
+    const bestKills = Math.max(previousBestKills, args.p_kills);
+    const total = endlessRewardFor(bestKills);
+    // Existing rows without paid columns were already paid by the previous
+    // first-attempt contract. Derive that paid total rather than paying twice.
+    const dailyReceipts = tables.rune_delve_action_receipts.filter(
+      (receipt) =>
+        receipt.user_id === uid &&
+        receipt.action_kind === "daily" &&
+        receipt.result?.dateStr === dateStr,
+    );
+    const legacyPaid = dailyReceipts.length
+      ? dailyReceipts.reduce(
+          (paid, receipt) => ({
+            shards: paid.shards + (receipt.result?.reward?.shards ?? 0),
+            xp: paid.xp + (receipt.result?.reward?.xp ?? 0),
+          }),
+          { shards: 0, xp: 0 },
+        )
+      : {
+          shards: !existing
+            ? 0
+            : previousBestKills >= 50
+              ? 900
+              : previousBestKills >= 30
+                ? 600
+                : previousBestKills >= 20
+                  ? 400
+                  : previousBestKills >= 15
+                    ? 250
+                    : previousBestKills >= 10
+                      ? 150
+                      : previousBestKills >= 5
+                        ? 75
+                        : 25,
+          xp: existing ? Math.min(500, previousBestKills * 10) : 0,
+        };
+    const paid = {
+      shards: existing?.reward_shards_awarded ?? legacyPaid.shards,
+      xp: existing?.reward_xp_awarded ?? legacyPaid.xp,
+    };
+    const delta = dailyRewardDelta(total, paid);
     const row = existing || {
       id: crypto.randomUUID(),
       user_id: uid,
       daily_date: dateStr,
     };
-    Object.assign(row, {
-      score: args.p_score,
-      stars,
-      dungeon_cleared: false,
-      modifiers: [],
-      hero_class: args.p_class,
-      kills_count: args.p_kills,
-      completed_at: date,
-    });
+    const previousBestScore = existing?.score ?? 0;
+    const isBest =
+      !existing ||
+      args.p_kills > previousBestKills ||
+      (args.p_kills === previousBestKills &&
+        args.p_score > (existing.score || 0));
+    if (isBest)
+      Object.assign(row, {
+        score: args.p_score,
+        stars: endlessStarsFor(args.p_kills),
+        dungeon_cleared: false,
+        modifiers: [],
+        hero_class: args.p_class,
+        kills_count: args.p_kills,
+        completed_at: date,
+      });
+    row.stars = endlessStarsFor(bestKills);
+    row.kills_count = bestKills;
+    row.reward_shards_awarded = paid.shards + delta.shards;
+    row.reward_xp_awarded = paid.xp + delta.xp;
+    const completionReported = existing
+      ? (existing.completion_reported ?? true)
+      : false;
+    const firstMeaningfulAttempt = bestKills > 0 && !completionReported;
+    row.completion_reported = completionReported || bestKills > 0;
     if (!existing) tables.rune_delve_daily_runs.push(row);
     localStorage.setItem(
       "__rune-qa-daily-runs",
       JSON.stringify(tables.rune_delve_daily_runs),
     );
-    if (!existing) tables.rune_delve_wallet[0].shards += reward.shards;
+    const advancement = creditXp(args.p_class, delta.xp);
+    creditShards(delta.shards);
+    const rewarded = delta.shards > 0 || delta.xp > 0;
+    if (firstMeaningfulAttempt) {
+      const track = ensureTrack(args.p_class);
+      track.lifetime_runs += 1;
+      track.lifetime_score += args.p_score;
+      const hero = ownHero();
+      hero.lifetime_runs += 1;
+      hero.lifetime_score += args.p_score;
+      reportQuest("daily_challenges_completed", 1, args.p_class);
+      reportQuest("class_run_complete", 1, args.p_class);
+    }
+    if (bestKills > previousBestKills)
+      reportQuest(
+        "enemies_defeated",
+        bestKills - previousBestKills,
+        args.p_class,
+      );
+    if (row.score > previousBestScore)
+      reportQuest("total_score", row.score - previousBestScore, args.p_class);
+    if (rewarded) {
+      reportQuest("shards_earned", delta.shards, args.p_class);
+      reportQuest("class_xp_earned", delta.xp, args.p_class);
+    }
+    if (bestKills >= 3) {
+      let streak = tables.rune_delve_daily_streaks.find(
+        (entry) => entry.user_id === uid,
+      );
+      if (!streak) {
+        streak = {
+          user_id: uid,
+          current_streak: 0,
+          best_streak: 0,
+          lifetime_clears: 0,
+          last_completed_date: null,
+        };
+        tables.rune_delve_daily_streaks.push(streak);
+      }
+      if (streak.last_completed_date !== dateStr) {
+        const yesterday = new Date(`${dateStr}T00:00:00Z`);
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        streak.current_streak =
+          streak.last_completed_date === yesterday.toISOString().slice(0, 10)
+            ? streak.current_streak + 1
+            : 1;
+        streak.best_streak = Math.max(
+          streak.best_streak,
+          streak.current_streak,
+        );
+        streak.lifetime_clears += 1;
+        streak.last_completed_date = dateStr;
+      }
+    }
     const result = {
-      stars,
-      reward,
+      stars: endlessStarsFor(bestKills),
+      reward: { ...delta, title: total.title },
+      dailyRewardTotal: {
+        shards: row.reward_shards_awarded,
+        xp: row.reward_xp_awarded,
+      },
       dateStr,
       kills: args.p_kills,
-      rewarded: !existing,
-      previousClassLevel: 8,
-      classLevel: 8,
-      slotsUnlocked: 2,
+      rewarded,
+      firstAttempt,
+      firstMeaningfulAttempt,
+      previousBestKills,
+      bestKills,
+      improvedReward: !firstAttempt && rewarded,
+      ...advancement,
     };
-    receipts.set(args.p_request_id, result);
-    qa.writes.push({ table: "atomic-daily", body: args });
-    return { data: result, error: null };
+    saveReceipt("daily", args.p_request_id, input, result);
+    qa.writes.push({ table: "atomic-daily", body: structuredClone(args) });
+    return { data: structuredClone(result), error: null };
   }
   if (name === "rune_delve_claim_quest") {
     const quest = tables.rune_delve_active_quests.find(
-      (row) => row.id === args.p_quest_id,
+      (row) => row.user_id === uid && row.id === args.p_quest_id,
     );
     if (!quest) return fail("Quest unavailable");
     const definition = tables.rune_delve_quest_definitions.find(
       (row) => row.id === quest.quest_id,
     );
+    if (!definition) return fail("Quest unavailable");
     const alreadyClaimed = quest.status === "claimed";
+    if (
+      !alreadyClaimed &&
+      (quest.status !== "completed" || quest.progress < quest.target_value)
+    )
+      return fail("Quest not completed");
+    if (!ownHero()) return fail("Create a hero first");
+    let advancement = {};
     if (!alreadyClaimed) {
       quest.status = "claimed";
-      tables.rune_delve_wallet[0].shards += definition?.shard_reward || 0;
+      quest.claimed_at = date;
+      creditShards(Math.max(0, definition.shard_reward || 0));
+      advancement = creditXp(
+        definition.hero_class || ownHero().class,
+        Math.max(0, definition.xp_reward || 0),
+      );
     }
     return {
       data: {
-        shards: definition?.shard_reward || 0,
-        xp: definition?.xp_reward || 0,
+        ...advancement,
+        shards: alreadyClaimed ? 0 : definition.shard_reward || 0,
+        xp: alreadyClaimed ? 0 : definition.xp_reward || 0,
         title: definition?.title || "Quest",
         scope: quest.scope,
         alreadyClaimed,
@@ -642,64 +1387,171 @@ async function rpc(name: string, args: any = {}) {
       error: null,
     };
   }
-  if (name === "rune_delve_expedition_profile")
+  if (name === "rune_delve_expedition_profile") {
+    if (
+      !tables.club_members.some(
+        (row) => row.user_id === uid && row.club_id === args.p_club_id,
+      )
+    )
+      return fail("club_membership_required");
+    const progress = tables.rune_delve_expedition_progress.find(
+      (row) => row.user_id === uid && row.club_id === args.p_club_id,
+    );
     return {
       data: {
-        highest_ascension: 0,
-        best_score: 1200,
-        total_runs: 4,
-        total_clears: 0,
+        highest_ascension: progress?.highest_ascension || 0,
+        best_score: progress?.best_score || 1200,
+        total_runs: progress?.total_runs || 0,
+        total_clears: progress?.total_clears || 0,
         active_run:
-          Object.values(savedTickets).find((ticket: any) => !ticket.receipt) ||
-          null,
+          Object.values(savedTickets).find(
+            (ticket: any) =>
+              !ticket.receipt &&
+              !ticket.abandoned &&
+              (ticket.club_id || "club") === args.p_club_id,
+          ) || null,
       },
       error: null,
     };
+  }
   if (name === "rune_delve_expedition_begin") {
-    const ticket = savedTickets[args.p_id] || {
+    if (
+      !tables.club_members.some(
+        (row) => row.user_id === uid && row.club_id === args.p_club_id,
+      )
+    )
+      return fail("club_membership_required");
+    if (
+      !ownHero() ||
+      !args.p_id ||
+      !isClass(args.p_hero_class) ||
+      !Number.isInteger(args.p_ascension) ||
+      args.p_ascension < 0 ||
+      args.p_ascension > 7
+    )
+      return fail("invalid_expedition");
+    const existing = savedTickets[args.p_id];
+    if (existing) {
+      if (
+        existing.receipt ||
+        existing.abandoned ||
+        existing.hero_class !== args.p_hero_class ||
+        existing.ascension !== args.p_ascension ||
+        (existing.club_id || "club") !== args.p_club_id
+      )
+        return fail("expedition_ticket_mismatch");
+      return { data: structuredClone(existing), error: null };
+    }
+    const progress = tables.rune_delve_expedition_progress.find(
+      (row) => row.user_id === uid && row.club_id === args.p_club_id,
+    );
+    if (args.p_ascension > (progress?.highest_ascension || 0))
+      return fail("clear_the_previous_ascension_first");
+    for (const ticket of Object.values(savedTickets) as any[])
+      if (!ticket.receipt && (ticket.club_id || "club") === args.p_club_id)
+        ticket.abandoned = true;
+    const ticket = {
       id: args.p_id,
       seed: 728391,
       hero_class: args.p_hero_class,
+      club_id: args.p_club_id,
       ascension: args.p_ascension,
       started_at: date,
     };
     savedTickets[ticket.id] = ticket;
+    tables.rune_delve_expedition_runs.push({
+      ...ticket,
+      user_id: uid,
+      status: "active",
+    });
     persistTickets();
-    qa.writes.push({ table: "expedition-ticket", body: args });
-    return { data: ticket, error: null };
+    qa.writes.push({ table: "expedition-ticket", body: structuredClone(args) });
+    return { data: structuredClone(ticket), error: null };
   }
   if (name === "rune_delve_expedition_finish") {
     if (!savedTickets[args.p_id]) return fail("Run not found");
     const ticket = savedTickets[args.p_id];
-    if (ticket.receipt) return { data: ticket.receipt, error: null };
+    if (ticket.abandoned) return fail("expedition_was_replaced");
+    if (ticket.receipt)
+      return { data: structuredClone(ticket.receipt), error: null };
+    if (
+      !Number.isInteger(args.p_rooms) ||
+      args.p_rooms < 0 ||
+      args.p_rooms > 6 ||
+      !Number.isInteger(args.p_turns) ||
+      args.p_turns < args.p_rooms ||
+      args.p_turns > 180 ||
+      !Number.isInteger(args.p_score) ||
+      args.p_score < 0 ||
+      args.p_score > 250000 ||
+      typeof args.p_cleared !== "boolean" ||
+      args.p_cleared !== (args.p_rooms === 6) ||
+      (args.p_rooms > 0 && args.p_score === 0)
+    )
+      return fail("invalid_expedition_result");
     const reward = expeditionReward(
       args.p_rooms,
       ticket.ascension,
       args.p_cleared,
     );
+    const advancement = creditXp(ticket.hero_class, reward);
+    creditShards(reward);
+    let progress = tables.rune_delve_expedition_progress.find(
+      (row) => row.user_id === uid && row.club_id === ticket.club_id,
+    );
+    if (!progress) {
+      progress = {
+        user_id: uid,
+        club_id: ticket.club_id,
+        highest_ascension: 0,
+        best_score: 0,
+        total_runs: 0,
+        total_clears: 0,
+      };
+      tables.rune_delve_expedition_progress.push(progress);
+    }
+    progress.highest_ascension = Math.max(
+      progress.highest_ascension,
+      args.p_cleared ? Math.min(7, ticket.ascension + 1) : 0,
+    );
+    progress.best_score = Math.max(progress.best_score, args.p_score);
+    progress.total_runs += 1;
+    progress.total_clears += Number(args.p_cleared);
     ticket.receipt = {
       reward,
+      xpAwarded: reward,
+      ...advancement,
       rooms: args.p_rooms,
       cleared: args.p_cleared,
-      highest_ascension: args.p_cleared
-        ? ticket.ascension + 1
-        : ticket.ascension,
-      best_score: args.p_score,
+      highest_ascension: progress.highest_ascension,
+      best_score: progress.best_score,
     };
+    const run = tables.rune_delve_expedition_runs.find(
+      (row) => row.id === ticket.id,
+    );
+    if (run)
+      Object.assign(run, {
+        status: "banked",
+        rooms: args.p_rooms,
+        score: args.p_score,
+        turns: args.p_turns,
+        cleared: args.p_cleared,
+        reward,
+        finished_at: date,
+      });
+    reportQuest("shards_earned", reward, ticket.hero_class);
+    reportQuest("class_xp_earned", reward, ticket.hero_class);
+    reportQuest("total_score", args.p_score, ticket.hero_class);
+    if (args.p_cleared) {
+      reportQuest("class_run_complete", 1, ticket.hero_class);
+      reportQuest("bosses_defeated", 1, ticket.hero_class, { isBoss: true });
+    }
     persistTickets();
-    tables.rune_delve_wallet[0].shards += reward;
-    qa.writes.push({ table: "expedition-finish", body: args });
-    return { data: ticket.receipt, error: null };
+    qa.writes.push({ table: "expedition-finish", body: structuredClone(args) });
+    return { data: structuredClone(ticket.receipt), error: null };
   }
-  if (name === "rune_delve_earn_shards" || name === "rune_delve_spend_shards") {
-    const wallet = tables.rune_delve_wallet[0],
-      amount = Number(args.p_amount);
-    if (name.includes("spend") && wallet.shards < amount)
-      return fail("insufficient_shards");
-    wallet.shards += name.includes("spend") ? -amount : amount;
-    if (name.includes("earn")) wallet.lifetime_shards_earned += amount;
-    return { data: structuredClone(wallet), error: null };
-  }
+  if (name.startsWith("rune_delve_"))
+    return fail(`Rune fixture RPC not implemented: ${name}`);
   console.warn("Rune fixture RPC not implemented:", name, args);
   return { data: [], error: null };
 }

@@ -25,6 +25,8 @@ export interface DailyRunRow {
   hero_class: HeroClass;
   kills_count: number;
   completed_at: string;
+  reward_shards_awarded?: number | null;
+  reward_xp_awarded?: number | null;
 }
 
 export interface DailyStreakRow {
@@ -161,6 +163,11 @@ export interface SavedDailyRun {
   dateStr: string;
   kills: number;
   rewarded: boolean;
+  dailyRewardTotal?: { shards: number; xp: number };
+  firstAttempt?: boolean;
+  previousBestKills?: number;
+  bestKills?: number;
+  improvedReward?: boolean;
   previousClassLevel: number;
   classLevel: number;
   slotsUnlocked: number;

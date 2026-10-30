@@ -13,11 +13,21 @@ import { RuneDataState } from "@/components/runedelve/RuneDataState";
 import { RunePager } from "@/components/runedelve/RunePager";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRuneViewport } from "@/hooks/useRuneViewport";
-import { endlessRewardFor, endlessStarsFor } from "@/lib/runedelve/endlessMode";
+import {
+  endlessRewardFor,
+  endlessStarsFor,
+  ENDLESS_REWARD_TIERS,
+  ENDLESS_STAR_THRESHOLDS,
+} from "@/lib/runedelve/endlessMode";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
 import "@/components/runedelve/runeDailyCompact.css";
 
-const REWARD_THRESHOLDS = [0, 5, 10, 15, 20, 25, 30, 50];
+const REWARD_THRESHOLDS = [
+  ...new Set([
+    ...ENDLESS_REWARD_TIERS.map((tier) => tier.kills),
+    ...ENDLESS_STAR_THRESHOLDS,
+  ]),
+].sort((a, b) => a - b);
 
 export default function RuneDelveDailyPage() {
   const today = useTodayDaily();
@@ -79,11 +89,8 @@ export default function RuneDelveDailyPage() {
               : "Two minutes. Rising waves."}
           </p>
         </div>
-        <Link
-          to={run ? "/rune-delve/expedition" : "/rune-delve/endless"}
-          className="rd-daily-primary"
-        >
-          <span>{run ? "Take on an Expedition" : "Enter daily arena"}</span>
+        <Link to="/rune-delve/endless" className="rd-daily-primary">
+          <span>{run ? "Improve today's best" : "Enter daily arena"}</span>
           <ArrowRight size={15} aria-hidden />
         </Link>
       </header>
@@ -205,7 +212,7 @@ export default function RuneDelveDailyPage() {
               className="rd-daily-panel"
             >
               <h2>
-                <Gem size={15} aria-hidden /> One daily reward
+                <Gem size={15} aria-hidden /> Your best daily reward
               </h2>
               <div className="rd-daily-rewards">
                 {rewards.map((kills) => (
@@ -225,8 +232,8 @@ export default function RuneDelveDailyPage() {
                 ))}
               </div>
               <p className="rd-daily-reward-note">
-                Your first result banks the day’s shards and XP. XP is 10 per
-                kill, up to 500.
+                Better tiers pay the difference. Up to 900 shards and 500 XP
+                each day.
               </p>
               <RunePager
                 page={currentRewardPage}

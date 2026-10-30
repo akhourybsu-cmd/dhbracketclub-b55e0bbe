@@ -19,7 +19,11 @@ import { RELIC_CATALOG } from "@/lib/runedelve/relics";
 import { useSheetSfx } from "@/hooks/useSheetSfx";
 import { useRuneDialogFocus } from "./useRuneDialogFocus";
 import { RunePager } from "./RunePager";
-import { endlessRewardFor, endlessStarsFor } from "@/lib/runedelve/endlessMode";
+import {
+  endlessRewardFor,
+  endlessStarsFor,
+  ENDLESS_REWARD_TIERS,
+} from "@/lib/runedelve/endlessMode";
 import "./runeDialogs.css";
 
 type CodexTab = "mechanics" | "daily" | "masteries" | "relics";
@@ -112,8 +116,9 @@ export function CodexSheet({
         Base class powers only; campaign equipment and masteries do not apply.
       </p>
       <p>
-        Pausing, inspecting foes and backgrounding stop the clock. Your first
-        result earns the day’s reward; retries cannot pay twice.
+        Pausing, inspecting foes and backgrounding stop the clock. Replay to
+        improve your best: higher tiers pay only the difference, up to 900
+        shards and 500 XP per day.
       </p>
     </article>,
     <article className="rd-dialog-card" key="streak">
@@ -133,7 +138,7 @@ export function CodexSheet({
         </div>
       </div>
     </article>,
-    ...[0, 5, 10, 15, 20, 30, 50].map((kills) => (
+    ...ENDLESS_REWARD_TIERS.map(({ kills }) => (
       <article className="rd-dialog-card" key={kills}>
         <p className="rd-dialog-eyebrow">Reward ladder</p>
         <h3>{kills}+ foes slain</h3>

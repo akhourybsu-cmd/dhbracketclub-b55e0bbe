@@ -17,11 +17,11 @@ export function HeroStatusBar({
   state,
   cls,
   onAbility,
-  manaCost = MAX_MANA,
+  manaCost,
   disabled,
 }: Props) {
   const def = getClass(cls);
-  const cost = Math.max(0, Math.min(MAX_MANA, manaCost));
+  const cost = Math.max(0, Math.min(MAX_MANA, manaCost ?? def.abilityCost));
   const primed = cls === "rogue" && state.shadowstepActive;
   const ready = state.mana >= cost && !primed;
   const hpPct = Math.max(
@@ -98,7 +98,15 @@ export function HeroStatusBar({
         aria-label={`${def.abilityName}. ${primed ? "Primed. Your next attack deals double damage" : ready ? "Ready to cast" : `${Math.max(0, cost - state.mana)} more mana needed`}`}
       >
         <span className="rd-ability-sigil" aria-hidden>
-          {cls === "warrior" ? <Sword size={20} /> : cls === "cleric" ? <Heart size={20} /> : cls === "rogue" ? <Sparkles size={20} /> : <Zap size={20} />}
+          {cls === "warrior" ? (
+            <Sword size={20} />
+          ) : cls === "cleric" ? (
+            <Heart size={20} />
+          ) : cls === "rogue" ? (
+            <Sparkles size={20} />
+          ) : (
+            <Zap size={20} />
+          )}
         </span>
         <span>
           {def.abilityName}

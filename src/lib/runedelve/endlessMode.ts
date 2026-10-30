@@ -8,8 +8,8 @@
 //   - star derivation from kill count
 //   - enemy-spawn factory that scales HP by current wave
 //
-// Class-only arena: campaign relics/masteries stay in campaign. Daily rewards
-// are settled exactly once by the server; these values also drive previews.
+// Class-only arena: campaign relics/masteries stay in campaign. Daily best improvements
+// settle atomically on the server; these values also drive previews.
 
 import {
   ENEMY_ROSTER,
@@ -56,7 +56,7 @@ export const ENDLESS_WAVES: WaveTier[] = [
     startSec: 20,
     hpMult: 1.2,
     damageMult: 1.0,
-    spawnMin: 1,
+    spawnMin: 2,
     spawnMax: 2,
     respawnDelayMs: 550,
     allowMini: false,
@@ -75,8 +75,7 @@ export const ENDLESS_WAVES: WaveTier[] = [
     allowBoss: false,
     label: "Onslaught",
   },
-  // Smoothed wave 4: 1.5 → 1.8 (was 2.0). Keeps the swarm tense without
-  // wall-checking under-leveled mages/clerics who lack burst.
+  // More simultaneous targets demand area attacks and guard management.
   {
     index: 4,
     startSec: 60,
@@ -89,8 +88,7 @@ export const ENDLESS_WAVES: WaveTier[] = [
     allowBoss: false,
     label: "Swarm",
   },
-  // Final Push: 2.5× regular (was 3.0). Bosses still feel meaty thanks to the
-  // ×4 boss multiplier in spawnEnemy, but no longer un-killable in 30s.
+  // A bounded elite adds final-wave pressure without consuming the whole clock.
   {
     index: 5,
     startSec: 90,
@@ -130,33 +128,42 @@ export interface EndlessReward {
   title?: string;
 }
 
+export const ENDLESS_REWARD_TIERS: ReadonlyArray<{
+  kills: number;
+  shards: number;
+  title?: string;
+}> = [
+  { kills: 0, shards: 0 },
+  { kills: 1, shards: 25 },
+  { kills: 3, shards: 75 },
+  { kills: 6, shards: 150 },
+  { kills: 10, shards: 250 },
+  { kills: 15, shards: 400 },
+  { kills: 22, shards: 600, title: "Endless Conqueror" },
+  { kills: 30, shards: 900, title: "Eternal" },
+];
+export const ENDLESS_STAR_THRESHOLDS = [3, 8, 16] as const;
+
 /**
- * Reward ladder keyed off enemy kill count for the first daily result.
+ * Total daily reward entitlement. Better attempts pay only the positive difference.
  */
 export function endlessRewardFor(kills: number): EndlessReward {
-  const xp = Math.min(500, kills * 10);
-  let shards = 25; // participation (0–4 kills)
-  let title: string | undefined;
-  if (kills >= 5) shards = 75;
-  if (kills >= 10) shards = 150;
-  if (kills >= 15) shards = 250;
-  if (kills >= 20) shards = 400;
-  if (kills >= 30) {
-    shards = 600;
-    title = "Endless Conqueror";
-  }
-  if (kills >= 50) {
-    shards = 900;
-    title = "Eternal";
-  }
-  return { shards, xp, title };
+  const count = Number.isFinite(kills) ? Math.max(0, Math.floor(kills)) : 0;
+  let tier = ENDLESS_REWARD_TIERS[0];
+  for (const candidate of ENDLESS_REWARD_TIERS)
+    if (count >= candidate.kills) tier = candidate;
+  return {
+    shards: tier.shards,
+    xp: Math.min(500, count * 10),
+    title: tier.title,
+  };
 }
 
 /** Star derivation — replaces the old daily 0–3★ scoring. */
 export function endlessStarsFor(kills: number): 0 | 1 | 2 | 3 {
-  if (kills >= 25) return 3;
-  if (kills >= 15) return 2;
-  if (kills >= 5) return 1;
+  if (kills >= ENDLESS_STAR_THRESHOLDS[2]) return 3;
+  if (kills >= ENDLESS_STAR_THRESHOLDS[1]) return 2;
+  if (kills >= ENDLESS_STAR_THRESHOLDS[0]) return 1;
   return 0;
 }
 
@@ -183,7 +190,11 @@ function pickArchetype(wave: WaveTier, rng: Rng): RosterEntry {
 }
 
 /** Build a single Enemy at the wave's HP/damage scale. */
-export function spawnEnemy(elapsedSec: number, rng: Rng): Enemy {
+export function spawnEnemy(
+  elapsedSec: number,
+  rng: Rng,
+  allowPromotion = true,
+): Enemy {
   const wave = waveForElapsed(elapsedSec);
   const arc = pickArchetype(wave, rng);
   // Promote to mini/boss variants in higher waves on a coin flip.
@@ -191,18 +202,26 @@ export function spawnEnemy(elapsedSec: number, rng: Rng): Enemy {
   let hpMul = wave.hpMult;
   let dmgMul = wave.damageMult;
   let prefix = "";
-  if (wave.allowBoss && rngInt(rng, 10) === 0) {
+  if (allowPromotion && wave.allowBoss && rngInt(rng, 10) === 0) {
     tier = "boss";
-    hpMul *= 3; // was 4 — keeps bosses meaty but killable in ~10–15s
-    dmgMul *= 1.5; // was 1.6
+    hpMul *= 1.7;
+    dmgMul *= 1.35;
     prefix = "Dread ";
-  } else if (wave.allowMini && rngInt(rng, 4) === 0) {
+  } else if (allowPromotion && wave.allowMini && rngInt(rng, 4) === 0) {
     tier = "mini";
-    hpMul *= 1.8; // was 2 — softens the mini-boss spike
-    dmgMul *= 1.2; // was 1.25
+    hpMul *= 1.35;
+    dmgMul *= 1.15;
     prefix = "Greater ";
   }
-  const hp = Math.max(20, Math.round(arc.baseHp * hpMul));
+  // Roster depth, wave scaling and promotion must not multiply into a late
+  // 900-HP sponge in a 30-second window. Pressure comes from attack cadence,
+  // simultaneous foes and a bounded elite, with readable kill breakpoints.
+  const baseCeiling = [60, 85, 115, 140, 175][wave.index - 1];
+  const variant = tier === "boss" ? 1.7 : tier === "mini" ? 1.35 : 1;
+  const hp = Math.max(
+    20,
+    Math.round(Math.min(arc.baseHp * hpMul, baseCeiling * variant)),
+  );
   const damage = Math.max(2, Math.round(arc.baseDamage * dmgMul));
   return {
     id: nextSpawnId(),
@@ -231,7 +250,12 @@ export function spawnBatch(elapsedSec: number, seed: number): Enemy[] {
   const rng = mulberry32(seed);
   const count = wave.spawnMin + rngInt(rng, wave.spawnMax - wave.spawnMin + 1);
   const out: Enemy[] = [];
-  for (let i = 0; i < count; i++) out.push(spawnEnemy(elapsedSec, rng));
+  let promoted = false;
+  for (let i = 0; i < count; i++) {
+    const enemy = spawnEnemy(elapsedSec, rng, !promoted);
+    promoted ||= !!enemy.tier;
+    out.push(enemy);
+  }
   return out;
 }
 

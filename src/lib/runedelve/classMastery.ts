@@ -49,6 +49,7 @@ export const MASTERY_UNLOCK_LEVELS: Record<1 | 2 | 3 | 4 | 5, number> = {
   4: 50,
   5: 75,
 };
+export const MAGE_OVERFLOW_MANA_INTERVAL = 6;
 
 export const MASTERY_TIERS: Record<HeroClass, MasteryTier[]> = {
   warrior: [
@@ -64,7 +65,7 @@ export const MASTERY_TIERS: Record<HeroClass, MasteryTier[]> = {
       tier: 2,
       unlockLevel: 15,
       name: "Iron Constitution",
-      summary: "+1 max HP per chapter cleared.",
+      summary: "+6 max HP, plus 2 per chapter cleared.",
     },
     {
       id: "warrior_t3_cleave_buff",
@@ -122,7 +123,7 @@ export const MASTERY_TIERS: Record<HeroClass, MasteryTier[]> = {
       tier: 5,
       unlockLevel: 75,
       name: "Overflow",
-      summary: "Every 4th mana spent refunds 1.",
+      summary: `Every ${MAGE_OVERFLOW_MANA_INTERVAL} mana spent refunds 1. Free casts do not count.`,
     },
   ],
   rogue: [
@@ -138,7 +139,7 @@ export const MASTERY_TIERS: Record<HeroClass, MasteryTier[]> = {
       tier: 2,
       unlockLevel: 15,
       name: "Opening Strike",
-      summary: "First chain of every fight crits (×1.5).",
+      summary: "First red chain each run crits (×1.5).",
     },
     {
       id: "rogue_t3_shadow_cd",
@@ -168,7 +169,7 @@ export const MASTERY_TIERS: Record<HeroClass, MasteryTier[]> = {
       tier: 1,
       unlockLevel: 5,
       name: "Morning Prayer",
-      summary: "First chain of every fight heals 5 HP.",
+      summary: "First two chains each run heal 5 HP.",
     },
     {
       id: "cleric_t2_long_shield",

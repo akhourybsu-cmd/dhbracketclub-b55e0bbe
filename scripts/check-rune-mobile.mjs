@@ -423,19 +423,21 @@ async function checkDailyArena() {
   );
   // Complete a seeded timer boundary without waiting two wall-clock minutes.
   await page.addInitScript((key) => {
-    if (sessionStorage.getItem("__rune-qa-next-arena") !== "timeout") return;
+    const marker = sessionStorage.getItem("__rune-qa-next-arena");
+    if (!marker?.startsWith("timeout:")) return;
+    const kills = Number(marker.split(":")[1]);
     sessionStorage.removeItem("__rune-qa-next-arena");
     const run = JSON.parse(sessionStorage.getItem(key));
     run.savedAt = Date.now();
     run.elapsed = 119.9;
     run.attackAt = 122;
     run.paused = true;
-    run.combat.enemiesDefeated = 12;
+    run.combat.enemiesDefeated = kills;
     run.combat.totalDamage = 800;
     sessionStorage.setItem(key, JSON.stringify(run));
   }, arenaKey);
   await page.evaluate(() =>
-    sessionStorage.setItem("__rune-qa-next-arena", "timeout"),
+    sessionStorage.setItem("__rune-qa-next-arena", "timeout:12"),
   );
   await page.clock.resume();
   await page.reload({ waitUntil: "networkidle" });
@@ -484,6 +486,9 @@ async function checkDailyArena() {
       button.click();
     });
   await expect(page.getByText(/\+\d+ shards · \+\d+ XP/)).toBeVisible();
+  await expect(
+    page.getByText("+250 shards · +120 XP", { exact: true }),
+  ).toBeVisible();
   const requests = await page.evaluate(() =>
     window.runeQa.rpcs.filter((call) => call.name === "rune_delve_save_daily"),
   );
@@ -515,15 +520,88 @@ async function checkDailyArena() {
     .getByRole("link", { name: "Return to daily arena", exact: true })
     .click();
   await expect(
-    page.getByRole("link", { name: "Take on an Expedition", exact: true }),
+    page.getByRole("link", { name: "Improve today's best", exact: true }),
   ).toBeVisible();
-  await go(page, "/rune-delve/endless");
-  await expect(
-    page.getByRole("button", { name: "Begin arena", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("link", { name: "Today’s result", exact: true }),
-  ).toBeVisible();
+  let priorRequestId = requests[0].args.p_request_id;
+  for (const [kills, reward] of [
+    [15, "+150 shards · +30 XP"],
+    [4, "Best retained · reach a higher tier for more rewards"],
+  ]) {
+    await page
+      .getByRole("link", { name: "Improve today's best", exact: true })
+      .click();
+    const begin = page.getByRole("button", {
+      name: "Improve today's best",
+      exact: true,
+    });
+    await expect(begin).toBeEnabled();
+    await page.clock.pauseAt(
+      new Date((await page.evaluate(() => Date.now())) + 1000),
+    );
+    await begin.click();
+    const nextRequestId = await page.evaluate(
+      (key) => JSON.parse(sessionStorage.getItem(key)).requestId,
+      arenaKey,
+    );
+    assert.notEqual(
+      nextRequestId,
+      priorRequestId,
+      "A new Arena attempt has a fresh receipt key",
+    );
+    await page.evaluate(
+      (kills) =>
+        sessionStorage.setItem("__rune-qa-next-arena", `timeout:${kills}`),
+      kills,
+    );
+    await page.clock.resume();
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(
+      page.getByText("Arena paused · your run is saved.", { exact: true }),
+    ).toBeVisible();
+    await page.clock.pauseAt(
+      new Date((await page.evaluate(() => Date.now())) + 1000),
+    );
+    await page
+      .getByRole("button", { name: "Resume arena", exact: true })
+      .last()
+      .click();
+    await page.clock.runFor(500);
+    await page.clock.resume();
+    await expect(page.getByText(reward, { exact: true })).toBeVisible();
+    const improvement = await page.evaluate(() => ({
+      requests: window.runeQa.rpcs.filter(
+        (call) => call.name === "rune_delve_save_daily",
+      ),
+      daily: window.runeQa.tables.rune_delve_daily_runs.find(
+        (row) => row.user_id === "member",
+      ),
+    }));
+    assert.equal(improvement.requests.length, 1, "Each replay settles once");
+    assert.equal(
+      improvement.requests[0].args.p_request_id,
+      nextRequestId,
+      "Saved replay uses its own receipt key",
+    );
+    assert.equal(
+      improvement.daily.kills_count,
+      15,
+      "A lower replay cannot replace the daily best",
+    );
+    assert.equal(
+      improvement.daily.reward_shards_awarded,
+      400,
+      "The daily total pays the best tier once",
+    );
+    assert.equal(
+      improvement.daily.reward_xp_awarded,
+      150,
+      "XP pays only the daily best improvement",
+    );
+    priorRequestId = nextRequestId;
+    await page
+      .getByRole("link", { name: "Return to daily arena", exact: true })
+      .click();
+  }
   await page.close();
 }
 try {
@@ -1094,7 +1172,7 @@ try {
     process.env.RUNE_QA_INTERACTIONS_ONLY
       ? "PASS interactions:"
       : "PASS five viewports/both themes and interactions:",
-    "strict-mode single chain commit, pointer cancel, checkpoint restore, class equipment, atomic purchases/upgrades, tier gating, error recovery, hero creation, Expedition blessings/routes/reward retry, Daily Arena inspection/pause/rapid actions/save retry and replay gate.",
+    "strict-mode single chain commit, pointer cancel, checkpoint restore, class equipment, atomic purchases/upgrades, tier gating, error recovery, hero creation, Expedition blessings/routes/reward retry, Daily Arena inspection/pause/rapid actions/save retry and daily-best reward improvements.",
   );
 } finally {
   await browser.close();

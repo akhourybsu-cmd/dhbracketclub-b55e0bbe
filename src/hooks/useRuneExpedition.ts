@@ -18,6 +18,11 @@ export interface ExpeditionProfile {
 }
 export interface ExpeditionReceipt {
   reward: number;
+  xpAwarded?: number;
+  previousClassLevel?: number;
+  classLevel?: number;
+  classXp?: number;
+  slotsUnlocked?: number;
   rooms: number;
   cleared: boolean;
   highest_ascension: number;
@@ -88,6 +93,8 @@ export function useRuneExpedition() {
       "home-signals",
       "dh-score",
       "dh-feats",
+      "rune-delve-class-progress",
+      "rune-delve-hero",
     ])
       void client.invalidateQueries({ queryKey: [prefix] });
     return receipt;

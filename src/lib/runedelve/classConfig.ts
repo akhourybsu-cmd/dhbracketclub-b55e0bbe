@@ -17,7 +17,7 @@ export const CLASS_LIST: ClassDef[] = [
     name: "Warrior",
     emoji: "⚔️",
     color: "destructive",
-    passive: "Red chains deal +30% damage",
+    passive: "Red chains deal +20% damage",
     abilityName: "Cleave",
     abilityDesc: "Damage all enemies (40 dmg)",
     abilityCost: 3,
@@ -41,7 +41,7 @@ export const CLASS_LIST: ClassDef[] = [
       "Red chains of 5+ deal +15% damage; any 5+ chain grants +15% run score",
     abilityName: "Shadowstep",
     abilityDesc: "Double the damage of your next red chain",
-    abilityCost: 3,
+    abilityCost: 2,
   },
   {
     id: "cleric",
@@ -62,10 +62,13 @@ export function getClass(id: HeroClass): ClassDef {
 // Class XP unlocks mastery milestones and cosmetic titles.
 export const MAX_HERO_LEVEL = 150;
 export function xpForLevel(level: number): number {
-  return 100 + (level - 1) * 50;
+  return 100 + (level - 1) * 10;
 }
 
-export function levelFromXp(totalXp: number): {
+export function levelFromXp(
+  totalXp: number,
+  earnedLevel = 1,
+): {
   level: number;
   intoLevel: number;
   needed: number;
@@ -77,6 +80,28 @@ export function levelFromXp(totalXp: number): {
     level += 1;
   }
   const needed = xpForLevel(level);
+  const retainedLevel = Math.max(
+    1,
+    Math.min(
+      MAX_HERO_LEVEL,
+      Math.floor(Number.isFinite(earnedLevel) ? earnedLevel : 1),
+    ),
+  );
+  if (retainedLevel > level) {
+    // A legacy earned level is never displayed as a demotion. If its XP is
+    // below the current curve, show the actual XP still required for the next
+    // level rather than borrowing progress from an unrelated lower level.
+    const nextThreshold =
+      retainedLevel * 100 + retainedLevel * (retainedLevel - 1) * 5;
+    return {
+      level: retainedLevel,
+      intoLevel: retainedLevel === MAX_HERO_LEVEL ? 1 : 0,
+      needed:
+        retainedLevel === MAX_HERO_LEVEL
+          ? 1
+          : nextThreshold - Math.max(0, Number.isFinite(totalXp) ? totalXp : 0),
+    };
+  }
   return {
     level,
     intoLevel: level === MAX_HERO_LEVEL ? needed : remaining,

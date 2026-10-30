@@ -11,6 +11,7 @@
 
 import type { CombatState } from './combatEngine';
 import type { Enemy } from './dungeonGenerator';
+import { getPriorityEnemy } from './objectives';
 
 export type BossRuleId =
   | 'last_stand'
@@ -28,8 +29,8 @@ export interface BossRuleDef {
 }
 
 export const BOSS_RULES: Record<BossRuleId, BossRuleDef> = {
-  last_stand:  { id: 'last_stand',  label: 'Last Stand',  rule: 'The final enemy is immune until every other foe falls.' },
-  regenerator: { id: 'regenerator', label: 'Regenerator', rule: 'The final enemy heals 5 HP each turn — burn it down.' },
+  last_stand:  { id: 'last_stand',  label: 'Last Stand',  rule: 'The boss is immune until every other foe falls.' },
+  regenerator: { id: 'regenerator', label: 'Regenerator', rule: 'The boss heals 5 HP each turn — burn it down.' },
   enrager:     { id: 'enrager',     label: 'Enraged',     rule: 'Enemies hit 25% harder once below half HP.' },
   splitter:    { id: 'splitter',    label: 'Splitter',    rule: 'At half HP the boss splits into two half-strength echoes.' },
   phaselock:   { id: 'phaselock',   label: 'Phase Lock',  rule: 'Every 25% HP lost, the boss phases out for one turn.' },
@@ -124,15 +125,26 @@ export function bossRuleForLevel(level: number): BossRuleId | null {
 // Rule effect hooks
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Summons append to the encounter, so array position alone cannot identify its
+ * boss. Keep a defeated marked owner selected too: its surviving minions must
+ * not inherit regeneration or an aura after it falls. Untagged legacy fights
+ * retain their original final-enemy behavior.
+ */
+function bossRuleTarget(enemies: Enemy[]): Enemy | undefined {
+  return getPriorityEnemy(enemies)
+    ?? [...enemies].reverse().find(enemy => !/-echo(?:$|-)/.test(enemy.id) && !/^Echo of /.test(enemy.name));
+}
+
 /** True when the rule blocks damage to a given enemy this instant. */
 export function isImmune(rule: BossRuleId | null, enemies: Enemy[], target: Enemy): boolean {
-  if (rule === 'phaselock' && target.phaseLockTurns && target.phaseLockTurns > 0) return true;
+  if (rule === 'phaselock') {
+    return target.id === bossRuleTarget(enemies)?.id && (target.phaseLockTurns ?? 0) > 0;
+  }
   if (rule !== 'last_stand') return false;
-  // Final enemy = last in the array. Immune while any earlier enemy still lives.
-  if (enemies.length === 0) return false;
-  const last = enemies[enemies.length - 1];
-  if (target.id !== last.id) return false;
-  return enemies.some(e => e.id !== last.id && e.hp > 0);
+  const boss = bossRuleTarget(enemies);
+  if (!boss || target.id !== boss.id) return false;
+  return enemies.some(e => e.id !== boss.id && e.hp > 0);
 }
 
 /** Filter the live-enemy list to only those that are valid damage targets right now. */
@@ -158,17 +170,17 @@ export function applyBossTurnEffects(
   let enemies = state.enemies.map(e => ({ ...e }));
 
   if (rule === 'regenerator') {
-    const last = enemies[enemies.length - 1];
-    if (last && last.hp > 0 && last.hp < last.maxHp) {
-      const before = last.hp;
+    const boss = bossRuleTarget(enemies);
+    if (boss && boss.hp > 0 && boss.hp < boss.maxHp) {
+      const before = boss.hp;
       // 5 HP/turn (was 8). Tuned 2026-04 — at 8 HP/turn the rule combined
       // with 3-enemy mid-boss waves required ~47 sustained DPS, well past
       // the player ceiling. 5 HP/turn still demands focus without being
       // mathematically unwinnable.
-      last.hp = Math.min(last.maxHp, last.hp + 5);
-      const healed = last.hp - before;
+      boss.hp = Math.min(boss.maxHp, boss.hp + 5);
+      const healed = boss.hp - before;
       if (healed > 0) {
-        logs.push({ kind: 'heal', text: `${last.name} regenerated`, amount: healed });
+        logs.push({ kind: 'heal', text: `${boss.name} regenerated`, amount: healed });
       }
     }
   }
@@ -186,23 +198,23 @@ export function applyBossTurnEffects(
   }
 
   if (rule === 'splitter') {
-    const last = enemies[enemies.length - 1];
-    if (last && last.hp > 0 && !last.hasSplit && last.hp <= last.maxHp / 2) {
-      last.hasSplit = true;
-      const halfHp = Math.max(8, Math.round(last.hp / 2));
-      const halfDmg = Math.max(2, Math.round(last.damage * 0.7));
-      last.hp = halfHp;
-      last.maxHp = halfHp;
-      last.damage = halfDmg;
-      // Spawn a twin echo right next to the original.
+    const boss = bossRuleTarget(enemies);
+    if (boss && boss.hp > 0 && !boss.hasSplit && boss.hp <= boss.maxHp / 2) {
+      boss.hasSplit = true;
+      const halfHp = Math.max(8, Math.round(boss.hp / 2));
+      const halfDmg = Math.max(2, Math.round(boss.damage * 0.7));
+      boss.hp = halfHp;
+      boss.maxHp = halfHp;
+      boss.damage = halfDmg;
+      // Append a twin echo, preserving the encounter's attack order.
       const twin: Enemy = {
-        ...last,
-        id: `${last.id}-echo`,
-        name: last.name.replace(/^Boss /, 'Echo of '),
+        ...boss,
+        id: `${boss.id}-echo`,
+        name: boss.name.replace(/^Boss /, 'Echo of '),
         hasSplit: true,
       };
       enemies.splice(enemies.length, 0, twin);
-      logs.push({ kind: 'ability', text: `${last.name} split — an Echo emerges!` });
+      logs.push({ kind: 'ability', text: `${boss.name} split — an Echo emerges!` });
     }
   }
 
@@ -215,9 +227,8 @@ export function enemyDamageMultiplier(rule: BossRuleId | null, enemy: Enemy, all
     return enemy.hp > 0 && enemy.hp <= enemy.maxHp / 2 ? 1.25 : 1;
   }
   if (rule === 'aura' && allEnemies) {
-    // Boss = last enemy in the array. Allies (everyone except the boss) hit
-    // 15% harder while the boss is alive.
-    const boss = allEnemies[allEnemies.length - 1];
+    // Allies, including summons, hit 15% harder while the marked boss lives.
+    const boss = bossRuleTarget(allEnemies);
     if (boss && boss.hp > 0 && enemy.id !== boss.id) return 1.15;
   }
   return 1;
@@ -231,7 +242,7 @@ export function enemyDamageMultiplier(rule: BossRuleId | null, enemy: Enemy, all
 export function applyPhaseLockOnDamage(rule: BossRuleId | null, enemies: Enemy[]): Enemy[] {
   if (rule !== 'phaselock' || enemies.length === 0) return enemies;
   const next = enemies.map(e => ({ ...e }));
-  const boss = next[next.length - 1];
+  const boss = bossRuleTarget(next);
   if (!boss || boss.hp <= 0) return next;
   // Each 25%-HP threshold triggers exactly once.
   const threshold = boss.maxHp * 0.25;

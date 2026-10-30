@@ -1,5 +1,5 @@
 import type { Enemy } from "./dungeonGenerator";
-import type { HeroClass } from "./classConfig";
+import { getClass, type HeroClass } from "./classConfig";
 import type { RuneType } from "./dungeonGenerator";
 import {
   resolveEnemyAttack,
@@ -57,13 +57,15 @@ export interface ChainResolution {
 
 export const MAX_HP = 100;
 export const MAX_MANA = 3;
+/** Shared unmodified strike power; class bonuses are documented separately. */
+export const BASE_RUNE_DAMAGE = 10;
 
 /** Shared campaign-depth scalar for rune and ability power. */
 export function campaignPowerMultiplier(level = 1): number {
   if (level <= 25) return 1;
-  if (level <= 50) return 1 + (level - 25) * 0.008;
-  if (level <= 100) return 1.2 + (level - 50) * 0.008;
-  return 1.6 + (level - 100) * 0.01;
+  if (level <= 50) return 1 + (level - 25) * 0.004;
+  if (level <= 100) return 1.1 + (level - 50) * 0.003;
+  return 1.25 + (level - 100) * 0.004;
 }
 
 /** Base red-chain damage shared by combat and the board's live preview. */
@@ -72,21 +74,21 @@ export function redChainDamage(
   cls: HeroClass,
   level = 1,
 ): number {
-  const classMultiplier: Record<HeroClass, number> = {
-    warrior: 1.3,
-    mage: 1.2,
-    rogue: 1.4,
-    cleric: 1.45,
-  };
+  const classMultiplier = cls === "warrior" ? 1.2 : 1;
   const depthMultiplier = campaignPowerMultiplier(level);
   // Rogue's score-only passive left it roughly 20–30 clear-rate points behind
   // the other classes because most campaign goals care about combat, not the
   // final leaderboard total. Long red chains now deliver the same +15% payoff
   // in combat and scoring, reinforcing one clear class identity.
   const rogueLongChain = cls === "rogue" && length >= 5 ? 1.15 : 1;
-  return Math.round(
-    length * 8 * classMultiplier[cls] * depthMultiplier * rogueLongChain,
-  );
+  const damage =
+    length *
+    BASE_RUNE_DAMAGE *
+    classMultiplier *
+    depthMultiplier *
+    rogueLongChain;
+  // Preserve half-point rounding (50 × 1.15 is 57.49999999999999 in binary).
+  return Math.round(damage + Number.EPSILON * damage);
 }
 
 export interface RedChainModifiers {
@@ -504,7 +506,7 @@ export function useAbility(
   bossRule: BossRuleId | null = null,
   activeMasteries: MasteryId[] = [],
   level = 1,
-  manaCost: number = MAX_MANA,
+  manaCost: number = getClass(cls).abilityCost,
 ): { next: CombatState; ok: boolean } {
   // cost 0 is a legitimate free cast (First Light relic) — it fires at any mana
   // and spends nothing. Otherwise clamp into the 1..MAX_MANA range.

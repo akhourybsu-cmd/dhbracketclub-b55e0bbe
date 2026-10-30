@@ -852,9 +852,9 @@ async function expedition(page) {
     },
     { key: expeditionKey, marker: seedMarker },
   );
-  const load = async (phase, build = false) => {
+  const load = async (phase, build = false, draftRoute = "crypt") => {
     const expectedBoons = await page.evaluate(
-      async ({ marker, baseline, phase, build }) => {
+      async ({ marker, baseline, phase, build, draftRoute }) => {
         const run = JSON.parse(baseline);
         const [
           { EXPEDITION_BOONS, expeditionEnemies, loadExpedition },
@@ -883,7 +883,9 @@ async function expedition(page) {
           run.combat.hp = 100;
         }
         if (phase === "boon") {
-          run.roomsCleared = 1;
+          run.room = draftRoute === "vault" ? 2 : 1;
+          run.roomsCleared = run.room;
+          run.route = draftRoute;
           run.combat.enemies = run.combat.enemies.map((enemy) => ({
             ...enemy,
             hp: 0,
@@ -910,7 +912,7 @@ async function expedition(page) {
         sessionStorage.setItem(marker, raw);
         return Object.keys(run.boons).sort();
       },
-      { marker: seedMarker, baseline, phase, build },
+      { marker: seedMarker, baseline, phase, build, draftRoute },
     );
     await page.reload({ waitUntil: "domcontentloaded" });
     await settle(page);
@@ -958,6 +960,9 @@ async function expedition(page) {
   await load("boon");
   await inspect(page, "expedition-blessings", { capture: true });
   await pages(page, "expedition-blessings");
+  await load("boon", false, "vault");
+  await inspect(page, "expedition-vault-blessings", { capture: true });
+  await pages(page, "expedition-vault-blessings");
   await activate(page.locator('[data-testid^="expedition-boon-"]').first());
   await inspect(page, "expedition-routes", { capture: true });
   await activate(page.locator('[data-testid^="expedition-route-"]').first());

@@ -116,20 +116,20 @@ describe("Rune Delve · Convergence", () => {
       ...original,
       resonance: { colors: ["red", "blue", "green"] as RuneType[], bursts: 0 },
     };
-    expect(advanceResonance(ready, "gold", 150).burst?.damageDealt).toBe(42);
+    expect(advanceResonance(ready, "gold", 150).burst?.damageDealt).toBe(29);
   });
 });
 
 describe("Rune Delve · fair chain power", () => {
   it("applies a weaker hit before lethal checks without healing a different enemy", () => {
     const state = initialCombat(
-      [enemy("front", { hp: 30 }), enemy("back", { hp: 70 })],
+      [enemy("front", { hp: 34 }), enemy("back", { hp: 70 })],
       12,
     );
     const result = applyChain(state, "red", 3, "warrior", null, 5, 1, {
       runMultiplier: 0.85,
     });
-    expect(result.next.enemies.map((foe) => foe.hp)).toEqual([4, 70]);
+    expect(result.next.enemies.map((foe) => foe.hp)).toEqual([3, 70]);
     expect(result.next.enemiesDefeated).toBe(0);
     expect(result.resolution.enemyKills).toEqual([]);
   });
@@ -250,10 +250,12 @@ describe("Rune Delve · fair chain power", () => {
     expect(result.heavyFired).toBe(true);
   });
 
-  it("refunds each fourth mana crossing even when a cast skips the exact multiple", () => {
+  it("refunds each sixth mana crossing even when a cast skips the exact multiple", () => {
     expect(shouldMasteryRefundMana(["mage_t5_overflow"], 3, 3)).toBe(false);
     expect(shouldMasteryRefundMana(["mage_t5_overflow"], 6, 3)).toBe(true);
-    expect(shouldMasteryRefundMana(["mage_t5_overflow"], 8, 2)).toBe(true);
+    expect(shouldMasteryRefundMana(["mage_t5_overflow"], 8, 2)).toBe(false);
+    expect(shouldMasteryRefundMana(["mage_t5_overflow"], 12, 2)).toBe(true);
+    expect(shouldMasteryRefundMana(["mage_t5_overflow"], 6, 0)).toBe(false);
     expect(shouldMasteryRefundMana([], 8, 2)).toBe(false);
   });
 

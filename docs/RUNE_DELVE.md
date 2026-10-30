@@ -4,9 +4,9 @@ Rune Delve is a mobile fantasy puzzle RPG. Campaign preserves existing heroes, c
 
 ## Play loop
 
-- **Expeditions:** six seeded chambers, persistent health/mana, twelve stackable blessings drafted one of three, two revealed routes between encounters, and eight sequentially unlocked Ascensions. The crypt offers balanced foes, Blood Hunt stronger foes and double-rank blessings, Sunken Vault an extra foe and score, and Lost Shrine healing with armored opponents. Earn shards by banking a result; active and abandoned runs earn nothing. Campaign equipment and masteries do not apply.
+- **Expeditions:** six seeded chambers, persistent health/mana, twelve stackable blessings drafted from three choices (four after a Vault), two revealed routes between encounters, and eight sequentially unlocked Ascensions. The crypt offers balanced foes, Blood Hunt stronger foes and double-rank blessings, Sunken Vault an extra foe, score, three extra moves and a wider next draft, and Lost Shrine healing with armored opponents. Earn shards and class XP by banking a result; active and abandoned runs earn nothing. Campaign equipment and masteries do not apply.
 - **Campaign:** generated chamber objectives, layout zones, relic builds, class masteries, run bargains, branching milestones and boss mechanics. Existing canonical level identities remain unchanged; generator balance hydrates on read. Class experience reaches level 150.
-- **Daily arena:** two minutes of active play against escalating waves, base class powers, and the same Convergence system. Backgrounding, pausing and enemy inspection stop the clock. One result per UTC day earns shards and XP. Result retries use a stable request ID even across midnight.
+- **Daily arena:** two minutes of active play against escalating waves, base class powers, and the same Convergence system. Backgrounding, pausing and enemy inspection stop the clock. Daily best improvements pay only the missing tier difference, up to 900 shards and 500 XP per UTC day; zero-kill runs earn nothing. Result retries use a stable request ID even across midnight.
 - **Convergence:** chain all four colors to release a bounded area strike, one mana and one guarded turn. Repeated colors retain existing charges. New legal chains are supplied automatically when a board runs out of moves.
 
 ## Visual and input design
@@ -37,6 +37,7 @@ npm run build
 node scripts/test-rune-expedition-db.mjs
 node scripts/test-rune-settlement-db.mjs
 node scripts/test-rune-feats-db.mjs
+node scripts/test-rune-balance-db.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-mobile.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-menus.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-journeys.mjs
@@ -50,12 +51,12 @@ Browser fixtures mount production screens, hooks and input controls against an i
 
 `check-rune-viewport.mjs` traverses menu tabs, collection pages and overlays at those five sizes, including first-time hero creation, campaign/boss combat, Arena and Expedition phases. It checks content against viewport and clipping-ancestor bounds, internal scroll sizes, covered controls and 44px rune targets without scrolling controls into view. Reports and failure screenshots collect across routes. `VIEWPORT=320x568,844x390` and `RUNE_QA_ROUTES=shop,campaign` narrow a rerun; expanded records and terminal checkpoints exist only in the isolated browser fixture.
 
-`balance-rune-campaign.ts` swept 14,400 class/chamber/seed combinations without an invalid combat state or an uncleared chamber across all samples. That campaign solver models class powers, chain tiers, Convergence and telegraphs, but excludes equipment, board zones/seals and boss phase damage increases. `balance-rune-expedition.ts` swept 600 runs at Ascensions 1, 4 and 8; its tactical solver cleared the highest tier in 68–80% of sampled runs depending on class, with 47–49 distinct builds in fifty seeds. Solver results establish reachability and reveal class differences; they do not substitute for human pacing feedback.
+The [October balance report](RUNE_DELVE_BALANCE.md) records the current measured curves and reproducible commands. Its checked-in [data](balance/rune-delve-2026-10.json) includes 14,400 campaign simulations, 400 upper-Ascension Expedition runs and 1,200 timed Arena runs. The campaign solver now includes earned build profiles, board mechanics, authored waves, boss phases and enemy abilities. These deterministic policy results measure pressure and class differences; they do not substitute for human play feedback.
 
 ## Complete-game quality pass
 
 Campaign checkpoints now retain applied boss phases and frozen terminal settlement data until acknowledgment, including a zero-HP defeat. Negative-turn bargains adjust endure objectives to the available opening budget; reinforcement turns extend the total budget while retaining turns already used. All waves receive the equipped opening effects, Bloodbond heals only a living hero, and Cleansing Touch waives only the rank-appropriate source costs.
 
-Campaign quest events are part of settlement for clients supplying `quest_context`. Cached older clients retain their original producer, avoiding duplicate progress during rollout. The database contract fixture mirrors production columns, defaults, constraints, club foreign keys, and restrictive privacy policies. Account-wide progress survives club transfers; standings follow current membership.
+Campaign quest events are part of settlement. Cached older clients receive bounded default source events, while direct client reporting is denied to avoid duplicate or forged progress. The database contract fixture mirrors production columns, defaults, constraints, club foreign keys, and restrictive privacy policies. Account-wide progress survives club transfers; standings follow current membership.
 
 The additional browser journeys use production UI input to clear chambers 1, 25, and 150, finish all six Expedition rooms with each class, and settle natural defeats and move exhaustion. Menu checks exercise failed writes, equipment slots, class switches, keyboard focus, first-run help, archived records, and secondary-source retries. No live player writes are made by these fixtures.

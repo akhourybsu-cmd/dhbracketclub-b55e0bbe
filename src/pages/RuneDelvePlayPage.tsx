@@ -47,6 +47,7 @@ import {
   isValidChain,
   resolveBoard,
   ensurePlayableBoard,
+  cellKey,
   type Cell,
 } from "@/lib/runedelve/boardEngine";
 import {
@@ -62,13 +63,16 @@ import {
 } from "@/lib/runedelve/combatEngine";
 import { applyOpeningModifier } from "@/lib/runedelve/openingModifier";
 import { advanceResonance } from "@/lib/runedelve/resonance";
-import { calculateScore, xpForRun } from "@/lib/runedelve/scoring";
+import { calculateScore } from "@/lib/runedelve/scoring";
+import { campaignXpForAttempt } from "@/lib/runedelve/economyProgression";
 import {
   evaluateObjective,
   getObjectiveProgress,
+  normalizeScoreObjectiveTarget,
 } from "@/lib/runedelve/objectives";
 import {
   levelFromXp,
+  getClass,
   newTitleUnlocked,
   titleForLevel,
 } from "@/lib/runedelve/classConfig";
@@ -84,6 +88,8 @@ import {
 import {
   buildActive,
   getStartingMana,
+  getRelicRankMaxHpBonus,
+  getLifestealHealAmount,
   getStartingShieldTurns,
   has,
   onEnemyKilled,
@@ -107,6 +113,7 @@ import { MAX_MANA } from "@/lib/runedelve/combatEngine";
 import {
   computeClearShards,
   computeFailureShards,
+  failureMultiplier,
   slotsForClassLevels,
 } from "@/lib/runedelve/shardEconomy";
 
@@ -129,7 +136,7 @@ import {
   countChainInZone,
   EMPTY_ZONES,
   TREASURE_SCORE_BONUS,
-  TREASURE_SHARD_BONUS,
+  treasureShardValue,
   HAZARD_DAMAGE,
   HAZARD_MAX_DAMAGE_PER_CHAIN,
 } from "@/lib/runedelve/layoutZones";
@@ -146,9 +153,7 @@ import {
 import { RunModifierPicker } from "@/components/runedelve/RunModifierPicker";
 import { todayUtcDateString } from "@/lib/runedelve/dailyChallenge";
 import { markDailyChamberPlayed } from "@/lib/runedelve/dailyChamber";
-import { rollRelicDrop } from "@/lib/runedelve/relicDrops";
-import type { RelicDef } from "@/lib/runedelve/relics";
-import { useUnlockRelic } from "@/hooks/useRelicCollection";
+import { getRelic, type RelicDef } from "@/lib/runedelve/relics";
 import {
   getPathVariant,
   resolvePathEffect,
@@ -229,7 +234,7 @@ import {
   getMasteryOpeningHeal,
   getMasteryShieldBonus,
   shouldMasteryRefundMana,
-  getMasteryHpPerChapter,
+  getMasteryMaxHpBonus,
   getMasteryGoldScoreBonus,
   getMasteryOpeningCritMult,
   getMasteryChainCritChance,
@@ -338,7 +343,6 @@ export default function RuneDelvePlayPage() {
   const { data: loadout, isLoading: loadoutLoading } = useLoadout(hero?.class);
   const { data: ownedRelics, isLoading: ownedRelicsLoading } =
     useRelicCollection();
-  const unlockRelic = useUnlockRelic();
   // R7: a relic dropped on this clear (if any). Surfaced in the
   // endState card so the player sees the find.
   const [droppedRelic, setDroppedRelic] = useState<RelicDef | null>(null);
@@ -368,6 +372,10 @@ export default function RuneDelvePlayPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const finalizeBusyRef = useRef(false);
   const settlementConfirmedRef = useRef(false);
+  const resumedScoreCheckRef = useRef(false);
+  const settleResumedScoreRef = useRef<((final: CombatState) => void) | null>(
+    null,
+  );
   const pendingSaveRef = useRef<SubmitLevelRunInput | null>(null);
   const failedFinalRef = useRef<{
     final: CombatState;
@@ -417,6 +425,10 @@ export default function RuneDelvePlayPage() {
   // bonusShardsFromMastery on run-init.
   const [bonusScoreFromTreasure, setBonusScoreFromTreasure] = useState(0);
   const [bonusShardsFromTreasure, setBonusShardsFromTreasure] = useState(0);
+  const [consumedTreasureCells, setConsumedTreasureCells] = useState<
+    Set<string>
+  >(new Set());
+  const consumedTreasureCellsRef = useRef(new Set<string>());
   // Run modifier (R3). `activeModifier` is what's applied to this run;
   // `modifierOffer` is the 3 cards currently shown in the picker.
   // Both clear on run-init so each chamber gets a fresh offer.
@@ -638,8 +650,12 @@ export default function RuneDelvePlayPage() {
   // it 3 → 2. Used by handleAbility (gate + FX + spend accounting) and the
   // HeroStatusBar (ready-state threshold) so both agree.
   const abilityManaCost = useMemo(
-    () => getMasteryAbilityManaCost(activeMasteries, MAX_MANA),
-    [activeMasteries],
+    () =>
+      getMasteryAbilityManaCost(
+        activeMasteries,
+        getClass(hero?.class ?? "warrior").abilityCost,
+      ),
+    [activeMasteries, hero?.class],
   );
 
   // Per-run snapshot key (scoped to user + level so swapping levels or users
@@ -677,6 +693,7 @@ export default function RuneDelvePlayPage() {
     setDroppedRelic(null);
     finalizeBusyRef.current = false;
     settlementConfirmedRef.current = false;
+    resumedScoreCheckRef.current = false;
     setSubmitting(false);
     pendingSaveRef.current = null;
     failedFinalRef.current = null;
@@ -707,6 +724,18 @@ export default function RuneDelvePlayPage() {
         setBonusShardsFromMastery(snap.bonusShardsFromMastery ?? 0);
         setBonusScoreFromTreasure(snap.bonusScoreFromTreasure ?? 0);
         setBonusShardsFromTreasure(snap.bonusShardsFromTreasure ?? 0);
+        // Old live checkpoints know their earned total, but not which cells
+        // paid it. Preserve their rewards and conservatively exhaust those
+        // authored spots rather than mint the same pickup again after resume.
+        const consumed = new Set(
+          snap.consumedTreasureCells ??
+            ((snap.bonusScoreFromTreasure ?? 0) > 0 ||
+            (snap.bonusShardsFromTreasure ?? 0) > 0
+              ? layoutZones.treasure
+              : []),
+        );
+        consumedTreasureCellsRef.current = consumed;
+        setConsumedTreasureCells(consumed);
         setTotalManaSpent(snap.totalManaSpent ?? 0);
         setGoldRunesCleared(snap.goldRunesCleared ?? 0);
         braceFiredRef.current = snap.braceFired ?? false;
@@ -768,6 +797,10 @@ export default function RuneDelvePlayPage() {
           );
           return;
         }
+        // A balance patch can lower a legacy score goal beneath work already
+        // earned in this checkpoint. Settle that work once instead of leaving
+        // a completed objective with a disabled board and no result screen.
+        resumedScoreCheckRef.current = level.objective_type === "reach_score";
         const turnNow = Math.max(
           1,
           initialTurnsRef.current - snap.combat.turnsRemaining + 1,
@@ -822,6 +855,8 @@ export default function RuneDelvePlayPage() {
     setBonusShardsFromMastery(0);
     setBonusScoreFromTreasure(0);
     setBonusShardsFromTreasure(0);
+    consumedTreasureCellsRef.current = new Set();
+    setConsumedTreasureCells(new Set());
     // Fresh runs begin before any boss phase has triggered.
     bossPhasesRef.current = new Map();
     setTotalManaSpent(0);
@@ -840,26 +875,24 @@ export default function RuneDelvePlayPage() {
     // Foreseer's Lens (+ turns/level — suppressed by Fogged) and Void Pact.
     const bonusTurns = foggedActive ? 0 : getForeseerBonusTurns(relics);
     const dailyTurnDelta = isDailyMode ? dailyTurnLimitDelta(dailyMods) : 0;
-    // Mastery: Warrior T2 — +1 max HP per chapter already cleared. Chapter 1
-    // therefore grants 0; entering chapters 2 and 3 grants +1 and +2.
     const chapterIdx = chapterFor(level.level_number);
-    const chapterHpBonus =
-      getMasteryHpPerChapter(openingMasteries) * Math.max(0, chapterIdx - 1);
+    const chapterHpBonus = getMasteryMaxHpBonus(
+      openingMasteries,
+      Math.max(0, chapterIdx - 1),
+    );
     let initial = initialCombat(
       enemies,
       Math.max(3, level.turn_limit + bonusTurns + dailyTurnDelta),
-      { bonusMaxHp: chapterHpBonus },
+      { bonusMaxHp: chapterHpBonus + getRelicRankMaxHpBonus(relics) },
     );
     // Mastery: starting mana bonus (Mage T1) layered on top of relic effects.
     const openingManaPower =
       getStartingMana(relics) + getMasteryStartingMana(openingMasteries);
     initial.mana = Math.min(MAX_MANA, initial.mana + openingManaPower);
-    // Aether Spark ranks above the mana cap convert overflow into a visible,
-    // useful opening shield. This also makes the relic compose with Mage T1.
-    const manaOverflowShield = Math.max(0, openingManaPower - MAX_MANA);
-    initial.shieldTurns =
-      Math.max(initial.shieldTurns, getStartingShieldTurns(relics)) +
-      manaOverflowShield;
+    initial.shieldTurns = Math.max(
+      initial.shieldTurns,
+      getStartingShieldTurns(relics),
+    );
     const voidCost = getVoidPactHpCost(relics);
     if (voidCost > 0) {
       initial.maxHp = Math.max(10, initial.maxHp - voidCost);
@@ -984,6 +1017,7 @@ export default function RuneDelvePlayPage() {
       bonusShardsFromMastery,
       bonusScoreFromTreasure,
       bonusShardsFromTreasure,
+      consumedTreasureCells,
       totalManaSpent,
       goldRunesCleared,
       braceFired: braceFiredRef.current,
@@ -1021,6 +1055,7 @@ export default function RuneDelvePlayPage() {
     bonusShardsFromMastery,
     bonusScoreFromTreasure,
     bonusShardsFromTreasure,
+    consumedTreasureCells,
     totalManaSpent,
     goldRunesCleared,
     activeMasteries,
@@ -1074,6 +1109,7 @@ export default function RuneDelvePlayPage() {
         bonusShardsFromMastery,
         bonusScoreFromTreasure,
         bonusShardsFromTreasure,
+        consumedTreasureCells,
         totalManaSpent,
         goldRunesCleared,
         braceFired: braceFiredRef.current,
@@ -1121,6 +1157,7 @@ export default function RuneDelvePlayPage() {
     bonusShardsFromMastery,
     bonusScoreFromTreasure,
     bonusShardsFromTreasure,
+    consumedTreasureCells,
     totalManaSpent,
     goldRunesCleared,
     activeMasteries,
@@ -1201,6 +1238,33 @@ export default function RuneDelvePlayPage() {
     return mulberry32(level.generation_seed + 1000 + rngTick);
   }, [level, rngTick]);
 
+  useEffect(() => {
+    if (
+      !resumedScoreCheckRef.current ||
+      !combat ||
+      !grid ||
+      !hero ||
+      !level ||
+      !progress ||
+      levelNumber > progress.highest_unlocked_level ||
+      !settleResumedScoreRef.current
+    )
+      return;
+    resumedScoreCheckRef.current = false;
+    const restoredStatus = evaluateObjective(
+      combat,
+      campaignTurnBudget(
+        initialTurnsRef.current,
+        level.turn_limit,
+        waveDefs,
+        wavesSpawnedRef.current,
+      ),
+      "reach_score",
+      normalizeScoreObjectiveTarget(level),
+    );
+    if (restoredStatus.cleared) settleResumedScoreRef.current(combat);
+  }, [combat, grid, hero, level, progress, levelNumber, waveDefs]);
+
   // Lock guard: if user navigates to a locked level via URL.
   if (progress && levelNumber > progress.highest_unlocked_level) {
     return (
@@ -1266,6 +1330,7 @@ export default function RuneDelvePlayPage() {
   }
 
   const objType = level.objective_type as ObjectiveType;
+  const objectiveTarget = normalizeScoreObjectiveTarget(level);
   const currentTurnBudget = () =>
     campaignTurnBudget(
       initialTurnsRef.current,
@@ -1385,7 +1450,7 @@ export default function RuneDelvePlayPage() {
         combatMultiplier *= 1.5;
       const openingCrit = getMasteryOpeningCritMult(
         activeMasteries,
-        chainsThisFight,
+        redChainCount,
       );
       if (openingCrit > 1) {
         combatMultiplier *= openingCrit;
@@ -1442,15 +1507,34 @@ export default function RuneDelvePlayPage() {
     //   wipe the hero in one move — there's still risk, not instant
     //   death from a bad path.
     if (layoutZones.treasure.size > 0 || layoutZones.hazard.size > 0) {
-      const treasureHits = countChainInZone(chain, layoutZones.treasure);
+      const treasureKeys = new Set(
+        chain
+          .map(cellKey)
+          .filter(
+            (key) =>
+              layoutZones.treasure.has(key) &&
+              !consumedTreasureCellsRef.current.has(key),
+          ),
+      );
+      const treasureHits = treasureKeys.size;
       const hazardHits = countChainInZone(chain, layoutZones.hazard);
       if (treasureHits > 0) {
+        const consumed = new Set(consumedTreasureCellsRef.current);
+        treasureKeys.forEach((key) => consumed.add(key));
+        consumedTreasureCellsRef.current = consumed;
+        setConsumedTreasureCells(consumed);
         // R3: treasureMult from active modifier (Treasure Hunter triples).
+        const treasureMultiplier = Math.min(
+          3,
+          Math.max(0, modEff.treasureMult),
+        );
         const scoreGain = Math.round(
-          treasureHits * TREASURE_SCORE_BONUS * modEff.treasureMult,
+          treasureHits * TREASURE_SCORE_BONUS * treasureMultiplier,
         );
         const shardGain = Math.round(
-          treasureHits * TREASURE_SHARD_BONUS * modEff.treasureMult,
+          treasureHits *
+            treasureShardValue(level.level_number) *
+            treasureMultiplier,
         );
         rewardTotals.bonusScoreFromTreasure += scoreGain;
         rewardTotals.bonusShardsFromTreasure += shardGain;
@@ -1607,11 +1691,14 @@ export default function RuneDelvePlayPage() {
     // ── Vampiric Sigil — heal % of red damage dealt ──────────────────────
     if (
       type === "red" &&
+      next.hp > 0 &&
       chainMods.lifestealPctOfDamage > 0 &&
       resolution.damageDealt > 0
     ) {
-      const lifesteal = Math.round(
-        resolution.damageDealt * chainMods.lifestealPctOfDamage,
+      const lifesteal = getLifestealHealAmount(
+        relics,
+        resolution.damageDealt,
+        next.maxHp,
       );
       const applied = Math.min(lifesteal, next.maxHp - next.hp);
       if (applied > 0) {
@@ -2298,7 +2385,7 @@ export default function RuneDelvePlayPage() {
       postWave,
       currentTurnBudget(),
       objType,
-      level.objective_target,
+      objectiveTarget,
     );
     if (status.over)
       void finalize(postWave, status.cleared, rewardTotals, newGrid);
@@ -2367,7 +2454,7 @@ export default function RuneDelvePlayPage() {
       });
       toast.success("🌅 First Light — free!", { duration: 1100 });
     }
-    // ── Mastery: Mage T5 Overflow — every 4th mana spent refunds 1.
+    // ── Mastery: Mage T5 Overflow — every 6th mana spent refunds 1.
     // Only counts mana that was actually paid (not free casts).
     if (!isFreeCast) {
       const newSpent = totalManaSpent + abilityManaCost;
@@ -2454,7 +2541,7 @@ export default function RuneDelvePlayPage() {
       postWave,
       currentTurnBudget(),
       objType,
-      level.objective_target,
+      objectiveTarget,
     );
     if (status.over)
       void finalize(postWave, status.cleared, {
@@ -2529,7 +2616,6 @@ export default function RuneDelvePlayPage() {
       ...rawBreakdown,
       total: Math.round(preMod * modScoreMult),
     };
-    const xp = xpForRun(breakdown.total, cleared);
     const reason: "cleared" | "defeated" | "timeout" = cleared
       ? "cleared"
       : final.hp <= 0
@@ -2553,15 +2639,36 @@ export default function RuneDelvePlayPage() {
         (waveDefs ?? []).reduce((sum, wave) => sum + wave.enemies.length, 0),
     );
     const bossPhaseReached = Math.max(0, ...bossPhasesRef.current.values());
+    const nextFailureCount = (failureRow?.failure_count ?? 0) + 1;
+    const meaningful =
+      cleared ||
+      (final.totalDamage > 0 && (turnsUsed >= 2 || final.enemiesDefeated > 0));
+    const xp = campaignXpForAttempt({
+      levelNumber: level.level_number,
+      score: breakdown.total,
+      cleared,
+      isFirstClear,
+      previousBestScore: existingRun?.score ?? 0,
+      failureCount: nextFailureCount,
+      enemiesKilled: final.enemiesDefeated,
+      totalEnemies,
+      turnsUsed,
+      turnLimit: finalTurnBudget,
+      bossPhaseReached,
+      bossHasRule: !!bossRule,
+      meaningful,
+    });
     let shardsAwarded = 0;
     // Daily Greed multiplies shard reward; bonus shards from Rogue T5 mastery
     // get added on top after the base computation.
     const dailyShardMult = isDailyMode ? dailyShardMultiplier(dailyMods) : 1;
     const masteryBonusShards = totals.bonusShardsFromMastery;
-    // Treasure-cell shard pickups from the chamber layout (R1).
-    // Added flat to the awarded total at the same point as mastery
-    // bonuses so the player sees consistent reward arithmetic.
     const treasureBonusShards = totals.bonusShardsFromTreasure;
+    const treasureAwarded = cleared
+      ? treasureBonusShards
+      : Math.round(
+          totals.bonusShardsFromTreasure * failureMultiplier(nextFailureCount),
+        );
     try {
       if (cleared) {
         const breakdownShards = computeClearShards({
@@ -2574,7 +2681,6 @@ export default function RuneDelvePlayPage() {
         });
         shardsAwarded = breakdownShards.total;
       } else {
-        const nextFailureCount = (failureRow?.failure_count ?? 0) + 1;
         const breakdownShards = computeFailureShards({
           levelNumber: level.level_number,
           failureCount: nextFailureCount,
@@ -2603,7 +2709,7 @@ export default function RuneDelvePlayPage() {
       shardsAwarded = Math.round(shardsAwarded * pathEffect.shardBonusMult);
     }
     shardsAwarded += masteryBonusShards;
-    shardsAwarded += treasureBonusShards;
+    shardsAwarded += treasureAwarded;
     // Layered-Goal bonus shards — meeting the optional secondary objective now
     // pays out (it used to be a hidden clear requirement with no extra reward).
     const secondaryBonusShards = secondaryMetThisRun ? 10 : 0;
@@ -2781,32 +2887,10 @@ export default function RuneDelvePlayPage() {
         const dateStr = todayUtcDateString();
         markDailyChamberPlayed(user.id, dateStr);
       }
-      // R7: roll for a random relic drop on clear. Independent of the
-      // shard reward — gives every chamber clear a "what will I pull?"
-      // moment. The drop is persisted via the existing relic-unlock
-      // mutation so it appears in the user's collection immediately.
-      if (cleared && user?.id) {
-        const ownedSet = new Set((ownedRelics ?? []).map((r) => r.relic_id));
-        const drop = rollRelicDrop({
-          cleared: true,
-          levelNumber: level.level_number,
-          ownedRelicIds: ownedSet,
-          // R2: Elite Path adds +8% drop chance on top of the base rate.
-          bonusChance: pathEffect.bonusDropChance,
-        });
-        if (drop) {
-          try {
-            await unlockRelic.mutateAsync({
-              relic_id: drop.relic.id,
-              level: level.level_number,
-            });
-            setDroppedRelic(drop.relic);
-          } catch {
-            // Core run/rewards are already committed. Only show loot whose
-            // ownership was confirmed instead of promising an unsaved drop.
-          }
-        }
-      }
+      // Loot is rolled and owned atomically by the same settlement receipt.
+      // Retries display its confirmed drop without a second client-side roll.
+      if (result.relicDrop)
+        setDroppedRelic(getRelic(result.relicDrop.relic_id));
 
       // ── Bestiary: record defeats from this run ─────────────────────────
       try {
@@ -2859,17 +2943,27 @@ export default function RuneDelvePlayPage() {
     }
   }
 
+  settleResumedScoreRef.current = (restored) => {
+    void finalize(restored, true, {
+      goldRunesCleared,
+      bonusShardsFromMastery,
+      bonusScoreFromTreasure,
+      bonusShardsFromTreasure,
+      abilityUsedCount,
+    });
+  };
+
   const status = evaluateObjective(
     combat,
     activeTurnBudget,
     objType,
-    level.objective_target,
+    objectiveTarget,
   );
   const objectiveProgress = getObjectiveProgress(
     combat,
     activeTurnBudget,
     objType,
-    level.objective_target,
+    objectiveTarget,
   );
   const primaryTargetId =
     filterTargetable(bossRule, combat.enemies)[0]?.id ?? null;
@@ -2915,7 +3009,7 @@ export default function RuneDelvePlayPage() {
     let masteryMult = getMasteryChainDamageMult(activeMasteries, "red");
     if (isLastStandActive(activeMasteries, combat.hp, combat.maxHp))
       masteryMult *= 1.5;
-    masteryMult *= getMasteryOpeningCritMult(activeMasteries, chainsThisFight);
+    masteryMult *= getMasteryOpeningCritMult(activeMasteries, redChainCount);
     if (isDailyMode)
       masteryMult *=
         dailyDamageMultiplier(dailyMods, "red") *
@@ -3022,8 +3116,10 @@ export default function RuneDelvePlayPage() {
     {
       title: objectiveLabel(objType),
       text:
-        activeLayout?.recommendedStrategy ??
-        "Watch enemy countdowns and match your runes to the encounter.",
+        objType === "reach_score"
+          ? "Deal damage and defeat enemies to earn combat score. Long chains add a bounded bonus after you land a hit. Health and saved turns still improve your final run score."
+          : (activeLayout?.recommendedStrategy ??
+            "Watch enemy countdowns and match your runes to the encounter."),
     },
     ...(bossRule
       ? [
@@ -3164,7 +3260,13 @@ export default function RuneDelvePlayPage() {
           eclipsedCells={eclipse}
           linkedCells={new Set(linkedPairs.pairs.keys())}
           shiftingColumn={shift.column}
-          treasureCells={layoutZones.treasure}
+          treasureCells={
+            new Set(
+              [...layoutZones.treasure].filter(
+                (key) => !consumedTreasureCells.has(key),
+              ),
+            )
+          }
           hazardCells={layoutZones.hazard}
           effectOverride={{
             red: redPreview,

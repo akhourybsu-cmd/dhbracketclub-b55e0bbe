@@ -84,7 +84,7 @@ export default function RuneDelveHeroPage() {
   );
   const activeTrack = trackByClass.get(hero.class);
   const activeLevel = activeTrack?.level ?? hero.level;
-  const lvl = levelFromXp(activeTrack?.xp ?? hero.xp);
+  const lvl = levelFromXp(activeTrack?.xp ?? hero.xp, activeLevel);
   const xpPct = Math.min(100, Math.round((lvl.intoLevel / lvl.needed) * 100));
   const cls = getClass(hero.class);
   const title =

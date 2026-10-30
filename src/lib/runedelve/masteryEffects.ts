@@ -5,7 +5,7 @@
 // Pairs with classMastery.ts (data) and is consumed by RuneDelvePlayPage.tsx
 // (combat hooks) when the player has the matching tier unlocked.
 
-import type { MasteryId } from "./classMastery";
+import { MAGE_OVERFLOW_MANA_INTERVAL, type MasteryId } from "./classMastery";
 import type { RuneType } from "./dungeonGenerator";
 
 /** Starting mana bonus (Mage T1). */
@@ -30,7 +30,19 @@ export function getMasteryAbilityManaCost(
 
 /** Per-chapter HP bonus (Warrior T2). Caller multiplies by chapters cleared. */
 export function getMasteryHpPerChapter(active: MasteryId[]): number {
-  return active.includes("warrior_t2_chapter_hp") ? 1 : 0;
+  return active.includes("warrior_t2_chapter_hp") ? 2 : 0;
+}
+
+/** Iron Constitution pays off immediately, then grows with cleared chapters. */
+export function getMasteryMaxHpBonus(
+  active: MasteryId[],
+  chaptersCleared: number,
+): number {
+  if (!active.includes("warrior_t2_chapter_hp")) return 0;
+  return (
+    6 +
+    getMasteryHpPerChapter(active) * Math.max(0, Math.floor(chaptersCleared))
+  );
 }
 
 /** Damage multiplier for chains of a given color (called per chain). */
@@ -67,13 +79,13 @@ export function getMasteryGoldScoreBonus(
   return active.includes("rogue_t1_gold_score") ? 2 * goldCleared : 0;
 }
 
-/** First-chain-of-fight crit multiplier (Rogue T2). */
+/** First red-chain crit; callers pass the persisted red-chain count before this hit. */
 export function getMasteryOpeningCritMult(
   active: MasteryId[],
-  chainsThisFight: number,
+  redChainsSoFar: number,
 ): number {
   if (!active.includes("rogue_t2_first_crit")) return 1;
-  return chainsThisFight === 0 ? 1.5 : 1;
+  return redChainsSoFar === 0 ? 1.5 : 1;
 }
 
 /** Chain-of-4+ crit chance (Rogue T4) — caller rolls. */
@@ -105,13 +117,13 @@ export function getMasteryShieldBonus(active: MasteryId[]): number {
   return active.includes("cleric_t2_long_shield") ? 1 : 0;
 }
 
-/** First-chain-of-fight heal (Cleric T1). */
+/** First two chains of the run heal; the existing run counter bounds the effect. */
 export function getMasteryOpeningHeal(
   active: MasteryId[],
   chainsThisFight: number,
 ): number {
   if (!active.includes("cleric_t1_first_heal")) return 0;
-  return chainsThisFight === 0 ? 5 : 0;
+  return chainsThisFight >= 0 && chainsThisFight < 2 ? 5 : 0;
 }
 
 /** Arc Burst chain bonus (Mage T3) — fraction of dmg dealt to a 2nd target. */
@@ -138,8 +150,12 @@ export function shouldMasteryRefundMana(
   if (!active.includes("mage_t5_overflow")) return false;
   return (
     totalManaSpent > 0 &&
-    Math.floor(totalManaSpent / 4) >
-      Math.floor(Math.max(0, totalManaSpent - spentThisCast) / 4)
+    spentThisCast > 0 &&
+    Math.floor(totalManaSpent / MAGE_OVERFLOW_MANA_INTERVAL) >
+      Math.floor(
+        Math.max(0, totalManaSpent - spentThisCast) /
+          MAGE_OVERFLOW_MANA_INTERVAL,
+      )
   );
 }
 

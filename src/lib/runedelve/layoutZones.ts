@@ -61,6 +61,10 @@ export const EMPTY_ZONES: LayoutZones = Object.freeze({
 export const TREASURE_SCORE_BONUS = 75;
 /** Bonus shards gained per treasure cell touched in a chain. */
 export const TREASURE_SHARD_BONUS = 5;
+/** A treasure coordinate pays once per encounter; deeper chapters pay more. */
+export function treasureShardValue(levelNumber: number): number {
+  return Math.max(1, Math.min(3, Math.ceil(levelNumber / 50)));
+}
 
 /** HP damage taken per hazard cell touched in a chain. */
 export const HAZARD_DAMAGE = 5;

@@ -1,4 +1,4 @@
-// Rune Delve — Random relic drops (R7)
+// Rune Delve — relic drop probability helpers for previews and simulation.
 //
 // On a chamber clear, the player has a chance to roll a free relic
 // drop — independent of the shard economy. Gives runs a "what will I
@@ -9,9 +9,8 @@
 // the chapters where they're actually unlocked. Boss / chapter-boss
 // clears get bumps so milestone runs feel rewarding.
 //
-// Schema-free: drops are persisted via the existing
-// rune_delve_relic_unlocks INSERT (rune of `useUnlockRelic`), so no
-// migrations needed.
+// Live ownership is delivered by rune_delve_save_run and its immutable
+// receipt. Clients cannot grant drops or insert ownership directly.
 
 import { RELIC_CATALOG, tierUnlockedForChapter, type RelicDef } from './relics';
 import { chapterFor } from './levelGenerator';
