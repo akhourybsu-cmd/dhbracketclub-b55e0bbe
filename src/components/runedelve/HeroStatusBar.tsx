@@ -1,7 +1,8 @@
-import { Heart, Shield, Sparkles, Zap } from "lucide-react";
+import { Heart, Shield, Sparkles, Sword, Zap } from "lucide-react";
 import type { CombatState } from "@/lib/runedelve/combatEngine";
 import { MAX_MANA } from "@/lib/runedelve/combatEngine";
 import { getClass, type HeroClass } from "@/lib/runedelve/classConfig";
+import { TargetFeedback } from "./CombatFeedback";
 import "./runeBattle.css";
 
 interface Props {
@@ -28,7 +29,7 @@ export function HeroStatusBar({
     Math.min(100, Math.round((state.hp / Math.max(1, state.maxHp)) * 100)),
   );
   return (
-    <div className="rd-hero-hud">
+    <div className="rd-hero-hud" data-hero-class={cls}>
       <div
         className="rd-hero-health"
         data-fx-target="hp"
@@ -51,6 +52,7 @@ export function HeroStatusBar({
           {state.hp}
           <span className="opacity-60">/{state.maxHp}</span>
         </span>
+        <TargetFeedback target="hero-health" />
       </div>
       <div
         className="rd-hero-resources"
@@ -65,23 +67,27 @@ export function HeroStatusBar({
             aria-hidden
           />
         ))}
-        {state.shieldTurns > 0 && (
-          <span
-            className="rd-hero-state"
-            data-fx-target="shield"
-            title={`${state.shieldTurns} guarded turns; reduces incoming damage`}
-          >
-            <Shield size={12} aria-hidden /> {state.shieldTurns}
-          </span>
-        )}
-        {state.shadowstepActive && (
-          <span
-            className="rd-hero-state"
-            title="Shadowstep: next attack deals double damage"
-          >
-            <Sparkles size={12} aria-hidden /> ×2
-          </span>
-        )}
+        <TargetFeedback target="hero-mana" />
+        <span className="rd-hero-guard-slot">
+          {state.shieldTurns > 0 && (
+            <span
+              className="rd-hero-state"
+              data-fx-target="shield"
+              title={`${state.shieldTurns} guarded turns; reduces incoming damage`}
+            >
+              <Shield size={12} aria-hidden /> {state.shieldTurns}
+            </span>
+          )}
+          {state.shadowstepActive && (
+            <span
+              className="rd-hero-state"
+              title="Shadowstep: next attack deals double damage"
+            >
+              <Sparkles size={12} aria-hidden /> ×2
+            </span>
+          )}
+          <TargetFeedback target="hero-guard" />
+        </span>
       </div>
       <button
         type="button"
@@ -91,7 +97,9 @@ export function HeroStatusBar({
         className="rd-ability-button btn-press"
         aria-label={`${def.abilityName}. ${primed ? "Primed. Your next attack deals double damage" : ready ? "Ready to cast" : `${Math.max(0, cost - state.mana)} more mana needed`}`}
       >
-        <Zap size={18} aria-hidden />
+        <span className="rd-ability-sigil" aria-hidden>
+          {cls === "warrior" ? <Sword size={20} /> : cls === "cleric" ? <Heart size={20} /> : cls === "rogue" ? <Sparkles size={20} /> : <Zap size={20} />}
+        </span>
         <span>
           {def.abilityName}
           <small>

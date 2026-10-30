@@ -66,6 +66,8 @@ export function RelicCard({
       disabled={disabled || state === "locked-tier"}
       className="rd-relic-tile"
       data-state={state}
+      data-tier={relic.tier}
+      data-category={relic.category}
       aria-label={`${relic.name}. ${describeRelicAtRank(relic, owned ? rank : 1)} ${action}`}
     >
       <span className="rd-item-stage">

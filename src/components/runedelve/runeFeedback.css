@@ -1,0 +1,316 @@
+/* Committed combat deltas get one short, local response. All layers ignore input. */
+.rd-combat-feedback {
+  position: relative;
+  isolation: isolate;
+}
+.rd-feedback-anchor,
+.rd-stage-feedback {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+.rd-feedback-float {
+  --feedback-color: 12 100% 76%;
+  position: absolute;
+  left: calc(50% + var(--feedback-lane, 0) * 13px);
+  top: 38%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: hsl(var(--feedback-color));
+  white-space: nowrap;
+  animation: rd-feedback-rise 1.05s cubic-bezier(0.16, 0.8, 0.25, 1) both;
+}
+.rd-feedback-float strong {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 7px;
+  background: hsl(233 38% 7% / 0.85);
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    0 2px 2px hsl(0 0% 0% / 0.9),
+    0 0 12px hsl(var(--feedback-color) / 0.5);
+  box-shadow: 0 1px 0 hsl(var(--feedback-color) / 0.35);
+}
+.rd-feedback-float small {
+  margin-top: 3px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: hsl(233 38% 7% / 0.92);
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  font-weight: 900;
+}
+.rd-feedback-float.is-defeat {
+  --feedback-color: 43 96% 73%;
+}
+.rd-feedback-float.is-hurt {
+  --feedback-color: 0 95% 75%;
+}
+.rd-feedback-float.is-heal {
+  --feedback-color: 147 85% 73%;
+}
+.rd-feedback-float.is-mana {
+  --feedback-color: 207 100% 79%;
+}
+.rd-feedback-float.is-guard {
+  --feedback-color: 43 96% 73%;
+}
+.rd-feedback-impact {
+  position: absolute;
+  width: 75px;
+  height: 75px;
+  left: 50%;
+  top: 8px;
+  border: 2px solid hsl(var(--feedback-color) / 0.95);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    hsl(var(--feedback-color) / 0.22),
+    transparent 68%
+  );
+  box-shadow:
+    0 0 15px hsl(var(--feedback-color) / 0.25),
+    inset 0 0 12px hsl(var(--feedback-color) / 0.18);
+  animation: rd-feedback-ring 0.58s ease-out both;
+}
+.rd-feedback-cut {
+  position: absolute;
+  width: 96px;
+  height: 3px;
+  top: 12px;
+  left: 50%;
+  border-radius: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(45 100% 96%),
+    hsl(var(--feedback-color)),
+    transparent
+  );
+  box-shadow: 0 0 8px hsl(var(--feedback-color) / 0.9);
+  animation: rd-feedback-slash 0.35s ease-out both;
+}
+.rd-hero-health,
+.rd-hero-resources,
+.rd-hero-guard-slot {
+  position: relative;
+}
+.rd-hero-health .rd-feedback-float,
+.rd-hero-resources .rd-feedback-float {
+  top: -2px;
+}
+.rd-hero-health .rd-feedback-float strong,
+.rd-hero-resources .rd-feedback-float strong {
+  font-size: 14px;
+}
+.rd-hero-health .rd-feedback-impact,
+.rd-hero-resources .rd-feedback-impact {
+  width: 44px;
+  height: 44px;
+}
+.rd-hero-guard-slot {
+  display: inline-flex;
+  min-width: 1px;
+}
+.rd-stage-feedback {
+  overflow: hidden;
+  border-radius: inherit;
+}
+.rd-stage-burst {
+  --burst-color: 14 94% 70%;
+  position: absolute;
+  inset: 0;
+  animation: rd-stage-flare 1.05s ease-out both;
+}
+.rd-stage-burst.is-mage {
+  --burst-color: 206 100% 77%;
+}
+.rd-stage-burst.is-rogue {
+  --burst-color: 278 90% 77%;
+}
+.rd-stage-burst.is-cleric {
+  --burst-color: 147 85% 76%;
+}
+.rd-stage-burst.is-convergence {
+  --burst-color: 43 100% 78%;
+}
+.rd-stage-burst > span {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid hsl(var(--burst-color) / 0.55);
+  border-radius: 99px;
+  background: hsl(233 38% 7% / 0.94);
+  box-shadow: 0 0 25px hsl(var(--burst-color) / 0.25);
+  color: hsl(var(--burst-color));
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.rd-stage-burst-ring {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 180px;
+  height: 80px;
+  border: 2px solid hsl(var(--burst-color) / 0.85);
+  border-radius: 50%;
+  box-shadow:
+    0 0 20px hsl(var(--burst-color) / 0.3),
+    inset 0 0 18px hsl(var(--burst-color) / 0.2);
+  animation: rd-stage-ring 0.75s ease-out both;
+}
+.rd-stage-burst-ring-outer {
+  animation-delay: 0.13s;
+}
+.rd-stage-signature {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 102px;
+  height: 102px;
+  color: hsl(var(--burst-color));
+  filter: drop-shadow(0 0 8px hsl(var(--burst-color) / 0.6));
+  animation: rd-stage-signature 0.8s cubic-bezier(0.16, 0.8, 0.25, 1) both;
+}
+.rd-stage-burst.is-warrior .rd-stage-signature {
+  width: 180px;
+  height: 110px;
+}
+.rd-stage-burst.is-rogue .rd-stage-signature {
+  color: hsl(285 80% 84%);
+}
+.rd-stage-burst.is-convergence .rd-stage-burst-ring {
+  border-top-color: hsl(0 90% 75%);
+  border-right-color: hsl(215 100% 78%);
+  border-bottom-color: hsl(140 85% 75%);
+  border-left-color: hsl(45 100% 78%);
+}
+@keyframes rd-feedback-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 7px) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -5px) scale(1.1);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -11px) scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -37px) scale(0.96);
+  }
+}
+@keyframes rd-feedback-ring {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.55);
+  }
+}
+@keyframes rd-feedback-slash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-33deg) scaleX(0.1);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-33deg) scaleX(1.15);
+  }
+}
+@keyframes rd-stage-ring {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.25);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.5);
+  }
+}
+@keyframes rd-stage-flare {
+  0% {
+    opacity: 0;
+    background: transparent;
+  }
+  15% {
+    opacity: 1;
+    background: radial-gradient(
+      ellipse at 50% 60%,
+      hsl(var(--burst-color) / 0.16),
+      transparent 68%
+    );
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    background: transparent;
+  }
+}
+@keyframes rd-stage-signature {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4) rotate(-12deg);
+  }
+  23% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(1) rotate(0);
+  }
+  58% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.17) rotate(5deg);
+  }
+}
+/* Visibility is also enforced before React can process a visibility event. */
+[data-document-hidden="true"] .rd-feedback-anchor,
+[data-document-hidden="true"] .rd-stage-feedback,
+[data-rd-motion="reduced"] .rd-feedback-anchor,
+[data-rd-motion="reduced"] .rd-stage-feedback {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-feedback-anchor,
+  .rd-stage-feedback {
+    display: none;
+  }
+}

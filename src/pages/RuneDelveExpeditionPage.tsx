@@ -64,11 +64,12 @@ import {
   type ExpeditionBoon,
   type ExpeditionRun,
 } from "@/lib/runedelve/expedition";
-import { getResonanceColors } from "@/lib/runedelve/resonance";
 import type { Cell } from "@/lib/runedelve/boardEngine";
 import { RuneBoard } from "@/components/runedelve/RuneBoard";
 import { EnemyDisplay } from "@/components/runedelve/EnemyDisplay";
 import { HeroStatusBar } from "@/components/runedelve/HeroStatusBar";
+import { CombatFeedback } from "@/components/runedelve/CombatFeedback";
+import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
 import {
   RuneHeroArt,
   RUNE_PORTAL_ART,
@@ -528,7 +529,14 @@ export default function RuneDelveExpeditionPage() {
           </header>
           <RoomTrail run={run} />
           {!isOver && run.phase === "combat" && (
-            <div className="rd-exp-combat" data-testid="expedition-combat">
+            <CombatFeedback
+              className="rd-exp-combat"
+              data-testid="expedition-combat"
+              state={run.combat}
+              cls={run.heroClass}
+              scope={`${run.id}-${run.room}`}
+              disabled={paused || busy || showBuild}
+            >
               <section className="rd-exp-enemy-stage">
                 <div className="rd-exp-stage-label">
                   <span>
@@ -552,24 +560,7 @@ export default function RuneDelveExpeditionPage() {
                   onAbility={() => act()}
                   disabled={paused || busy || showBuild}
                 />
-                <div
-                  className="rd-exp-resonance"
-                  aria-label={`${getResonanceColors(run.combat).length} of 4 resonance sigils charged`}
-                >
-                  <span>RESONANCE</span>
-                  {(["red", "blue", "green", "gold"] as const).map((color) => (
-                    <i
-                      key={color}
-                      className={cn(
-                        `is-${color}`,
-                        getResonanceColors(run.combat).includes(color) &&
-                          "is-lit",
-                      )}
-                      aria-hidden="true"
-                    />
-                  ))}
-                  <span>4 colors → burst</span>
-                </div>
+                <ResonanceMeter state={run.combat} />
                 <RuneBoard
                   grid={run.grid}
                   onChainComplete={(chain) => act(chain)}
@@ -589,7 +580,7 @@ export default function RuneDelveExpeditionPage() {
               <div className="rd-exp-action-status" role="status">
                 {run.lastAction}
               </div>
-            </div>
+            </CombatFeedback>
           )}
           {run.phase === "boon" && (
             <section

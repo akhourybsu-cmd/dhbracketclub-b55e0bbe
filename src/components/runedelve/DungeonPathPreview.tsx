@@ -7,10 +7,12 @@
 // the page's overall density.
 
 import { Link } from "react-router-dom";
+import type { CSSProperties } from "react";
 import { Lock, Check, Crown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RuneLayoutPreview } from "./RuneLayoutPreview";
 import type { RuneLayout } from "@/lib/runedelve/runeLayouts";
+import "./runeMenus.css";
 
 interface Props {
   levelNumber: number;
@@ -46,46 +48,19 @@ export function DungeonPathPreview({
   cornerGlyph,
   onSelect,
 }: Props) {
-  // Rune Delve tile uses warm torchlit stone — explicitly different from
-  // Nexus's cold-card tactical tile. All states share a stone-mortar base;
-  // the differentiator is the inner gradient + border treatment.
-  const baseStyle: React.CSSProperties = {
-    background: "linear-gradient(160deg, hsl(22 32% 12%), hsl(20 38% 6%))",
-    borderColor: "hsl(30 35% 22%)",
-    borderWidth: "1px",
-    borderStyle: "solid",
-  };
-
-  if (!isUnlocked) {
-    baseStyle.background =
-      "linear-gradient(160deg, hsl(22 20% 10%), hsl(20 22% 5%))";
-    baseStyle.borderColor = "hsl(30 18% 18%)";
-    baseStyle.opacity = 1; // we use a wrapper opacity instead
-  } else if (isCleared) {
-    baseStyle.background =
-      "radial-gradient(ellipse 80% 90% at 50% 0%, hsl(140 50% 22% / 0.45), transparent 70%), linear-gradient(160deg, hsl(22 32% 12%), hsl(20 38% 6%))";
-    baseStyle.borderColor = "hsl(140 60% 40%)";
-    baseStyle.boxShadow =
-      "0 0 10px -4px hsl(140 70% 35% / 0.4), inset 0 1px 0 hsl(140 50% 50% / 0.15)";
-  } else if (isMilestone) {
-    baseStyle.background =
-      "radial-gradient(ellipse 80% 90% at 50% 0%, hsl(45 100% 50% / 0.18), transparent 70%), linear-gradient(160deg, hsl(28 45% 16%), hsl(22 50% 8%))";
-    baseStyle.borderColor = "hsl(45 95% 55% / 0.7)";
-    baseStyle.boxShadow =
-      "0 0 16px -4px hsl(40 100% 50% / 0.5), inset 0 1px 0 hsl(45 100% 70% / 0.2)";
-  } else if (isCurrent) {
-    baseStyle.background = `radial-gradient(ellipse 80% 90% at 50% 0%, hsl(${layout.preview.accent} / 0.22), transparent 70%), linear-gradient(160deg, hsl(28 38% 14%), hsl(20 42% 7%))`;
-    baseStyle.borderColor = `hsl(${layout.preview.accent} / 0.6)`;
-    baseStyle.boxShadow = `0 0 18px -4px hsl(28 90% 45% / 0.5), inset 0 1px 0 hsl(40 70% 60% / 0.18)`;
-  } else {
-    baseStyle.background = `radial-gradient(ellipse 80% 90% at 50% 0%, hsl(${layout.preview.accent} / 0.10), transparent 70%), linear-gradient(160deg, hsl(22 30% 11%), hsl(20 35% 6%))`;
-    baseStyle.borderColor = `hsl(${layout.preview.accent} / 0.3)`;
-    baseStyle.boxShadow = "inset 0 1px 0 hsl(40 60% 50% / 0.06)";
-  }
-
+  const state = !isUnlocked
+    ? "locked"
+    : isCleared
+      ? "cleared"
+      : isCurrent
+        ? "current"
+        : isMilestone
+          ? "milestone"
+          : "open";
+  const baseStyle = { "--path-accent": layout.preview.accent } as CSSProperties;
   const tileClass = cn(
-    "relative aspect-square rounded-xl p-1.5 flex flex-col items-center justify-between btn-press overflow-hidden w-full",
-    !isUnlocked && "opacity-40 cursor-not-allowed",
+    "rd-path-tile relative aspect-square p-1.5 flex flex-col items-center justify-between w-full",
+    !isUnlocked && "cursor-not-allowed",
   );
   const label = `Level ${levelNumber} · ${layout.name}${!isUnlocked ? " (locked)" : ""}${isMilestone ? " (milestone)" : ""}`;
   const content = (
@@ -129,23 +104,21 @@ export function DungeonPathPreview({
         </span>
       )}
 
-      {/* Current-level pulse ring */}
+      {/* Current chamber engraving */}
       {isCurrent && (
         <span
-          className="absolute inset-0 rounded-xl pointer-events-none animate-pulse"
-          style={{
-            boxShadow: `inset 0 0 0 1.5px hsl(${layout.preview.accent} / 0.7)`,
-          }}
+          className="rd-path-current"
+          aria-hidden="true"
         />
       )}
 
       {/* Layout preview at the top */}
-      <div className="mt-1 flex-shrink-0 opacity-90">
-        <RuneLayoutPreview layout={layout} size="sm" pulse={isCurrent} />
+      <div className="rd-path-layout">
+        <RuneLayoutPreview layout={layout} size="sm" />
       </div>
 
       {/* Level number + tier dots */}
-      <div className="flex flex-col items-center mt-auto">
+      <div className="rd-path-number flex flex-col items-center mt-auto">
         <span
           className={cn(
             "rd-title text-[15px] font-extrabold tabular-nums leading-none",
@@ -185,6 +158,7 @@ export function DungeonPathPreview({
       to={`/rune-delve/play/${levelNumber}`}
       className={tileClass}
       style={baseStyle}
+      data-state={state}
       aria-label={label}
     >
       {content}
@@ -196,6 +170,7 @@ export function DungeonPathPreview({
       onClick={onSelect}
       className={tileClass}
       style={baseStyle}
+      data-state={state}
       aria-label={label}
     >
       {content}

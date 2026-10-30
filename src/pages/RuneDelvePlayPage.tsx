@@ -241,6 +241,7 @@ import { Crown, Target } from "lucide-react";
 import { RuneBoard } from "@/components/runedelve/RuneBoard";
 import { EnemyDisplay } from "@/components/runedelve/EnemyDisplay";
 import { HeroStatusBar } from "@/components/runedelve/HeroStatusBar";
+import { CombatFeedback } from "@/components/runedelve/CombatFeedback";
 import { HowToPlaySheet } from "@/components/runedelve/HowToPlaySheet";
 import { MechanicIntroSheet } from "@/components/runedelve/MechanicIntroSheet";
 import {
@@ -251,11 +252,6 @@ import { FxLayer } from "@/components/runedelve/fx/FxLayer";
 import { useFxQueue, type FxRect } from "@/hooks/useFxQueue";
 import { useSoundEffect } from "@/hooks/useSoundEffect";
 import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
-import {
-  FloatingNumberLayer,
-  useFloaters,
-} from "@/components/runedelve/fx/FloatingNumber";
-import { ScreenEdgeFlash } from "@/components/runedelve/fx/ScreenEdgeFlash";
 import { PhaseTransitionFlash } from "@/components/runedelve/fx/PhaseTransitionFlash";
 import { HeavyStrikeBanner } from "@/components/runedelve/fx/HeavyStrikeBanner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -492,15 +488,12 @@ export default function RuneDelvePlayPage() {
     });
   };
 
-  // FX overlay queue — purely visual feedback for chains and abilities.
+  // Rune trajectories complement the shared, state-derived impact feedback.
   const fxQ = useFxQueue();
   const { play: playSound } = useSoundEffect();
   const { play: rdSfx } = useRuneDelveSfx();
-  const floaters = useFloaters();
-  const [hurtFlashKey, setHurtFlashKey] = useState(0);
-  const [healFlashKey, setHealFlashKey] = useState(0);
   // V1 visual overhaul:
-  //   heavyFlashKey  — gold screen-edge flash on chain ≥ 6
+  //   heavyFlashKey  — banner on chain ≥ 6
   //   heavyChainLen  — chain length to render in the HeavyStrikeBanner
   //   phaseFlashKey  — R5 boss phase cinematic, paired with the
   //                    transition's metadata so the chyron shows the
@@ -2027,12 +2020,7 @@ export default function RuneDelvePlayPage() {
         text: "Enemies retaliated",
         amount: hpLost,
       });
-      setHurtFlashKey((k) => k + 1);
       rdSfx("hero.hurt");
-      floaters.addAt(
-        playRootRef.current?.querySelector('[data-fx-target="hp"]'),
-        { kind: "damage", text: String(hpLost) },
-      );
     } else if (next.enemies.some((e) => e.hp > 0) && rawIncoming > 0) {
       turnLogs.push({ kind: "info", text: "You weathered the assault" });
     }
@@ -2045,45 +2033,18 @@ export default function RuneDelvePlayPage() {
           amount: mitigated,
         });
     }
-    // Floating numbers for chain effects (heal / mana / shield) so the player
-    // sees the reward land on the relevant HUD chip.
+    // Audio follows resolution; shared CombatFeedback reads committed deltas.
     if (resolution.hpHealed > 0) {
-      floaters.addAt(
-        playRootRef.current?.querySelector('[data-fx-target="hp"]'),
-        { kind: "heal", text: String(resolution.hpHealed) },
-      );
-      setHealFlashKey((k) => k + 1);
       rdSfx("hero.heal");
     }
     if (resolution.manaGained > 0) {
-      floaters.addAt(
-        playRootRef.current?.querySelector('[data-fx-target="mana"]'),
-        { kind: "mana", text: String(resolution.manaGained) },
-      );
       rdSfx("mana.gain", { index: resolution.manaGained });
     }
     if (resolution.guardGained > 0) {
-      floaters.addAt(
-        playRootRef.current?.querySelector('[data-fx-target="shield"]') ??
-          playRootRef.current?.querySelector('[data-fx-target="hp"]'),
-        { kind: "shield", text: String(resolution.guardGained) },
-      );
       rdSfx("shield.up");
     }
-    // Damage numbers + enemy hit/die cues per kill in this chain.
+    // Enemy hit/die cues per kill in this chain.
     if (resolution.damageDealt > 0) {
-      const targetEnemy = combat.enemies.find((e) =>
-        resolution.enemyKills[0] ? e.id === resolution.enemyKills[0] : e.hp > 0,
-      );
-      const targetEl = targetEnemy
-        ? playRootRef.current?.querySelector(
-            `[data-enemy-id="${targetEnemy.id}"]`,
-          )
-        : null;
-      floaters.addAt(targetEl, {
-        kind: "damage",
-        text: String(resolution.damageDealt),
-      });
       rdSfx("enemy.hit");
     }
     for (const killId of resolution.enemyKills) {
@@ -2347,14 +2308,6 @@ export default function RuneDelvePlayPage() {
     // lets useAbility resolve the cast while spending nothing.
     const isFreeCast = abilityFreeFirstUse(relics, abilityUsedCount);
     const effectiveCost = isFreeCast ? 0 : abilityManaCost;
-    // Visual ability FX — cue whenever the cast will actually resolve.
-    if (combat.mana >= effectiveCost) {
-      const firstAlive = combat.enemies.find((e) => e.hp > 0);
-      const target = firstAlive ? findEnemyRect(firstAlive.id) : undefined;
-      fxQ.trigger({ kind: "ability", cls: hero.class, target });
-      rdSfx(`ability.cast.${hero.class}`);
-      if (hero.class === "warrior") triggerCamShake(8);
-    }
     const { next, ok } = activateAbility(
       combat,
       hero.class,
@@ -2367,6 +2320,7 @@ export default function RuneDelvePlayPage() {
       toast.info("Ability not ready — fill mana orbs first.");
       return;
     }
+    rdSfx(`ability.cast.${hero.class}`);
     const turnLogs: Array<Omit<CombatLogEntry, "id">> = [];
     const ABILITY_LABEL: Record<string, string> = {
       warrior: "Cleave swept the battlefield",
@@ -3070,15 +3024,6 @@ export default function RuneDelvePlayPage() {
       <ChamberBackdrop layout={activeLayout} />
       {/* Cinematic combat FX overlay — chains, abilities, tier flourishes. */}
       <FxLayer queue={fxQ.queue} onComplete={fxQ.complete} />
-      <FloatingNumberLayer
-        floaters={floaters.floaters}
-        onComplete={floaters.complete}
-      />
-      <ScreenEdgeFlash
-        hurtKey={hurtFlashKey}
-        healKey={healFlashKey}
-        heavyKey={heavyFlashKey}
-      />
       {/* V1 — heavy-strike chyron over the board for chains ≥ 6. */}
       <HeavyStrikeBanner
         triggerKey={heavyFlashKey}
@@ -3123,7 +3068,14 @@ export default function RuneDelvePlayPage() {
           <Info size={19} />
         </button>
       </div>
-      <div className="rd-battle-side">
+      <CombatFeedback
+        className="rd-battle-side"
+        state={combat}
+        cls={hero.class}
+        scope={`${level.level_number}-${level.generation_seed}`}
+        abilityRevision={abilityUsedCount}
+        disabled={encounterOpen || !!modifierOffer}
+      >
         <div className="rd-battle-stage">
           <EnemyDisplay
             enemies={combat.enemies}
@@ -3149,7 +3101,7 @@ export default function RuneDelvePlayPage() {
           state={combat}
           onInspect={() => setEncounterOpen(true)}
         />
-      </div>
+      </CombatFeedback>
       <div className="rd-battle-board">
         <RuneBoard
           grid={grid}

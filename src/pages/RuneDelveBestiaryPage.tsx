@@ -250,12 +250,12 @@ export default function RuneDelveBestiaryPage() {
                   </span>
                 )}
                 <div
-                  className="text-3xl leading-none"
+                  className="w-14 h-14 rounded-xl overflow-hidden"
                   style={{
                     filter: discovered ? "none" : "brightness(0) opacity(0.4)",
                   }}
                 >
-                  {r.emoji}
+                  <RuneEnemyArt archetypeId={r.id} name={r.name}/>
                 </div>
                 <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-center leading-tight max-w-full truncate text-foreground/85">
                   {discovered ? r.name : "???"}

@@ -77,7 +77,7 @@ export default function RuneDelveLevelMapPage() {
     );
 
   return (
-    <div className="space-y-4 pb-3">
+    <div className="rd-menu-page rd-map-page space-y-4 pb-3">
       <div className="rd-menu-heading">
         <h1 className="rd-title">Dungeon</h1>
         <label className="sr-only" htmlFor="rd-map-chapter">
@@ -108,7 +108,7 @@ export default function RuneDelveLevelMapPage() {
           ))}
         </select>
       </div>
-      <section className="rd-menu-surface space-y-2">
+      <section className="rd-menu-surface rd-chapter-card space-y-2">
         <p className="text-[9px] font-extrabold uppercase tracking-[.2em] text-primary">
           Chapter {chapter} · Chambers {chapterStart}–{chapterStart + 49}
         </p>
@@ -162,7 +162,7 @@ export default function RuneDelveLevelMapPage() {
         </span>
       </div>
       {levelsQuery.isLoading || !levels ? (
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <div className="rd-path-grid grid grid-cols-3 sm:grid-cols-5 gap-2">
           {Array.from({ length: 10 }, (_, i) => (
             <div
               key={i}
@@ -172,7 +172,7 @@ export default function RuneDelveLevelMapPage() {
         </div>
       ) : (
         <div
-          className="grid grid-cols-3 sm:grid-cols-5 gap-2"
+          className="rd-path-grid grid grid-cols-3 sm:grid-cols-5 gap-2"
           key={`${chapter}-${stage}`}
         >
           {levels.map((level) => {
@@ -207,7 +207,7 @@ export default function RuneDelveLevelMapPage() {
       <button
         type="button"
         onClick={() => enter(highestUnlocked)}
-        className="min-h-12 w-full flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-extrabold text-sm"
+        className="rd-map-continue rd-primary-action min-h-12 w-full flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-extrabold text-sm"
       >
         Continue · Chamber {highestUnlocked}{" "}
         <ChevronRight className="h-4 w-4" />

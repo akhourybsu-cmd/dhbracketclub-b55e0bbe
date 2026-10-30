@@ -1,6 +1,7 @@
 import type { CombatState } from "@/lib/runedelve/combatEngine";
 import { getResonanceColors } from "@/lib/runedelve/resonance";
 import { RUNE_TYPES } from "@/lib/runedelve/dungeonGenerator";
+import { RuneSigil } from "./RuneSigil";
 import "./runeBattle.css";
 
 export function ResonanceMeter({
@@ -14,7 +15,8 @@ export function ResonanceMeter({
   const content = (
     <>
       <span>
-        Resonance <b>{colors.length}/4</b>
+        <span>Resonance <b>{colors.length}/4</b></span>
+        <small>{colors.length === 3 ? "One sigil to Convergence" : "Four colors. One burst."}</small>
       </span>
       {RUNE_TYPES.map((rune, index) => (
         <span
@@ -26,7 +28,7 @@ export function ResonanceMeter({
           }}
           aria-hidden
         >
-          {["⚔", "✦", "❀", "◈"][index]}
+          <RuneSigil type={rune} />
         </span>
       ))}
     </>

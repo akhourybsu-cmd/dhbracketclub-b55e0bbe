@@ -1,0 +1,423 @@
+/* Rune faces are independent of the hit targets. No resting tile animates. */
+.rd-rune {
+  --rune-light: 255 182 152;
+  --rune-tone: 198 83 55;
+  --rune-high: 90 38 33;
+  --rune-low: 38 24 26;
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  isolation: isolate;
+  appearance: none;
+  border: 1px solid #ac9269;
+  border-radius: 11px;
+  color: rgb(var(--rune-light));
+  background: linear-gradient(
+    145deg,
+    #d1b990 0%,
+    #76634b 18%,
+    #28272a 48%,
+    #88704d 100%
+  );
+  box-shadow:
+    inset 0 1px 0 #fff2cf70,
+    inset 0 -2px 0 #090e14,
+    0 3px 0 #080e16,
+    0 5px 7px #0004;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition:
+    border-color 140ms,
+    box-shadow 140ms;
+}
+.rd-rune[data-rune-type="blue"] {
+  --rune-light: 163 220 255;
+  --rune-tone: 71 153 219;
+  --rune-high: 31 67 95;
+  --rune-low: 18 30 49;
+}
+.rd-rune[data-rune-type="green"] {
+  --rune-light: 165 236 184;
+  --rune-tone: 67 164 109;
+  --rune-high: 32 76 60;
+  --rune-low: 20 37 35;
+}
+.rd-rune[data-rune-type="gold"] {
+  --rune-light: 255 223 142;
+  --rune-tone: 207 163 59;
+  --rune-high: 91 72 33;
+  --rune-low: 43 35 24;
+}
+.rd-rune > *,
+.rd-rune::before,
+.rd-rune::after {
+  pointer-events: none;
+}
+.rd-rune::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 1px solid #ead7ad40;
+  border-radius: 9px;
+}
+.rd-rune-enamel {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgb(var(--rune-tone) / 0.58);
+  border-radius: 7px;
+  background:
+    linear-gradient(135deg, #ffffff14, transparent 38%, #0002 66%),
+    radial-gradient(
+      ellipse at 38% 20%,
+      rgb(var(--rune-tone) / 0.24),
+      transparent 65%
+    ),
+    linear-gradient(155deg, rgb(var(--rune-high)), rgb(var(--rune-low)));
+  box-shadow:
+    inset 0 1px 0 rgb(var(--rune-light) / 0.18),
+    inset 0 -2px 3px #0008,
+    0 0 0 1px #0b111bbf;
+}
+.rd-rune-enamel::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgb(var(--rune-light) / 0.09);
+  border-radius: 4px;
+}
+.rd-rune-engraving {
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  background:
+    linear-gradient(#f5dfad, #f5dfad) left 3px top 2px / 5px 1px no-repeat,
+    linear-gradient(#f5dfad, #f5dfad) left 2px top 3px / 1px 5px no-repeat,
+    linear-gradient(#c7a674, #c7a674) right 3px bottom 2px / 5px 1px no-repeat,
+    linear-gradient(#c7a674, #c7a674) right 2px bottom 3px / 1px 5px no-repeat;
+  opacity: 0.8;
+}
+.rd-rune-arrival {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.rd-rune-sigil {
+  width: 63%;
+  height: 63%;
+  max-width: 48px;
+  max-height: 48px;
+  filter: drop-shadow(0 2px 0 #070e16)
+    drop-shadow(0 0 5px rgb(var(--rune-tone) / 0.28));
+}
+.rd-rune:focus-visible {
+  outline: 2px solid #fff1cb;
+  outline-offset: 3px;
+  z-index: 4;
+}
+@media (hover: hover) {
+  .rd-rune:not(:disabled):not(.is-selected):hover {
+    border-color: #eddaa9;
+    box-shadow:
+      inset 0 1px 0 #fff2cf90,
+      inset 0 -2px 0 #090e14,
+      0 3px 0 #080e16,
+      0 0 12px rgb(var(--rune-tone) / 0.24);
+  }
+}
+.rd-rune.is-selected {
+  z-index: 2;
+  border-color: #fff0c9;
+  color: #fff4d8;
+  box-shadow:
+    inset 0 1px 0 #fff8dd,
+    inset 0 -1px 0 #704e25,
+    0 0 0 1px rgb(var(--rune-light) / 0.7),
+    0 0 17px rgb(var(--rune-tone) / 0.48),
+    0 4px 6px #0005;
+}
+.rd-rune.is-selected .rd-rune-enamel {
+  border-color: rgb(var(--rune-light) / 0.9);
+  background: radial-gradient(
+    ellipse at 45% 25%,
+    rgb(var(--rune-tone) / 0.8),
+    rgb(var(--rune-high)) 70%,
+    rgb(var(--rune-low))
+  );
+}
+.rd-rune.is-selected .rd-rune-arrival {
+  animation: rd-rune-attune 220ms cubic-bezier(0.2, 0.75, 0.2, 1);
+}
+.rd-rune.is-selected .rd-rune-sigil {
+  filter: drop-shadow(0 1px 1px #21140a)
+    drop-shadow(0 0 6px rgb(var(--rune-light) / 0.65));
+}
+.rd-rune-board .rd-selection-order {
+  z-index: 4;
+  top: 3px;
+  left: 3px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #e4c590;
+  border-radius: 5px;
+  background: #101d2b;
+  color: #fff2cc;
+  font-size: 9px;
+  line-height: 1;
+  box-shadow: 0 1px 3px #0008;
+}
+.rd-rune.is-invalid .rd-rune-arrival {
+  opacity: 0.42;
+}
+.rd-rune.is-eclipsed:not(.is-selected) .rd-rune-arrival {
+  opacity: 0.58;
+}
+.rd-rune.is-eclipsed .rd-rune-enamel {
+  background: linear-gradient(130deg, rgb(var(--rune-high) / 0.7), #101421 66%);
+}
+.rd-rune.is-corrupted .rd-rune-enamel {
+  border-color: #c794dd;
+  box-shadow:
+    inset -4px 0 9px #a145ad36,
+    inset 0 -2px 3px #0008,
+    0 0 0 1px #10111c;
+}
+.rd-rune.is-source {
+  border-style: dashed;
+  border-color: #d9a4ed;
+}
+.rd-rune.is-shifting .rd-rune-engraving {
+  border-right: 1px dashed #c7daee7a;
+}
+.rd-rune.is-sealed {
+  cursor: not-allowed;
+  border-color: #747f8b;
+}
+.rd-rune.is-sealed .rd-rune-arrival {
+  opacity: 0.25;
+}
+.rd-rune.is-sealed .rd-rune-enamel {
+  background:
+    repeating-linear-gradient(135deg, #71809314 0 2px, transparent 2px 8px),
+    #1b2632;
+  border-color: #77879960;
+}
+.rd-rune-seal {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  width: 47%;
+  height: 47%;
+  z-index: 2;
+  border-radius: 5px;
+  border: 1px solid #a9b2bc;
+  background: linear-gradient(150deg, #485464, #1b2735);
+  color: #e9ded0;
+  box-shadow:
+    0 2px 3px #0009,
+    inset 0 1px 0 #f2f0de30;
+}
+.rd-rune-seal svg {
+  width: 78%;
+  height: 78%;
+}
+.rd-rune-marks {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 3;
+}
+.rd-rune-mark,
+.rd-rune-chamber-mark,
+.rd-rune-drift {
+  display: grid;
+  place-items: center;
+  width: clamp(12px, 3.3vw, 16px);
+  height: clamp(12px, 3.3vw, 16px);
+  border-radius: 4px;
+  background: #0d1728e6;
+  box-shadow: 0 0 0 1px #e6c68f4d;
+}
+.rd-rune-mark svg,
+.rd-rune-chamber-mark svg,
+.rd-rune-drift svg {
+  width: 86%;
+  height: 86%;
+}
+.rd-rune-mark.is-corrupted,
+.rd-rune-mark.is-source {
+  color: #e7aff6;
+}
+.rd-rune-mark.is-linked {
+  color: #e8daaa;
+}
+.rd-rune-mark.is-eclipsed {
+  color: #c1cef8;
+}
+.rd-rune-drift {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  color: #b6d9ea;
+  box-shadow: none;
+}
+.rd-rune.is-treasure::after,
+.rd-rune.is-hazard::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid #f6d37f;
+  border-radius: 8px;
+  box-shadow: inset 0 0 7px #ffc55b30;
+}
+.rd-rune.is-hazard::after {
+  border-color: #e99a85;
+  border-style: dashed;
+  box-shadow: inset 0 0 7px #f2775830;
+}
+.rd-rune-chamber-mark {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  z-index: 3;
+  color: #ffdc8b;
+}
+.rd-rune-chamber-mark.is-hazard {
+  color: #ffb29d;
+}
+
+/* Energy sits between targets, and never participates in hit testing. */
+.rd-chain-energy {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: #f9df9e;
+}
+.rd-chain-energy * {
+  pointer-events: none;
+}
+.rd-chain-energy-halo {
+  stroke: currentColor;
+  stroke-opacity: 0.18;
+  stroke-width: 3;
+}
+.rd-chain-energy-core {
+  stroke: #fff4ce;
+  stroke-opacity: 0.88;
+  stroke-width: 0.65;
+}
+.rd-chain-energy-thread {
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-opacity: 0.72;
+}
+.rd-rune-cast {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: clamp(5px, 1.5vw, 8px);
+  pointer-events: none;
+}
+.rd-rune-cast * {
+  pointer-events: none;
+}
+.rd-cast-fragment {
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: #fff0c4;
+  animation: rd-rune-release 520ms cubic-bezier(0.15, 0.65, 0.25, 1) both;
+}
+.rd-cast-fragment::before,
+.rd-cast-fragment::after {
+  content: "";
+  position: absolute;
+  inset: 11%;
+  border: 1px solid #ffdf9dbb;
+  border-radius: 50%;
+  animation: rd-rune-release-ring 520ms ease-out both;
+}
+.rd-cast-fragment::after {
+  inset: 21%;
+  border-style: dashed;
+  transform: rotate(45deg);
+}
+.rd-cast-fragment svg {
+  width: 53%;
+  height: 53%;
+  filter: drop-shadow(0 0 6px #f9cf7d);
+}
+.rd-chain-count > svg {
+  width: 22px;
+  height: 22px;
+}
+.rd-rune-board[data-motion="reduced"] .rd-rune,
+.rd-rune-board[data-motion="reduced"] .rd-rune *,
+.rd-rune-board[data-motion="reduced"] .rd-chain-energy *,
+.rd-rune-board[data-motion="reduced"] .rd-rune-cast * {
+  animation: none !important;
+  transition: none !important;
+}
+@keyframes rd-rune-attune {
+  from {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes rd-rune-release {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.85);
+  }
+  35% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+@keyframes rd-rune-release-ring {
+  from {
+    opacity: 0.85;
+    transform: scale(0.65);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-rune,
+  .rd-rune *,
+  .rd-rune::before,
+  .rd-rune::after,
+  .rd-chain-energy *,
+  .rd-rune-cast *,
+  .rd-rune-cast *::before,
+  .rd-rune-cast *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

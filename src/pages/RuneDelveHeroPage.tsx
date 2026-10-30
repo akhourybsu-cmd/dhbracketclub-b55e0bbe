@@ -25,6 +25,7 @@ import {
 import { MASTERY_TIERS, nextMasteryFor } from "@/lib/runedelve/classMastery";
 import { CharacterPowerPanel } from "@/components/runedelve/CharacterPowerPanel";
 import { RuneHeroArt } from "@/components/runedelve/RuneArtwork";
+import { RuneMenuSigil } from "@/components/runedelve/RuneMenuSigil";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
 import { useLoadout } from "@/hooks/useLoadout";
 import { useRelicCollection } from "@/hooks/useRelicCollection";
@@ -138,20 +139,24 @@ export default function RuneDelveHeroPage() {
   }
 
   return (
-    <div className="space-y-4 pb-5">
+    <div
+      className="rd-menu-page rd-hero-page space-y-4 pb-5"
+      data-class={hero.class}
+    >
       <div className="rd-menu-heading">
         <h1 className="rd-title">Hero</h1>
         <Link to="/rune-delve/armory" className="rd-menu-link">
           Tune loadout <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-      <section className="rd-menu-surface !p-0 overflow-hidden">
-        <div className="relative h-44 sm:h-52 overflow-hidden">
+      <section className="rd-menu-surface rd-hero-dossier !p-0 overflow-hidden">
+        <div className="rd-portrait-stage relative h-44 sm:h-52 overflow-hidden">
+          <RuneMenuSigil className="rd-portrait-orbit" />
           <RuneHeroArt
             cls={hero.class}
-            className="absolute inset-y-0 right-0 w-[58%] h-full"
+            className="rd-dossier-portrait absolute inset-y-0 right-0 w-[58%] h-full"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/10 to-transparent" />
+          <div className="rd-portrait-shade absolute inset-0" />
           <div className="absolute left-4 bottom-3 right-4">
             <p className="text-[10px] uppercase tracking-[.18em] text-primary font-extrabold">
               {cls.name} · Level {activeLevel}
@@ -322,14 +327,16 @@ export default function RuneDelveHeroPage() {
                   disabled={active || !!switching || updateHero.isPending}
                   onClick={() => void switchClass(c.id)}
                   aria-label={`${active ? "Active" : "Switch to"} ${c.name}, level ${track?.level ?? 1}`}
+                  data-class={c.id}
+                  data-active={active}
                   className={cn(
-                    "overflow-hidden rounded-2xl border text-left transition-colors min-w-0 disabled:cursor-default",
+                    "rd-class-card overflow-hidden rounded-2xl border text-left transition-colors min-w-0 disabled:cursor-default",
                     active
                       ? "border-primary/60 bg-primary/10"
                       : "border-border/60 bg-card",
                   )}
                 >
-                  <div className="relative h-36 overflow-hidden">
+                  <div className="rd-class-card-portrait relative h-36 overflow-hidden">
                     <RuneHeroArt
                       cls={c.id}
                       className="absolute inset-0 h-full w-full"

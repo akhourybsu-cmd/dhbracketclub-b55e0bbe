@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { RuneCell } from "./RuneCell";
+import { RuneSigil } from "./RuneSigil";
 import { BOARD_SIZE, type RuneType } from "@/lib/runedelve/dungeonGenerator";
 import { cellKey, type Cell } from "@/lib/runedelve/boardEngine";
 import {
@@ -14,17 +15,15 @@ import "./runeBattle.css";
 
 const RUNE_PREVIEW: Record<
   RuneType,
-  { glyph: string; label: string; effect: (n: number) => string }
+  { label: string; effect: (n: number) => string }
 > = {
-  red: { glyph: "⚔", label: "Attack", effect: (n) => `${n * 8} dmg` },
+  red: { label: "Attack", effect: (n) => `${n * 8} dmg` },
   blue: {
-    glyph: "✦",
     label: "Mana",
     effect: (n) => `+${n >= 5 ? 2 : 1} orb${n >= 5 ? "s" : ""}`,
   },
-  green: { glyph: "❀", label: "Heal", effect: (n) => `+${n * 6} HP` },
+  green: { label: "Heal", effect: (n) => `+${n * 6} HP` },
   gold: {
-    glyph: "◈",
     label: "Guard",
     effect: (n) => `+${1 + Math.floor(n / 3)} shield`,
   },
@@ -61,6 +60,20 @@ interface Props {
 type ControlMode = "drag" | "tap";
 const CONTROL_MODE_KEY = "rd-control-mode-v1";
 
+function initialMotionEnabled() {
+  return (
+    typeof document !== "undefined" &&
+    !document.hidden &&
+    !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+interface CastFeedback {
+  id: number;
+  type: RuneType;
+  cells: Cell[];
+}
+
 function initialControlMode(): ControlMode {
   if (typeof window === "undefined") return "drag";
   try {
@@ -74,7 +87,7 @@ function initialControlMode(): ControlMode {
 
 const TAP_ERROR: Partial<Record<ChainStepReason, string>> = {
   sealed: "That rune is sealed",
-  "eclipsed-start": "🌑 Eclipsed runes can't start a chain",
+  "eclipsed-start": "Eclipsed runes can't start a chain",
   "already-selected": "That rune is already in the chain",
   "not-adjacent": "Choose a neighboring rune",
   "wrong-rune": "Keep the chain the same color",
@@ -109,6 +122,12 @@ export function RuneBoard({
   const [controlMode, setControlMode] =
     useState<ControlMode>(initialControlMode);
   const draggingRef = useRef(false);
+  const [motionEnabled, setMotionEnabled] = useState(initialMotionEnabled);
+  const [castFeedback, setCastFeedback] = useState<CastFeedback | null>(null);
+  const [refillVersions, setRefillVersions] = useState<Record<string, number>>(
+    {},
+  );
+  const castVersion = useRef(0);
   const { play } = useSoundEffect();
 
   const chainSet = useMemo(() => new Set(chain.map(cellKey)), [chain]);
@@ -118,6 +137,28 @@ export function RuneBoard({
     chainRef.current = next;
     setChain(next);
   }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const syncMotion = () => {
+      const enabled = !document.hidden && !query?.matches;
+      setMotionEnabled(enabled);
+      if (!enabled) setCastFeedback(null);
+    };
+    syncMotion();
+    document.addEventListener("visibilitychange", syncMotion);
+    query?.addEventListener?.("change", syncMotion);
+    return () => {
+      document.removeEventListener("visibilitychange", syncMotion);
+      query?.removeEventListener?.("change", syncMotion);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!castFeedback) return;
+    const timer = window.setTimeout(() => setCastFeedback(null), 620);
+    return () => window.clearTimeout(timer);
+  }, [castFeedback]);
 
   const chooseControlMode = (mode: ControlMode) => {
     draggingRef.current = false;
@@ -194,10 +235,23 @@ export function RuneBoard({
     // Commit from an event handler. React can replay state updater functions;
     // keeping gameplay outside them prevents a chain resolving twice.
     updateChain([]);
+    if (motionEnabled) {
+      const version = ++castVersion.current;
+      setCastFeedback({
+        id: version,
+        type: grid[selected[0].r][selected[0].c],
+        cells: selected,
+      });
+      setRefillVersions((previous) => {
+        const next = { ...previous };
+        for (const cell of selected) next[cellKey(cell)] = version;
+        return next;
+      });
+    }
     haptic(25);
     play("success");
     onChainComplete(selected);
-  }, [disabled, onChainComplete, play, updateChain]);
+  }, [disabled, grid, motionEnabled, onChainComplete, play, updateChain]);
 
   // Use document-level move so dragging across cells works reliably on iOS Safari.
   useEffect(() => {
@@ -234,7 +288,10 @@ export function RuneBoard({
   }, [disabled, grid, updateChain]);
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div
+      className="rd-rune-board w-full flex flex-col items-center"
+      data-motion={motionEnabled ? "full" : "reduced"}
+    >
       <div className="rd-board-toolbar rd-play-board">
         <span className="rd-board-hint">Connect 3+ · diagonals count</span>
         <div
@@ -281,25 +338,44 @@ export function RuneBoard({
         >
           {chain.length > 1 && (
             <svg
-              className="pointer-events-none absolute inset-0 z-[5] h-full w-full overflow-visible"
+              className="rd-chain-energy"
               viewBox="0 0 100 100"
               preserveAspectRatio="none"
               aria-hidden
             >
-              <polyline
-                points={chain
-                  .map(
-                    (cell) => `${(cell.c + 0.5) * 20},${(cell.r + 0.5) * 20}`,
-                  )
-                  .join(" ")}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeOpacity=".7"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              {(["halo", "thread", "core"] as const).map((layer) => (
+                <polyline
+                  key={layer}
+                  className={`rd-chain-energy-${layer}`}
+                  points={chain
+                    .map(
+                      (cell) => `${(cell.c + 0.5) * 20},${(cell.r + 0.5) * 20}`,
+                    )
+                    .join(" ")}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
             </svg>
+          )}
+          {castFeedback && (
+            <div
+              key={castFeedback.id}
+              className="rd-rune-cast"
+              data-cast-fx="true"
+              aria-hidden="true"
+            >
+              {castFeedback.cells.map((cell) => (
+                <span
+                  key={cellKey(cell)}
+                  className="rd-cast-fragment"
+                  style={{ gridColumn: cell.c + 1, gridRow: cell.r + 1 }}
+                >
+                  <RuneSigil type={castFeedback.type} />
+                </span>
+              ))}
+            </div>
           )}
           {grid.map((row, r) =>
             row.map((rune, c) => {
@@ -319,6 +395,8 @@ export function RuneBoard({
                   dataR={r}
                   dataC={c}
                   type={rune}
+                  refillVersion={refillVersions[k]}
+                  motionEnabled={motionEnabled}
                   selected={isSel}
                   selectionOrder={
                     isSel
@@ -352,7 +430,7 @@ export function RuneBoard({
       >
         <div className="rd-chain-preview">
           <span className="rd-chain-count" data-ready={chain.length >= 3}>
-            {chain.length || "✦"}
+            {chain.length || <RuneSigil type="blue" />}
           </span>
           <div>
             <span className="rd-chain-label">

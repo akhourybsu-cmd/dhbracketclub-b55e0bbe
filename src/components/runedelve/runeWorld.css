@@ -1,5 +1,6 @@
 .rd-mode.rd-shell,
 .rd-dialog-theme {
+  --font-rd-display: 'Cinzel', 'Instrument Serif', serif;
   --rd-arcane: 172 66% 62%;
   --rd-stone: 193 32% 8%;
   --rd-stone-edge: 188 22% 16%;
@@ -502,5 +503,288 @@
   .rd-shell *,
   .rd-dialog-theme * {
     scroll-behavior: auto;
+  }
+}
+
+/* The Hollow's illustrated world sits behind a fixed, quiet reading surface. */
+.rd-world-scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background: hsl(194 35% 5%);
+}
+.rd-world-illustration {
+  position: absolute;
+  inset: 0;
+  background-image: url("/images/rune-delve/realms.webp");
+  background-size: 300% 100%;
+  background-position: 0% center;
+  opacity: 0.3;
+}
+.rd-world-scene[data-biome="crystal"] .rd-world-illustration {
+  background-position: 50% center;
+  opacity: 0.28;
+}
+.rd-world-scene[data-biome="hollow"] .rd-world-illustration {
+  background-position: 100% center;
+  opacity: 0.32;
+}
+.rd-world-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      hsl(195 40% 4% / 0.08),
+      hsl(195 40% 5% / 0.52) 30%,
+      hsl(195 40% 5% / 0.52) 70%,
+      hsl(195 40% 4% / 0.08)
+    ),
+    linear-gradient(
+      0deg,
+      hsl(195 40% 4% / 0.95),
+      transparent 65%,
+      hsl(195 40% 4% / 0.6)
+    );
+}
+.rd-world-arch {
+  position: absolute;
+  top: -100px;
+  bottom: 0;
+  width: min(14vw, 170px);
+  border: 1px solid hsl(var(--gold) / 0.09);
+  border-radius: 50% 50% 0 0;
+  opacity: 0.5;
+  box-shadow:
+    inset 2px 0 0 hsl(var(--gold) / 0.025),
+    8px 0 0 hsl(var(--gold) / 0.025);
+}
+.rd-world-arch-left {
+  left: -5vw;
+  transform: rotate(-5deg);
+}
+.rd-world-arch-right {
+  right: -5vw;
+  transform: rotate(5deg);
+}
+.rd-world-motes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rd-world-motes i {
+  position: absolute;
+  bottom: -8px;
+  left: var(--mote-x);
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: hsl(var(--gold));
+  box-shadow: 0 0 7px hsl(var(--gold) / 0.6);
+  opacity: 0;
+  animation: rd-world-rise var(--mote-time) linear var(--mote-delay) infinite;
+}
+@keyframes rd-world-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  14% {
+    opacity: 0.45;
+  }
+  80% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--mote-drift), -86dvh, 0);
+  }
+}
+.rd-doorway-light {
+  position: fixed;
+  z-index: 65;
+  inset: 48px 0 auto;
+  height: 2px;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--gold) / 0.8),
+    hsl(var(--primary)),
+    transparent
+  );
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
+  transform: scaleX(0.15);
+}
+.rd-doorway-light.is-passing {
+  animation: rd-doorway-pass 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes rd-doorway-pass {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.15);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
+}
+.rd-boot-cinematic {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 16px;
+  background: radial-gradient(
+    ellipse at center,
+    hsl(194 40% 6% / 0.94),
+    hsl(194 40% 4% / 0.85)
+  );
+  color: hsl(43 32% 94%);
+}
+.rd-boot-seal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 160px;
+  height: 160px;
+}
+.rd-boot-seal::before,
+.rd-boot-seal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid hsl(40 79% 67% / 0.4);
+  border-radius: 50%;
+}
+.rd-boot-seal::after {
+  inset: 10px;
+  border-color: hsl(170 62% 61% / 0.4);
+  border-style: dashed;
+  transform: rotate(22deg);
+}
+.rd-boot-seal span {
+  position: absolute;
+  inset: 28px;
+  transform: rotate(45deg);
+  border: 1px solid hsl(40 79% 67% / 0.45);
+}
+.rd-boot-seal img {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 24px hsl(170 62% 61% / 0.35));
+}
+.rd-boot-cinematic p {
+  font-size: 9px;
+  letter-spacing: 0.4em;
+  color: hsl(40 79% 67%);
+  font-weight: 800;
+}
+.rd-boot-cinematic strong {
+  display: block;
+  font-family: var(--font-rd-display, serif);
+  font-size: clamp(34px, 8vw, 52px);
+  letter-spacing: -0.03em;
+  margin: 3px 0;
+}
+.rd-boot-cinematic small {
+  font-size: 12px;
+  color: hsl(184 14% 68%);
+}
+.rd-creature-art {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  isolation: isolate;
+}
+.rd-creature-art > .rd-enemy-vector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rd-creature-illustration {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-image: url("/images/rune-delve/creatures.webp");
+  background-size: 400% 200%;
+  background-repeat: no-repeat;
+  border-radius: inherit;
+}
+.rd-creature-art::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 -12px 20px -12px hsl(194 40% 4% / 0.8);
+}
+:is(
+  .rd-shell[data-document-hidden="true"],
+  html[data-rd-hidden="true"] .rd-dialog-theme
+),
+:is(
+    .rd-shell[data-document-hidden="true"],
+    html[data-rd-hidden="true"] .rd-dialog-theme
+  )
+  *,
+:is(
+  .rd-shell[data-document-hidden="true"],
+  html[data-rd-hidden="true"] .rd-dialog-theme
+)::before,
+:is(
+  .rd-shell[data-document-hidden="true"],
+  html[data-rd-hidden="true"] .rd-dialog-theme
+)::after,
+:is(
+    .rd-shell[data-document-hidden="true"],
+    html[data-rd-hidden="true"] .rd-dialog-theme
+  )
+  *::before,
+:is(
+    .rd-shell[data-document-hidden="true"],
+    html[data-rd-hidden="true"] .rd-dialog-theme
+  )
+  *::after {
+  animation-play-state: paused !important;
+}
+.rd-shell[data-rd-motion="reduced"] .rd-btn-juice::after {
+  animation: none !important;
+  transition: none !important;
+}
+@media (min-width: 960px) {
+  .rd-world-illustration {
+    inset-inline: 0;
+    background-size: 300% auto;
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-world-motes {
+    display: none;
+  }
+  .rd-doorway-light,
+  .rd-boot-cinematic {
+    display: none;
+  }
+  .rd-mode .rd-btn-juice::after {
+    animation: none !important;
+    transition: none !important;
   }
 }

@@ -21,6 +21,7 @@ import {
 import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
 import { Confetti } from "@/components/Confetti";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
+import { RuneMenuSigil } from "@/components/runedelve/RuneMenuSigil";
 import { starsFor } from "@/lib/runedelve/levelGenerator";
 import { readRuneResult } from "@/lib/runedelve/resultSnapshot";
 import { useEffect, useMemo, useState } from "react";
@@ -138,13 +139,13 @@ export default function RuneDelveResultsPage() {
   ];
 
   return (
-    <div className="space-y-4 pb-3">
+    <div
+      className="rd-menu-page rd-results-page space-y-4 pb-3"
+      data-cleared={cleared}
+    >
       <Confetti active={showConfetti} />
       <section
-        className="rd-menu-surface text-center !py-6 relative overflow-hidden"
-        style={{
-          background: `radial-gradient(ellipse at 50% 0%, hsl(var(--${cleared ? "gold" : "primary"}) / .18), transparent 75%), hsl(var(--card))`,
-        }}
+        className="rd-menu-surface rd-result-hero text-center !py-6 relative overflow-hidden"
       >
         <p className="text-[9px] font-extrabold uppercase tracking-[.2em] text-muted-foreground mb-3">
           {latest ? "Run complete" : "Personal record"} · Chamber {levelNumber}
@@ -152,12 +153,11 @@ export default function RuneDelveResultsPage() {
         <motion.div
           initial={reducedMotion ? false : { scale: 0.6, rotate: -12 }}
           animate={{ scale: 1, rotate: 0 }}
-          className="h-20 w-20 rounded-3xl border mx-auto mb-3 grid place-items-center"
-          style={{
-            background: `hsl(var(--${cleared ? "gold" : "primary"}) / .12)`,
-            borderColor: `hsl(var(--${cleared ? "gold" : "primary"}) / .25)`,
-          }}
+          transition={{ type: "spring", stiffness: 180, damping: 18 }}
+          className="rd-result-seal mx-auto mb-4 grid place-items-center"
+          aria-hidden="true"
         >
+          <RuneMenuSigil />
           {cleared ? (
             <Trophy className="h-10 w-10 text-gold" strokeWidth={1.3} />
           ) : result.hp <= 0 ? (
@@ -184,7 +184,7 @@ export default function RuneDelveResultsPage() {
         </p>
         {cleared && (
           <div
-            className="flex justify-center gap-2 mt-4"
+            className="rd-result-stars flex justify-center gap-2 mt-4"
             aria-label={`${stars} of 3 stars`}
           >
             {[1, 2, 3].map((star) => (
@@ -205,7 +205,7 @@ export default function RuneDelveResultsPage() {
           </div>
         )}
         {latest && (
-          <div className="flex items-center justify-center gap-4 mt-4 text-xs font-extrabold">
+          <div className="rd-result-rewards flex items-center justify-center gap-4 mt-4 text-xs font-extrabold">
             <span className="flex items-center gap-1.5 text-primary">
               <Gem className="h-4 w-4" />+{latest.shardsAwarded} shards
             </span>
@@ -219,7 +219,7 @@ export default function RuneDelveResultsPage() {
         )}
       </section>
       {latest && (
-        <div className="flex flex-wrap gap-2">
+        <div className="rd-result-records flex flex-wrap gap-2">
           {latest.firstClear && (
             <span className="rounded-full px-3 py-1.5 text-[10px] font-bold bg-gold/10 text-gold">
               First clear
@@ -261,7 +261,7 @@ export default function RuneDelveResultsPage() {
       </div>
       {view === "summary" ? (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="rd-result-stats grid grid-cols-3 gap-2">
             {stats.map(({ label, value, Icon }) => (
               <div key={label} className="rd-menu-surface !p-3 text-center">
                 <Icon className="h-4 w-4 text-primary mx-auto mb-1.5" />

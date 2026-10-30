@@ -33,6 +33,7 @@ import {
 } from "@/components/runedelve/RuneArtwork";
 import { HowToPlaySheet } from "@/components/runedelve/HowToPlaySheet";
 import { useAmbientMusic } from "@/hooks/useAmbientMusic";
+import "@/components/runedelve/runeMenus.css";
 
 const CLASS_STYLE: Record<
   HeroClass,
@@ -134,7 +135,7 @@ export default function RuneDelveHomePage() {
     const style = CLASS_STYLE[picking];
     const Icon = style.icon;
     return (
-      <section className="rd-forge" data-testid="rune-forge">
+      <section className="rd-forge" data-class={picking} data-testid="rune-forge">
         <div className="rd-forge-heading">
           <p className="rd-eyebrow">
             <Sparkles size={13} /> Rune Delve
@@ -155,6 +156,7 @@ export default function RuneDelveHomePage() {
               aria-pressed={picking === c.id}
               onClick={() => setPicking(c.id)}
               className="rd-class-choice btn-press"
+              data-class={c.id}
             >
               <RuneHeroArt cls={c.id} />
               <strong>{c.name}</strong>
@@ -227,12 +229,11 @@ export default function RuneDelveHomePage() {
   const xpPct = Math.max(0, Math.min(100, (xp.intoLevel / xp.needed) * 100));
 
   return (
-    <section className="rd-hub" data-testid="rune-home">
+    <section className="rd-hub" data-class={hero.class} data-testid="rune-home">
       <div className="rd-sanctum">
         <img
           src={RUNE_PORTAL_ART}
           alt=""
-          fetchPriority="high"
           width="1440"
           height="960"
         />
@@ -291,6 +292,7 @@ export default function RuneDelveHomePage() {
         <Link
           to={`/rune-delve/play/${nextLevel}`}
           className="rd-mode-tile rd-btn-juice"
+          data-mode="campaign"
           aria-label="Continue campaign"
         >
           <Map />
@@ -298,7 +300,11 @@ export default function RuneDelveHomePage() {
           <strong>{meta.name}</strong>
           <small>{progress.highest_completed_level} cleared · Continue →</small>
         </Link>
-        <Link to="/rune-delve/daily" className="rd-mode-tile rd-btn-juice">
+        <Link
+          to="/rune-delve/daily"
+          className="rd-mode-tile rd-btn-juice"
+          data-mode="daily"
+        >
           <Flame />
           <span className="rd-eyebrow">Daily arena · 2 minutes</span>
           <strong>

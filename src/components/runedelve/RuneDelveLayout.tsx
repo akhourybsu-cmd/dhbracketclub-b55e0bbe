@@ -1,13 +1,15 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { RuneDelveHUD } from "./RuneDelveHUD";
 import { RuneDelveBoot } from "./RuneDelveBoot";
 import { RouteWipe } from "./fx/RouteWipe";
 import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
 import { NavLink, useLocation } from "react-router-dom";
-import { Compass, Map, Shield, UserRound } from "lucide-react";
+import { Compass, Map as MapIcon, Shield, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import "./runeWorld.css";
 import { useActiveQuests } from "@/hooks/useQuests";
+import { RuneWorldScene } from "./RuneWorldScene";
 
 /**
  * Full-screen game shell for Rune Delve. Applies the `.rd-mode` skin to the
@@ -21,6 +23,19 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
   useActiveQuests();
   const { play } = useRuneDelveSfx();
   const { pathname } = useLocation();
+  const reducedMotion = useReducedMotion();
+  const [hidden, setHidden] = useState(() => document.hidden);
+  useEffect(() => {
+    const sync = () => setHidden(document.hidden);
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.rdHidden = String(hidden);
+    return () => {
+      delete document.documentElement.dataset.rdHidden;
+    };
+  }, [hidden]);
   const isBattle =
     pathname.startsWith("/rune-delve/play/") ||
     pathname === "/rune-delve/endless" ||
@@ -32,6 +47,18 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.querySelector(".rd-mode");
     if (!root) return;
+    const rippleTimers = new Map<HTMLElement, number>();
+    const clearRipple = (element: HTMLElement) => {
+      window.clearTimeout(rippleTimers.get(element));
+      rippleTimers.delete(element);
+      element.classList.remove("is-rippling");
+    };
+    const clearRipples = () => {
+      for (const element of rippleTimers.keys()) clearRipple(element);
+    };
+    const onVisibility = () => {
+      if (document.hidden) clearRipples();
+    };
     const onDown = (e: PointerEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
@@ -51,8 +78,13 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
       )
         return;
       // Apply ripple if the element has the juice class; otherwise just play sound.
-      if (btn.classList.contains("rd-btn-juice")) {
+      if (
+        btn.classList.contains("rd-btn-juice") &&
+        !reducedMotion &&
+        !document.hidden
+      ) {
         try {
+          clearRipple(btn);
           const rect = btn.getBoundingClientRect();
           const x = ((e.clientX - rect.left) / rect.width) * 100;
           const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -61,7 +93,10 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
           btn.classList.remove("is-rippling");
           void btn.offsetWidth;
           btn.classList.add("is-rippling");
-          window.setTimeout(() => btn.classList.remove("is-rippling"), 520);
+          rippleTimers.set(
+            btn,
+            window.setTimeout(() => clearRipple(btn), 520),
+          );
         } catch {
           /* noop */
         }
@@ -71,23 +106,22 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
     root.addEventListener("pointerdown", onDown as EventListener, {
       passive: true,
     });
-    return () =>
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
       root.removeEventListener("pointerdown", onDown as EventListener);
-  }, [play]);
+      document.removeEventListener("visibilitychange", onVisibility);
+      clearRipples();
+    };
+  }, [play, reducedMotion]);
 
   return (
-    <div className="rd-mode rd-shell relative min-h-[100dvh]">
+    <div
+      className="rd-mode rd-shell relative min-h-[100dvh]"
+      data-document-hidden={String(hidden)}
+      data-rd-motion={reducedMotion ? "reduced" : "full"}
+    >
       {/* Decorative ambient motes — non-interactive. */}
-      <span
-        className="rd-mote"
-        aria-hidden
-        style={{ top: "60px", left: "6px" }}
-      />
-      <span
-        className="rd-mote rd-mote-2"
-        aria-hidden
-        style={{ top: "70px", right: "6px" }}
-      />
+      <RuneWorldScene />
 
       <RuneDelveHUD />
 
@@ -109,7 +143,7 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
               Sanctum
             </NavLink>
             <NavLink to="/rune-delve/levels">
-              <Map />
+              <MapIcon />
               Campaign
             </NavLink>
             <NavLink to="/rune-delve/hero">

@@ -1,43 +1,44 @@
-import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useRuneDelveSfx } from '@/hooks/useRuneDelveSfx';
+import { useEffect, useRef } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useLocation } from "react-router-dom";
+import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
 
-/**
- * Mounts a one-off "rune-charge" wipe each time the user navigates
- * between Rune Delve routes. Plays a subtle whisk SFX in sync.
- *
- * Skips the very first mount so entering RD doesn't double up with the
- * boot sequence, and skips combat (`/play/:n`) so wipes don't intrude
- * on the rune board.
- */
+/** A light passing through the doorway; it never masks the screen or delays input. */
 export function RouteWipe() {
-  const location = useLocation();
+  const { pathname } = useLocation();
   const { play } = useRuneDelveSfx();
-  const first = useRef(true);
-  const lastPath = useRef(location.pathname);
-  const wipeRef = useRef<HTMLDivElement>(null);
-
+  const reduced = useReducedMotion();
+  const lastPath = useRef(pathname);
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      lastPath.current = location.pathname;
+    if (lastPath.current === pathname) return;
+    lastPath.current = pathname;
+    const element = ref.current;
+    if (!element || reduced || document.hidden || pathname.includes("/play/"))
       return;
-    }
-    if (lastPath.current === location.pathname) return;
-    lastPath.current = location.pathname;
-
-    // Don't wipe into the combat board — the boot/transition handles it.
-    if (location.pathname.startsWith('/rune-delve/play/')) return;
-
-    const el = wipeRef.current;
-    if (!el) return;
-    el.classList.remove('rd-route-wipe');
-    void el.offsetWidth;
-    el.classList.add('rd-route-wipe');
-    play('tab.switch', { skipHaptic: true });
-    const t = window.setTimeout(() => el.classList.remove('rd-route-wipe'), 520);
-    return () => window.clearTimeout(t);
-  }, [location.pathname, play]);
-
-  return <div ref={wipeRef} aria-hidden style={{ pointerEvents: 'none' }} />;
+    element.classList.remove("is-passing");
+    // A new keyframe starts after the previous route has released its light.
+    const frame = requestAnimationFrame(() => {
+      if (!document.hidden) element.classList.add("is-passing");
+    });
+    play("tab.switch", { skipHaptic: true });
+    const timeout = window.setTimeout(
+      () => element.classList.remove("is-passing"),
+      440,
+    );
+    const stop = () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+      element.classList.remove("is-passing");
+    };
+    const onVisibility = () => {
+      if (document.hidden) stop();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      stop();
+    };
+  }, [pathname, reduced, play]);
+  return <div ref={ref} className="rd-doorway-light" aria-hidden="true" />;
 }

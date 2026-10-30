@@ -501,7 +501,10 @@
   flex-direction: column;
   align-items: center;
 }
-.rd-battle .rd-play-board {
+/* Keep the combat sizes above the legacy .rd-mode .rd-play-board rule,
+   regardless of stylesheet import order. */
+.rd-battle .rd-play-board,
+.rd-mode .rd-battle .rd-play-board {
   max-width: min(100%, 320px);
 }
 .rd-battle-footnote {
@@ -556,7 +559,8 @@
   outline-offset: 2px;
 }
 @media (min-width: 760px) and (min-height: 650px) {
-  .rd-battle .rd-play-board {
+  .rd-battle .rd-play-board,
+  .rd-mode .rd-battle .rd-play-board {
     max-width: 350px;
   }
   .rd-enemy-portrait {
@@ -586,7 +590,8 @@
   .rd-battle-footnote {
     grid-column: 1/-1;
   }
-  .rd-battle .rd-play-board {
+  .rd-battle .rd-play-board,
+  .rd-mode .rd-battle .rd-play-board {
     max-width: 270px;
   }
   .rd-board-hint {
@@ -617,6 +622,227 @@
     max-width: 125px;
     padding-inline: 8px;
   }
+}
+
+/* The encounter is a small illuminated diorama above the rune command deck. */
+.rd-enemy-stage {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  padding: 9px 0 2px;
+  border-radius: inherit;
+}
+.rd-enemy-stage::before {
+  content: "";
+  position: absolute;
+  inset: 37% 6% 13%;
+  border-radius: 50%;
+  border: 1px solid hsl(var(--gold) / 0.13);
+  background: radial-gradient(
+    ellipse,
+    hsl(var(--primary) / 0.14),
+    transparent 68%
+  );
+  transform: perspective(180px) rotateX(52deg);
+  box-shadow:
+    0 12px 25px hsl(235 40% 4% / 0.45),
+    inset 0 0 24px hsl(var(--primary) / 0.08);
+  pointer-events: none;
+}
+.rd-enemy-stage .rd-enemies {
+  position: relative;
+  z-index: 1;
+}
+.rd-enemy-tile {
+  gap: 5px;
+}
+.rd-enemy-portrait {
+  border-radius: 22px 22px 14px 14px;
+  background:
+    radial-gradient(
+      ellipse at 50% 80%,
+      hsl(var(--primary) / 0.24),
+      transparent 68%
+    ),
+    linear-gradient(180deg, hsl(231 35% 9% / 0.4), hsl(231 35% 6% / 0.8));
+  box-shadow:
+    inset 0 1px 0 hsl(45 80% 86% / 0.06),
+    0 8px 15px hsl(235 40% 3% / 0.4);
+}
+.rd-enemy-portrait::after {
+  content: "";
+  position: absolute;
+  width: 72%;
+  height: 13%;
+  left: 14%;
+  bottom: 4%;
+  border: 1px solid hsl(var(--primary) / 0.27);
+  border-radius: 50%;
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.17);
+  pointer-events: none;
+}
+.rd-enemy-tile[data-primary-target="true"] .rd-enemy-portrait {
+  box-shadow:
+    inset 0 1px 0 hsl(var(--gold) / 0.25),
+    0 0 0 2px hsl(var(--gold) / 0.07),
+    0 6px 24px hsl(var(--gold) / 0.14);
+}
+.rd-enemy-tile[data-tier="boss"] .rd-enemy-portrait {
+  border-color: hsl(var(--gold) / 0.6);
+}
+.rd-enemy-tile[data-defeated="true"] .rd-enemy-art {
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+.rd-enemy-tile[data-defeated="true"] .rd-enemy-name,
+.rd-enemy-tile[data-defeated="true"] .rd-enemy-danger {
+  opacity: 0.5;
+}
+.rd-enemy-defeated-mark {
+  position: absolute;
+  inset: auto 6px 6px auto;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 50%;
+  background: hsl(var(--background) / 0.9);
+}
+.rd-enemy-hp > div {
+  height: 5px;
+  background: hsl(231 30% 7%);
+  border: 1px solid hsl(0 0% 100% / 0.05);
+}
+.rd-enemy-hp > div > span {
+  background: linear-gradient(90deg, hsl(348 55% 44%), hsl(14 86% 70%));
+  transition: width 0.38s ease-out;
+}
+.rd-hero-hud {
+  position: relative;
+  border-color: hsl(var(--gold) / 0.2);
+  background: linear-gradient(
+    115deg,
+    hsl(229 30% 14% / 0.95),
+    hsl(232 32% 9% / 0.97)
+  );
+  box-shadow:
+    inset 0 1px 0 hsl(45 85% 86% / 0.05),
+    0 6px 20px hsl(235 40% 4% / 0.2);
+}
+.rd-hero-health-track {
+  height: 7px;
+  border: 1px solid hsl(0 0% 100% / 0.06);
+  background: hsl(230 35% 6%);
+}
+.rd-hero-health-track > span {
+  background: linear-gradient(90deg, hsl(147 48% 35%), hsl(151 63% 62%));
+}
+.rd-mana-orb {
+  width: 11px;
+  height: 13px;
+  border-radius: 35% 35% 45% 45%;
+  background: hsl(224 24% 8%);
+}
+.rd-mana-orb[data-filled="true"] {
+  border-color: hsl(207 90% 77% / 0.8);
+  background: radial-gradient(
+    circle at 35% 28%,
+    hsl(195 100% 93%),
+    hsl(215 87% 61%) 48%,
+    hsl(230 70% 35%)
+  );
+  box-shadow:
+    inset 0 0 4px hsl(200 100% 91% / 0.5),
+    0 0 9px hsl(210 95% 68% / 0.35);
+}
+.rd-ability-sigil {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 25px;
+  height: 30px;
+}
+.rd-ability-button {
+  position: relative;
+  overflow: hidden;
+  border-color: hsl(var(--primary) / 0.28);
+}
+.rd-ability-button > span {
+  position: relative;
+  z-index: 1;
+}
+.rd-ability-button[data-ready="true"] {
+  border-color: hsl(43 90% 78% / 0.7);
+  background: linear-gradient(
+    125deg,
+    hsl(35 66% 46%),
+    hsl(44 91% 72%) 55%,
+    hsl(34 70% 50%)
+  );
+  color: hsl(28 46% 10%);
+  box-shadow:
+    inset 0 1px 0 hsl(44 100% 92% / 0.55),
+    0 0 17px hsl(39 90% 60% / 0.18);
+}
+.rd-ability-button:disabled:not([data-ready="true"]) {
+  opacity: 0.72;
+}
+.rd-resonance {
+  border-color: hsl(var(--gold) / 0.12);
+  background: hsl(230 28% 9% / 0.65);
+  padding: 5px 8px;
+}
+.rd-resonance > span:first-child {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  line-height: 1.2;
+  letter-spacing: 0.07em;
+}
+.rd-resonance > span:first-child small {
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: hsl(var(--muted-foreground) / 0.8);
+}
+.rd-resonance > span:first-child b {
+  margin-left: 3px;
+  color: hsl(var(--gold));
+}
+.rd-resonance-rune {
+  width: 25px;
+  height: 27px;
+  border-radius: 8px;
+  background: hsl(230 30% 5%);
+  opacity: 0.34;
+}
+.rd-resonance-rune svg {
+  width: 17px;
+  height: 17px;
+}
+.rd-resonance-rune[data-active="true"] {
+  background: hsl(230 20% 18%);
+  box-shadow:
+    inset 0 0 9px currentColor,
+    0 0 9px hsl(var(--primary) / 0.1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-enemy-hp > div > span,
+  .rd-hero-health-track > span,
+  .rd-battle-progress > div:last-child > span {
+    transition: none;
+  }
+}
+[data-rd-motion="reduced"] .rd-enemy-hp > div > span,
+[data-rd-motion="reduced"] .rd-hero-health-track > span,
+[data-rd-motion="reduced"] .rd-battle-progress > div:last-child > span,
+[data-document-hidden="true"] .rd-enemy-hp > div > span,
+[data-document-hidden="true"] .rd-hero-health-track > span {
+  transition: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .rd-battle *,

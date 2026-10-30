@@ -41,6 +41,7 @@ import {
 import { RuneBoard } from "@/components/runedelve/RuneBoard";
 import { EnemyDisplay } from "@/components/runedelve/EnemyDisplay";
 import { HeroStatusBar } from "@/components/runedelve/HeroStatusBar";
+import { CombatFeedback } from "@/components/runedelve/CombatFeedback";
 import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
 import {
   RuneHeroArt,
@@ -453,7 +454,13 @@ export default function RuneDelveEndlessPage() {
             </div>
           ) : (
             <div className="rd-battle-layout">
-              <div className="rd-battle-stage">
+              <CombatFeedback
+                className="rd-battle-stage"
+                state={run.combat}
+                cls={cls}
+                scope={run.requestId}
+                disabled={inspecting}
+              >
                 <EnemyDisplay
                   enemies={run.combat.enemies}
                   onInspectChange={inspectChange}
@@ -476,7 +483,7 @@ export default function RuneDelveEndlessPage() {
                     }}
                   />
                 </div>
-              </div>
+              </CombatFeedback>
               <RuneBoard
                 grid={run.grid}
                 onChainComplete={chainAction}

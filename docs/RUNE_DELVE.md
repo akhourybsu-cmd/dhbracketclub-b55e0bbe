@@ -11,7 +11,13 @@ Rune Delve is a mobile fantasy puzzle RPG. Campaign preserves existing heroes, c
 
 ## Visual and input design
 
-Original locally hosted portal/hero artwork, vector creature portraits and a consistent teal/gold dungeon palette anchor the game. The game has its own Sanctum/Campaign/Hero/Armory navigation. Battle uses a compact enemy stage, health/ability HUD, four-sigil meter and stable Cast/Clear command deck. Detailed encounter rules, equipment math and the chronicle are available on demand. Drag, tap and keyboard inputs share chain validation. Cancellation never commits a move, and StrictMode does not replay gameplay callbacks.
+Locally hosted sanctum, hero, creature and three-biome realm artwork lives in `public/images/rune-delve/`; creature portraits retain vector fallbacks. The game has its own Sanctum/Campaign/Hero/Armory navigation. Battle uses a compact enemy stage, health/ability HUD, four-sigil meter and stable Cast/Clear command deck. Detailed encounter rules, equipment math and the chronicle are available on demand. Drag, tap and keyboard inputs share chain validation. Cancellation never commits a move, and StrictMode does not replay gameplay callbacks.
+
+- **Materials:** obsidian surfaces, ivory lettering, engraved brass and colored enamel. Teal marks active choices; gold marks rewards and milestones. Rune colors also have distinct sigils. Relic tiers change their metalwork and frames; portraits, chapter tablets and reward medallions share that treatment. Keep touch controls at least 44px and decoration outside the input layer.
+- **Motion:** resting rune cells stay still. Selection, chain casts, damage, healing, guard, mana, class abilities and Convergence receive finite feedback from committed state changes. Menus reveal in short stages; results use a stamped seal, stars and reward count. Animation never resolves combat or gates the next interaction.
+- **Lifecycle:** the world has at most eight ambient motes; combat feedback has a twelve-event cap. Hidden documents pause ambience and clear transient combat effects. Reduced motion removes ambience, particles and movement, and displays final scores immediately. Returning, restoring or changing encounters establishes an idle baseline without replaying old feedback. Decorative layers ignore pointers and are hidden from accessibility APIs.
+
+Styles are scoped to Rune Delve in `runeWorld.css`, `runeMenus.css`, `runeTiles.css`, `runeBattle.css` and `runeFeedback.css`; presentation effects remain separate from combat and reward calculation.
 
 Campaign v3 session checkpoints retain board mechanics, build, bargains and spent powers. Expedition checkpoints are scoped by account and club, restore paused, and are valid for seven days. Daily checkpoints are account-scoped, validated, restore paused and expire after twelve hours. Device storage is optional; its absence is surfaced where it prevents resuming a run. Server run receipts and campaign/Expedition progression survive device changes, while live boards stay on their originating device.
 
@@ -33,9 +39,12 @@ node scripts/test-rune-feats-db.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-mobile.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-menus.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-journeys.mjs
+RUNE_QA_URL=http://127.0.0.1:8092 RUNE_QA_OUTPUT=/tmp/rune-motion node scripts/check-rune-motion.mjs
 ```
 
 Browser fixtures mount production screens, hooks and input controls against an isolated backend; they do not post to live accounts. The matrix covers five viewport sizes in both app themes. Rune Delve retains its own dark dungeon palette inside either theme.
+
+`check-rune-motion.mjs` checks normal and reduced motion at 320×568, 390×844, 768×1024, 844×390 and 1440×900. It captures Sanctum, map, shop, archived victory and combat screens, and checks overflow, 44px rune targets, upgrade-sheet focus, final scores and passive decoration. Board, arena and Expedition sequences check actual animation progress, rapid double-cast input, bounded feedback, route cleanup and hidden/resume behavior. The output directory contains screenshots and `report.json` with observed frame timings and Chromium metrics; `RUNE_QA_VIDEO=1` also records the normal-motion board sequence.
 
 `balance-rune-campaign.ts` swept 14,400 class/chamber/seed combinations without an invalid combat state or an uncleared chamber across all samples. That campaign solver models class powers, chain tiers, Convergence and telegraphs, but excludes equipment, board zones/seals and boss phase damage increases. `balance-rune-expedition.ts` swept 600 runs at Ascensions 1, 4 and 8; its tactical solver cleared the highest tier in 68–80% of sampled runs depending on class, with 47–49 distinct builds in fifty seeds. Solver results establish reachability and reveal class differences; they do not substitute for human pacing feedback.
 

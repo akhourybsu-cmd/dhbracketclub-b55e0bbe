@@ -42,8 +42,19 @@ function creatureFor(id: string) {
   return "fiend";
 }
 
-/** Original vector creature portraits: clear silhouettes remain legible at combat scale. */
-export function RuneEnemyArt({
+const CREATURE_OFFSET: Record<string, number> = { wing: 0, spider: 1, slime: 2, beast: 3, spirit: 4, undead: 5, sentinel: 6, fiend: 7 };
+
+/** One local illustrated atlas, with vector silhouettes underneath if artwork cannot load. */
+export function RuneEnemyArt({ archetypeId, name, className }: { archetypeId?: string; name?: string; className?: string }) {
+  const index = CREATURE_OFFSET[creatureFor((archetypeId ?? name ?? '').toLowerCase())];
+  return <span className={cn('rd-enemy-art rd-creature-art', className)} aria-hidden="true">
+    <RuneEnemyVector archetypeId={archetypeId} name={name} className="rd-enemy-vector"/>
+    <span className="rd-creature-illustration" style={{ backgroundPosition: `${(index % 4) * 100 / 3}% ${index > 3 ? 100 : 0}%`, backgroundSize: `400% ${index > 3 ? 180 : 225}%` }}/>
+  </span>;
+}
+
+/** Original vector creature portraits remain available as a lightweight fallback. */
+function RuneEnemyVector({
   archetypeId,
   name,
   className,

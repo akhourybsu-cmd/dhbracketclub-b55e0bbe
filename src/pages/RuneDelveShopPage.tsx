@@ -141,14 +141,14 @@ export default function RuneDelveShopPage() {
     );
 
   return (
-    <div className="space-y-4 pb-5">
+    <div className="rd-menu-page rd-shop-page space-y-4 pb-5">
       <div className="rd-menu-heading">
         <h1 className="rd-title">Relic Forge</h1>
         <Link to="/rune-delve/armory" className="rd-menu-link">
           <Shield className="h-4 w-4" /> Armory
         </Link>
       </div>
-      <div className="rd-menu-surface flex items-center justify-between gap-3">
+      <div className="rd-menu-surface rd-forge-ledger flex items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
             Rune shards

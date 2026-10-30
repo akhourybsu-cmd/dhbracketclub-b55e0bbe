@@ -1,9 +1,8 @@
-import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Enemy } from "@/lib/runedelve/dungeonGenerator";
 import { Shield, Skull, Sword, Zap } from "lucide-react";
-import { EnemyDeathBurst } from "./fx/EnemyDeathBurst";
 import { RuneEnemyArt } from "./RuneArtwork";
+import { BattleStageFeedback, TargetFeedback } from "./CombatFeedback";
 import {
   Dialog,
   DialogContent,
@@ -31,19 +30,8 @@ const ABILITY_DESCRIPTION: Record<string, string> = {
   seal_tile: "Seals a rune. Connect neighboring runes to break seals.",
 };
 
-function useDeathBurstTrigger(hp: number): number {
-  const [trigger, setTrigger] = useState(0);
-  const prevAlive = useRef(hp > 0);
-  useEffect(() => {
-    if (hp <= 0 && prevAlive.current) setTrigger((t) => t + 1);
-    prevAlive.current = hp > 0;
-  }, [hp]);
-  return trigger;
-}
-
 function EnemyTile({
   e,
-  flashId,
   primaryTargetId,
   onInspect,
 }: {
@@ -52,10 +40,8 @@ function EnemyTile({
   primaryTargetId?: string | null;
   onInspect: () => void;
 }) {
-  const reducedMotion = useReducedMotion();
   const dead = e.hp <= 0;
   const isPrimaryTarget = !dead && e.id === primaryTargetId;
-  const deathTrigger = useDeathBurstTrigger(e.hp);
   const pct = Math.max(
     0,
     Math.min(100, Math.round((e.hp / Math.max(1, e.maxHp)) * 100)),
@@ -64,38 +50,26 @@ function EnemyTile({
   const abilityReady =
     !dead && !!e.ability && e.abilityCooldown != null && e.abilityCooldown <= 1;
   return (
-    <motion.div
+    <div
       data-enemy-id={e.id}
       data-primary-target={isPrimaryTarget ? "true" : undefined}
-      animate={
-        !reducedMotion && flashId === e.id ? { x: [-3, 3, -2, 2, 0] } : { x: 0 }
-      }
-      transition={{ duration: 0.25 }}
+      data-defeated={dead || undefined}
+      data-tier={e.tier ?? "normal"}
       className="rd-enemy-tile"
-      style={{ opacity: dead ? 0.38 : 1 }}
     >
       <button
         type="button"
         onClick={onInspect}
         className="rd-enemy-portrait"
         aria-label={`Inspect ${e.name}. ${Math.max(0, e.hp)} of ${e.maxHp} health. ${e.damage} attack.${isPrimaryTarget ? " Current attack target." : ""}`}
-        style={{ filter: dead ? "grayscale(1)" : undefined }}
       >
-        {dead ? (
-          <Skull size={30} aria-hidden />
-        ) : (
-          <RuneEnemyArt
-            archetypeId={e.archetypeId}
-            name={e.name}
-            className="rd-enemy-art"
-          />
-        )}
-        <EnemyDeathBurst
-          triggerKey={deathTrigger}
-          tier={
-            e.tier === "boss" ? "boss" : e.tier === "mini" ? "mini" : "normal"
-          }
+        <RuneEnemyArt
+          archetypeId={e.archetypeId}
+          name={e.name}
+          className="rd-enemy-art"
         />
+        {dead && <span className="rd-enemy-defeated-mark"><Skull size={14} aria-hidden /></span>}
+        <TargetFeedback target={e.id} />
         {isPrimaryTarget && (
           <span className="rd-enemy-target" aria-hidden>
             ▲ TARGET
@@ -162,7 +136,7 @@ function EnemyTile({
           </>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -181,16 +155,19 @@ export function EnemyDisplay({
   useEffect(() => () => onInspectChange?.(false), [onInspectChange]);
   return (
     <>
-      <div className="rd-enemies">
-        {enemies.map((e) => (
-          <EnemyTile
-            key={e.id}
-            e={e}
-            flashId={flashId}
-            primaryTargetId={primaryTargetId}
-            onInspect={() => setInspecting(e.id)}
-          />
-        ))}
+      <div className="rd-enemy-stage">
+        <BattleStageFeedback />
+        <div className="rd-enemies">
+          {enemies.map((e) => (
+            <EnemyTile
+              key={e.id}
+              e={e}
+              flashId={flashId}
+              primaryTargetId={primaryTargetId}
+              onInspect={() => setInspecting(e.id)}
+            />
+          ))}
+        </div>
       </div>
       <Dialog
         open={!!inspected}

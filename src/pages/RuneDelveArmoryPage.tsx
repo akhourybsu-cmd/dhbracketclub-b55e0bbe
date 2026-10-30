@@ -17,7 +17,7 @@ import {
   type HeroClass,
 } from "@/lib/runedelve/classConfig";
 import { RELIC_BY_ID, RELIC_CATALOG } from "@/lib/runedelve/relics";
-import { ClassBadge } from "@/components/runedelve/ClassBadge";
+import { RuneHeroArt } from "@/components/runedelve/RuneArtwork";
 import { LoadoutSlot } from "@/components/runedelve/LoadoutSlot";
 import { RelicCard } from "@/components/runedelve/RelicCard";
 import { ShardBalance } from "@/components/runedelve/ShardBalance";
@@ -151,7 +151,7 @@ export default function RuneDelveArmoryPage() {
     );
 
   return (
-    <div className="space-y-4 pb-5">
+    <div className="rd-menu-page rd-armory-page space-y-4 pb-5" data-class={cls}>
       <div className="rd-menu-heading">
         <h1 className="rd-title">Armory</h1>
         <Link to="/rune-delve/shop" className="rd-menu-link">
@@ -161,7 +161,7 @@ export default function RuneDelveArmoryPage() {
       <div
         role="tablist"
         aria-label="Loadout class"
-        className="rd-menu-tabs grid-cols-4"
+        className="rd-menu-tabs rd-class-tabs grid-cols-4"
       >
         {CLASS_LIST.map((c) => (
           <button
@@ -173,13 +173,15 @@ export default function RuneDelveArmoryPage() {
             onClick={() => setActiveClass(c.id)}
             className="flex flex-col items-center gap-1 py-2"
           >
-            <ClassBadge cls={c.id} size="sm" />
+            <span className="rd-class-tab-portrait">
+              <RuneHeroArt cls={c.id} />
+            </span>
             <span>{c.name}</span>
           </button>
         ))}
       </div>
       <section
-        className="rd-menu-surface space-y-3"
+        className="rd-menu-surface rd-loadout-display space-y-3"
         aria-label={`${getClass(cls).name} loadout`}
       >
         <div className="flex items-center justify-between gap-2">
@@ -192,7 +194,7 @@ export default function RuneDelveArmoryPage() {
             {slotsUnlocked}
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="rd-loadout-slots grid grid-cols-3 gap-2">
           {[0, 1, 2].map((i) => {
             const relic = equipped[i]
               ? (RELIC_BY_ID[equipped[i]!] ?? null)
