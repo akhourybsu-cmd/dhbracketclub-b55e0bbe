@@ -11,7 +11,28 @@ import type { CombatState } from "./combatEngine";
 import type { CorruptionState } from "./corruptedTiles";
 import type { ActiveRelics } from "./relicEffects";
 import type { MasteryId } from "./classMastery";
+import type { BossPhaseIndex } from "./bossPhases";
 import type { CombatLogEntry } from "@/components/runedelve/CombatLog";
+import type { SubmitLevelRunInput } from "@/hooks/useRuneDelveCampaign";
+
+export interface PendingCampaignSettlement {
+  input: SubmitLevelRunInput;
+  cleared: boolean;
+  totals: {
+    goldRunesCleared: number;
+    bonusShardsFromMastery: number;
+    bonusScoreFromTreasure: number;
+    bonusShardsFromTreasure: number;
+    abilityUsedCount: number;
+  };
+  display: {
+    cleared: boolean;
+    reason: "cleared" | "defeated" | "timeout";
+    score: number;
+    isNewBest: boolean;
+    shards: number;
+  };
+}
 
 // v3 saves all board mechanics and one-use counters. Older local checkpoints
 // cannot reconstruct consumed twins/treasure or revive usage honestly. Persistent
@@ -65,6 +86,8 @@ export interface RunSnapshot {
   aegisFired?: boolean;
   tookDamage?: boolean;
   masteryIds?: MasteryId[];
+  bossPhases?: Array<[string, BossPhaseIndex]>;
+  pendingSettlement?: PendingCampaignSettlement;
 }
 
 export function snapshotKey(
@@ -113,6 +136,8 @@ export interface BuildSnapshotInput {
   aegisFired?: boolean;
   tookDamage?: boolean;
   masteryIds?: MasteryId[];
+  bossPhases?: Array<[string, BossPhaseIndex]>;
+  pendingSettlement?: PendingCampaignSettlement;
 }
 
 export function buildSnapshot(input: BuildSnapshotInput): RunSnapshot {
@@ -160,6 +185,8 @@ export function buildSnapshot(input: BuildSnapshotInput): RunSnapshot {
     aegisFired: input.aegisFired ?? false,
     tookDamage: input.tookDamage ?? false,
     masteryIds: input.masteryIds ?? [],
+    bossPhases: input.bossPhases,
+    pendingSettlement: input.pendingSettlement,
   };
 }
 
@@ -230,6 +257,41 @@ export function loadSnapshot(
       !Array.isArray(parsed.corruption.sources)
     )
       return null;
+    if (
+      parsed.bossPhases !== undefined &&
+      (!Array.isArray(parsed.bossPhases) ||
+        parsed.bossPhases.some(
+          (entry) =>
+            !Array.isArray(entry) ||
+            entry.length !== 2 ||
+            typeof entry[0] !== "string" ||
+            ![1, 2, 3].includes(entry[1]),
+        ))
+    )
+      return null;
+    if (parsed.pendingSettlement !== undefined) {
+      const pending = parsed.pendingSettlement;
+      if (
+        !pending ||
+        !pending.input ||
+        !pending.totals ||
+        !pending.display ||
+        typeof pending.input.level_id !== "string" ||
+        typeof pending.input.hero_class !== "string" ||
+        typeof pending.cleared !== "boolean" ||
+        !Number.isFinite(pending.input.score) ||
+        !Number.isFinite(pending.display.score) ||
+        !Number.isFinite(pending.display.shards) ||
+        [
+          pending.totals.goldRunesCleared,
+          pending.totals.bonusShardsFromMastery,
+          pending.totals.bonusScoreFromTreasure,
+          pending.totals.bonusShardsFromTreasure,
+          pending.totals.abilityUsedCount,
+        ].some((value) => !Number.isFinite(value) || value < 0)
+      )
+        return null;
+    }
 
     // Older hot-reloaded sessions could persist repeated short ids such as
     // `l-1`. Framer Motion requires stable, unique keys for every animated

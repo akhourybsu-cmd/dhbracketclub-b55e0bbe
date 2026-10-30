@@ -11,6 +11,7 @@ import {
   type LevelDefinition,
 } from "@/lib/runedelve/levelGenerator";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
+import { toast } from "sonner";
 
 /**
  * Self-heal legacy `rune_delve_levels` rows that were persisted before the
@@ -358,6 +359,8 @@ export function useMyLevelRun(
 // doesn't have to rely on a possibly-stale cached `existingRun` to decide
 // whether to bump hero lifetime XP/runs.
 export interface SubmitLevelRunInput {
+  /** Frozen with a pending result so an uncertain response survives reload. */
+  request_id?: string;
   level_id: string;
   level_number: number;
   score: number;
@@ -378,6 +381,12 @@ export interface SubmitLevelRunInput {
     total_enemies?: number;
     turn_limit?: number;
     boss_rule?: boolean;
+    boss_phase_reached?: number;
+  };
+  quest_context?: {
+    abilities_used?: number;
+    bosses_defeated?: number;
+    no_damage_clear?: boolean;
   };
 }
 
@@ -395,6 +404,7 @@ export interface SavedLevelRun {
   classXp: number;
   cosmeticTitle: string | null;
   slotsUnlocked: number;
+  completedQuests?: string[];
 }
 
 export function useSubmitLevelRun() {
@@ -405,12 +415,13 @@ export function useSubmitLevelRun() {
     retry: false,
     mutationFn: async (params: SubmitLevelRunInput): Promise<SavedLevelRun> => {
       if (!user) throw new Error("Not authenticated");
-      const key = `${user.id}:run:${JSON.stringify(params)}`;
+      const { request_id: requestId, ...run } = params;
+      const key = `${user.id}:run:${JSON.stringify(run)}`;
       const { data } = await runeRpc<SavedLevelRun>(
         "rune_delve_save_run",
         {
-          p_run: params,
-          p_request_id: actions.get(key),
+          p_run: run,
+          p_request_id: requestId ?? actions.get(key),
         },
         "Save your delve",
       );
@@ -418,7 +429,12 @@ export function useSubmitLevelRun() {
       actions.complete(key);
       return data as SavedLevelRun;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      for (const title of result.completedQuests ?? [])
+        toast.success(`Quest complete · ${title}`, {
+          description: "Claim your reward in Quests.",
+          duration: 4000,
+        });
       for (const prefix of [
         "rune-delve-level-run",
         "rune-delve-progress",
@@ -429,6 +445,7 @@ export function useSubmitLevelRun() {
         "rune-delve-hero",
         "rune-delve-wallet",
         "rune-delve-failure",
+        "rd-active-quests",
         "home-signals",
         "dh-score",
         "dh-feats",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BookOpen,
@@ -71,6 +71,25 @@ export default function RuneDelveHomePage() {
   const [picking, setPicking] = useState<HeroClass>("warrior");
   const [name, setName] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const guideKey = hero ? `rd-guide-v1:${hero.user_id}` : null;
+  useEffect(() => {
+    if (!guideKey) return;
+    try {
+      if (localStorage.getItem(guideKey) !== "1") setHelpOpen(true);
+    } catch {
+      setHelpOpen(true);
+    }
+  }, [guideKey]);
+  const changeHelp = (open: boolean) => {
+    setHelpOpen(open);
+    if (!open && guideKey) {
+      try {
+        localStorage.setItem(guideKey, "1");
+      } catch {
+        /* guide remains optional */
+      }
+    }
+  };
   useAmbientMusic({
     enabled: true,
     volume: 0.05,
@@ -189,7 +208,11 @@ export default function RuneDelveHomePage() {
           <HelpCircle />
           Learn the runes
         </button>
-        <HowToPlaySheet open={helpOpen} onOpenChange={setHelpOpen} />
+        <HowToPlaySheet
+          open={helpOpen}
+          onOpenChange={changeHelp}
+          heroClass={picking}
+        />
       </section>
     );
   }
@@ -306,6 +329,11 @@ export default function RuneDelveHomePage() {
         Relics power your campaign · <Flame />
         {streak?.current_streak ?? 0}-day streak
       </div>
+      <HowToPlaySheet
+        open={helpOpen}
+        onOpenChange={changeHelp}
+        heroClass={hero.class}
+      />
     </section>
   );
 }

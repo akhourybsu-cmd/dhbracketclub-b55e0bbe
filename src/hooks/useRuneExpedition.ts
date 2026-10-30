@@ -84,6 +84,7 @@ export function useRuneExpedition() {
     for (const prefix of [
       "rune-expedition",
       "rune-delve-wallet",
+      "rd-active-quests",
       "home-signals",
       "dh-score",
       "dh-feats",

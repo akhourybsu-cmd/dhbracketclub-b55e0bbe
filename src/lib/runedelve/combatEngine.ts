@@ -306,7 +306,11 @@ export function enemiesAttack(
   telegraphed = false,
   bossRule: BossRuleId | null = null,
   summonsSoFar = 0,
-  thornsOpts?: { cls?: HeroClass; relicMultiplier?: number },
+  thornsOpts?: {
+    cls?: HeroClass;
+    relicMultiplier?: number;
+    incomingMultiplier?: number;
+  },
 ): CombatState & {
   heavyFired?: boolean;
   abilityLogs?: Array<Omit<CombatLogEntry, "id">>;
@@ -314,7 +318,17 @@ export function enemiesAttack(
   thornsLog?: Omit<CombatLogEntry, "id">;
 } {
   const ticked = telegraphed ? tickIntents(state.enemies) : state.enemies;
-  let next: CombatState = { ...state, enemies: ticked.map((e) => ({ ...e })) };
+  const originalDamage = new Map(
+    state.enemies.map((enemy) => [enemy.id, enemy.damage]),
+  );
+  const incomingMultiplier = thornsOpts?.incomingMultiplier ?? 1;
+  let next: CombatState = {
+    ...state,
+    enemies: ticked.map((enemy) => ({
+      ...enemy,
+      damage: Math.max(0, Math.round(enemy.damage * incomingMultiplier)),
+    })),
+  };
   let heavyFired = false;
   // Snapshot pre-attack info needed for Thorns calc.
   const shieldWasUp = next.shieldTurns > 0;
@@ -441,6 +455,12 @@ export function enemiesAttack(
   }
 
   next.turnsRemaining = Math.max(0, next.turnsRemaining - 1);
+  // Restore temporary ward/crown softening before permanent boss changes.
+  // Restoring damage in the page after this call erased Splitter's reduction.
+  next.enemies = next.enemies.map((enemy) => ({
+    ...enemy,
+    damage: originalDamage.get(enemy.id) ?? enemy.damage,
+  }));
   // Boss-rule end-of-turn effects (e.g. regenerator, splitter, phaselock decay).
   const bossOut = applyBossTurnEffects(next, bossRule);
   next = bossOut.state;

@@ -20,6 +20,7 @@ import {
 } from "@/lib/runedelve/relics";
 import { cn } from "@/lib/utils";
 import { useSheetSfx } from "@/hooks/useSheetSfx";
+import { useRuneDialogFocus } from "./useRuneDialogFocus";
 import { RelicGlyph } from "./RelicGlyph";
 
 interface Props {
@@ -49,7 +50,7 @@ const FORMAT_RULES: Record<string, (v: number) => string> = {
   bloodbond: (v) => `${Math.round(v)} HP`,
   last_stand: (v) => `${Math.round(v)} use${v > 1 ? "s" : ""}`,
   bulwark: (v) => `+${Math.round(v)} turn${v > 1 ? "s" : ""}`,
-  keysight: (v) => `${Math.round(v)} turn${v > 1 ? "s" : ""}`,
+  keysight: (v) => `${Math.round(v)} seal${v > 1 ? "s" : ""}`,
   cleansing_touch: (v) => `${Math.round(v)} clear${v > 1 ? "s" : ""}`,
   quickstep: (v) => `+${Math.round(v)} length`,
   foresight: (v) => `${Math.round(v)} turn${v > 1 ? "s" : ""}`,
@@ -78,6 +79,7 @@ export function RelicUpgradeSheet({
   onConfirm,
 }: Props) {
   useSheetSfx(open);
+  const focus = useRuneDialogFocus();
   // Reset internal animation state every time the sheet opens
   const [mountedKey, setMountedKey] = useState(0);
   useEffect(() => {
@@ -99,6 +101,7 @@ export function RelicUpgradeSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
+        {...focus}
         side="bottom"
         className="rd-dialog-theme rounded-t-3xl border-t border-border/60 px-5 pt-5 pb-7 max-h-[88dvh] overflow-y-auto sm:mx-auto sm:max-w-lg"
       >

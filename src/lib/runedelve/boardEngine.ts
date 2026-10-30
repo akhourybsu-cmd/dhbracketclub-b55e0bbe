@@ -132,7 +132,8 @@ export function resolveBoard(
   const next: (RuneType | null)[][] = grid.map((row) => row.slice());
   for (let r = 0; r < BOARD_SIZE; r++) {
     for (let c = 0; c < BOARD_SIZE; c++) {
-      if (removed.has(`${r}-${c}`)) next[r][c] = null;
+      if (removed.has(`${r}-${c}`) && !seals?.has(`${r}-${c}`))
+        next[r][c] = null;
     }
   }
   // Apply gravity column by column.

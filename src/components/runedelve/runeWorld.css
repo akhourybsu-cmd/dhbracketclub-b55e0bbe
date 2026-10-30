@@ -38,6 +38,14 @@
 .rd-dialog-theme {
   border-color: hsl(var(--border));
 }
+.rd-dialog-theme > button.absolute {
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  top: 4px;
+  right: 4px;
+}
 .rd-hero-art {
   display: block;
   flex-shrink: 0;

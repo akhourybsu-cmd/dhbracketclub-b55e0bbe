@@ -79,7 +79,7 @@ export function useUpdateLoadout() {
       if (new Set(slots).size !== slots.length) {
         throw new Error("Each relic can only be equipped once.");
       }
-      const { data } = await runeRpc<Loadout>(
+      const { data } = await runeRpc<Loadout | Loadout[]>(
         "rune_delve_equip",
         {
           p_class: params.cls,
@@ -89,8 +89,19 @@ export function useUpdateLoadout() {
         },
         "Equip relics",
       );
-      if (!data) throw new Error("Loadout was not confirmed. Please retry.");
-      return data as Loadout;
+      // PostgREST can encode a composite return as a row or a one-row
+      // array. An empty array is truthy, but does not acknowledge a save.
+      const row = Array.isArray(data) ? data[0] : data;
+      if (
+        !row?.id ||
+        row.user_id !== user.id ||
+        row.class !== params.cls ||
+        row.slot_1 !== params.slot_1 ||
+        row.slot_2 !== params.slot_2 ||
+        row.slot_3 !== params.slot_3
+      )
+        throw new Error("Loadout was not confirmed. Please retry.");
+      return row;
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({

@@ -32,9 +32,9 @@ export const RELIC_CATALOG: RelicDef[] = [
   { id: 'aether_spark',     name: 'Aether Spark',      category: 'mana',      tier: 1, cost: 100, icon: '💠', description: 'Start each run with 2 mana.' },
   { id: 'iron_resolve',     name: 'Iron Resolve',      category: 'survival',  tier: 1, cost: 120, icon: '🛡️', description: 'Start each run with a 1-turn shield.' },
   { id: 'verdant_heart',    name: 'Verdant Heart',     category: 'survival',  tier: 1, cost: 100, icon: '🌿', description: 'Green chains heal +1 HP per rune.' },
-  { id: 'keysight',         name: 'Keysight',          category: 'board',     tier: 1, cost: 120, icon: '🗝️', description: 'Sealed tiles unlock 1 turn faster.' },
+  { id: 'keysight',         name: 'Keysight',          category: 'board',     tier: 1, cost: 120, icon: '🗝️', description: 'Break 1 sealed rune when a campaign chamber opens.' },
   { id: 'quickstep',        name: 'Quickstep',         category: 'tempo',     tier: 1, cost: 110, icon: '👣', description: 'First chain each run counts as +1 length.' },
-  { id: 'shrine_ward',      name: 'Shrine Ward',       category: 'objective', tier: 1, cost: 130, icon: '🕯️', description: 'Boss & elite damage to you reduced 10% on turn 1.' },
+  { id: 'shrine_ward',      name: 'Shrine Ward',       category: 'objective', tier: 1, cost: 130, icon: '🕯️', description: 'Enemy attack damage reduced 10% on turn 1.' },
   { id: 'wanderers_compass',name: "Wanderer's Compass",category: 'objective', tier: 1, cost: 150, icon: '🧭', description: '+15% Rune Shards from this run.' },
   // NEW T1
   { id: 'mirror_shard',     name: 'Mirror Shard',      category: 'offense',   tier: 1, cost: 140, icon: '🪞', description: 'Every 2nd chain deals +30% damage (red) or grants a bonus orb / heal / shield (others).' },
@@ -98,7 +98,6 @@ export const CATEGORY_META: Record<RelicCategory, { label: string; emoji: string
 
 // All relics are class-agnostic in MVP. A future pass can gate certain
 // relics to a specific class via this helper.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function relicAllowedForClass(_relic: RelicDef, _cls: HeroClass): boolean {
   return true;
 }
@@ -148,7 +147,7 @@ export const RANK_EFFECTS: Record<string, RankTable> = {
   spiked_aegis:      [1.10, 1.15, 1.20, 1.28, 1.35], // thorns multiplier (composes with class base)
 
   // Board / tempo / utility
-  keysight:          [1,    2,    2,    3,    3   ], // sealed speedup turns
+  keysight:          [1,    2,    2,    3,    3   ], // opening seals broken
   cleansing_touch:   [1,    1,    2,    2,    3   ], // free clears
   quickstep:         [1,    2,    2,    3,    3   ], // length bonus on first chain
   momentum:          [1.10, 1.13, 1.16, 1.20, 1.25],
@@ -260,7 +259,7 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
 
     // Board / tempo / utility
     case 'keysight':
-      return `Sealed tiles unlock ${turnsLabel(Math.round(v))} faster.`;
+      return `Break ${Math.round(v)} sealed rune${Math.round(v) === 1 ? '' : 's'} when a campaign chamber opens.`;
     case 'cleansing_touch': {
       const n = Math.round(v);
       return `First ${n} corrupted source${n === 1 ? '' : 's'} cleared each run ${n === 1 ? 'is' : 'are'} free (no HP cost).`;
@@ -270,7 +269,7 @@ export function describeRelicAtRank(relic: RelicDef, rank: number): string {
     case 'foresight':
       return `Telegraphed heavy strikes take ${turnsLabel(Math.round(v))} longer to charge.`;
     case 'shrine_ward':
-      return `Boss & elite damage to you reduced ${pctReduction(v)}% on turn 1.`;
+      return `Enemy attack damage reduced ${pctReduction(v)}% on turn 1.`;
     case 'wanderers_compass':
       return `+${pctBonus(v)}% Rune Shards from this run.`;
     case 'cracked_crown':

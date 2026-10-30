@@ -1,6 +1,6 @@
 // Production Rune Delve pages/hooks with isolated identity, transport and audio.
 import { installHomeFixture } from "./dh-home-fixture.mjs";
-export async function installRuneFixture(page) {
+export async function installRuneFixture(page, { showHelp = false } = {}) {
   await installHomeFixture(page);
   const stub = (path, body) =>
     page.route("**/" + path + "*", (route) =>
@@ -18,10 +18,16 @@ export async function installRuneFixture(page) {
     "src/hooks/useRuneDelveSfx.ts",
     "const play=()=>{};export const useRuneDelveSfx=()=>({play,enabled:false});",
   );
-  await page.addInitScript(() => {
+  await page.addInitScript((showHelp) => {
     localStorage.setItem("dh-club-sound-enabled", "false");
     localStorage.setItem("dh-club-music-enabled-v1", "false");
-    localStorage.setItem("rune_delve_seen_help_v2", "1");
+    if (showHelp) {
+      localStorage.removeItem("rune_delve_seen_help_v2");
+      localStorage.removeItem("rd-guide-v1:member");
+    } else {
+      localStorage.setItem("rune_delve_seen_help_v2", "1");
+      localStorage.setItem("rd-guide-v1:member", "1");
+    }
     localStorage.setItem("rd-control-mode-v1", "tap");
-  });
+  }, showHelp);
 }

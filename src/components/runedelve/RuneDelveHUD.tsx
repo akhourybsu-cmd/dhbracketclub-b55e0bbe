@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, BookOpen, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
@@ -18,6 +18,7 @@ import { ExitRunDialog } from "./ExitRunDialog";
 import { CodexSheet } from "./CodexSheet";
 import { chapterFor } from "@/lib/runedelve/levelGenerator";
 import { cn } from "@/lib/utils";
+import { useRuneDialogFocus } from "./useRuneDialogFocus";
 
 /**
  * Sticky in-game HUD for Rune Delve.
@@ -35,6 +36,10 @@ export function RuneDelveHUD() {
   const [codexOpen, setCodexOpen] = useState(false);
   const [soundOpen, setSoundOpen] = useState(false);
   const { settings } = useSoundSettings();
+  const soundFocus = useRuneDialogFocus();
+  useEffect(() => {
+    if (exitOpen) window.dispatchEvent(new Event("rune-delve:pause"));
+  }, [exitOpen]);
 
   const isHome = location.pathname === "/rune-delve";
   const isPlaying =
@@ -155,6 +160,7 @@ export function RuneDelveHUD() {
 
       <Sheet open={soundOpen} onOpenChange={setSoundOpen}>
         <SheetContent
+          {...soundFocus}
           side="bottom"
           className="rd-dialog-theme rounded-t-3xl p-0 max-h-[88vh] overflow-y-auto"
         >

@@ -629,7 +629,10 @@ export function loadExpedition(key: string): ExpeditionRun | null {
       !run ||
       run.version !== EXPEDITION_VERSION ||
       typeof run.id !== "string" ||
-      !Number.isFinite(run.seed) ||
+      !run.id.length ||
+      !Number.isInteger(run.seed) ||
+      run.seed < 0 ||
+      run.seed > 0xffffffff ||
       !Number.isInteger(run.room) ||
       run.room < 1 ||
       run.room > 6 ||
@@ -666,7 +669,16 @@ export function loadExpedition(key: string): ExpeditionRun | null {
       typeof run.boons !== "object" ||
       !Number.isInteger(run.rngTick) ||
       !Number.isInteger(run.totalTurns) ||
-      !Number.isFinite(run.score)
+      !Number.isFinite(run.score) ||
+      !Number.isInteger(run.totalKills) ||
+      run.totalKills < 0 ||
+      run.totalKills > 30 ||
+      typeof run.phoenixUsed !== "boolean" ||
+      typeof run.lastAction !== "string" ||
+      typeof run.notice !== "string" ||
+      typeof run.startedAt !== "string" ||
+      !Number.isFinite(Date.parse(run.startedAt)) ||
+      Array.isArray(run.boons)
     )
       return null;
     if (
@@ -693,7 +705,19 @@ export function loadExpedition(key: string): ExpeditionRun | null {
       combat.shieldTurns > 12 ||
       !Number.isInteger(combat.turnsRemaining) ||
       combat.turnsRemaining < 0 ||
-      combat.turnsRemaining > 50
+      combat.turnsRemaining > 50 ||
+      !Number.isFinite(combat.totalDamage) ||
+      combat.totalDamage < 0 ||
+      combat.totalDamage > 250000 ||
+      !Number.isInteger(combat.enemiesDefeated) ||
+      combat.enemiesDefeated < 0 ||
+      combat.enemiesDefeated > 3 ||
+      !Number.isInteger(combat.longestChain) ||
+      combat.longestChain < 0 ||
+      combat.longestChain > 25 ||
+      typeof combat.shadowstepActive !== "boolean" ||
+      typeof combat.abilityUsed !== "boolean" ||
+      typeof combat.rogueBonusTriggered !== "boolean"
     )
       return null;
     if (
@@ -702,15 +726,50 @@ export function loadExpedition(key: string): ExpeditionRun | null {
       !combat.enemies.every(
         (enemy) =>
           typeof enemy.id === "string" &&
+          enemy.id.length > 0 &&
           typeof enemy.name === "string" &&
+          typeof enemy.emoji === "string" &&
           Number.isFinite(enemy.hp) &&
           Number.isFinite(enemy.maxHp) &&
           enemy.hp >= 0 &&
           enemy.maxHp > 0 &&
           enemy.hp <= enemy.maxHp &&
           Number.isFinite(enemy.damage) &&
-          enemy.damage >= 0,
+          enemy.damage >= 0 &&
+          enemy.damage <= 10000 &&
+          [
+            "intent",
+            "intentMax",
+            "armor",
+            "abilityCooldown",
+            "abilityCooldownMax",
+            "phaseLockTurns",
+            "phaseLockNextAt",
+          ].every((field) => {
+            const value = enemy[field as keyof Enemy];
+            return (
+              value === undefined ||
+              (typeof value === "number" &&
+                Number.isFinite(value) &&
+                value >= 0 &&
+                value <= 100000)
+            );
+          }) &&
+          ["archetypeId", "family", "role", "ability", "telegraphLabel"].every(
+            (field) => {
+              const value = enemy[field as keyof Enemy];
+              return value === undefined || typeof value === "string";
+            },
+          ) &&
+          (enemy.tier === undefined ||
+            enemy.tier === "mini" ||
+            enemy.tier === "boss"),
       )
+    )
+      return null;
+    if (
+      new Set(combat.enemies.map((enemy) => enemy.id)).size !==
+      combat.enemies.length
     )
       return null;
     if (
@@ -724,13 +783,44 @@ export function loadExpedition(key: string): ExpeditionRun | null {
     )
       return null;
     if (
-      combat.resonance &&
-      (!Array.isArray(combat.resonance.colors) ||
+      combat.resonance !== undefined &&
+      (!combat.resonance ||
+        typeof combat.resonance !== "object" ||
+        Array.isArray(combat.resonance) ||
+        !Array.isArray(combat.resonance.colors) ||
+        combat.resonance.colors.length > 3 ||
+        new Set(combat.resonance.colors).size !==
+          combat.resonance.colors.length ||
         combat.resonance.colors.some(
           (color) => !["red", "blue", "green", "gold"].includes(color),
         ) ||
         !Number.isInteger(combat.resonance.bursts) ||
         combat.resonance.bursts < 0)
+    )
+      return null;
+    const cleared = combat.enemies.every((enemy) => enemy.hp <= 0);
+    if (
+      run.phase === "combat" &&
+      (cleared ||
+        combat.hp <= 0 ||
+        combat.turnsRemaining <= 0 ||
+        run.roomsCleared !== run.room - 1)
+    )
+      return null;
+    if (
+      (run.phase === "boon" || run.phase === "route") &&
+      (!cleared ||
+        combat.hp <= 0 ||
+        run.room >= EXPEDITION_ROOMS ||
+        run.roomsCleared !== run.room)
+    )
+      return null;
+    if (
+      run.phase === "won" &&
+      (!cleared ||
+        combat.hp <= 0 ||
+        run.room !== EXPEDITION_ROOMS ||
+        run.roomsCleared !== EXPEDITION_ROOMS)
     )
       return null;
     if (

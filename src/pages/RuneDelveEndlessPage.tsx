@@ -64,8 +64,10 @@ export default function RuneDelveEndlessPage() {
   const submitDaily = useSubmitDailyRun();
   const saveDaily = submitDaily.mutateAsync;
   const key = user ? arenaStorageKey(user.id) : "";
-  const activeKey = useRef(key);
-  activeKey.current = key;
+  // Returning to the same account must not revive callbacks from its previous visit.
+  const activeScope = useRef({ key });
+  if (activeScope.current.key !== key) activeScope.current = { key };
+  const scope = activeScope.current;
   const [run, setRun] = useState<ArenaRun | null>(null);
   const runRef = useRef<ArenaRun | null>(null);
   const lastTick = useRef(0);
@@ -79,6 +81,7 @@ export default function RuneDelveEndlessPage() {
   > | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [checkpointSaved, setCheckpointSaved] = useState(true);
   const hero = heroQuery.data;
   const cls = run?.cls ?? hero?.class ?? "warrior";
   const inspectChange = useCallback((open: boolean) => {
@@ -89,7 +92,7 @@ export default function RuneDelveEndlessPage() {
 
   const commit = useCallback(
     (next: ArenaRun | null) => {
-      if (activeKey.current !== key) return;
+      if (activeScope.current !== scope) return;
       const stamped = next ? { ...next, savedAt: Date.now() } : null;
       runRef.current = stamped;
       setRun(stamped);
@@ -97,11 +100,12 @@ export default function RuneDelveEndlessPage() {
       try {
         if (stamped) sessionStorage.setItem(key, JSON.stringify(stamped));
         else sessionStorage.removeItem(key);
+        setCheckpointSaved(true);
       } catch {
-        /* device storage optional */
+        setCheckpointSaved(false);
       }
     },
-    [key],
+    [key, scope],
   );
 
   useEffect(() => {
@@ -127,7 +131,7 @@ export default function RuneDelveEndlessPage() {
         current.paused ||
         current.result ||
         inspectRef.current ||
-        activeKey.current !== key
+        activeScope.current !== scope
       ) {
         lastTick.current = now;
         return;
@@ -198,21 +202,25 @@ export default function RuneDelveEndlessPage() {
       commit(next);
     }, 100);
     const pause = () => {
-      if (document.hidden && runRef.current && !runRef.current.result)
+      if (runRef.current && !runRef.current.result)
         commit({ ...runRef.current, paused: true });
     };
-    document.addEventListener("visibilitychange", pause);
+    const onHide = () => {
+      if (document.hidden) pause();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("rune-delve:pause", pause);
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", pause);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("rune-delve:pause", pause);
     };
-  }, [timerEnabled, commit, key]);
+  }, [timerEnabled, commit, scope]);
 
   const saveResult = useCallback(async () => {
     const current = runRef.current;
     if (!current?.result || busy.current) return;
     busy.current = true;
-    const scope = key;
     setSaving(true);
     setSaveError(false);
     try {
@@ -222,7 +230,7 @@ export default function RuneDelveEndlessPage() {
         heroClass: current.cls,
         requestId: current.requestId,
       });
-      if (activeKey.current !== scope) return;
+      if (activeScope.current !== scope) return;
       setSaved(receipt);
       try {
         sessionStorage.removeItem(key);
@@ -230,14 +238,14 @@ export default function RuneDelveEndlessPage() {
         /* optional */
       }
     } catch {
-      if (activeKey.current === scope) setSaveError(true);
+      if (activeScope.current === scope) setSaveError(true);
     } finally {
-      if (activeKey.current === scope) {
+      if (activeScope.current === scope) {
         busy.current = false;
         setSaving(false);
       }
     }
-  }, [key, saveDaily]);
+  }, [key, saveDaily, scope]);
 
   useEffect(() => {
     if (run?.result && runRef.current === run && !autoSubmitted.current) {
@@ -434,7 +442,11 @@ export default function RuneDelveEndlessPage() {
           {run.paused ? (
             <div className="rd-load-error">
               <Pause />
-              <p>Arena paused · your run is saved.</p>
+              <p>
+                {checkpointSaved
+                  ? "Arena paused · your run is saved."
+                  : "Arena paused · keep this page open to retain your run."}
+              </p>
               <button onClick={() => commit({ ...run, paused: false })}>
                 Resume arena
               </button>
@@ -511,7 +523,9 @@ export default function RuneDelveEndlessPage() {
           ) : saveError ? (
             <div role="alert">
               <p className="text-xs mb-2">
-                Your result is safe on this device. Reconnect to bank it.
+                {checkpointSaved
+                  ? "Your result is safe on this device. Reconnect to bank it."
+                  : "Keep this page open. Reconnect to bank your result."}
               </p>
               <button
                 onClick={() => void saveResult()}
@@ -531,6 +545,15 @@ export default function RuneDelveEndlessPage() {
             Return to daily arena
           </Link>
         </div>
+      )}
+      {run && !saved && !checkpointSaved && (
+        <p
+          className="rounded-xl border border-gold/40 bg-gold/10 p-3 text-xs text-gold"
+          role="status"
+        >
+          Device storage is unavailable. Keep this page open to retain your
+          current board.
+        </p>
       )}
     </section>
   );

@@ -30,9 +30,19 @@ npm run build
 node scripts/test-rune-expedition-db.mjs
 node scripts/test-rune-settlement-db.mjs
 node scripts/test-rune-feats-db.mjs
-RUNE_QA_URL=http://127.0.0.1:8091 node scripts/check-rune-mobile.mjs
+RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-mobile.mjs
+RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-menus.mjs
+RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-journeys.mjs
 ```
 
 Browser fixtures mount production screens, hooks and input controls against an isolated backend; they do not post to live accounts. The matrix covers five viewport sizes in both app themes. Rune Delve retains its own dark dungeon palette inside either theme.
 
 `balance-rune-campaign.ts` swept 14,400 class/chamber/seed combinations without an invalid combat state or an uncleared chamber across all samples. That campaign solver models class powers, chain tiers, Convergence and telegraphs, but excludes equipment, board zones/seals and boss phase damage increases. `balance-rune-expedition.ts` swept 600 runs at Ascensions 1, 4 and 8; its tactical solver cleared the highest tier in 68–80% of sampled runs depending on class, with 47–49 distinct builds in fifty seeds. Solver results establish reachability and reveal class differences; they do not substitute for human pacing feedback.
+
+## Complete-game quality pass
+
+Campaign checkpoints now retain applied boss phases and frozen terminal settlement data until acknowledgment, including a zero-HP defeat. Negative-turn bargains adjust endure objectives to the available opening budget; reinforcement turns extend the total budget while retaining turns already used. All waves receive the equipped opening effects, Bloodbond heals only a living hero, and Cleansing Touch waives only the rank-appropriate source costs.
+
+Campaign quest events are part of settlement for clients supplying `quest_context`. Cached older clients retain their original producer, avoiding duplicate progress during rollout. The database contract fixture mirrors production columns, defaults, constraints, club foreign keys, and restrictive privacy policies. Account-wide progress survives club transfers; standings follow current membership.
+
+The additional browser journeys use production UI input to clear chambers 1, 25, and 150, finish all six Expedition rooms with each class, and settle natural defeats and move exhaustion. Menu checks exercise failed writes, equipment slots, class switches, keyboard focus, first-run help, archived records, and secondary-source retries. No live player writes are made by these fixtures.

@@ -12,22 +12,22 @@ create table auth.users(id uuid primary key);
 create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.user',true),'')::uuid$$;
 create type rd_quest_status as enum('active','completed','claimed');
 create type rd_quest_scope as enum('daily','weekly');
-create table rune_delve_heroes(id uuid primary key default gen_random_uuid(),user_id uuid unique not null,hero_name text default 'Hero',class text default 'warrior',level integer default 1,xp integer default 0,current_streak integer default 0,best_streak integer default 0,lifetime_runs integer default 0,lifetime_score bigint default 0,cosmetic_title text,last_run_date date);
-create table rune_delve_class_progress(id uuid primary key default gen_random_uuid(),user_id uuid not null,class text not null,xp integer default 0,level integer default 1,cosmetic_title text,lifetime_runs integer default 0,lifetime_score bigint default 0,highest_unlocked_level integer default 1,highest_completed_level integer default 0,total_levels_cleared integer default 0,current_chapter integer default 1,unique(user_id,class));
-create table rune_delve_progress(id uuid primary key default gen_random_uuid(),user_id uuid unique not null,highest_unlocked_level integer default 1,highest_completed_level integer default 0,total_levels_cleared integer default 0,current_chapter integer default 1);
-create table rune_delve_levels(id uuid primary key default gen_random_uuid(),level_number integer unique not null,chapter integer,difficulty_tier integer,generation_seed bigint,board_size integer,enemy_config jsonb,turn_limit integer,objective_type text,objective_target integer,modifiers jsonb,status text default 'active');
-create table rune_delve_runs(id uuid primary key default gen_random_uuid(),user_id uuid not null,level_id uuid references rune_delve_levels(id),level_number integer,hero_class text,score integer default 0,enemies_defeated integer default 0,dungeon_cleared boolean default false,turns_used integer default 0,total_damage integer default 0,longest_chain integer default 0,hp_remaining integer default 0,xp_earned integer default 0,ability_used boolean default false,attempts integer default 1,clears integer default 0,best_turns_used integer,best_hp_remaining integer default 0,last_played_at timestamptz default now());
-create unique index on rune_delve_runs(user_id,level_id,hero_class) where level_id is not null;
-create table rune_delve_wallet(user_id uuid primary key,shards integer not null default 0,lifetime_shards_earned integer not null default 0,slots_unlocked integer not null default 2);
-create table rune_delve_relic_unlocks(id uuid primary key default gen_random_uuid(),user_id uuid not null,relic_id text not null,rank integer default 1,acquired_at_level integer default 1,acquired_at timestamptz default now(),unique(user_id,relic_id));
-create table rune_delve_loadouts(id uuid primary key default gen_random_uuid(),user_id uuid not null,class text not null,slot_1 text,slot_2 text,slot_3 text,unique(user_id,class));
-create table rune_delve_failure_rewards(id uuid primary key default gen_random_uuid(),user_id uuid,level_number integer,hero_class text,failure_count integer,last_awarded_at timestamptz,unique(user_id,level_number,hero_class));
-create table rune_delve_daily_runs(id uuid primary key default gen_random_uuid(),user_id uuid,daily_date date,score integer,stars integer,dungeon_cleared boolean,modifiers jsonb,hero_class text,kills_count integer,completed_at timestamptz,unique(user_id,daily_date));
-create table rune_delve_daily_streaks(user_id uuid primary key,current_streak integer,best_streak integer,last_completed_date date,lifetime_clears integer);
-create table rune_delve_quest_definitions(id text primary key,title text,scope rd_quest_scope,objective_type text,shard_reward integer,xp_reward integer,is_personal boolean default false,hero_class text);
-create table rune_delve_active_quests(id uuid primary key default gen_random_uuid(),user_id uuid,quest_id text references rune_delve_quest_definitions(id),scope rd_quest_scope,period_key text,progress integer,target_value integer,status rd_quest_status,claimed_at timestamptz);
+create table clubs(id uuid primary key);
+create table club_members(user_id uuid,club_id uuid);
+create table dh_private_accounts(user_id uuid,workspace_id uuid);
+create function current_user_club_id() returns uuid language sql stable security definer as $$select club_id from club_members where user_id=auth.uid() limit 1$$;
+create function dh_public_member(uid uuid) returns boolean language sql stable security definer as $$select not exists(select 1 from dh_private_accounts where user_id=uid)$$;
+create function dh_visible_member(uid uuid) returns boolean language sql stable security definer as $$select uid=auth.uid() or dh_public_member(uid)$$;
+create function dh_visible_club(cid uuid) returns boolean language sql stable security definer as $$select not exists(select 1 from dh_private_accounts where workspace_id=cid) or exists(select 1 from dh_private_accounts where workspace_id=cid and user_id=auth.uid())$$;
+create function is_platform_owner(uid uuid) returns boolean language sql stable as $$select false$$;
+create function is_app_admin(uid uuid) returns boolean language sql stable as $$select false$$;
+insert into clubs values('11111111-1111-1111-1111-111111111111');
+insert into club_members values('${id(1)}','11111111-1111-1111-1111-111111111111'),('${id(2)}','11111111-1111-1111-1111-111111111111');
+`);
+await db.exec(await readFile("scripts/fixtures/rune-schema.sql", "utf8"));
+await db.exec(`
 grant usage on schema public,auth to anon,authenticated;
-grant select on all tables in schema public to authenticated;
+grant select,insert,update on all tables in schema public to authenticated;
 insert into auth.users values('${id(1)}'),('${id(2)}');
 insert into rune_delve_heroes(user_id) values('${id(1)}'),('${id(2)}');
 `);
@@ -37,6 +37,12 @@ const migration = await readFile(
 );
 await db.exec(migration);
 await db.exec(migration);
+const qualityMigration = await readFile(
+  "supabase/migrations/20261031020000_rune_delve_quality_fixes.sql",
+  "utf8",
+);
+await db.exec(qualityMigration);
+await db.exec(qualityMigration);
 await db.exec("set role authenticated");
 const actor = (n) =>
   db.query("select set_config('test.user',$1,false)", [n ? id(n) : ""]);
@@ -283,12 +289,35 @@ await check(
     assert.equal(loadout.class, "mage");
   },
 );
-const producerTypes = ['daily_challenges_completed','class_run_complete','enemies_defeated','total_score','shards_earned','class_xp_earned','bosses_defeated'];
+const producerTypes = [
+  "daily_challenges_completed",
+  "class_run_complete",
+  "enemies_defeated",
+  "total_score",
+  "shards_earned",
+  "class_xp_earned",
+  "bosses_defeated",
+];
 for (const [index, type] of producerTypes.entries()) {
-  await owner("insert into rune_delve_quest_definitions values($1,$1,'weekly',$2,10,10,false,null)", ['producer_'+type,type]);
-  for (const uid of [1,2]) await owner("insert into rune_delve_active_quests(id,user_id,quest_id,scope,period_key,progress,target_value,status) values($1,$2,$3,'weekly',to_char(now() at time zone 'UTC','IYYY-\"W\"IW'),0,100000,'active')",[id(700+uid*10+index),id(uid),'producer_'+type]);
+  await owner(
+    "insert into rune_delve_quest_definitions(id,title,description,scope,objective_type,shard_reward,xp_reward,is_personal,hero_class) values($1,$1,$1,'weekly',$2,10,10,false,null)",
+    ["producer_" + type, type],
+  );
+  for (const uid of [1, 2])
+    await owner(
+      "insert into rune_delve_active_quests(id,user_id,quest_id,scope,period_key,progress,target_value,status) values($1,$2,$3,'weekly',to_char(now() at time zone 'UTC','IYYY-\"W\"IW'),0,100000,'active')",
+      [id(700 + uid * 10 + index), id(uid), "producer_" + type],
+    );
 }
-const producerProgress = async uid => Object.fromEntries((await db.query("select d.objective_type,a.progress from rune_delve_active_quests a join rune_delve_quest_definitions d on d.id=a.quest_id where a.user_id=$1 and d.id like 'producer_%'",[id(uid)])).rows.map(row=>[row.objective_type,row.progress]));
+const producerProgress = async (uid) =>
+  Object.fromEntries(
+    (
+      await db.query(
+        "select d.objective_type,a.progress from rune_delve_active_quests a join rune_delve_quest_definitions d on d.id=a.quest_id where a.user_id=$1 and d.id like 'producer_%'",
+        [id(uid)],
+      )
+    ).rows.map((row) => [row.objective_type, row.progress]),
+  );
 await check(
   "daily bests and streaks update atomically while only the first attempt pays",
   async () => {
@@ -321,23 +350,48 @@ await check(
     assert.equal((await one("rune_delve_wallet")).shards, before.shards + 25);
   },
 );
-await check('daily completion and actual reward volumes advance quests once per acknowledged day',async()=>{
-  assert.deepEqual(await producerProgress(1),{daily_challenges_completed:1,class_run_complete:1,enemies_defeated:0,total_score:10,shards_earned:25,class_xp_earned:0,bosses_defeated:0});
-  await actor(2);
-  const first=await rpc('rune_delve_save_daily',[8,2500,'mage',id(310)]);
-  assert.equal(first.reward.shards,75);assert.equal(first.reward.xp,80);
-  const expected={daily_challenges_completed:1,class_run_complete:1,enemies_defeated:8,total_score:2500,shards_earned:75,class_xp_earned:80,bosses_defeated:0};
-  assert.deepEqual(await producerProgress(2),expected);
-  await rpc('rune_delve_save_daily',[8,2500,'mage',id(310)]);
-  await rpc('rune_delve_save_daily',[10,3500,'mage',id(311)]);
-  assert.deepEqual(await producerProgress(2),expected);
-  await actor(1);
-});
+await check(
+  "daily completion and actual reward volumes advance quests once per acknowledged day",
+  async () => {
+    assert.deepEqual(await producerProgress(1), {
+      daily_challenges_completed: 1,
+      class_run_complete: 1,
+      enemies_defeated: 0,
+      total_score: 10,
+      shards_earned: 25,
+      class_xp_earned: 0,
+      bosses_defeated: 0,
+    });
+    await actor(2);
+    const first = await rpc("rune_delve_save_daily", [
+      8,
+      2500,
+      "mage",
+      id(310),
+    ]);
+    assert.equal(first.reward.shards, 75);
+    assert.equal(first.reward.xp, 80);
+    const expected = {
+      daily_challenges_completed: 1,
+      class_run_complete: 1,
+      enemies_defeated: 8,
+      total_score: 2500,
+      shards_earned: 75,
+      class_xp_earned: 80,
+      bosses_defeated: 0,
+    };
+    assert.deepEqual(await producerProgress(2), expected);
+    await rpc("rune_delve_save_daily", [8, 2500, "mage", id(310)]);
+    await rpc("rune_delve_save_daily", [10, 3500, "mage", id(311)]);
+    assert.deepEqual(await producerProgress(2), expected);
+    await actor(1);
+  },
+);
 await check(
   "quest counters use relative increments and quest claims pay XP and shards together once",
   async () => {
     await owner(
-      "insert into rune_delve_quest_definitions values('hunt','Monster Hunt','daily','enemies_defeated',70,200,false,null)",
+      "insert into rune_delve_quest_definitions(id,title,description,scope,objective_type,shard_reward,xp_reward,is_personal,hero_class) values('hunt','Monster Hunt','Defeat monsters','daily','enemies_defeated',70,200,false,null)",
     );
     await owner(
       "insert into rune_delve_active_quests(id,user_id,quest_id,scope,period_key,progress,target_value,status) values($1,$2,'hunt','daily',to_char(now() at time zone 'UTC','YYYY-MM-DD'),0,2,'active')",
@@ -411,23 +465,314 @@ await check(
     assert.equal(repeat.shardsAwarded, 58); // Replay 3+floor(50/10), plus boss 50; no second chapter bonus.
   },
 );
-await check('banked Expedition score/shards and full-clear milestones advance real quest counters exactly once',async()=>{
-  await db.exec('reset role');
-  await db.exec(`create table clubs(id uuid primary key);create table club_members(user_id uuid,club_id uuid);create table platform_assets(id uuid primary key,slug text);create table club_installed_assets(club_id uuid,asset_id uuid,enabled boolean);
+await check(
+  "banked Expedition score/shards and full-clear milestones advance real quest counters exactly once",
+  async () => {
+    await db.exec("reset role");
+    await db.exec(`create table platform_assets(id uuid primary key,slug text);create table club_installed_assets(club_id uuid,asset_id uuid,enabled boolean);
     insert into clubs values('${id(10)}');insert into club_members values('${id(1)}','${id(10)}');insert into platform_assets values('${id(20)}','rune-delve');insert into club_installed_assets values('${id(10)}','${id(20)}',true);`);
-  await db.exec(await readFile('supabase/migrations/20261030140000_rune_delve_expeditions.sql','utf8'));
-  await db.exec('set role authenticated');
-  const before=await producerProgress(1);
-  await rpc('rune_delve_expedition_begin',[id(800),id(10),'warrior',0]);
-  await rpc('rune_delve_expedition_finish',[id(800),6,3000,42,true]);
-  const expected={...before,total_score:before.total_score+3000,shards_earned:before.shards_earned+112,class_run_complete:before.class_run_complete+1,bosses_defeated:before.bosses_defeated+1};
-  assert.deepEqual(await producerProgress(1),expected);
-  await rpc('rune_delve_expedition_finish',[id(800),6,3000,42,true]);
-  assert.deepEqual(await producerProgress(1),expected);
-  await rpc('rune_delve_expedition_begin',[id(801),id(10),'warrior',1]);
-  await rpc('rune_delve_expedition_finish',[id(801),3,600,20,false]);
-  assert.deepEqual(await producerProgress(1),{...expected,total_score:expected.total_score+600,shards_earned:expected.shards_earned+42});
-});
+    await db.exec(
+      await readFile(
+        "supabase/migrations/20261030140000_rune_delve_expeditions.sql",
+        "utf8",
+      ),
+    );
+    await db.exec("set role authenticated");
+    const before = await producerProgress(1);
+    await rpc("rune_delve_expedition_begin", [id(800), id(10), "warrior", 0]);
+    await rpc("rune_delve_expedition_finish", [id(800), 6, 3000, 42, true]);
+    const expected = {
+      ...before,
+      total_score: before.total_score + 3000,
+      shards_earned: before.shards_earned + 112,
+      class_run_complete: before.class_run_complete + 1,
+      bosses_defeated: before.bosses_defeated + 1,
+    };
+    assert.deepEqual(await producerProgress(1), expected);
+    await rpc("rune_delve_expedition_finish", [id(800), 6, 3000, 42, true]);
+    assert.deepEqual(await producerProgress(1), expected);
+    await rpc("rune_delve_expedition_begin", [id(801), id(10), "warrior", 1]);
+    await rpc("rune_delve_expedition_finish", [id(801), 3, 600, 20, false]);
+    assert.deepEqual(await producerProgress(1), {
+      ...expected,
+      total_score: expected.total_score + 600,
+      shards_earned: expected.shards_earned + 42,
+    });
+  },
+);
+const campaignTypes = [
+  "levels_cleared",
+  "longest_chain",
+  "no_damage_clear",
+  "total_score",
+  "enemies_defeated",
+  "class_run_complete",
+  "abilities_used",
+  "daily_challenges_completed",
+  "bosses_defeated",
+  "shards_earned",
+  "high_level_clears",
+  "class_xp_earned",
+];
+for (const [index, type] of campaignTypes.entries()) {
+  await owner(
+    "insert into rune_delve_quest_definitions(id,title,description,scope,objective_type) values($1,$1,$1,'weekly',$2)",
+    ["campaign_" + type, type],
+  );
+  await owner(
+    "insert into rune_delve_active_quests(id,user_id,quest_id,scope,period_key,target_value) values($1,$2,$3,'weekly',to_char(now() at time zone 'UTC','IYYY-\"W\"IW'),$4)",
+    [
+      id(900 + index),
+      id(1),
+      "campaign_" + type,
+      type === "no_damage_clear" ? 1 : 100000,
+    ],
+  );
+}
+const campaignProgress = async () =>
+  Object.fromEntries(
+    (
+      await db.query(
+        "select d.objective_type,a.progress from rune_delve_active_quests a join rune_delve_quest_definitions d on d.id=a.quest_id where a.user_id=$1 and d.id like 'campaign_%'",
+        [id(1)],
+      )
+    ).rows.map((row) => [row.objective_type, row.progress]),
+  );
+await check(
+  "campaign quests commit with the run receipt, including ability/boss telemetry and actual paid XP",
+  async () => {
+    const payload = {
+      score: 9000,
+      enemies_defeated: 3,
+      longest_chain: 10,
+      ability_used: true,
+      quest_context: {
+        abilities_used: 2,
+        bosses_defeated: 1,
+        no_damage_clear: true,
+      },
+    };
+    const receipt = await save(920, payload);
+    assert.equal(receipt.xpAwarded, 140);
+    assert.deepEqual(receipt.completedQuests, ["campaign_no_damage_clear"]);
+    const expected = {
+      levels_cleared: 1,
+      longest_chain: 10,
+      no_damage_clear: 1,
+      total_score: 9000,
+      enemies_defeated: 3,
+      class_run_complete: 1,
+      abilities_used: 2,
+      daily_challenges_completed: 0,
+      bosses_defeated: 1,
+      shards_earned: receipt.shardsAwarded,
+      high_level_clears: 0,
+      class_xp_earned: 140,
+    };
+    assert.deepEqual(await campaignProgress(), expected);
+    assert.deepEqual(await save(920, payload), receipt);
+    assert.deepEqual(await campaignProgress(), expected);
+    const failed = await save(921, {
+      score: 100,
+      dungeon_cleared: false,
+      enemies_defeated: 0,
+      ability_used: false,
+      quest_context: {
+        abilities_used: 999,
+        bosses_defeated: 999,
+        no_damage_clear: true,
+      },
+    });
+    assert.deepEqual(await campaignProgress(), {
+      ...expected,
+      total_score: 9100,
+      class_run_complete: 2,
+      shards_earned: expected.shards_earned + failed.shardsAwarded,
+    });
+  },
+);
+await check(
+  "a quest-write failure rolls back the campaign payment and preserves a retryable action",
+  async () => {
+    const beforeWallet = await one("rune_delve_wallet");
+    const beforeRun = await one("rune_delve_runs");
+    const before = await campaignProgress();
+    await owner(
+      "alter table rune_delve_active_quests add constraint test_campaign_quest_guard check(quest_id<>'campaign_class_run_complete' or progress<=2)",
+    );
+    await assert.rejects(
+      save(922, { score: 200, quest_context: {} }),
+      /test_campaign_quest_guard/,
+    );
+    assert.equal((await one("rune_delve_wallet")).shards, beforeWallet.shards);
+    assert.equal((await one("rune_delve_runs")).attempts, beforeRun.attempts);
+    assert.deepEqual(await campaignProgress(), before);
+    await owner(
+      "alter table rune_delve_active_quests drop constraint test_campaign_quest_guard",
+    );
+    await save(922, { score: 200, quest_context: {} });
+    assert.equal((await campaignProgress()).class_run_complete, 3);
+  },
+);
+await check(
+  "cached clients without quest_context retain one client producer and unchanged receipt retries",
+  async () => {
+    const before = await campaignProgress();
+    const receipt = await save(926, { score: 300, ability_used: true });
+    assert.deepEqual(receipt.completedQuests, []);
+    assert.deepEqual(await campaignProgress(), before);
+    assert.deepEqual(
+      await save(926, { score: 300, ability_used: true }),
+      receipt,
+    );
+    assert.deepEqual(await campaignProgress(), before);
+    // The currently deployed page reports after receiving its run response.
+    await rpc("rune_delve_report_quest", [
+      {
+        type: "class_run_complete",
+        amount: 1,
+        heroClass: "warrior",
+        questIds: [id(905)],
+      },
+    ]);
+    assert.deepEqual(await campaignProgress(), {
+      ...before,
+      class_run_complete: before.class_run_complete + 1,
+    });
+  },
+);
+await check(
+  "boss failure rewards include bounded phase progress and match the preview equation",
+  async () => {
+    const boss = await rpc("rune_delve_ensure_level", [definition(75)]);
+    await owner(
+      "update rune_delve_class_progress set highest_unlocked_level=75 where user_id=$1 and class='warrior'",
+      [id(1)],
+    );
+    const payload = {
+      level_id: boss.id,
+      level_number: 75,
+      score: 1,
+      dungeon_cleared: false,
+      enemies_defeated: 0,
+      turns_used: 18,
+      reward_context: {
+        turn_limit: 18,
+        total_enemies: 1,
+        boss_rule: true,
+        boss_phase_reached: 0,
+      },
+    };
+    assert.equal((await save(923, payload)).shardsAwarded, 9);
+    await owner(
+      "update rune_delve_failure_rewards set failure_count=0 where user_id=$1 and level_number=75",
+      [id(1)],
+    );
+    assert.equal(
+      (
+        await save(924, {
+          ...payload,
+          reward_context: { ...payload.reward_context, boss_phase_reached: 3 },
+        })
+      ).shardsAwarded,
+      13,
+    );
+    await owner(
+      "update rune_delve_failure_rewards set failure_count=0 where user_id=$1 and level_number=75",
+      [id(1)],
+    );
+    assert.equal(
+      (
+        await save(925, {
+          ...payload,
+          reward_context: {
+            ...payload.reward_context,
+            boss_phase_reached: 999,
+          },
+        })
+      ).shardsAwarded,
+      13,
+    );
+  },
+);
+await check(
+  "account saves survive club transfers while shared reads follow current membership and private exclusions",
+  async () => {
+    await owner("insert into clubs values($1),($2)", [id(40), id(41)]);
+    await owner("update club_members set club_id=$1 where user_id=$2", [
+      id(40),
+      id(1),
+    ]);
+    for (const n of [3, 4, 5, 6, 7]) {
+      await owner("insert into auth.users values($1)", [id(n)]);
+      await owner("insert into club_members values($1,$2)", [
+        id(n),
+        n === 4 ? "11111111-1111-1111-1111-111111111111" : id(40),
+      ]);
+    }
+    await owner("insert into dh_private_accounts values($1,$2)", [
+      id(5),
+      id(41),
+    ]);
+    for (const n of [3, 4, 5, 6]) {
+      const origin = n === 6 ? id(41) : "11111111-1111-1111-1111-111111111111";
+      await owner(
+        "insert into rune_delve_heroes(user_id,club_id) values($1,$2)",
+        [id(n), origin],
+      );
+      await owner(
+        "insert into rune_delve_class_progress(user_id,class,club_id) values($1,'warrior',$2)",
+        [id(n), origin],
+      );
+      await owner(
+        "insert into rune_delve_progress(user_id,club_id) values($1,$2)",
+        [id(n), origin],
+      );
+      await owner(
+        "insert into rune_delve_runs(user_id,hero_class,club_id) values($1,'warrior',$2)",
+        [id(n), origin],
+      );
+      await owner(
+        "insert into rune_delve_daily_runs(user_id,daily_date,hero_class,club_id) values($1,current_date,'warrior',$2)",
+        [id(n), origin],
+      );
+    }
+    for (const table of [
+      "rune_delve_heroes",
+      "rune_delve_class_progress",
+      "rune_delve_progress",
+      "rune_delve_runs",
+      "rune_delve_daily_runs",
+    ]) {
+      const visible = (
+        await db.query(`select distinct user_id from ${table} order by user_id`)
+      ).rows.map((row) => row.user_id);
+      assert.deepEqual(visible, [id(1), id(3)], table);
+    }
+    await actor(7);
+    await db.query("insert into rune_delve_heroes(user_id) values($1)", [
+      id(7),
+    ]);
+    assert.equal(
+      (
+        await db.query(
+          "select club_id from rune_delve_heroes where user_id=auth.uid()",
+        )
+      ).rows[0].club_id,
+      id(40),
+    );
+    await actor(5);
+    assert.equal(
+      (
+        await db.query(
+          "select count(*)::integer n from rune_delve_heroes where user_id=auth.uid()",
+        )
+      ).rows[0].n,
+      1,
+    );
+    await actor(1);
+  },
+);
 await check(
   "receipts remain private and the internal XP helper cannot be called by a member",
   async () => {

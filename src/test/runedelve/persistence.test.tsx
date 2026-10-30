@@ -217,6 +217,27 @@ describe("Rune Delve reliable persistence", () => {
     });
   });
 
+  it("keeps a checkpoint's frozen receipt across an acknowledged response and page remount", async () => {
+    state.rpc.mockResolvedValue({ data: saved, error: null });
+    const pending = { ...input, request_id: "frozen-campaign-receipt" };
+    const first = renderHook(() => useSubmitLevelRun(), { wrapper: wrapper() });
+    await act(async () => {
+      await first.result.current.mutateAsync(pending);
+    });
+    first.unmount();
+    const resumed = renderHook(() => useSubmitLevelRun(), {
+      wrapper: wrapper(),
+    });
+    await act(async () => {
+      await resumed.result.current.mutateAsync(pending);
+    });
+    for (const call of state.rpc.mock.calls) {
+      expect(call[1].p_request_id).toBe("frozen-campaign-receipt");
+      expect(call[1].p_run).toEqual(input);
+      expect(call[1].p_run).not.toHaveProperty("request_id");
+    }
+  });
+
   it("persists unacknowledged action identity across a page remount", () => {
     const first = renderHook(() => useRuneActionIds());
     const id = first.result.current.get("player:run:payload");
@@ -259,20 +280,53 @@ describe("Rune Delve reliable persistence", () => {
   });
 
   it("keeps a daily checkpoint receipt stable when an uncertain save is retried after midnight", async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.useFakeTimers({ toFake: ["Date"] });
     try {
-      vi.setSystemTime(new Date('2026-10-30T23:59:59Z'));
-      const acknowledgement = { stars: 1, reward: { shards: 75, xp: 80 }, dateStr: '2026-10-30', kills: 8, rewarded: true };
-      state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'Lost acknowledgement' } }).mockResolvedValueOnce({ data: acknowledgement, error: null });
-      const input = { kills: 8, score: 2500, heroClass: 'warrior' as const, requestId: '00000000-0000-4000-8000-000000000999' };
-      const first = renderHook(() => useSubmitDailyRun(), { wrapper: wrapper() });
-      await act(async () => { await expect(first.result.current.mutateAsync(input)).rejects.toMatchObject({ message: 'Lost acknowledgement' }); });
+      vi.setSystemTime(new Date("2026-10-30T23:59:59Z"));
+      const acknowledgement = {
+        stars: 1,
+        reward: { shards: 75, xp: 80 },
+        dateStr: "2026-10-30",
+        kills: 8,
+        rewarded: true,
+      };
+      state.rpc
+        .mockResolvedValueOnce({
+          data: null,
+          error: { message: "Lost acknowledgement" },
+        })
+        .mockResolvedValueOnce({ data: acknowledgement, error: null });
+      const input = {
+        kills: 8,
+        score: 2500,
+        heroClass: "warrior" as const,
+        requestId: "00000000-0000-4000-8000-000000000999",
+      };
+      const first = renderHook(() => useSubmitDailyRun(), {
+        wrapper: wrapper(),
+      });
+      await act(async () => {
+        await expect(
+          first.result.current.mutateAsync(input),
+        ).rejects.toMatchObject({ message: "Lost acknowledgement" });
+      });
       first.unmount();
-      vi.setSystemTime(new Date('2026-10-31T00:00:01Z'));
-      const resumed = renderHook(() => useSubmitDailyRun(), { wrapper: wrapper() });
-      await act(async () => { expect(await resumed.result.current.mutateAsync(input)).toEqual(acknowledgement); });
-      expect(state.rpc.mock.calls.map(call => call[1].p_request_id)).toEqual([input.requestId, input.requestId]);
-    } finally { vi.useRealTimers(); }
+      vi.setSystemTime(new Date("2026-10-31T00:00:01Z"));
+      const resumed = renderHook(() => useSubmitDailyRun(), {
+        wrapper: wrapper(),
+      });
+      await act(async () => {
+        expect(await resumed.result.current.mutateAsync(input)).toEqual(
+          acknowledgement,
+        );
+      });
+      expect(state.rpc.mock.calls.map((call) => call[1].p_request_id)).toEqual([
+        input.requestId,
+        input.requestId,
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("sends equipment through the owned-slot RPC and never duplicates a relic", async () => {

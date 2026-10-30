@@ -10,6 +10,7 @@ import {
 import { getClass, type HeroClass } from "@/lib/runedelve/classConfig";
 import { ClassBadge } from "./ClassBadge";
 import { useSheetSfx } from "@/hooks/useSheetSfx";
+import { useRuneDialogFocus } from "./useRuneDialogFocus";
 
 interface Props {
   open: boolean;
@@ -46,10 +47,12 @@ const RUNES = [
 /** Teach the gesture and payoff visually; the codex holds the deeper rules. */
 export function HowToPlaySheet({ open, onOpenChange, heroClass }: Props) {
   useSheetSfx(open);
+  const focus = useRuneDialogFocus();
   const cls = heroClass ? getClass(heroClass) : null;
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
+        {...focus}
         side="bottom"
         className="rd-dialog-theme max-h-[90dvh] overflow-y-auto rounded-t-3xl px-5 pb-6 pt-5"
       >

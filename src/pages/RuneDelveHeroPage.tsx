@@ -222,7 +222,11 @@ export default function RuneDelveHeroPage() {
             <span>
               {lvl.intoLevel}/{lvl.needed} XP
             </span>
-            <span>Next · Level {lvl.level + 1}</span>
+            <span>
+              {activeLevel >= 150
+                ? "Class mastered"
+                : `Next · Level ${activeLevel + 1}`}
+            </span>
           </div>
           {nextMastery && (
             <p className="rd-menu-note mt-2">

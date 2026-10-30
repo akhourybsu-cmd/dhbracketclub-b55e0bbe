@@ -50,6 +50,7 @@ function checkpoint() {
     aegisFired: true,
     tookDamage: true,
     masteryIds: ["warrior_t4_panic_shield"],
+    bossPhases: [["boss-1", 3]],
   });
 }
 
@@ -72,6 +73,7 @@ describe("complete Rune Delve battle checkpoints", () => {
     ]);
     expect(loaded?.bonusShardsFromTreasure).toBe(10);
     expect(loaded?.aegisFired).toBe(true);
+    expect(loaded?.bossPhases).toEqual([["boss-1", 3]]);
   });
 
   it("rejects old incomplete checkpoints and malformed grids without crashing", () => {

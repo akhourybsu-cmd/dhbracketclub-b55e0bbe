@@ -22,6 +22,12 @@ const routes = [
   ["shop", "/rune-delve/shop"],
   ["hero", "/rune-delve/hero"],
   ["daily", "/rune-delve/daily"],
+  ["quests", "/rune-delve/quests", "archive"],
+  ["bestiary", "/rune-delve/bestiary", "archive"],
+  ["history", "/rune-delve/history", "archive"],
+  ["leaderboard", "/rune-delve/leaderboard", "archive"],
+  ["result-victory", "/rune-delve/results/1", "archive"],
+  ["result-defeat", "/rune-delve/results/2", "archive"],
   ["combat", "/rune-delve/play/1"],
   ["expedition", "/rune-delve/expedition"],
   ["arena", "/rune-delve/endless"],
@@ -127,18 +133,41 @@ async function checkDailyArena() {
   const page = await setup();
   await page.clock.install({ time: new Date("2026-10-30T12:00:00Z") });
   await go(page, "/rune-delve/endless");
-  await expect(page.getByRole("button", { name: "Begin arena", exact: true })).toBeVisible();
-  await page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + 1000));
+  await expect(
+    page.getByRole("button", { name: "Begin arena", exact: true }),
+  ).toBeVisible();
+  await page.clock.pauseAt(
+    new Date((await page.evaluate(() => Date.now())) + 1000),
+  );
   await page.getByRole("button", { name: "Begin arena", exact: true }).click();
   await expect(page.locator("button[data-rune-cell]")).toHaveCount(25);
-  const initialArenaKey = await page.evaluate(() => Object.keys(sessionStorage).find(key => key.startsWith("rd-arena-v1:")));
-  await page.getByRole("button", { name: /^Inspect / }).first().click();
+  const initialArenaKey = await page.evaluate(() =>
+    Object.keys(sessionStorage).find((key) => key.startsWith("rd-arena-v1:")),
+  );
+  await page
+    .getByRole("button", { name: /^Inspect / })
+    .first()
+    .click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  const beforeInspect = await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), initialArenaKey);
+  const beforeInspect = await page.evaluate(
+    (key) => JSON.parse(sessionStorage.getItem(key)),
+    initialArenaKey,
+  );
   await page.clock.runFor(5000);
-  const afterInspect = await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), initialArenaKey);
-  assert.equal(afterInspect.elapsed, beforeInspect.elapsed, "Enemy inspection freezes active-play time");
-  assert.equal(afterInspect.combat.hp, beforeInspect.combat.hp, "Enemy inspection prevents timer damage");
+  const afterInspect = await page.evaluate(
+    (key) => JSON.parse(sessionStorage.getItem(key)),
+    initialArenaKey,
+  );
+  assert.equal(
+    afterInspect.elapsed,
+    beforeInspect.elapsed,
+    "Enemy inspection freezes active-play time",
+  );
+  assert.equal(
+    afterInspect.combat.hp,
+    beforeInspect.combat.hp,
+    "Enemy inspection prevents timer damage",
+  );
   await expect(page.locator("button[data-rune-cell]").first()).toBeDisabled();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
@@ -215,13 +244,17 @@ async function checkDailyArena() {
     );
     sessionStorage.setItem(key, JSON.stringify(run));
   }, arenaKey);
-  await page.evaluate(() => sessionStorage.setItem("__rune-qa-next-arena", "mana"));
+  await page.evaluate(() =>
+    sessionStorage.setItem("__rune-qa-next-arena", "mana"),
+  );
   await page.clock.resume();
   await page.reload({ waitUntil: "networkidle" });
   await expect(
     page.getByText("Arena paused · your run is saved.", { exact: true }),
   ).toBeVisible();
-  await page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + 1000));
+  await page.clock.pauseAt(
+    new Date((await page.evaluate(() => Date.now())) + 1000),
+  );
   await page
     .getByRole("button", { name: "Resume arena", exact: true })
     .last()
@@ -259,11 +292,17 @@ async function checkDailyArena() {
     run.combat.totalDamage = 800;
     sessionStorage.setItem(key, JSON.stringify(run));
   }, arenaKey);
-  await page.evaluate(() => sessionStorage.setItem("__rune-qa-next-arena", "timeout"));
+  await page.evaluate(() =>
+    sessionStorage.setItem("__rune-qa-next-arena", "timeout"),
+  );
   await page.clock.resume();
   await page.reload({ waitUntil: "networkidle" });
-  await expect(page.getByText("Arena paused · your run is saved.", { exact: true })).toBeVisible();
-  await page.clock.pauseAt(new Date((await page.evaluate(() => Date.now())) + 1000));
+  await expect(
+    page.getByText("Arena paused · your run is saved.", { exact: true }),
+  ).toBeVisible();
+  await page.clock.pauseAt(
+    new Date((await page.evaluate(() => Date.now())) + 1000),
+  );
   await page.evaluate(() =>
     window.runeQa.failRpc.push("rune_delve_save_daily"),
   );
@@ -356,9 +395,9 @@ try {
     ]) {
       for (const theme of ["light", "dark"]) {
         const page = await setup(width, height);
-        for (const [name, route] of routes) {
+        for (const [name, route, scenario = "full"] of routes) {
           console.log("Checking", width + "×" + height, theme, name);
-          await go(page, route, theme);
+          await go(page, route, theme, scenario);
           await noOverflow(page, name);
           await expect(
             page.getByRole("heading", { name: "App destination reached" }),
@@ -862,7 +901,9 @@ try {
   await checkDailyArena();
   assert.deepEqual(errors, [], "No uncaught runtime errors");
   console.log(
-    process.env.RUNE_QA_INTERACTIONS_ONLY ? "PASS interactions:" : "PASS five viewports/both themes and interactions:",
+    process.env.RUNE_QA_INTERACTIONS_ONLY
+      ? "PASS interactions:"
+      : "PASS five viewports/both themes and interactions:",
     "strict-mode single chain commit, pointer cancel, checkpoint restore, class equipment, atomic purchases/upgrades, tier gating, error recovery, hero creation, Expedition blessings/routes/reward retry, Daily Arena inspection/pause/rapid actions/save retry and replay gate.",
   );
 } finally {

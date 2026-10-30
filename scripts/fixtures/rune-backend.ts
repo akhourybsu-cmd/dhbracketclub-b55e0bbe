@@ -3,6 +3,11 @@ import { generateLevel } from "../../src/lib/runedelve/levelGenerator";
 import { CLASS_LIST, titleForLevel } from "../../src/lib/runedelve/classConfig";
 import { RELIC_CATALOG, rankCost } from "../../src/lib/runedelve/relics";
 import { expeditionReward } from "../../src/lib/runedelve/expedition";
+import { BESTIARY_ROSTER } from "../../src/lib/runedelve/enemyRoster";
+import {
+  dailyPeriodKey,
+  weeklyPeriodKey,
+} from "../../src/lib/runedelve/quests";
 import {
   endlessRewardFor,
   endlessStarsFor,
@@ -127,12 +132,92 @@ const tables: Record<string, any[]> = {
   channel_notification_prefs: [],
   dh_feat_accounts: [],
 };
+// Rich records are opt-in so the existing empty-state and economy checks keep
+// their own baseline. These are data fixtures; gameplay is never replaced.
+if (scenario === "archive") {
+  tables.rune_delve_runs = [1, 2, 17].map((level, index) => ({
+    id: `history-${level}`,
+    user_id: uid,
+    level_id: levelId(level),
+    level_number: level,
+    hero_class: heroClass,
+    score: 1234 + index * 500,
+    total_damage: 150 + index * 40,
+    enemies_defeated: 2 + index,
+    longest_chain: 6 + index,
+    dungeon_cleared: level !== 2,
+    hp_remaining: level === 2 ? 0 : 50,
+    turns_used: 10,
+    best_turns_used: level === 2 ? null : 10,
+    xp_earned: 100,
+    attempts: 3,
+    clears: level === 2 ? 0 : 2,
+    completed_at: date,
+  }));
+  tables.rune_delve_daily_runs = [
+    {
+      id: "daily-history",
+      user_id: uid,
+      daily_date: date.slice(0, 10),
+      score: 3456,
+      stars: 2,
+      dungeon_cleared: false,
+      modifiers: [],
+      hero_class: heroClass,
+      completed_at: date,
+      kills_count: 17,
+    },
+  ];
+  tables.rune_delve_bestiary = BESTIARY_ROSTER.slice(0, 6).map(
+    (enemy, index) => ({
+      id: `bestiary-${index}`,
+      user_id: uid,
+      archetype_id: enemy.id,
+      defeat_count: index + 1,
+      first_defeated_at: date,
+      last_defeated_at: date,
+      highest_level_defeated: 17,
+      created_at: date,
+      updated_at: date,
+    }),
+  );
+  for (const scope of ["daily", "weekly"]) {
+    for (let index = 0; index < 3; index++) {
+      const id = `${scope}-quest-${index}`;
+      tables.rune_delve_quest_definitions.push({
+        id,
+        scope,
+        title: `${scope === "daily" ? "Daily" : "Weekly"} ${["Delver", "Chainweaver", "Class trial"][index]}`,
+        description: "Complete campaign encounters to earn Rune Shards.",
+        objective_type: "levels_cleared",
+        target_value: index + 1,
+        shard_reward: 25 + index * 10,
+        xp_reward: 20,
+        is_personal: index === 2,
+        hero_class: index === 2 ? heroClass : null,
+        weight: 1,
+      });
+      tables.rune_delve_active_quests.push({
+        id: `active-${id}`,
+        user_id: uid,
+        quest_id: id,
+        scope,
+        period_key: scope === "daily" ? dailyPeriodKey() : weeklyPeriodKey(),
+        progress: index === 0 ? 1 : 0,
+        target_value: index + 1,
+        status: index === 0 ? "completed" : "active",
+        claimed_at: null,
+      });
+    }
+  }
+}
 export const qa = {
   tables,
   queries: [] as any[],
   writes: [] as any[],
   rpcs: [] as any[],
-  failTables: (scenario === "offline" ? ["rune_delve_heroes"] : []) as string[],
+  failTables: (params.get("fail")?.split(",") ||
+    (scenario === "offline" ? ["rune_delve_heroes"] : [])) as string[],
   failRpc: [] as string[],
   delayTables: {} as Record<string, number>,
 };
@@ -395,6 +480,10 @@ async function rpc(name: string, args: any = {}) {
       (row) =>
         row.level_id === run.level_id && row.hero_class === run.hero_class,
     );
+    const oldScore = existing?.score ?? 0;
+    const oldAttempts = existing?.attempts ?? 0;
+    const oldClears = existing?.clears ?? 0;
+    const oldBestTurns = existing?.best_turns_used;
     const row = existing || {
       id: crypto.randomUUID(),
       user_id: uid,
@@ -402,16 +491,58 @@ async function rpc(name: string, args: any = {}) {
       attempts: 0,
       clears: 0,
     };
-    const isBest = !existing || run.score > existing.score;
+    const isBest = !existing || run.score > oldScore;
     const firstClear = run.dungeon_cleared && !existing?.dungeon_cleared;
     Object.assign(row, run, {
-      score: Math.max(row.score || 0, run.score),
-      attempts: (row.attempts || 0) + 1,
-      clears: (row.clears || 0) + Number(run.dungeon_cleared),
+      score: Math.max(oldScore, run.score),
+      attempts: oldAttempts + 1,
+      clears: oldClears + Number(run.dungeon_cleared),
+      dungeon_cleared: !!existing?.dungeon_cleared || !!run.dungeon_cleared,
+      best_turns_used: run.dungeon_cleared
+        ? Math.min(oldBestTurns ?? Infinity, run.turns_used)
+        : (oldBestTurns ?? null),
       last_played_at: date,
       completed_at: date,
     });
     if (!existing) tables.rune_delve_runs.push(row);
+    const wallet = tables.rune_delve_wallet[0];
+    const shards = run.dungeon_cleared ? 60 : 12;
+    wallet.shards += shards;
+    wallet.lifetime_shards_earned += shards;
+    const track = tables.rune_delve_class_progress.find(
+      (entry) => entry.class === run.hero_class,
+    );
+    const previousClassLevel = track?.level ?? 1;
+    if (track) {
+      track.xp += run.xp_earned || 0;
+      track.lifetime_runs += 1;
+      track.lifetime_score += run.score;
+      if (run.dungeon_cleared) {
+        track.highest_completed_level = Math.max(
+          track.highest_completed_level,
+          run.level_number,
+        );
+        track.highest_unlocked_level = Math.max(
+          track.highest_unlocked_level,
+          Math.min(150, run.level_number + 1),
+        );
+        track.total_levels_cleared += Number(firstClear);
+      }
+    }
+    if (run.dungeon_cleared) {
+      const aggregate = tables.rune_delve_progress.find(
+        (entry) => entry.user_id === uid,
+      );
+      aggregate.highest_completed_level = Math.max(
+        aggregate.highest_completed_level,
+        run.level_number,
+      );
+      aggregate.highest_unlocked_level = Math.max(
+        aggregate.highest_unlocked_level,
+        Math.min(150, run.level_number + 1),
+      );
+      aggregate.total_levels_cleared += Number(firstClear);
+    }
     const result = {
       row,
       wasNewBest: isBest,
@@ -419,12 +550,12 @@ async function rpc(name: string, args: any = {}) {
       improvedTurns: !!run.dungeon_cleared,
       improvedHp: !!run.dungeon_cleared,
       firstClear,
-      shardsAwarded: run.dungeon_cleared ? 60 : 12,
+      shardsAwarded: shards,
       xpAwarded: run.xp_earned || 0,
-      previousClassLevel: 8,
-      classLevel: 8,
-      classXp: 1600,
-      cosmeticTitle: "Squire of Steel",
+      previousClassLevel,
+      classLevel: track?.level ?? 1,
+      classXp: track?.xp ?? 0,
+      cosmeticTitle: track?.cosmetic_title ?? null,
       slotsUnlocked: 2,
     };
     receipts.set(args.p_request_id, structuredClone(result));

@@ -10,6 +10,8 @@ Retries with the same request ID and input return that acknowledgement without p
 
 XP comes from the server score formula, with the existing new-personal-best rule. Class XP and lifetime counters use relative additions. Class levels and titles reach level 150. The server computes clear/replay/failure shard bases from saved first-clear state, failure count, equipped owned Compass rank and the path choice. Optional treasure/mastery/secondary-goal telemetry is bounded. Campaign combat remains the existing client simulation; this protocol is a transaction and retry guarantee, not authoritative replay validation.
 
+Migration `20261031020000_rune_delve_quality_fixes.sql` includes bounded boss-phase progress in failed boss rewards and commits campaign quest events with the run receipt when the client includes the explicit `quest_context` handoff. Cached older clients without that field retain their existing client-side reporting, so deploying the migration cannot double-count their events. Kill, chain, score, shard and XP progress use the settled run; ability count, boss defeats and damage-free clears use bounded optional telemetry. Every finished attempt advances run-completion quests; clear quests require a victory. Receipt retries return the original quest-completion acknowledgement without repeating any progress.
+
 `rune_delve_ensure_level(p_definition)` creates a missing canonical chamber ID so member runs always have a valid foreign key. It never overwrites existing chamber rows. The deterministic generator still hydrates all gameplay fields on read.
 
 ## Relics and rewards
@@ -28,6 +30,8 @@ All Rune data hooks use a 12-second request deadline and explicit retry controls
 
 Campaign, daily and chamber standings use the active club's verified public directory. Their cache identities include account and club. Private testing identities are excluded, including from their own competitive standings.
 
+Production account tables retain a historical `club_id` column. New rows inherit the member's current club, while existing rows keep their original values. Account owners can read their saves after a club transfer; peer standings require current shared club membership. The existing restrictive member/workspace privacy policies remain in force. These changes do not rewrite or reset player rows.
+
 ## Expedition DH Feats
 
 Migration `20261031010000_rune_expedition_feats.sql` adds three Rune families: banked rooms, six-room victories and highest cleared expedition tier. The original 63 definitions stay unchanged; the deployed board has 66 families and 329 tier unlocks. The additive client manifest lives in `src/lib/feats/runeExpeditionCatalog.json`; feat actions open `/rune-delve/expedition`.
@@ -42,4 +46,4 @@ RUNE_PGLITE_MODULE=/path/to/pglite/dist/index.js node scripts/test-rune-settleme
 node scripts/test-rune-feats-db.mjs
 ```
 
-The PostgreSQL script creates an isolated in-memory database. It exercises migration reruns, acknowledged retries, best-of merges, class gates, transaction rollback, catalog spending, rank races, equipment validation, daily rewards, quest counters/claims and receipt privileges. Its queued concurrent requests share PGlite's single connection; the SQL per-account locks also serialize independent production connections.
+The PostgreSQL script creates an isolated in-memory database using the production column defaults, nullability, checks, club foreign keys and RLS policies in `scripts/fixtures/rune-schema.sql`. It exercises migration reruns, acknowledged retries, best-of merges, class gates, transaction rollback, catalog spending, rank races, equipment validation, daily rewards, atomic campaign quest sources, boss failure rewards, quest counters/claims, club transfers, private-account exclusions and receipt privileges. Its queued concurrent requests share PGlite's single connection; the SQL per-account locks also serialize independent production connections.

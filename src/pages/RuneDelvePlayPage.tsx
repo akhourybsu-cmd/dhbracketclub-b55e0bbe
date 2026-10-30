@@ -74,7 +74,7 @@ import {
 import { useLoadout } from "@/hooks/useLoadout";
 import { useFailureRow, useRuneWallet } from "@/hooks/useRuneShards";
 import { useRecordDefeats } from "@/hooks/useBestiary";
-import { rosterById, ENEMY_ROSTER } from "@/lib/runedelve/enemyRoster";
+import { rosterById } from "@/lib/runedelve/enemyRoster";
 import { spawnWave } from "@/lib/runedelve/combatEngine";
 import {
   useRelicCollection,
@@ -95,6 +95,7 @@ import {
   compassShardBonus,
   getTelegraphReadyEarly,
   getSealedTilesSpeedup,
+  cleansingTouchHpCost,
   thornsRelicMultiplier,
   getForeseerBonusTurns,
   getVoidPactHpCost,
@@ -153,15 +154,20 @@ import {
 } from "@/lib/runedelve/pathVariants";
 import {
   detectPhaseTransitions,
+  restoreBossPhases,
   applyPhaseDamageBump,
   type BossPhaseIndex,
 } from "@/lib/runedelve/bossPhases";
-import { applyInitialIntents } from "@/lib/runedelve/telegraph";
+import {
+  campaignTurnBudget,
+  prepareCampaignEnemies,
+} from "@/lib/runedelve/campaignEncounter";
 import {
   buildInitialCorruption,
   spreadCorruption,
   resolveChainAgainstCorruption,
   emptyCorruption,
+  CORRUPTION_BITE,
   type CorruptionState,
 } from "@/lib/runedelve/corruptedTiles";
 import {
@@ -191,7 +197,7 @@ import {
   type BossRuleId,
 } from "@/lib/runedelve/bossRules";
 import { useSubmitDailyRun } from "@/hooks/useDailyChallenge";
-import { useReportQuestProgress } from "@/hooks/useQuests";
+import { useActiveQuests } from "@/hooks/useQuests";
 import {
   dailyDamageMultiplier,
   dailyMaxHpMultiplier,
@@ -274,6 +280,14 @@ type ChamberModifiers = {
   waves?: Array<{ enemies: StoredEnemy[]; reinforcement_turns: number }>;
 };
 
+interface RunRewardTotals {
+  goldRunesCleared: number;
+  bonusShardsFromMastery: number;
+  bonusScoreFromTreasure: number;
+  bonusShardsFromTreasure: number;
+  abilityUsedCount: number;
+}
+
 const RUNE_LABEL: Record<RuneType, string> = {
   red: "Crimson",
   blue: "Azure",
@@ -296,7 +310,7 @@ export default function RuneDelvePlayPage() {
   // never enters daily mode — these stubs keep the legacy code paths inert.
   const isDailyMode = false;
   const submitDaily = useSubmitDailyRun();
-  const reportQuestProgress = useReportQuestProgress();
+  useActiveQuests();
   const levelNumber = Math.max(1, parseInt(levelParam ?? "1", 10) || 1);
   const dailyMods: never[] = [];
 
@@ -356,10 +370,12 @@ export default function RuneDelvePlayPage() {
   const [submitting, setSubmitting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const finalizeBusyRef = useRef(false);
+  const settlementConfirmedRef = useRef(false);
   const pendingSaveRef = useRef<SubmitLevelRunInput | null>(null);
   const failedFinalRef = useRef<{
     final: CombatState;
     cleared: boolean;
+    totals: RunRewardTotals;
   } | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -664,6 +680,8 @@ export default function RuneDelvePlayPage() {
     setEndState(null);
     setDroppedRelic(null);
     finalizeBusyRef.current = false;
+    settlementConfirmedRef.current = false;
+    setSubmitting(false);
     pendingSaveRef.current = null;
     failedFinalRef.current = null;
     setSaveError(null);
@@ -673,10 +691,18 @@ export default function RuneDelvePlayPage() {
     // ── Rehydrate path ──────────────────────────────────────────────────
     if (runKey) {
       const snap = loadSnapshot(runKey, level.generation_seed);
-      // Only restore mid-run snapshots — if HP is 0 or no turns remain we
-      // bail to fresh-board so the run actually ends rather than locking
-      // the player on a defeated screen.
-      if (snap && snap.combat.hp > 0 && snap.combat.turnsRemaining > 0) {
+      // An unacknowledged terminal result is as durable as a live board.
+      const pendingSettlement = snap?.pendingSettlement;
+      const hasPendingSettlement =
+        !!pendingSettlement &&
+        pendingSettlement.input.level_id === level.id &&
+        pendingSettlement.input.level_number === level.level_number &&
+        pendingSettlement.input.hero_class === hero.class;
+      if (
+        snap &&
+        (hasPendingSettlement ||
+          (snap.combat.hp > 0 && snap.combat.turnsRemaining > 0))
+      ) {
         setGrid(snap.grid);
         setShift({ column: snap.shiftingColumn ?? -1 });
         setLinkedPairs({ pairs: new Map(snap.linkedPairs ?? []) });
@@ -691,6 +717,10 @@ export default function RuneDelvePlayPage() {
         aegisFiredRef.current = snap.aegisFired ?? false;
         setMasteryIdsSnapshot(snap.masteryIds ?? null);
         setCombat(snap.combat);
+        bossPhasesRef.current = restoreBossPhases(
+          snap.combat.enemies,
+          snap.bossPhases,
+        );
         setSeals(new Set(snap.seals));
         setCorruption({
           cells: new Set(snap.corruption.cells),
@@ -729,6 +759,19 @@ export default function RuneDelvePlayPage() {
           snap.initialTurns ??
           Math.max(level.turn_limit, snap.combat.turnsRemaining);
         tookDamageRef.current = snap.tookDamage ?? true;
+        if (hasPendingSettlement && pendingSettlement) {
+          pendingSaveRef.current = pendingSettlement.input;
+          failedFinalRef.current = {
+            final: snap.combat,
+            cleared: pendingSettlement.cleared,
+            totals: pendingSettlement.totals,
+          };
+          setEndState(pendingSettlement.display);
+          setSaveError(
+            "This result is waiting to be saved. Retry to confirm your rewards.",
+          );
+          return;
+        }
         const turnNow = Math.max(
           1,
           initialTurnsRef.current - snap.combat.turnsRemaining + 1,
@@ -783,86 +826,20 @@ export default function RuneDelvePlayPage() {
     setBonusShardsFromMastery(0);
     setBonusScoreFromTreasure(0);
     setBonusShardsFromTreasure(0);
-    // R5: reset boss-phase tracker on every run-init path (fresh OR
-    // snapshot rehydrate). Snapshot rehydrate re-derives current phase
-    // lazily on the first transition check using the restored HP, so
-    // resuming a backgrounded run picks up the correct boss state.
+    // Fresh runs begin before any boss phase has triggered.
     bossPhasesRef.current = new Map();
     setTotalManaSpent(0);
-    // Name → archetype-id fallback for legacy levels seeded before the roster system.
-    const resolveArchetype = (e: StoredEnemy): string | undefined => {
-      if (e.archetypeId) return e.archetypeId;
-      const raw = String(e.name ?? "")
-        .replace(/^(Elite |Boss |Mini-Boss |Echo of )/, "")
-        .trim()
-        .toLowerCase();
-      if (!raw) return undefined;
-      const hit = ENEMY_ROSTER.find((a) => a.name.toLowerCase() === raw);
-      if (hit) return hit.id;
-      // Common legacy aliases.
-      if (raw === "slime") return "ember_slime";
-      if (raw === "skeleton") return "skeleton_warrior";
-      return undefined;
-    };
-    let enemies: Enemy[] = (level.enemy_config ?? []).map(
-      (e: StoredEnemy, i: number) => ({
-        id: e.id ?? `e${i}`,
-        name: e.name,
-        emoji: e.emoji,
-        hp: e.hp,
-        maxHp: e.maxHp ?? e.hp,
-        damage: e.damage,
-        archetypeId: resolveArchetype(e),
-        family: e.family,
-        role: e.role,
-        ability: e.ability,
-        abilityCooldown: e.abilityCooldown,
-        abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
-        telegraphLabel: e.telegraphLabel,
-        tier: e.tier,
-      }),
-    );
-    // Daily Fogged suppresses all foresight-style effects (Foreseer's Lens
-    // turn bonus + telegraph early-reveal + spawn previews are hidden).
     const foggedActive = isDailyMode && dailyHidesForesight(dailyMods);
-    if (telegraphActive) {
-      enemies = applyInitialIntents(
-        enemies,
-        level.generation_seed,
-        level.level_number,
-      );
-      // Foresight: extend every heavy-strike fuse by N turns so the player
-      // gets more warning + more time to kill the telegraphing enemy before it
-      // unleashes. Raising `intentMax` too means the longer fuse persists after
-      // each strike resets. (Previously this LOWERED the countdown, which made
-      // heavies land SOONER — a strict downgrade for a 350-shard relic.)
-      // Suppressed under Fogged.
-      const earlyTurns = foggedActive ? 0 : getTelegraphReadyEarly(relics);
-      if (earlyTurns > 0) {
-        enemies = enemies.map((e) =>
-          e.intent != null
-            ? {
-                ...e,
-                intent: e.intent + earlyTurns,
-                intentMax: (e.intentMax ?? e.intent) + earlyTurns,
-              }
-            : e,
-        );
-      }
-    }
-    // Daily Greed: enemies enter with +25% HP.
-    // R2: path-variant Elite enemy HP mult composes multiplicatively
-    // with the daily-mode mult so a daily on the Elite Path stacks.
-    const enemyHpMult =
-      (isDailyMode ? dailyEnemyHpMultiplier(dailyMods) : 1) *
-      pathEffect.eliteEnemyHpMult;
-    if (enemyHpMult !== 1) {
-      enemies = enemies.map((e) => ({
-        ...e,
-        hp: Math.max(1, Math.round(e.hp * enemyHpMult)),
-        maxHp: Math.max(1, Math.round((e.maxHp ?? e.hp) * enemyHpMult)),
-      }));
-    }
+    const enemies = prepareCampaignEnemies(level.enemy_config ?? [], {
+      idPrefix: "e",
+      seed: level.generation_seed,
+      level: level.level_number,
+      telegraphed: telegraphActive,
+      foresightTurns: foggedActive ? 0 : getTelegraphReadyEarly(relics),
+      hpMultiplier:
+        (isDailyMode ? dailyEnemyHpMultiplier(dailyMods) : 1) *
+        pathEffect.eliteEnemyHpMult,
+    });
     // Apply pre-run relic effects: starting mana + starting shield, plus
     // Foreseer's Lens (+ turns/level — suppressed by Fogged) and Void Pact.
     const bonusTurns = foggedActive ? 0 : getForeseerBonusTurns(relics);
@@ -926,10 +903,7 @@ export default function RuneDelvePlayPage() {
     setBonusShardsFromMastery(0);
     setBonusScoreFromTreasure(0);
     setBonusShardsFromTreasure(0);
-    // R5: reset boss-phase tracker on every run-init path (fresh OR
-    // snapshot rehydrate). Snapshot rehydrate re-derives current phase
-    // lazily on the first transition check using the restored HP, so
-    // resuming a backgrounded run picks up the correct boss state.
+    // Fresh runs begin before any boss phase has triggered.
     bossPhasesRef.current = new Map();
     setTotalManaSpent(0);
     setGoldRunesCleared(0);
@@ -967,11 +941,24 @@ export default function RuneDelvePlayPage() {
   ]);
 
   // ── Persist snapshot on every meaningful state change ─────────────────
-  // Skipped while there's no live run, after end-state, or when we don't
-  // have a stable key (anonymous user or transient level).
+  // Keep terminal results until the server confirms settlement, as well as
+  // live boards. Anonymous users and transient levels lack a stable key.
   useEffect(() => {
-    if (!runKey || !level || !grid || !combat || endState) return;
-    if (combat.hp <= 0 || combat.turnsRemaining <= 0) return;
+    if (!runKey || !level || !grid || !combat || settlementConfirmedRef.current)
+      return;
+    const pending = failedFinalRef.current;
+    const pendingSettlement =
+      endState && pending && pendingSaveRef.current
+        ? {
+            input: pendingSaveRef.current,
+            cleared: pending.cleared,
+            totals: pending.totals,
+            display: endState,
+          }
+        : undefined;
+    if (endState && !pendingSettlement) return;
+    if (!pendingSettlement && (combat.hp <= 0 || combat.turnsRemaining <= 0))
+      return;
     const snap = buildSnapshot({
       levelNumber: level.level_number,
       generationSeed: level.generation_seed,
@@ -1007,6 +994,8 @@ export default function RuneDelvePlayPage() {
       aegisFired: aegisFiredRef.current,
       tookDamage: tookDamageRef.current,
       masteryIds: activeMasteries,
+      bossPhases: Array.from(bossPhasesRef.current),
+      pendingSettlement,
     });
     saveSnapshot(runKey, snap);
   }, [
@@ -1046,8 +1035,20 @@ export default function RuneDelvePlayPage() {
   useEffect(() => {
     if (!runKey || !level || !grid || !combat) return;
     const flush = () => {
-      if (endState) return;
-      if (combat.hp <= 0 || combat.turnsRemaining <= 0) return;
+      if (settlementConfirmedRef.current) return;
+      const pending = failedFinalRef.current;
+      const pendingSettlement =
+        endState && pending && pendingSaveRef.current
+          ? {
+              input: pendingSaveRef.current,
+              cleared: pending.cleared,
+              totals: pending.totals,
+              display: endState,
+            }
+          : undefined;
+      if (endState && !pendingSettlement) return;
+      if (!pendingSettlement && (combat.hp <= 0 || combat.turnsRemaining <= 0))
+        return;
       const snap = buildSnapshot({
         levelNumber: level.level_number,
         generationSeed: level.generation_seed,
@@ -1083,6 +1084,8 @@ export default function RuneDelvePlayPage() {
         aegisFired: aegisFiredRef.current,
         tookDamage: tookDamageRef.current,
         masteryIds: activeMasteries,
+        bossPhases: Array.from(bossPhasesRef.current),
+        pendingSettlement,
       });
       saveSnapshot(runKey, snap);
     };
@@ -1157,11 +1160,6 @@ export default function RuneDelvePlayPage() {
       setLog((previous) => [...previous, entry].slice(-30));
     }
   }, [grid, seals, eclipse, level, rngTick]);
-
-  // timed out. Subsequent visits to this level start fresh.
-  useEffect(() => {
-    if (endState && runKey) clearSnapshot(runKey);
-  }, [endState, runKey]);
 
   // One-time intro modal for any brand-new mechanic taught at this level.
   useEffect(() => {
@@ -1272,7 +1270,14 @@ export default function RuneDelvePlayPage() {
   }
 
   const objType = level.objective_type as ObjectiveType;
-  const activeTurnBudget = Math.max(level.turn_limit, initialTurnsRef.current);
+  const currentTurnBudget = () =>
+    campaignTurnBudget(
+      initialTurnsRef.current,
+      level.turn_limit,
+      waveDefs,
+      wavesSpawnedRef.current,
+    );
+  const activeTurnBudget = currentTurnBudget();
 
   const handleChain = (chain: Cell[]) => {
     if (!isValidChain(grid, chain, seals, eclipse)) return;
@@ -1283,6 +1288,13 @@ export default function RuneDelvePlayPage() {
       return;
     }
     const type = grid[chain[0].r][chain[0].c];
+    const rewardTotals: RunRewardTotals = {
+      goldRunesCleared,
+      bonusShardsFromMastery,
+      bonusScoreFromTreasure,
+      bonusShardsFromTreasure,
+      abilityUsedCount,
+    };
     // Tiered chain bonus: 6=heavy strike (no free turn), 7=+30% & free turn,
     // 8+=+40% & free turn. Only ONE free turn per enemy cycle.
     const chainPowerTier = chainTier(chain.length);
@@ -1444,6 +1456,8 @@ export default function RuneDelvePlayPage() {
         const shardGain = Math.round(
           treasureHits * TREASURE_SHARD_BONUS * modEff.treasureMult,
         );
+        rewardTotals.bonusScoreFromTreasure += scoreGain;
+        rewardTotals.bonusShardsFromTreasure += shardGain;
         setBonusScoreFromTreasure((s) => s + scoreGain);
         setBonusShardsFromTreasure((s) => s + shardGain);
         pushLog({
@@ -1526,6 +1540,7 @@ export default function RuneDelvePlayPage() {
     if (type === "red") setRedChainCount(redCountAfter);
     // ── Mastery: Rogue T1 Gilded Eye — track gold runes for end-of-run score.
     if (type === "gold") {
+      rewardTotals.goldRunesCleared += chain.length;
       setGoldRunesCleared((g) => g + chain.length);
     }
     // Toast the rogue crit (turnLogs isn't yet allocated at this point).
@@ -1588,6 +1603,7 @@ export default function RuneDelvePlayPage() {
     {
       const perChain = getMasteryShardsPerChain(activeMasteries);
       if (perChain > 0) {
+        rewardTotals.bonusShardsFromMastery += perChain;
         setBonusShardsFromMastery((s) => s + perChain);
       }
     }
@@ -1726,19 +1742,17 @@ export default function RuneDelvePlayPage() {
       const r = resolveChainAgainstCorruption(corruption, chain);
       let hpCost = r.hpCost;
       if (r.sourcesCleared > 0 && has(relics, "cleansing_touch")) {
-        // effectValue returns max free clears (1..2). We've already consumed
-        // `corruptCleansedCount` of them.
-        const freeRemaining = Math.max(
-          0,
-          (relics.ranks.get("cleansing_touch") ?? 1) >= 5
-            ? 2 - corruptCleansedCount
-            : 1 - corruptCleansedCount,
+        hpCost = cleansingTouchHpCost(
+          relics,
+          r.hpCost,
+          r.sourcesCleared,
+          corruptCleansedCount,
+          CORRUPTION_BITE,
         );
-        if (freeRemaining > 0 && hpCost > 0) {
-          hpCost = 0;
+        if (hpCost < r.hpCost) {
           turnLogs.push({
             kind: "info",
-            text: "✨ Cleansing Touch — corruption cost waived",
+            text: "✨ Cleansing Touch — source damage waived",
           });
         }
         setCorruptCleansedCount((c) => c + r.sourcesCleared);
@@ -1811,6 +1825,19 @@ export default function RuneDelvePlayPage() {
       });
     }
 
+    // Kill healing resolves before surviving foes retaliate.
+    if (resolution.enemyKills.length && has(relics, "bloodbond")) {
+      const beforeHeal = next.hp;
+      for (const _kill of resolution.enemyKills)
+        next = onEnemyKilled(relics, next);
+      if (next.hp > beforeHeal)
+        turnLogs.push({
+          kind: "heal",
+          text: "Bloodbond drew vigor from the slain",
+          amount: next.hp - beforeHeal,
+        });
+    }
+
     // Bonus move (rebalanced): only chains of 7+ grant a free action, AND only
     // once per enemy cycle. Chain-6 still gets a damage bump (handled above)
     // but the enemy phase still runs.
@@ -1844,15 +1871,9 @@ export default function RuneDelvePlayPage() {
     if (grantsBonusMove) {
       afterEnemies = next;
     } else if (enemiesAlive) {
-      const originalDamage = next.enemies.map((e) => e.damage);
       const aliveBeforeEnemyPhase = new Set(
         next.enemies.filter((enemy) => enemy.hp > 0).map((enemy) => enemy.id),
       );
-      if (incomingMult !== 1) {
-        next.enemies.forEach((e) => {
-          e.damage = Math.max(0, Math.round(e.damage * incomingMult));
-        });
-      }
       // Count minions already on the board so summon_minion respects its cap.
       const summonsSoFar = next.enemies.filter(
         (e) => e.archetypeId === "bone_husk",
@@ -1865,13 +1886,9 @@ export default function RuneDelvePlayPage() {
         {
           cls: hero.class,
           relicMultiplier: thornsRelicMultiplier(relics),
+          incomingMultiplier: incomingMult,
         },
       );
-      // Restore damage on the post-attack array so future turns aren't permanently softened.
-      afterEnemies.enemies = afterEnemies.enemies.map((e, i) => ({
-        ...e,
-        damage: originalDamage[i] ?? e.damage,
-      }));
       // Apply ability side-effects (corrupt/seal/spawn) to the page-level state.
       // IMPORTANT: corrupt_tile / seal_tile additions are collected into the
       // local `nextCorruption` / `pendingSealAdds` so they merge with the
@@ -1941,6 +1958,7 @@ export default function RuneDelvePlayPage() {
         for (const e of afterEnemies.enemies) {
           if (e.hp <= 0 && aliveBeforeEnemyPhase.has(e.id)) {
             recordKill(e);
+            afterEnemies = onEnemyKilled(relics, afterEnemies);
           }
         }
         // Brief shield-pill pulse to cue the reflect.
@@ -1988,7 +2006,7 @@ export default function RuneDelvePlayPage() {
     } else if (chain.length === 6 && enemiesAlive) {
       turnLogs.push({ kind: "info", text: `Chain x6 — heavy strike!` });
     }
-    if (!grantsBonusMove && enemiesAlive) {
+    if (!grantsBonusMove) {
       setBonusUsedThisCycle(false);
     }
 
@@ -2131,22 +2149,6 @@ export default function RuneDelvePlayPage() {
       }
     }
 
-    // Relic: Bloodbond — heal per kill this turn (rank-aware: 4–6 HP).
-    if (resolution.enemyKills.length && has(relics, "bloodbond")) {
-      const beforeHeal = afterEnemies.hp;
-      let healed = afterEnemies;
-      for (let i = 0; i < resolution.enemyKills.length; i++)
-        healed = onEnemyKilled(relics, healed);
-      afterEnemies = { ...afterEnemies, hp: healed.hp };
-      const gained = afterEnemies.hp - beforeHeal;
-      if (gained > 0)
-        turnLogs.push({
-          kind: "heal",
-          text: "Bloodbond drew vigor from the slain",
-          amount: gained,
-        });
-    }
-
     // ── Mastery: Warrior T4 Brace — first time HP drops below 25% in a run,
     // gain a 2-turn shield. Single-use; only fires when player is still alive.
     if (
@@ -2257,44 +2259,14 @@ export default function RuneDelvePlayPage() {
     const allDead = postWave.enemies.every((e) => e.hp <= 0);
     if (allDead && waveDefs && wavesSpawnedRef.current < waveDefs.length) {
       const nextWave = waveDefs[wavesSpawnedRef.current];
-      // Hydrate stored wave enemies (same archetype-id resolver as wave 1).
-      const resolveAid = (e: StoredEnemy): string | undefined => {
-        if (e.archetypeId) return e.archetypeId;
-        const raw = String(e.name ?? "")
-          .replace(/^(Elite |Boss |Mini-Boss |Echo of )/, "")
-          .trim()
-          .toLowerCase();
-        if (!raw) return undefined;
-        const hit = ENEMY_ROSTER.find((a) => a.name.toLowerCase() === raw);
-        return hit?.id;
-      };
-      let fresh: Enemy[] = (nextWave.enemies ?? []).map(
-        (e: StoredEnemy, i: number) => ({
-          id: e.id ?? `w${wavesSpawnedRef.current + 1}-${i}`,
-          name: e.name,
-          emoji: e.emoji,
-          hp: e.hp,
-          maxHp: e.maxHp ?? e.hp,
-          damage: e.damage,
-          archetypeId: resolveAid(e),
-          family: e.family,
-          role: e.role,
-          ability: e.ability,
-          abilityCooldown: e.abilityCooldown,
-          abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
-          telegraphLabel: e.telegraphLabel,
-          tier: e.tier,
-        }),
-      );
-      // Telegraphed Attacks (L51+): wave-2 enemies must also carry intents
-      // so their ⚡ badge appears and heavy strikes can fire on schedule.
-      if (telegraphActive) {
-        fresh = applyInitialIntents(
-          fresh,
-          level.generation_seed + wavesSpawnedRef.current + 1,
-          level.level_number,
-        );
-      }
+      const fresh = prepareCampaignEnemies(nextWave.enemies ?? [], {
+        idPrefix: `w${wavesSpawnedRef.current + 1}-`,
+        seed: level.generation_seed + wavesSpawnedRef.current + 1,
+        level: level.level_number,
+        telegraphed: telegraphActive,
+        foresightTurns: getTelegraphReadyEarly(relics),
+        hpMultiplier: pathEffect.eliteEnemyHpMult,
+      });
       postWave = spawnWave(postWave, fresh, nextWave.reinforcement_turns ?? 2);
       wavesSpawnedRef.current += 1;
       const isBossWave = fresh.some((e) => e.tier === "boss");
@@ -2360,11 +2332,12 @@ export default function RuneDelvePlayPage() {
 
     const status = evaluateObjective(
       postWave,
-      activeTurnBudget,
+      currentTurnBudget(),
       objType,
       level.objective_target,
     );
-    if (status.over) void finalize(postWave, status.cleared);
+    if (status.over)
+      void finalize(postWave, status.cleared, rewardTotals, newGrid);
   };
 
   const handleAbility = () => {
@@ -2428,6 +2401,8 @@ export default function RuneDelvePlayPage() {
 
     // First Light: the cast already spent 0 mana (effectiveCost 0) — just flag it.
     let finalNext: CombatState = next;
+    for (let i = 0; i < killed; i++)
+      finalNext = onEnemyKilled(relics, finalNext);
     if (isFreeCast) {
       turnLogs.push({
         kind: "info",
@@ -2463,42 +2438,14 @@ export default function RuneDelvePlayPage() {
     const allDeadAbil = postWave.enemies.every((e) => e.hp <= 0);
     if (allDeadAbil && waveDefs && wavesSpawnedRef.current < waveDefs.length) {
       const nextWave = waveDefs[wavesSpawnedRef.current];
-      const resolveAid = (e: StoredEnemy): string | undefined => {
-        if (e.archetypeId) return e.archetypeId;
-        const raw = String(e.name ?? "")
-          .replace(/^(Elite |Boss |Mini-Boss |Echo of )/, "")
-          .trim()
-          .toLowerCase();
-        if (!raw) return undefined;
-        const hit = ENEMY_ROSTER.find((a) => a.name.toLowerCase() === raw);
-        return hit?.id;
-      };
-      let fresh: Enemy[] = (nextWave.enemies ?? []).map(
-        (e: StoredEnemy, i: number) => ({
-          id: e.id ?? `w${wavesSpawnedRef.current + 1}-${i}`,
-          name: e.name,
-          emoji: e.emoji,
-          hp: e.hp,
-          maxHp: e.maxHp ?? e.hp,
-          damage: e.damage,
-          archetypeId: resolveAid(e),
-          family: e.family,
-          role: e.role,
-          ability: e.ability,
-          abilityCooldown: e.abilityCooldown,
-          abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
-          telegraphLabel: e.telegraphLabel,
-          tier: e.tier,
-        }),
-      );
-      // Telegraphed Attacks (L51+): wave-2 enemies must also carry intents.
-      if (telegraphActive) {
-        fresh = applyInitialIntents(
-          fresh,
-          level.generation_seed + wavesSpawnedRef.current + 1,
-          level.level_number,
-        );
-      }
+      const fresh = prepareCampaignEnemies(nextWave.enemies ?? [], {
+        idPrefix: `w${wavesSpawnedRef.current + 1}-`,
+        seed: level.generation_seed + wavesSpawnedRef.current + 1,
+        level: level.level_number,
+        telegraphed: telegraphActive,
+        foresightTurns: getTelegraphReadyEarly(relics),
+        hpMultiplier: pathEffect.eliteEnemyHpMult,
+      });
       postWave = spawnWave(postWave, fresh, nextWave.reinforcement_turns ?? 2);
       wavesSpawnedRef.current += 1;
       const isBossWave = fresh.some((e) => e.tier === "boss");
@@ -2548,32 +2495,45 @@ export default function RuneDelvePlayPage() {
     pushLogs(turnLogs);
     const status = evaluateObjective(
       postWave,
-      activeTurnBudget,
+      currentTurnBudget(),
       objType,
       level.objective_target,
     );
-    if (status.over) void finalize(postWave, status.cleared);
+    if (status.over)
+      void finalize(postWave, status.cleared, {
+        goldRunesCleared,
+        bonusShardsFromMastery,
+        bonusScoreFromTreasure,
+        bonusShardsFromTreasure,
+        abilityUsedCount: abilityUsedCount + 1,
+      });
   };
 
   const retryFinalization = () => {
     const pending = failedFinalRef.current;
-    if (pending) void finalize(pending.final, pending.cleared);
+    if (pending) void finalize(pending.final, pending.cleared, pending.totals);
   };
 
-  async function finalize(final: CombatState, cleared: boolean) {
+  async function finalize(
+    final: CombatState,
+    cleared: boolean,
+    totals: RunRewardTotals,
+    finalGrid = grid,
+  ) {
     if (finalizeBusyRef.current || !level || !hero) return;
     finalizeBusyRef.current = true;
-    failedFinalRef.current = { final, cleared };
+    failedFinalRef.current = { final, cleared, totals };
     setSaveError(null);
     setSubmitting(true);
-    const turnsUsed = Math.max(0, activeTurnBudget - final.turnsRemaining);
+    const finalTurnBudget = currentTurnBudget();
+    const turnsUsed = Math.max(0, finalTurnBudget - final.turnsRemaining);
     const relicsForFinal = activeRelicsSnapshot ?? activeRelics;
     // Optional Layered-Goal bonus (Band 4): met = extra score + shards. It is a
     // pure reward now, never a clear requirement (see evaluateObjective).
     const secondaryMetThisRun = !!(
       cleared &&
       secondaryObjective &&
-      secondaryMet(secondaryObjective, final, activeTurnBudget)
+      secondaryMet(secondaryObjective, final, finalTurnBudget)
     );
     const rawBreakdown = calculateScore({
       totalDamage: final.totalDamage,
@@ -2593,12 +2553,12 @@ export default function RuneDelvePlayPage() {
     // Mastery: Rogue T1 Gilded Eye — +2 score per gold rune cleared.
     const goldEyeBonus = getMasteryGoldScoreBonus(
       activeMasteries,
-      goldRunesCleared,
+      totals.goldRunesCleared,
     );
     // Chamber-layout treasure bonus accrued during the run (R1).
     // Added flat (after the momentum multiplier) so it reads as its
     // own line — treasure is a board property, not a chain bonus.
-    const treasureScore = bonusScoreFromTreasure;
+    const treasureScore = totals.bonusScoreFromTreasure;
     // R3 — Run modifier score multiplier. Applied LAST so it composes
     // over everything (base + momentum + goldEye + treasure).
     const modScoreMult = resolveEffect(activeModifier).scoreMult;
@@ -2630,17 +2590,21 @@ export default function RuneDelvePlayPage() {
     const isFirstClear =
       cleared && (!existingRun || !existingRun.dungeon_cleared);
     const bossClear = cleared && level.level_number % 25 === 0;
-    const totalEnemies =
-      (level.enemy_config?.length ?? final.enemies.length) || 1;
+    const totalEnemies = Math.max(
+      1,
+      (level.enemy_config?.length ?? 0) +
+        (waveDefs ?? []).reduce((sum, wave) => sum + wave.enemies.length, 0),
+    );
+    const bossPhaseReached = Math.max(0, ...bossPhasesRef.current.values());
     let shardsAwarded = 0;
     // Daily Greed multiplies shard reward; bonus shards from Rogue T5 mastery
     // get added on top after the base computation.
     const dailyShardMult = isDailyMode ? dailyShardMultiplier(dailyMods) : 1;
-    const masteryBonusShards = bonusShardsFromMastery;
+    const masteryBonusShards = totals.bonusShardsFromMastery;
     // Treasure-cell shard pickups from the chamber layout (R1).
     // Added flat to the awarded total at the same point as mastery
     // bonuses so the player sees consistent reward arithmetic.
-    const treasureBonusShards = bonusShardsFromTreasure;
+    const treasureBonusShards = totals.bonusShardsFromTreasure;
     try {
       if (cleared) {
         const breakdownShards = computeClearShards({
@@ -2660,8 +2624,8 @@ export default function RuneDelvePlayPage() {
           enemiesKilled: final.enemiesDefeated,
           totalEnemies,
           turnsUsed,
-          turnLimit: level.turn_limit,
-          bossPhaseReached: 0,
+          turnLimit: finalTurnBudget,
+          bossPhaseReached,
           bossHasRule: !!bossRule,
           compassEquipped,
           compassMultiplier,
@@ -2693,13 +2657,14 @@ export default function RuneDelvePlayPage() {
         text: `🎯 Bonus objective met · +250 score · +${secondaryBonusShards} shards`,
       });
     }
-    setEndState({
+    const display = {
       cleared,
       reason,
       score: breakdown.total,
       isNewBest,
       shards: shardsAwarded,
-    });
+    };
+    setEndState(display);
     rdSfx(cleared ? "victory" : "defeat");
     try {
       if (level.id.startsWith("transient-"))
@@ -2708,6 +2673,7 @@ export default function RuneDelvePlayPage() {
       // a cache refresh must retry the same receipt and reward telemetry.
       if (!pendingSaveRef.current)
         pendingSaveRef.current = {
+          request_id: crypto.randomUUID(),
           level_id: level.id,
           level_number: level.level_number,
           score: breakdown.total,
@@ -2720,17 +2686,51 @@ export default function RuneDelvePlayPage() {
           xp_earned: xp,
           ability_used: final.abilityUsed,
           hero_class: hero.class,
+          quest_context: {
+            abilities_used: totals.abilityUsedCount,
+            bosses_defeated: Array.from(defeatedArchetypesRef.current.entries())
+              .filter(
+                ([id]) =>
+                  id.endsWith("__boss") ||
+                  id.endsWith("__mini") ||
+                  rosterById(id)?.role === "controller",
+              )
+              .reduce((sum, [, count]) => sum + count, 0),
+            no_damage_clear: cleared && !tookDamageRef.current,
+          },
           reward_context: {
             path: pathVariant?.id ?? "standard",
             treasure_shards: treasureBonusShards,
             mastery_shards: masteryBonusShards,
             secondary_met: secondaryMetThisRun,
             total_enemies: totalEnemies,
-            turn_limit: level.turn_limit,
+            turn_limit: finalTurnBudget,
+            boss_phase_reached: bossPhaseReached,
             boss_rule: !!bossRule,
           },
         };
+      // Persist synchronously before the request, including its receipt ID.
+      // The regular snapshot effect then refreshes the remaining board mechanics.
+      if (runKey) {
+        const previous = loadSnapshot(runKey, level.generation_seed);
+        if (previous)
+          saveSnapshot(runKey, {
+            ...previous,
+            savedAt: Date.now(),
+            combat: final,
+            grid: finalGrid ?? previous.grid,
+            pendingSettlement: {
+              input: pendingSaveRef.current,
+              cleared,
+              totals,
+              display,
+            },
+          });
+      }
       const result = await submit.mutateAsync(pendingSaveRef.current);
+      settlementConfirmedRef.current = true;
+      pendingSaveRef.current = null;
+      failedFinalRef.current = null;
       setSubmitting(false);
       const serverWasNewBest = result.wasNewBest;
       const { improvedChain, improvedTurns, improvedHp, firstClear } = result;
@@ -2886,83 +2886,6 @@ export default function RuneDelvePlayPage() {
         }
       } catch {
         /* bestiary write is best-effort */
-      }
-
-      // ── Quests: report progress for this run (best-effort, never throws) ─
-      try {
-        const enemyKills = Array.from(
-          defeatedArchetypesRef.current.values(),
-        ).reduce((a, b) => a + b, 0);
-        const bossKills = Array.from(defeatedArchetypesRef.current.entries())
-          .filter(([id]) => rosterById(id)?.role === "controller")
-          .reduce((sum, [, n]) => sum + n, 0);
-        // Use the ACTUAL longest chain length this run (final.longestChain),
-        // not the count of chains made — the quest tracks max chain LENGTH.
-        const longestChain = final.longestChain;
-        const heroClass = hero?.class;
-        type QEvent = Parameters<typeof reportQuestProgress>[0];
-        const events: QEvent[] = [
-          { type: "enemies_defeated", amount: enemyKills, heroClass },
-          {
-            type: "longest_chain",
-            amount: 0,
-            heroClass,
-            meta: { chainLength: longestChain },
-          },
-          { type: "total_score", amount: breakdown.total, heroClass },
-        ];
-        if (cleared) {
-          events.push({ type: "levels_cleared", amount: 1, heroClass });
-          events.push({ type: "class_run_complete", amount: 1, heroClass });
-          events.push({
-            type: "high_level_clears",
-            amount: 1,
-            heroClass,
-            meta: { levelNumber: level.level_number },
-          });
-          // Genuinely damage-free run — the hero never lost HP at any point
-          // (not merely healed back to full by the end).
-          if (!tookDamageRef.current) {
-            events.push({ type: "no_damage_clear", amount: 1, heroClass });
-          }
-        }
-        if (bossKills > 0) {
-          events.push({
-            type: "bosses_defeated",
-            amount: bossKills,
-            heroClass,
-            meta: { isBoss: true },
-          });
-        }
-        if (shardsAwarded > 0) {
-          events.push({
-            type: "shards_earned",
-            amount: shardsAwarded,
-            heroClass,
-          });
-        }
-        // Power Move: count special-ability uses per run (not gated by clear).
-        if (abilityUsedCount > 0) {
-          events.push({
-            type: "abilities_used",
-            amount: abilityUsedCount,
-            heroClass,
-          });
-        }
-        // Path of Mastery: only credit class XP when the server actually
-        // awarded XP (new best clear), so quest progress mirrors progression.
-        if (result.xpAwarded > 0) {
-          events.push({
-            type: "class_xp_earned",
-            amount: result.xpAwarded,
-            heroClass,
-          });
-        }
-        for (const e of events) {
-          await reportQuestProgress(e);
-        }
-      } catch (err) {
-        console.warn("[quests] progress report failed", err);
       }
 
       // Daily challenge submission no longer happens here — Endless Survival

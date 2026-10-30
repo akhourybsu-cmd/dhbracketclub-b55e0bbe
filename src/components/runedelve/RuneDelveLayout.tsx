@@ -7,6 +7,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Compass, Map, Shield, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import "./runeWorld.css";
+import { useActiveQuests } from "@/hooks/useQuests";
 
 /**
  * Full-screen game shell for Rune Delve. Applies the `.rd-mode` skin to the
@@ -17,6 +18,7 @@ import "./runeWorld.css";
  * `/rune-delve/*` route is active, so this shell owns the full viewport.
  */
 export function RuneDelveLayout({ children }: { children: ReactNode }) {
+  useActiveQuests();
   const { play } = useRuneDelveSfx();
   const { pathname } = useLocation();
   const isBattle =

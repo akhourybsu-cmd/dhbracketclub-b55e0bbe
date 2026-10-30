@@ -216,7 +216,9 @@ describe("Rune Delve Expedition", () => {
     expect(after.combat.hp).toBe(100);
     expect(after.combat.turnsRemaining).toBe(run.combat.turnsRemaining);
     expect(after.totalTurns).toBe(0);
-    expect(after.combat.shadowstepActive).toBe(true);after.combat.mana=3;expect(expeditionAbility(after)).toBe(after);
+    expect(after.combat.shadowstepActive).toBe(true);
+    after.combat.mana = 3;
+    expect(expeditionAbility(after)).toBe(after);
   });
   it("previews exact class and boon effects before retaliation without changing the run", () => {
     const run = controlled();
@@ -294,5 +296,66 @@ describe("Rune Delve Expedition", () => {
     expect(loadExpedition("old")).toBeNull();
     clearExpedition("account-a");
     expect(loadExpedition("account-a")).toBeNull();
+  });
+  it("rejects incomplete combat state that would turn a resumed score into NaN", () => {
+    const run = createExpedition(ticket);
+    for (const field of [
+      "totalDamage",
+      "enemiesDefeated",
+      "longestChain",
+      "shadowstepActive",
+      "abilityUsed",
+      "rogueBonusTriggered",
+    ]) {
+      const combat = { ...run.combat } as Record<string, unknown>;
+      delete combat[field];
+      localStorage.setItem("broken", JSON.stringify({ ...run, combat }));
+      expect(loadExpedition("broken"), field).toBeNull();
+    }
+  });
+  it("rejects malformed telegraphs, display text, resonance and impossible phase checkpoints", () => {
+    const run = createExpedition(ticket);
+    const broken = [
+      { ...run, lastAction: { unexpected: "object" } },
+      { ...run, startedAt: "not a date" },
+      { ...run, totalKills: undefined },
+      { ...run, phoenixUsed: "false" },
+      { ...run, boons: [] },
+      {
+        ...run,
+        combat: {
+          ...run.combat,
+          enemies: run.combat.enemies.map((enemy) => ({
+            ...enemy,
+            armor: "broken",
+          })),
+        },
+      },
+      {
+        ...run,
+        combat: {
+          ...run.combat,
+          enemies: run.combat.enemies.map((enemy) => ({
+            ...enemy,
+            intent: "broken",
+          })),
+        },
+      },
+      {
+        ...run,
+        combat: {
+          ...run.combat,
+          resonance: { colors: ["red", "red"], bursts: 0 },
+        },
+      },
+      { ...run, combat: { ...run.combat, hp: 0 } },
+      { ...run, combat: { ...run.combat, turnsRemaining: 0 } },
+      { ...run, phase: "won" },
+      { ...run, phase: "boon" },
+    ];
+    for (const checkpoint of broken) {
+      localStorage.setItem("broken", JSON.stringify(checkpoint));
+      expect(loadExpedition("broken"), JSON.stringify(checkpoint)).toBeNull();
+    }
   });
 });

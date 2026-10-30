@@ -20,7 +20,7 @@
 // a separate FX pipeline. EnemyDisplay can read the phase index from
 // the play page state and render a small "P2" / "P3" pip if desired.
 
-import type { Enemy } from './dungeonGenerator';
+import type { Enemy } from "./dungeonGenerator";
 
 export type BossPhaseIndex = 1 | 2 | 3;
 
@@ -45,15 +45,15 @@ const BOSS_PHASES: BossPhaseDef[] = [
     index: 2,
     threshold: 0.66,
     damageMult: 1.2,
-    name: 'Phase 2 — Awakened',
-    flavor: 'The wardstone splits — the boss roars and strikes harder.',
+    name: "Phase 2 — Awakened",
+    flavor: "The wardstone splits — the boss roars and strikes harder.",
   },
   {
     index: 3,
     threshold: 0.33,
     damageMult: 1.4, // total vs phase 1, applied via multiply-from-current * (1.4 / 1.2)
-    name: 'Phase 3 — Final Form',
-    flavor: 'A column of light. The seal breaks. Every blow lands like an axe.',
+    name: "Phase 3 — Final Form",
+    flavor: "A column of light. The seal breaks. Every blow lands like an axe.",
   },
 ];
 
@@ -65,16 +65,16 @@ const MINI_PHASES: BossPhaseDef[] = [
     index: 2,
     threshold: 0.5,
     damageMult: 1.15,
-    name: 'Phase 2 — Provoked',
-    flavor: 'The mini-boss hisses — its strikes sharpen.',
+    name: "Phase 2 — Provoked",
+    flavor: "The mini-boss hisses — its strikes sharpen.",
   },
 ];
 
 /** Which phase set applies to a given enemy. Returns [] for
  *  non-bosses (regular enemies don't phase). */
 export function phasesFor(enemy: Enemy): BossPhaseDef[] {
-  if (enemy.tier === 'boss') return BOSS_PHASES;
-  if (enemy.tier === 'mini') return MINI_PHASES;
+  if (enemy.tier === "boss") return BOSS_PHASES;
+  if (enemy.tier === "mini") return MINI_PHASES;
   return [];
 }
 
@@ -94,6 +94,25 @@ export function targetPhaseFor(enemy: Enemy): BossPhaseIndex {
     }
   }
   return active;
+}
+
+/** Damage already contains phase buffs in a checkpoint; never apply them twice. */
+export function restoreBossPhases(
+  enemies: Enemy[],
+  stored?: Array<[string, BossPhaseIndex]>,
+): Map<string, BossPhaseIndex> {
+  const restored = new Map(stored ?? []);
+  return new Map(
+    enemies
+      .filter((enemy) => phasesFor(enemy).length > 0)
+      .map((enemy) => [
+        enemy.id,
+        Math.max(
+          restored.get(enemy.id) ?? 1,
+          targetPhaseFor(enemy),
+        ) as BossPhaseIndex,
+      ]),
+  );
 }
 
 export interface PhaseTransition {
@@ -144,13 +163,16 @@ export function detectPhaseTransitions(
  * the DELTA from the previous phase mult so phases 1→2→3 don't
  * compound incorrectly when crossed in a single chain.
  */
-export function applyPhaseDamageBump(enemy: Enemy, transition: PhaseTransition): void {
+export function applyPhaseDamageBump(
+  enemy: Enemy,
+  transition: PhaseTransition,
+): void {
   const phases = phasesFor(enemy);
   if (phases.length === 0) return;
   // Cumulative mult AT the target phase
   const targetMult = transition.def.damageMult;
   // Cumulative mult AT the previous phase (1 if from === 1)
-  const prevDef = phases.find(p => p.index === transition.from);
+  const prevDef = phases.find((p) => p.index === transition.from);
   const prevMult = prevDef?.damageMult ?? 1;
   // Delta multiply so the enemy's `damage` field reflects exactly the
   // cumulative scaling regardless of how many transitions fire in

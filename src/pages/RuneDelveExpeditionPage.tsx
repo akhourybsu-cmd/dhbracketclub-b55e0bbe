@@ -169,8 +169,12 @@ export default function RuneDelveExpeditionPage() {
     game.userId && game.clubId
       ? expeditionStorageKey(game.userId, game.clubId)
       : null;
-  const activeKey = useRef(key);
-  activeKey.current = key;
+  // Every scope visit has a distinct identity, including Alice → Bob → Alice.
+  const activeScope = useRef({ key });
+  if (activeScope.current.key !== key) activeScope.current = { key };
+  const scope = activeScope.current;
+  const hasRun = !!run;
+  const runPhase = run?.phase;
 
   useEffect(() => {
     startId.current = null;
@@ -185,6 +189,7 @@ export default function RuneDelveExpeditionPage() {
     setReceipt(null);
     setError("");
     setBusy(false);
+    setShowBuild(false);
     startId.current = null;
     mutationLock.current = false;
     setHydratedKey(key);
@@ -200,43 +205,50 @@ export default function RuneDelveExpeditionPage() {
   }, [key, hydratedKey, run, receipt]);
   useEffect(() => {
     const onHide = () => {
-      if (document.hidden && run?.phase === "combat") setPaused(true);
+      if (document.hidden && runPhase === "combat") setPaused(true);
+    };
+    const pause = () => {
+      if (hasRun) setPaused(true);
     };
     document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
-  }, [run?.phase]);
+    window.addEventListener("rune-delve:pause", pause);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("rune-delve:pause", pause);
+    };
+  }, [runPhase, hasRun]);
 
   async function start() {
     if (
       mutationLock.current ||
       !key ||
       key !== hydratedKey ||
-      activeKey.current !== key
+      activeScope.current !== scope
     )
       return;
     mutationLock.current = true;
     setBusy(true);
     setError("");
-    const scope = key;
+    const storageKey = key;
     startId.current ??= crypto.randomUUID();
     try {
       const ticket = await game.begin(startId.current, heroClass, ascension);
-      if (activeKey.current !== scope) return;
+      if (activeScope.current !== scope) return;
       const fresh = createExpedition(ticket);
       setRun(fresh);
       setPaused(false);
       setReceipt(null);
-      setSaved(saveExpedition(scope, fresh));
+      setSaved(saveExpedition(storageKey, fresh));
       startId.current = null;
     } catch (err) {
-      if (activeKey.current === scope)
+      if (activeScope.current === scope)
         setError(
           err instanceof Error
             ? err.message
             : "Could not enter the dungeon. Retry your expedition.",
         );
     } finally {
-      if (activeKey.current === scope) {
+      if (activeScope.current === scope) {
         mutationLock.current = false;
         setBusy(false);
       }
@@ -247,7 +259,7 @@ export default function RuneDelveExpeditionPage() {
       !game.data?.active_run ||
       !key ||
       key !== hydratedKey ||
-      activeKey.current !== key
+      activeScope.current !== scope
     )
       return;
     const fresh = createExpedition(game.data.active_run);
@@ -265,7 +277,7 @@ export default function RuneDelveExpeditionPage() {
       actionLock.current ||
       !key ||
       key !== hydratedKey ||
-      activeKey.current !== key
+      activeScope.current !== scope
     )
       return;
     actionLock.current = true;
@@ -286,35 +298,35 @@ export default function RuneDelveExpeditionPage() {
       mutationLock.current ||
       !key ||
       key !== hydratedKey ||
-      activeKey.current !== key
+      activeScope.current !== scope
     )
       return;
     mutationLock.current = true;
     setBusy(true);
     setError("");
-    const scope = key;
+    const storageKey = key;
     try {
       const result = await game.finish(run);
-      if (activeKey.current !== scope) return;
+      if (activeScope.current !== scope) return;
       setReceipt(result);
       setPaused(false);
-      clearExpedition(scope);
+      clearExpedition(storageKey);
     } catch (err) {
-      if (activeKey.current === scope)
+      if (activeScope.current === scope)
         setError(
           err instanceof Error
             ? err.message
             : "Your reward was not confirmed. Retry to bank it safely.",
         );
     } finally {
-      if (activeKey.current === scope) {
+      if (activeScope.current === scope) {
         mutationLock.current = false;
         setBusy(false);
       }
     }
   }
   function reset() {
-    if (key !== hydratedKey || activeKey.current !== key) return;
+    if (key !== hydratedKey || activeScope.current !== scope) return;
     if (key) clearExpedition(key);
     setRun(null);
     setReceipt(null);
