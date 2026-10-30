@@ -11,7 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import SoundSettingsCard from "@/components/profile/SoundSettingsCard";
+import { RuneSoundSettings } from "./RuneSoundSettings";
 import { ClassBadge } from "./ClassBadge";
 import { ShardBalance } from "./ShardBalance";
 import { ExitRunDialog } from "./ExitRunDialog";
@@ -83,7 +83,7 @@ export function RuneDelveHUD() {
 
           <Link
             to="/rune-delve"
-            className="flex-1 min-w-0 flex items-center gap-2 btn-press"
+            className="flex-1 min-w-0 min-h-11 flex items-center gap-2 btn-press"
           >
             {hero ? (
               <ClassBadge cls={hero.class} size="sm" />
@@ -162,16 +162,14 @@ export function RuneDelveHUD() {
         <SheetContent
           {...soundFocus}
           side="bottom"
-          className="rd-dialog-theme rounded-t-3xl p-0 max-h-[88vh] overflow-y-auto"
+          className="rd-dialog-theme rd-audio-sheet"
         >
-          <SheetHeader className="px-5 pt-5 pb-2 text-left">
-            <SheetTitle className="text-xl font-extrabold tracking-tight">
+          <SheetHeader className="pr-10 text-left">
+            <SheetTitle className="text-lg font-extrabold tracking-tight">
               Sound & Haptics
             </SheetTitle>
           </SheetHeader>
-          <div className="px-5 pb-7">
-            <SoundSettingsCard embedded />
-          </div>
+          <RuneSoundSettings />
         </SheetContent>
       </Sheet>
     </>

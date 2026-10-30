@@ -24,7 +24,9 @@ import { ShardBalance } from "@/components/runedelve/ShardBalance";
 import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
 import { useMyProgress } from "@/hooks/useRuneDelveCampaign";
 import { buildCharacterSheet } from "@/lib/runedelve/characterStats";
-import { CharacterPowerPanel } from "@/components/runedelve/CharacterPowerPanel";
+import { RuneBuildPages } from "@/components/runedelve/RuneBuildPages";
+import { RunePager } from "@/components/runedelve/RunePager";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
 import "@/components/runedelve/runeMenus.css";
 
@@ -41,10 +43,11 @@ export default function RuneDelveArmoryPage() {
   const unlockSlot = useUnlockSlot();
   const { play: rdSfx } = useRuneDelveSfx();
   const [activeClass, setActiveClass] = useState<HeroClass | null>(null);
-  const [view, setView] = useState<"relics" | "stats">("relics");
+  const [view, setView] = useState<"loadout" | "relics" | "stats">("loadout");
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
-  const relicsRef = useRef<HTMLElement>(null);
+  const viewport = useRuneViewport();
+  const [page, setPage] = useState(0);
   const cls = activeClass ?? hero?.class ?? "warrior";
   const loadoutQuery = useLoadout(cls);
   const { data: loadout } = loadoutQuery;
@@ -150,96 +153,59 @@ export default function RuneDelveArmoryPage() {
       <RuneDataState onRetry={() => queries.forEach((q) => void q.refetch())} />
     );
 
+  const pageSize = viewport.landscape
+    ? 2
+    : viewport.short
+      ? 1
+      : viewport.width >= 700
+        ? 6
+        : 2;
+  const pageCount = Math.max(1, Math.ceil(ownedRelics.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
   return (
-    <div className="rd-menu-page rd-armory-page space-y-4 pb-5" data-class={cls}>
+    <div
+      className="rd-screen rd-menu-page rd-fit-menu rd-armory-page"
+      data-class={cls}
+    >
       <div className="rd-menu-heading">
         <h1 className="rd-title">Armory</h1>
+        <label className="sr-only" htmlFor="rd-armory-class">
+          Loadout class
+        </label>
+        <select
+          id="rd-armory-class"
+          aria-label="Loadout class"
+          value={cls}
+          disabled={saving}
+          onChange={(event) => {
+            setActiveClass(event.target.value as HeroClass);
+            setPage(0);
+          }}
+          className="rd-class-select"
+        >
+          {CLASS_LIST.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
         <Link to="/rune-delve/shop" className="rd-menu-link">
-          <ShoppingBag className="h-4 w-4" /> Shop
+          <ShoppingBag size={14} /> Shop
         </Link>
       </div>
       <div
         role="tablist"
-        aria-label="Loadout class"
-        className="rd-menu-tabs rd-class-tabs grid-cols-4"
-      >
-        {CLASS_LIST.map((c) => (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={cls === c.id}
-            key={c.id}
-            disabled={saving}
-            onClick={() => setActiveClass(c.id)}
-            className="flex flex-col items-center gap-1 py-2"
-          >
-            <span className="rd-class-tab-portrait">
-              <RuneHeroArt cls={c.id} />
-            </span>
-            <span>{c.name}</span>
-          </button>
-        ))}
-      </div>
-      <section
-        className="rd-menu-surface rd-loadout-display space-y-3"
-        aria-label={`${getClass(cls).name} loadout`}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-extrabold flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" /> {getClass(cls).name}{" "}
-            loadout
-          </h2>
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {equipped.filter((s, i) => s && i < slotsUnlocked).length}/
-            {slotsUnlocked}
-          </span>
-        </div>
-        <div className="rd-loadout-slots grid grid-cols-3 gap-2">
-          {[0, 1, 2].map((i) => {
-            const relic = equipped[i]
-              ? (RELIC_BY_ID[equipped[i]!] ?? null)
-              : null;
-            return (
-              <LoadoutSlot
-                key={i}
-                relic={relic}
-                rank={relic ? rankById.get(relic.id) : undefined}
-                locked={i >= slotsUnlocked}
-                disabled={saving}
-                unlockHint={`Class Lv ${THIRD_SLOT_UNLOCK_LEVEL}`}
-                onClick={() => {
-                  setView("relics");
-                  requestAnimationFrame(() =>
-                    relicsRef.current?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    }),
-                  );
-                }}
-                onClear={
-                  relic
-                    ? () => {
-                        const next = [...equipped];
-                        next[i] = null;
-                        void save(next);
-                      }
-                    : undefined
-                }
-              />
-            );
-          })}
-        </div>
-        {saving && (
-          <p className="rd-menu-note" role="status">
-            Saving loadout…
-          </p>
-        )}
-      </section>
-      <div
-        role="tablist"
         aria-label="Armory view"
-        className="rd-menu-tabs grid-cols-2"
+        className="rd-menu-tabs rd-fit-tabs grid-cols-3"
       >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "loadout"}
+          onClick={() => setView("loadout")}
+        >
+          Loadout
+        </button>
         <button
           type="button"
           role="tab"
@@ -257,47 +223,121 @@ export default function RuneDelveArmoryPage() {
           Combat stats
         </button>
       </div>
-      {view === "stats" ? (
-        <CharacterPowerPanel sheet={characterSheet} compact />
-      ) : (
-        <section
-          ref={relicsRef}
-          aria-label="Owned relic collection"
-          className="space-y-3 scroll-mt-4"
-        >
-          {ownedRelics.length ? (
-            <div className="rd-relic-grid">
-              {ownedRelics.map((relic) => (
-                <RelicCard
-                  key={relic.id}
-                  relic={relic}
-                  intent="equip"
-                  state={equipped.includes(relic.id) ? "equipped" : "owned"}
-                  rank={rankById.get(relic.id)}
-                  disabled={saving}
-                  onClick={() => void equip(relic.id)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="rd-menu-surface text-center py-8 space-y-3">
-              <Sparkles className="h-9 w-9 mx-auto text-primary" />
-              <h2 className="font-extrabold">Your first build starts here</h2>
-              <p className="rd-menu-note">
-                Find relics in the dungeon or unlock them with shards.
-              </p>
-              <Link to="/rune-delve/shop" className="rd-menu-link">
-                Browse relics <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          )}
-          <Link to="/rune-delve/shop" className="rd-menu-link w-full">
-            <ShardBalance shards={wallet?.shards ?? 0} />
-            <span className="ml-auto">Upgrade relics</span>
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </section>
-      )}
+      <div className="rd-fit-content">
+        {view === "loadout" ? (
+          <div className="rd-loadout-view">
+            <section
+              className="rd-menu-surface rd-loadout-display space-y-3"
+              aria-label={`${getClass(cls).name} loadout`}
+            >
+              <RuneHeroArt cls={cls} className="rd-active-armory-art" />
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-extrabold flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />{" "}
+                  {getClass(cls).name} loadout
+                </h2>
+                <span className="text-[11px] text-muted-foreground tabular-nums">
+                  {equipped.filter((s, i) => s && i < slotsUnlocked).length}/
+                  {slotsUnlocked}
+                </span>
+              </div>
+              <div className="rd-loadout-slots grid grid-cols-3 gap-2">
+                {[0, 1, 2].map((i) => {
+                  const relic = equipped[i]
+                    ? (RELIC_BY_ID[equipped[i]!] ?? null)
+                    : null;
+                  return (
+                    <LoadoutSlot
+                      key={i}
+                      relic={relic}
+                      rank={relic ? rankById.get(relic.id) : undefined}
+                      locked={i >= slotsUnlocked}
+                      disabled={saving}
+                      unlockHint={`Class Lv ${THIRD_SLOT_UNLOCK_LEVEL}`}
+                      onClick={() => {
+                        setView("relics");
+                        setPage(0);
+                      }}
+                      onClear={
+                        relic
+                          ? () => {
+                              const next = [...equipped];
+                              next[i] = null;
+                              void save(next);
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+              {saving && (
+                <p className="rd-menu-note" role="status">
+                  Saving loadout…
+                </p>
+              )}
+            </section>
+            <button
+              type="button"
+              className="rd-menu-link"
+              onClick={() => setView("relics")}
+            >
+              Choose relics <ArrowRight size={14} />
+            </button>
+            <Link to="/rune-delve/shop" className="rd-menu-link">
+              <ShardBalance shards={wallet?.shards ?? 0} />
+              <span className="ml-auto">Upgrade</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        ) : view === "stats" ? (
+          <RuneBuildPages key={cls} sheet={characterSheet} />
+        ) : (
+          <section
+            className="rd-page-stack rd-owned-relics"
+            aria-label="Owned relic collection"
+          >
+            {ownedRelics.length ? (
+              <div
+                className="rd-relic-grid rd-fit-relic-grid"
+                data-rows={pageSize > 3 ? 2 : 1}
+                data-cols={pageSize === 6 ? 3 : pageSize === 1 ? 1 : 2}
+              >
+                {ownedRelics
+                  .slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+                  .map((relic) => (
+                    <RelicCard
+                      key={relic.id}
+                      relic={relic}
+                      intent="equip"
+                      state={equipped.includes(relic.id) ? "equipped" : "owned"}
+                      rank={rankById.get(relic.id)}
+                      disabled={saving}
+                      onClick={() => void equip(relic.id)}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <div className="rd-menu-surface rd-empty-collection">
+                <Sparkles className="h-7 w-7 text-primary" />
+                <h2 className="font-extrabold">Your first build starts here</h2>
+                <p className="rd-menu-note">
+                  Find relics in the dungeon or unlock them with shards.
+                </p>
+                <Link to="/rune-delve/shop" className="rd-menu-link">
+                  Browse relics <ArrowRight size={14} />
+                </Link>
+              </div>
+            )}
+            <RunePager
+              page={currentPage}
+              pageCount={pageCount}
+              onPageChange={setPage}
+              label="Relics"
+            />
+          </section>
+        )}
+      </div>
     </div>
   );
 }

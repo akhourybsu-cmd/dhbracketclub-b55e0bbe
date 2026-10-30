@@ -70,6 +70,8 @@ import { EnemyDisplay } from "@/components/runedelve/EnemyDisplay";
 import { HeroStatusBar } from "@/components/runedelve/HeroStatusBar";
 import { CombatFeedback } from "@/components/runedelve/CombatFeedback";
 import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
+import { RunePager } from "@/components/runedelve/RunePager";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
 import {
   RuneHeroArt,
   RUNE_PORTAL_ART,
@@ -161,6 +163,9 @@ export default function RuneDelveExpeditionPage() {
   const [error, setError] = useState("");
   const [receipt, setReceipt] = useState<ExpeditionReceipt | null>(null);
   const [showBuild, setShowBuild] = useState(false);
+  const [buildPage, setBuildPage] = useState(0);
+  const [boonPage, setBoonPage] = useState(0);
+  const viewport = useRuneViewport();
   const [hydratedKey, setHydratedKey] = useState<string | null>(null);
   const [saved, setSaved] = useState(true);
   const startId = useRef<string | null>(null);
@@ -339,6 +344,20 @@ export default function RuneDelveExpeditionPage() {
   const isOver = run?.phase === "won" || run?.phase === "lost";
   const selectedClass = getClass(heroClass);
   const highest = game.data?.highest_ascension ?? 0;
+  const buildPageSize = viewport.landscape ? 1 : viewport.short ? 2 : 3;
+  const buildBoons = EXPEDITION_BOONS.filter((boon) => run?.boons[boon.id]);
+  const buildPageCount = Math.max(
+    1,
+    Math.ceil(buildBoons.length / buildPageSize),
+  );
+  const currentBuildPage = Math.min(buildPage, buildPageCount - 1);
+  const offeredBoons = run?.phase === "boon" ? expeditionBoonChoices(run) : [];
+  const boonPageSize = !viewport.landscape && viewport.short ? 1 : 3;
+  const boonPageCount = Math.max(
+    1,
+    Math.ceil(offeredBoons.length / boonPageSize),
+  );
+  const currentBoonPage = Math.min(boonPage, boonPageCount - 1);
 
   if (!ready || game.isLoading)
     return (
@@ -373,7 +392,11 @@ export default function RuneDelveExpeditionPage() {
     );
 
   return (
-    <div className="rd-expedition" data-testid="expedition-page">
+    <div
+      className="rd-expedition rd-screen"
+      data-phase={run?.phase ?? "entry"}
+      data-testid="expedition-page"
+    >
       {!run ? (
         <>
           <header className="rd-exp-page-heading">
@@ -502,6 +525,18 @@ export default function RuneDelveExpeditionPage() {
       ) : (
         <>
           <header className="rd-exp-run-heading">
+            {!saved && !receipt && (
+              <span
+                className="rd-save-warning"
+                role="status"
+                title="Device storage is unavailable. Keep this page open to retain your board."
+              >
+                Unsaved
+                <span className="sr-only">
+                  . Keep this page open to retain your board.
+                </span>
+              </span>
+            )}
             <div>
               <p className="rd-exp-eyebrow">
                 ASCENSION {run.ascension + 1} ·{" "}
@@ -519,6 +554,20 @@ export default function RuneDelveExpeditionPage() {
                       : `Chamber ${run.room}`}
               </h1>
             </div>
+            {run.phase === "combat" && (
+              <strong className="rd-exp-moves">
+                {run.combat.turnsRemaining} moves
+              </strong>
+            )}
+            {Object.keys(run.boons).length > 0 && (
+              <button
+                className="rd-exp-icon"
+                aria-label="Your expedition build"
+                onClick={() => setShowBuild(true)}
+              >
+                <Sparkles />
+              </button>
+            )}
             <button
               className="rd-exp-icon"
               aria-label="Pause expedition"
@@ -530,30 +579,30 @@ export default function RuneDelveExpeditionPage() {
           <RoomTrail run={run} />
           {!isOver && run.phase === "combat" && (
             <CombatFeedback
-              className="rd-exp-combat"
+              className="rd-battle rd-exp-combat"
               data-testid="expedition-combat"
               state={run.combat}
               cls={run.heroClass}
               scope={`${run.id}-${run.room}`}
               disabled={paused || busy || showBuild}
             >
-              <section className="rd-exp-enemy-stage">
-                <div className="rd-exp-stage-label">
-                  <span>
-                    {run.room === 6
-                      ? "THE HOLLOW THRONE"
-                      : EXPEDITION_ROUTES[run.route].name.toUpperCase()}
-                  </span>
-                  <strong>{run.combat.turnsRemaining} moves</strong>
-                </div>
-                <EnemyDisplay
-                  enemies={run.combat.enemies}
-                  primaryTargetId={
-                    run.combat.enemies.find((enemy) => enemy.hp > 0)?.id
-                  }
-                />
-              </section>
-              <div className="rd-exp-board-area">
+              <div className="rd-battle-side">
+                <section className="rd-exp-enemy-stage">
+                  <div className="rd-exp-stage-label">
+                    <span>
+                      {run.room === 6
+                        ? "THE HOLLOW THRONE"
+                        : EXPEDITION_ROUTES[run.route].name.toUpperCase()}
+                    </span>
+                    <strong>{run.combat.turnsRemaining} moves</strong>
+                  </div>
+                  <EnemyDisplay
+                    enemies={run.combat.enemies}
+                    primaryTargetId={
+                      run.combat.enemies.find((enemy) => enemy.hp > 0)?.id
+                    }
+                  />
+                </section>
                 <HeroStatusBar
                   state={run.combat}
                   cls={run.heroClass}
@@ -561,6 +610,8 @@ export default function RuneDelveExpeditionPage() {
                   disabled={paused || busy || showBuild}
                 />
                 <ResonanceMeter state={run.combat} />
+              </div>
+              <div className="rd-exp-board-area rd-battle-board">
                 <RuneBoard
                   grid={run.grid}
                   onChainComplete={(chain) => act(chain)}
@@ -599,44 +650,55 @@ export default function RuneDelveExpeditionPage() {
                 </p>
               )}
               <div className="rd-exp-boon-choices">
-                {expeditionBoonChoices(run).map((boon) => (
-                  <button
-                    key={boon.id}
-                    data-testid={`expedition-boon-${boon.id}`}
-                    className="rd-exp-boon-choice"
-                    onClick={() => setRun(chooseExpeditionBoon(run, boon.id))}
-                  >
-                    <span
-                      className="rd-exp-boon-symbol"
-                      style={{ color: `hsl(var(--${boon.color}))` }}
+                {offeredBoons
+                  .slice(
+                    currentBoonPage * boonPageSize,
+                    (currentBoonPage + 1) * boonPageSize,
+                  )
+                  .map((boon) => (
+                    <button
+                      key={boon.id}
+                      data-testid={`expedition-boon-${boon.id}`}
+                      className="rd-exp-boon-choice"
+                      onClick={() => setRun(chooseExpeditionBoon(run, boon.id))}
                     >
-                      <BoonIcon boon={boon} />
-                    </span>
-                    <span>
-                      <strong>{boon.name}</strong>
-                      <small>
-                        {expeditionBoonDescription(
-                          boon.id,
-                          (run.boons[boon.id] ?? 0) +
-                            (run.route === "hunt" && boon.id !== "phoenix"
-                              ? 2
-                              : 1),
-                        )}
-                      </small>
-                      {run.boons[boon.id] ? (
-                        <em>
-                          Rank {run.boons[boon.id]} →{" "}
-                          {run.boons[boon.id]! +
-                            (run.route === "hunt" && boon.id !== "phoenix"
-                              ? 2
-                              : 1)}
-                        </em>
-                      ) : null}
-                    </span>
-                    <ChevronRight />
-                  </button>
-                ))}
+                      <span
+                        className="rd-exp-boon-symbol"
+                        style={{ color: `hsl(var(--${boon.color}))` }}
+                      >
+                        <BoonIcon boon={boon} />
+                      </span>
+                      <span>
+                        <strong>{boon.name}</strong>
+                        <small>
+                          {expeditionBoonDescription(
+                            boon.id,
+                            (run.boons[boon.id] ?? 0) +
+                              (run.route === "hunt" && boon.id !== "phoenix"
+                                ? 2
+                                : 1),
+                          )}
+                        </small>
+                        {run.boons[boon.id] ? (
+                          <em>
+                            Rank {run.boons[boon.id]} →{" "}
+                            {run.boons[boon.id]! +
+                              (run.route === "hunt" && boon.id !== "phoenix"
+                                ? 2
+                                : 1)}
+                          </em>
+                        ) : null}
+                      </span>
+                      <ChevronRight />
+                    </button>
+                  ))}
               </div>
+              <RunePager
+                page={currentBoonPage}
+                pageCount={boonPageCount}
+                onPageChange={setBoonPage}
+                label="Blessings"
+              />
             </section>
           )}
           {run.phase === "route" && (
@@ -785,9 +847,18 @@ export default function RuneDelveExpeditionPage() {
         </>
       )}
       {error && (
-        <div className="rd-exp-error" role="alert">
-          {error}
-        </div>
+        <ExpeditionDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setError("");
+          }}
+        >
+          <DialogPrimitive.Title>Expedition update</DialogPrimitive.Title>
+          <p role="alert">{error}</p>
+          <button className="rd-exp-primary" onClick={() => setError("")}>
+            Back to expedition
+          </button>
+        </ExpeditionDialog>
       )}
       {run && (
         <ExpeditionDialog open={paused} onOpenChange={setPaused}>
@@ -838,8 +909,12 @@ export default function RuneDelveExpeditionPage() {
               </button>
             </header>
             <div className="rd-exp-build-list">
-              {EXPEDITION_BOONS.filter((boon) => run.boons[boon.id]).map(
-                (boon) => (
+              {buildBoons
+                .slice(
+                  currentBuildPage * buildPageSize,
+                  (currentBuildPage + 1) * buildPageSize,
+                )
+                .map((boon) => (
                   <div key={boon.id}>
                     <BoonIcon boon={boon} />
                     <span>
@@ -856,9 +931,14 @@ export default function RuneDelveExpeditionPage() {
                       </small>
                     </span>
                   </div>
-                ),
-              )}
+                ))}
             </div>
+            <RunePager
+              page={currentBuildPage}
+              pageCount={buildPageCount}
+              onPageChange={setBuildPage}
+              label="Build blessings"
+            />
           </div>
         </ExpeditionDialog>
       )}

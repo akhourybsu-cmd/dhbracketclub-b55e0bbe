@@ -1,38 +1,33 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MECHANIC_LIST } from "@/lib/runedelve/mechanics";
-import {
-  MASTERY_TIERS,
-  MASTERY_UNLOCK_LEVELS,
-  nextMasteryFor,
-  type MasteryTier,
-} from "@/lib/runedelve/classMastery";
+import { MASTERY_TIERS, nextMasteryFor } from "@/lib/runedelve/classMastery";
 import { useTodayDaily, useMyDailyStreak } from "@/hooks/useDailyChallenge";
 import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
 import { useAllClassProgress } from "@/hooks/useRuneDelveClassProgress";
 import { useMyProgress } from "@/hooks/useRuneDelveCampaign";
 import { getClass, type HeroClass } from "@/lib/runedelve/classConfig";
-import { ClassBadge } from "./ClassBadge";
 import { RELIC_CATALOG } from "@/lib/runedelve/relics";
-import { Lock, Flame, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useSheetSfx } from "@/hooks/useSheetSfx";
 import { useRuneDialogFocus } from "./useRuneDialogFocus";
-import { Link } from "react-router-dom";
+import { RunePager } from "./RunePager";
 import { endlessRewardFor, endlessStarsFor } from "@/lib/runedelve/endlessMode";
+import "./runeDialogs.css";
 
+type CodexTab = "mechanics" | "daily" | "masteries" | "relics";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultTab?: "mechanics" | "daily" | "masteries" | "relics";
+  defaultTab?: CodexTab;
 }
-
 export function CodexSheet({
   open,
   onOpenChange,
@@ -40,383 +35,206 @@ export function CodexSheet({
 }: Props) {
   useSheetSfx(open);
   const focus = useRuneDialogFocus();
+  const [tab, setTab] = useState<CodexTab>(defaultTab);
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    if (open) {
+      setTab(defaultTab);
+      setPage(0);
+    }
+  }, [open, defaultTab]);
   const { data: hero } = useRuneDelveHero();
   const { data: progress } = useMyProgress(hero?.class);
-  const { data: classTracks } = useAllClassProgress();
+  const { data: tracks } = useAllClassProgress();
   const today = useTodayDaily();
   const { data: streak } = useMyDailyStreak();
-
-  const currentLevel = progress?.highest_unlocked_level ?? 1;
   const heroClass: HeroClass = hero?.class ?? "warrior";
   const classLevel =
-    (classTracks ?? []).find((t) => t.class === heroClass)?.level ?? 1;
-
+    (tracks ?? []).find((track) => track.class === heroClass)?.level ?? 1;
+  const next = nextMasteryFor(heroClass, classLevel);
+  const guide: ReactNode[] = [
+    <article className="rd-dialog-card" key="chains">
+      <h3>Connect 3+ matching runes</h3>
+      <p>
+        Drag or tap neighbors, including diagonals. In tap mode, press Cast to
+        commit. Clear cancels your path.
+      </p>
+      <p>⚔ Attack · ✦ Mana · ❀ Heal · ◈ Guard</p>
+      <p>
+        Use all four colors to release Convergence: an area strike, mana and
+        guard.
+      </p>
+    </article>,
+    <article className="rd-dialog-card" key="expeditions">
+      <h3>Expeditions</h3>
+      <p>
+        Six seeded chambers. Draft blessings, choose a route, carry health
+        forward, and bank a result for shards. Clear a run to unlock the next
+        Ascension.
+      </p>
+      <Link
+        className="rd-dialog-link"
+        to="/rune-delve/expedition"
+        onClick={() => onOpenChange(false)}
+      >
+        Explore Expeditions →
+      </Link>
+    </article>,
+    ...MECHANIC_LIST.map((mechanic) => (
+      <article className="rd-dialog-card" key={mechanic.id}>
+        <p className="rd-dialog-eyebrow">
+          {mechanic.family} ·{" "}
+          {(progress?.highest_unlocked_level ?? 1) >= mechanic.introLevel
+            ? "Discovered"
+            : `Unlocks at level ${mechanic.introLevel}`}
+        </p>
+        <h3>
+          {mechanic.icon} {mechanic.name}
+        </h3>
+        <p>{mechanic.oneLiner}</p>
+        <p>{mechanic.tip}</p>
+      </article>
+    )),
+  ];
+  const daily: ReactNode[] = [
+    <article className="rd-dialog-card" key="today">
+      <p className="rd-dialog-eyebrow">Today · {today.dateStr}</p>
+      <h3>Endless Survival</h3>
+      <p>
+        {today.timeLimitSec / 60} minutes. Defeat as many foes as you can. The
+        run ends at zero time or zero health.
+      </p>
+      <p>Foes ramp at 0:20, 0:40, 1:00 and 1:30.</p>
+    </article>,
+    <article className="rd-dialog-card" key="rules">
+      <h3>A fair daily challenge</h3>
+      <p>
+        Base class powers only; campaign equipment and masteries do not apply.
+      </p>
+      <p>
+        Pausing, inspecting foes and backgrounding stop the clock. Your first
+        result earns the day’s reward; retries cannot pay twice.
+      </p>
+    </article>,
+    <article className="rd-dialog-card" key="streak">
+      <h3>Your daily streak</h3>
+      <div className="rd-dialog-stats">
+        <div>
+          <strong>{streak?.current_streak ?? 0}</strong>
+          <span>Current</span>
+        </div>
+        <div>
+          <strong>{streak?.best_streak ?? 0}</strong>
+          <span>Best</span>
+        </div>
+        <div>
+          <strong>{streak?.lifetime_clears ?? 0}</strong>
+          <span>Lifetime</span>
+        </div>
+      </div>
+    </article>,
+    ...[0, 5, 10, 15, 20, 30, 50].map((kills) => (
+      <article className="rd-dialog-card" key={kills}>
+        <p className="rd-dialog-eyebrow">Reward ladder</p>
+        <h3>{kills}+ foes slain</h3>
+        <p>
+          {endlessRewardFor(kills).shards} shards · {endlessStarsFor(kills)}{" "}
+          stars {"★".repeat(endlessStarsFor(kills))}
+        </p>
+      </article>
+    )),
+  ];
+  const masteries: ReactNode[] = [
+    <article className="rd-dialog-card" key="class">
+      <h3>
+        {getClass(heroClass).emoji} {getClass(heroClass).name} · Level{" "}
+        {classLevel}
+      </h3>
+      <p>Masteries unlock by leveling this class.</p>
+      <p>
+        {next
+          ? `Next: ${next.name} at class level ${next.unlockLevel}.`
+          : "All five masteries are unlocked."}
+      </p>
+    </article>,
+    ...MASTERY_TIERS[heroClass].map((tier) => (
+      <article className="rd-dialog-card" key={tier.id}>
+        <p className="rd-dialog-eyebrow">
+          {classLevel >= tier.unlockLevel ? "Unlocked" : "Locked"} · Class level{" "}
+          {tier.unlockLevel}
+        </p>
+        <h3>
+          T{tier.tier} · {tier.name}
+        </h3>
+        <p>{tier.summary}</p>
+      </article>
+    )),
+  ];
+  const relics = RELIC_CATALOG.map((relic) => (
+    <article className="rd-dialog-card" key={relic.id}>
+      <p className="rd-dialog-eyebrow">
+        Tier {relic.tier} · {relic.category}
+      </p>
+      <h3>
+        {relic.icon} {relic.name}
+      </h3>
+      <p>{relic.description}</p>
+      <p>Unlock: {relic.cost} shards. Upgrade owned relics in the Armory.</p>
+    </article>
+  ));
+  const pages = { mechanics: guide, daily, masteries, relics }[tab];
+  const index = Math.min(page, pages.length - 1);
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         {...focus}
         side="bottom"
-        className="rd-dialog-theme h-[92dvh] rounded-t-3xl p-0 flex flex-col"
+        className="rd-dialog-theme rd-paged-dialog"
       >
-        <SheetHeader className="px-5 pt-5 pb-2 text-left shrink-0">
-          <SheetTitle className="text-xl font-extrabold tracking-tight flex items-center gap-2">
-            <span>📖</span> Codex
-          </SheetTitle>
-          <p className="text-[11px] text-muted-foreground">
-            Everything you need to know about the runes, runs, and rewards.
-          </p>
+        <SheetHeader className="rd-dialog-header">
+          <SheetTitle className="rd-title">📖 Codex</SheetTitle>
+          <SheetDescription>
+            Runes, runs and rewards, one page at a time.
+          </SheetDescription>
         </SheetHeader>
         <Tabs
-          defaultValue={defaultTab}
-          className="flex-1 flex flex-col min-h-0"
+          className="rd-dialog-tab-root"
+          value={tab}
+          onValueChange={(value) => {
+            setTab(value as CodexTab);
+            setPage(0);
+          }}
         >
-          <TabsList className="mx-4 grid grid-cols-4 h-auto shrink-0">
-            <TabsTrigger
-              value="mechanics"
-              className="min-h-11 px-1 text-[11px] font-bold"
-            >
-              Guide
-            </TabsTrigger>
-            <TabsTrigger
-              value="daily"
-              className="min-h-11 px-1 text-[11px] font-bold"
-            >
-              Daily
-            </TabsTrigger>
-            <TabsTrigger
-              value="masteries"
-              className="min-h-11 px-1 text-[11px] font-bold"
-            >
-              Masteries
-            </TabsTrigger>
-            <TabsTrigger
-              value="relics"
-              className="min-h-11 px-1 text-[11px] font-bold"
-            >
-              Relics
-            </TabsTrigger>
+          <TabsList className="rd-dialog-tabs">
+            {(
+              [
+                ["mechanics", "Guide"],
+                ["daily", "Daily"],
+                ["masteries", "Masteries"],
+                ["relics", "Relics"],
+              ] as const
+            ).map(([value, label]) => (
+              <TabsTrigger key={value} value={value}>
+                {label}
+              </TabsTrigger>
+            ))}
           </TabsList>
-
-          <ScrollArea className="flex-1 mt-3">
-            <div className="px-5 pb-10">
-              {/* MECHANICS */}
-              <TabsContent value="mechanics" className="mt-0 space-y-2.5">
-                <div className="glass-card p-3 space-y-2 text-xs">
-                  <h3 className="font-bold">
-                    Connect 3 or more matching runes
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Drag or tap neighboring runes, including diagonals. In tap
-                    mode, press Cast to commit.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 font-bold">
-                    <span>⚔ Attack</span>
-                    <span>✦ Mana</span>
-                    <span>❀ Heal</span>
-                    <span>◈ Guard</span>
-                  </div>
-                  <p className="text-muted-foreground">
-                    Chain all four colors to release Convergence: an area
-                    strike, mana, and guard.
-                  </p>
-                </div>
-                <Link
-                  to="/rune-delve/expedition"
-                  onClick={() => onOpenChange(false)}
-                  className="glass-card min-h-11 p-3 block text-xs"
-                >
-                  <strong className="text-primary">Expeditions →</strong>
-                  <p className="text-muted-foreground mt-1">
-                    Six chambers. Draft blessings, choose a route, carry your
-                    health forward, and bank rewards. Clear a run to unlock the
-                    next Ascension.
-                  </p>
-                </Link>
-                <h3 className="text-xs font-bold pt-2">Campaign mechanics</h3>
-                {MECHANIC_LIST.map((m) => {
-                  const unlocked = currentLevel >= m.introLevel;
-                  return (
-                    <div
-                      key={m.id}
-                      className={cn(
-                        "glass-card p-3 flex gap-3 items-start",
-                        !unlocked && "opacity-60",
-                      )}
-                    >
-                      <div
-                        className="text-2xl shrink-0 leading-none mt-0.5"
-                        aria-hidden
-                      >
-                        {m.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-rd-display font-extrabold text-[13px]">
-                            {m.name}
-                          </p>
-                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-muted text-muted-foreground">
-                            {m.family}
-                          </span>
-                          {!unlocked && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-muted-foreground">
-                              <Lock className="w-3 h-3" /> L{m.introLevel}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-foreground/80 leading-snug mt-1">
-                          {m.oneLiner}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-                <p className="text-[10px] text-muted-foreground text-center pt-2">
-                  Mechanics introduce solo for 3 levels, then mix into deeper
-                  runs.
-                </p>
-              </TabsContent>
-
-              {/* DAILY — Endless Survival */}
-              <TabsContent value="daily" className="mt-0 space-y-3">
-                <div
-                  className="glass-card p-4"
-                  style={{
-                    background:
-                      "linear-gradient(160deg, hsl(var(--gold) / 0.12), hsl(var(--primary) / 0.08))",
-                    borderColor: "hsl(var(--gold) / 0.25)",
-                  }}
-                >
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-foreground/70">
-                    Today · {today.dateStr}
-                  </p>
-                  <p className="font-rd-display text-lg font-extrabold mt-0.5">
-                    Endless Survival
-                  </p>
-                  <p className="text-[11px] text-foreground/75 mt-1">
-                    {today.timeLimitSec / 60}-minute timed arena · Kill as many
-                    as you can.
-                  </p>
-                </div>
-
-                <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-[11px] text-foreground/85 leading-snug">
-                  <p className="font-extrabold text-primary mb-1.5">
-                    How it works
-                  </p>
-                  <ul className="space-y-0.5">
-                    <li>• You have 2 minutes. No turn limit.</li>
-                    <li>• Foes ramp at 0:20, 0:40, 1:00, and 1:30.</li>
-                    <li>• Run ends when timer hits 0 or HP reaches 0.</li>
-                    <li>
-                      • Base class powers only. Campaign relics and masteries do
-                      not apply.
-                    </li>
-                    <li>
-                      • Pausing, inspecting foes, or backgrounding stops the
-                      clock.
-                    </li>
-                    <li>
-                      • Your first result earns the day’s reward. Retries cannot
-                      pay twice.
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <StreakStat
-                    label="Current"
-                    value={streak?.current_streak ?? 0}
-                    icon={<Flame className="w-3 h-3" />}
-                  />
-                  <StreakStat label="Best" value={streak?.best_streak ?? 0} />
-                  <StreakStat
-                    label="Lifetime"
-                    value={streak?.lifetime_clears ?? 0}
-                  />
-                </div>
-
-                <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-[11px] text-foreground/85 leading-snug">
-                  <p className="font-extrabold text-primary mb-1">
-                    Reward Ladder (kills)
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[0, 5, 10, 15, 20, 30, 50].map((kills) => (
-                      <div key={kills} className="rounded-lg bg-muted/40 p-2">
-                        <strong>{kills}+ slain</strong>
-                        <p>
-                          {endlessRewardFor(kills).shards} shards{" "}
-                          <span className="text-gold">
-                            {"★".repeat(endlessStarsFor(kills))}
-                          </span>
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </TabsContent>
-
-              {/* MASTERIES */}
-              <TabsContent value="masteries" className="mt-0 space-y-3">
-                <div className="glass-card p-3 flex items-center gap-3">
-                  <ClassBadge cls={heroClass} size="lg" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-rd-display font-extrabold text-[14px]">
-                      {getClass(heroClass).name}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Class Level {classLevel} · Masteries unlock by leveling
-                      this class.
-                    </p>
-                  </div>
-                </div>
-
-                {(() => {
-                  const next = nextMasteryFor(heroClass, classLevel);
-                  if (!next)
-                    return (
-                      <div
-                        className="rounded-xl border border-gold/30 bg-gold/5 p-3 text-[11px] text-center font-extrabold"
-                        style={{ color: "hsl(var(--gold))" }}
-                      >
-                        All masteries unlocked. ✨
-                      </div>
-                    );
-                  const pct = Math.min(
-                    100,
-                    Math.round((classLevel / next.unlockLevel) * 100),
-                  );
-                  return (
-                    <div className="glass-card p-3">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <p className="min-h-11 px-1 text-[11px] font-bold">
-                          Next:{" "}
-                          <span className="text-primary">{next.name}</span>
-                        </p>
-                        <p className="text-[10px] font-mono text-muted-foreground">
-                          Lv {classLevel}/{next.unlockLevel}
-                        </p>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="space-y-2">
-                  {MASTERY_TIERS[heroClass].map((tier) => (
-                    <MasteryRow
-                      key={tier.id}
-                      tier={tier}
-                      classLevel={classLevel}
-                    />
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted-foreground text-center pt-2">
-                  Tiers unlock at Lv{" "}
-                  {Object.values(MASTERY_UNLOCK_LEVELS).join(", ")}.
-                </p>
-              </TabsContent>
-
-              {/* RELICS */}
-              <TabsContent value="relics" className="mt-0 space-y-2">
-                {RELIC_CATALOG.map((r) => (
-                  <div
-                    key={r.id}
-                    className="glass-card p-3 flex items-center gap-3"
-                  >
-                    <div className="text-xl shrink-0" aria-hidden>
-                      {r.icon ?? "✦"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-extrabold text-[12px] truncate">
-                        {r.name}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">
-                        {r.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </TabsContent>
-            </div>
-          </ScrollArea>
+          <TabsContent
+            value={tab}
+            className="rd-dialog-body"
+            aria-label={`${tab} page ${index + 1}`}
+            aria-live="polite"
+          >
+            {pages[index]}
+          </TabsContent>
         </Tabs>
+        <RunePager
+          page={index}
+          pageCount={pages.length}
+          onPageChange={setPage}
+          label={`Codex ${tab}`}
+        />
       </SheetContent>
     </Sheet>
-  );
-}
-
-function StreakStat({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: number;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <div className="glass-card p-2.5 text-center">
-      <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1 justify-center">
-        {icon}
-        {label}
-      </p>
-      <p
-        className="font-mono font-extrabold text-base tabular-nums"
-        style={{ color: "hsl(var(--gold))" }}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function MasteryRow({
-  tier,
-  classLevel,
-}: {
-  tier: MasteryTier;
-  classLevel: number;
-}) {
-  const unlocked = classLevel >= tier.unlockLevel;
-  return (
-    <div
-      className={cn(
-        "glass-card p-3 flex items-start gap-3",
-        !unlocked && "opacity-60",
-      )}
-    >
-      <div
-        className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-extrabold text-sm"
-        style={{
-          background: unlocked
-            ? "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)))"
-            : "hsl(var(--muted))",
-          color: unlocked ? "white" : "hsl(var(--muted-foreground))",
-        }}
-      >
-        {unlocked ? (
-          <Sparkles className="w-4 h-4" />
-        ) : (
-          <Lock className="w-3.5 h-3.5" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-extrabold text-[12px]">
-            T{tier.tier} · {tier.name}
-          </p>
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-            Lv {tier.unlockLevel}
-          </span>
-        </div>
-        <p className="text-[11px] text-foreground/80 leading-snug mt-0.5">
-          {tier.summary}
-        </p>
-      </div>
-    </div>
   );
 }

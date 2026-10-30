@@ -104,6 +104,8 @@ afterEach(() => {
 describe("shell motion lifecycle", () => {
   it("keeps one ripple timer per control and clears it on hide or unmount in StrictMode", () => {
     const view = render(<Shell />);
+    expect(document.documentElement).toHaveClass("rd-viewport-active");
+    expect(document.body).toHaveClass("rd-viewport-active");
     const button = screen.getByRole("button", { name: "Ripple" });
     fireEvent.pointerDown(button);
     expect(button).toHaveClass("is-rippling");
@@ -119,6 +121,8 @@ describe("shell motion lifecycle", () => {
     visibility(false);
     fireEvent.pointerDown(button);
     view.unmount();
+    expect(document.documentElement).not.toHaveClass("rd-viewport-active");
+    expect(document.body).not.toHaveClass("rd-viewport-active");
     expect(button).not.toHaveClass("is-rippling");
     expect(vi.getTimerCount()).toBe(0);
   });

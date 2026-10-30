@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
+import { RunePager } from "@/components/runedelve/RunePager";
 import {
   Dialog,
   DialogContent,
@@ -376,6 +377,8 @@ export default function RuneDelvePlayPage() {
   const [flashId, setFlashId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [encounterOpen, setEncounterOpen] = useState(false);
+  const [enemyInspecting, setEnemyInspecting] = useState(false);
+  const [encounterPage, setEncounterPage] = useState(0);
   const [masteryIdsSnapshot, setMasteryIdsSnapshot] = useState<
     MasteryId[] | null
   >(null);
@@ -3015,8 +3018,58 @@ export default function RuneDelvePlayPage() {
     setModifierOffer(null);
   };
 
+  const encounterCards = [
+    {
+      title: objectiveLabel(objType),
+      text:
+        activeLayout?.recommendedStrategy ??
+        "Watch enemy countdowns and match your runes to the encounter.",
+    },
+    ...(bossRule
+      ? [
+          {
+            title: getBossRule(bossRule).label,
+            text: getBossRule(bossRule).rule,
+          },
+        ]
+      : []),
+    ...(secondaryObjective
+      ? [
+          {
+            title: `Bonus · ${secondaryShort(secondaryObjective)}`,
+            text: secondaryLabel(secondaryObjective),
+          },
+        ]
+      : []),
+    ...activeMechanics.map((id) => {
+      const rule = getMechanic(id);
+      return { title: rule.name, text: `${rule.oneLiner} ${rule.tip}` };
+    }),
+    {
+      title: `Resonance · ${combat.resonance?.bursts ?? 0} bursts`,
+      text: "Connect each of the four rune colors to strike all targetable foes, restore one mana and gain one guard. Repeat colors keep your charge. Abilities and saved runs preserve your progress.",
+    },
+    ...(activeModifier && activeModifier.id !== STEADY_PATH.id
+      ? [{ title: activeModifier.name, text: activeModifier.description }]
+      : []),
+    {
+      title: "Battle record",
+      text: `${combat.totalDamage} damage · ${combat.enemiesDefeated} foes defeated · longest chain ${combat.longestChain}`,
+    },
+  ];
+  const detailPage = Math.min(encounterPage, encounterCards.length);
+  const openingDialog =
+    helpOpen ||
+    encounterOpen ||
+    enemyInspecting ||
+    !!introMechanic ||
+    !!introBossRule ||
+    !!endState;
+  const battleInputBlocked =
+    status.over || submitting || !!modifierOffer || openingDialog;
+
   return (
-    <div ref={playRootRef} className="rd-battle pb-2 relative">
+    <div ref={playRootRef} className="rd-battle rd-screen relative">
       {/* V5 — chamber atmospheric backdrop. Reads the active layout's
           atmosphere keyword + accent color and paints a per-chamber
           wash behind everything else on the play page. Fixed-position
@@ -3081,6 +3134,7 @@ export default function RuneDelvePlayPage() {
             enemies={combat.enemies}
             flashId={flashId}
             primaryTargetId={primaryTargetId}
+            onInspectChange={setEnemyInspecting}
           />
         </div>
         <HeroStatusBar
@@ -3095,17 +3149,14 @@ export default function RuneDelvePlayPage() {
               ? 0
               : abilityManaCost
           }
-          disabled={status.over || submitting || !!modifierOffer}
+          disabled={battleInputBlocked}
         />
-        <ResonanceMeter
-          state={combat}
-          onInspect={() => setEncounterOpen(true)}
-        />
+        <ResonanceMeter state={combat} />
       </CombatFeedback>
       <div className="rd-battle-board">
         <RuneBoard
           grid={grid}
-          disabled={status.over || submitting || !!modifierOffer}
+          disabled={battleInputBlocked}
           onChainComplete={handleChain}
           seals={seals}
           corruptedCells={corruption.cells}
@@ -3159,8 +3210,8 @@ export default function RuneDelvePlayPage() {
         </span>
       </div>
       <Dialog open={encounterOpen} onOpenChange={setEncounterOpen}>
-        <DialogContent className="rd-dialog-theme rd-battle-dialog">
-          <DialogHeader>
+        <DialogContent className="rd-dialog-theme rd-battle-dialog rd-paged-dialog rd-encounter-dialog">
+          <DialogHeader className="rd-dialog-header">
             <DialogTitle className="rd-title text-xl">
               {activeLayout?.name ?? `Chamber ${level.level_number}`}
             </DialogTitle>
@@ -3169,73 +3220,32 @@ export default function RuneDelvePlayPage() {
               · {objectiveProgress.text}
             </DialogDescription>
           </DialogHeader>
-          <div className="rd-encounter-rules">
-            <div>
-              <h3>
-                <Target size={15} />
-                {objectiveLabel(objType)}
-              </h3>
-              <p>
-                {activeLayout?.recommendedStrategy ??
-                  "Watch enemy countdowns and match your runes to the encounter."}
-              </p>
+          {detailPage < encounterCards.length ? (
+            <div className="rd-encounter-rules">
+              <div>
+                <h3>{encounterCards[detailPage].title}</h3>
+                <p>{encounterCards[detailPage].text}</p>{" "}
+                {equippedCount > 0 &&
+                  detailPage === encounterCards.length - 1 && (
+                    <Link
+                      to="/rune-delve/armory"
+                      className="flex min-h-11 items-center justify-center gap-1 text-xs font-bold text-primary"
+                    >
+                      <Shield size={14} />
+                      {equippedCount} relics equipped · Armory
+                    </Link>
+                  )}
+              </div>
             </div>
-            {bossRule && (
-              <div>
-                <h3>
-                  <Crown size={15} />
-                  {getBossRule(bossRule).label}
-                </h3>
-                <p>{getBossRule(bossRule).rule}</p>
-              </div>
-            )}
-            {secondaryObjective && (
-              <div>
-                <h3>
-                  <Gem size={15} />
-                  Bonus ·{" "}
-                  {secondaryMet(secondaryObjective, combat, activeTurnBudget)
-                    ? "Complete"
-                    : secondaryShort(secondaryObjective)}
-                </h3>
-                <p>{secondaryLabel(secondaryObjective)}</p>
-              </div>
-            )}
-            {activeMechanics.map((id) => {
-              const rule = getMechanic(id);
-              return (
-                <div key={id}>
-                  <h3>
-                    <span aria-hidden>{rule.icon}</span>
-                    {rule.name}
-                  </h3>
-                  <p>{rule.oneLiner}</p>
-                  <p className="mt-1">{rule.tip}</p>
-                </div>
-              );
-            })}
-            <div>
-              <h3>
-                <SparklesIcon size={15} />
-                Resonance · {combat.resonance?.bursts ?? 0} bursts
-              </h3>
-              <p>
-                Connect each of the four rune colors to release a burst across
-                targetable enemies, restore one mana, and gain one turn of
-                guard. Repeat colors keep your charge. Your progress survives
-                abilities and saved runs.
-              </p>
-            </div>
-            {activeModifier && activeModifier.id !== STEADY_PATH.id && (
-              <div>
-                <h3>
-                  {activeModifier.glyph} {activeModifier.name}
-                </h3>
-                <p>{activeModifier.description}</p>
-              </div>
-            )}
-          </div>
-          <CombatLog entries={log} max={8} />
+          ) : (
+            <CombatLog entries={log} max={8} paged />
+          )}
+          <RunePager
+            page={detailPage}
+            pageCount={encounterCards.length + 1}
+            onPageChange={setEncounterPage}
+            label="Encounter details"
+          />
           <div className="flex gap-2">
             <button
               type="button"
@@ -3256,15 +3266,6 @@ export default function RuneDelvePlayPage() {
               Back to battle
             </button>
           </div>
-          {equippedCount > 0 && (
-            <Link
-              to="/rune-delve/armory"
-              className="flex min-h-11 items-center justify-center gap-1 text-xs font-bold text-primary"
-            >
-              <Shield size={14} />
-              {equippedCount} relics equipped · Armory
-            </Link>
-          )}
         </DialogContent>
       </Dialog>
 
@@ -3323,7 +3324,7 @@ export default function RuneDelvePlayPage() {
       >
         {endState && (
           <DialogContent
-            className="rd-dialog-theme rd-battle-dialog border-primary/25 p-0 [&>button]:hidden"
+            className="rd-dialog-theme rd-battle-dialog rd-settlement-dialog border-primary/25 p-0 [&>button]:hidden"
             onEscapeKeyDown={(event) => {
               if (submitting || saveError) event.preventDefault();
             }}
@@ -3331,7 +3332,7 @@ export default function RuneDelvePlayPage() {
               if (submitting || saveError) event.preventDefault();
             }}
           >
-            <div className="p-5 text-center space-y-3">
+            <div className="rd-settlement-content p-5 text-center space-y-3">
               <div className="flex justify-center">
                 {endState.reason === "cleared" && (
                   <Trophy
@@ -3387,52 +3388,52 @@ export default function RuneDelvePlayPage() {
                 {/* R7: relic drop banner — celebratory card when the
                   clear rolled a free unlock. Sits below the shard
                   bonus so the visual order is: score → shards → relic. */}
-                {droppedRelic && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.92, y: 6 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 280,
-                      damping: 22,
-                      delay: 0.15,
-                    }}
-                    className="mt-3 rounded-xl p-3 flex items-center gap-3 text-left"
+              </div>
+              {droppedRelic && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: 6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 280,
+                    damping: 22,
+                    delay: 0.15,
+                  }}
+                  className="rd-settlement-drop mt-3 rounded-xl p-3 flex items-center gap-3 text-left"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(var(--gold) / 0.18), hsl(var(--gold) / 0.05))",
+                    border: "1px solid hsl(var(--gold) / 0.45)",
+                    boxShadow: "0 0 24px -6px hsl(var(--gold) / 0.45)",
+                  }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
                     style={{
                       background:
-                        "linear-gradient(135deg, hsl(var(--gold) / 0.18), hsl(var(--gold) / 0.05))",
-                      border: "1px solid hsl(var(--gold) / 0.45)",
-                      boxShadow: "0 0 24px -6px hsl(var(--gold) / 0.45)",
+                        "linear-gradient(135deg, hsl(var(--gold) / 0.28), hsl(var(--gold) / 0.08))",
+                      border: "1px solid hsl(var(--gold) / 0.55)",
                     }}
+                    aria-hidden
                   >
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, hsl(var(--gold) / 0.28), hsl(var(--gold) / 0.08))",
-                        border: "1px solid hsl(var(--gold) / 0.55)",
-                      }}
-                      aria-hidden
+                    {droppedRelic.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="text-[9px] font-extrabold uppercase tracking-[0.22em]"
+                      style={{ color: "hsl(var(--gold))" }}
                     >
-                      {droppedRelic.icon}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className="text-[9px] font-extrabold uppercase tracking-[0.22em]"
-                        style={{ color: "hsl(var(--gold))" }}
-                      >
-                        ✨ Relic dropped
-                      </p>
-                      <p className="text-[13px] font-extrabold tracking-tight leading-tight mt-0.5">
-                        {droppedRelic.name}
-                      </p>
-                      <p className="text-[10.5px] text-foreground/70 leading-snug mt-0.5 line-clamp-2">
-                        {droppedRelic.description}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
+                      ✨ Relic dropped
+                    </p>
+                    <p className="text-[13px] font-extrabold tracking-tight leading-tight mt-0.5">
+                      {droppedRelic.name}
+                    </p>
+                    <p className="text-[10.5px] text-foreground/70 leading-snug mt-0.5 line-clamp-2">
+                      {droppedRelic.description}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
               {saveError && (
                 <p
                   role="alert"
@@ -3474,7 +3475,7 @@ export default function RuneDelvePlayPage() {
           random modifiers + a Skip ("Steady Path") option. Once the
           player picks, the modifier persists for the rest of the run
           (saved into snapshot so backgrounding doesn't lose it). */}
-      {modifierOffer && !activeModifier && !status.over && (
+      {modifierOffer && !activeModifier && !status.over && !openingDialog && (
         <RunModifierPicker
           offer={modifierOffer}
           onPick={chooseModifier}

@@ -135,7 +135,11 @@ export default function RuneDelveHomePage() {
     const style = CLASS_STYLE[picking];
     const Icon = style.icon;
     return (
-      <section className="rd-forge" data-class={picking} data-testid="rune-forge">
+      <section
+        className="rd-screen rd-forge"
+        data-class={picking}
+        data-testid="rune-forge"
+      >
         <div className="rd-forge-heading">
           <p className="rd-eyebrow">
             <Sparkles size={13} /> Rune Delve
@@ -183,33 +187,35 @@ export default function RuneDelveHomePage() {
             placeholder="Your legend begins here"
           />
         </label>
-        <button
-          type="button"
-          className="rd-primary-action btn-press"
-          disabled={name.trim().length < 2 || ensureHero.isPending}
-          onClick={async () => {
-            try {
-              await ensureHero.mutateAsync({
-                cls: picking,
-                hero_name: name.trim(),
-              });
-            } catch {
-              toast.error("Your hero couldn’t be saved. Try again.");
-            }
-          }}
-        >
-          <Sparkles />
-          {ensureHero.isPending ? "Summoning…" : "Enter the sanctum"}
-          <ChevronRight />
-        </button>
-        <button
-          type="button"
-          onClick={() => setHelpOpen(true)}
-          className="rd-hub-foot min-h-11"
-        >
-          <HelpCircle />
-          Learn the runes
-        </button>
+        <div className="rd-forge-actions">
+          <button
+            type="button"
+            className="rd-primary-action btn-press"
+            disabled={name.trim().length < 2 || ensureHero.isPending}
+            onClick={async () => {
+              try {
+                await ensureHero.mutateAsync({
+                  cls: picking,
+                  hero_name: name.trim(),
+                });
+              } catch {
+                toast.error("Your hero couldn’t be saved. Try again.");
+              }
+            }}
+          >
+            <Sparkles />
+            {ensureHero.isPending ? "Summoning…" : "Enter the sanctum"}
+            <ChevronRight />
+          </button>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(true)}
+            className="rd-hub-foot min-h-11"
+          >
+            <HelpCircle />
+            Learn the runes
+          </button>
+        </div>
         <HowToPlaySheet
           open={helpOpen}
           onOpenChange={changeHelp}
@@ -229,14 +235,13 @@ export default function RuneDelveHomePage() {
   const xpPct = Math.max(0, Math.min(100, (xp.intoLevel / xp.needed) * 100));
 
   return (
-    <section className="rd-hub" data-class={hero.class} data-testid="rune-home">
+    <section
+      className="rd-screen rd-hub"
+      data-class={hero.class}
+      data-testid="rune-home"
+    >
       <div className="rd-sanctum">
-        <img
-          src={RUNE_PORTAL_ART}
-          alt=""
-          width="1440"
-          height="960"
-        />
+        <img src={RUNE_PORTAL_ART} alt="" width="1440" height="960" />
         <div className="rd-sanctum-copy">
           <p className="rd-eyebrow">
             <Sparkles size={13} /> Rune Delve · Expeditions

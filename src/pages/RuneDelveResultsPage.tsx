@@ -29,7 +29,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CountUp } from "@/components/runedelve/fx/CountUp";
 import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
 import { useReducedMotion, motion } from "framer-motion";
+import { RunePager } from "@/components/runedelve/RunePager";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
 import "@/components/runedelve/runeMenus.css";
+import "@/components/runedelve/runeMapResults.css";
 
 export default function RuneDelveResultsPage() {
   const navigate = useNavigate();
@@ -51,7 +54,18 @@ export default function RuneDelveResultsPage() {
         : null,
     [user?.id, hero?.class, levelNumber],
   );
-  const [view, setView] = useState<"summary" | "records">("summary");
+  const [view, setView] = useState<"summary" | "stats" | "records">("summary");
+  const [recordAnchor, setRecordAnchor] = useState(0);
+  const viewport = useRuneViewport();
+  const recordPageSize = viewport.landscape ? 1 : viewport.short ? 2 : 5;
+  const recordPageCount = Math.max(
+    1,
+    Math.ceil((topRuns?.length ?? 0) / recordPageSize),
+  );
+  const visibleRecordPage = Math.min(
+    Math.floor(recordAnchor / recordPageSize),
+    recordPageCount - 1,
+  );
   const [showConfetti, setShowConfetti] = useState(false);
   const [graceElapsed, setGraceElapsed] = useState(false);
   const reducedMotion = useReducedMotion();
@@ -86,7 +100,7 @@ export default function RuneDelveResultsPage() {
     )
       return <RuneDataState onRetry={retry} />;
     return (
-      <div className="rd-menu-surface py-10 text-center space-y-3">
+      <div className="rd-menu-surface rd-results-empty">
         <RefreshCw className="h-8 w-8 mx-auto text-primary" />
         <h1 className="rd-title text-xl">No saved run yet</h1>
         <p className="rd-menu-note">Retry loading or return to the dungeon.</p>
@@ -138,35 +152,36 @@ export default function RuneDelveResultsPage() {
     { label: latest ? "XP gained" : "Best XP", value: result.xp, Icon: Gem },
   ];
 
+  const views = ["summary", "stats", "records"] as const;
   return (
     <div
-      className="rd-menu-page rd-results-page space-y-4 pb-3"
+      className="rd-menu-page rd-results-page rd-results-screen"
       data-cleared={cleared}
+      data-short={viewport.short}
+      data-landscape={viewport.landscape}
     >
       <Confetti active={showConfetti} />
-      <section
-        className="rd-menu-surface rd-result-hero text-center !py-6 relative overflow-hidden"
-      >
-        <p className="text-[9px] font-extrabold uppercase tracking-[.2em] text-muted-foreground mb-3">
+      <section className="rd-menu-surface rd-result-hero rd-result-heading">
+        <p className="rd-result-context">
           {latest ? "Run complete" : "Personal record"} · Chamber {levelNumber}
         </p>
         <motion.div
           initial={reducedMotion ? false : { scale: 0.6, rotate: -12 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", stiffness: 180, damping: 18 }}
-          className="rd-result-seal mx-auto mb-4 grid place-items-center"
+          className="rd-result-seal"
           aria-hidden="true"
         >
           <RuneMenuSigil />
           {cleared ? (
-            <Trophy className="h-10 w-10 text-gold" strokeWidth={1.3} />
+            <Trophy strokeWidth={1.3} />
           ) : result.hp <= 0 ? (
-            <Skull className="h-10 w-10 text-primary" strokeWidth={1.3} />
+            <Skull strokeWidth={1.3} />
           ) : (
-            <Clock className="h-10 w-10 text-primary" strokeWidth={1.3} />
+            <Clock strokeWidth={1.3} />
           )}
         </motion.div>
-        <h1 className="rd-title text-2xl">
+        <h1 className="rd-title">
           {cleared
             ? "Chamber conquered"
             : result.hp <= 0
@@ -177,182 +192,196 @@ export default function RuneDelveResultsPage() {
           value={result.score}
           duration={reducedMotion ? 0 : 900}
           format={(n) => n.toLocaleString()}
-          className="block font-mono text-4xl font-black tabular-nums text-gold mt-2"
+          className="rd-result-score font-mono"
         />
-        <p className="text-[9px] font-bold tracking-widest text-muted-foreground mt-1">
-          SCORE
-        </p>
-        {cleared && (
-          <div
-            className="rd-result-stars flex justify-center gap-2 mt-4"
-            aria-label={`${stars} of 3 stars`}
-          >
-            {[1, 2, 3].map((star) => (
-              <motion.div
-                key={star}
-                initial={reducedMotion ? false : { opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{
-                  delay: reducedMotion ? 0 : 0.3 + star * 0.15,
-                  type: "spring",
-                }}
-              >
-                <Star
-                  className={`h-7 w-7 text-gold ${star <= stars ? "fill-current" : "opacity-25"}`}
-                />
-              </motion.div>
-            ))}
-          </div>
-        )}
-        {latest && (
-          <div className="rd-result-rewards flex items-center justify-center gap-4 mt-4 text-xs font-extrabold">
-            <span className="flex items-center gap-1.5 text-primary">
-              <Gem className="h-4 w-4" />+{latest.shardsAwarded} shards
-            </span>
-            <span className="text-muted-foreground">+{latest.xpEarned} XP</span>
-          </div>
-        )}
-        {latest?.wasNewBest && (
-          <p className="mt-3 text-[10px] font-extrabold text-gold uppercase tracking-widest">
-            New personal best
-          </p>
-        )}
+        <span className="rd-result-score-label">Score</span>
       </section>
-      {latest && (
-        <div className="rd-result-records flex flex-wrap gap-2">
-          {latest.firstClear && (
-            <span className="rounded-full px-3 py-1.5 text-[10px] font-bold bg-gold/10 text-gold">
-              First clear
-            </span>
-          )}
-          {latest.improvedChain && (
-            <span className="rounded-full px-3 py-1.5 text-[10px] font-bold bg-primary/10 text-primary">
-              Longest chain · {latest.longestChain}
-            </span>
-          )}
-          {latest.improvedTurns && (
-            <span className="rounded-full px-3 py-1.5 text-[10px] font-bold bg-primary/10 text-primary">
-              Fastest clear · {latest.turnsUsed} moves
-            </span>
-          )}
-        </div>
-      )}
       <div
         role="tablist"
         aria-label="Result view"
-        className="rd-menu-tabs grid-cols-2"
+        className="rd-menu-tabs rd-result-tabs"
+        onKeyDown={(event) => {
+          const current = views.indexOf(view);
+          const next =
+            event.key === "ArrowRight"
+              ? (current + 1) % views.length
+              : event.key === "ArrowLeft"
+                ? (current + views.length - 1) % views.length
+                : event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? views.length - 1
+                    : -1;
+          if (next < 0) return;
+          event.preventDefault();
+          setView(views[next]);
+          event.currentTarget
+            .querySelector<HTMLButtonElement>(`#rd-result-tab-${views[next]}`)
+            ?.focus();
+        }}
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "summary"}
-          onClick={() => setView("summary")}
-        >
-          This {latest ? "run" : "record"}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={view === "records"}
-          onClick={() => setView("records")}
-        >
-          Records
-        </button>
+        {views.map((tab) => (
+          <button
+            key={tab}
+            id={`rd-result-tab-${tab}`}
+            type="button"
+            role="tab"
+            aria-selected={view === tab}
+            aria-controls="rd-result-panel"
+            tabIndex={view === tab ? 0 : -1}
+            onClick={() => setView(tab)}
+          >
+            {tab === "summary"
+              ? `This ${latest ? "run" : "record"}`
+              : tab === "stats"
+                ? "Stats"
+                : "Records"}
+          </button>
+        ))}
       </div>
-      {view === "summary" ? (
-        <div className="space-y-3">
-          <div className="rd-result-stats grid grid-cols-3 gap-2">
-            {stats.map(({ label, value, Icon }) => (
-              <div key={label} className="rd-menu-surface !p-3 text-center">
-                <Icon className="h-4 w-4 text-primary mx-auto mb-1.5" />
-                <strong className="font-mono text-lg tabular-nums block">
-                  {value.toLocaleString()}
-                </strong>
-                <span className="text-[9px] font-bold text-muted-foreground">
-                  {label}
+      <div
+        id="rd-result-panel"
+        role="tabpanel"
+        aria-labelledby={`rd-result-tab-${view}`}
+        className="rd-result-panel"
+        data-view={view}
+      >
+        {view === "summary" && (
+          <section className="rd-menu-surface rd-result-summary">
+            {cleared && (
+              <div
+                className="rd-result-stars"
+                aria-label={`${stars} of 3 stars`}
+              >
+                {[1, 2, 3].map((star) => (
+                  <motion.div
+                    key={star}
+                    initial={reducedMotion ? false : { opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      delay: reducedMotion ? 0 : 0.3 + star * 0.15,
+                      type: "spring",
+                    }}
+                  >
+                    <Star
+                      className={star <= stars ? "fill-current" : "opacity-25"}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+            {latest ? (
+              <div className="rd-result-rewards">
+                <span>
+                  <Gem /> +{latest.shardsAwarded} shards
                 </span>
+                <span>+{latest.xpEarned} XP</span>
+              </div>
+            ) : (
+              <p className="rd-menu-note">
+                Your best saved {hero.class} run in this chamber.
+              </p>
+            )}
+            {latest && (
+              <div className="rd-result-records">
+                {latest.wasNewBest && <span>New personal best</span>}
+                {latest.firstClear && <span>First clear</span>}
+                {latest.improvedChain && (
+                  <span>Longest chain · {latest.longestChain}</span>
+                )}
+                {latest.improvedTurns && (
+                  <span>Fastest clear · {latest.turnsUsed} moves</span>
+                )}
+              </div>
+            )}
+            {nearMiss && (
+              <p className="rd-menu-note">
+                You dealt {Math.round((result.damage / totalHp) * 100)}% of
+                their health. A different relic could turn the tide.
+              </p>
+            )}
+            {!cleared && !nearMiss && (
+              <p className="rd-menu-note">
+                Refine your loadout, then return to the chamber.
+              </p>
+            )}
+          </section>
+        )}
+        {view === "stats" && (
+          <div className="rd-result-stats">
+            {stats.map(({ label, value, Icon }) => (
+              <div key={label} className="rd-menu-surface">
+                <Icon aria-hidden="true" />
+                <strong className="font-mono">{value.toLocaleString()}</strong>
+                <span>{label}</span>
               </div>
             ))}
           </div>
-          {nearMiss && (
-            <p className="rd-menu-note text-center">
-              You dealt {Math.round((result.damage / totalHp) * 100)}% of their
-              health. A different relic could turn the tide.
-            </p>
-          )}
-          <Link to="/rune-delve/armory" className="rd-menu-link w-full">
-            <Shield className="h-4 w-4 text-primary" /> Refine your loadout{" "}
-            <ChevronRight className="h-4 w-4 ml-auto" />
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {run && (
-            <section className="rd-menu-surface">
-              <h2 className="text-xs font-extrabold mb-3">
-                Your {hero.class} record
-              </h2>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <strong className="block text-base font-mono text-gold">
-                    {run.score.toLocaleString()}
-                  </strong>
-                  <span className="text-[9px] text-muted-foreground">
-                    Score
-                  </span>
-                </div>
-                <div>
-                  <strong className="block text-base font-mono">
-                    {run.longest_chain}
-                  </strong>
-                  <span className="text-[9px] text-muted-foreground">
-                    Chain
-                  </span>
-                </div>
-                <div>
-                  <strong className="block text-base font-mono">
-                    {run.best_turns_used ?? "—"}
-                  </strong>
-                  <span className="text-[9px] text-muted-foreground">
-                    Fastest clear
-                  </span>
-                </div>
-              </div>
-            </section>
-          )}
-          <section className="rd-menu-surface">
-            <h2 className="text-xs font-extrabold mb-3 flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-gold" /> Club records
-            </h2>
-            {topRuns?.length ? (
-              <div className="space-y-3">
-                {topRuns.slice(0, 5).map((record) => (
-                  <div
-                    key={record.id}
-                    className="flex gap-2 items-center text-xs"
-                  >
-                    <span className="text-muted-foreground w-5 font-mono">
-                      {record.rank}
-                    </span>
-                    <span className="truncate flex-1 font-bold">
-                      {record.hero?.hero_name ?? "Hero"}
-                    </span>
-                    <strong className="font-mono text-gold">
-                      {record.score.toLocaleString()}
-                    </strong>
+        )}
+        {view === "records" && (
+          <div className="rd-result-record-page">
+            {run && (
+              <section
+                className="rd-menu-surface rd-result-personal"
+                aria-label={`Your ${hero.class} record`}
+              >
+                <h2>Your {hero.class} record</h2>
+                <dl>
+                  <div>
+                    <dt>Score</dt>
+                    <dd>{run.score.toLocaleString()}</dd>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="rd-menu-note">Be the first to leave your mark.</p>
+                  <div>
+                    <dt>Chain</dt>
+                    <dd>{run.longest_chain}</dd>
+                  </div>
+                  <div>
+                    <dt>Fastest clear</dt>
+                    <dd>{run.best_turns_used ?? "—"}</dd>
+                  </div>
+                </dl>
+              </section>
             )}
-          </section>
-        </div>
-      )}
-      <div className="rd-result-actions">
+            <section className="rd-menu-surface rd-result-club">
+              <h2>
+                <Trophy aria-hidden="true" /> Club records
+              </h2>
+              {topRuns?.length ? (
+                <ol start={visibleRecordPage * recordPageSize + 1}>
+                  {topRuns
+                    .slice(
+                      visibleRecordPage * recordPageSize,
+                      (visibleRecordPage + 1) * recordPageSize,
+                    )
+                    .map((record) => (
+                      <li key={record.id}>
+                        <span className="rd-result-rank">{record.rank}</span>
+                        <span className="rd-result-name">
+                          {record.hero?.hero_name ?? "Hero"}
+                        </span>
+                        <strong>{record.score.toLocaleString()}</strong>
+                      </li>
+                    ))}
+                </ol>
+              ) : (
+                <p className="rd-menu-note">Be the first to leave your mark.</p>
+              )}
+            </section>
+            <RunePager
+              page={visibleRecordPage}
+              pageCount={recordPageCount}
+              onPageChange={(next) => setRecordAnchor(next * recordPageSize)}
+              label="Club records"
+            />
+          </div>
+        )}
+      </div>
+      <div className="rd-result-actions rd-result-footer">
+        <Link to="/rune-delve/armory" aria-label="Refine your loadout">
+          <Shield aria-hidden="true" /> Armory
+        </Link>
         <button
           type="button"
-          className="bg-muted/40"
           onClick={() => navigate(`/rune-delve/play/${levelNumber}`)}
         >
           Play again
@@ -363,7 +392,7 @@ export default function RuneDelveResultsPage() {
             className="bg-primary text-primary-foreground"
             onClick={() => navigate(`/rune-delve/play/${levelNumber + 1}`)}
           >
-            Next chamber <ChevronRight className="h-4 w-4" />
+            Next chamber <ChevronRight aria-hidden="true" />
           </button>
         ) : (
           <Link
@@ -371,7 +400,7 @@ export default function RuneDelveResultsPage() {
             className="bg-primary text-primary-foreground"
           >
             {cleared ? "Dungeon" : "Tune build"}{" "}
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight aria-hidden="true" />
           </Link>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { Gem, Shield, Lock } from "lucide-react";
+import { Gem, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useMemo, useRef } from "react";
 import { toast } from "sonner";
@@ -26,6 +26,8 @@ import { RelicCard } from "@/components/runedelve/RelicCard";
 import { RelicUpgradeSheet } from "@/components/runedelve/RelicUpgradeSheet";
 import { ShardBalance } from "@/components/runedelve/ShardBalance";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
+import { RunePager } from "@/components/runedelve/RunePager";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
 import "@/components/runedelve/runeMenus.css";
 
 const TIERS: RelicTier[] = [1, 2, 3];
@@ -57,6 +59,8 @@ export default function RuneDelveShopPage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [upgradeRelic, setUpgradeRelic] = useState<RelicDef | null>(null);
   const pendingRef = useRef(false);
+  const viewport = useRuneViewport();
+  const [page, setPage] = useState(0);
   const ownedMap = useMemo(
     () => new Map((owned ?? []).map((o) => [o.relic_id, o.rank ?? 1])),
     [owned],
@@ -140,106 +144,136 @@ export default function RuneDelveShopPage() {
       <RuneDataState onRetry={() => queries.forEach((q) => void q.refetch())} />
     );
 
+  const pageSize = viewport.landscape
+    ? 2
+    : viewport.short
+      ? 1
+      : viewport.width >= 700
+        ? 6
+        : 2;
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
   return (
-    <div className="rd-menu-page rd-shop-page space-y-4 pb-5">
+    <div className="rd-screen rd-menu-page rd-fit-menu rd-shop-page">
       <div className="rd-menu-heading">
         <h1 className="rd-title">Relic Forge</h1>
         <Link to="/rune-delve/armory" className="rd-menu-link">
-          <Shield className="h-4 w-4" /> Armory
+          <Shield size={14} /> Armory
         </Link>
       </div>
-      <div className="rd-menu-surface rd-forge-ledger flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-            Rune shards
-          </p>
-          <ShardBalance shards={shards} />
-        </div>
-        <span className="text-[11px] text-muted-foreground text-right">
-          <strong className="block text-base text-foreground">
-            {ownedMap.size}
-            <span className="text-muted-foreground text-[11px]">
-              /{RELIC_CATALOG.length}
+      <div className="rd-shop-workspace">
+        <aside className="rd-shop-filters" aria-label="Relic filters">
+          <div className="rd-menu-surface rd-forge-ledger">
+            <div>
+              <span className="rd-menu-note">Rune shards</span>
+              <ShardBalance shards={shards} />
+            </div>
+            <span className="rd-menu-note">
+              <strong className="text-foreground">
+                {ownedMap.size}/{RELIC_CATALOG.length}
+              </strong>{" "}
+              collected
             </span>
-          </strong>
-          relics collected
-        </span>
-      </div>
-      <div
-        role="tablist"
-        aria-label="Relic tier"
-        className="rd-menu-tabs grid-cols-3"
-      >
-        {TIERS.map((t) => (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tier === t}
-            key={t}
-            onClick={() => setTier(t)}
-            className="flex items-center justify-center gap-1.5"
-          >
-            {!tierUnlockedForChapter(t, currentChapter) && (
-              <Lock className="h-3 w-3" />
-            )}{" "}
-            Tier {t}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-3 justify-between">
-        <p className="rd-menu-note">
-          {unlockedTier
-            ? "Unlock. Upgrade. Build your edge."
-            : `Unlocks in Chapter ${tier}`}
-        </p>
-        <label className="sr-only" htmlFor="rd-relic-category">
-          Relic category
-        </label>
-        <select
-          id="rd-relic-category"
-          value={cat}
-          onChange={(e) => setCat(e.target.value as typeof cat)}
-          className="min-h-11 max-w-[48%] min-w-0 rounded-xl border border-border/60 bg-card px-3 text-[11px] font-bold"
+          </div>
+          <div className="rd-shop-filter-controls">
+            <label className="sr-only" htmlFor="rd-relic-tier">
+              Relic tier
+            </label>
+            <select
+              id="rd-relic-tier"
+              value={tier}
+              onChange={(event) => {
+                setTier(Number(event.target.value) as RelicTier);
+                setPage(0);
+              }}
+            >
+              {TIERS.map((t) => (
+                <option key={t} value={t}>
+                  Tier {t}
+                  {!tierUnlockedForChapter(t, currentChapter)
+                    ? " · Locked"
+                    : ""}
+                </option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="rd-relic-category">
+              Relic category
+            </label>
+            <select
+              id="rd-relic-category"
+              value={cat}
+              onChange={(event) => {
+                setCat(event.target.value as typeof cat);
+                setPage(0);
+              }}
+            >
+              {CATS.map((c) => (
+                <option key={c} value={c}>
+                  {c === "all" ? "All relics" : CATEGORY_META[c].label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="rd-menu-note">
+            {unlockedTier
+              ? "Unlock. Upgrade. Build your edge."
+              : `Unlocks in Chapter ${tier}`}
+          </p>
+        </aside>
+        <section
+          className="rd-page-stack rd-shop-collection"
+          aria-label="Relic catalog"
         >
-          {CATS.map((c) => (
-            <option key={c} value={c}>
-              {c === "all" ? "All relics" : CATEGORY_META[c].label}
-            </option>
-          ))}
-        </select>
+          {visible.length ? (
+            <div
+              className="rd-relic-grid rd-fit-relic-grid"
+              data-rows={pageSize > 3 ? 2 : 1}
+              data-cols={pageSize === 6 ? 3 : pageSize === 1 ? 1 : 2}
+              key={`${tier}-${cat}`}
+            >
+              {visible
+                .slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+                .map((relic) => {
+                  const alreadyOwned = ownedMap.has(relic.id);
+                  return (
+                    <RelicCard
+                      key={relic.id}
+                      relic={relic}
+                      shards={shards}
+                      rank={ownedMap.get(relic.id)}
+                      state={
+                        !unlockedTier && !alreadyOwned
+                          ? "locked-tier"
+                          : alreadyOwned
+                            ? "owned"
+                            : shards >= relic.cost
+                              ? "affordable"
+                              : "unaffordable"
+                      }
+                      disabled={!!pendingId}
+                      onClick={() =>
+                        alreadyOwned ? setUpgradeRelic(relic) : void buy(relic)
+                      }
+                    />
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="rd-menu-surface rd-empty-collection">
+              <Gem className="h-7 w-7 text-primary" />
+              <p className="rd-menu-note">
+                No relics in this category and tier.
+              </p>
+            </div>
+          )}
+          <RunePager
+            page={currentPage}
+            pageCount={pageCount}
+            onPageChange={setPage}
+            label="Relics"
+          />
+        </section>
       </div>
-      <div className="rd-relic-grid" key={`${tier}-${cat}`}>
-        {visible.map((relic) => {
-          const alreadyOwned = ownedMap.has(relic.id);
-          return (
-            <RelicCard
-              key={relic.id}
-              relic={relic}
-              shards={shards}
-              rank={ownedMap.get(relic.id)}
-              state={
-                !unlockedTier && !alreadyOwned
-                  ? "locked-tier"
-                  : alreadyOwned
-                    ? "owned"
-                    : shards >= relic.cost
-                      ? "affordable"
-                      : "unaffordable"
-              }
-              disabled={!!pendingId}
-              onClick={() =>
-                alreadyOwned ? setUpgradeRelic(relic) : void buy(relic)
-              }
-            />
-          );
-        })}
-      </div>
-      {!visible.length && (
-        <div className="rd-menu-surface text-center py-8">
-          <Gem className="mx-auto h-7 w-7 text-primary mb-3" />
-          <p className="rd-menu-note">No relics in this category and tier.</p>
-        </div>
-      )}
       <RelicUpgradeSheet
         open={!!upgradeRelic}
         relic={upgradeRelic}

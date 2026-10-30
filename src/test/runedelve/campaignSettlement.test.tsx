@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useEffect } from "react";
 import {
   act,
   cleanup,
@@ -29,6 +30,7 @@ const fixture = vi.hoisted(() => ({
   heroClass: "rogue" as HeroClass,
   combat: null as CombatState | null,
   enemies: [] as Enemy[],
+  showIntro: false,
   submit: vi.fn(),
 }));
 const enemy: Enemy = {
@@ -48,7 +50,11 @@ const level = {
   enemy_config: [enemy],
   objective_type: "defeat_all",
   objective_target: 0,
-  modifiers: { mechanics: ["multi_objective"], secondary_objective: null },
+  modifiers: {
+    mechanics: ["multi_objective"],
+    secondary_objective: null,
+    intro_mechanic: undefined as "multi_objective" | undefined,
+  },
 };
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: "player" } }),
@@ -104,7 +110,16 @@ vi.mock("@/components/runedelve/fx/FloatingNumber", () => ({
   useFloaters: () => ({ floaters: [], addAt: vi.fn(), complete: vi.fn() }),
 }));
 vi.mock("@/components/runedelve/MechanicIntroSheet", () => ({
-  MechanicIntroSheet: () => null,
+  MechanicIntroSheet: ({ onBegin }: { onBegin: () => void }) => {
+    useEffect(() => {
+      if (!fixture.showIntro) onBegin();
+    }, [onBegin]);
+    return fixture.showIntro ? (
+      <section role="dialog" aria-label="Mechanic briefing">
+        <button onClick={onBegin}>Begin test introduction</button>
+      </section>
+    ) : null;
+  },
 }));
 vi.mock("@/components/runedelve/RuneBoard", () => ({
   RuneBoard: ({
@@ -220,21 +235,72 @@ beforeEach(() => {
   fixture.heroClass = "rogue";
   fixture.combat = null;
   fixture.enemies = [];
-  fixture.submit
-    .mockReset()
-    .mockResolvedValue({
-      wasNewBest: true,
-      shardsAwarded: 10,
-      xpAwarded: 0,
-      improvedChain: false,
-      improvedTurns: false,
-      improvedHp: false,
-      firstClear: true,
-    });
+  fixture.showIntro = false;
+  level.modifiers.intro_mechanic = undefined;
+  fixture.submit.mockReset().mockResolvedValue({
+    wasNewBest: true,
+    shardsAwarded: 10,
+    xpAwarded: 0,
+    improvedChain: false,
+    improvedTurns: false,
+    improvedHp: false,
+    firstClear: true,
+  });
 });
 afterEach(cleanup);
 
 describe("campaign production action settlement", () => {
+  it("shows the introduction before pending bargains and preserves the offer until an explicit choice", async () => {
+    fixture.heroClass = "mage";
+    fixture.showIntro = true;
+    level.modifiers.intro_mechanic = "multi_objective";
+    const offer = ["crimson_edge", "iron_veil", "verdant_heart"];
+    checkpoint(
+      "blue",
+      { ...initialCombat([{ ...enemy, hp: 200, maxHp: 200 }], 10), mana: 3 },
+      { activeModifierId: undefined, pendingModifierOfferIds: offer },
+    );
+    mount();
+    expect(
+      screen.getByRole("dialog", { name: "Mechanic briefing" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("dialog", { name: "Pick your edge." }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "Test chain" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Test ability" })).toBeDisabled();
+    const read = () =>
+      loadSnapshot(snapshotKey("player", level.id, fixture.heroClass), 123);
+    expect(read()?.pendingModifierOfferIds).toEqual(offer);
+    fireEvent.click(
+      screen.getByRole("button", { name: "Begin test introduction" }),
+    );
+    const bargain = await screen.findByRole("dialog", {
+      name: "Pick your edge.",
+    });
+    expect(
+      screen.queryByRole("dialog", { name: "Mechanic briefing" }),
+    ).toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(bargain).toBeVisible();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Next chamber bargains page" }),
+    );
+    expect(bargain).toBeVisible();
+    expect(read()?.pendingModifierOfferIds).toEqual(offer);
+    expect(read()?.activeModifierId).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: /^◇ Steady Path/ }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Pick your edge." }),
+      ).toBeNull(),
+    );
+    expect(screen.getByRole("button", { name: "Test chain" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Test ability" })).toBeEnabled();
+    expect(read()?.activeModifierId).toBe("steady_path");
+    expect(read()?.pendingModifierOfferIds).toBeUndefined();
+  });
+
   it("includes the winning chain's treasure, mastery shards and gold-rune score, and freezes them for retry", async () => {
     checkpoint("gold", initialCombat([enemy], 10), {
       masteryIds: ["rogue_t1_gold_score", "rogue_t5_master_thief"],

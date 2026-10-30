@@ -1,6 +1,7 @@
 // Real Rune Delve controls with the isolated browser-local backend.
-// RUNE_QA_URL=http://127.0.0.1:8087 node scripts/check-rune-motion.mjs
-// Optional: RUNE_QA_OUTPUT=/tmp/rune-motion RUNE_QA_VIDEO=1
+// RUNE_QA_URL=http://127.0.0.1:8094 node scripts/check-rune-motion.mjs
+// Optional: RUNE_QA_OUTPUT=/tmp/rune-motion RUNE_QA_VIDEO=1 VIEWPORT=390x844
+// VIEWPORT filters the screenshot matrix; the six lifecycle checks remain at 390×844.
 // Frame callbacks below describe this Chromium run; they are not a device FPS guarantee.
 import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
@@ -9,15 +10,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installRuneFixture } from "./rune-fixture.mjs";
 
-const base = process.env.RUNE_QA_URL || "http://127.0.0.1:8087";
+const base = process.env.RUNE_QA_URL || "http://127.0.0.1:8094";
 const output = process.env.RUNE_QA_OUTPUT || await mkdtemp(join(tmpdir(), "rune-motion-"));
 await mkdir(output, { recursive: true });
+const viewportFilter = (process.env.VIEWPORT || "").split(",").filter(Boolean).map(value => value.replace("×", "x"));
+const viewports = [[320, 568], [390, 844], [768, 1024], [844, 390], [1440, 900]]
+  .filter(([width, height]) => !viewportFilter.length || viewportFilter.includes(`${width}x${height}`));
+assert.ok(viewports.length, "VIEWPORT selects at least one supported size");
 const browser = await chromium.launch({
   executablePath: process.env.RUNE_QA_CHROMIUM || "/usr/bin/chromium",
   headless: true,
   args: ["--no-sandbox"],
 });
-const errors = [], report = { viewports: [], motion: [], lifecycle: [] };
+const errors = [], report = { viewports: [], resultTabs: [], motion: [], lifecycle: [] };
 const decorative = [
   ".rd-world-scene", ".rd-world-motes", ".rd-mote", ".rd-menu-sigil",
   ".rd-relic-frame", ".rd-result-seal", ".rd-portrait-orbit",
@@ -56,10 +61,30 @@ async function setup(width = 390, height = 844, motion = "no-preference", video 
   return { page, context };
 }
 
+async function settleUI(page) {
+  await page.waitForFunction(() => window.runeQueryClient
+    && window.runeQueryClient.isFetching() === 0 && window.runeQueryClient.isMutating() === 0);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function fitsWithoutScrolling(locator, label) {
+  await expect.poll(() => locator.evaluate(node => {
+    const rect = node.getBoundingClientRect();
+    return { fits: rect.x >= -1 && rect.y >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+      bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } };
+  }), { timeout: 1000, intervals: [20, 50, 100], message: `${label} fits without scrolling` }).toMatchObject({ fits: true });
+}
+
+async function clickControl(locator, label) {
+  await fitsWithoutScrolling(locator, label);
+  await locator.click();
+}
+
 async function go(page, route, scenario = "full") {
   const query = new URLSearchParams({ route, scenario, theme: "dark", completed: "149" });
   await page.goto(`${base}/scripts/fixtures/rune.html?${query}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => Boolean(window.runeQa));
+  await settleUI(page);
   await expect(page.locator(".rd-mode main")).toBeVisible();
   await expect(page.getByText("Preparing your hero…", { exact: true })).toHaveCount(0);
   await expect.poll(() => page.locator(".rd-mode main .skeleton-shimmer").count()).toBe(0);
@@ -79,9 +104,12 @@ async function go(page, route, scenario = "full") {
 async function noOverflow(page, label) {
   const bounds = await page.evaluate(() => ({
     viewport: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth,
+    viewportHeight: innerHeight, documentHeight: document.documentElement.scrollHeight, bodyHeight: document.body.scrollHeight, x: scrollX, y: scrollY,
   }));
-  assert.ok(bounds.document <= bounds.viewport + 1 && bounds.body <= bounds.viewport + 1,
-    `${label}: no horizontal overflow (${JSON.stringify(bounds)})`);
+  assert.ok(bounds.document <= bounds.viewport + 1 && bounds.body <= bounds.viewport + 1
+    && bounds.documentHeight <= bounds.viewportHeight + 1 && bounds.bodyHeight <= bounds.viewportHeight + 1
+    && Math.abs(bounds.x) <= 1 && Math.abs(bounds.y) <= 1,
+    `${label}: document fits without scrolling (${JSON.stringify(bounds)})`);
 }
 
 async function passiveDecoration(page, label) {
@@ -97,43 +125,44 @@ async function tiles(page, label) {
   await expect(page.locator("button[data-rune-cell]")).toHaveCount(25);
   const sizes = await page.locator("button[data-rune-cell]").evaluateAll(nodes => nodes.map(node => {
     const rect = node.getBoundingClientRect();
-    return { width: rect.width, height: rect.height };
+    return { width: rect.width, height: rect.height, fits: rect.x >= -1 && rect.y >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1 };
   }));
   assert.ok(sizes.every(rect => rect.width >= 43.9 && rect.height >= 43.9),
     `${label}: all 25 rune controls are at least 44px (${JSON.stringify(sizes[0])})`);
+  assert.ok(sizes.every(rect => rect.fits), `${label}: all 25 rune controls fit without scrolling`);
 }
 
 async function campaignCastFits(page, label) {
-  // This checks the natural 390×844 layout; scrolling would conceal a cut rail.
-  const cast = page.getByRole("button", { name: "Cast", exact: true });
-  await expect.poll(() => cast.evaluate(node => {
-    const rect = node.getBoundingClientRect();
-    return {
-      fits: rect.x >= -1 && rect.y >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
-      bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-    };
-  }), { timeout: 1000, intervals: [20, 50, 100], message: `${label}: campaign Cast control fits without scrolling` })
-    .toMatchObject({ fits: true });
+  await fitsWithoutScrolling(page.getByRole("button", { name: "Cast", exact: true }), `${label}: Cast control`);
 }
 
 async function dismissIntroductions(page) {
-  for (let i = 0; i < 8; i++) {
-    const begin = page.getByRole("dialog").getByRole("button", {
-      name: /^(Face the Boss|Begin Level \d+|Ready to delve)/,
-    }).last();
-    if (await begin.isVisible()) { await begin.click(); continue; }
-    const steady = page.getByRole("button", { name: /^◇ Steady Path/ });
-    if (await steady.isVisible()) { await steady.click(); continue; }
-    break;
+  for (let i = 0; i < 10; i++) {
+    await settleUI(page);
+    const modal = page.getByRole("dialog").last();
+    if (!await modal.count()) break;
+    const begin = modal.getByRole("button", { name: /^(Face the Boss|Begin Level \d+|Ready to delve)/ }).last();
+    const steady = modal.getByRole("button", { name: /^◇ Steady Path/ });
+    const choice = await begin.count() ? begin : steady;
+    if (!await choice.count()) assert.fail(`Unrecognized opening dialog: ${(await modal.innerText()).slice(0, 180)}`);
+    const mounted = await modal.elementHandle();
+    assert.ok(mounted, "Opening dialog is mounted");
+    try {
+      await clickControl(choice, "Opening confirmation");
+      // A different introduction can immediately reuse the broad role locator.
+      await mounted.waitForElementState("hidden");
+    } finally { await mounted.dispose(); }
   }
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator("button[data-rune-cell]").first()).toBeEnabled();
 }
 
 async function dialogFocus(page) {
   const trigger = page.getByRole("button", { name: /^Ember Edge\./ });
-  await trigger.scrollIntoViewIfNeeded();
-  await trigger.focus();
+  await fitsWithoutScrolling(trigger, "Owned relic trigger");
+  await trigger.evaluate(node => node.focus({ preventScroll: true }));
   await page.keyboard.press("Enter");
-  const dialog = page.getByRole("dialog", { name: "Ember Edge", exact: true });
+  const dialog = page.getByRole("dialog", { name: /Ember Edge$/ });
   await expect(dialog).toBeVisible();
   // A Radix bottom sheet is visible while its entrance transform still places
   // part of it below the viewport. Measure the settled control, within 1s.
@@ -146,6 +175,12 @@ async function dialogFocus(page) {
     };
   }), { timeout: 1000, intervals: [20, 50, 100], message: "Settled upgrade dialog fits the viewport" })
     .toMatchObject({ fits: true, animating: false });
+  const pager = dialog.locator("[data-rune-pager]");
+  if (await pager.count()) {
+    await clickControl(pager.getByRole("button", { name: "Next relic comparison page", exact: true }), "Upgrade comparison next page");
+    await expect(pager).toHaveAttribute("data-page", "1");
+    await fitsWithoutScrolling(dialog.getByRole("button", { name: /^Upgrade to R2/ }), "Upgrade action");
+  }
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press(i % 3 ? "Tab" : "Shift+Tab");
     assert.ok(await dialog.evaluate(node => node.contains(document.activeElement)), "Dialog traps focus");
@@ -156,7 +191,7 @@ async function dialogFocus(page) {
 }
 
 async function selectPath(page) {
-  await page.getByRole("button", { name: "Tap", exact: true }).click();
+  await clickControl(page.getByRole("button", { name: "Tap", exact: true }), "Tap control");
   const cells = await page.locator("button[data-rune-cell]").evaluateAll(nodes => nodes.map(node => ({
     r: Number(node.dataset.r), c: Number(node.dataset.c), type: node.dataset.runeType || node.getAttribute("aria-label"),
     disabled: node.disabled,
@@ -177,7 +212,7 @@ async function selectPath(page) {
     if (cell.disabled) continue;
     const path = search([cell]);
     if (!path) continue;
-    for (const current of path) await page.locator(`button[data-r="${current.r}"][data-c="${current.c}"]`).click();
+    for (const current of path) await clickControl(page.locator(`button[data-r="${current.r}"][data-c="${current.c}"]`), "Rune control");
     await expect(page.locator('button[data-rune-cell][aria-pressed="true"]')).toHaveCount(3);
     return;
   }
@@ -246,6 +281,7 @@ async function boardMotion(motion) {
   const label = `board-${motion}`;
   try {
     await go(page, "/rune-delve/__qa/board");
+    await expect(page.locator(".rd-boot-cinematic")).toHaveCount(0, { timeout: 1800 });
     await expect(page.locator(".rd-rune-board")).toHaveAttribute("data-motion", motion === "reduce" ? "reduced" : "full");
     await selectPath(page);
     await expect(page.locator(".rd-chain-energy")).toHaveCount(1);
@@ -285,8 +321,10 @@ async function activeGameMotion(route, motion) {
   const arena = route.endsWith("endless"), label = `${arena ? "arena" : "expedition"}-${motion}`;
   try {
     await go(page, route);
-    await (arena ? page.getByRole("button", { name: "Begin arena", exact: true }) : page.getByTestId("expedition-start")).click();
+    await expect(page.locator(".rd-boot-cinematic")).toHaveCount(0, { timeout: 1800 });
+    await clickControl(arena ? page.getByRole("button", { name: "Begin arena", exact: true }) : page.getByTestId("expedition-start"), `${label}: start`);
     await tiles(page, label);
+    await campaignCastFits(page, label);
     const read = () => page.evaluate(({ arena, expeditionKey }) => {
       const raw = arena
         ? Object.entries(sessionStorage).find(([key]) => key.startsWith("rd-arena-v1:"))?.[1]
@@ -324,7 +362,7 @@ async function activeGameMotion(route, motion) {
     if (arena) assert.equal(after.elapsed, paused.elapsed, "Hidden arena spends no active-play time");
     await expect(page.locator(transient)).toHaveCount(0);
     await documentHidden(page, false);
-    await (arena ? page.getByRole("button", { name: "Resume arena", exact: true }).last() : page.getByTestId("expedition-resume")).click();
+    await clickControl(arena ? page.getByRole("button", { name: "Resume arena", exact: true }).last() : page.getByTestId("expedition-resume"), `${label}: resume`);
     await expect(page.locator("button[data-rune-cell]").first()).toBeEnabled();
     await expect(page.locator(transient)).toHaveCount(0);
     await page.screenshot({ path: join(output, `${label}-resumed.png`) });
@@ -332,8 +370,23 @@ async function activeGameMotion(route, motion) {
   } finally { await context.close(); }
 }
 
+async function resultsTabs(page, label) {
+  await expect(page.locator(".rd-result-score")).toHaveText("1,234", { timeout: 1800 });
+  for (const name of ["Stats", "Records"]) {
+    const tab = page.getByRole("tab", { name, exact: true });
+    await clickControl(tab, `${label}: ${name} tab`);
+    await expect(tab).toHaveAttribute("aria-selected", "true");
+    await fitsWithoutScrolling(page.getByRole("tabpanel"), `${label}: ${name} panel`);
+    await expect(page.locator(".rd-results-page")).not.toContainText(/\b(NaN|undefined|Infinity)\b/);
+    await noOverflow(page, `${label}-${name}`);
+    await page.screenshot({ path: join(output, `${label}-victory-${name.toLowerCase()}.png`) });
+    report.resultTabs.push({ label, tab: name, fitsWithoutScrolling: true });
+  }
+  await clickControl(page.getByRole("tab", { name: "This record", exact: true }), `${label}: summary tab`);
+}
+
 try {
-  for (const [width, height] of [[320, 568], [390, 844], [768, 1024], [844, 390], [1440, 900]]) {
+  for (const [width, height] of viewports) {
     for (const motion of ["no-preference", "reduce"]) {
       const { page, context } = await setup(width, height, motion);
       const label = `${width}-${height}-${motion}`;
@@ -347,15 +400,14 @@ try {
           if (name === "combat") {
             await dismissIntroductions(page);
             await tiles(page, label);
-            if (width === 390 && height === 844) await campaignCastFits(page, label);
+            await campaignCastFits(page, label);
           }
           await expect(page.locator(".rd-shell")).toHaveAttribute("data-rd-motion", motion === "reduce" ? "reduced" : "full");
           await noOverflow(page, `${label}-${name}`);
           await passiveDecoration(page, `${label}-${name}`);
           if (name === "shop") await dialogFocus(page);
           if (name === "victory") {
-            await expect(page.locator(".rd-result-hero > span.font-mono")).toHaveText("1,234", { timeout: 1800 });
-            await expect(page.locator(".rd-results-page")).not.toContainText(/\b(NaN|undefined|Infinity)\b/);
+            await resultsTabs(page, label);
           }
           if (name === "home" && width === 390) {
             const sample = await sampleFrames(page, `${label}-home`);
@@ -367,7 +419,7 @@ try {
           const animationNames = await page.evaluate(() => [...new Set(window.runeMotionTrace.filter(event => event.type === "animationstart").map(event => event.name))]);
           report.viewports.push({
             width, height, motion, screen: name, noOverflow: true, animationNames,
-            ...(name === "combat" && width === 390 && height === 844 ? { castInViewport: true } : {}),
+            ...(name === "combat" ? { castInViewport: true } : {}),
           });
         }
         console.log("PASS viewport", label);
@@ -380,7 +432,7 @@ try {
     await activeGameMotion("/rune-delve/endless", motion);
   }
   assert.deepEqual(errors, [], "No browser runtime or console errors, including malformed SVG paths");
-  console.log("PASS normal/reduced motion, five viewports, real cast animation progress, focus, rapid input, cleanup and hidden/resume");
+  console.log("PASS normal/reduced motion,", viewports.length, "viewports, real cast animation progress, focus, rapid input, cleanup and hidden/resume");
 } finally {
   await writeFile(join(output, "report.json"), JSON.stringify({ ...report, errors }, null, 2));
   await browser.close();

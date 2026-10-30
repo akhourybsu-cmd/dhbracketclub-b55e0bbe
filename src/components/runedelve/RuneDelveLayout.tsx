@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import "./runeWorld.css";
 import { useActiveQuests } from "@/hooks/useQuests";
 import { RuneWorldScene } from "./RuneWorldScene";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
+import "./runeViewport.css";
 
 /**
  * Full-screen game shell for Rune Delve. Applies the `.rd-mode` skin to the
@@ -23,6 +25,15 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
   useActiveQuests();
   const { play } = useRuneDelveSfx();
   const { pathname } = useLocation();
+  const viewport = useRuneViewport();
+  useEffect(() => {
+    document.documentElement.classList.add("rd-viewport-active");
+    document.body.classList.add("rd-viewport-active");
+    return () => {
+      document.documentElement.classList.remove("rd-viewport-active");
+      document.body.classList.remove("rd-viewport-active");
+    };
+  }, []);
   const reducedMotion = useReducedMotion();
   const [hidden, setHidden] = useState(() => document.hidden);
   useEffect(() => {
@@ -116,7 +127,12 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="rd-mode rd-shell relative min-h-[100dvh]"
+      className="rd-mode rd-shell rd-viewport relative"
+      style={
+        {
+          "--rd-viewport-height": `${viewport.height}px`,
+        } as React.CSSProperties
+      }
       data-document-hidden={String(hidden)}
       data-rd-motion={reducedMotion ? "reduced" : "full"}
     >

@@ -23,7 +23,9 @@ import {
   type HeroClass,
 } from "@/lib/runedelve/classConfig";
 import { MASTERY_TIERS, nextMasteryFor } from "@/lib/runedelve/classMastery";
-import { CharacterPowerPanel } from "@/components/runedelve/CharacterPowerPanel";
+import { RuneBuildPages } from "@/components/runedelve/RuneBuildPages";
+import { RunePager } from "@/components/runedelve/RunePager";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
 import { RuneHeroArt } from "@/components/runedelve/RuneArtwork";
 import { RuneMenuSigil } from "@/components/runedelve/RuneMenuSigil";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
@@ -48,9 +50,14 @@ export default function RuneDelveHeroPage() {
   const ensureClass = useEnsureClassProgress();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState("");
-  const [view, setView] = useState<"build" | "classes" | "prestige">("build");
+  const [view, setView] = useState<
+    "profile" | "build" | "classes" | "prestige"
+  >("profile");
   const [switching, setSwitching] = useState<HeroClass | null>(null);
   const actionRef = useRef(false);
+  const viewport = useRuneViewport();
+  const [classPage, setClassPage] = useState(0);
+  const [legacyPage, setLegacyPage] = useState(0);
 
   if (heroQuery.isError || tracksQuery.isError)
     return (
@@ -138,9 +145,19 @@ export default function RuneDelveHeroPage() {
     }
   }
 
+  const classSize = viewport.short ? 2 : 4;
+  const classIndex = Math.min(
+    classPage,
+    Math.ceil(CLASS_LIST.length / classSize) - 1,
+  );
+  const legacySize = viewport.landscape ? 2 : viewport.short ? 4 : 8;
+  const legacyIndex = Math.min(
+    legacyPage,
+    Math.max(0, Math.ceil(ladder.length / legacySize) - 1),
+  );
   return (
     <div
-      className="rd-menu-page rd-hero-page space-y-4 pb-5"
+      className="rd-screen rd-menu-page rd-fit-menu rd-hero-page"
       data-class={hero.class}
     >
       <div className="rd-menu-heading">
@@ -149,104 +166,12 @@ export default function RuneDelveHeroPage() {
           Tune loadout <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-      <section className="rd-menu-surface rd-hero-dossier !p-0 overflow-hidden">
-        <div className="rd-portrait-stage relative h-44 sm:h-52 overflow-hidden">
-          <RuneMenuSigil className="rd-portrait-orbit" />
-          <RuneHeroArt
-            cls={hero.class}
-            className="rd-dossier-portrait absolute inset-y-0 right-0 w-[58%] h-full"
-          />
-          <div className="rd-portrait-shade absolute inset-0" />
-          <div className="absolute left-4 bottom-3 right-4">
-            <p className="text-[10px] uppercase tracking-[.18em] text-primary font-extrabold">
-              {cls.name} · Level {activeLevel}
-            </p>
-            <div className="flex items-center gap-1">
-              <h2 className="rd-title text-2xl break-words min-w-0">
-                {hero.hero_name}
-              </h2>
-              <button
-                type="button"
-                className="w-11 h-11 grid place-items-center shrink-0 rounded-full bg-card/40"
-                aria-label="Rename hero"
-                onClick={() => {
-                  setEditingName(true);
-                  setName(hero.hero_name);
-                }}
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            {title && <p className="text-xs text-primary font-bold">{title}</p>}
-          </div>
-        </div>
-        <div className="p-4 pt-1">
-          {editingName && (
-            <form
-              className="flex flex-wrap gap-2 mb-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void saveName();
-              }}
-            >
-              <label htmlFor="rd-hero-name" className="sr-only">
-                Hero name
-              </label>
-              <input
-                id="rd-hero-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                minLength={2}
-                maxLength={24}
-                autoFocus
-                className="form-input min-h-11 text-base px-3 w-full"
-              />
-              <button
-                type="button"
-                onClick={() => setEditingName(false)}
-                className="rd-menu-link flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={name.trim().length < 2 || updateHero.isPending}
-                className="rd-menu-link flex-1 !bg-primary !text-primary-foreground disabled:opacity-50"
-              >
-                {updateHero.isPending ? "Saving…" : "Save name"}
-              </button>
-            </form>
-          )}
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${xpPct}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-2 text-[10px] font-bold text-muted-foreground">
-            <span>
-              {lvl.intoLevel}/{lvl.needed} XP
-            </span>
-            <span>
-              {activeLevel >= 150
-                ? "Class mastered"
-                : `Next · Level ${activeLevel + 1}`}
-            </span>
-          </div>
-          {nextMastery && (
-            <p className="rd-menu-note mt-2">
-              <Sparkles className="inline w-3 h-3 text-primary mr-1" />
-              {nextMastery.name} unlocks at Lv {nextMastery.unlockLevel}
-            </p>
-          )}
-        </div>
-      </section>
       <div
         role="tablist"
         aria-label="Hero view"
-        className="rd-menu-tabs grid-cols-3"
+        className="rd-menu-tabs rd-fit-tabs grid-cols-4"
       >
-        {(["build", "classes", "prestige"] as const).map((tab) => (
+        {(["profile", "build", "classes", "prestige"] as const).map((tab) => (
           <button
             type="button"
             role="tab"
@@ -254,70 +179,146 @@ export default function RuneDelveHeroPage() {
             key={tab}
             onClick={() => setView(tab)}
           >
-            {tab === "build"
-              ? "Build"
-              : tab === "classes"
-                ? "Classes"
-                : "Legacy"}
+            {tab === "profile"
+              ? "Profile"
+              : tab === "build"
+                ? "Build"
+                : tab === "classes"
+                  ? "Classes"
+                  : "Legacy"}
           </button>
         ))}
       </div>
-      {view === "build" && (
-        <div className="space-y-4">
-          <CharacterPowerPanel sheet={characterSheet} compact />
-          <section className="rd-menu-surface space-y-3">
-            <h2 className="text-sm font-extrabold">{cls.name} masteries</h2>
-            <div className="space-y-2">
-              {MASTERY_TIERS[hero.class].map((t) => {
-                const unlocked = activeLevel >= t.unlockLevel;
-                return (
-                  <div
-                    key={t.id}
-                    className={cn(
-                      "rounded-xl border px-3 py-3 flex items-start gap-3",
-                      unlocked
-                        ? "bg-primary/5 border-primary/25"
-                        : "bg-muted/10 border-border/40",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "h-9 w-9 rounded-lg grid place-items-center shrink-0",
-                        unlocked
-                          ? "bg-primary/15 text-primary"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {unlocked ? (
-                        <Check className="h-4 w-4" />
-                      ) : (
-                        <Lock className="h-4 w-4" />
-                      )}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between gap-2">
-                        <h3 className="font-extrabold text-xs">{t.name}</h3>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          Lv {t.unlockLevel}
-                        </span>
-                      </div>
-                      <p className="rd-menu-note mt-1">{t.summary}</p>
+      {view === "profile" && (
+        <section
+          className="rd-profile-view rd-fit-content"
+          aria-label="Hero profile"
+        >
+          {editingName ? (
+            <form
+              className="rd-menu-surface rd-rename-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveName();
+              }}
+            >
+              <h2 className="rd-title text-lg">Rename hero</h2>
+              <label htmlFor="rd-hero-name" className="sr-only">
+                Hero name
+              </label>
+              <input
+                id="rd-hero-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                minLength={2}
+                maxLength={24}
+                autoFocus
+                className="form-input min-h-11 text-base px-3 w-full"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingName(false)}
+                  className="rd-menu-link"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={name.trim().length < 2 || updateHero.isPending}
+                  className="rd-menu-link !bg-primary !text-primary-foreground disabled:opacity-50"
+                >
+                  {updateHero.isPending ? "Saving…" : "Save name"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <section className="rd-menu-surface rd-hero-dossier !p-0">
+                <div className="rd-portrait-stage relative">
+                  <RuneMenuSigil className="rd-portrait-orbit" />
+                  <RuneHeroArt
+                    cls={hero.class}
+                    className="rd-dossier-portrait absolute inset-y-0 right-0 w-[58%] h-full"
+                  />
+                  <div className="rd-portrait-shade absolute inset-0" />
+                  <div className="absolute left-4 bottom-3 right-4">
+                    <p className="text-[10px] uppercase tracking-widest text-primary font-extrabold">
+                      {cls.name} · Level {activeLevel}
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <h2 className="rd-title text-2xl break-words min-w-0">
+                        {hero.hero_name}
+                      </h2>
+                      <button
+                        type="button"
+                        className="w-11 h-11 grid place-items-center shrink-0 rounded-full bg-card/40"
+                        aria-label="Rename hero"
+                        onClick={() => {
+                          setEditingName(true);
+                          setName(hero.hero_name);
+                        }}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                     </div>
+                    {title && (
+                      <p className="text-xs text-primary font-bold">{title}</p>
+                    )}
                   </div>
-                );
-              })}
-            </div>
-          </section>
+                </div>
+                <div className="rd-profile-progress">
+                  <div className="h-1.5 rounded-full bg-muted">
+                    <div
+                      className="h-full bg-primary rounded-full"
+                      style={{ width: `${xpPct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-2 text-[10px] font-bold text-muted-foreground">
+                    <span>
+                      {lvl.intoLevel}/{lvl.needed} XP
+                    </span>
+                    <span>
+                      {activeLevel >= 150
+                        ? "Class mastered"
+                        : `Next · Level ${activeLevel + 1}`}
+                    </span>
+                  </div>
+                  {nextMastery && (
+                    <p className="rd-menu-note mt-2">
+                      <Sparkles className="inline w-3 h-3 text-primary mr-1" />
+                      {nextMastery.name} unlocks at Lv {nextMastery.unlockLevel}
+                    </p>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+        </section>
+      )}
+      {view === "build" && (
+        <div className="rd-fit-content">
+          <RuneBuildPages
+            key={hero.class}
+            sheet={characterSheet}
+            masteries={MASTERY_TIERS[hero.class]}
+            level={activeLevel}
+          />
         </div>
       )}
       {view === "classes" && (
-        <section className="space-y-3" aria-label="Class selection">
-          <p className="rd-menu-note">
-            Four playstyles. Each keeps its own level, dungeon progress, and
-            loadout.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {CLASS_LIST.map((c) => {
+        <section
+          className="rd-page-stack rd-fit-content"
+          aria-label="Class selection"
+        >
+          <div
+            className="rd-fit-class-grid"
+            data-rows={classSize === 4 ? 2 : 1}
+          >
+            {CLASS_LIST.slice(
+              classIndex * classSize,
+              (classIndex + 1) * classSize,
+            ).map((c) => {
               const track = trackByClass.get(c.id);
               const active = c.id === hero.class;
               return (
@@ -330,39 +331,31 @@ export default function RuneDelveHeroPage() {
                   data-class={c.id}
                   data-active={active}
                   className={cn(
-                    "rd-class-card overflow-hidden rounded-2xl border text-left transition-colors min-w-0 disabled:cursor-default",
+                    "rd-class-card rd-fit-class-card",
                     active
                       ? "border-primary/60 bg-primary/10"
                       : "border-border/60 bg-card",
                   )}
                 >
-                  <div className="rd-class-card-portrait relative h-36 overflow-hidden">
-                    <RuneHeroArt
-                      cls={c.id}
-                      className="absolute inset-0 h-full w-full"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-                    <strong className="absolute bottom-2 left-3 rd-title text-lg">
-                      {c.name}
-                    </strong>
+                  <div className="rd-class-card-portrait relative">
+                    <RuneHeroArt cls={c.id} />
+                    <strong className="rd-title">{c.name}</strong>
                   </div>
-                  <div className="p-3 pt-1">
-                    <p className="text-[10px] font-bold text-muted-foreground">
+                  <div className="rd-fit-class-copy">
+                    <p className="rd-menu-note">
                       Lv {track?.level ?? 1} · Chamber{" "}
                       {track?.highest_unlocked_level ?? 1}
                     </p>
-                    <p className="text-[11px] leading-relaxed mt-2 min-h-10">
-                      {c.passive}
-                    </p>
+                    <p>{c.passive}</p>
                     <span
                       className={cn(
-                        "mt-3 min-h-10 rounded-lg flex items-center justify-center gap-1 text-[11px] font-extrabold",
+                        "rd-fit-class-action",
                         active ? "bg-primary/15 text-primary" : "bg-muted",
                       )}
                     >
                       {active ? (
                         <>
-                          <Check className="h-3.5 w-3.5" /> Active
+                          <Check size={14} /> Active
                         </>
                       ) : switching === c.id ? (
                         "Switching…"
@@ -375,65 +368,70 @@ export default function RuneDelveHeroPage() {
               );
             })}
           </div>
+          <RunePager
+            page={classIndex}
+            pageCount={Math.ceil(CLASS_LIST.length / classSize)}
+            onPageChange={setClassPage}
+            label="Classes"
+          />
         </section>
       )}
       {view === "prestige" && (
-        <div className="space-y-4">
-          <div className="rd-menu-surface grid grid-cols-3 gap-3 text-center">
-            <div>
-              <Flame className="h-5 w-5 text-gold mx-auto mb-2" />
-              <strong className="block text-xl tabular-nums">
-                {hero.current_streak}
-              </strong>
-              <span className="rd-menu-note">Day streak</span>
+        <section className="rd-page-stack rd-fit-content">
+          <div className="rd-legacy-content">
+            <div className="rd-menu-surface rd-legacy-stats">
+              <div>
+                <Flame size={16} />
+                <strong>{hero.current_streak}</strong>
+                <span>Day streak</span>
+              </div>
+              <div>
+                <Sparkles size={16} />
+                <strong>{hero.lifetime_runs}</strong>
+                <span>Runs</span>
+              </div>
+              <div>
+                <Trophy size={16} />
+                <strong>{hero.lifetime_score.toLocaleString()}</strong>
+                <span>Score</span>
+              </div>
             </div>
-            <div>
-              <Sparkles className="h-5 w-5 text-primary mx-auto mb-2" />
-              <strong className="block text-xl tabular-nums">
-                {hero.lifetime_runs}
-              </strong>
-              <span className="rd-menu-note">Runs</span>
-            </div>
-            <div>
-              <Trophy className="h-5 w-5 text-gold mx-auto mb-2" />
-              <strong className="block text-xl tabular-nums">
-                {hero.lifetime_score.toLocaleString()}
-              </strong>
-              <span className="rd-menu-note">Score</span>
+            <div className="rd-legacy-titles">
+              {ladder
+                .slice(legacyIndex * legacySize, (legacyIndex + 1) * legacySize)
+                .map(({ level, title: label }) => (
+                  <div
+                    key={level}
+                    className={cn(
+                      "rd-menu-surface",
+                      label === title && "border-primary/40",
+                    )}
+                  >
+                    <span className="rd-menu-note flex justify-between">
+                      Lv {level}
+                      {activeLevel >= level ? (
+                        <Check size={12} />
+                      ) : (
+                        <Lock size={12} />
+                      )}
+                    </span>
+                    <p className="text-[11px] font-bold">{label}</p>
+                  </div>
+                ))}
             </div>
           </div>
-          <section className="rd-menu-surface space-y-3">
-            <h2 className="text-sm font-extrabold">{cls.name} titles</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {ladder.map(({ level, title: label }) => (
-                <div
-                  key={level}
-                  className={cn(
-                    "rounded-xl border p-3",
-                    label === title
-                      ? "bg-primary/10 border-primary/40"
-                      : "bg-muted/10 border-border/40",
-                    activeLevel < level && "text-muted-foreground",
-                  )}
-                >
-                  <div className="flex items-center justify-between text-[9px] font-bold mb-1">
-                    <span>LEVEL {level}</span>
-                    {activeLevel >= level ? (
-                      <Check className="w-3 h-3 text-primary" />
-                    ) : (
-                      <Lock className="w-3 h-3" />
-                    )}
-                  </div>
-                  <p className="text-[11px] font-bold leading-snug">{label}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-          <Link to="/rune-delve/leaderboard" className="rd-menu-link w-full">
-            <Trophy className="h-4 w-4 text-gold" /> Club leaderboard{" "}
-            <ArrowRight className="h-4 w-4 ml-auto" />
-          </Link>
-        </div>
+          <div className="rd-legacy-footer">
+            <RunePager
+              page={legacyIndex}
+              pageCount={Math.ceil(ladder.length / legacySize)}
+              onPageChange={setLegacyPage}
+              label="Titles"
+            />
+            <Link to="/rune-delve/leaderboard" className="rd-menu-link">
+              <Trophy size={14} /> Standings
+            </Link>
+          </div>
+        </section>
       )}
     </div>
   );

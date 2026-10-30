@@ -26,7 +26,10 @@ import {
 import { getLayoutForLevel } from "@/lib/runedelve/chamberAssignment";
 import { DungeonPathPreview } from "@/components/runedelve/DungeonPathPreview";
 import { RuneDataState } from "@/components/runedelve/RuneDataState";
+import { RunePager } from "@/components/runedelve/RunePager";
+import { useRuneViewport } from "@/hooks/useRuneViewport";
 import "@/components/runedelve/runeMenus.css";
+import "@/components/runedelve/runeMapResults.css";
 
 export default function RuneDelveLevelMapPage() {
   const navigate = useNavigate();
@@ -38,6 +41,9 @@ export default function RuneDelveLevelMapPage() {
   const [pickerLevel, setPickerLevel] = useState<number | null>(null);
   const [chapter, setChapter] = useState(1);
   const [stage, setStage] = useState(0);
+  const [anchorLevel, setAnchorLevel] = useState(1);
+  const viewport = useRuneViewport();
+  const pageSize = viewport.short || viewport.landscape ? 6 : 10;
   const initializedTrack = useRef<string | null>(null);
   const highestUnlocked = progress?.highest_unlocked_level ?? 1;
   const highestCompleted = progress?.highest_completed_level ?? 0;
@@ -47,10 +53,16 @@ export default function RuneDelveLevelMapPage() {
     initializedTrack.current = key;
     setChapter(chapterFor(progress.highest_unlocked_level));
     setStage(Math.floor(((progress.highest_unlocked_level - 1) % 50) / 10));
+    setAnchorLevel(progress.highest_unlocked_level);
   }, [progress, hero, user?.id]);
 
   const chapterStart = (chapter - 1) * 50 + 1;
   const stageStart = chapterStart + stage * 10;
+  const pageCount = Math.ceil(10 / pageSize);
+  const page = Math.min(
+    pageCount - 1,
+    Math.floor(Math.max(0, anchorLevel - stageStart) / pageSize),
+  );
   const levelsQuery = useLevelWindow(stageStart, 10);
   const { data: levels } = levelsQuery;
   const meta = chapterMeta(chapter);
@@ -77,7 +89,11 @@ export default function RuneDelveLevelMapPage() {
     );
 
   return (
-    <div className="rd-menu-page rd-map-page space-y-4 pb-3">
+    <div
+      className="rd-menu-page rd-map-page rd-map-screen"
+      data-short={viewport.short}
+      data-landscape={viewport.landscape}
+    >
       <div className="rd-menu-heading">
         <h1 className="rd-title">Dungeon</h1>
         <label className="sr-only" htmlFor="rd-map-chapter">
@@ -95,6 +111,9 @@ export default function RuneDelveLevelMapPage() {
                 ? Math.floor(((highestUnlocked - 1) % 50) / 10)
                 : 0,
             );
+            setAnchorLevel(
+              ch === currentChapter ? highestUnlocked : (ch - 1) * 50 + 1,
+            );
           }}
         >
           {Array.from(
@@ -108,13 +127,13 @@ export default function RuneDelveLevelMapPage() {
           ))}
         </select>
       </div>
-      <section className="rd-menu-surface rd-chapter-card space-y-2">
-        <p className="text-[9px] font-extrabold uppercase tracking-[.2em] text-primary">
+      <section className="rd-menu-surface rd-chapter-card rd-map-chapter">
+        <p className="rd-map-kicker">
           Chapter {chapter} · Chambers {chapterStart}–{chapterStart + 49}
         </p>
-        <h2 className="rd-title text-xl">{meta.name}</h2>
-        <p className="rd-menu-note">{meta.subtitle}</p>
-        <div className="flex gap-2 items-center pt-1">
+        <h2 className="rd-title">{meta.name}</h2>
+        <p className="rd-menu-note rd-map-subtitle">{meta.subtitle}</p>
+        <div className="rd-map-progress">
           <div className="h-1.5 bg-muted rounded-full overflow-hidden flex-1">
             <div
               className="h-full bg-primary transition-all"
@@ -134,7 +153,10 @@ export default function RuneDelveLevelMapPage() {
               type="button"
               key={i}
               aria-current={stage === i ? "step" : undefined}
-              onClick={() => setStage(i)}
+              onClick={() => {
+                setStage(i);
+                setAnchorLevel(start);
+              }}
             >
               <span>
                 {start}–{start + 9}
@@ -150,60 +172,79 @@ export default function RuneDelveLevelMapPage() {
           );
         })}
       </nav>
-      <div className="flex items-center gap-4 text-[9px] font-bold text-muted-foreground">
-        <span className="flex gap-1 items-center">
-          <Check className="h-3 w-3 text-success" /> Cleared
-        </span>
-        <span className="flex gap-1 items-center">
-          <Crown className="h-3 w-3 text-gold" /> Choose a path
-        </span>
-        <span className="flex gap-1 items-center">
-          <Lock className="h-3 w-3" /> Locked
-        </span>
-      </div>
-      {levelsQuery.isLoading || !levels ? (
-        <div className="rd-path-grid grid grid-cols-3 sm:grid-cols-5 gap-2">
-          {Array.from({ length: 10 }, (_, i) => (
-            <div
-              key={i}
-              className="aspect-square rounded-xl skeleton-shimmer"
-            />
-          ))}
+      <section
+        className="rd-map-node-stage"
+        aria-label={`Chambers ${stageStart + page * pageSize} to ${Math.min(stageStart + 9, stageStart + (page + 1) * pageSize - 1)}`}
+      >
+        <div className="rd-map-legend" aria-hidden="true">
+          <span>
+            <Check /> Cleared
+          </span>
+          <span>
+            <Crown /> Choose a path
+          </span>
+          <span>
+            <Lock /> Locked
+          </span>
         </div>
-      ) : (
-        <div
-          className="rd-path-grid grid grid-cols-3 sm:grid-cols-5 gap-2"
-          key={`${chapter}-${stage}`}
-        >
-          {levels.map((level) => {
-            const number = level.level_number;
-            const mechanics =
-              (level.modifiers?.mechanics as MechanicId[] | undefined) ??
-              mechanicsForLevel(number);
-            const mechanic = mechanics.length
-              ? getMechanic(mechanics[mechanics.length - 1])
-              : null;
-            return (
-              <DungeonPathPreview
-                key={number}
-                levelNumber={number}
-                layout={getLayoutForLevel(number)}
-                tier={difficultyTierFor(number)}
-                isUnlocked={number <= highestUnlocked}
-                isCleared={number <= highestCompleted}
-                isCurrent={number === highestUnlocked}
-                isMilestone={isMilestoneLevel(number)}
-                isOpener={isChapterOpener(number)}
-                mechanicIcon={mechanic?.icon}
-                mechanicLabel={mechanic?.name}
-                introducesMechanic={!!introMechanicForLevel(number)}
-                cornerGlyph={level.modifiers?.boss_rule ? "♛" : null}
-                onSelect={() => enter(number)}
+        {levelsQuery.isLoading || !levels ? (
+          <div
+            className="rd-path-grid rd-map-nodes"
+            data-columns={pageSize === 10 ? 5 : 3}
+          >
+            {Array.from({ length: pageSize }, (_, i) => (
+              <div
+                key={i}
+                className="rd-map-node-placeholder rounded-xl skeleton-shimmer"
               />
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div
+            className="rd-path-grid rd-map-nodes"
+            data-columns={pageSize === 10 ? 5 : 3}
+            key={`${chapter}-${stage}-${page}`}
+          >
+            {levels
+              .slice(page * pageSize, (page + 1) * pageSize)
+              .map((level) => {
+                const number = level.level_number;
+                const mechanics =
+                  (level.modifiers?.mechanics as MechanicId[] | undefined) ??
+                  mechanicsForLevel(number);
+                const mechanic = mechanics.length
+                  ? getMechanic(mechanics[mechanics.length - 1])
+                  : null;
+                return (
+                  <DungeonPathPreview
+                    key={number}
+                    levelNumber={number}
+                    layout={getLayoutForLevel(number)}
+                    tier={difficultyTierFor(number)}
+                    isUnlocked={number <= highestUnlocked}
+                    isCleared={number <= highestCompleted}
+                    isCurrent={number === highestUnlocked}
+                    isMilestone={isMilestoneLevel(number)}
+                    isOpener={isChapterOpener(number)}
+                    mechanicIcon={mechanic?.icon}
+                    mechanicLabel={mechanic?.name}
+                    introducesMechanic={!!introMechanicForLevel(number)}
+                    cornerGlyph={level.modifiers?.boss_rule ? "♛" : null}
+                    onSelect={() => enter(number)}
+                  />
+                );
+              })}
+          </div>
+        )}
+      </section>
+      <div className="rd-map-pager">
+        <RunePager
+          page={page}
+          pageCount={pageCount}
+          onPageChange={(next) => setAnchorLevel(stageStart + next * pageSize)}
+          label={`Chambers ${stageStart + page * pageSize}–${Math.min(stageStart + 9, stageStart + (page + 1) * pageSize - 1)}`}
+        />
+      </div>
       <button
         type="button"
         onClick={() => enter(highestUnlocked)}

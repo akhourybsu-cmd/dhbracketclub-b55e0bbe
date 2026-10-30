@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { RunePager } from "./RunePager";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Sword,
@@ -106,11 +108,22 @@ const STYLES: Record<CombatLogKind, IconStyle> = {
 export function CombatLog({
   entries,
   max = 4,
+  paged = false,
 }: {
   entries: CombatLogEntry[];
   max?: number;
+  paged?: boolean;
 }) {
-  const visible = entries.slice(-max);
+  const [page, setPage] = useState(0);
+  const recent = entries.slice(-max);
+  const pageCount = Math.max(1, Math.ceil(recent.length / 2));
+  const index = Math.min(page, pageCount - 1);
+  const visible = paged
+    ? recent.slice(
+        Math.max(0, recent.length - (index + 1) * 2),
+        recent.length - index * 2,
+      )
+    : recent;
 
   return (
     <div
@@ -194,6 +207,14 @@ export function CombatLog({
           })}
         </AnimatePresence>
       </ul>
+      {paged && (
+        <RunePager
+          page={index}
+          pageCount={pageCount}
+          onPageChange={setPage}
+          label="Battle chronicle"
+        />
+      )}
     </div>
   );
 }

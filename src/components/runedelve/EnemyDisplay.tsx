@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import type { Enemy } from "@/lib/runedelve/dungeonGenerator";
-import { Shield, Skull, Sword, Zap } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+  Skull,
+  Sword,
+  Zap,
+} from "lucide-react";
 import { RuneEnemyArt } from "./RuneArtwork";
 import { BattleStageFeedback, TargetFeedback } from "./CombatFeedback";
 import {
@@ -11,6 +18,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import "./runeBattle.css";
+import "./runeDialogs.css";
+import { RunePager } from "./RunePager";
+import { useRuneDialogFocus } from "./useRuneDialogFocus";
 
 interface Props {
   enemies: Enemy[];
@@ -68,7 +78,11 @@ function EnemyTile({
           name={e.name}
           className="rd-enemy-art"
         />
-        {dead && <span className="rd-enemy-defeated-mark"><Skull size={14} aria-hidden /></span>}
+        {dead && (
+          <span className="rd-enemy-defeated-mark">
+            <Skull size={14} aria-hidden />
+          </span>
+        )}
         <TargetFeedback target={e.id} />
         {isPrimaryTarget && (
           <span className="rd-enemy-target" aria-hidden>
@@ -146,7 +160,23 @@ export function EnemyDisplay({
   primaryTargetId,
   onInspectChange,
 }: Props) {
+  const [enemyPage, setEnemyPage] = useState(0);
+  const pageSize = enemies.length > 4 ? 3 : 4;
+  const pageCount = Math.max(1, Math.ceil(enemies.length / pageSize));
+  const activePage = Math.min(enemyPage, pageCount - 1);
+  const visibleEnemies = enemies.slice(
+    activePage * pageSize,
+    (activePage + 1) * pageSize,
+  );
+  const targetId = primaryTargetId ?? enemies.find((enemy) => enemy.hp > 0)?.id;
+  const targetIndex = enemies.findIndex((enemy) => enemy.id === targetId);
+  useEffect(() => {
+    if (targetIndex >= 0) setEnemyPage(Math.floor(targetIndex / pageSize));
+  }, [targetId, targetIndex, pageSize]);
   const [inspecting, setInspecting] = useState<string | null>(null);
+  const [inspectionPage, setInspectionPage] = useState(0);
+  const inspectionFocus = useRuneDialogFocus();
+  useEffect(() => setInspectionPage(0), [inspecting]);
   const inspected = enemies.find((enemy) => enemy.id === inspecting);
   const hasInspection = !!inspected;
   useEffect(() => {
@@ -157,16 +187,40 @@ export function EnemyDisplay({
     <>
       <div className="rd-enemy-stage">
         <BattleStageFeedback />
-        <div className="rd-enemies">
-          {enemies.map((e) => (
-            <EnemyTile
-              key={e.id}
-              e={e}
-              flashId={flashId}
-              primaryTargetId={primaryTargetId}
-              onInspect={() => setInspecting(e.id)}
-            />
-          ))}
+        <div className={pageCount > 1 ? "rd-enemy-pages" : undefined}>
+          {pageCount > 1 && (
+            <button
+              type="button"
+              className="rd-enemy-page-button"
+              aria-label="Previous enemies"
+              disabled={activePage === 0}
+              onClick={() => setEnemyPage(activePage - 1)}
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </button>
+          )}
+          <div className="rd-enemies">
+            {visibleEnemies.map((e) => (
+              <EnemyTile
+                key={e.id}
+                e={e}
+                flashId={flashId}
+                primaryTargetId={primaryTargetId}
+                onInspect={() => setInspecting(e.id)}
+              />
+            ))}
+          </div>
+          {pageCount > 1 && (
+            <button
+              type="button"
+              className="rd-enemy-page-button"
+              aria-label={`Next enemies. Page ${activePage + 1} of ${pageCount}`}
+              disabled={activePage === pageCount - 1}
+              onClick={() => setEnemyPage(activePage + 1)}
+            >
+              <ChevronRight size={18} aria-hidden />
+            </button>
+          )}
         </div>
       </div>
       <Dialog
@@ -175,11 +229,12 @@ export function EnemyDisplay({
           if (!open) setInspecting(null);
         }}
       >
-        <DialogContent className="rd-dialog-theme rd-battle-dialog">
-          <DialogHeader>
-            <DialogTitle className="rd-title text-xl">
-              {inspected?.name}
-            </DialogTitle>
+        <DialogContent
+          {...inspectionFocus}
+          className="rd-dialog-theme rd-paged-dialog"
+        >
+          <DialogHeader className="rd-dialog-header">
+            <DialogTitle className="rd-title">{inspected?.name}</DialogTitle>
             <DialogDescription>
               {inspected?.tier === "boss"
                 ? "Boss"
@@ -191,62 +246,76 @@ export function EnemyDisplay({
           </DialogHeader>
           {inspected && (
             <>
-              <RuneEnemyArt
-                archetypeId={inspected.archetypeId}
-                name={inspected.name}
-                className="mx-auto h-36 w-36"
-              />
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-xl border border-border p-3">
-                  <strong className="block text-lg">
-                    {Math.max(0, inspected.hp)}/{inspected.maxHp}
-                  </strong>
-                  <span className="text-[10px] text-muted-foreground">
-                    Health
-                  </span>
-                </div>
-                <div className="rounded-xl border border-border p-3">
-                  <strong className="block text-lg">{inspected.damage}</strong>
-                  <span className="text-[10px] text-muted-foreground">
-                    Base attack
-                  </span>
-                </div>
-                <div className="rounded-xl border border-border p-3">
-                  <strong className="block text-lg">
-                    {inspected.armor ?? 0}
-                  </strong>
-                  <span className="text-[10px] text-muted-foreground">
-                    Armor
-                  </span>
-                </div>
+              <div className="rd-dialog-body" aria-live="polite">
+                {inspectionPage === 0 ? (
+                  <>
+                    <RuneEnemyArt
+                      archetypeId={inspected.archetypeId}
+                      name={inspected.name}
+                      className="rd-dialog-inspection-art"
+                    />
+                    <div className="rd-dialog-stats">
+                      <div>
+                        <strong>
+                          {Math.max(0, inspected.hp)}/{inspected.maxHp}
+                        </strong>
+                        <span>Health</span>
+                      </div>
+                      <div>
+                        <strong>{inspected.damage}</strong>
+                        <span>Base attack</span>
+                      </div>
+                      <div>
+                        <strong>{inspected.armor ?? 0}</strong>
+                        <span>Armor</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <article className="rd-dialog-card">
+                    <h3>
+                      {inspected.telegraphLabel ??
+                        (inspected.ability
+                          ? inspected.ability.replace(/_/g, " ")
+                          : "Enemy tactics")}
+                    </h3>
+                    {inspected.intent != null && (
+                      <p>
+                        Heavy strike in {inspected.intent}{" "}
+                        {inspected.intent === 1 ? "turn" : "turns"}. Guard
+                        softens the hit.
+                      </p>
+                    )}
+                    {inspected.ability ? (
+                      <>
+                        <p>
+                          Ability countdown: {inspected.abilityCooldown ?? "?"}{" "}
+                          turns.
+                        </p>
+                        <p>
+                          {ABILITY_DESCRIPTION[inspected.ability] ??
+                            "A special attack triggers when the ability countdown reaches zero."}
+                        </p>
+                      </>
+                    ) : (
+                      <p>
+                        This foe has no additional charged ability. Its base
+                        attack follows your chain.
+                      </p>
+                    )}
+                  </article>
+                )}
               </div>
-              {inspected.intent != null && (
-                <p className="text-xs text-muted-foreground">
-                  <Zap className="mr-1 inline h-3 w-3 text-gold" /> Heavy strike
-                  in {inspected.intent}{" "}
-                  {inspected.intent === 1 ? "turn" : "turns"}. Guard softens the
-                  hit.
-                </p>
-              )}
-              {inspected.ability && (
-                <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
-                  <h3 className="text-sm font-extrabold">
-                    {inspected.telegraphLabel ??
-                      inspected.ability.replace(/_/g, " ")}
-                    <span className="ml-2 text-xs text-primary">
-                      {inspected.abilityCooldown ?? "?"} turns
-                    </span>
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {ABILITY_DESCRIPTION[inspected.ability] ??
-                      "A special attack triggers when the ability countdown reaches zero."}
-                  </p>
-                </div>
-              )}
+              <RunePager
+                page={inspectionPage}
+                pageCount={2}
+                onPageChange={setInspectionPage}
+                label="Enemy inspection"
+              />
               <button
                 type="button"
                 onClick={() => setInspecting(null)}
-                className="h-11 rounded-xl bg-primary font-extrabold text-primary-foreground"
+                className="rd-dialog-primary"
               >
                 Back to battle
               </button>

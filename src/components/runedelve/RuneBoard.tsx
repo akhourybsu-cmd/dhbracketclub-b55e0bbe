@@ -292,34 +292,9 @@ export function RuneBoard({
       className="rd-rune-board w-full flex flex-col items-center"
       data-motion={motionEnabled ? "full" : "reduced"}
     >
-      <div className="rd-board-toolbar rd-play-board">
-        <span className="rd-board-hint">Connect 3+ · diagonals count</span>
-        <div
-          role="group"
-          aria-label="Rune controls"
-          className="rd-input-switch"
-        >
-          {(["drag", "tap"] as const).map((mode) => {
-            const Icon = mode === "drag" ? MousePointer2 : Hand;
-            return (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={controlMode === mode}
-                onClick={() => chooseControlMode(mode)}
-                title={`${mode === "drag" ? "Drag" : "Tap"} to connect runes`}
-                className={cn(
-                  "rd-input-button",
-                  controlMode === mode && "is-active",
-                )}
-              >
-                <Icon size={14} aria-hidden />{" "}
-                <span>{mode === "drag" ? "Drag" : "Tap"}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <p className="sr-only">
+        Connect 3 or more matching runes. Diagonals count.
+      </p>
       <div
         className={cn(
           "rd-play-board rd-interactive-board w-full p-2 rounded-2xl select-none rd-board-frame",
@@ -332,7 +307,7 @@ export function RuneBoard({
           className="grid relative"
           style={{
             gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
-            gap: "clamp(5px, 1.5vw, 8px)",
+            gap: "var(--rd-rune-gap, clamp(5px, 1.5vw, 8px))",
             justifyContent: "center",
           }}
         >
@@ -428,6 +403,31 @@ export function RuneBoard({
         aria-live="polite"
         aria-atomic="true"
       >
+        <div
+          role="group"
+          aria-label="Rune controls"
+          className="rd-input-switch"
+        >
+          {(["drag", "tap"] as const).map((mode) => {
+            const Icon = mode === "drag" ? MousePointer2 : Hand;
+            return (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={controlMode === mode}
+                onClick={() => chooseControlMode(mode)}
+                title={`${mode === "drag" ? "Drag" : "Tap"} to connect runes`}
+                className={cn(
+                  "rd-input-button",
+                  controlMode === mode && "is-active",
+                )}
+              >
+                <Icon size={14} aria-hidden />{" "}
+                <span>{mode === "drag" ? "Drag" : "Tap"}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="rd-chain-preview">
           <span className="rd-chain-count" data-ready={chain.length >= 3}>
             {chain.length || <RuneSigil type="blue" />}

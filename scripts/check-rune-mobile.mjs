@@ -93,7 +93,149 @@ async function fits(page, locator, label, min = 0) {
       label + ` is at least ${min}px`,
     );
 }
+async function movePager(pager, direction, label) {
+  const before = Number(await pager.getAttribute("data-page"));
+  const button = pager.getByRole("button", {
+    name: `${direction === 1 ? "Next" : "Previous"} ${label.toLowerCase()} page`,
+    exact: true,
+  });
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(pager).toHaveAttribute("data-page", String(before + direction));
+}
+async function revealPagedItem(page, item, label) {
+  if (await item.isVisible()) return item;
+  const pager = page.getByRole("navigation", {
+    name: `${label} pages`,
+    exact: true,
+  });
+  await expect(pager).toBeVisible();
+  const count = Number(await pager.getAttribute("data-page-count"));
+  assert.ok(count > 1 && count <= 100, `${label}: finite page count`);
+  while (Number(await pager.getAttribute("data-page")) > 0)
+    await movePager(pager, -1, label);
+  for (let index = 0; index < count; index++) {
+    if (await item.isVisible()) return item;
+    if (index + 1 < count) await movePager(pager, 1, label);
+  }
+  assert.fail(`${label}: requested item is reachable through its pages`);
+}
+async function draftIds(page, kind, label) {
+  const pager = page.getByRole("navigation", {
+    name: `${label} pages`,
+    exact: true,
+  });
+  const paged = await pager.count();
+  if (paged)
+    while (Number(await pager.getAttribute("data-page")) > 0)
+      await movePager(pager, -1, label);
+  const count = paged ? Number(await pager.getAttribute("data-page-count")) : 1;
+  const ids = [];
+  for (let index = 0; index < count; index++) {
+    const choices = page.locator(`[data-testid^="expedition-${kind}-"]`);
+    await expect(choices.first()).toBeVisible();
+    ids.push(
+      ...(await choices.evaluateAll((nodes) =>
+        nodes.map((node) =>
+          node.dataset.testid.replace(/^expedition-(boon|route)-/, ""),
+        ),
+      )),
+    );
+    if (index + 1 < count) await movePager(pager, 1, label);
+  }
+  assert.equal(
+    new Set(ids).size,
+    ids.length,
+    `${kind}: every offered choice appears exactly once across pages`,
+  );
+  return ids;
+}
+async function readPreviewPages(dialog, label) {
+  const pager = dialog.getByRole("navigation", {
+    name: `${label} pages`,
+    exact: true,
+  });
+  if (!(await pager.count())) return;
+  while (Number(await pager.getAttribute("data-page")) > 0)
+    await movePager(pager, -1, label);
+  const count = Number(await pager.getAttribute("data-page-count"));
+  for (let index = 0; index < count; index++) {
+    await expect(dialog.locator(".rd-dialog-body")).not.toHaveText("");
+    if (index + 1 < count) await movePager(pager, 1, label);
+  }
+}
+async function dismissIntroductions(page) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const introduction = page
+      .getByRole("dialog")
+      .filter({
+        has: page.getByRole("button", {
+          name: /^(Face the Boss|Begin Level \d+|Ready to delve)/,
+        }),
+      })
+      .last();
+    if (await introduction.isVisible()) {
+      const help = introduction.getByRole("button", {
+        name: "Ready to delve",
+        exact: true,
+      });
+      await readPreviewPages(
+        introduction,
+        (await help.count()) ? "How to play" : "Encounter introduction",
+      );
+      // Bind this mounted dialog: a second introduction may open immediately
+      // and the broad role locator would otherwise resolve to that new dialog.
+      const confirmedIntroduction = await introduction.elementHandle();
+      assert.ok(confirmedIntroduction, "The confirmed introduction is mounted");
+      try {
+        await introduction
+          .getByRole("button", {
+            name: /^(Face the Boss|Begin Level \d+|Ready to delve)/,
+          })
+          .click();
+        await confirmedIntroduction.waitForElementState("hidden");
+      } finally {
+        await confirmedIntroduction.dispose();
+      }
+      continue;
+    }
+    const bargain = page.getByRole("dialog", {
+      name: "Pick your edge.",
+      exact: true,
+    });
+    if (await bargain.isVisible()) {
+      await readPreviewPages(bargain, "Chamber bargains");
+      await bargain.getByRole("button", { name: /^◇ Steady Path/ }).click();
+      await expect(bargain).toBeHidden();
+      continue;
+    }
+    const path = page.getByRole("dialog", {
+      name: "Choose your path.",
+      exact: true,
+    });
+    if (await path.isVisible()) {
+      await readPreviewPages(path, "Milestone paths");
+      const pager = path.getByRole("navigation", {
+        name: "Milestone paths pages",
+        exact: true,
+      });
+      while (Number(await pager.getAttribute("data-page")) > 0)
+        await movePager(pager, -1, "Milestone paths");
+      await path
+        .getByRole("button", { name: "Choose Standard Path", exact: true })
+        .click();
+      await expect(path).toBeHidden();
+      continue;
+    }
+    return;
+  }
+  assert.fail(
+    "Introductions close through explicit UI choices within a bounded number of dialogs",
+  );
+}
 async function chooseTapPath(page) {
+  await dismissIntroductions(page);
+  await page.getByRole("button", { name: "Tap", exact: true }).click();
   const cells = await page
     .locator("button[data-rune-cell]")
     .evaluateAll((nodes) =>
@@ -668,10 +810,14 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   await page.getByTestId("expedition-resume").click();
   await expect(page.getByTestId("expedition-boons")).toBeVisible();
-  await expect(page.locator('[data-testid^="expedition-boon-"]')).toHaveCount(
+  const offeredBoons = await draftIds(page, "boon", "Blessings");
+  assert.equal(
+    offeredBoons.length,
     3,
+    "Every blessing draft offers three choices across its pages",
   );
-  const boon = page.locator('[data-testid^="expedition-boon-"]').first();
+  const boon = page.getByTestId(`expedition-boon-${offeredBoons[0]}`);
+  await revealPagedItem(page, boon, "Blessings");
   await fits(page, boon, "Boon choice", 44);
   await page.screenshot({ path: join(output, "390-844-dark-boon.png") });
   await boon.click();
@@ -696,7 +842,9 @@ try {
     1,
     "Chosen blessing persists into next room",
   );
-  await page.getByRole("button", { name: /^Your build/ }).click();
+  await page
+    .getByRole("button", { name: "Your expedition build", exact: true })
+    .click();
   await fits(
     page,
     page.getByRole("dialog", { name: "Your expedition build", exact: true }),
@@ -719,6 +867,12 @@ try {
     ),
     "Failed bank retains checkpoint for safe retry",
   );
+  await page
+    .getByRole("button", { name: "Back to expedition", exact: true })
+    .click();
+  await expect(
+    page.getByRole("dialog", { name: "Expedition update", exact: true }),
+  ).toBeHidden();
   await page.evaluate(() => {
     window.runeQa.failRpc = [];
   });
@@ -746,6 +900,12 @@ try {
 
   await go(page, "/rune-delve/armory");
   await noOverflow(page, "Armory");
+  await page.getByRole("tab", { name: /^Collection/ }).click();
+  await revealPagedItem(
+    page,
+    page.getByRole("button", { name: /^Ember Edge\./ }),
+    "Relics",
+  );
   await page.getByRole("button", { name: /^Ember Edge\./ }).click();
   await expect
     .poll(() =>
@@ -760,19 +920,46 @@ try {
   await expect(
     page.getByRole("button", { name: /^Ember Edge\./ }),
   ).toHaveAttribute("data-state", "equipped");
-  await page.getByRole("tab", { name: "Mage", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Loadout class", exact: true })
+    .selectOption("mage");
+  await page.getByRole("tab", { name: "Loadout", exact: true }).click();
   await expect(
     page.getByRole("region", { name: "Mage loadout", exact: true }),
   ).toBeVisible();
+  await page.getByRole("tab", { name: /^Collection/ }).click();
+  await revealPagedItem(
+    page,
+    page.getByRole("button", { name: /^Ember Edge\./ }),
+    "Relics",
+  );
   await expect(
     page.getByRole("button", { name: /^Ember Edge\./ }),
   ).toHaveAttribute("data-state", "owned");
-  await page.getByRole("tab", { name: "Warrior", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Loadout class", exact: true })
+    .selectOption("warrior");
+  await revealPagedItem(
+    page,
+    page.getByRole("button", { name: /^Ember Edge\./ }),
+    "Relics",
+  );
   await expect(
     page.getByRole("button", { name: /^Ember Edge\./ }),
   ).toHaveAttribute("data-state", "equipped");
   await go(page, "/rune-delve/shop");
   await noOverflow(page, "Shop");
+  await page
+    .getByRole("combobox", { name: "Relic tier", exact: true })
+    .selectOption("1");
+  await page
+    .getByRole("combobox", { name: "Relic category", exact: true })
+    .selectOption("all");
+  await revealPagedItem(
+    page,
+    page.getByRole("button", { name: /^Keysight\./ }),
+    "Relics",
+  );
   await page.evaluate(() => window.runeQa.failRpc.push("rune_delve_buy_relic"));
   await page.getByRole("button", { name: /^Keysight\./ }).click();
   await expect
@@ -803,8 +990,9 @@ try {
     page.getByRole("button", { name: /^Keysight\./ }),
   ).toHaveAttribute("data-state", "owned");
   await page.getByRole("button", { name: /^Keysight\./ }).click();
-  const upgrade = page.getByRole("dialog", { name: "Keysight", exact: true });
+  const upgrade = page.getByRole("dialog", { name: /Keysight$/ });
   await expect(upgrade).toBeVisible();
+  await readPreviewPages(upgrade, "Relic comparison");
   await upgrade.getByRole("button", { name: /^Upgrade to R2/ }).click();
   await expect(upgrade).toBeHidden();
   await expect
@@ -827,7 +1015,9 @@ try {
     0,
     "Shop uses atomic purchases with no separate debit/refund",
   );
-  await page.getByRole("tab", { name: "Tier 2", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Relic tier", exact: true })
+    .selectOption("2");
   await expect(
     page.getByText("Unlocks in Chapter 2", { exact: true }),
   ).toBeVisible();

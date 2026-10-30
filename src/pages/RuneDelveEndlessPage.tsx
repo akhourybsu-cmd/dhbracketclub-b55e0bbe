@@ -379,7 +379,10 @@ export default function RuneDelveEndlessPage() {
   );
   const wave = waveForElapsed(run?.elapsed ?? 0);
   return (
-    <section className="rd-arena space-y-3 pb-3" data-testid="rune-arena">
+    <section
+      className={`rd-arena rd-screen ${run && !run.result && !run.paused ? "is-fighting" : ""}`}
+      data-testid="rune-arena"
+    >
       {!run && (
         <>
           <div className="rd-sanctum" style={{ minHeight: 280 }}>
@@ -422,8 +425,20 @@ export default function RuneDelveEndlessPage() {
       )}
       {run && !run.result && (
         <>
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+          <div className="rd-arena-toolbar rd-battle-objective">
             <Flame size={16} className="text-gold" />
+            {!checkpointSaved && (
+              <span
+                className="rd-save-warning"
+                role="status"
+                title="Device storage is unavailable. Keep this page open to retain your board."
+              >
+                Unsaved
+                <span className="sr-only">
+                  . Keep this page open to retain your board.
+                </span>
+              </span>
+            )}
             <span className="flex-1 text-xs font-bold">
               {wave.label} · {run.combat.enemiesDefeated} slain
             </span>
@@ -453,18 +468,20 @@ export default function RuneDelveEndlessPage() {
               </button>
             </div>
           ) : (
-            <div className="rd-battle-layout">
+            <div className="rd-battle rd-arena-field">
               <CombatFeedback
-                className="rd-battle-stage"
+                className="rd-battle-side"
                 state={run.combat}
                 cls={cls}
                 scope={run.requestId}
                 disabled={inspecting}
               >
-                <EnemyDisplay
-                  enemies={run.combat.enemies}
-                  onInspectChange={inspectChange}
-                />
+                <div className="rd-battle-stage">
+                  <EnemyDisplay
+                    enemies={run.combat.enemies}
+                    onInspectChange={inspectChange}
+                  />
+                </div>
                 <HeroStatusBar
                   state={run.combat}
                   cls={cls}
@@ -473,7 +490,7 @@ export default function RuneDelveEndlessPage() {
                 />
                 <ResonanceMeter state={run.combat} />
                 <div
-                  className="h-1 rounded bg-muted overflow-hidden"
+                  className="rd-arena-strike h-1 rounded bg-muted overflow-hidden"
                   aria-label="Next enemy strike"
                 >
                   <div
@@ -484,17 +501,19 @@ export default function RuneDelveEndlessPage() {
                   />
                 </div>
               </CombatFeedback>
-              <RuneBoard
-                grid={run.grid}
-                onChainComplete={chainAction}
-                disabled={inspecting}
-                effectOverride={{
-                  red: (n) => previewArenaChain(run, "red", n).text,
-                  blue: (n) => previewArenaChain(run, "blue", n).text,
-                  green: (n) => previewArenaChain(run, "green", n).text,
-                  gold: (n) => previewArenaChain(run, "gold", n).text,
-                }}
-              />
+              <div className="rd-battle-board">
+                <RuneBoard
+                  grid={run.grid}
+                  onChainComplete={chainAction}
+                  disabled={inspecting}
+                  effectOverride={{
+                    red: (n) => previewArenaChain(run, "red", n).text,
+                    blue: (n) => previewArenaChain(run, "blue", n).text,
+                    green: (n) => previewArenaChain(run, "green", n).text,
+                    gold: (n) => previewArenaChain(run, "gold", n).text,
+                  }}
+                />
+              </div>
             </div>
           )}
         </>

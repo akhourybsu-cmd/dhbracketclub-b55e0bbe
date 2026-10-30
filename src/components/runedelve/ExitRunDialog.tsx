@@ -8,6 +8,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import "./runeDialogs.css";
+import { useRuneDialogFocus } from "./useRuneDialogFocus";
 import { useSheetSfx } from "@/hooks/useSheetSfx";
 
 interface Props {
@@ -25,9 +27,13 @@ export function ExitRunDialog({
   canResume = true,
 }: Props) {
   useSheetSfx(open);
+  const focus = useRuneDialogFocus();
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="rd-dialog-theme">
+      <AlertDialogContent
+        {...focus}
+        className="rd-dialog-theme rd-compact-exit"
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>
             {canResume ? "Return to the sanctum?" : "Leave the arena?"}

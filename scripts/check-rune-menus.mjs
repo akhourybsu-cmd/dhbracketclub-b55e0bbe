@@ -42,6 +42,42 @@ async function keyActivate(page, locator, key = "Enter") {
   await expect(locator).toBeFocused();
   await page.keyboard.press(key);
 }
+function pagerIn(scope, label) {
+  return label
+    ? scope.getByRole("navigation", { name: label instanceof RegExp ? label : `${label} pages`, exact: true })
+    : scope.locator("[data-rune-pager]:visible").first();
+}
+async function turnPage(page, pager, direction) {
+  const before = Number(await pager.getAttribute("data-page"));
+  await keyActivate(page, pager.getByRole("button", { name: direction > 0 ? /^Next / : /^Previous / }));
+  await expect(pager).toHaveAttribute("data-page", String(before + direction));
+}
+async function visitPages(page, scope, label, inspect) {
+  const pager = pagerIn(scope, label);
+  if (!await pager.count()) { await inspect(); return; }
+  while (await pager.getByRole("button", { name: /^Previous / }).isEnabled())
+    await turnPage(page, pager, -1);
+  const count = Number(await pager.getAttribute("data-page-count"));
+  for (let index = 0; index < count; index++) {
+    await inspect(index);
+    if (index + 1 < count) await turnPage(page, pager, 1);
+  }
+}
+/** Find content through the same explicit page buttons as a player. */
+async function revealPaged(page, target, scope = page, label) {
+  const pager = pagerIn(scope, label);
+  await expect.poll(async () => await target.first().isVisible() || await pager.count() > 0).toBe(true);
+  if (await target.first().isVisible()) return target.first();
+  while (await pager.getByRole("button", { name: /^Previous / }).isEnabled())
+    await turnPage(page, pager, -1);
+  const count = Number(await pager.getAttribute("data-page-count"));
+  for (let index = 0; index < count; index++) {
+    if (await target.first().isVisible()) return target.first();
+    if (index + 1 < count) await turnPage(page, pager, 1);
+  }
+  await expect(target.first(), `Content remains reachable through ${label || "explicit"} pages`).toBeVisible();
+  return target.first();
+}
 async function modalKeyboard(page, trigger, name, inspect) {
   await keyActivate(page, trigger);
   const dialog = page.getByRole("dialog", { name, exact: true });
@@ -96,19 +132,18 @@ async function checkRetry(page, route, table, tab) {
         (await import("/src/lib/runedelve/enemyRoster.ts")).BESTIARY_ROSTER[0]
           .name,
     );
-    await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+    await revealPaged(page, page.getByRole("button", { name, exact: true }), page, "Bestiary");
   } else if (route.endsWith("/leaderboard"))
-    await expect(page.locator(".rd-mode main")).toContainText("Kael");
+    await revealPaged(page, page.locator(".rd-codex-leader-name > strong").filter({ hasText: "Kael" }), page, "Standings");
   else if (route.endsWith("/quests"))
-    await expect(page.getByText("Daily Delver", { exact: true })).toBeVisible();
+    await revealPaged(page, page.getByText("Daily Delver", { exact: true }), page, "Daily quest");
   else if (tab === "Levels")
-    await expect(
-      page.getByRole("article").filter({ hasText: "Level 17" }),
-    ).toBeVisible();
-  else
-    await expect(page.getByRole("tabpanel")).toContainText(
-      tab === "Daily" ? "3,456" : "Daily Delver",
-    );
+    await revealPaged(page, page.getByRole("article").filter({ hasText: "Level 17" }), page, "Campaign history");
+  else {
+    const panel = page.getByRole("tabpanel");
+    await revealPaged(page, panel.getByRole("article").filter({ hasText: tab === "Daily" ? "3,456" : "Daily Delver" }), panel, tab === "Daily" ? "Daily history" : "Quest history");
+    await expect(panel).toContainText(tab === "Daily" ? "3,456" : "Daily Delver");
+  }
   console.log("PASS retry", route, tab || "", table);
 }
 try {
@@ -119,16 +154,15 @@ try {
     page.getByRole("button", { name: "Open Codex", exact: true }),
     /Codex$/,
     async (dialog) => {
-      for (const name of ["Guide", "Daily", "Masteries", "Relics"]) {
+      for (const [name, id] of [["Guide", "mechanics"], ["Daily", "daily"], ["Masteries", "masteries"], ["Relics", "relics"]]) {
         const tab = dialog.getByRole("tab", { name, exact: true });
         await keyActivate(page, tab, "Space");
         await expect(tab).toHaveAttribute("aria-selected", "true");
         await expect(dialog.getByRole("tabpanel")).toBeVisible();
-        assert.ok(
-          (await dialog.getByRole("tabpanel").innerText()).trim().length > 20,
-          `${name} has content`,
-        );
-        await noOverflow(page, `Codex ${name}`);
+        await visitPages(page, dialog, `Codex ${id}`, async (index) => {
+          assert.ok((await dialog.getByRole("tabpanel").innerText()).trim().length > 20, `${name} page ${index + 1} has content`);
+          await noOverflow(page, `Codex ${name} page ${index + 1}`);
+        });
       }
       // Radix tabs must also support arrow navigation without a mouse.
       await dialog.getByRole("tab", { name: "Guide", exact: true }).focus();
@@ -142,9 +176,18 @@ try {
     page,
     page.getByRole("button", { name: "Sound settings", exact: true }),
     "Sound & Haptics",
+    async (dialog) => {
+      await expect(dialog.getByRole("switch", { name: "Master Sound", exact: true })).toBeVisible();
+      await keyActivate(page, dialog.getByRole("tab", { name: "Effects", exact: true }), "Space");
+      for (const name of ["UI & Menus", "Combat", "Rewards", "Ambient & Boot"])
+        await expect(dialog.getByRole("switch", { name, exact: true })).toBeVisible();
+      await keyActivate(page, dialog.getByRole("tab", { name: "General", exact: true }), "Space");
+      await expect(dialog.getByRole("switch", { name: "Background Music", exact: true })).toBeVisible();
+    },
   );
 
   await go(page, "/rune-delve/hero");
+  await keyActivate(page, page.getByRole("tab", { name: "Profile", exact: true }));
   await keyActivate(
     page,
     page.getByRole("button", { name: "Rename hero", exact: true }),
@@ -198,10 +241,7 @@ try {
     page,
     page.getByRole("tab", { name: "Classes", exact: true }),
   );
-  await keyActivate(
-    page,
-    page.getByRole("button", { name: "Switch to Mage, level 1", exact: true }),
-  );
+  await keyActivate(page, await revealPaged(page, page.getByRole("button", { name: "Switch to Mage, level 1", exact: true }), page, "Classes"));
   await expect(
     page.getByRole("button", { name: "Active Mage, level 1", exact: true }),
   ).toBeDisabled();
@@ -220,13 +260,7 @@ try {
     1,
     "Class switching restores the selected class level",
   );
-  await keyActivate(
-    page,
-    page.getByRole("button", {
-      name: "Switch to Warrior, level 8",
-      exact: true,
-    }),
-  );
+  await keyActivate(page, await revealPaged(page, page.getByRole("button", { name: "Switch to Warrior, level 8", exact: true }), page, "Classes"));
   await expect(
     page.getByRole("button", { name: "Active Warrior, level 8", exact: true }),
   ).toBeDisabled();
@@ -234,12 +268,16 @@ try {
     page,
     page.getByRole("tab", { name: "Legacy", exact: true }),
   );
-  await expect(
-    page.getByRole("heading", { name: "Warrior titles", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Legacy", exact: true })).toHaveAttribute("aria-selected", "true");
+  await visitPages(page, page, "Titles", async () => {
+    await expect(page.locator(".rd-legacy-titles")).toBeVisible();
+    await expect(page.locator(".rd-legacy-titles")).toContainText("Lv");
+  });
 
   await go(page, "/rune-delve/armory");
+  await keyActivate(page, page.getByRole("tab", { name: /^Collection/ }));
   const ember = page.getByRole("button", { name: /^Ember Edge\./ });
+  await revealPaged(page, ember, page, "Relics");
   await page.evaluate(() => window.runeQa.failRpc.push("rune_delve_equip"));
   await keyActivate(page, ember);
   await expect
@@ -261,10 +299,7 @@ try {
     button.click();
   });
   await expect(ember).toHaveAttribute("data-state", "equipped");
-  await keyActivate(
-    page,
-    page.getByRole("button", { name: /^Aether Spark\./ }),
-  );
+  await keyActivate(page, await revealPaged(page, page.getByRole("button", { name: /^Aether Spark\./ }), page, "Relics"));
   await expect(
     page.getByRole("button", { name: /^Aether Spark\./ }),
   ).toHaveAttribute("data-state", "equipped");
@@ -273,10 +308,7 @@ try {
       window.runeQa.rpcs.filter((call) => call.name === "rune_delve_equip")
         .length,
   );
-  await keyActivate(
-    page,
-    page.getByRole("button", { name: /^Iron Resolve\./ }),
-  );
+  await keyActivate(page, await revealPaged(page, page.getByRole("button", { name: /^Iron Resolve\./ }), page, "Relics"));
   await expect(
     page.getByRole("button", { name: /^Iron Resolve\./ }),
   ).toHaveAttribute("data-state", "owned");
@@ -289,19 +321,17 @@ try {
     beforeFullSlot,
     "Full loadout needs an explicit free slot",
   );
-  await keyActivate(
-    page,
-    page.getByRole("button", { name: "Unequip Ember Edge", exact: true }),
-  );
+  await keyActivate(page, page.getByRole("tab", { name: "Loadout", exact: true }));
+  await keyActivate(page, page.getByRole("button", { name: "Unequip Ember Edge", exact: true }));
+  await keyActivate(page, page.getByRole("tab", { name: /^Collection/ }));
+  await revealPaged(page, ember, page, "Relics");
   await expect(ember).toHaveAttribute("data-state", "owned");
-  await keyActivate(
-    page,
-    page.getByRole("button", { name: /^Iron Resolve\./ }),
-  );
+  await keyActivate(page, await revealPaged(page, page.getByRole("button", { name: /^Iron Resolve\./ }), page, "Relics"));
   await expect(
     page.getByRole("button", { name: /^Iron Resolve\./ }),
   ).toHaveAttribute("data-state", "equipped");
-  await keyActivate(page, page.getByRole("tab", { name: "Mage", exact: true }));
+  await keyActivate(page, page.getByRole("tab", { name: "Loadout", exact: true }));
+  await page.getByRole("combobox", { name: "Loadout class", exact: true }).selectOption("mage");
   await expect(
     page
       .getByRole("region", { name: "Mage loadout", exact: true })
@@ -310,13 +340,10 @@ try {
         exact: true,
       }),
   ).toHaveCount(2);
-  await keyActivate(
-    page,
-    page.getByRole("tab", { name: "Warrior", exact: true }),
-  );
-  await expect(
-    page.getByRole("button", { name: /^Iron Resolve\./ }),
-  ).toHaveAttribute("data-state", "equipped");
+  await page.getByRole("combobox", { name: "Loadout class", exact: true }).selectOption("warrior");
+  await keyActivate(page, page.getByRole("tab", { name: /^Collection/ }));
+  await revealPaged(page, page.getByRole("button", { name: /^Iron Resolve\./ }), page, "Relics");
+  await expect(page.getByRole("button", { name: /^Iron Resolve\./ })).toHaveAttribute("data-state", "equipped");
   await keyActivate(
     page,
     page.getByRole("tab", { name: "Combat stats", exact: true }),
@@ -338,6 +365,7 @@ try {
     page.getByRole("button", { name: discoveredName, exact: true }),
     discoveredName,
     async (dialog) => {
+      await keyActivate(page, dialog.getByRole("tab", { name: "Record", exact: true }), "Space");
       await expect(dialog.getByText("Defeats", { exact: true })).toBeVisible();
       await expect(dialog.getByText("Best Lvl", { exact: true })).toBeVisible();
     },
@@ -350,6 +378,7 @@ try {
   await expect(chapter).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "All", exact: true }).click();
   const unknown = page.getByRole("button", { name: /^Undiscovered/ }).first();
+  await revealPaged(page, unknown, page, "Bestiary");
   await keyActivate(page, unknown);
   await expect(page.getByRole("dialog")).toContainText(/Defeat this/);
   await expect(
@@ -364,18 +393,21 @@ try {
   await expect(page.getByTestId("rune-home")).toBeVisible();
 
   await go(page, "/rune-delve/history");
-  await expect(
-    page.getByRole("article").filter({ hasText: "Level 17" }),
-  ).toBeVisible();
+  await revealPaged(page, page.getByRole("article").filter({ hasText: "Level 17" }), page, "Campaign history");
   await page.getByRole("tab", { name: "Daily", exact: true }).focus();
   await page.keyboard.press("Space");
+  await revealPaged(page, page.getByRole("tabpanel").getByRole("article").filter({ hasText: "3,456" }), page, "Daily history");
   await expect(page.getByRole("tabpanel")).toContainText("3,456");
+  // Pager navigation changes focus, so return to the tab before its arrow key.
+  await page.getByRole("tab", { name: "Daily", exact: true }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(
     page.getByRole("tab", { name: "Quests", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
+  await revealPaged(page, page.getByRole("tabpanel").getByRole("article").filter({ hasText: "Daily Delver" }), page, "Quest history");
   await expect(page.getByRole("tabpanel")).toContainText("Daily Delver");
   await page.getByRole("tab", { name: "Levels", exact: true }).click();
+  await revealPaged(page, page.getByRole("article").filter({ hasText: "Level 17" }), page, "Campaign history");
   await expect(
     page.getByRole("article").filter({ hasText: "Level 17" }),
   ).toContainText("2,234");
@@ -388,8 +420,27 @@ try {
     "/rune-delve/levels",
   );
 
+  // A milestone keeps all variants reachable, including keyboard dismissal.
+  await page.getByRole("navigation", { name: "Dungeon route stages", exact: true })
+    .getByRole("button", { name: /^1–10 / }).click();
+  const milestone = page.getByRole("button", { name: /^Level 10 ·/ });
+  await revealPaged(page, milestone, page, /^Chambers .* pages$/);
+  await modalKeyboard(page, milestone, "Choose your path.", async (dialog) => {
+    const names = [];
+    await visitPages(page, dialog, "Milestone paths", async () => {
+      const heading = await dialog.getByRole("heading", { level: 3 }).innerText();
+      names.push(heading);
+      await expect(dialog.getByRole("button", { name: /^Choose (Standard|Treasure|Elite) Path$/ })).toBeVisible();
+    });
+    assert.equal(names.length, 3, "All three milestone variants remain reachable");
+    assert.ok(names.some(name => name.includes("Treasure Path")), "Treasure path remains available");
+    assert.ok(names.some(name => name.includes("Elite Path")), "Elite path remains available");
+  });
+
   await go(page, "/rune-delve/leaderboard");
+  await revealPaged(page, page.locator(".rd-codex-leader-name > strong").filter({ hasText: "Kael" }), page, "Standings");
   await expect(page.locator(".rd-mode main")).toContainText("Kael");
+  await revealPaged(page, page.locator(".rd-codex-leader-name > strong").filter({ hasText: "Thalia Stormvein" }), page, "Standings");
   await expect(page.locator(".rd-mode main")).toContainText("Thalia Stormvein");
   await expect(page.locator(".rd-mode main")).toContainText("(you)");
 
@@ -398,6 +449,7 @@ try {
     page.getByRole("heading", { name: "Daily Quests", exact: true }),
   ).toBeVisible();
   const claim = page.getByRole("button", { name: /Claim \+25/ }).first();
+  await revealPaged(page, claim, page, "Daily quest");
   await page.evaluate(() =>
     window.runeQa.failRpc.push("rune_delve_claim_quest"),
   );
@@ -503,8 +555,13 @@ try {
     exact: true,
   });
   await expect(help).toBeVisible();
+  await expect(help).toContainText("Connect 3 or more");
+  await visitPages(onboarding, help, "How to play", async (index) => {
+    await expect(help.locator(".rd-dialog-body")).toBeVisible();
+    assert.ok((await help.locator(".rd-dialog-body").innerText()).trim().length > 20, `Help page ${index + 1} has content`);
+  });
+  await revealPaged(onboarding, help.getByRole("heading", { name: /Sanctuary/ }), help, "How to play");
   await expect(help).toContainText("Sanctuary");
-  await expect(help).toContainText("Connect 3+");
   await keyActivate(
     onboarding,
     help.getByRole("button", { name: "Ready to delve", exact: true }),
@@ -518,7 +575,7 @@ try {
   await onboarding.close();
   assert.deepEqual(errors, [], "No uncaught runtime errors");
   console.log(
-    "PASS menu QA: Codex four tabs, keyboard activation/focus trapping/restoration, sound dialog, rename failure/retry/class progression, equipment failure/rapid save/full-slot/unequip/class isolation, discovered/hidden Bestiary, search/filters/deep-link exit, all History tabs, campaign leaders, quest claim failure/retry, seven secondary data retries, victory/defeat/missing results navigation, first-run class help.",
+    "PASS menu QA: all Codex/help pages, keyboard activation/focus trapping/restoration, both sound panels, rename failure/retry/class progression, paged equipment failure/rapid save/full-slot/unequip/class isolation, discovered/hidden Bestiary, search/filters/deep-link exit, paged History/leaders/quests, milestone variants, quest claim failure/retry, seven secondary data retries, victory/defeat/missing results navigation, first-run class help.",
   );
 } finally {
   await browser.close();

@@ -62,7 +62,7 @@ export function DungeonPathPreview({
     "rd-path-tile relative aspect-square p-1.5 flex flex-col items-center justify-between w-full",
     !isUnlocked && "cursor-not-allowed",
   );
-  const label = `Level ${levelNumber} · ${layout.name}${!isUnlocked ? " (locked)" : ""}${isMilestone ? " (milestone)" : ""}`;
+  const label = `Level ${levelNumber} · ${layout.name}${!isUnlocked ? " (locked)" : isCurrent ? " (current)" : isCleared ? " (cleared)" : ""}${isMilestone ? " (milestone)" : ""}${mechanicLabel && isUnlocked ? ` · ${mechanicLabel}` : ""}`;
   const content = (
     <>
       {/* Status icons */}
@@ -99,18 +99,13 @@ export function DungeonPathPreview({
         </span>
       )}
       {introducesMechanic && isUnlocked && (
-        <span className="absolute -top-1 -left-1 px-1 py-px rounded-sm text-[7px] font-extrabold uppercase tracking-wider bg-primary text-primary-foreground shadow z-10">
+        <span className="absolute top-1 left-1 px-1 py-px rounded-sm text-[7px] font-extrabold uppercase tracking-wider bg-primary text-primary-foreground shadow z-10">
           New
         </span>
       )}
 
       {/* Current chamber engraving */}
-      {isCurrent && (
-        <span
-          className="rd-path-current"
-          aria-hidden="true"
-        />
-      )}
+      {isCurrent && <span className="rd-path-current" aria-hidden="true" />}
 
       {/* Layout preview at the top */}
       <div className="rd-path-layout">
@@ -160,6 +155,7 @@ export function DungeonPathPreview({
       style={baseStyle}
       data-state={state}
       aria-label={label}
+      aria-current={isCurrent ? "step" : undefined}
     >
       {content}
     </Link>
@@ -172,6 +168,7 @@ export function DungeonPathPreview({
       style={baseStyle}
       data-state={state}
       aria-label={label}
+      aria-current={isCurrent ? "step" : undefined}
     >
       {content}
     </button>
