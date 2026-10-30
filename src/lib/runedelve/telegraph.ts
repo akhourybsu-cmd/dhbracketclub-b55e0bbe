@@ -10,8 +10,8 @@
 // composes cleanly with future bands: corrupted tiles, layered goals, and
 // boss rules can all read/write the same intent fields without coupling.
 
-import type { Enemy } from './dungeonGenerator';
-import { mulberry32, rngInt } from './prng';
+import type { Enemy } from "./dungeonGenerator";
+import { mulberry32, rngInt } from "./prng";
 
 export const HEAVY_DAMAGE_MULT = 1.6;
 /** Heavy strikes pierce half of an active guard. */
@@ -25,7 +25,11 @@ export const HEAVY_GUARD_PIERCE = 0.5;
  *   so the mechanic stays readable instead of overwhelming.
  * - Each enemy gets a small offset so they don't all fire on the same turn.
  */
-export function applyInitialIntents(enemies: Enemy[], seed: number, level: number): Enemy[] {
+export function applyInitialIntents(
+  enemies: Enemy[],
+  seed: number,
+  level: number,
+): Enemy[] {
   const rng = mulberry32(seed ^ 0x7e1e9);
   const baseCharge = level >= 65 ? 3 : 2;
   return enemies.map((e, i) => {
@@ -45,7 +49,7 @@ export function applyInitialIntents(enemies: Enemy[], seed: number, level: numbe
 }
 
 export function tickIntents(enemies: Enemy[]): Enemy[] {
-  return enemies.map(e => {
+  return enemies.map((e) => {
     if (e.hp <= 0 || e.intent == null) return e;
     return { ...e, intent: Math.max(0, e.intent - 1) };
   });
@@ -55,14 +59,17 @@ export function tickIntents(enemies: Enemy[]): Enemy[] {
  * Compute total enemy damage for the turn given current intents.
  * Returns the damage AND a fresh enemy list with fired intents reset.
  */
-export function resolveEnemyAttack(enemies: Enemy[], shieldActive: boolean): {
+export function resolveEnemyAttack(
+  enemies: Enemy[],
+  shieldActive: boolean,
+): {
   enemies: Enemy[];
   totalDamage: number;
   heavyFired: boolean;
 } {
   let totalDamage = 0;
   let heavyFired = false;
-  const next = enemies.map(e => {
+  const next = enemies.map((e) => {
     if (e.hp <= 0) return e;
     const isHeavy = e.intent != null && e.intent <= 0;
     let dmg = e.damage;
@@ -70,13 +77,15 @@ export function resolveEnemyAttack(enemies: Enemy[], shieldActive: boolean): {
       dmg = Math.round(dmg * HEAVY_DAMAGE_MULT);
       heavyFired = true;
     }
-    totalDamage += dmg;
+    // Only a heavy strike pierces guard. A charging ally does not make
+    // every other enemy's ordinary attack pierce it as well.
+    const guardMult = !shieldActive
+      ? 1
+      : isHeavy
+        ? 0.4 + (1 - 0.4) * HEAVY_GUARD_PIERCE
+        : 0.4;
+    totalDamage += dmg * guardMult;
     return isHeavy && e.intentMax != null ? { ...e, intent: e.intentMax } : e;
   });
-  if (shieldActive) {
-    // Heavy strikes pierce half the guard mitigation; light strikes reduced fully.
-    const guardMult = heavyFired ? 0.4 + (1 - 0.4) * HEAVY_GUARD_PIERCE : 0.4;
-    totalDamage = Math.round(totalDamage * guardMult);
-  }
-  return { enemies: next, totalDamage, heavyFired };
+  return { enemies: next, totalDamage: Math.round(totalDamage), heavyFired };
 }

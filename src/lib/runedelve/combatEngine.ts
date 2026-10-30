@@ -1,23 +1,32 @@
-import type { Enemy } from './dungeonGenerator';
-import type { HeroClass } from './classConfig';
-import type { RuneType } from './dungeonGenerator';
-import { resolveEnemyAttack, tickIntents, HEAVY_DAMAGE_MULT } from './telegraph';
+import type { Enemy } from "./dungeonGenerator";
+import type { HeroClass } from "./classConfig";
+import type { RuneType } from "./dungeonGenerator";
+import {
+  resolveEnemyAttack,
+  tickIntents,
+  HEAVY_DAMAGE_MULT,
+} from "./telegraph";
 import {
   applyBossTurnEffects,
   applyPhaseLockOnDamage,
   enemyDamageMultiplier,
   filterTargetable,
   type BossRuleId,
-} from './bossRules';
-import { tickEnemyAbilities, applyArmorToDamage, type AbilityEffect } from './enemyAbilities';
-import type { CombatLogEntry } from '@/components/runedelve/CombatLog';
-import type { MasteryId } from './classMastery';
+} from "./bossRules";
+import {
+  tickEnemyAbilities,
+  applyArmorToDamage,
+  type AbilityEffect,
+} from "./enemyAbilities";
+import type { CombatLogEntry } from "@/components/runedelve/CombatLog";
+import type { MasteryId } from "./classMastery";
 import {
   getMasteryCleaveDamage,
   getMasterySanctuaryHeal,
   getMasteryArcChainFraction,
   shadowstepClearsCooldown,
-} from './masteryEffects';
+  getMasteryShieldBonus,
+} from "./masteryEffects";
 
 export interface CombatState {
   hp: number;
@@ -32,6 +41,8 @@ export interface CombatState {
   longestChain: number;
   abilityUsed: boolean;
   rogueBonusTriggered: boolean;
+  /** Four distinct rune colors trigger a bounded Convergence burst. */
+  resonance?: { colors: RuneType[]; bursts: number };
 }
 
 export interface ChainResolution {
@@ -51,16 +62,20 @@ export const MAX_MANA = 3;
 export function campaignPowerMultiplier(level = 1): number {
   if (level <= 25) return 1;
   if (level <= 50) return 1 + (level - 25) * 0.008;
-  if (level <= 100) return 1.20 + (level - 50) * 0.008;
-  return 1.60 + (level - 100) * 0.010;
+  if (level <= 100) return 1.2 + (level - 50) * 0.008;
+  return 1.6 + (level - 100) * 0.01;
 }
 
 /** Base red-chain damage shared by combat and the board's live preview. */
-export function redChainDamage(length: number, cls: HeroClass, level = 1): number {
+export function redChainDamage(
+  length: number,
+  cls: HeroClass,
+  level = 1,
+): number {
   const classMultiplier: Record<HeroClass, number> = {
-    warrior: 1.30,
-    mage: 1.20,
-    rogue: 1.40,
+    warrior: 1.3,
+    mage: 1.2,
+    rogue: 1.4,
     cleric: 1.45,
   };
   const depthMultiplier = campaignPowerMultiplier(level);
@@ -68,11 +83,102 @@ export function redChainDamage(length: number, cls: HeroClass, level = 1): numbe
   // the other classes because most campaign goals care about combat, not the
   // final leaderboard total. Long red chains now deliver the same +15% payoff
   // in combat and scoring, reinforcing one clear class identity.
-  const rogueLongChain = cls === 'rogue' && length >= 5 ? 1.15 : 1;
-  return Math.round(length * 8 * classMultiplier[cls] * depthMultiplier * rogueLongChain);
+  const rogueLongChain = cls === "rogue" && length >= 5 ? 1.15 : 1;
+  return Math.round(
+    length * 8 * classMultiplier[cls] * depthMultiplier * rogueLongChain,
+  );
 }
 
-export function initialCombat(enemies: Enemy[], turns: number, opts?: { bonusMaxHp?: number }): CombatState {
+export interface RedChainModifiers {
+  runMultiplier?: number;
+  relicMultiplier?: number;
+  lengthBonus?: number;
+  tierMultiplier?: number;
+  combatMultiplier?: number;
+}
+
+export interface ChainPowerModifiers extends RedChainModifiers {
+  healMultiplier?: number;
+  guardMultiplier?: number;
+}
+
+export function chainTier(length: number): {
+  damageMultiplier: number;
+  bonusAction: boolean;
+} {
+  return length >= 8
+    ? { damageMultiplier: 1.4, bonusAction: true }
+    : length >= 7
+      ? { damageMultiplier: 1.3, bonusAction: true }
+      : length >= 6
+        ? { damageMultiplier: 1.2, bonusAction: false }
+        : { damageMultiplier: 1, bonusAction: false };
+}
+
+/** One raw-damage calculation shared by live preview and actual hit, before armor/HP clamping. */
+export function redChainPower(
+  length: number,
+  cls: HeroClass,
+  level = 1,
+  modifiers: RedChainModifiers = {},
+  shadowstep = false,
+): number {
+  let damage = redChainDamage(
+    length + Math.max(0, modifiers.lengthBonus ?? 0),
+    cls,
+    level,
+  );
+  if (shadowstep) damage = Math.round(damage * 2);
+  for (const multiplier of [
+    modifiers.runMultiplier,
+    modifiers.relicMultiplier,
+    modifiers.tierMultiplier,
+    modifiers.combatMultiplier,
+  ]) {
+    damage = Math.round(
+      damage * Math.max(0, Number.isFinite(multiplier) ? (multiplier ?? 1) : 1),
+    );
+  }
+  return damage;
+}
+
+/** Separate strikes and area effects share armor, immunity, real damage, and kill accounting. */
+export function damageEnemies(
+  state: CombatState,
+  damage: number,
+  bossRule: BossRuleId | null = null,
+  maxTargets = Infinity,
+): { next: CombatState; damageDealt: number; enemyKills: string[] } {
+  const next = {
+    ...state,
+    enemies: state.enemies.map((enemy) => ({ ...enemy })),
+  };
+  const targetIds = new Set(
+    filterTargetable(bossRule, next.enemies)
+      .slice(0, Math.max(0, maxTargets))
+      .map((enemy) => enemy.id),
+  );
+  const raw = Math.max(0, Number.isFinite(damage) ? Math.round(damage) : 0);
+  let damageDealt = 0;
+  const enemyKills: string[] = [];
+  for (const enemy of next.enemies) {
+    if (!targetIds.has(enemy.id)) continue;
+    const applied = Math.min(enemy.hp, applyArmorToDamage(enemy, raw));
+    enemy.hp -= applied;
+    damageDealt += applied;
+    if (enemy.hp <= 0) enemyKills.push(enemy.id);
+  }
+  next.totalDamage += damageDealt;
+  next.enemiesDefeated += enemyKills.length;
+  next.enemies = applyPhaseLockOnDamage(bossRule, next.enemies);
+  return { next, damageDealt, enemyKills };
+}
+
+export function initialCombat(
+  enemies: Enemy[],
+  turns: number,
+  opts?: { bonusMaxHp?: number },
+): CombatState {
   const bonus = Math.max(0, opts?.bonusMaxHp ?? 0);
   const maxHp = MAX_HP + bonus;
   return {
@@ -81,7 +187,7 @@ export function initialCombat(enemies: Enemy[], turns: number, opts?: { bonusMax
     mana: 0,
     shieldTurns: 0,
     shadowstepActive: false,
-    enemies: enemies.map(e => ({ ...e })),
+    enemies: enemies.map((e) => ({ ...e })),
     turnsRemaining: turns,
     totalDamage: 0,
     enemiesDefeated: 0,
@@ -102,26 +208,39 @@ export function applyChain(
   bossRule: BossRuleId | null = null,
   rogueBonusThreshold = 5,
   level = 1,
+  chainModifiers?: ChainPowerModifiers,
 ): { next: CombatState; resolution: ChainResolution } {
-  const next: CombatState = { ...state, enemies: state.enemies.map(e => ({ ...e })) };
+  const next: CombatState = {
+    ...state,
+    enemies: state.enemies.map((e) => ({ ...e })),
+  };
   const resolution: ChainResolution = {
-    type, length,
-    damageDealt: 0, manaGained: 0, hpHealed: 0, guardGained: 0,
+    type,
+    length,
+    damageDealt: 0,
+    manaGained: 0,
+    hpHealed: 0,
+    guardGained: 0,
     enemyKills: [],
   };
   next.longestChain = Math.max(next.longestChain, length);
 
-  if (type === 'red') {
-    let dmg = redChainDamage(length, cls, level);
+  if (type === "red") {
+    const dmg = redChainPower(
+      length,
+      cls,
+      level,
+      chainModifiers,
+      next.shadowstepActive,
+    );
     if (next.shadowstepActive) {
-      dmg = Math.round(dmg * 2);
       next.shadowstepActive = false;
     }
     // Damage first TARGETABLE enemy. Boss rules can hide the final foe.
     const targets = filterTargetable(bossRule, next.enemies);
     const target = targets[0];
     if (target) {
-      const live = next.enemies.find(e => e.id === target.id)!;
+      const live = next.enemies.find((e) => e.id === target.id)!;
       // Enemy armor (from shield_self ability) softens the hit before HP loss.
       const afterArmor = applyArmorToDamage(live, dmg);
       const applied = Math.min(afterArmor, live.hp);
@@ -135,28 +254,33 @@ export function applyChain(
     }
     // Phase Lock — kick in a 1-turn immunity each time a fresh 25% slice falls.
     next.enemies = applyPhaseLockOnDamage(bossRule, next.enemies);
-  } else if (type === 'blue') {
+  } else if (type === "blue") {
     let mana = 1;
-    if (cls === 'mage') mana = 2;
+    if (cls === "mage") mana = 2;
     if (length >= 5) mana += 1;
     const manaBefore = next.mana;
     next.mana = Math.min(MAX_MANA, next.mana + mana);
     // Report what entered the pool, not theoretical power lost to the cap.
     resolution.manaGained = next.mana - manaBefore;
-  } else if (type === 'green') {
+  } else if (type === "green") {
     let heal = length * 6;
-    if (cls === 'cleric') heal = Math.round(heal * 1.5);
+    if (cls === "cleric") heal = Math.round(heal * 1.5);
+    heal = Math.round(heal * Math.max(0, chainModifiers?.healMultiplier ?? 1));
     const applied = Math.min(heal, next.maxHp - next.hp);
     next.hp += applied;
     resolution.hpHealed = applied;
-  } else if (type === 'gold') {
+  } else if (type === "gold") {
     const shieldBefore = next.shieldTurns;
-    next.shieldTurns = Math.max(next.shieldTurns, 1) + Math.floor(length / 3);
+    const baseGain =
+      Math.max(next.shieldTurns, 1) + Math.floor(length / 3) - shieldBefore;
+    next.shieldTurns += Math.round(
+      baseGain * Math.max(0, chainModifiers?.guardMultiplier ?? 1),
+    );
     // Existing shield duration is not newly gained guard.
     resolution.guardGained = next.shieldTurns - shieldBefore;
   }
 
-  if (cls === 'rogue' && length >= rogueBonusThreshold) {
+  if (cls === "rogue" && length >= rogueBonusThreshold) {
     next.rogueBonusTriggered = true;
   }
 
@@ -185,23 +309,30 @@ export function enemiesAttack(
   thornsOpts?: { cls?: HeroClass; relicMultiplier?: number },
 ): CombatState & {
   heavyFired?: boolean;
-  abilityLogs?: Array<Omit<CombatLogEntry, 'id'>>;
+  abilityLogs?: Array<Omit<CombatLogEntry, "id">>;
   abilityEffects?: AbilityEffect[];
-  thornsLog?: Omit<CombatLogEntry, 'id'>;
+  thornsLog?: Omit<CombatLogEntry, "id">;
 } {
   const ticked = telegraphed ? tickIntents(state.enemies) : state.enemies;
-  let next: CombatState = { ...state, enemies: ticked.map(e => ({ ...e })) };
+  let next: CombatState = { ...state, enemies: ticked.map((e) => ({ ...e })) };
   let heavyFired = false;
   // Snapshot pre-attack info needed for Thorns calc.
   const shieldWasUp = next.shieldTurns > 0;
   let rawIncomingForThorns = 0;
   // Capture which enemies were "swinging" this turn — used to split Thorns.
-  const attackerSnapshot = next.enemies.map(e => ({ id: e.id, alive: e.hp > 0 }));
+  const attackerSnapshot = next.enemies.map((e) => ({
+    id: e.id,
+    alive: e.hp > 0,
+  }));
   if (telegraphed) {
     // Apply enrager / aura multiplier in-place by temporarily scaling each
     // enemy's damage for the resolve call, then restoring.
-    const original = next.enemies.map(e => e.damage);
-    next.enemies.forEach(e => { e.damage = Math.round(e.damage * enemyDamageMultiplier(bossRule, e, next.enemies)); });
+    const original = next.enemies.map((e) => e.damage);
+    next.enemies.forEach((e) => {
+      e.damage = Math.round(
+        e.damage * enemyDamageMultiplier(bossRule, e, next.enemies),
+      );
+    });
     // Compute raw (pre-shield) damage directly from the scaled enemies so the
     // Thorns math is independent of resolveEnemyAttack's internal guard math
     // (which varies for heavy strikes via HEAVY_GUARD_PIERCE).
@@ -212,14 +343,20 @@ export function enemiesAttack(
       return sum + dmg;
     }, 0);
     const r = resolveEnemyAttack(next.enemies, next.shieldTurns > 0);
-    next.enemies = r.enemies.map((e, i) => ({ ...e, damage: original[i] ?? e.damage }));
+    next.enemies = r.enemies.map((e, i) => ({
+      ...e,
+      damage: original[i] ?? e.damage,
+    }));
     heavyFired = r.heavyFired;
     if (next.shieldTurns > 0) next.shieldTurns -= 1;
     next.hp = Math.max(0, next.hp - r.totalDamage);
   } else {
     let totalIncoming = 0;
     for (const e of next.enemies) {
-      if (e.hp > 0) totalIncoming += Math.round(e.damage * enemyDamageMultiplier(bossRule, e, next.enemies));
+      if (e.hp > 0)
+        totalIncoming += Math.round(
+          e.damage * enemyDamageMultiplier(bossRule, e, next.enemies),
+        );
     }
     rawIncomingForThorns = totalIncoming;
     if (next.shieldTurns > 0) {
@@ -233,18 +370,18 @@ export function enemiesAttack(
   // Reflect a portion of the raw pre-shield damage back at attackers when
   // shield was active. Splits evenly across living, targetable enemies who
   // were alive and swinging at the start of the enemy phase.
-  let thornsLog: Omit<CombatLogEntry, 'id'> | undefined;
+  let thornsLog: Omit<CombatLogEntry, "id"> | undefined;
   if (shieldWasUp && rawIncomingForThorns > 0) {
-    const baseRate = thornsOpts?.cls === 'warrior' ? 0.40 : 0.25;
+    const baseRate = thornsOpts?.cls === "warrior" ? 0.4 : 0.25;
     const relicMul = thornsOpts?.relicMultiplier ?? 1;
     const totalThorns = Math.round(rawIncomingForThorns * baseRate * relicMul);
     if (totalThorns > 0) {
       // Living, targetable attackers (boss-rule respects untargetable / phaselock).
       const targetable = filterTargetable(bossRule, next.enemies);
-      const targetableIds = new Set(targetable.map(e => e.id));
+      const targetableIds = new Set(targetable.map((e) => e.id));
       // Was swinging this turn AND still standing AND not phased/locked-out.
-      const validTargets = next.enemies.filter(e => {
-        const snap = attackerSnapshot.find(a => a.id === e.id);
+      const validTargets = next.enemies.filter((e) => {
+        const snap = attackerSnapshot.find((a) => a.id === e.id);
         return snap?.alive && e.hp > 0 && targetableIds.has(e.id);
       });
       if (validTargets.length > 0) {
@@ -252,8 +389,8 @@ export function enemiesAttack(
         let remainder = totalThorns - perEnemy * validTargets.length;
         let totalApplied = 0;
         const killedNames: string[] = [];
-        const targetIdSet = new Set(validTargets.map(t => t.id));
-        next.enemies = next.enemies.map(e => {
+        const targetIdSet = new Set(validTargets.map((t) => t.id));
+        next.enemies = next.enemies.map((e) => {
           if (!targetIdSet.has(e.id) || e.hp <= 0) return e;
           const portion = perEnemy + (remainder > 0 ? 1 : 0);
           if (remainder > 0) remainder -= 1;
@@ -271,14 +408,15 @@ export function enemiesAttack(
         });
         if (totalApplied > 0) {
           next.totalDamage += totalApplied;
-          const tName = validTargets.length === 1
-            ? validTargets[0].name
-            : `${validTargets.length} enemies`;
+          const tName =
+            validTargets.length === 1
+              ? validTargets[0].name
+              : `${validTargets.length} enemies`;
           const killSuffix = killedNames.length
             ? ` (${killedNames.length === 1 ? `slew ${killedNames[0]}` : `${killedNames.length} slain`})`
-            : '';
+            : "";
           thornsLog = {
-            kind: 'damage',
+            kind: "damage",
             text: `🌵 Thorns reflected to ${tName}${killSuffix}`,
             amount: totalApplied,
           };
@@ -295,7 +433,7 @@ export function enemiesAttack(
   // heavy_strike fires `damage_hero` effects — apply them here so the engine
   // remains the single source of truth for hero HP changes.
   for (const eff of abilityResult.effects) {
-    if (eff.kind === 'damage_hero') {
+    if (eff.kind === "damage_hero") {
       // Heavy ability strikes ignore the standard guard scaling because the
       // log already labels them as a "charged blast" — keeps numbers honest.
       next.hp = Math.max(0, next.hp - eff.amount);
@@ -315,7 +453,9 @@ export function enemiesAttack(
     abilityLogs: mergedLogs,
     // Strip the damage_hero effects we already applied — only board effects
     // and spawns need to leave the engine.
-    abilityEffects: abilityResult.effects.filter(e => e.kind !== 'damage_hero'),
+    abilityEffects: abilityResult.effects.filter(
+      (e) => e.kind !== "damage_hero",
+    ),
     thornsLog,
   };
 }
@@ -327,8 +467,11 @@ export function endTurn(state: CombatState): CombatState {
   return { ...state, turnsRemaining: Math.max(0, state.turnsRemaining - 1) };
 }
 
-export function isRunOver(state: CombatState): { over: boolean; cleared: boolean } {
-  const allDead = state.enemies.every(e => e.hp <= 0);
+export function isRunOver(state: CombatState): {
+  over: boolean;
+  cleared: boolean;
+} {
+  const allDead = state.enemies.every((e) => e.hp <= 0);
   if (allDead) return { over: true, cleared: true };
   if (state.hp <= 0) return { over: true, cleared: false };
   if (state.turnsRemaining <= 0) return { over: true, cleared: false };
@@ -347,15 +490,24 @@ export function useAbility(
   // and spends nothing. Otherwise clamp into the 1..MAX_MANA range.
   const cost = Math.max(0, Math.min(MAX_MANA, manaCost));
   if (state.mana < cost) return { next: state, ok: false };
+  if (cls === "rogue" && state.shadowstepActive)
+    return { next: state, ok: false };
   // Spend exactly `cost` orbs (Mage T4 Deep Reserve casts at 2; First Light at 0).
-  const next: CombatState = { ...state, mana: state.mana - cost, abilityUsed: true, enemies: state.enemies.map(e => ({ ...e })) };
+  const next: CombatState = {
+    ...state,
+    mana: state.mana - cost,
+    abilityUsed: true,
+    enemies: state.enemies.map((e) => ({ ...e })),
+  };
   const targetable = filterTargetable(bossRule, next.enemies);
-  const targetableIds = new Set(targetable.map(e => e.id));
+  const targetableIds = new Set(targetable.map((e) => e.id));
   // Mirror the chain-damage depth scalar so abilities scale with the campaign.
   const depthMul = campaignPowerMultiplier(level);
-  if (cls === 'warrior') {
+  if (cls === "warrior") {
     // Cleave: 40 dmg to all targetable enemies (50 with Honed Cleave T3).
-    const cleaveDmg = Math.round((getMasteryCleaveDamage(activeMasteries) ?? 40) * depthMul);
+    const cleaveDmg = Math.round(
+      (getMasteryCleaveDamage(activeMasteries) ?? 40) * depthMul,
+    );
     for (const e of next.enemies) {
       if (e.hp > 0 && targetableIds.has(e.id)) {
         const applied = Math.min(applyArmorToDamage(e, cleaveDmg), e.hp);
@@ -364,11 +516,11 @@ export function useAbility(
         if (e.hp <= 0) next.enemiesDefeated += 1;
       }
     }
-  } else if (cls === 'mage') {
+  } else if (cls === "mage") {
     const arcBaseDmg = Math.round(80 * depthMul);
     const t = targetable[0];
     if (t) {
-      const live = next.enemies.find(e => e.id === t.id)!;
+      const live = next.enemies.find((e) => e.id === t.id)!;
       const applied = Math.min(applyArmorToDamage(live, arcBaseDmg), live.hp);
       live.hp -= applied;
       next.totalDamage += applied;
@@ -377,10 +529,12 @@ export function useAbility(
     // ── Arc Cascade (Mage T3) — chain 30% damage to a 2nd targetable foe.
     const arcFrac = getMasteryArcChainFraction(activeMasteries);
     if (arcFrac > 0) {
-      const remaining = filterTargetable(bossRule, next.enemies).filter(e => e.hp > 0);
+      const remaining = filterTargetable(bossRule, next.enemies).filter(
+        (e) => e.hp > 0 && e.id !== t?.id,
+      );
       const second = remaining[0];
       if (second) {
-        const live2 = next.enemies.find(e => e.id === second.id)!;
+        const live2 = next.enemies.find((e) => e.id === second.id)!;
         const arcDmg = Math.round(arcBaseDmg * arcFrac);
         const applied = Math.min(applyArmorToDamage(live2, arcDmg), live2.hp);
         if (applied > 0) {
@@ -390,21 +544,29 @@ export function useAbility(
         }
       }
     }
-  } else if (cls === 'rogue') {
+  } else if (cls === "rogue") {
     next.shadowstepActive = true;
-    // ── Veilcut (Rogue T3) — also clear one enemy's ability cooldown.
+    // ── Veilcut (Rogue T3) — interrupt the nearest charged enemy ability.
     if (shadowstepClearsCooldown(activeMasteries)) {
-      const candidate = next.enemies.find(e =>
-        e.hp > 0 && (e.abilityCooldown ?? 0) > 0,
-      );
-      if (candidate) candidate.abilityCooldown = 0;
+      const candidate = next.enemies
+        .filter((e) => e.hp > 0 && e.ability && e.abilityCooldown != null)
+        .sort((a, b) => (a.abilityCooldown ?? 0) - (b.abilityCooldown ?? 0))[0];
+      // Zero means FIRE NEXT TICK, not cancel. Reset the charge instead.
+      if (candidate)
+        candidate.abilityCooldown = Math.max(
+          1,
+          candidate.abilityCooldownMax ?? 3,
+        );
     }
-  } else if (cls === 'cleric') {
+  } else if (cls === "cleric") {
     // Sanctuary: 30 heal (40 with Greater Sanctuary T3).
     const sanctHeal = getMasterySanctuaryHeal(activeMasteries) ?? 30;
     const heal = Math.min(sanctHeal, next.maxHp - next.hp);
     next.hp += heal;
-    next.shieldTurns = Math.max(next.shieldTurns, 2);
+    next.shieldTurns = Math.max(
+      next.shieldTurns,
+      2 + getMasteryShieldBonus(activeMasteries),
+    );
     // Rebalance v6 — Sanctuary now also smites: a modest holy AoE so the Cleric
     // isn't the only class whose ability deals zero damage (that gap left it
     // unable to burst high-HP boss walls and locked out of the deep campaign).
@@ -429,11 +591,15 @@ export function useAbility(
  * encounter and grants `bonusTurns` extra turns so the level stays clearable.
  * Pure — returns a fresh state object.
  */
-export function spawnWave(state: CombatState, enemies: Enemy[], bonusTurns = 2): CombatState {
+export function spawnWave(
+  state: CombatState,
+  enemies: Enemy[],
+  bonusTurns = 2,
+): CombatState {
   if (!enemies.length) return state;
   return {
     ...state,
-    enemies: [...state.enemies, ...enemies.map(e => ({ ...e }))],
+    enemies: [...state.enemies, ...enemies.map((e) => ({ ...e }))],
     turnsRemaining: state.turnsRemaining + bonusTurns,
   };
 }

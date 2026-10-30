@@ -1,3 +1,4 @@
+import { runeRequest } from "@/lib/runedelve/request";
 // ─────────────────────────────────────────────────────────────────────────────
 // useBestiary — per-player monster journal.
 //
@@ -10,9 +11,9 @@
 // log every kill from a single run in one atomic upsert.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface BestiaryEntry {
   id: string;
@@ -36,15 +37,15 @@ export interface DefeatRecord {
 export function useBestiary() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['rune-delve-bestiary', user?.id],
+    retry: false,
+    queryKey: ["rune-delve-bestiary", user?.id],
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async (): Promise<BestiaryEntry[]> => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from('rune_delve_bestiary')
-        .select('*')
-        .eq('user_id', user.id);
+      const { data, error } = await runeRequest(
+        supabase.from("rune_delve_bestiary").select("*").eq("user_id", user.id),
+      );
       if (error) throw error;
       return (data ?? []) as BestiaryEntry[];
     },
@@ -60,7 +61,9 @@ export function useRecordDefeats() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (defeats: DefeatRecord[]): Promise<{ newlyDiscovered: string[] }> => {
+    mutationFn: async (
+      defeats: DefeatRecord[],
+    ): Promise<{ newlyDiscovered: string[] }> => {
       if (!user || defeats.length === 0) return { newlyDiscovered: [] };
 
       // Aggregate counts client-side so the same archetype only hits the DB once.
@@ -79,16 +82,24 @@ export function useRecordDefeats() {
       if (totals.size === 0) return { newlyDiscovered: [] };
 
       const ids = Array.from(totals.keys());
-      const { data: existing } = await supabase
-        .from('rune_delve_bestiary')
-        .select('archetype_id, defeat_count, highest_level_defeated')
-        .eq('user_id', user.id)
-        .in('archetype_id', ids);
-      const existingMap = new Map<string, { defeat_count: number; highest_level_defeated: number }>(
-        (existing ?? []).map(r => [r.archetype_id as string, {
-          defeat_count: r.defeat_count as number,
-          highest_level_defeated: r.highest_level_defeated as number,
-        }]),
+      const { data: existing } = await runeRequest(
+        supabase
+          .from("rune_delve_bestiary")
+          .select("archetype_id, defeat_count, highest_level_defeated")
+          .eq("user_id", user.id)
+          .in("archetype_id", ids),
+      );
+      const existingMap = new Map<
+        string,
+        { defeat_count: number; highest_level_defeated: number }
+      >(
+        (existing ?? []).map((r) => [
+          r.archetype_id as string,
+          {
+            defeat_count: r.defeat_count as number,
+            highest_level_defeated: r.highest_level_defeated as number,
+          },
+        ]),
       );
 
       const newlyDiscovered: string[] = [];
@@ -98,34 +109,39 @@ export function useRecordDefeats() {
       for (const [archetypeId, { count, level }] of totals.entries()) {
         const prior = existingMap.get(archetypeId);
         if (!prior) {
-          const { error } = await supabase
-            .from('rune_delve_bestiary')
-            .insert({
+          const { error } = await runeRequest(
+            supabase.from("rune_delve_bestiary").insert({
               user_id: user.id,
               archetype_id: archetypeId,
               defeat_count: count,
               first_defeated_at: now,
               last_defeated_at: now,
               highest_level_defeated: level,
-            });
+            }),
+          );
           if (!error) newlyDiscovered.push(archetypeId);
         } else {
-          await supabase
-            .from('rune_delve_bestiary')
-            .update({
-              defeat_count: prior.defeat_count + count,
-              last_defeated_at: now,
-              highest_level_defeated: Math.max(prior.highest_level_defeated, level),
-            })
-            .eq('user_id', user.id)
-            .eq('archetype_id', archetypeId);
+          await runeRequest(
+            supabase
+              .from("rune_delve_bestiary")
+              .update({
+                defeat_count: prior.defeat_count + count,
+                last_defeated_at: now,
+                highest_level_defeated: Math.max(
+                  prior.highest_level_defeated,
+                  level,
+                ),
+              })
+              .eq("user_id", user.id)
+              .eq("archetype_id", archetypeId),
+          );
         }
       }
 
       return { newlyDiscovered };
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['rune-delve-bestiary', user?.id] });
+      qc.invalidateQueries({ queryKey: ["rune-delve-bestiary", user?.id] });
     },
   });
 }

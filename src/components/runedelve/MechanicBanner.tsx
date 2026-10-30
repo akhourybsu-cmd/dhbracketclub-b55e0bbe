@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { getMechanic, type MechanicId } from '@/lib/runedelve/mechanics';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { getMechanic, type MechanicId } from "@/lib/runedelve/mechanics";
+import { cn } from "@/lib/utils";
 
 interface Props {
   mechanics: MechanicId[];
@@ -22,20 +22,20 @@ export function MechanicBanner({ mechanics }: Props) {
 
   return (
     <button
-      onClick={() => setExpanded(e => !e)}
+      onClick={() => setExpanded((e) => !e)}
       className={cn(
-        'w-full text-left rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 btn-press',
-        'transition-all',
+        "w-full text-left rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 min-h-11 btn-press",
+        "transition-all",
       )}
       aria-expanded={expanded}
-      aria-label={expanded ? 'Hide mechanic details' : 'Show mechanic details'}
+      aria-label={expanded ? "Hide mechanic details" : "Show mechanic details"}
     >
       <div className="flex items-center gap-2">
         <span className="text-[9px] font-extrabold uppercase tracking-wider text-primary px-1.5 py-0.5 rounded bg-primary/15">
-          {items.length === 1 ? 'Rule' : '2 Rules'}
+          {items.length === 1 ? "Rule" : `${items.length} Rules`}
         </span>
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          {items.map(m => (
+          {items.map((m) => (
             <span
               key={m.id}
               className="inline-flex items-center gap-1 text-[11px] font-bold text-foreground/90 truncate"
@@ -53,12 +53,18 @@ export function MechanicBanner({ mechanics }: Props) {
       </div>
       {expanded && (
         <div className="mt-2 pt-2 border-t border-primary/15 space-y-1.5">
-          {items.map(m => (
+          {items.map((m) => (
             <div key={m.id} className="flex items-start gap-2">
-              <span className="text-base leading-none mt-0.5" aria-hidden>{m.icon}</span>
+              <span className="text-base leading-none mt-0.5" aria-hidden>
+                {m.icon}
+              </span>
               <div className="min-w-0">
-                <p className="text-[11px] font-extrabold leading-tight">{m.name}</p>
-                <p className="text-[10px] text-muted-foreground leading-snug">{m.oneLiner}</p>
+                <p className="text-[11px] font-extrabold leading-tight">
+                  {m.name}
+                </p>
+                <p className="text-[10px] text-muted-foreground leading-snug">
+                  {m.oneLiner}
+                </p>
               </div>
             </div>
           ))}

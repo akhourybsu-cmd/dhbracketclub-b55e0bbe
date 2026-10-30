@@ -1,16 +1,40 @@
-import { cn } from '@/lib/utils';
-import type { RuneType } from '@/lib/runedelve/dungeonGenerator';
+import { cn } from "@/lib/utils";
+import type { RuneType } from "@/lib/runedelve/dungeonGenerator";
 
-const RUNE_META: Record<RuneType, { glyph: string; color: string; glow: string; label: string }> = {
-  red:   { glyph: '⚔', color: 'hsl(0 75% 58%)',   glow: 'hsl(0 75% 58% / 0.4)',   label: 'Attack' },
-  blue:  { glyph: '✦', color: 'hsl(215 75% 60%)', glow: 'hsl(215 75% 60% / 0.4)', label: 'Mana' },
-  green: { glyph: '❀', color: 'hsl(140 60% 50%)', glow: 'hsl(140 60% 50% / 0.4)', label: 'Heal' },
-  gold:  { glyph: '◈', color: 'hsl(45 90% 56%)',  glow: 'hsl(45 90% 56% / 0.45)', label: 'Guard' },
+const RUNE_META: Record<
+  RuneType,
+  { glyph: string; color: string; glow: string; label: string }
+> = {
+  red: {
+    glyph: "⚔",
+    color: "hsl(0 75% 58%)",
+    glow: "hsl(0 75% 58% / 0.4)",
+    label: "Attack",
+  },
+  blue: {
+    glyph: "✦",
+    color: "hsl(215 75% 60%)",
+    glow: "hsl(215 75% 60% / 0.4)",
+    label: "Mana",
+  },
+  green: {
+    glyph: "❀",
+    color: "hsl(140 60% 50%)",
+    glow: "hsl(140 60% 50% / 0.4)",
+    label: "Heal",
+  },
+  gold: {
+    glyph: "◈",
+    color: "hsl(45 90% 56%)",
+    glow: "hsl(45 90% 56% / 0.45)",
+    label: "Guard",
+  },
 };
 
 interface Props {
   type: RuneType;
   selected?: boolean;
+  selectionOrder?: number;
   invalid?: boolean;
   /** When true, this cell is sealed — uninteractable until broken. */
   sealed?: boolean;
@@ -35,12 +59,33 @@ interface Props {
   onPointerEnter?: (e: React.PointerEvent) => void;
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
-  touchAction?: 'none' | 'pan-y';
+  touchAction?: "none" | "pan-y";
   dataR: number;
   dataC: number;
 }
 
-export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptionSource, eclipsed, linked, shifting, treasure, hazard, size, onPointerDown, onPointerEnter, onClick, disabled, touchAction = 'none', dataR, dataC }: Props) {
+export function RuneCell({
+  type,
+  selected,
+  selectionOrder,
+  invalid,
+  sealed,
+  corrupted,
+  corruptionSource,
+  eclipsed,
+  linked,
+  shifting,
+  treasure,
+  hazard,
+  size,
+  onPointerDown,
+  onPointerEnter,
+  onClick,
+  disabled,
+  touchAction = "none",
+  dataR,
+  dataC,
+}: Props) {
   const meta = RUNE_META[type];
   return (
     <button
@@ -54,19 +99,19 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
       disabled={disabled || sealed}
       aria-pressed={selected}
       className={cn(
-        'relative flex appearance-none items-center justify-center rounded-xl select-none transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        !selected && !sealed && 'rd-tile',
-        selected && 'scale-110 z-10 border',
-        invalid && 'opacity-50',
-        sealed && 'rd-tile-sealed',
-        corrupted && !sealed && 'rd-tile-corrupted',
-        eclipsed && !sealed && 'opacity-60',
-        shifting && !sealed && 'ring-1 ring-inset ring-primary/40',
+        "relative flex appearance-none items-center justify-center rounded-xl select-none transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        !selected && !sealed && "rd-tile",
+        selected && "scale-110 z-10 border",
+        invalid && "opacity-50",
+        sealed && "rd-tile-sealed",
+        corrupted && !sealed && "rd-tile-corrupted",
+        eclipsed && !sealed && "opacity-60",
+        shifting && !sealed && "ring-1 ring-inset ring-primary/40",
       )}
       style={{
-        width: size ?? '100%',
-        height: size ?? 'auto',
-        aspectRatio: '1 / 1',
+        width: size ?? "100%",
+        height: size ?? "auto",
+        aspectRatio: "1 / 1",
         ...(selected
           ? {
               background: `radial-gradient(circle at 50% 40%, ${meta.color}, ${meta.color} 60%, transparent 100%)`,
@@ -75,17 +120,27 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
             }
           : {}),
         touchAction,
-        cursor: sealed ? 'not-allowed' : undefined,
+        cursor: sealed ? "not-allowed" : undefined,
       }}
       aria-label={
-        sealed ? `Sealed ${meta.label} rune`
-        : corruptionSource ? `Corruption source on ${meta.label} rune`
-        : corrupted ? `Corrupted ${meta.label} rune`
-        : eclipsed ? `Eclipsed ${meta.label} rune (cannot start chain)`
-        : linked ? `Linked ${meta.label} rune`
-        : `${meta.label} rune`
+        sealed
+          ? `Sealed ${meta.label} rune`
+          : corruptionSource
+            ? `Corruption source on ${meta.label} rune`
+            : corrupted
+              ? `Corrupted ${meta.label} rune`
+              : eclipsed
+                ? `Eclipsed ${meta.label} rune (cannot start chain)`
+                : linked
+                  ? `Linked ${meta.label} rune`
+                  : `${meta.label} rune`
       }
     >
+      {selectionOrder != null && (
+        <span className="rd-selection-order" aria-hidden>
+          {selectionOrder}
+        </span>
+      )}
       {sealed ? (
         // Sealed state: show the lock prominently, dim the underlying glyph.
         <>
@@ -96,7 +151,9 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
           >
             {meta.glyph}
           </span>
-          <span className="relative text-xl leading-none" aria-hidden>🔒</span>
+          <span className="relative text-xl leading-none" aria-hidden>
+            🔒
+          </span>
         </>
       ) : (
         <>
@@ -107,36 +164,58 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
               the rune-glow CSS variable here drives the elemental
               halo when the tile is at rest. */}
           <span
-            className={cn('text-2xl font-extrabold leading-none', !selected && 'rd-rune-glyph')}
-            style={{
-              color: selected ? '#fff' : meta.color,
-              textShadow: selected ? '0 1px 4px rgba(0,0,0,0.5)' : undefined,
-              // Element-specific halo color. Empty/undefined for
-              // selected (the wrapper background does the work).
-              '--rune-glow': selected ? undefined : meta.glow,
-            } as React.CSSProperties & { '--rune-glow'?: string }}
+            className={cn(
+              "text-2xl font-extrabold leading-none",
+              !selected && "rd-rune-glyph",
+            )}
+            style={
+              {
+                color: selected ? "#fff" : meta.color,
+                textShadow: selected ? "0 1px 4px rgba(0,0,0,0.5)" : undefined,
+                // Element-specific halo color. Empty/undefined for
+                // selected (the wrapper background does the work).
+                "--rune-glow": selected ? undefined : meta.glow,
+              } as React.CSSProperties & { "--rune-glow"?: string }
+            }
           >
             {meta.glyph}
           </span>
           {corrupted && (
             <span
               className={cn(
-                'absolute pointer-events-none leading-none',
-                corruptionSource ? 'top-0.5 right-0.5 text-[13px]' : 'top-0.5 right-0.5 text-[10px] opacity-80',
+                "absolute pointer-events-none leading-none",
+                corruptionSource
+                  ? "top-0.5 right-0.5 text-[13px]"
+                  : "top-0.5 right-0.5 text-[10px] opacity-80",
               )}
               aria-hidden
             >
-              {corruptionSource ? '☠️' : '🦠'}
+              {corruptionSource ? "☠️" : "🦠"}
             </span>
           )}
           {linked && !corrupted && (
-            <span className="absolute top-0.5 right-0.5 text-[10px] opacity-90 leading-none pointer-events-none" aria-hidden>🔗</span>
+            <span
+              className="absolute top-0.5 right-0.5 text-[10px] opacity-90 leading-none pointer-events-none"
+              aria-hidden
+            >
+              🔗
+            </span>
           )}
           {eclipsed && !corrupted && !linked && (
-            <span className="absolute top-0.5 right-0.5 text-[10px] opacity-90 leading-none pointer-events-none" aria-hidden>🌑</span>
+            <span
+              className="absolute top-0.5 right-0.5 text-[10px] opacity-90 leading-none pointer-events-none"
+              aria-hidden
+            >
+              🌑
+            </span>
           )}
           {shifting && !corrupted && (
-            <span className="absolute bottom-0.5 right-0.5 text-[9px] opacity-70 leading-none pointer-events-none" aria-hidden>🌬️</span>
+            <span
+              className="absolute bottom-0.5 right-0.5 text-[9px] opacity-70 leading-none pointer-events-none"
+              aria-hidden
+            >
+              🌬️
+            </span>
           )}
         </>
       )}
@@ -152,10 +231,16 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
             aria-hidden
             className="absolute inset-0 rounded-xl pointer-events-none rd-tile-treasure"
             style={{
-              boxShadow: 'inset 0 0 0 1.5px hsl(45 95% 60% / 0.6), inset 0 0 12px hsl(45 95% 60% / 0.2)',
+              boxShadow:
+                "inset 0 0 0 1.5px hsl(45 95% 60% / 0.6), inset 0 0 12px hsl(45 95% 60% / 0.2)",
             }}
           />
-          <span className="absolute bottom-0.5 left-0.5 text-[10px] leading-none pointer-events-none" aria-hidden>✨</span>
+          <span
+            className="absolute bottom-0.5 left-0.5 text-[10px] leading-none pointer-events-none"
+            aria-hidden
+          >
+            ✨
+          </span>
         </>
       )}
       {hazard && !treasure && (
@@ -164,10 +249,16 @@ export function RuneCell({ type, selected, invalid, sealed, corrupted, corruptio
             aria-hidden
             className="absolute inset-0 rounded-xl pointer-events-none rd-tile-hazard"
             style={{
-              boxShadow: 'inset 0 0 0 1.5px hsl(0 75% 58% / 0.55), inset 0 0 10px hsl(0 75% 58% / 0.18)',
+              boxShadow:
+                "inset 0 0 0 1.5px hsl(0 75% 58% / 0.55), inset 0 0 10px hsl(0 75% 58% / 0.18)",
             }}
           />
-          <span className="absolute bottom-0.5 left-0.5 text-[10px] leading-none pointer-events-none" aria-hidden>⚠️</span>
+          <span
+            className="absolute bottom-0.5 left-0.5 text-[10px] leading-none pointer-events-none"
+            aria-hidden
+          >
+            ⚠️
+          </span>
         </>
       )}
     </button>

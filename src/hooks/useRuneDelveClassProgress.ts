@@ -1,8 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import type { HeroClass } from '@/lib/runedelve/classConfig';
-import { titleForLevel } from '@/lib/runedelve/classConfig';
+import { runeRequest } from "@/lib/runedelve/request";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import type { HeroClass } from "@/lib/runedelve/classConfig";
+import { titleForLevel } from "@/lib/runedelve/classConfig";
 
 /**
  * Per-class progression track. One row per (user_id, class).
@@ -27,15 +28,18 @@ export interface ClassProgress {
 export function useAllClassProgress() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['rune-delve-class-progress', user?.id],
+    retry: false,
+    queryKey: ["rune-delve-class-progress", user?.id],
     enabled: !!user,
     staleTime: 30_000,
     queryFn: async (): Promise<ClassProgress[]> => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from('rune_delve_class_progress')
-        .select('*')
-        .eq('user_id', user.id);
+      const { data, error } = await runeRequest(
+        supabase
+          .from("rune_delve_class_progress")
+          .select("*")
+          .eq("user_id", user.id),
+      );
       if (error) throw error;
       return (data ?? []) as ClassProgress[];
     },
@@ -48,30 +52,48 @@ export function useEnsureClassProgress() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (cls: HeroClass): Promise<ClassProgress> => {
-      if (!user) throw new Error('Not authenticated');
-      const { data: existing } = await supabase
-        .from('rune_delve_class_progress')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('class', cls)
-        .maybeSingle();
+      if (!user) throw new Error("Not authenticated");
+      const { data: existing } = await runeRequest(
+        supabase
+          .from("rune_delve_class_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("class", cls)
+          .maybeSingle(),
+      );
       if (existing) return existing as ClassProgress;
-      const { data, error } = await supabase
-        .from('rune_delve_class_progress')
-        .insert({
-          user_id: user.id,
-          class: cls,
-          xp: 0,
-          level: 1,
-          cosmetic_title: titleForLevel(1, cls),
-        })
-        .select()
-        .single();
+      const { data, error } = await runeRequest(
+        supabase
+          .from("rune_delve_class_progress")
+          .upsert(
+            {
+              user_id: user.id,
+              class: cls,
+              xp: 0,
+              level: 1,
+              cosmetic_title: titleForLevel(1, cls),
+            },
+            { onConflict: "user_id,class", ignoreDuplicates: true },
+          )
+          .select()
+          .maybeSingle(),
+      );
       if (error) throw error;
-      return data as ClassProgress;
+      if (data) return data as ClassProgress;
+      const { data: canonical } = await runeRequest(
+        supabase
+          .from("rune_delve_class_progress")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("class", cls)
+          .single(),
+      );
+      return canonical as ClassProgress;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['rune-delve-class-progress', user?.id] });
+      qc.invalidateQueries({
+        queryKey: ["rune-delve-class-progress", user?.id],
+      });
     },
   });
 }
@@ -81,23 +103,30 @@ export function useUpdateClassProgress() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { cls: HeroClass; patch: Partial<ClassProgress> }) => {
-      if (!user) throw new Error('Not authenticated');
+    mutationFn: async (params: {
+      cls: HeroClass;
+      patch: Partial<ClassProgress>;
+    }) => {
+      if (!user) throw new Error("Not authenticated");
       // Upsert keeps this safe if a class row hasn't been created yet (e.g.
       // legacy hero whose backfill missed an edge case).
-      const { data, error } = await supabase
-        .from('rune_delve_class_progress')
-        .upsert(
-          { user_id: user.id, class: params.cls, ...params.patch },
-          { onConflict: 'user_id,class' },
-        )
-        .select()
-        .single();
+      const { data, error } = await runeRequest(
+        supabase
+          .from("rune_delve_class_progress")
+          .upsert(
+            { ...params.patch, user_id: user.id, class: params.cls },
+            { onConflict: "user_id,class" },
+          )
+          .select()
+          .single(),
+      );
       if (error) throw error;
       return data as ClassProgress;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['rune-delve-class-progress', user?.id] });
+      qc.invalidateQueries({
+        queryKey: ["rune-delve-class-progress", user?.id],
+      });
     },
   });
 }

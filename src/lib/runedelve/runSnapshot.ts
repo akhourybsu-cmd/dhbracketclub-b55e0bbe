@@ -6,15 +6,17 @@
 // `generation_seed` so a re-seed (admin reseed, schema change) safely bails
 // to a fresh board instead of restoring stale state.
 
-import type { RuneType } from './dungeonGenerator';
-import type { CombatState } from './combatEngine';
-import type { CorruptionState } from './corruptedTiles';
-import type { ActiveRelics } from './relicEffects';
-import type { CombatLogEntry } from '@/components/runedelve/CombatLog';
+import type { RuneType } from "./dungeonGenerator";
+import type { CombatState } from "./combatEngine";
+import type { CorruptionState } from "./corruptedTiles";
+import type { ActiveRelics } from "./relicEffects";
+import type { MasteryId } from "./classMastery";
+import type { CombatLogEntry } from "@/components/runedelve/CombatLog";
 
-// v2 rejects snapshots created before run initialization waited for the full
-// loadout/relic/mastery build, preventing an accidentally empty build restore.
-export const SNAPSHOT_VERSION = 2;
+// v3 saves all board mechanics and one-use counters. Older local checkpoints
+// cannot reconstruct consumed twins/treasure or revive usage honestly. Persistent
+// campaign, class, wallet and collection progress are unaffected.
+export const SNAPSHOT_VERSION = 3;
 export const SNAPSHOT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
 
 export interface RunSnapshot {
@@ -48,10 +50,30 @@ export interface RunSnapshot {
    *  Optional for back-compat with snapshots written before R3 shipped —
    *  loaders treat absence as Steady Path so old snapshots resume safely. */
   activeModifierId?: string;
+  pendingModifierOfferIds?: string[];
+  /** Complete run-local state: restoring a page must not restore spent powers. */
+  shiftingColumn?: number;
+  linkedPairs?: Array<[string, string]>;
+  eclipsedCells?: string[];
+  chainsThisFight?: number;
+  bonusShardsFromMastery?: number;
+  bonusScoreFromTreasure?: number;
+  bonusShardsFromTreasure?: number;
+  totalManaSpent?: number;
+  goldRunesCleared?: number;
+  braceFired?: boolean;
+  aegisFired?: boolean;
+  tookDamage?: boolean;
+  masteryIds?: MasteryId[];
 }
 
-export function snapshotKey(userId: string, levelId: string, heroClass: string): string {
-  return `rd-run:${userId}:${heroClass}:${levelId}`;
+export function snapshotKey(
+  userId: string,
+  levelId: string,
+  heroClass: string,
+  variant?: string,
+): string {
+  return `rd-run:${userId}:${heroClass}:${levelId}${variant ? `:${encodeURIComponent(variant)}` : ""}`;
 }
 
 export interface BuildSnapshotInput {
@@ -76,6 +98,21 @@ export interface BuildSnapshotInput {
   activeRelicsSnapshot: ActiveRelics | null;
   /** R3 modifier id — see RunSnapshot. */
   activeModifierId?: string;
+  pendingModifierOfferIds?: string[];
+  /** Complete run-local state: restoring a page must not restore spent powers. */
+  shiftingColumn?: number;
+  linkedPairs?: Array<[string, string]>;
+  eclipsedCells?: string[];
+  chainsThisFight?: number;
+  bonusShardsFromMastery?: number;
+  bonusScoreFromTreasure?: number;
+  bonusShardsFromTreasure?: number;
+  totalManaSpent?: number;
+  goldRunesCleared?: number;
+  braceFired?: boolean;
+  aegisFired?: boolean;
+  tookDamage?: boolean;
+  masteryIds?: MasteryId[];
 }
 
 export function buildSnapshot(input: BuildSnapshotInput): RunSnapshot {
@@ -109,6 +146,20 @@ export function buildSnapshot(input: BuildSnapshotInput): RunSnapshot {
         }
       : null,
     activeModifierId: input.activeModifierId,
+    pendingModifierOfferIds: input.pendingModifierOfferIds,
+    shiftingColumn: input.shiftingColumn ?? -1,
+    linkedPairs: input.linkedPairs ?? [],
+    eclipsedCells: input.eclipsedCells ?? [],
+    chainsThisFight: input.chainsThisFight ?? 0,
+    bonusShardsFromMastery: input.bonusShardsFromMastery ?? 0,
+    bonusScoreFromTreasure: input.bonusScoreFromTreasure ?? 0,
+    bonusShardsFromTreasure: input.bonusShardsFromTreasure ?? 0,
+    totalManaSpent: input.totalManaSpent ?? 0,
+    goldRunesCleared: input.goldRunesCleared ?? 0,
+    braceFired: input.braceFired ?? false,
+    aegisFired: input.aegisFired ?? false,
+    tookDamage: input.tookDamage ?? false,
+    masteryIds: input.masteryIds ?? [],
   };
 }
 
@@ -126,13 +177,12 @@ export function ensureUniqueCombatLogIds(
 ): CombatLogEntry[] {
   const seenLogIds = new Set<string>();
   return log.map((entry, index) => {
-    const originalId = typeof entry.id === 'string' && entry.id.length > 0
-      ? entry.id
-      : 'log';
+    const originalId =
+      typeof entry.id === "string" && entry.id.length > 0 ? entry.id : "log";
     let repairedId = originalId;
     if (seenLogIds.has(repairedId)) {
       repairedId = `${originalId}-${snapshotNonce}-${index}`;
-      while (seenLogIds.has(repairedId)) repairedId += '-r';
+      while (seenLogIds.has(repairedId)) repairedId += "-r";
     }
     seenLogIds.add(repairedId);
     return repairedId === entry.id ? entry : { ...entry, id: repairedId };
@@ -149,7 +199,37 @@ export function loadSnapshot(
     const parsed = JSON.parse(raw) as RunSnapshot;
     if (!parsed || parsed.version !== SNAPSHOT_VERSION) return null;
     if (parsed.generationSeed !== expectedSeed) return null;
-    if (Date.now() - parsed.savedAt > SNAPSHOT_MAX_AGE_MS) return null;
+    if (
+      !Number.isFinite(parsed.savedAt) ||
+      Date.now() - parsed.savedAt > SNAPSHOT_MAX_AGE_MS ||
+      parsed.savedAt > Date.now() + 60_000
+    )
+      return null;
+    if (
+      !Array.isArray(parsed.grid) ||
+      parsed.grid.length !== 5 ||
+      parsed.grid.some(
+        (row) =>
+          !Array.isArray(row) ||
+          row.length !== 5 ||
+          row.some((rune) => !["red", "blue", "green", "gold"].includes(rune)),
+      )
+    )
+      return null;
+    if (
+      !parsed.combat ||
+      !Number.isFinite(parsed.combat.hp) ||
+      !Number.isFinite(parsed.combat.turnsRemaining) ||
+      !Array.isArray(parsed.combat.enemies)
+    )
+      return null;
+    if (
+      !Array.isArray(parsed.seals) ||
+      !parsed.corruption ||
+      !Array.isArray(parsed.corruption.cells) ||
+      !Array.isArray(parsed.corruption.sources)
+    )
+      return null;
 
     // Older hot-reloaded sessions could persist repeated short ids such as
     // `l-1`. Framer Motion requires stable, unique keys for every animated
@@ -174,7 +254,7 @@ export function clearSnapshot(key: string): void {
 }
 
 export function rehydrateRelics(
-  stored: RunSnapshot['activeRelicsSnapshot'],
+  stored: RunSnapshot["activeRelicsSnapshot"],
 ): ActiveRelics | null {
   if (!stored) return null;
   return {

@@ -105,6 +105,12 @@ export const FEAT_CATEGORIES: Record<
     icon: "Compass",
   },
 };
+/** Feature action for a selected goal, including mode-specific collections. */
+export function featActionPath(feat: Pick<FeatDefinition, 'key' | 'category'>): string {
+  return feat.key.startsWith('rune_expedition_')
+    ? '/rune-delve/expedition'
+    : FEAT_CATEGORIES[feat.category]?.path || '/club';
+}
 const RANKS = [
   { name: "Newcomer", score: 0 },
   { name: "Regular", score: 250 },

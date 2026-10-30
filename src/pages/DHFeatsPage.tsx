@@ -29,6 +29,7 @@ import {
   FEAT_CATEGORIES,
   FEAT_TIERS,
   featProgress,
+  featActionPath,
   formatFeatValue,
   nextFeats,
   unseenFeats,
@@ -719,7 +720,7 @@ export default function DHFeatsPage() {
                 isInstalled(FEAT_CATEGORIES[feat.category].asset) ? (
                   <Link
                     className="dh-button"
-                    to={FEAT_CATEGORIES[feat.category]?.path || "/club"}
+                    to={featActionPath(feat)}
                   >
                     Jump in
                     <ArrowRight size={16} />

@@ -1,0 +1,5 @@
+[
+  { "key": "rune_expedition_rooms", "category": "rune", "title": "Vault Wayfarer", "description": "Bank cleared rooms in Rune Delve Expeditions. Abandoned and active runs do not count.", "thresholds": [6,30,120,360,1200], "points": [10,20,40,80,150], "kind": "volume", "unit": "count", "sort_order": 63 },
+  { "key": "rune_expedition_clears", "category": "rune", "title": "Beyond the Seal", "description": "Finish all six rooms and bank victorious Rune Delve Expeditions.", "thresholds": [1,5,20,60,200], "points": [10,20,40,80,150], "kind": "volume", "unit": "count", "sort_order": 64 },
+  { "key": "rune_expedition_ascension", "category": "rune", "title": "Rune Ascendant", "description": "Clear higher Ascensions in Rune Delve Expeditions. The first descent is Ascension 1.", "thresholds": [1,2,4,6,8], "points": [10,20,40,80,150], "kind": "mastery", "unit": "count", "sort_order": 65 }
+]

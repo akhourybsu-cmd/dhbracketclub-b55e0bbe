@@ -95,6 +95,7 @@ const RuneDelveArmoryPage = lazyWithRetry(() => import("./pages/RuneDelveArmoryP
 const RuneDelveBestiaryPage = lazyWithRetry(() => import("./pages/RuneDelveBestiaryPage"));
 const RuneDelveDailyPage = lazyWithRetry(() => import("./pages/RuneDelveDailyPage"));
 const RuneDelveEndlessPage = lazyWithRetry(() => import("./pages/RuneDelveEndlessPage"));
+const RuneDelveExpeditionPage = lazyWithRetry(() => import("./pages/RuneDelveExpeditionPage"));
 const RuneDelveQuestsPage = lazyWithRetry(() => import("./pages/RuneDelveQuestsPage"));
 const CelebrationsPage = lazyWithRetry(() => import("./pages/CelebrationsPage"));
 const WorkoutPage = lazyWithRetry(() => import("./pages/WorkoutPage"));
@@ -308,6 +309,7 @@ function AnimatedRoutes() {
         <Route path="/rune-delve/bestiary" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveBestiaryPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/daily" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveDailyPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/endless" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveEndlessPage /></RuneDelveLayout></ProtectedPage>} />
+        <Route path="/rune-delve/expedition" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveExpeditionPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/quests" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveQuestsPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/analytics" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveAnalyticsPage /></ProtectedPage>} />
         <Route path="/rune-delve/simulator" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveSimulatorPage /></ProtectedPage>} />

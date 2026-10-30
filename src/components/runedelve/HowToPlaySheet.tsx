@@ -1,142 +1,195 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { getClass, type HeroClass } from '@/lib/runedelve/classConfig';
-import { ClassBadge } from './ClassBadge';
-import { useSheetSfx } from '@/hooks/useSheetSfx';
+import { Link } from "react-router-dom";
+import { ArrowRight, Hand, Shield, Sparkles, Sword, Zap } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { getClass, type HeroClass } from "@/lib/runedelve/classConfig";
+import { ClassBadge } from "./ClassBadge";
+import { useSheetSfx } from "@/hooks/useSheetSfx";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   heroClass?: HeroClass;
 }
-
 const RUNES = [
-  { glyph: '⚔', name: 'Red · Attack', color: 'hsl(0 75% 58%)', desc: 'Damages the ▶ target. The board preview shows the exact class- and depth-scaled damage.' },
-  { glyph: '✦', name: 'Blue · Mana', color: 'hsl(215 75% 60%)', desc: 'Charges your ability meter (3 orbs to cast; Mage gains +1 orb).' },
-  { glyph: '❀', name: 'Green · Heal', color: 'hsl(140 60% 50%)', desc: 'Restores chain length × 6 HP; Cleric heals 50% more.' },
-  { glyph: '◈', name: 'Gold · Guard', color: 'hsl(45 90% 56%)', desc: 'Adds shield turns that reduce incoming damage by 60%.' },
+  {
+    glyph: "⚔",
+    name: "Attack",
+    color: "0 75% 58%",
+    desc: "Strikes the marked enemy.",
+  },
+  {
+    glyph: "✦",
+    name: "Mana",
+    color: "215 75% 60%",
+    desc: "Charges your class ability.",
+  },
+  {
+    glyph: "❀",
+    name: "Heal",
+    color: "140 60% 50%",
+    desc: "Restores your health.",
+  },
+  {
+    glyph: "◈",
+    name: "Guard",
+    color: "45 90% 56%",
+    desc: "Softens enemy attacks.",
+  },
 ];
 
+/** Teach the gesture and payoff visually; the codex holds the deeper rules. */
 export function HowToPlaySheet({ open, onOpenChange, heroClass }: Props) {
   useSheetSfx(open);
   const cls = heroClass ? getClass(heroClass) : null;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[88vh] rounded-t-3xl p-0 flex flex-col">
-        <SheetHeader className="px-5 pt-5 pb-2 text-left">
-          <SheetTitle className="text-xl font-extrabold tracking-tight flex items-center gap-2">
-            <span>📖</span> How to Play Rune Delve
-          </SheetTitle>
-        </SheetHeader>
-        <ScrollArea className="flex-1 px-5 pb-8">
-          <div className="space-y-5 pt-2">
-            {/* Goal */}
-            <Section title="🎯 Goal">
-              <p>Progress through a shared <b>level-based campaign</b>. Each level has its own objective — defeat all enemies, survive a set number of turns, reach a target score, or take down a champion. The objective bar shows exactly how close you are. Clear a level to unlock the next one.</p>
-              <p className="mt-1.5">A gold <b>Bonus</b> goal is optional. The main objective still clears the chamber; completing Bonus adds score and shards.</p>
-              <p className="mt-1.5">Every player faces the <b>same level</b> with the same board, enemies, and turn limit — your score is what sets you apart.</p>
-            </Section>
-
-            {/* Rules */}
-            <Section title="🧭 Encounter Rules">
-              <ul className="space-y-1.5 list-disc pl-4">
-                <li>Most chambers use <b>one main twist</b>. Occasional remix rooms use two at most.</li>
-                <li>Tap the <b>Rule</b> strip above the board for the exact effect and counterplay.</li>
-                <li>✨ Treasure cells pay <b>+75 score and +5 shards</b>; red hazard cells cost <b>5 HP each</b> (12 HP max per chain).</li>
-                <li><b>Boss Rule</b> chambers replace remix rules with one clearly labeled boss twist.</li>
-                <li>Risk/reward chamber boons begin after Level 10; <b>Steady Path</b> always means no bonus and no penalty.</li>
-              </ul>
-            </Section>
-
-            {/* Controls */}
-            <Section title="✋ Controls">
-              <ul className="space-y-1.5 list-disc pl-4">
-                <li>Choose <b>Drag</b> for one continuous gesture or <b>Tap</b> to build a chain one rune at a time.</li>
-                <li>Runes connect in <b>any of 8 directions</b> — including diagonals.</li>
-                <li>In Drag mode, <b>release</b> to resolve. In Tap mode, press <b>Resolve</b>. Choose the previous rune to undo a step.</li>
-                <li>Keyboard players can focus runes, press Enter or Space to select them, then use Resolve.</li>
-                <li>Longer chains hit harder, heal more, and charge faster.</li>
-              </ul>
-            </Section>
-
-            {/* Runes */}
-            <Section title="🔮 Rune Effects">
-              <div className="space-y-2">
-                {RUNES.map(r => (
-                  <div key={r.name} className="flex items-start gap-3 p-2.5 rounded-xl border border-border/40 bg-muted/20">
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center text-lg font-extrabold flex-shrink-0"
-                      style={{ background: `${r.color}20`, color: r.color, border: `1px solid ${r.color}50` }}
-                    >
-                      {r.glyph}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-[12px]">{r.name}</p>
-                      <p className="text-[11px] text-muted-foreground leading-snug">{r.desc}</p>
-                    </div>
-                  </div>
-                ))}
+      <SheetContent
+        side="bottom"
+        className="rd-dialog-theme max-h-[90dvh] overflow-y-auto rounded-t-3xl px-5 pb-6 pt-5"
+      >
+        <div className="mx-auto max-w-md">
+          <SheetHeader className="text-left">
+            <SheetTitle className="rd-title text-xl">
+              One chain. One decision.
+            </SheetTitle>
+            <SheetDescription>
+              Connect matching runes. Build your power. Clear the chamber.
+            </SheetDescription>
+          </SheetHeader>
+          <div
+            className="my-4 flex items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 p-4"
+            aria-label="Three matching adjacent runes make a chain"
+          >
+            {[1, 2, 3].map((n, i) => (
+              <div key={n} className="flex items-center gap-2">
+                {i > 0 && (
+                  <span className="h-0.5 w-5 bg-destructive/50" aria-hidden />
+                )}
+                <span
+                  className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-destructive/50 bg-destructive/15 text-2xl text-destructive"
+                  aria-hidden
+                >
+                  ⚔
+                  <small className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-extrabold text-destructive-foreground">
+                    {n}
+                  </small>
+                </span>
               </div>
-            </Section>
-
-            {/* Class */}
-            {cls && (
-              <Section title="🛡️ Your Hero">
-                <div className="flex items-start gap-3 p-3 rounded-xl border border-primary/30 bg-primary/5">
-                  <ClassBadge cls={cls.id} size="lg" />
-                  <div className="min-w-0">
-                    <p className="font-extrabold text-[13px]">{cls.name} {cls.emoji}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5"><b>Passive:</b> {cls.passive}</p>
-                    <p className="text-[11px] text-primary mt-0.5"><b>⚡ {cls.abilityName}:</b> {cls.abilityDesc}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Cast costs {cls.abilityCost} mana orbs (charge with Blue runes).</p>
-                  </div>
-                </div>
-              </Section>
-            )}
-
-            {/* Combat */}
-            <Section title="⚔️ Combat Flow">
-              <ol className="space-y-1.5 list-decimal pl-4">
-                <li>You chain runes — your turn resolves.</li>
-                <li>The <b>▶ marker</b> shows which enemy an Attack chain will hit; ⚔ shows its base damage.</li>
-                <li>Living enemies counter-attack (Guard reduces damage).</li>
-                <li>Turn counter ticks down by 1.</li>
-                <li>Run ends when all enemies fall, your HP hits 0, or turns reach 0.</li>
-              </ol>
-            </Section>
-
-            {/* Scoring */}
-            <Section title="🏆 Scoring">
-              <ul className="space-y-1 list-disc pl-4">
-                <li>Total damage dealt — <b>1 pt each</b></li>
-                <li>Enemies defeated — <b>200 pts each</b></li>
-                <li>HP remaining — <b>5 pts per HP</b></li>
-                <li>Turns remaining — <b>50 pts per turn</b></li>
-                <li>Longest chain — <b>25 pts per rune</b></li>
-                <li>Full clear bonus — <b>+500 pts</b></li>
-              </ul>
-            </Section>
-
-            {/* Progression */}
-            <Section title="🌟 XP, Levels & Chapters">
-              <p>Your hero earns XP every run (~score ÷ 30, up to 120 + 20 for clears). Hero levels unlock <b>cosmetic titles only</b> — no stat boosts, so the campaign stays fair for everyone.</p>
-              <p className="mt-1.5">The campaign is split into <b>chapters of 50 levels</b>. Every chapter introduces a new twist — tougher enemies, elites, or tighter move economies. Replay any cleared level to chase a higher best score.</p>
-            </Section>
-
-            <p className="text-[10px] text-center text-muted-foreground pt-2">Shared campaign · Same level, same board for every player</p>
+            ))}
+            <ArrowRight
+              className="mx-1 h-4 w-4 text-muted-foreground"
+              aria-hidden
+            />
+            <Sword className="h-6 w-6 text-destructive" aria-hidden />
           </div>
-        </ScrollArea>
+          <div className="grid grid-cols-2 gap-2">
+            {RUNES.map((r) => (
+              <div
+                key={r.name}
+                className="flex items-center gap-2 rounded-xl border border-border bg-card/60 p-3"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xl"
+                  style={{
+                    color: `hsl(${r.color})`,
+                    background: `hsl(${r.color}/.13)`,
+                    border: `1px solid hsl(${r.color}/.3)`,
+                  }}
+                  aria-hidden
+                >
+                  {r.glyph}
+                </span>
+                <div>
+                  <p className="text-xs font-extrabold">{r.name}</p>
+                  <p className="text-[10px] leading-snug text-muted-foreground">
+                    {r.desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid gap-3 text-xs leading-relaxed">
+            <p className="flex gap-2">
+              <Hand
+                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                aria-hidden
+              />
+              <span>
+                <b>Connect 3+</b> in any direction, including diagonals. Drag
+                and release, or Tap a path then Cast. Backtrack one rune to
+                undo.
+              </span>
+            </p>
+            <p className="flex gap-2">
+              <Shield
+                className="mt-0.5 h-4 w-4 shrink-0 text-gold"
+                aria-hidden
+              />
+              <span>
+                <b>Enemies strike after your action.</b> Tap an enemy to inspect
+                its attack and countdown. Watch your health and remaining turns.
+              </span>
+            </p>
+            <p className="flex gap-2">
+              <Sparkles
+                className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                aria-hidden
+              />
+              <span>
+                <b>Use all four colors to trigger Resonance:</b> a burst across
+                the enemy field, plus mana and guard. Repeating a color keeps
+                your progress.
+              </span>
+            </p>
+            <p className="flex gap-2">
+              <Zap className="mt-0.5 h-4 w-4 shrink-0 text-gold" aria-hidden />
+              <span>
+                <b>Long chains create openings.</b> 6+ hit harder. 7+ can earn a
+                bonus action once per enemy cycle.
+              </span>
+            </p>
+          </div>
+          {cls && (
+            <div className="my-4 flex gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3">
+              <ClassBadge cls={cls.id} size="md" />
+              <div>
+                <p className="text-xs font-extrabold">
+                  {cls.name} · {cls.abilityName}
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  {cls.abilityDesc}
+                </p>
+                <p className="mt-1 text-[10px] text-primary">{cls.passive}</p>
+              </div>
+            </div>
+          )}
+          <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
+            Gold sparkles reward score and shards. Red hazards cost health.
+            Encounter details explain your objective, bonus goal, and chamber
+            rules.
+          </p>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="mt-4 min-h-12 w-full rounded-xl bg-primary text-sm font-extrabold text-primary-foreground"
+          >
+            Ready to delve
+          </button>
+          <Link
+            to="/rune-delve/hero"
+            onClick={() => onOpenChange(false)}
+            className="mt-1 flex min-h-11 items-center justify-center gap-1 text-xs font-bold text-muted-foreground"
+          >
+            Explore your class & masteries <ArrowRight size={13} />
+          </Link>
+        </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h3 className="font-extrabold text-[13px] uppercase tracking-wider text-foreground/90 mb-1.5">{title}</h3>
-      <div className="text-[12px] text-muted-foreground leading-relaxed space-y-1">{children}</div>
-    </div>
   );
 }

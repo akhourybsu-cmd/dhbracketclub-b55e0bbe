@@ -1,25 +1,85 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate, Link, useParams, useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { ArrowLeft, HelpCircle, Trophy, Skull, Hourglass, Sparkles as SparklesIcon } from 'lucide-react';
-import { useRuneDelveHero, useUpdateHero } from '@/hooks/useRuneDelveHero';
-import { useAllClassProgress, useUpdateClassProgress } from '@/hooks/useRuneDelveClassProgress';
-import { useLevel, useMyLevelRun, useSubmitLevelRun, useAdvanceProgress, useMyProgress } from '@/hooks/useRuneDelveCampaign';
-import { mulberry32 } from '@/lib/runedelve/prng';
-import { generateBoard, type RuneType, type Enemy } from '@/lib/runedelve/dungeonGenerator';
-import { isValidChain, resolveBoard, type Cell } from '@/lib/runedelve/boardEngine';
-import { applyChain, enemiesAttack, endTurn, initialCombat, redChainDamage, useAbility as activateAbility, type CombatState } from '@/lib/runedelve/combatEngine';
-import { calculateScore, xpForRun } from '@/lib/runedelve/scoring';
-import { evaluateObjective, getObjectiveProgress } from '@/lib/runedelve/objectives';
-import { levelFromXp, newTitleUnlocked, titleForLevel } from '@/lib/runedelve/classConfig';
-import { useLoadout } from '@/hooks/useLoadout';
-import { useEarnShards, useFailureRow, useBumpFailure, useResetFailure, useRuneWallet, useUnlockSlot } from '@/hooks/useRuneShards';
-import { useRecordDefeats } from '@/hooks/useBestiary';
-import { rosterById, ENEMY_ROSTER } from '@/lib/runedelve/enemyRoster';
-import { spawnWave } from '@/lib/runedelve/combatEngine';
-import { useRelicCollection, rankMapFromOwned } from '@/hooks/useRelicCollection';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Info, Shield, Sword, Gem, Zap } from "lucide-react";
+import { getMechanic } from "@/lib/runedelve/mechanics";
+import "@/components/runedelve/runeBattle.css";
+import { motion } from "framer-motion";
+import {
+  useNavigate,
+  Link,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  ArrowLeft,
+  HelpCircle,
+  Trophy,
+  Skull,
+  Hourglass,
+  Sparkles as SparklesIcon,
+} from "lucide-react";
+import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
+import { useAllClassProgress } from "@/hooks/useRuneDelveClassProgress";
+import {
+  useLevel,
+  useMyLevelRun,
+  useSubmitLevelRun,
+  useMyProgress,
+  type SubmitLevelRunInput,
+} from "@/hooks/useRuneDelveCampaign";
+import { mulberry32 } from "@/lib/runedelve/prng";
+import {
+  generateBoard,
+  type RuneType,
+  type Enemy,
+} from "@/lib/runedelve/dungeonGenerator";
+import {
+  isValidChain,
+  resolveBoard,
+  ensurePlayableBoard,
+  type Cell,
+} from "@/lib/runedelve/boardEngine";
+import {
+  applyChain,
+  enemiesAttack,
+  endTurn,
+  initialCombat,
+  redChainPower,
+  chainTier,
+  damageEnemies,
+  useAbility as activateAbility,
+  type CombatState,
+} from "@/lib/runedelve/combatEngine";
+import { applyOpeningModifier } from "@/lib/runedelve/openingModifier";
+import { advanceResonance } from "@/lib/runedelve/resonance";
+import { calculateScore, xpForRun } from "@/lib/runedelve/scoring";
+import {
+  evaluateObjective,
+  getObjectiveProgress,
+} from "@/lib/runedelve/objectives";
+import {
+  levelFromXp,
+  newTitleUnlocked,
+  titleForLevel,
+} from "@/lib/runedelve/classConfig";
+import { useLoadout } from "@/hooks/useLoadout";
+import { useFailureRow, useRuneWallet } from "@/hooks/useRuneShards";
+import { useRecordDefeats } from "@/hooks/useBestiary";
+import { rosterById, ENEMY_ROSTER } from "@/lib/runedelve/enemyRoster";
+import { spawnWave } from "@/lib/runedelve/combatEngine";
+import {
+  useRelicCollection,
+  rankMapFromOwned,
+} from "@/hooks/useRelicCollection";
 import {
   buildActive,
   getStartingMana,
@@ -40,55 +100,98 @@ import {
   getVoidPactHpCost,
   tryPhoenixHeart,
   type ActiveRelics,
-} from '@/lib/runedelve/relicEffects';
-import { MAX_MANA } from '@/lib/runedelve/combatEngine';
-import { computeClearShards, computeFailureShards, slotsForClassLevels } from '@/lib/runedelve/shardEconomy';
+} from "@/lib/runedelve/relicEffects";
+import { MAX_MANA } from "@/lib/runedelve/combatEngine";
+import {
+  computeClearShards,
+  computeFailureShards,
+  slotsForClassLevels,
+} from "@/lib/runedelve/shardEconomy";
 
-import { objectiveLabel, type ObjectiveType } from '@/lib/runedelve/levelGenerator';
+import {
+  objectiveLabel,
+  type ObjectiveType,
+} from "@/lib/runedelve/levelGenerator";
 import {
   mechanicsForLevel,
   introMechanicForLevel,
   seenMechanicKey,
   type MechanicId,
-} from '@/lib/runedelve/mechanics';
-import { buildInitialSeals, sealsBrokenByChain } from '@/lib/runedelve/sealedTiles';
+} from "@/lib/runedelve/mechanics";
 import {
-  computeLayoutZones, countChainInZone, EMPTY_ZONES,
-  TREASURE_SCORE_BONUS, TREASURE_SHARD_BONUS,
-  HAZARD_DAMAGE, HAZARD_MAX_DAMAGE_PER_CHAIN,
-} from '@/lib/runedelve/layoutZones';
-import { getLayoutIdForLevel } from '@/lib/runedelve/chamberAssignment';
-import { getLayout } from '@/lib/runedelve/runeLayouts';
-import { ChamberBackdrop } from '@/components/runedelve/ChamberBackdrop';
+  buildInitialSeals,
+  sealsBrokenByChain,
+} from "@/lib/runedelve/sealedTiles";
 import {
-  type RunModifier, pickModifierOffer, resolveEffect, getModifierById, STEADY_PATH,
-} from '@/lib/runedelve/runModifiers';
-import { RunModifierPicker } from '@/components/runedelve/RunModifierPicker';
-import { todayUtcDateString } from '@/lib/runedelve/dailyChallenge';
-import { markDailyChamberPlayed } from '@/lib/runedelve/dailyChamber';
-import { rollRelicDrop } from '@/lib/runedelve/relicDrops';
-import type { RelicDef } from '@/lib/runedelve/relics';
-import { useUnlockRelic } from '@/hooks/useRelicCollection';
-import { getPathVariant, resolvePathEffect } from '@/lib/runedelve/pathVariants';
+  computeLayoutZones,
+  countChainInZone,
+  EMPTY_ZONES,
+  TREASURE_SCORE_BONUS,
+  TREASURE_SHARD_BONUS,
+  HAZARD_DAMAGE,
+  HAZARD_MAX_DAMAGE_PER_CHAIN,
+} from "@/lib/runedelve/layoutZones";
+import { getLayoutIdForLevel } from "@/lib/runedelve/chamberAssignment";
+import { getLayout } from "@/lib/runedelve/runeLayouts";
+import { ChamberBackdrop } from "@/components/runedelve/ChamberBackdrop";
 import {
-  detectPhaseTransitions, applyPhaseDamageBump,
+  type RunModifier,
+  pickModifierOffer,
+  resolveEffect,
+  getModifierById,
+  STEADY_PATH,
+} from "@/lib/runedelve/runModifiers";
+import { RunModifierPicker } from "@/components/runedelve/RunModifierPicker";
+import { todayUtcDateString } from "@/lib/runedelve/dailyChallenge";
+import { markDailyChamberPlayed } from "@/lib/runedelve/dailyChamber";
+import { rollRelicDrop } from "@/lib/runedelve/relicDrops";
+import type { RelicDef } from "@/lib/runedelve/relics";
+import { useUnlockRelic } from "@/hooks/useRelicCollection";
+import {
+  getPathVariant,
+  resolvePathEffect,
+} from "@/lib/runedelve/pathVariants";
+import {
+  detectPhaseTransitions,
+  applyPhaseDamageBump,
   type BossPhaseIndex,
-} from '@/lib/runedelve/bossPhases';
-import { applyInitialIntents } from '@/lib/runedelve/telegraph';
+} from "@/lib/runedelve/bossPhases";
+import { applyInitialIntents } from "@/lib/runedelve/telegraph";
 import {
   buildInitialCorruption,
   spreadCorruption,
   resolveChainAgainstCorruption,
   emptyCorruption,
   type CorruptionState,
-} from '@/lib/runedelve/corruptedTiles';
-import { buildInitialShift, applyShift, type ShiftState } from '@/lib/runedelve/shiftingRunes';
-import { buildInitialPairs, pairsTriggeredByChain, consumePairs, type LinkedPairsState } from '@/lib/runedelve/linkedPairs';
-import { buildInitialEclipse, type EclipseSet } from '@/lib/runedelve/eclipseTiles';
-import { secondaryMet, secondaryShort, secondaryLabel, type SecondaryObjective } from '@/lib/runedelve/layeredGoals';
-import { getBossRule, filterTargetable, type BossRuleId } from '@/lib/runedelve/bossRules';
-import { useSubmitDailyRun } from '@/hooks/useDailyChallenge';
-import { useReportQuestProgress } from '@/hooks/useQuests';
+} from "@/lib/runedelve/corruptedTiles";
+import {
+  buildInitialShift,
+  applyShift,
+  type ShiftState,
+} from "@/lib/runedelve/shiftingRunes";
+import {
+  buildInitialPairs,
+  pairsTriggeredByChain,
+  consumePairs,
+  type LinkedPairsState,
+} from "@/lib/runedelve/linkedPairs";
+import {
+  buildInitialEclipse,
+  type EclipseSet,
+} from "@/lib/runedelve/eclipseTiles";
+import {
+  secondaryMet,
+  secondaryShort,
+  secondaryLabel,
+  type SecondaryObjective,
+} from "@/lib/runedelve/layeredGoals";
+import {
+  getBossRule,
+  filterTargetable,
+  type BossRuleId,
+} from "@/lib/runedelve/bossRules";
+import { useSubmitDailyRun } from "@/hooks/useDailyChallenge";
+import { useReportQuestProgress } from "@/hooks/useQuests";
 import {
   dailyDamageMultiplier,
   dailyMaxHpMultiplier,
@@ -101,10 +204,14 @@ import {
   dailyIroncladDamageMult,
   dailyReflectivePct,
   dailyHidesForesight,
-} from '@/lib/runedelve/dailyModifierEffects';
+} from "@/lib/runedelve/dailyModifierEffects";
 // NOTE: Daily challenge is now Endless Survival (separate page). Campaign
 // play never enters daily mode — `isDailyMode` is always false here.
-import { getActiveMasteries, masteryUnlockedAt } from '@/lib/runedelve/classMastery';
+import {
+  getActiveMasteries,
+  masteryUnlockedAt,
+  type MasteryId,
+} from "@/lib/runedelve/classMastery";
 import {
   getMasteryStartingMana,
   getMasteryAbilityManaCost,
@@ -122,25 +229,30 @@ import {
   hasMasteryAegis,
   hasMasteryPanicShield,
   reviveBurstActive,
-} from '@/lib/runedelve/masteryEffects';
-import { chapterFor } from '@/lib/runedelve/levelGenerator';
-import { Crown, Target } from 'lucide-react';
-import { RuneBoard } from '@/components/runedelve/RuneBoard';
-import { EnemyDisplay } from '@/components/runedelve/EnemyDisplay';
-import { HeroStatusBar } from '@/components/runedelve/HeroStatusBar';
-import { HowToPlaySheet } from '@/components/runedelve/HowToPlaySheet';
-import { MechanicIntroSheet } from '@/components/runedelve/MechanicIntroSheet';
-import { MechanicBanner } from '@/components/runedelve/MechanicBanner';
-import { CombatLog, type CombatLogEntry } from '@/components/runedelve/CombatLog';
-import { FxLayer } from '@/components/runedelve/fx/FxLayer';
-import { useFxQueue, type FxRect } from '@/hooks/useFxQueue';
-import { useSoundEffect } from '@/hooks/useSoundEffect';
-import { useRuneDelveSfx } from '@/hooks/useRuneDelveSfx';
-import { FloatingNumberLayer, useFloaters } from '@/components/runedelve/fx/FloatingNumber';
-import { ScreenEdgeFlash } from '@/components/runedelve/fx/ScreenEdgeFlash';
-import { PhaseTransitionFlash } from '@/components/runedelve/fx/PhaseTransitionFlash';
-import { HeavyStrikeBanner } from '@/components/runedelve/fx/HeavyStrikeBanner';
-import { useAuth } from '@/contexts/AuthContext';
+} from "@/lib/runedelve/masteryEffects";
+import { chapterFor } from "@/lib/runedelve/levelGenerator";
+import { Crown, Target } from "lucide-react";
+import { RuneBoard } from "@/components/runedelve/RuneBoard";
+import { EnemyDisplay } from "@/components/runedelve/EnemyDisplay";
+import { HeroStatusBar } from "@/components/runedelve/HeroStatusBar";
+import { HowToPlaySheet } from "@/components/runedelve/HowToPlaySheet";
+import { MechanicIntroSheet } from "@/components/runedelve/MechanicIntroSheet";
+import {
+  CombatLog,
+  type CombatLogEntry,
+} from "@/components/runedelve/CombatLog";
+import { FxLayer } from "@/components/runedelve/fx/FxLayer";
+import { useFxQueue, type FxRect } from "@/hooks/useFxQueue";
+import { useSoundEffect } from "@/hooks/useSoundEffect";
+import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
+import {
+  FloatingNumberLayer,
+  useFloaters,
+} from "@/components/runedelve/fx/FloatingNumber";
+import { ScreenEdgeFlash } from "@/components/runedelve/fx/ScreenEdgeFlash";
+import { PhaseTransitionFlash } from "@/components/runedelve/fx/PhaseTransitionFlash";
+import { HeavyStrikeBanner } from "@/components/runedelve/fx/HeavyStrikeBanner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   buildSnapshot,
   clearSnapshot,
@@ -148,14 +260,25 @@ import {
   rehydrateRelics,
   saveSnapshot,
   snapshotKey,
-} from '@/lib/runedelve/runSnapshot';
-import { format } from 'date-fns';
+} from "@/lib/runedelve/runSnapshot";
+
+import type { AbilityEffect } from "@/lib/runedelve/enemyAbilities";
+
+type StoredEnemy = Omit<Enemy, "id" | "maxHp"> &
+  Partial<Pick<Enemy, "id" | "maxHp">>;
+type ChamberModifiers = {
+  mechanics?: MechanicId[];
+  secondary_objective?: SecondaryObjective;
+  boss_rule?: BossRuleId;
+  intro_mechanic?: MechanicId;
+  waves?: Array<{ enemies: StoredEnemy[]; reinforcement_turns: number }>;
+};
 
 const RUNE_LABEL: Record<RuneType, string> = {
-  red: 'Crimson',
-  blue: 'Azure',
-  green: 'Verdant',
-  gold: 'Radiant',
+  red: "Crimson",
+  blue: "Azure",
+  green: "Verdant",
+  gold: "Radiant",
 };
 
 // Timestamp + module counter stays unique across mobile reload/resume. A bare
@@ -174,21 +297,36 @@ export default function RuneDelvePlayPage() {
   const isDailyMode = false;
   const submitDaily = useSubmitDailyRun();
   const reportQuestProgress = useReportQuestProgress();
-  const levelNumber = Math.max(1, parseInt(levelParam ?? '1', 10) || 1);
+  const levelNumber = Math.max(1, parseInt(levelParam ?? "1", 10) || 1);
   const dailyMods: never[] = [];
 
   const { user } = useAuth();
-  const { data: hero } = useRuneDelveHero();
-  const { data: progress } = useMyProgress(hero?.class);
-  const { data: level } = useLevel(levelNumber);
-  const { data: existingRun } = useMyLevelRun(level?.id, levelNumber, hero?.class);
-  const { data: classTracks, isLoading: classTracksLoading } = useAllClassProgress();
+  const {
+    data: hero,
+    error: heroError,
+    refetch: refetchHero,
+  } = useRuneDelveHero();
+  const {
+    data: progress,
+    error: progressError,
+    refetch: refetchProgress,
+  } = useMyProgress(hero?.class);
+  const {
+    data: level,
+    error: levelError,
+    refetch: refetchLevel,
+  } = useLevel(levelNumber);
+  const { data: existingRun } = useMyLevelRun(
+    level?.id,
+    levelNumber,
+    hero?.class,
+  );
+  const { data: classTracks, isLoading: classTracksLoading } =
+    useAllClassProgress();
   const submit = useSubmitLevelRun();
-  const advance = useAdvanceProgress();
-  const updateHero = useUpdateHero();
-  const updateClass = useUpdateClassProgress();
   const { data: loadout, isLoading: loadoutLoading } = useLoadout(hero?.class);
-  const { data: ownedRelics, isLoading: ownedRelicsLoading } = useRelicCollection();
+  const { data: ownedRelics, isLoading: ownedRelicsLoading } =
+    useRelicCollection();
   const unlockRelic = useUnlockRelic();
   // R7: a relic dropped on this clear (if any). Surfaced in the
   // endState card so the player sees the find.
@@ -199,23 +337,49 @@ export default function RuneDelvePlayPage() {
   // on every state change without re-firing past ones.
   const bossPhasesRef = useRef<Map<string, BossPhaseIndex>>(new Map());
   const { data: wallet } = useRuneWallet();
-  const { data: failureRow } = useFailureRow(level?.level_number ?? null, hero?.class);
-  const earnShards = useEarnShards();
+  const { data: failureRow } = useFailureRow(
+    level?.level_number ?? null,
+    hero?.class,
+  );
   const recordDefeats = useRecordDefeats();
-  const bumpFailure = useBumpFailure();
-  const resetFailure = useResetFailure();
-  const unlockSlot = useUnlockSlot();
 
+  const [loadingSlow, setLoadingSlow] = useState(false);
+  useEffect(() => {
+    setLoadingSlow(false);
+    const timer = window.setTimeout(() => setLoadingSlow(true), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [levelNumber]);
   const [grid, setGrid] = useState<RuneType[][] | null>(null);
   const [combat, setCombat] = useState<CombatState | null>(null);
   const [seals, setSeals] = useState<Set<string>>(new Set());
   const [rngTick, setRngTick] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const finalizeBusyRef = useRef(false);
+  const pendingSaveRef = useRef<SubmitLevelRunInput | null>(null);
+  const failedFinalRef = useRef<{
+    final: CombatState;
+    cleared: boolean;
+  } | null>(null);
   const [flashId, setFlashId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [encounterOpen, setEncounterOpen] = useState(false);
+  const [masteryIdsSnapshot, setMasteryIdsSnapshot] = useState<
+    MasteryId[] | null
+  >(null);
   const [introMechanic, setIntroMechanic] = useState<MechanicId | null>(null);
   const [introBossRule, setIntroBossRule] = useState<BossRuleId | null>(null);
-  const [endState, setEndState] = useState<null | { cleared: boolean; reason: 'cleared' | 'defeated' | 'timeout'; score: number; isNewBest: boolean; shards: number; improvedChain?: boolean; improvedTurns?: boolean; improvedHp?: boolean; firstClear?: boolean }>(null);
+  const [endState, setEndState] = useState<null | {
+    cleared: boolean;
+    reason: "cleared" | "defeated" | "timeout";
+    score: number;
+    isNewBest: boolean;
+    shards: number;
+    improvedChain?: boolean;
+    improvedTurns?: boolean;
+    improvedHp?: boolean;
+    firstClear?: boolean;
+  }>(null);
   // Counter (not boolean) — Last Stand at R5 grants 2 saves per run.
   const [lastStandUsed, setLastStandUsed] = useState(0);
   // Phoenix Heart — single-use full revive per run, separate from Last Stand.
@@ -223,9 +387,12 @@ export default function RuneDelvePlayPage() {
   // Bonus-move rebalance: only one free turn per enemy cycle. Resets whenever
   // the enemy phase actually runs (i.e. a non-bonus chain or ability resolves).
   const [bonusUsedThisCycle, setBonusUsedThisCycle] = useState(false);
-  const [corruption, setCorruption] = useState<CorruptionState>(emptyCorruption);
+  const [corruption, setCorruption] =
+    useState<CorruptionState>(emptyCorruption);
   const [shift, setShift] = useState<ShiftState>({ column: -1 });
-  const [linkedPairs, setLinkedPairs] = useState<LinkedPairsState>({ pairs: new Map() });
+  const [linkedPairs, setLinkedPairs] = useState<LinkedPairsState>({
+    pairs: new Map(),
+  });
   const [eclipse, setEclipse] = useState<EclipseSet>(new Set());
   const [log, setLog] = useState<CombatLogEntry[]>([]);
   // First-chain-of-fight detection for cleric mastery.
@@ -238,8 +405,13 @@ export default function RuneDelvePlayPage() {
   // Run modifier (R3). `activeModifier` is what's applied to this run;
   // `modifierOffer` is the 3 cards currently shown in the picker.
   // Both clear on run-init so each chamber gets a fresh offer.
-  const [activeModifier, setActiveModifier] = useState<RunModifier | null>(null);
-  const [modifierOffer, setModifierOffer] = useState<RunModifier[] | null>(null);
+  const initializedRunRef = useRef<string | null>(null);
+  const [activeModifier, setActiveModifier] = useState<RunModifier | null>(
+    null,
+  );
+  const [modifierOffer, setModifierOffer] = useState<RunModifier[] | null>(
+    null,
+  );
   // Track lifetime mana spent for Mage Overflow mastery refund cadence.
   const [totalManaSpent, setTotalManaSpent] = useState(0);
   // Rogue T1 Gilded Eye — count gold runes cleared across the run.
@@ -263,7 +435,9 @@ export default function RuneDelvePlayPage() {
   // (e.g. `goblin_scout__mini`, `goblin_scout__boss`) so the journal records
   // them as distinct silhouetted entries with elevated borders.
   const defeatedArchetypesRef = useRef<Map<string, number>>(new Map());
-  const recordKill = (enemy: { archetypeId?: string; tier?: 'mini' | 'boss' } | undefined) => {
+  const recordKill = (
+    enemy: { archetypeId?: string; tier?: "mini" | "boss" } | undefined,
+  ) => {
     if (!enemy?.archetypeId) return;
     const id = enemy.tier
       ? `${enemy.archetypeId}__${enemy.tier}`
@@ -283,19 +457,20 @@ export default function RuneDelvePlayPage() {
   const [corruptCleansedCount, setCorruptCleansedCount] = useState(0);
   // Snapshot the active relic loadout at run-start so toggling/upgrading
   // relics mid-run can never reset the board state.
-  const [activeRelicsSnapshot, setActiveRelicsSnapshot] = useState<ActiveRelics | null>(null);
+  const [activeRelicsSnapshot, setActiveRelicsSnapshot] =
+    useState<ActiveRelics | null>(null);
 
   // Append a single entry; trim to a small ring so memory stays tidy.
-  const pushLog = (entry: Omit<CombatLogEntry, 'id'>) => {
-    setLog(prev => {
+  const pushLog = (entry: Omit<CombatLogEntry, "id">) => {
+    setLog((prev) => {
       const next = [...prev, { ...entry, id: nextLogId() }];
       return next.length > 30 ? next.slice(-30) : next;
     });
   };
-  const pushLogs = (entries: Array<Omit<CombatLogEntry, 'id'>>) => {
+  const pushLogs = (entries: Array<Omit<CombatLogEntry, "id">>) => {
     if (!entries.length) return;
-    setLog(prev => {
-      const stamped = entries.map(e => ({ ...e, id: nextLogId() }));
+    setLog((prev) => {
+      const stamped = entries.map((e) => ({ ...e, id: nextLogId() }));
       const next = [...prev, ...stamped];
       return next.length > 30 ? next.slice(-30) : next;
     });
@@ -317,10 +492,14 @@ export default function RuneDelvePlayPage() {
   const [heavyFlashKey, setHeavyFlashKey] = useState(0);
   const [heavyChainLen, setHeavyChainLen] = useState(6);
   const [phaseFlashKey, setPhaseFlashKey] = useState(0);
-  const [phaseFlashMeta, setPhaseFlashMeta] = useState<{ phase: 2 | 3; bossName: string; flavor: string }>({
+  const [phaseFlashMeta, setPhaseFlashMeta] = useState<{
+    phase: 2 | 3;
+    bossName: string;
+    flavor: string;
+  }>({
     phase: 2,
-    bossName: '',
-    flavor: '',
+    bossName: "",
+    flavor: "",
   });
   const playRootRef = useRef<HTMLDivElement>(null);
   const rectFromEl = (el: Element | null): FxRect | undefined => {
@@ -329,9 +508,14 @@ export default function RuneDelvePlayPage() {
     return { x: r.left, y: r.top, w: r.width, h: r.height };
   };
   const findEnemyRect = (id: string): FxRect | undefined =>
-    rectFromEl(playRootRef.current?.querySelector(`[data-enemy-id="${id}"]`) ?? null);
-  const findHudRect = (target: 'hp' | 'mana' | 'shield'): FxRect | undefined =>
-    rectFromEl(playRootRef.current?.querySelector(`[data-fx-target="${target}"]`) ?? null);
+    rectFromEl(
+      playRootRef.current?.querySelector(`[data-enemy-id="${id}"]`) ?? null,
+    );
+  const findHudRect = (target: "hp" | "mana" | "shield"): FxRect | undefined =>
+    rectFromEl(
+      playRootRef.current?.querySelector(`[data-fx-target="${target}"]`) ??
+        null,
+    );
 
   // Trigger a brief CSS-driven camera shake on the play root. Cleans up
   // any pending timer so rapid red chains don't stack the animation.
@@ -339,37 +523,42 @@ export default function RuneDelvePlayPage() {
   const triggerCamShake = (amount = 6) => {
     const el = playRootRef.current;
     if (!el) return;
-    el.style.setProperty('--rd-cam-shake-x', `${amount}px`);
-    el.style.setProperty('--rd-cam-shake-y', `${Math.round(amount * 0.6)}px`);
-    el.classList.remove('rd-cam-shake');
+    el.style.setProperty("--rd-cam-shake-x", `${amount}px`);
+    el.style.setProperty("--rd-cam-shake-y", `${Math.round(amount * 0.6)}px`);
+    el.classList.remove("rd-cam-shake");
     // Force reflow so the animation restarts cleanly.
     void el.offsetWidth;
-    el.classList.add('rd-cam-shake');
+    el.classList.add("rd-cam-shake");
     if (shakeTimerRef.current) window.clearTimeout(shakeTimerRef.current);
     shakeTimerRef.current = window.setTimeout(() => {
-      el.classList.remove('rd-cam-shake');
+      el.classList.remove("rd-cam-shake");
     }, 240);
   };
 
   // Pulse the HP bar's inner glow (Lifebloom arrival cue).
   const pulseHpGlow = () => {
-    const el = playRootRef.current?.querySelector('[data-fx-hp-glow-target]') as HTMLElement | null;
+    const el = playRootRef.current?.querySelector(
+      "[data-fx-hp-glow-target]",
+    ) as HTMLElement | null;
     if (!el) return;
-    el.setAttribute('data-fx-hp-glow', 'on');
-    window.setTimeout(() => el.removeAttribute('data-fx-hp-glow'), 620);
+    el.setAttribute("data-fx-hp-glow", "on");
+    window.setTimeout(() => el.removeAttribute("data-fx-hp-glow"), 620);
   };
-
 
   // Active relic loadout for this run (rank-aware).
   const activeRelics = useMemo(() => {
     const ranks = rankMapFromOwned(ownedRelics);
-    return buildActive([loadout?.slot_1, loadout?.slot_2, loadout?.slot_3], ranks);
+    return buildActive(
+      [loadout?.slot_1, loadout?.slot_2, loadout?.slot_3],
+      ranks,
+    );
   }, [loadout, ownedRelics]);
 
   // Resolve mechanics for this level. Prefer the persisted row, fall back
   // to the deterministic helper so legacy/transient rows still work.
   const activeMechanics = useMemo<MechanicId[]>(() => {
-    const stored = (level?.modifiers as any)?.mechanics as MechanicId[] | undefined;
+    const stored = (level?.modifiers as ChamberModifiers | undefined)
+      ?.mechanics as MechanicId[] | undefined;
     if (stored?.length) return stored;
     return level ? mechanicsForLevel(level.level_number) : [];
   }, [level]);
@@ -378,10 +567,13 @@ export default function RuneDelvePlayPage() {
   // Resolved once per mount; effects threaded through init, chain
   // resolve, finalize, and the layout zone derivation below.
   const pathVariant = useMemo(
-    () => getPathVariant(searchParams.get('pathVariant')),
+    () => getPathVariant(searchParams.get("pathVariant")),
     [searchParams],
   );
-  const pathEffect = useMemo(() => resolvePathEffect(pathVariant), [pathVariant]);
+  const pathEffect = useMemo(
+    () => resolvePathEffect(pathVariant),
+    [pathVariant],
+  );
 
   // The active chamber layout for this run. Drives both the R1 zone
   // computation (treasure/hazard cells) and the V5 atmospheric
@@ -389,7 +581,8 @@ export default function RuneDelvePlayPage() {
   // (e.g. Treasure Path forces the Cursed Vault chamber).
   const activeLayout = useMemo(() => {
     if (!level) return null;
-    const layoutId = pathEffect.layoutOverride || getLayoutIdForLevel(level.level_number);
+    const layoutId =
+      pathEffect.layoutOverride || getLayoutIdForLevel(level.level_number);
     return getLayout(layoutId) ?? null;
   }, [level, pathEffect.layoutOverride]);
 
@@ -401,23 +594,33 @@ export default function RuneDelvePlayPage() {
     if (!level || !activeLayout) return EMPTY_ZONES;
     return computeLayoutZones(activeLayout.id, level.generation_seed);
   }, [level, activeLayout]);
-  const sealedTilesActive = activeMechanics.includes('sealed_tiles');
-  const telegraphActive = activeMechanics.includes('telegraphed_attacks');
-  const corruptionActive = activeMechanics.includes('corrupted_tiles');
-  const shiftingActive = activeMechanics.includes('shifting_runes');
-  const linkedPairsActive = activeMechanics.includes('linked_pairs');
-  const eclipseActive = activeMechanics.includes('eclipse_tiles');
-  const secondaryObjective = ((level?.modifiers as any)?.secondary_objective ?? null) as SecondaryObjective | null;
-  const bossRule = ((level?.modifiers as any)?.boss_rule ?? null) as BossRuleId | null;
-  const waveDefs = ((level?.modifiers as any)?.waves ?? null) as Array<{ enemies: any[]; reinforcement_turns: number }> | null;
+  const sealedTilesActive = activeMechanics.includes("sealed_tiles");
+  const telegraphActive = activeMechanics.includes("telegraphed_attacks");
+  const corruptionActive = activeMechanics.includes("corrupted_tiles");
+  const shiftingActive = activeMechanics.includes("shifting_runes");
+  const linkedPairsActive = activeMechanics.includes("linked_pairs");
+  const eclipseActive = activeMechanics.includes("eclipse_tiles");
+  const secondaryObjective = ((level?.modifiers as ChamberModifiers | undefined)
+    ?.secondary_objective ?? null) as SecondaryObjective | null;
+  const bossRule = ((level?.modifiers as ChamberModifiers | undefined)
+    ?.boss_rule ?? null) as BossRuleId | null;
+  const waveDefs = ((level?.modifiers as ChamberModifiers | undefined)?.waves ??
+    null) as Array<{
+    enemies: StoredEnemy[];
+    reinforcement_turns: number;
+  }> | null;
 
   // Active mastery ids for the hero's class (computed once per render —
   // class level is stable per run since XP only awards on completion).
   const activeMasteries = useMemo(() => {
+    if (masteryIdsSnapshot) return masteryIdsSnapshot;
     if (!hero) return [];
-    const lvl = (classTracks ?? []).find(t => t.class === hero.class)?.level ?? hero.level ?? 1;
+    const lvl =
+      (classTracks ?? []).find((t) => t.class === hero.class)?.level ??
+      hero.level ??
+      1;
     return getActiveMasteries(hero.class, lvl);
-  }, [hero, classTracks]);
+  }, [hero, classTracks, masteryIdsSnapshot]);
 
   // Mana orbs needed to cast the class ability. Mage T4 "Deep Reserve" drops
   // it 3 → 2. Used by handleAbility (gate + FX + spend accounting) and the
@@ -431,17 +634,40 @@ export default function RuneDelvePlayPage() {
   // can never bleed in stale state).
   const runKey = useMemo(() => {
     if (!user?.id || !level?.id) return null;
-    if (level.id.startsWith('transient-')) return null;
+    if (level.id.startsWith("transient-")) return null;
     if (!hero?.class) return null;
-    return snapshotKey(user.id, level.id, hero.class);
-  }, [user?.id, level?.id, hero?.class]);
+    const variant = `${pathVariant?.id ?? "standard"}:${searchParams.get("dailyMod") ?? ""}`;
+    return snapshotKey(
+      user.id,
+      level.id,
+      hero.class,
+      variant === "standard:" ? undefined : variant,
+    );
+  }, [user?.id, level?.id, hero?.class, pathVariant?.id, searchParams]);
 
   // Build deterministic state. Snapshots `activeRelics` once at run-start so
   // mid-run relic toggles or rank changes can never reset the board.
   // ALSO: prefer rehydrating an in-progress run from sessionStorage so
   // backgrounding the WebView (iOS PWA) doesn't wipe player progress.
   useEffect(() => {
-    if (!level || !hero || classTracksLoading || loadoutLoading || ownedRelicsLoading) return;
+    if (
+      !level ||
+      !hero ||
+      classTracksLoading ||
+      loadoutLoading ||
+      ownedRelicsLoading
+    )
+      return;
+    const identity = `${runKey}:${level.generation_seed}:${pathVariant?.id ?? "standard"}:${searchParams.get("dailyMod") ?? ""}`;
+    if (initializedRunRef.current === identity) return;
+    initializedRunRef.current = identity;
+    setEndState(null);
+    setDroppedRelic(null);
+    finalizeBusyRef.current = false;
+    pendingSaveRef.current = null;
+    failedFinalRef.current = null;
+    setSaveError(null);
+    bossPhasesRef.current = new Map();
     const relics = activeRelics; // snapshot
 
     // ── Rehydrate path ──────────────────────────────────────────────────
@@ -452,6 +678,18 @@ export default function RuneDelvePlayPage() {
       // the player on a defeated screen.
       if (snap && snap.combat.hp > 0 && snap.combat.turnsRemaining > 0) {
         setGrid(snap.grid);
+        setShift({ column: snap.shiftingColumn ?? -1 });
+        setLinkedPairs({ pairs: new Map(snap.linkedPairs ?? []) });
+        setEclipse(new Set(snap.eclipsedCells ?? []));
+        setChainsThisFight(snap.chainsThisFight ?? 0);
+        setBonusShardsFromMastery(snap.bonusShardsFromMastery ?? 0);
+        setBonusScoreFromTreasure(snap.bonusScoreFromTreasure ?? 0);
+        setBonusShardsFromTreasure(snap.bonusShardsFromTreasure ?? 0);
+        setTotalManaSpent(snap.totalManaSpent ?? 0);
+        setGoldRunesCleared(snap.goldRunesCleared ?? 0);
+        braceFiredRef.current = snap.braceFired ?? false;
+        aegisFiredRef.current = snap.aegisFired ?? false;
+        setMasteryIdsSnapshot(snap.masteryIds ?? null);
         setCombat(snap.combat);
         setSeals(new Set(snap.seals));
         setCorruption({
@@ -467,44 +705,80 @@ export default function RuneDelvePlayPage() {
         setAbilityUsedCount(snap.abilityUsedCount);
         setCorruptCleansedCount(snap.corruptCleansedCount);
         setRngTick(snap.rngTick);
-        setActiveRelicsSnapshot(rehydrateRelics(snap.activeRelicsSnapshot) ?? relics);
+        setActiveRelicsSnapshot(
+          rehydrateRelics(snap.activeRelicsSnapshot) ?? relics,
+        );
         defeatedArchetypesRef.current = new Map(snap.defeatedArchetypes);
         wavesSpawnedRef.current = snap.wavesSpawned;
         // R3: rehydrate the modifier from snapshot. Pre-R3 snapshots
         // have no activeModifierId — getModifierById returns null in
         // that case, which the engine treats as Steady Path.
-        setActiveModifier(getModifierById(snap.activeModifierId));
-        setModifierOffer(null); // never re-show the picker on a resume
+        const resumedModifier = getModifierById(snap.activeModifierId);
+        const pendingOffer = (snap.pendingModifierOfferIds ?? [])
+          .map(getModifierById)
+          .filter((modifier): modifier is RunModifier => !!modifier);
+        setActiveModifier(
+          resumedModifier ?? (pendingOffer.length ? null : STEADY_PATH),
+        );
+        setModifierOffer(
+          resumedModifier || !pendingOffer.length ? null : pendingOffer,
+        );
         // Restore the real opening budget so turn counts, survive goals, and
         // speed bonuses remain accurate after an iOS/Android background resume.
-        initialTurnsRef.current = snap.initialTurns
-          ?? Math.max(level.turn_limit, snap.combat.turnsRemaining);
-        // Can't prove a resumed run was damage-free — disqualify conservatively.
-        tookDamageRef.current = true;
-        const turnNow = Math.max(1, initialTurnsRef.current - snap.combat.turnsRemaining + 1);
-        toast(`↩️ Resumed your run (Turn ${turnNow} of ${initialTurnsRef.current})`, { duration: 2200 });
+        initialTurnsRef.current =
+          snap.initialTurns ??
+          Math.max(level.turn_limit, snap.combat.turnsRemaining);
+        tookDamageRef.current = snap.tookDamage ?? true;
+        const turnNow = Math.max(
+          1,
+          initialTurnsRef.current - snap.combat.turnsRemaining + 1,
+        );
+        toast(
+          `↩️ Resumed your run (Turn ${turnNow} of ${initialTurnsRef.current})`,
+          { duration: 2200 },
+        );
         return;
       }
     }
 
     // ── Fresh-board path (existing behavior) ────────────────────────────
     const rng = mulberry32(level.generation_seed);
+    const classLevel =
+      (classTracks ?? []).find((track) => track.class === hero.class)?.level ??
+      hero.level ??
+      1;
+    const openingMasteries = getActiveMasteries(hero.class, classLevel);
+    setMasteryIdsSnapshot(openingMasteries);
     setGrid(generateBoard(rng));
-    let initialSeals = buildInitialSeals(level.generation_seed, sealedTilesActive);
+    let initialSeals = buildInitialSeals(
+      level.generation_seed,
+      sealedTilesActive,
+    );
     // Keysight: pre-shatter the requested number of seals at run start so
     // the player effectively gets a head-start clearing them.
     const keysightTurns = getSealedTilesSpeedup(relics);
     if (keysightTurns > 0 && initialSeals.size > 0) {
       const keys = Array.from(initialSeals).slice(0, keysightTurns);
       const next = new Set(initialSeals);
-      keys.forEach(k => next.delete(k));
+      keys.forEach((k) => next.delete(k));
       initialSeals = next;
     }
     setSeals(initialSeals);
-    setCorruption(buildInitialCorruption(level.generation_seed, corruptionActive, level.level_number, initialSeals));
+    setCorruption(
+      buildInitialCorruption(
+        level.generation_seed,
+        corruptionActive,
+        level.level_number,
+        initialSeals,
+      ),
+    );
     setShift(buildInitialShift(level.generation_seed, shiftingActive));
-    setLinkedPairs(buildInitialPairs(level.generation_seed, linkedPairsActive, initialSeals));
-    setEclipse(buildInitialEclipse(level.generation_seed, eclipseActive, initialSeals));
+    setLinkedPairs(
+      buildInitialPairs(level.generation_seed, linkedPairsActive, initialSeals),
+    );
+    setEclipse(
+      buildInitialEclipse(level.generation_seed, eclipseActive, initialSeals),
+    );
     setChainsThisFight(0);
     setBonusShardsFromMastery(0);
     setBonusScoreFromTreasure(0);
@@ -516,28 +790,47 @@ export default function RuneDelvePlayPage() {
     bossPhasesRef.current = new Map();
     setTotalManaSpent(0);
     // Name → archetype-id fallback for legacy levels seeded before the roster system.
-    const resolveArchetype = (e: any): string | undefined => {
+    const resolveArchetype = (e: StoredEnemy): string | undefined => {
       if (e.archetypeId) return e.archetypeId;
-      const raw = String(e.name ?? '').replace(/^(Elite |Boss |Mini-Boss |Echo of )/, '').trim().toLowerCase();
+      const raw = String(e.name ?? "")
+        .replace(/^(Elite |Boss |Mini-Boss |Echo of )/, "")
+        .trim()
+        .toLowerCase();
       if (!raw) return undefined;
-      const hit = ENEMY_ROSTER.find(a => a.name.toLowerCase() === raw);
+      const hit = ENEMY_ROSTER.find((a) => a.name.toLowerCase() === raw);
       if (hit) return hit.id;
       // Common legacy aliases.
-      if (raw === 'slime') return 'ember_slime';
-      if (raw === 'skeleton') return 'skeleton_warrior';
+      if (raw === "slime") return "ember_slime";
+      if (raw === "skeleton") return "skeleton_warrior";
       return undefined;
     };
-    let enemies: Enemy[] = (level.enemy_config ?? []).map((e: any, i: number) => ({
-      id: e.id ?? `e${i}`, name: e.name, emoji: e.emoji, hp: e.hp, maxHp: e.maxHp ?? e.hp, damage: e.damage,
-      archetypeId: resolveArchetype(e), family: e.family, role: e.role,
-      ability: e.ability, abilityCooldown: e.abilityCooldown, abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
-      telegraphLabel: e.telegraphLabel, tier: e.tier,
-    }));
+    let enemies: Enemy[] = (level.enemy_config ?? []).map(
+      (e: StoredEnemy, i: number) => ({
+        id: e.id ?? `e${i}`,
+        name: e.name,
+        emoji: e.emoji,
+        hp: e.hp,
+        maxHp: e.maxHp ?? e.hp,
+        damage: e.damage,
+        archetypeId: resolveArchetype(e),
+        family: e.family,
+        role: e.role,
+        ability: e.ability,
+        abilityCooldown: e.abilityCooldown,
+        abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
+        telegraphLabel: e.telegraphLabel,
+        tier: e.tier,
+      }),
+    );
     // Daily Fogged suppresses all foresight-style effects (Foreseer's Lens
     // turn bonus + telegraph early-reveal + spawn previews are hidden).
     const foggedActive = isDailyMode && dailyHidesForesight(dailyMods);
     if (telegraphActive) {
-      enemies = applyInitialIntents(enemies, level.generation_seed, level.level_number);
+      enemies = applyInitialIntents(
+        enemies,
+        level.generation_seed,
+        level.level_number,
+      );
       // Foresight: extend every heavy-strike fuse by N turns so the player
       // gets more warning + more time to kill the telegraphing enemy before it
       // unleashes. Raising `intentMax` too means the longer fuse persists after
@@ -546,19 +839,25 @@ export default function RuneDelvePlayPage() {
       // Suppressed under Fogged.
       const earlyTurns = foggedActive ? 0 : getTelegraphReadyEarly(relics);
       if (earlyTurns > 0) {
-        enemies = enemies.map(e => (
+        enemies = enemies.map((e) =>
           e.intent != null
-            ? { ...e, intent: e.intent + earlyTurns, intentMax: (e.intentMax ?? e.intent) + earlyTurns }
-            : e
-        ));
+            ? {
+                ...e,
+                intent: e.intent + earlyTurns,
+                intentMax: (e.intentMax ?? e.intent) + earlyTurns,
+              }
+            : e,
+        );
       }
     }
     // Daily Greed: enemies enter with +25% HP.
     // R2: path-variant Elite enemy HP mult composes multiplicatively
     // with the daily-mode mult so a daily on the Elite Path stacks.
-    const enemyHpMult = (isDailyMode ? dailyEnemyHpMultiplier(dailyMods) : 1) * pathEffect.eliteEnemyHpMult;
+    const enemyHpMult =
+      (isDailyMode ? dailyEnemyHpMultiplier(dailyMods) : 1) *
+      pathEffect.eliteEnemyHpMult;
     if (enemyHpMult !== 1) {
-      enemies = enemies.map(e => ({
+      enemies = enemies.map((e) => ({
         ...e,
         hp: Math.max(1, Math.round(e.hp * enemyHpMult)),
         maxHp: Math.max(1, Math.round((e.maxHp ?? e.hp) * enemyHpMult)),
@@ -571,19 +870,23 @@ export default function RuneDelvePlayPage() {
     // Mastery: Warrior T2 — +1 max HP per chapter already cleared. Chapter 1
     // therefore grants 0; entering chapters 2 and 3 grants +1 and +2.
     const chapterIdx = chapterFor(level.level_number);
-    const chapterHpBonus = getMasteryHpPerChapter(activeMasteries) * Math.max(0, chapterIdx - 1);
-    const initial = initialCombat(
+    const chapterHpBonus =
+      getMasteryHpPerChapter(openingMasteries) * Math.max(0, chapterIdx - 1);
+    let initial = initialCombat(
       enemies,
       Math.max(3, level.turn_limit + bonusTurns + dailyTurnDelta),
       { bonusMaxHp: chapterHpBonus },
     );
     // Mastery: starting mana bonus (Mage T1) layered on top of relic effects.
-    const openingManaPower = getStartingMana(relics) + getMasteryStartingMana(activeMasteries);
+    const openingManaPower =
+      getStartingMana(relics) + getMasteryStartingMana(openingMasteries);
     initial.mana = Math.min(MAX_MANA, initial.mana + openingManaPower);
     // Aether Spark ranks above the mana cap convert overflow into a visible,
     // useful opening shield. This also makes the relic compose with Mage T1.
     const manaOverflowShield = Math.max(0, openingManaPower - MAX_MANA);
-    initial.shieldTurns = Math.max(initial.shieldTurns, getStartingShieldTurns(relics)) + manaOverflowShield;
+    initial.shieldTurns =
+      Math.max(initial.shieldTurns, getStartingShieldTurns(relics)) +
+      manaOverflowShield;
     const voidCost = getVoidPactHpCost(relics);
     if (voidCost > 0) {
       initial.maxHp = Math.max(10, initial.maxHp - voidCost);
@@ -595,24 +898,17 @@ export default function RuneDelvePlayPage() {
       initial.maxHp = Math.max(10, Math.round(initial.maxHp * dailyHpMult));
       initial.hp = initial.maxHp;
     }
-    // R3 — Run modifier init effects. Applied AFTER all relic/daily/
-    // mastery init so the modifier composes cleanly on top of the
-    // already-buffed baseline. hpMult is multiplicative; manaStart is
-    // additive (capped to MAX_MANA); turnDelta is additive to the
-    // remaining turn budget (clamped to 3 minimum).
-    if (activeModifier) {
-      const eff = resolveEffect(activeModifier);
-      if (eff.hpMult !== 1) {
-        initial.maxHp = Math.max(10, Math.round(initial.maxHp * eff.hpMult));
-        initial.hp = initial.maxHp;
-      }
-      if (eff.manaStart > 0) {
-        initial.mana = Math.min(MAX_MANA, initial.mana + eff.manaStart);
-      }
-      if (eff.turnDelta !== 0) {
-        initial.turnsRemaining = Math.max(3, initial.turnsRemaining + eff.turnDelta);
-      }
-    }
+    // Locked variants and tutorial chambers resolve before initialization.
+    // An offered bargain applies only when selected, with the board disabled
+    // until that decision is made.
+    const lockedModId =
+      searchParams.get("dailyMod") || pathEffect.lockedModifierId || null;
+    const openingModifier =
+      (lockedModId ? getModifierById(lockedModId) : null) ??
+      (level.level_number <= 10 ? STEADY_PATH : null);
+    initial = applyOpeningModifier(initial, openingModifier);
+    setActiveModifier(openingModifier);
+    setModifierOffer(openingModifier ? null : pickModifierOffer());
     setCombat(initial);
     // Record the true starting turn budget (post all turn modifiers) so
     // Shrine Ward's turn-1 detection is robust to Foreseer's Lens / daily /
@@ -637,40 +933,37 @@ export default function RuneDelvePlayPage() {
     bossPhasesRef.current = new Map();
     setTotalManaSpent(0);
     setGoldRunesCleared(0);
-    // R3: fresh run — surface the modifier picker. We only do this
-    // if no modifier is set yet (this guard exists because the run
-    // can re-init mid-session in some flows; we never want to wipe
-    // a choice the user already made).
-    // R4 + R2: locked modifier id can come from either the Daily
-    // Chamber (?dailyMod) or a Path Variant (e.g. Treasure Path's
-    // lockedModifierId). Daily wins if both happen to be set, since
-    // the daily is the more constrained surface.
-    const lockedModId = searchParams.get('dailyMod') || pathEffect.lockedModifierId || null;
-    const lockedMod = lockedModId ? getModifierById(lockedModId) : null;
-    if (!activeModifier) {
-      if (lockedMod) {
-        setActiveModifier(lockedMod);
-      } else if (level.level_number <= 10) {
-        // Keep the opening ten-level tutorial focused on chaining, classes,
-        // and objectives. Optional risk/reward rules unlock after the player
-        // has cleared the first mini-boss.
-        setActiveModifier(STEADY_PATH);
-      } else {
-        setModifierOffer(pickModifierOffer());
-      }
-    }
     braceFiredRef.current = false;
     aegisFiredRef.current = false;
     tookDamageRef.current = false;
     defeatedArchetypesRef.current = new Map();
     wavesSpawnedRef.current = 0;
-    setLog([{ id: nextLogId(), kind: 'info', text: `You enter Level ${level.level_number}. The runes hum.` }]);
+    setLog([
+      {
+        id: nextLogId(),
+        kind: "info",
+        text: `You enter Level ${level.level_number}. The runes hum.`,
+      },
+    ]);
     // NOTE: `activeRelics` intentionally OMITTED from deps — see comment above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    level, hero, sealedTilesActive, telegraphActive, corruptionActive,
-    shiftingActive, linkedPairsActive, eclipseActive, runKey, isDailyMode,
-    classTracksLoading, loadoutLoading, ownedRelicsLoading,
+    level,
+    hero,
+    sealedTilesActive,
+    telegraphActive,
+    corruptionActive,
+    shiftingActive,
+    linkedPairsActive,
+    eclipseActive,
+    runKey,
+    isDailyMode,
+    classTracksLoading,
+    loadoutLoading,
+    ownedRelicsLoading,
+    pathVariant?.id,
+    pathEffect.lockedModifierId,
+    searchParams,
   ]);
 
   // ── Persist snapshot on every meaningful state change ─────────────────
@@ -700,13 +993,52 @@ export default function RuneDelvePlayPage() {
       rngTick,
       activeRelicsSnapshot,
       activeModifierId: activeModifier?.id,
+      pendingModifierOfferIds: modifierOffer?.map((modifier) => modifier.id),
+      shiftingColumn: shift.column,
+      linkedPairs: Array.from(linkedPairs.pairs),
+      eclipsedCells: Array.from(eclipse),
+      chainsThisFight,
+      bonusShardsFromMastery,
+      bonusScoreFromTreasure,
+      bonusShardsFromTreasure,
+      totalManaSpent,
+      goldRunesCleared,
+      braceFired: braceFiredRef.current,
+      aegisFired: aegisFiredRef.current,
+      tookDamage: tookDamageRef.current,
+      masteryIds: activeMasteries,
     });
     saveSnapshot(runKey, snap);
   }, [
-    runKey, level, grid, combat, seals, corruption, log,
-    lastStandUsed, phoenixUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
-    abilityUsedCount, corruptCleansedCount, rngTick, activeRelicsSnapshot,
-    activeModifier?.id, endState,
+    runKey,
+    level,
+    grid,
+    combat,
+    seals,
+    corruption,
+    log,
+    lastStandUsed,
+    phoenixUsed,
+    bonusUsedThisCycle,
+    redChainCount,
+    chainCountTotal,
+    abilityUsedCount,
+    corruptCleansedCount,
+    rngTick,
+    activeRelicsSnapshot,
+    activeModifier?.id,
+    modifierOffer,
+    endState,
+    shift,
+    linkedPairs,
+    eclipse,
+    chainsThisFight,
+    bonusShardsFromMastery,
+    bonusScoreFromTreasure,
+    bonusShardsFromTreasure,
+    totalManaSpent,
+    goldRunesCleared,
+    activeMasteries,
   ]);
 
   // Final-flush on visibilitychange / pagehide so the OS evicting the
@@ -719,44 +1051,131 @@ export default function RuneDelvePlayPage() {
       const snap = buildSnapshot({
         levelNumber: level.level_number,
         generationSeed: level.generation_seed,
-        grid, combat, initialTurns: initialTurnsRef.current, seals, corruption, log,
-        lastStandUsed, phoenixUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
-        abilityUsedCount, corruptCleansedCount,
+        grid,
+        combat,
+        initialTurns: initialTurnsRef.current,
+        seals,
+        corruption,
+        log,
+        lastStandUsed,
+        phoenixUsed,
+        bonusUsedThisCycle,
+        redChainCount,
+        chainCountTotal,
+        abilityUsedCount,
+        corruptCleansedCount,
         defeatedArchetypes: defeatedArchetypesRef.current,
         wavesSpawned: wavesSpawnedRef.current,
-        rngTick, activeRelicsSnapshot, activeModifierId: activeModifier?.id,
+        rngTick,
+        activeRelicsSnapshot,
+        activeModifierId: activeModifier?.id,
+        pendingModifierOfferIds: modifierOffer?.map((modifier) => modifier.id),
+        shiftingColumn: shift.column,
+        linkedPairs: Array.from(linkedPairs.pairs),
+        eclipsedCells: Array.from(eclipse),
+        chainsThisFight,
+        bonusShardsFromMastery,
+        bonusScoreFromTreasure,
+        bonusShardsFromTreasure,
+        totalManaSpent,
+        goldRunesCleared,
+        braceFired: braceFiredRef.current,
+        aegisFired: aegisFiredRef.current,
+        tookDamage: tookDamageRef.current,
+        masteryIds: activeMasteries,
       });
       saveSnapshot(runKey, snap);
     };
-    const onVis = () => { if (document.visibilityState === 'hidden') flush(); };
-    window.addEventListener('visibilitychange', onVis);
-    window.addEventListener('pagehide', flush);
+    const onVis = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", flush);
     return () => {
-      window.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('pagehide', flush);
+      window.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", flush);
     };
   }, [
-    runKey, level, grid, combat, seals, corruption, log,
-    lastStandUsed, phoenixUsed, bonusUsedThisCycle, redChainCount, chainCountTotal,
-    abilityUsedCount, corruptCleansedCount, rngTick, activeRelicsSnapshot,
-    activeModifier?.id, endState,
+    runKey,
+    level,
+    grid,
+    combat,
+    seals,
+    corruption,
+    log,
+    lastStandUsed,
+    phoenixUsed,
+    bonusUsedThisCycle,
+    redChainCount,
+    chainCountTotal,
+    abilityUsedCount,
+    corruptCleansedCount,
+    rngTick,
+    activeRelicsSnapshot,
+    activeModifier?.id,
+    modifierOffer,
+    endState,
+    shift,
+    linkedPairs,
+    eclipse,
+    chainsThisFight,
+    bonusShardsFromMastery,
+    bonusScoreFromTreasure,
+    bonusShardsFromTreasure,
+    totalManaSpent,
+    goldRunesCleared,
+    activeMasteries,
   ]);
 
-  // Clear the snapshot whenever the run terminates — defeated, cleared, or
+  // Preserve a legal move after gravity, shifting, loading, or an enemy seal.
+  // A blocked board never charges a player turn. Rescue only as many seals as
+  // necessary if no three-cell topology remains at all.
+  useEffect(() => {
+    if (!grid || !level) return;
+    const rescueRng = mulberry32(level.generation_seed ^ (rngTick + 0x5afe));
+    let rescuedSeals = seals;
+    let result = ensurePlayableBoard(grid, rescueRng, rescuedSeals, eclipse);
+    if (!result.chain && seals.size) {
+      rescuedSeals = new Set(seals);
+      for (const key of Array.from(seals).reverse()) {
+        rescuedSeals.delete(key);
+        result = ensurePlayableBoard(grid, rescueRng, rescuedSeals, eclipse);
+        if (result.chain) break;
+      }
+      setSeals(rescuedSeals);
+    }
+    if (result.reshuffled) setGrid(result.grid);
+    if (result.reshuffled || rescuedSeals !== seals) {
+      const entry: CombatLogEntry = {
+        id: nextLogId(),
+        kind: "info",
+        text:
+          rescuedSeals !== seals
+            ? "The runes break a seal. A new path opens."
+            : "The runes shift. No turn spent.",
+      };
+      setLog((previous) => [...previous, entry].slice(-30));
+    }
+  }, [grid, seals, eclipse, level, rngTick]);
+
   // timed out. Subsequent visits to this level start fresh.
   useEffect(() => {
     if (endState && runKey) clearSnapshot(runKey);
   }, [endState, runKey]);
 
-
   // One-time intro modal for any brand-new mechanic taught at this level.
   useEffect(() => {
     if (!level || !hero) return;
-    const intro = (level.modifiers as any)?.intro_mechanic ?? introMechanicForLevel(level.level_number);
+    const intro =
+      (level.modifiers as ChamberModifiers | undefined)?.intro_mechanic ??
+      introMechanicForLevel(level.level_number);
     if (!intro) return;
     try {
-      if (!localStorage.getItem(seenMechanicKey(intro))) setIntroMechanic(intro);
-    } catch {}
+      if (!localStorage.getItem(seenMechanicKey(intro)))
+        setIntroMechanic(intro);
+    } catch {
+      /* Storage may be unavailable. */
+    }
   }, [level, hero]);
 
   // One-time intro modal for boss-rule levels (chapter & mid-chapter bosses).
@@ -768,15 +1187,19 @@ export default function RuneDelvePlayPage() {
     const key = `rd-seen-bossrule-${bossRule}`;
     try {
       if (!localStorage.getItem(key)) setIntroBossRule(bossRule);
-    } catch {}
+    } catch {
+      /* Storage may be unavailable. */
+    }
   }, [level, hero, bossRule]);
 
   // Always invalidate the cached existing-run on mount so replay flows
   // ("Retry" → Play → finalize) compute isNewBest off fresh server data.
   // Without this, a stale cached row caused phantom hero XP double-counts.
   useEffect(() => {
-    if (!level?.id || level.id.startsWith('transient-')) return;
-    queryClient.invalidateQueries({ queryKey: ['rune-delve-level-run', level.id] });
+    if (!level?.id || level.id.startsWith("transient-")) return;
+    queryClient.invalidateQueries({
+      queryKey: ["rune-delve-level-run", level.id],
+    });
   }, [level?.id, queryClient]);
 
   const refillRng = useMemo(() => {
@@ -791,8 +1214,15 @@ export default function RuneDelvePlayPage() {
         <div className="glass-card p-6 text-center space-y-2">
           <p className="text-2xl">🔒</p>
           <h2 className="font-extrabold text-base">Level Locked</h2>
-          <p className="text-xs text-muted-foreground">Clear Level {progress.highest_unlocked_level} first.</p>
-          <button onClick={() => navigate(`/rune-delve/play/${progress.highest_unlocked_level}`)} className="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold btn-press">
+          <p className="text-xs text-muted-foreground">
+            Clear Level {progress.highest_unlocked_level} first.
+          </p>
+          <button
+            onClick={() =>
+              navigate(`/rune-delve/play/${progress.highest_unlocked_level}`)
+            }
+            className="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-bold btn-press"
+          >
             Go to Level {progress.highest_unlocked_level}
           </button>
         </div>
@@ -800,8 +1230,45 @@ export default function RuneDelvePlayPage() {
     );
   }
 
-  if (!hero || !level || !grid || !combat || !refillRng) {
-    return <div className="h-64 rounded-2xl skeleton-shimmer" />;
+  if (!hero || !progress || !level || !grid || !combat || !refillRng) {
+    const failed = heroError || progressError || levelError;
+    return (
+      <div className="relative min-h-64 rounded-2xl border border-primary/15 bg-card p-6">
+        {!failed && !loadingSlow && (
+          <div
+            className="h-52 rounded-xl skeleton-shimmer"
+            aria-label="Loading chamber"
+          />
+        )}
+        {(failed || loadingSlow) && (
+          <div className="flex min-h-52 flex-col items-center justify-center gap-3 text-center">
+            <SparklesIcon size={28} className="text-primary" aria-hidden />
+            <p className="text-sm font-extrabold">
+              {failed
+                ? "The chamber could not load"
+                : "Still opening the chamber…"}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void refetchHero();
+                void refetchLevel();
+                void refetchProgress();
+              }}
+              className="min-h-11 rounded-xl bg-primary px-6 text-xs font-extrabold text-primary-foreground"
+            >
+              Retry
+            </button>
+            <Link
+              to="/rune-delve"
+              className="flex min-h-11 items-center text-xs font-bold text-muted-foreground"
+            >
+              Return to the Sanctum
+            </Link>
+          </div>
+        )}
+      </div>
+    );
   }
 
   const objType = level.objective_type as ObjectiveType;
@@ -812,39 +1279,44 @@ export default function RuneDelvePlayPage() {
     // Daily Overcharge caps chain length at 5.
     const chainCap = isDailyMode ? dailyChainCap(dailyMods) : 0;
     if (chainCap > 0 && chain.length > chainCap) {
-      toast('⚡ Overcharge limits chains to 5', { duration: 1400 });
+      toast("⚡ Overcharge limits chains to 5", { duration: 1400 });
       return;
     }
     const type = grid[chain[0].r][chain[0].c];
     // Tiered chain bonus: 6=heavy strike (no free turn), 7=+30% & free turn,
     // 8+=+40% & free turn. Only ONE free turn per enemy cycle.
-    const tierFor = (len: number) =>
-      len >= 8 ? { dmgMult: 1.4, bonus: true as const }
-      : len >= 7 ? { dmgMult: 1.3, bonus: true as const }
-      : len >= 6 ? { dmgMult: 1.2, bonus: false as const }
-      : { dmgMult: 1, bonus: false as const };
-    const tier = tierFor(chain.length);
+    const chainPowerTier = chainTier(chain.length);
+    const tier = {
+      dmgMult: chainPowerTier.damageMultiplier,
+      bonus: chainPowerTier.bonusAction,
+    };
     // ── Visual FX trigger ─────────────────────────────────────────────────
     // Aim red at the first living enemy (the same target applyChain hits);
     // route green/blue/gold at the relevant HUD chip so the cue lands where
     // the player's eye should travel.
-    const fxTier: 'normal' | 'big' | 'huge' =
-      chain.length >= 8 ? 'huge' : chain.length >= 6 ? 'big' : 'normal';
+    const fxTier: "normal" | "big" | "huge" =
+      chain.length >= 8 ? "huge" : chain.length >= 6 ? "big" : "normal";
     let fxTarget: FxRect | undefined;
-    if (type === 'red') {
+    if (type === "red") {
       const firstAlive = filterTargetable(bossRule, combat.enemies)[0];
       if (firstAlive) fxTarget = findEnemyRect(firstAlive.id);
-    } else if (type === 'green') {
-      fxTarget = findHudRect('hp');
-    } else if (type === 'blue') {
-      fxTarget = findHudRect('mana');
-    } else if (type === 'gold') {
-      fxTarget = findHudRect('shield') ?? findHudRect('hp');
+    } else if (type === "green") {
+      fxTarget = findHudRect("hp");
+    } else if (type === "blue") {
+      fxTarget = findHudRect("mana");
+    } else if (type === "gold") {
+      fxTarget = findHudRect("shield") ?? findHudRect("hp");
     }
-    fxQ.trigger({ kind: 'rune', rune: type, length: chain.length, tier: fxTier, target: fxTarget });
+    fxQ.trigger({
+      kind: "rune",
+      rune: type,
+      length: chain.length,
+      tier: fxTier,
+      target: fxTarget,
+    });
     // Themed audio + camera-feel beats per rune type.
-    if (type === 'red') {
-      rdSfx('rune.fire.red');
+    if (type === "red") {
+      rdSfx("rune.fire.red");
       if (chain.length >= 4) triggerCamShake(chain.length >= 6 ? 8 : 6);
       // V1 — Heavy-strike signature visual. Chain ≥ 6 already gets
       // the engine's "heavy strike" damage tier; this adds an
@@ -852,101 +1324,107 @@ export default function RuneDelvePlayPage() {
       // feels the moment land.
       if (chain.length >= 6) {
         setHeavyChainLen(chain.length);
-        setHeavyFlashKey(k => k + 1);
+        setHeavyFlashKey((k) => k + 1);
       }
-    } else if (type === 'green') {
-      rdSfx('rune.fire.green');
+    } else if (type === "green") {
+      rdSfx("rune.fire.green");
       window.setTimeout(pulseHpGlow, 520);
-    } else if (type === 'gold') {
-      rdSfx('rune.fire.gold');
-    } else if (type === 'blue') {
-      rdSfx('rune.fire.blue');
+    } else if (type === "gold") {
+      rdSfx("rune.fire.gold");
+    } else if (type === "blue") {
+      rdSfx("rune.fire.blue");
     }
-    if (chain.length >= 8) rdSfx('chain.epic');
-    else if (chain.length >= 6) rdSfx('chain.bonus');
+    if (chain.length >= 8) rdSfx("chain.epic");
+    else if (chain.length >= 6) rdSfx("chain.bonus");
     // Snapshot relics for this run (falls back to live for first chain).
     const relics = activeRelicsSnapshot ?? activeRelics;
     // Per-chain counters BEFORE applying — drives Ember Edge / Crimson Tide / Quickstep.
     const isFirstChainOfRun = chainCountTotal === 0;
-    const redCountAfter = type === 'red' ? redChainCount + 1 : redChainCount;
+    const redCountAfter = type === "red" ? redChainCount + 1 : redChainCount;
     // Compute relic chain mods (Ember Edge, Crimson Tide, Executioner's Mark,
     // Desperate Surge, Sapphire Flow, Verdant Heart, Bulwark, Quickstep).
     // Read the HP ratio from the enemy applyChain will actually hit — the first
     // TARGETABLE foe (boss rules can hide the final enemy) — so Executioner's
     // Mark evaluates its <25% check against the real target, not a hidden one.
-    const targetEnemyForCtx = filterTargetable(bossRule, combat.enemies)[0]
-      ?? combat.enemies.find(e => e.hp > 0);
-    const enemyHpRatio = targetEnemyForCtx ? targetEnemyForCtx.hp / Math.max(1, targetEnemyForCtx.maxHp) : 1;
+    const targetEnemyForCtx =
+      filterTargetable(bossRule, combat.enemies)[0] ??
+      combat.enemies.find((e) => e.hp > 0);
+    const enemyHpRatio = targetEnemyForCtx
+      ? targetEnemyForCtx.hp / Math.max(1, targetEnemyForCtx.maxHp)
+      : 1;
     const chainMods = computeChainMods(relics, {
       chainType: type,
       length: chain.length,
-      redChainCountSoFar: type === 'red' ? redCountAfter : 0,
+      redChainCountSoFar: type === "red" ? redCountAfter : 0,
       isFirstChainOfRun,
       hpRatio: combat.hp / Math.max(1, combat.maxHp),
       enemyHpRatioBeforeHit: enemyHpRatio,
       chainNumberThisRun: chainCountTotal + 1,
     });
     // Momentum (rogue): chain bonus threshold drops from 5 → 4.
-    const rogueBonusThreshold = hero.class === 'rogue' && has(relics, 'momentum') ? 4 : 5;
-    const { next, resolution } = applyChain(combat, type, chain.length, hero.class, bossRule, rogueBonusThreshold, level.level_number);
-
-    // ── R3: Run modifier per-chain effects ─────────────────────────────
-    // Applied post-applyChain (same pattern as the relic damage mult
-    // block below) so we can compose cleanly with everything else.
-    //   redDamageMult → extra damage to current target
-    //   healMult      → extra heal to next.hp
-    //   shieldMult    → extra shield turns
+    const rogueBonusThreshold =
+      hero.class === "rogue" && has(relics, "momentum") ? 4 : 5;
     const modEff = resolveEffect(activeModifier);
-    if (type === 'red' && modEff.redDamageMult !== 1 && resolution.damageDealt > 0) {
-      const boosted = Math.round(resolution.damageDealt * modEff.redDamageMult);
-      const delta = boosted - resolution.damageDealt;
-      if (delta !== 0) {
-        const target = next.enemies.find(e => e.hp > 0) ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
-        if (target) {
-          if (delta > 0) {
-            const applied = Math.min(delta, Math.max(target.hp, 0));
-            if (applied > 0) {
-              target.hp -= applied;
-              next.totalDamage += applied;
-              resolution.damageDealt += applied;
-              if (target.hp <= 0 && !resolution.enemyKills.includes(target.id)) {
-                resolution.enemyKills.push(target.id);
-                next.enemiesDefeated += 1;
-              }
-            }
-          } else {
-            // Negative modifier (e.g. Verdant Heart) — heal target back partially.
-            const heal = Math.min(-delta, target.maxHp - target.hp);
-            if (heal > 0) {
-              target.hp += heal;
-              next.totalDamage = Math.max(0, next.totalDamage - heal);
-              resolution.damageDealt = Math.max(0, resolution.damageDealt - heal);
-            }
-          }
-        }
+    let combatMultiplier = 1;
+    let critFired = false;
+    if (type === "red") {
+      if (isDailyMode)
+        combatMultiplier *= dailyDamageMultiplier(dailyMods, type);
+      if (isDailyMode)
+        combatMultiplier *= dailyIroncladDamageMult(dailyMods, chain.length);
+      combatMultiplier *= getMasteryChainDamageMult(activeMasteries, type);
+      if (isLastStandActive(activeMasteries, combat.hp, combat.maxHp))
+        combatMultiplier *= 1.5;
+      const openingCrit = getMasteryOpeningCritMult(
+        activeMasteries,
+        chainsThisFight,
+      );
+      if (openingCrit > 1) {
+        combatMultiplier *= openingCrit;
+        critFired = true;
+      }
+      const critChance = getMasteryChainCritChance(
+        activeMasteries,
+        chain.length,
+      );
+      if (critChance > 0 && Math.random() < critChance) {
+        combatMultiplier *= 1.5;
+        critFired = true;
       }
     }
-    if (type === 'green' && modEff.healMult !== 1 && resolution.hpHealed > 0) {
-      const boosted = Math.round(resolution.hpHealed * modEff.healMult);
-      const delta = boosted - resolution.hpHealed;
-      if (delta > 0) {
-        const applied = Math.min(delta, next.maxHp - next.hp);
-        if (applied > 0) { next.hp += applied; resolution.hpHealed += applied; }
-      } else if (delta < 0) {
-        // Reduce already-applied heal — clamp at 0.
-        const reduction = Math.min(-delta, resolution.hpHealed, next.hp);
-        next.hp -= reduction;
-        resolution.hpHealed -= reduction;
-      }
-    }
-    if (type === 'gold' && modEff.shieldMult !== 1 && resolution.guardGained > 0) {
-      const boosted = Math.round(resolution.guardGained * modEff.shieldMult);
-      const delta = boosted - resolution.guardGained;
-      if (delta !== 0) {
-        next.shieldTurns = Math.max(0, next.shieldTurns + delta);
-        resolution.guardGained = Math.max(0, resolution.guardGained + delta);
-      }
-    }
+    // Compose power BEFORE armor, target HP, and kill credit. A weak hit must
+    // never resurrect a killed foe or spill its modifiers into another enemy.
+    const powerModifiers = {
+      runMultiplier: modEff.redDamageMult,
+      relicMultiplier: chainMods.bonusDamageMult,
+      lengthBonus: chainMods.effectiveLengthBonus,
+      tierMultiplier: tier.dmgMult,
+      combatMultiplier,
+      healMultiplier: modEff.healMult,
+      guardMultiplier: modEff.shieldMult,
+    };
+    const chainResult = applyChain(
+      combat,
+      type,
+      chain.length,
+      hero.class,
+      bossRule,
+      rogueBonusThreshold,
+      level.level_number,
+      powerModifiers,
+    );
+    let next = chainResult.next;
+    const resolution = chainResult.resolution;
+    const rawRedDamage =
+      type === "red"
+        ? redChainPower(
+            chain.length,
+            hero.class,
+            level.level_number,
+            powerModifiers,
+            combat.shadowstepActive,
+          )
+        : 0;
 
     // ── Chamber layout zones: treasure + hazard (R1) ────────────────────
     // Treasure: bonus score + shards (banked, awarded at finalize so
@@ -960,50 +1438,38 @@ export default function RuneDelvePlayPage() {
       const hazardHits = countChainInZone(chain, layoutZones.hazard);
       if (treasureHits > 0) {
         // R3: treasureMult from active modifier (Treasure Hunter triples).
-        const scoreGain = Math.round(treasureHits * TREASURE_SCORE_BONUS * modEff.treasureMult);
-        const shardGain = Math.round(treasureHits * TREASURE_SHARD_BONUS * modEff.treasureMult);
-        setBonusScoreFromTreasure(s => s + scoreGain);
-        setBonusShardsFromTreasure(s => s + shardGain);
+        const scoreGain = Math.round(
+          treasureHits * TREASURE_SCORE_BONUS * modEff.treasureMult,
+        );
+        const shardGain = Math.round(
+          treasureHits * TREASURE_SHARD_BONUS * modEff.treasureMult,
+        );
+        setBonusScoreFromTreasure((s) => s + scoreGain);
+        setBonusShardsFromTreasure((s) => s + shardGain);
         pushLog({
-          kind: 'info',
+          kind: "info",
           text: `✨ Treasure +${scoreGain} score · +${shardGain} shards`,
         });
       }
       if (hazardHits > 0) {
         // R3: hazardMult from active modifier (Treasure Hunter doubles).
-        const rawDamage = Math.round(hazardHits * HAZARD_DAMAGE * modEff.hazardMult);
-        const damage = Math.min(rawDamage, HAZARD_MAX_DAMAGE_PER_CHAIN * modEff.hazardMult);
+        const rawDamage = Math.round(
+          hazardHits * HAZARD_DAMAGE * modEff.hazardMult,
+        );
+        const damage = Math.min(
+          rawDamage,
+          HAZARD_MAX_DAMAGE_PER_CHAIN * modEff.hazardMult,
+        );
         next.hp = Math.max(0, next.hp - damage);
         if (damage > 0) tookDamageRef.current = true;
         pushLog({
-          kind: 'corruption',
+          kind: "corruption",
           text: `⚠️ Hazard tile · -${damage} HP`,
           amount: damage,
         });
       }
     }
 
-    // Apply relic damage multiplier for red chains (composes with tier mult).
-    if (type === 'red' && chainMods.bonusDamageMult > 1 && resolution.damageDealt > 0) {
-      const baseDmg = resolution.damageDealt;
-      const boostedDmg = Math.round(baseDmg * chainMods.bonusDamageMult);
-      const extra = boostedDmg - baseDmg;
-      if (extra > 0) {
-        const target = next.enemies.find(e => e.hp > 0) ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
-        if (target) {
-          const applied = Math.min(extra, Math.max(target.hp, 0));
-          if (applied > 0) {
-            target.hp -= applied;
-            resolution.damageDealt += applied;
-            next.totalDamage += applied;
-            if (target.hp <= 0 && !resolution.enemyKills.includes(target.id)) {
-              next.enemiesDefeated += 1;
-              resolution.enemyKills.push(target.id);
-            }
-          }
-        }
-      }
-    }
     // Mana / heal / shield bonuses.
     if (chainMods.bonusManaFlat > 0) {
       const manaBefore = next.mana;
@@ -1027,41 +1493,24 @@ export default function RuneDelvePlayPage() {
     if (chainMods.effectiveLengthBonus > 0) {
       const bonusLen = chainMods.effectiveLengthBonus;
       next.longestChain = Math.max(next.longestChain, chain.length + bonusLen);
-      if (type === 'red') {
-        // Match the engine's class + campaign-depth curve exactly.
-        const extra = Math.max(
-          0,
-          redChainDamage(chain.length + bonusLen, hero.class, level.level_number)
-            - redChainDamage(chain.length, hero.class, level.level_number),
-        );
-        const target = next.enemies.find(e => e.hp > 0)
-          ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
-        if (target) {
-          const applied = Math.min(extra, Math.max(target.hp, 0));
-          if (applied > 0) {
-            target.hp -= applied;
-            resolution.damageDealt += applied;
-            next.totalDamage += applied;
-            if (target.hp <= 0 && !resolution.enemyKills.includes(target.id)) {
-              next.enemiesDefeated += 1;
-              resolution.enemyKills.push(target.id);
-            }
-          }
-        }
-      } else if (type === 'green') {
-        const perRune = hero.class === 'cleric' ? Math.round(6 * 1.5) : 6;
+      if (type === "green") {
+        const perRune = hero.class === "cleric" ? Math.round(6 * 1.5) : 6;
         const extra = Math.min(perRune * bonusLen, next.maxHp - next.hp);
         if (extra > 0) {
           next.hp += extra;
           resolution.hpHealed += extra;
         }
-      } else if (type === 'blue') {
+      } else if (type === "blue") {
         // Push the chain over the 5+ mana threshold if it wasn't already.
-        if (chain.length < 5 && chain.length + bonusLen >= 5 && next.mana < MAX_MANA) {
+        if (
+          chain.length < 5 &&
+          chain.length + bonusLen >= 5 &&
+          next.mana < MAX_MANA
+        ) {
           next.mana = Math.min(MAX_MANA, next.mana + 1);
           resolution.manaGained += 1;
         }
-      } else if (type === 'gold') {
+      } else if (type === "gold") {
         // Gold scales shield turns by floor(length/3) — only push if it crosses a threshold.
         const beforeT = Math.floor(chain.length / 3);
         const afterT = Math.floor((chain.length + bonusLen) / 3);
@@ -1073,79 +1522,20 @@ export default function RuneDelvePlayPage() {
       }
     }
     // Update per-run counters.
-    setChainCountTotal(c => c + 1);
-    if (type === 'red') setRedChainCount(redCountAfter);
-    // Scale red-chain damage by the tier multiplier; route the extra HP into
-    // the same target that applyChain already hit. Round to whole HP.
-    if (tier.dmgMult > 1 && type === 'red' && resolution.damageDealt > 0) {
-      const baseDmg = resolution.damageDealt;
-      const boostedDmg = Math.round(baseDmg * tier.dmgMult);
-      const extra = boostedDmg - baseDmg;
-      if (extra > 0) {
-        const target = next.enemies.find(e => e.hp > 0 && e.hp < e.maxHp)
-          ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
-        if (target) {
-          const applied = Math.min(extra, Math.max(target.hp, 0));
-          if (applied > 0) {
-            target.hp -= applied;
-            resolution.damageDealt += applied;
-            next.totalDamage += applied;
-            if (target.hp <= 0 && !resolution.enemyKills.includes(target.id)) {
-              next.enemiesDefeated += 1;
-              resolution.enemyKills.push(target.id);
-            }
-          }
-        }
-      }
-    }
-    // ── Daily + Mastery damage compounding (red chains only) ─────────────
-    // Stacks multiplicatively on top of the tier multiplier so power-builds
-    // really feel powerful. Mastery T5 Last Stand also kicks in below 20% HP.
-    let critFired = false;
-    if (type === 'red' && resolution.damageDealt > 0) {
-      let extraMult = 1;
-      if (isDailyMode) extraMult *= dailyDamageMultiplier(dailyMods, type);
-      if (isDailyMode) extraMult *= dailyIroncladDamageMult(dailyMods, chain.length);
-      extraMult *= getMasteryChainDamageMult(activeMasteries, type);
-      if (isLastStandActive(activeMasteries, combat.hp, combat.maxHp)) extraMult *= 1.5;
-      // ── Mastery: Rogue T2 Opening Strike — first chain of run crits ×1.5.
-      const openCrit = getMasteryOpeningCritMult(activeMasteries, chainsThisFight);
-      if (openCrit > 1) { extraMult *= openCrit; critFired = true; }
-      // ── Mastery: Rogue T4 Quickblade — chains 4+ have a 10% crit chance.
-      const critChance = getMasteryChainCritChance(activeMasteries, chain.length);
-      if (critChance > 0 && Math.random() < critChance) { extraMult *= 1.5; critFired = true; }
-      if (extraMult !== 1) {
-        const baseDmg = resolution.damageDealt;
-        const boostedDmg = Math.round(baseDmg * extraMult);
-        const extra = boostedDmg - baseDmg;
-        if (extra !== 0) {
-          const target = next.enemies.find(e => e.hp > 0)
-            ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
-          if (target && extra > 0) {
-            const applied = Math.min(extra, Math.max(target.hp, 0));
-            if (applied > 0) {
-              target.hp -= applied;
-              resolution.damageDealt += applied;
-              next.totalDamage += applied;
-              if (target.hp <= 0 && !resolution.enemyKills.includes(target.id)) {
-                next.enemiesDefeated += 1;
-                resolution.enemyKills.push(target.id);
-              }
-            }
-          }
-        }
-      }
-    }
+    setChainCountTotal((c) => c + 1);
+    if (type === "red") setRedChainCount(redCountAfter);
     // ── Mastery: Rogue T1 Gilded Eye — track gold runes for end-of-run score.
-    if (type === 'gold') {
-      setGoldRunesCleared(g => g + chain.length);
+    if (type === "gold") {
+      setGoldRunesCleared((g) => g + chain.length);
     }
     // Toast the rogue crit (turnLogs isn't yet allocated at this point).
     if (critFired) {
-      toast.success(`🗡️ Critical strike! Chain ×${chain.length}`, { duration: 1100 });
+      toast.success(`🗡️ Critical strike! Chain ×${chain.length}`, {
+        duration: 1100,
+      });
     }
     // ── Mastery: Mage T2 — blue chains heal a flat 2 HP. ─────────────────
-    if (type === 'blue') {
+    if (type === "blue") {
       const blueHeal = getMasteryBlueChainHeal(activeMasteries);
       if (blueHeal > 0) {
         const applied = Math.min(blueHeal, next.maxHp - next.hp);
@@ -1167,7 +1557,7 @@ export default function RuneDelvePlayPage() {
       }
     }
     // ── Mastery: Cleric T2 — shields persist +1 turn. ────────────────────
-    if (type === 'gold' && resolution.guardGained > 0) {
+    if (type === "gold" && resolution.guardGained > 0) {
       const bonus = getMasteryShieldBonus(activeMasteries);
       if (bonus > 0) {
         next.shieldTurns += bonus;
@@ -1190,6 +1580,7 @@ export default function RuneDelvePlayPage() {
         const reflect = Math.round(resolution.damageDealt * pct);
         if (reflect > 0) {
           next.hp = Math.max(0, next.hp - reflect);
+          tookDamageRef.current = true;
         }
       }
     }
@@ -1197,13 +1588,19 @@ export default function RuneDelvePlayPage() {
     {
       const perChain = getMasteryShardsPerChain(activeMasteries);
       if (perChain > 0) {
-        setBonusShardsFromMastery(s => s + perChain);
+        setBonusShardsFromMastery((s) => s + perChain);
       }
     }
-    setChainsThisFight(c => c + 1);
+    setChainsThisFight((c) => c + 1);
     // ── Vampiric Sigil — heal % of red damage dealt ──────────────────────
-    if (type === 'red' && chainMods.lifestealPctOfDamage > 0 && resolution.damageDealt > 0) {
-      const lifesteal = Math.round(resolution.damageDealt * chainMods.lifestealPctOfDamage);
+    if (
+      type === "red" &&
+      chainMods.lifestealPctOfDamage > 0 &&
+      resolution.damageDealt > 0
+    ) {
+      const lifesteal = Math.round(
+        resolution.damageDealt * chainMods.lifestealPctOfDamage,
+      );
       const applied = Math.min(lifesteal, next.maxHp - next.hp);
       if (applied > 0) {
         next.hp += applied;
@@ -1213,32 +1610,30 @@ export default function RuneDelvePlayPage() {
     // ── Rune Echo — repeat the chain's effect at echoMult strength ──────
     if (chainMods.echoMult > 0) {
       const m = chainMods.echoMult;
-      if (type === 'red' && resolution.damageDealt > 0) {
-        const echoDmg = Math.round(resolution.damageDealt * m);
-        const target = next.enemies.find(e => e.hp > 0)
-          ?? next.enemies.find(e => resolution.enemyKills.includes(e.id));
-        if (target && echoDmg > 0) {
-          const applied = Math.min(echoDmg, Math.max(target.hp, 0));
-          if (applied > 0) {
-            target.hp -= applied;
-            resolution.damageDealt += applied;
-            next.totalDamage += applied;
-            if (target.hp <= 0 && !resolution.enemyKills.includes(target.id)) {
-              next.enemiesDefeated += 1;
-              resolution.enemyKills.push(target.id);
-            }
-          }
-        }
-      } else if (type === 'green' && resolution.hpHealed > 0) {
+      if (type === "red" && rawRedDamage > 0) {
+        // Echo is a distinct strike, with fresh targeting and armor.
+        const echo = damageEnemies(
+          next,
+          Math.round(rawRedDamage * m),
+          bossRule,
+          1,
+        );
+        next = echo.next;
+        resolution.damageDealt += echo.damageDealt;
+        resolution.enemyKills.push(...echo.enemyKills);
+      } else if (type === "green" && resolution.hpHealed > 0) {
         const echoHeal = Math.round(resolution.hpHealed * m);
         const applied = Math.min(echoHeal, next.maxHp - next.hp);
-        if (applied > 0) { next.hp += applied; resolution.hpHealed += applied; }
-      } else if (type === 'blue' && resolution.manaGained > 0) {
+        if (applied > 0) {
+          next.hp += applied;
+          resolution.hpHealed += applied;
+        }
+      } else if (type === "blue" && resolution.manaGained > 0) {
         const echoMana = Math.max(1, Math.round(resolution.manaGained * m));
         const before = next.mana;
         next.mana = Math.min(MAX_MANA, next.mana + echoMana);
         resolution.manaGained += next.mana - before;
-      } else if (type === 'gold' && resolution.guardGained > 0) {
+      } else if (type === "gold" && resolution.guardGained > 0) {
         const echoTurns = Math.max(1, Math.round(resolution.guardGained * m));
         next.shieldTurns += echoTurns;
         resolution.guardGained += echoTurns;
@@ -1247,53 +1642,78 @@ export default function RuneDelvePlayPage() {
     if (resolution.enemyKills.length) setFlashId(resolution.enemyKills[0]);
 
     // Build the per-turn log batch as we go so the order matches the events.
-    const turnLogs: Array<Omit<CombatLogEntry, 'id'>> = [];
+    const turnLogs: Array<Omit<CombatLogEntry, "id">> = [];
     const runeLabel = RUNE_LABEL[type] ?? type;
 
     // Chain summary line — always logged.
-    if (type === 'red' && resolution.damageDealt > 0) {
-      const target = combat.enemies.find(e => resolution.enemyKills[0] ? e.id === resolution.enemyKills[0] : e.hp > 0);
-      const targetName = target?.name ?? 'the foe';
+    if (type === "red" && resolution.damageDealt > 0) {
+      const target = combat.enemies.find((e) =>
+        resolution.enemyKills[0] ? e.id === resolution.enemyKills[0] : e.hp > 0,
+      );
+      const targetName = target?.name ?? "the foe";
       turnLogs.push({
-        kind: 'damage',
+        kind: "damage",
         text: `${runeLabel} chain x${chain.length} struck ${targetName}`,
         amount: resolution.damageDealt,
       });
-    } else if (type === 'green' && resolution.hpHealed > 0) {
-      turnLogs.push({ kind: 'heal', text: `${runeLabel} chain x${chain.length} mended your wounds`, amount: resolution.hpHealed });
-    } else if (type === 'blue' && resolution.manaGained > 0) {
-      turnLogs.push({ kind: 'mana', text: `${runeLabel} chain x${chain.length} channeled mana`, amount: resolution.manaGained });
-    } else if (type === 'gold') {
-      turnLogs.push({ kind: 'shield', text: `${runeLabel} chain x${chain.length} raised your guard`, amount: resolution.guardGained });
+    } else if (type === "green" && resolution.hpHealed > 0) {
+      turnLogs.push({
+        kind: "heal",
+        text: `${runeLabel} chain x${chain.length} mended your wounds`,
+        amount: resolution.hpHealed,
+      });
+    } else if (type === "blue" && resolution.manaGained > 0) {
+      turnLogs.push({
+        kind: "mana",
+        text: `${runeLabel} chain x${chain.length} channeled mana`,
+        amount: resolution.manaGained,
+      });
+    } else if (type === "gold") {
+      turnLogs.push({
+        kind: "shield",
+        text: `${runeLabel} chain x${chain.length} raised your guard`,
+        amount: resolution.guardGained,
+      });
     } else {
       // Red chain that hit a shielded boss → no damage applied.
-      turnLogs.push({ kind: 'info', text: `${runeLabel} chain x${chain.length} fizzled` });
+      turnLogs.push({
+        kind: "info",
+        text: `${runeLabel} chain x${chain.length} fizzled`,
+      });
     }
     for (const killId of resolution.enemyKills) {
-      const killed = combat.enemies.find(e => e.id === killId);
+      const killed = combat.enemies.find((e) => e.id === killId);
       recordKill(killed);
-      turnLogs.push({ kind: 'kill', text: `${killed?.name ?? 'A foe'} was vanquished!` });
+      turnLogs.push({
+        kind: "kill",
+        text: `${killed?.name ?? "A foe"} was vanquished!`,
+      });
     }
 
     // Last Stand feedback: red chain landed but the boss is shielded → 0 dmg.
     if (
-      bossRule === 'last_stand' &&
-      type === 'red' &&
+      bossRule === "last_stand" &&
+      type === "red" &&
       resolution.damageDealt === 0 &&
-      combat.enemies.some(e => e.hp > 0)
+      combat.enemies.some((e) => e.hp > 0)
     ) {
-      toast('🛡️ Boss is shielded — defeat the others first', { duration: 1600 });
+      toast("🛡️ Boss is shielded — defeat the others first", {
+        duration: 1600,
+      });
     }
     // Phase Lock fizzle: boss is mid-phase and ignored the strike.
     if (
-      bossRule === 'phaselock' &&
-      type === 'red' &&
+      bossRule === "phaselock" &&
+      type === "red" &&
       resolution.damageDealt === 0 &&
-      combat.enemies.some(e => e.hp > 0 && (e.phaseLockTurns ?? 0) > 0)
+      combat.enemies.some((e) => e.hp > 0 && (e.phaseLockTurns ?? 0) > 0)
     ) {
-      const phasing = combat.enemies.find(e => (e.phaseLockTurns ?? 0) > 0);
-      toast('🌀 The boss is phasing — strike fizzled', { duration: 1600 });
-      turnLogs.push({ kind: 'info', text: `${phasing?.name ?? 'The boss'} phased out — your strike found nothing` });
+      const phasing = combat.enemies.find((e) => (e.phaseLockTurns ?? 0) > 0);
+      toast("🌀 The boss is phasing — strike fizzled", { duration: 1600 });
+      turnLogs.push({
+        kind: "info",
+        text: `${phasing?.name ?? "The boss"} phased out — your strike found nothing`,
+      });
     }
 
     // Apply corruption: HP cost for matching corrupted cells, then strip them.
@@ -1305,36 +1725,96 @@ export default function RuneDelvePlayPage() {
     if (corruption.cells.size) {
       const r = resolveChainAgainstCorruption(corruption, chain);
       let hpCost = r.hpCost;
-      if (r.sourcesCleared > 0 && has(relics, 'cleansing_touch')) {
+      if (r.sourcesCleared > 0 && has(relics, "cleansing_touch")) {
         // effectValue returns max free clears (1..2). We've already consumed
         // `corruptCleansedCount` of them.
         const freeRemaining = Math.max(
           0,
-          (relics.ranks.get('cleansing_touch') ?? 1) >= 5 ? 2 - corruptCleansedCount : 1 - corruptCleansedCount,
+          (relics.ranks.get("cleansing_touch") ?? 1) >= 5
+            ? 2 - corruptCleansedCount
+            : 1 - corruptCleansedCount,
         );
         if (freeRemaining > 0 && hpCost > 0) {
           hpCost = 0;
-          turnLogs.push({ kind: 'info', text: '✨ Cleansing Touch — corruption cost waived' });
+          turnLogs.push({
+            kind: "info",
+            text: "✨ Cleansing Touch — corruption cost waived",
+          });
         }
-        setCorruptCleansedCount(c => c + r.sourcesCleared);
+        setCorruptCleansedCount((c) => c + r.sourcesCleared);
       }
       if (hpCost > 0) {
         next.hp = Math.max(0, next.hp - hpCost);
         tookDamageRef.current = true;
         toast.error(`☠️ -${hpCost} HP from corruption`, { duration: 1100 });
-        turnLogs.push({ kind: 'corruption', text: 'Corrupted runes burned you', amount: hpCost });
+        turnLogs.push({
+          kind: "corruption",
+          text: "Corrupted runes burned you",
+          amount: hpCost,
+        });
       }
       if (r.sourcesCleared > 0) {
-        toast.success(r.sourcesCleared > 1 ? `Sources cleansed!` : `Source cleansed!`, { duration: 1200 });
-        turnLogs.push({ kind: 'info', text: r.sourcesCleared > 1 ? 'Corruption sources cleansed' : 'Corruption source cleansed' });
+        toast.success(
+          r.sourcesCleared > 1 ? `Sources cleansed!` : `Source cleansed!`,
+          { duration: 1200 },
+        );
+        turnLogs.push({
+          kind: "info",
+          text:
+            r.sourcesCleared > 1
+              ? "Corruption sources cleansed"
+              : "Corruption source cleansed",
+        });
       }
       nextCorruption = r.next;
+    }
+
+    const resonance = advanceResonance(
+      next,
+      type,
+      level.level_number,
+      bossRule,
+    );
+    next = resonance.next;
+    if (resonance.burst) {
+      const burst = resonance.burst;
+      turnLogs.push({
+        kind: "ability",
+        text: "Convergence — all four sigils unleashed",
+        amount: burst.damageDealt || undefined,
+      });
+      if (burst.manaGained > 0)
+        turnLogs.push({
+          kind: "mana",
+          text: "Convergence charged mana",
+          amount: burst.manaGained,
+        });
+      turnLogs.push({
+        kind: "shield",
+        text: "Convergence raised your guard",
+        amount: burst.guardGained,
+      });
+      for (const killId of burst.enemyKills) {
+        const killed = combat.enemies.find((enemy) => enemy.id === killId);
+        recordKill(killed);
+        turnLogs.push({
+          kind: "kill",
+          text: `${killed?.name ?? "A foe"} fell to Convergence`,
+        });
+      }
+      resolution.enemyKills.push(...burst.enemyKills);
+      if (burst.enemyKills.length) setFlashId(burst.enemyKills[0]);
+      rdSfx("chain.epic");
+      toast.success("Convergence!", {
+        description: "All foes struck · +1 mana · +1 guard",
+        duration: 1700,
+      });
     }
 
     // Bonus move (rebalanced): only chains of 7+ grant a free action, AND only
     // once per enemy cycle. Chain-6 still gets a damage bump (handled above)
     // but the enemy phase still runs.
-    const enemiesAlive = next.enemies.some(e => e.hp > 0);
+    const enemiesAlive = next.enemies.some((e) => e.hp > 0);
     const grantsBonusMove = tier.bonus && !bonusUsedThisCycle && enemiesAlive;
 
     // Capture pre-attack HP + shield to derive damage taken / mitigated.
@@ -1354,22 +1834,44 @@ export default function RuneDelvePlayPage() {
     const wardMult = shrineWardTurn1Mult(relics, isTurnOne);
     const crownMult = bossRule ? bossRuleSoften(relics) : 1;
     const incomingMult = wardMult * crownMult;
-    let afterEnemies: CombatState & { heavyFired?: boolean; abilityLogs?: Array<Omit<CombatLogEntry, 'id'>>; abilityEffects?: any[]; thornsLog?: Omit<CombatLogEntry, 'id'> };
+    let afterEnemies: CombatState & {
+      heavyFired?: boolean;
+      abilityLogs?: Array<Omit<CombatLogEntry, "id">>;
+      abilityEffects?: AbilityEffect[];
+      thornsLog?: Omit<CombatLogEntry, "id">;
+      __pendingSealAdds?: string[];
+    };
     if (grantsBonusMove) {
       afterEnemies = next;
     } else if (enemiesAlive) {
-      const originalDamage = next.enemies.map(e => e.damage);
+      const originalDamage = next.enemies.map((e) => e.damage);
+      const aliveBeforeEnemyPhase = new Set(
+        next.enemies.filter((enemy) => enemy.hp > 0).map((enemy) => enemy.id),
+      );
       if (incomingMult !== 1) {
-        next.enemies.forEach(e => { e.damage = Math.max(0, Math.round(e.damage * incomingMult)); });
+        next.enemies.forEach((e) => {
+          e.damage = Math.max(0, Math.round(e.damage * incomingMult));
+        });
       }
       // Count minions already on the board so summon_minion respects its cap.
-      const summonsSoFar = next.enemies.filter(e => e.archetypeId === 'bone_husk').length;
-      afterEnemies = enemiesAttack(next, telegraphActive, bossRule, summonsSoFar, {
-        cls: hero.class,
-        relicMultiplier: thornsRelicMultiplier(relics),
-      });
+      const summonsSoFar = next.enemies.filter(
+        (e) => e.archetypeId === "bone_husk",
+      ).length;
+      afterEnemies = enemiesAttack(
+        next,
+        telegraphActive,
+        bossRule,
+        summonsSoFar,
+        {
+          cls: hero.class,
+          relicMultiplier: thornsRelicMultiplier(relics),
+        },
+      );
       // Restore damage on the post-attack array so future turns aren't permanently softened.
-      afterEnemies.enemies = afterEnemies.enemies.map((e, i) => ({ ...e, damage: originalDamage[i] ?? e.damage }));
+      afterEnemies.enemies = afterEnemies.enemies.map((e, i) => ({
+        ...e,
+        damage: originalDamage[i] ?? e.damage,
+      }));
       // Apply ability side-effects (corrupt/seal/spawn) to the page-level state.
       // IMPORTANT: corrupt_tile / seal_tile additions are collected into the
       // local `nextCorruption` / `pendingSealAdds` so they merge with the
@@ -1378,9 +1880,12 @@ export default function RuneDelvePlayPage() {
       const effects = afterEnemies.abilityEffects ?? [];
       const pendingSealAdds: string[] = [];
       for (const eff of effects) {
-        if (eff.kind === 'spawn_minion') {
-          afterEnemies = { ...afterEnemies, enemies: [...afterEnemies.enemies, eff.enemy] };
-        } else if (eff.kind === 'corrupt_tile') {
+        if (eff.kind === "spawn_minion") {
+          afterEnemies = {
+            ...afterEnemies,
+            enemies: [...afterEnemies.enemies, eff.enemy],
+          };
+        } else if (eff.kind === "corrupt_tile") {
           // Drop one corrupted cell on the first available non-sealed,
           // non-corrupted square (deterministic scan keeps replays stable).
           // No longer gated on the corruption BAND — the ability fired and
@@ -1388,130 +1893,188 @@ export default function RuneDelvePlayPage() {
           // no-op on 16 levels whose enemies carry corrupt_tile off-band).
           const cells = new Set(nextCorruption.cells);
           let placed = false;
-          outer: for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
-            const k = `${r}-${c}`;
-            if (!cells.has(k) && !seals.has(k) && !pendingSealAdds.includes(k)) {
-              cells.add(k);
-              placed = true;
-              break outer;
+          outer: for (let r = 0; r < 5; r++)
+            for (let c = 0; c < 5; c++) {
+              const k = `${r}-${c}`;
+              if (
+                !cells.has(k) &&
+                !seals.has(k) &&
+                !pendingSealAdds.includes(k)
+              ) {
+                cells.add(k);
+                placed = true;
+                break outer;
+              }
             }
-          }
           if (placed) {
             nextCorruption = { cells, sources: nextCorruption.sources };
-            turnLogs.push({ kind: 'corruption', text: 'A new rune was corrupted' });
+            turnLogs.push({
+              kind: "corruption",
+              text: "A new rune was corrupted",
+            });
           }
-        } else if (eff.kind === 'seal_tile') {
-          for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
-            const k = `${r}-${c}`;
-            if (!seals.has(k) && !pendingSealAdds.includes(k)) {
-              pendingSealAdds.push(k);
-              turnLogs.push({ kind: 'info', text: 'A rune was sealed shut' });
-              r = 5; c = 5; break;
+        } else if (eff.kind === "seal_tile") {
+          for (let r = 0; r < 5; r++)
+            for (let c = 0; c < 5; c++) {
+              const k = `${r}-${c}`;
+              if (!seals.has(k) && !pendingSealAdds.includes(k)) {
+                pendingSealAdds.push(k);
+                turnLogs.push({ kind: "info", text: "A rune was sealed shut" });
+                r = 5;
+                c = 5;
+                break;
+              }
             }
-          }
         }
       }
       // Stash for the final setSeals merge below.
-      (afterEnemies as any).__pendingSealAdds = pendingSealAdds;
+      afterEnemies.__pendingSealAdds = pendingSealAdds;
       // Push enemy ability logs (heavy_strike / shield_self / heal_ally / etc).
-      if (afterEnemies.abilityLogs?.length) turnLogs.push(...afterEnemies.abilityLogs);
+      if (afterEnemies.abilityLogs?.length)
+        turnLogs.push(...afterEnemies.abilityLogs);
       // ── Shield Thorns ── push reflect log + record bestiary kills + pulse FX
       if (afterEnemies.thornsLog) {
         turnLogs.push(afterEnemies.thornsLog);
         // Diff pre/post-attack enemy hp to attribute kills to thorns for the
         // Bestiary. Chain kills already recorded above; this catches any new
         // foes who died during the enemy phase from reflected damage.
-        const preIds = new Set(combat.enemies.filter(e => e.hp > 0).map(e => e.id));
-        const chainKilledIds = new Set(resolution.enemyKills);
         for (const e of afterEnemies.enemies) {
-          if (e.hp <= 0 && preIds.has(e.id) && !chainKilledIds.has(e.id)) {
+          if (e.hp <= 0 && aliveBeforeEnemyPhase.has(e.id)) {
             recordKill(e);
           }
         }
         // Brief shield-pill pulse to cue the reflect.
-        const shieldEl = playRootRef.current?.querySelector('[data-fx-target="shield"]') as HTMLElement | null;
+        const shieldEl = playRootRef.current?.querySelector(
+          '[data-fx-target="shield"]',
+        ) as HTMLElement | null;
         if (shieldEl) {
-          shieldEl.style.transition = 'transform 220ms ease-out, filter 220ms ease-out';
-          shieldEl.style.transform = 'scale(1.35)';
-          shieldEl.style.filter = 'drop-shadow(0 0 6px hsl(var(--gold) / 0.9))';
+          shieldEl.style.transition =
+            "transform 220ms ease-out, filter 220ms ease-out";
+          shieldEl.style.transform = "scale(1.35)";
+          shieldEl.style.filter = "drop-shadow(0 0 6px hsl(var(--gold) / 0.9))";
           window.setTimeout(() => {
-            shieldEl.style.transform = '';
-            shieldEl.style.filter = '';
+            shieldEl.style.transform = "";
+            shieldEl.style.filter = "";
           }, 220);
         }
         // First-ever Thorns trigger → show one-time mechanic intro.
         try {
-          if (!localStorage.getItem(seenMechanicKey('thorns'))) {
-            setIntroMechanic('thorns');
+          if (!localStorage.getItem(seenMechanicKey("thorns"))) {
+            setIntroMechanic("thorns");
           }
-        } catch { /* localStorage may be unavailable */ }
+        } catch {
+          /* localStorage may be unavailable */
+        }
       }
     } else {
       afterEnemies = endTurn(next);
     }
     if (grantsBonusMove) {
       setBonusUsedThisCycle(true);
-      toast.success(`✨ Bonus move! Chain x${chain.length}`, { duration: 1400 });
-      turnLogs.push({ kind: 'info', text: `Chain x${chain.length} — bonus move! Enemies hesitate.` });
+      toast.success(`✨ Bonus move! Chain x${chain.length}`, {
+        duration: 1400,
+      });
+      turnLogs.push({
+        kind: "info",
+        text: `Chain x${chain.length} — bonus move! Enemies hesitate.`,
+      });
     } else if (tier.bonus && enemiesAlive) {
-      if (chain.length >= 8) toast.success(`💥 Massive chain x${chain.length}!`, { duration: 1300 });
-      turnLogs.push({ kind: 'info', text: `Chain x${chain.length} — massive damage! (bonus already used this cycle)` });
+      if (chain.length >= 8)
+        toast.success(`💥 Massive chain x${chain.length}!`, { duration: 1300 });
+      turnLogs.push({
+        kind: "info",
+        text: `Chain x${chain.length} — massive damage! (bonus already used this cycle)`,
+      });
     } else if (chain.length === 6 && enemiesAlive) {
-      turnLogs.push({ kind: 'info', text: `Chain x6 — heavy strike!` });
+      turnLogs.push({ kind: "info", text: `Chain x6 — heavy strike!` });
     }
     if (!grantsBonusMove && enemiesAlive) {
       setBonusUsedThisCycle(false);
     }
 
-    if ((afterEnemies as any).heavyFired) {
-      toast.error('⚡ Heavy strike!', { duration: 1200 });
-      turnLogs.push({ kind: 'heavy', text: 'A telegraphed heavy strike landed!' });
+    if (afterEnemies.heavyFired) {
+      toast.error("⚡ Heavy strike!", { duration: 1200 });
+      turnLogs.push({
+        kind: "heavy",
+        text: "A telegraphed heavy strike landed!",
+      });
     }
 
     // Damage taken / mitigated lines.
     const hpLost = Math.max(0, hpBefore - afterEnemies.hp);
     if (hpLost > 0) {
       tookDamageRef.current = true;
-      turnLogs.push({ kind: 'taken', text: 'Enemies retaliated', amount: hpLost });
-      setHurtFlashKey(k => k + 1);
-      rdSfx('hero.hurt');
-      floaters.addAt(playRootRef.current?.querySelector('[data-fx-target="hp"]'), { kind: 'damage', text: String(hpLost) });
-    } else if (next.enemies.some(e => e.hp > 0) && rawIncoming > 0) {
-      turnLogs.push({ kind: 'info', text: 'You weathered the assault' });
+      turnLogs.push({
+        kind: "taken",
+        text: "Enemies retaliated",
+        amount: hpLost,
+      });
+      setHurtFlashKey((k) => k + 1);
+      rdSfx("hero.hurt");
+      floaters.addAt(
+        playRootRef.current?.querySelector('[data-fx-target="hp"]'),
+        { kind: "damage", text: String(hpLost) },
+      );
+    } else if (next.enemies.some((e) => e.hp > 0) && rawIncoming > 0) {
+      turnLogs.push({ kind: "info", text: "You weathered the assault" });
     }
     if (hadShield && rawIncoming > hpLost) {
       const mitigated = rawIncoming - hpLost;
-      if (mitigated > 0) turnLogs.push({ kind: 'mitigated', text: 'Your guard absorbed the blow', amount: mitigated });
+      if (mitigated > 0)
+        turnLogs.push({
+          kind: "mitigated",
+          text: "Your guard absorbed the blow",
+          amount: mitigated,
+        });
     }
     // Floating numbers for chain effects (heal / mana / shield) so the player
     // sees the reward land on the relevant HUD chip.
     if (resolution.hpHealed > 0) {
-      floaters.addAt(playRootRef.current?.querySelector('[data-fx-target="hp"]'), { kind: 'heal', text: String(resolution.hpHealed) });
-      setHealFlashKey(k => k + 1);
-      rdSfx('hero.heal');
+      floaters.addAt(
+        playRootRef.current?.querySelector('[data-fx-target="hp"]'),
+        { kind: "heal", text: String(resolution.hpHealed) },
+      );
+      setHealFlashKey((k) => k + 1);
+      rdSfx("hero.heal");
     }
     if (resolution.manaGained > 0) {
-      floaters.addAt(playRootRef.current?.querySelector('[data-fx-target="mana"]'), { kind: 'mana', text: String(resolution.manaGained) });
-      rdSfx('mana.gain', { index: resolution.manaGained });
+      floaters.addAt(
+        playRootRef.current?.querySelector('[data-fx-target="mana"]'),
+        { kind: "mana", text: String(resolution.manaGained) },
+      );
+      rdSfx("mana.gain", { index: resolution.manaGained });
     }
     if (resolution.guardGained > 0) {
-      floaters.addAt(playRootRef.current?.querySelector('[data-fx-target="shield"]') ?? playRootRef.current?.querySelector('[data-fx-target="hp"]'), { kind: 'shield', text: String(resolution.guardGained) });
-      rdSfx('shield.up');
+      floaters.addAt(
+        playRootRef.current?.querySelector('[data-fx-target="shield"]') ??
+          playRootRef.current?.querySelector('[data-fx-target="hp"]'),
+        { kind: "shield", text: String(resolution.guardGained) },
+      );
+      rdSfx("shield.up");
     }
     // Damage numbers + enemy hit/die cues per kill in this chain.
     if (resolution.damageDealt > 0) {
-      const targetEnemy = combat.enemies.find(e => resolution.enemyKills[0] ? e.id === resolution.enemyKills[0] : e.hp > 0);
-      const targetEl = targetEnemy ? playRootRef.current?.querySelector(`[data-enemy-id="${targetEnemy.id}"]`) : null;
-      floaters.addAt(targetEl, { kind: 'damage', text: String(resolution.damageDealt) });
-      rdSfx('enemy.hit');
+      const targetEnemy = combat.enemies.find((e) =>
+        resolution.enemyKills[0] ? e.id === resolution.enemyKills[0] : e.hp > 0,
+      );
+      const targetEl = targetEnemy
+        ? playRootRef.current?.querySelector(
+            `[data-enemy-id="${targetEnemy.id}"]`,
+          )
+        : null;
+      floaters.addAt(targetEl, {
+        kind: "damage",
+        text: String(resolution.damageDealt),
+      });
+      rdSfx("enemy.hit");
     }
     for (const killId of resolution.enemyKills) {
-      const killed = combat.enemies.find(e => e.id === killId);
-      rdSfx(killed?.tier === 'boss' ? 'boss.roar' : 'enemy.die');
+      const killed = combat.enemies.find((e) => e.id === killId);
+      rdSfx(killed?.tier === "boss" ? "boss.roar" : "enemy.die");
     }
     // Mana orbs filled to ready → ability ready cue
     if (next.mana >= MAX_MANA && combat.mana < MAX_MANA) {
-      rdSfx('ability.ready');
+      rdSfx("ability.ready");
     }
 
     // Explicit "a save fired this turn" flag — set ONLY when Aegis / Last Stand
@@ -1522,22 +2085,32 @@ export default function RuneDelvePlayPage() {
     // ── Mastery: Cleric T5 Eternal Aegis — once per run, block a fatal hit.
     // Runs BEFORE the relic Last Stand / Phoenix saves so the cheap free
     // mastery save burns first; relics can still bail you out next time.
-    if (afterEnemies.hp <= 0 && hasMasteryAegis(activeMasteries) && !aegisFiredRef.current) {
+    if (
+      afterEnemies.hp <= 0 &&
+      hasMasteryAegis(activeMasteries) &&
+      !aegisFiredRef.current
+    ) {
       afterEnemies = { ...afterEnemies, hp: 1 };
       aegisFiredRef.current = true;
       revivedThisTurn = true;
-      toast.success('🛡️ Aegis blocked the killing blow!', { duration: 1800 });
-      turnLogs.push({ kind: 'laststand', text: 'Eternal Aegis — fatal hit blocked!' });
+      toast.success("🛡️ Aegis blocked the killing blow!", { duration: 1800 });
+      turnLogs.push({
+        kind: "laststand",
+        text: "Eternal Aegis — fatal hit blocked!",
+      });
     }
     // Relic: Last Stand — survive lethal at 1 HP. R1–R4: 1 use; R5: 2 uses.
     if (afterEnemies.hp <= 0) {
       const ls = tryLastStand(relics, afterEnemies.hp, lastStandUsed);
       if (ls.saved) {
         afterEnemies = { ...afterEnemies, hp: ls.hp };
-        setLastStandUsed(c => c + 1);
+        setLastStandUsed((c) => c + 1);
         revivedThisTurn = true;
-        toast.success('💔 Last Stand! Survived at 1 HP', { duration: 1800 });
-        turnLogs.push({ kind: 'laststand', text: 'Last Stand! You survived at 1 HP' });
+        toast.success("💔 Last Stand! Survived at 1 HP", { duration: 1800 });
+        turnLogs.push({
+          kind: "laststand",
+          text: "Last Stand! You survived at 1 HP",
+        });
       }
     }
     // Relic: Phoenix Heart — full revive at 50%+ maxHp once per run. Runs
@@ -1548,19 +2121,30 @@ export default function RuneDelvePlayPage() {
         afterEnemies = { ...afterEnemies, hp: reviveHp };
         setPhoenixUsed(true);
         revivedThisTurn = true;
-        toast.success(`🔥 Phoenix Heart! Revived at ${reviveHp} HP`, { duration: 2200 });
-        turnLogs.push({ kind: 'laststand', text: `Phoenix Heart blazed — revived at ${reviveHp} HP` });
+        toast.success(`🔥 Phoenix Heart! Revived at ${reviveHp} HP`, {
+          duration: 2200,
+        });
+        turnLogs.push({
+          kind: "laststand",
+          text: `Phoenix Heart blazed — revived at ${reviveHp} HP`,
+        });
       }
     }
 
     // Relic: Bloodbond — heal per kill this turn (rank-aware: 4–6 HP).
-    if (resolution.enemyKills.length && has(relics, 'bloodbond')) {
+    if (resolution.enemyKills.length && has(relics, "bloodbond")) {
       const beforeHeal = afterEnemies.hp;
       let healed = afterEnemies;
-      for (let i = 0; i < resolution.enemyKills.length; i++) healed = onEnemyKilled(relics, healed);
+      for (let i = 0; i < resolution.enemyKills.length; i++)
+        healed = onEnemyKilled(relics, healed);
       afterEnemies = { ...afterEnemies, hp: healed.hp };
       const gained = afterEnemies.hp - beforeHeal;
-      if (gained > 0) turnLogs.push({ kind: 'heal', text: 'Bloodbond drew vigor from the slain', amount: gained });
+      if (gained > 0)
+        turnLogs.push({
+          kind: "heal",
+          text: "Bloodbond drew vigor from the slain",
+          amount: gained,
+        });
     }
 
     // ── Mastery: Warrior T4 Brace — first time HP drops below 25% in a run,
@@ -1571,34 +2155,38 @@ export default function RuneDelvePlayPage() {
       afterEnemies.hp > 0 &&
       afterEnemies.hp / Math.max(1, afterEnemies.maxHp) < 0.25
     ) {
-      afterEnemies = { ...afterEnemies, shieldTurns: Math.max(afterEnemies.shieldTurns, 2) };
+      afterEnemies = {
+        ...afterEnemies,
+        shieldTurns: Math.max(afterEnemies.shieldTurns, 2),
+      };
       braceFiredRef.current = true;
-      toast.success('🛡️ Brace! 2-turn shield', { duration: 1500 });
-      turnLogs.push({ kind: 'shield', text: 'Brace — your guard surged at the brink', amount: 2 });
+      toast.success("🛡️ Brace! 2-turn shield", { duration: 1500 });
+      turnLogs.push({
+        kind: "shield",
+        text: "Brace — your guard surged at the brink",
+        amount: 2,
+      });
     }
     // ── Mastery: Cleric T4 Resurgent Light — if an actual revive fired this
     // turn (Aegis / Last Stand / Phoenix), scorch up to 2 targetable enemies.
     if (revivedThisTurn && reviveBurstActive(activeMasteries)) {
-      const targets = afterEnemies.enemies.filter(e => e.hp > 0).slice(0, 2);
-      if (targets.length > 0) {
-        afterEnemies = {
-          ...afterEnemies,
-          enemies: afterEnemies.enemies.map(e => {
-            if (!targets.find(t => t.id === e.id)) return e;
-            const applied = Math.min(25, e.hp);
-            return { ...e, hp: e.hp - applied };
-          }),
-        };
-        // Recount kills to keep enemiesDefeated honest.
-        const newKills = targets.filter(t => {
-          const live = afterEnemies.enemies.find(e => e.id === t.id);
-          return live && live.hp <= 0;
-        }).length;
-        if (newKills > 0) {
-          afterEnemies.enemiesDefeated += newKills;
-          afterEnemies.totalDamage += 25 * newKills;
-        }
-        turnLogs.push({ kind: 'ability', text: '✨ Resurgent Light scorched the closest foes', amount: 25 });
+      const burst = damageEnemies(afterEnemies, 25, bossRule, 2);
+      afterEnemies = burst.next;
+      if (burst.damageDealt > 0) {
+        turnLogs.push({
+          kind: "ability",
+          text: "Resurgent Light scorched the closest foes",
+          amount: burst.damageDealt,
+        });
+      }
+      for (const killId of burst.enemyKills) {
+        const killed = combat.enemies.find((enemy) => enemy.id === killId);
+        recordKill(killed);
+        turnLogs.push({
+          kind: "kill",
+          text: `${killed?.name ?? "A foe"} fell to Resurgent Light`,
+        });
+        afterEnemies = onEnemyKilled(relics, afterEnemies);
       }
     }
 
@@ -1608,11 +2196,16 @@ export default function RuneDelvePlayPage() {
       const triggered = pairsTriggeredByChain(linkedPairs, chain);
       if (triggered.length > 0) {
         chainForResolve = [...chain, ...triggered];
-        const clearedKeys = chainForResolve.map(c => `${c.r}-${c.c}`);
-        const nextPairs: LinkedPairsState = { pairs: new Map(linkedPairs.pairs) };
+        const clearedKeys = chainForResolve.map((c) => `${c.r}-${c.c}`);
+        const nextPairs: LinkedPairsState = {
+          pairs: new Map(linkedPairs.pairs),
+        };
         consumePairs(nextPairs, clearedKeys);
         setLinkedPairs(nextPairs);
-        turnLogs.push({ kind: 'info', text: `🔗 Linked twin${triggered.length > 1 ? 's' : ''} cleared` });
+        turnLogs.push({
+          kind: "info",
+          text: `🔗 Linked twin${triggered.length > 1 ? "s" : ""} cleared`,
+        });
       }
     }
     let newGrid = resolveBoard(grid, chainForResolve, refillRng, seals);
@@ -1625,60 +2218,92 @@ export default function RuneDelvePlayPage() {
     // Build the final seal set: drop any broken adjacents, then layer in any
     // ability-driven additions (seal_tile from Voidspawn, etc.). One write
     // total avoids racing the functional-updater path.
-    const pendingSealAdds: string[] = (afterEnemies as any).__pendingSealAdds ?? [];
+    const pendingSealAdds: string[] = afterEnemies.__pendingSealAdds ?? [];
     const broken = seals.size ? sealsBrokenByChain(seals, chain) : [];
     if (broken.length || pendingSealAdds.length) {
       const nextSeals = new Set(seals);
-      broken.forEach(k => nextSeals.delete(k));
-      pendingSealAdds.forEach(k => nextSeals.add(k));
+      broken.forEach((k) => nextSeals.delete(k));
+      pendingSealAdds.forEach((k) => nextSeals.add(k));
       setSeals(nextSeals);
       if (broken.length) {
-        turnLogs.push({ kind: 'info', text: broken.length > 1 ? `${broken.length} seals shattered` : 'A seal shattered' });
+        turnLogs.push({
+          kind: "info",
+          text:
+            broken.length > 1
+              ? `${broken.length} seals shattered`
+              : "A seal shattered",
+        });
       }
     }
 
     // Spread corruption AFTER the chain resolves (player's turn ended).
     // On a bonus-move chain the turn does NOT end, so corruption holds too.
     if (corruptionActive && nextCorruption.sources.size && !grantsBonusMove) {
-      nextCorruption = spreadCorruption(nextCorruption, rngTick, level.generation_seed, seals);
+      nextCorruption = spreadCorruption(
+        nextCorruption,
+        rngTick,
+        level.generation_seed,
+        seals,
+      );
     }
     setCorruption(nextCorruption);
 
-    setRngTick(t => t + 1);
+    setRngTick((t) => t + 1);
     setGrid(newGrid);
 
     // ── Multi-wave: spawn the next wave when the current wave fully clears ──
     // Avoid double-spawning when multiple kills land on the same chain.
     let postWave = afterEnemies;
-    const allDead = postWave.enemies.every(e => e.hp <= 0);
+    const allDead = postWave.enemies.every((e) => e.hp <= 0);
     if (allDead && waveDefs && wavesSpawnedRef.current < waveDefs.length) {
       const nextWave = waveDefs[wavesSpawnedRef.current];
       // Hydrate stored wave enemies (same archetype-id resolver as wave 1).
-      const resolveAid = (e: any): string | undefined => {
+      const resolveAid = (e: StoredEnemy): string | undefined => {
         if (e.archetypeId) return e.archetypeId;
-        const raw = String(e.name ?? '').replace(/^(Elite |Boss |Mini-Boss |Echo of )/, '').trim().toLowerCase();
+        const raw = String(e.name ?? "")
+          .replace(/^(Elite |Boss |Mini-Boss |Echo of )/, "")
+          .trim()
+          .toLowerCase();
         if (!raw) return undefined;
-        const hit = ENEMY_ROSTER.find(a => a.name.toLowerCase() === raw);
+        const hit = ENEMY_ROSTER.find((a) => a.name.toLowerCase() === raw);
         return hit?.id;
       };
-      let fresh: Enemy[] = (nextWave.enemies ?? []).map((e: any, i: number) => ({
-        id: e.id ?? `w${wavesSpawnedRef.current + 1}-${i}`,
-        name: e.name, emoji: e.emoji, hp: e.hp, maxHp: e.maxHp ?? e.hp, damage: e.damage,
-        archetypeId: resolveAid(e), family: e.family, role: e.role,
-        ability: e.ability, abilityCooldown: e.abilityCooldown, abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
-        telegraphLabel: e.telegraphLabel, tier: e.tier,
-      }));
+      let fresh: Enemy[] = (nextWave.enemies ?? []).map(
+        (e: StoredEnemy, i: number) => ({
+          id: e.id ?? `w${wavesSpawnedRef.current + 1}-${i}`,
+          name: e.name,
+          emoji: e.emoji,
+          hp: e.hp,
+          maxHp: e.maxHp ?? e.hp,
+          damage: e.damage,
+          archetypeId: resolveAid(e),
+          family: e.family,
+          role: e.role,
+          ability: e.ability,
+          abilityCooldown: e.abilityCooldown,
+          abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
+          telegraphLabel: e.telegraphLabel,
+          tier: e.tier,
+        }),
+      );
       // Telegraphed Attacks (L51+): wave-2 enemies must also carry intents
       // so their ⚡ badge appears and heavy strikes can fire on schedule.
       if (telegraphActive) {
-        fresh = applyInitialIntents(fresh, level.generation_seed + wavesSpawnedRef.current + 1, level.level_number);
+        fresh = applyInitialIntents(
+          fresh,
+          level.generation_seed + wavesSpawnedRef.current + 1,
+          level.level_number,
+        );
       }
       postWave = spawnWave(postWave, fresh, nextWave.reinforcement_turns ?? 2);
       wavesSpawnedRef.current += 1;
-      const isBossWave = fresh.some(e => e.tier === 'boss');
-      toast.success(isBossWave ? '👑 The Boss arrives!' : '⚔️ Wave 2 — Reinforcements!', { duration: 2000 });
+      const isBossWave = fresh.some((e) => e.tier === "boss");
+      toast.success(
+        isBossWave ? "👑 The Boss arrives!" : "⚔️ Wave 2 — Reinforcements!",
+        { duration: 2000 },
+      );
       pushLog({
-        kind: 'info',
+        kind: "info",
         text: isBossWave
           ? `The ground trembles — the Boss enters! +${nextWave.reinforcement_turns ?? 2} turns granted.`
           : `Reinforcements arrive! +${nextWave.reinforcement_turns ?? 2} turns granted.`,
@@ -1689,7 +2314,11 @@ export default function RuneDelvePlayPage() {
       const drain = dailyHpDrainPerTurn(dailyMods);
       if (drain > 0) {
         afterEnemies.hp = Math.max(0, afterEnemies.hp - drain);
-        turnLogs.push({ kind: 'corruption', text: '🔥 Inferno burns', amount: drain });
+        turnLogs.push({
+          kind: "corruption",
+          text: "🔥 Inferno burns",
+          amount: drain,
+        });
       }
     }
     // ── R5: Boss phase transitions ──────────────────────────────────────
@@ -1699,13 +2328,16 @@ export default function RuneDelvePlayPage() {
     // enemy turn — giving the player one "warning" turn between
     // hearing "Phase 2 — Awakened" and feeling the bigger hits.
     {
-      const transitions = detectPhaseTransitions(postWave.enemies, bossPhasesRef.current);
+      const transitions = detectPhaseTransitions(
+        postWave.enemies,
+        bossPhasesRef.current,
+      );
       for (const t of transitions) {
         bossPhasesRef.current.set(t.enemyId, t.to);
-        const e = postWave.enemies.find(e => e.id === t.enemyId);
+        const e = postWave.enemies.find((e) => e.id === t.enemyId);
         if (e) applyPhaseDamageBump(e, t);
         turnLogs.push({
-          kind: 'info',
+          kind: "info",
           text: `👑 ${t.enemyName} · ${t.def.name} — ${t.def.flavor}`,
         });
       }
@@ -1715,14 +2347,23 @@ export default function RuneDelvePlayPage() {
       // two overlapping cinematics. Phase 2 still logs.
       if (transitions.length > 0) {
         const last = transitions[transitions.length - 1];
-        setPhaseFlashMeta({ phase: last.to as 2 | 3, bossName: last.enemyName, flavor: last.def.flavor });
-        setPhaseFlashKey(k => k + 1);
+        setPhaseFlashMeta({
+          phase: last.to as 2 | 3,
+          bossName: last.enemyName,
+          flavor: last.def.flavor,
+        });
+        setPhaseFlashKey((k) => k + 1);
       }
     }
     setCombat(postWave);
     pushLogs(turnLogs);
 
-    const status = evaluateObjective(postWave, activeTurnBudget, objType, level.objective_target);
+    const status = evaluateObjective(
+      postWave,
+      activeTurnBudget,
+      objType,
+      level.objective_target,
+    );
     if (status.over) void finalize(postWave, status.cleared);
   };
 
@@ -1735,90 +2376,138 @@ export default function RuneDelvePlayPage() {
     const effectiveCost = isFreeCast ? 0 : abilityManaCost;
     // Visual ability FX — cue whenever the cast will actually resolve.
     if (combat.mana >= effectiveCost) {
-      const firstAlive = combat.enemies.find(e => e.hp > 0);
+      const firstAlive = combat.enemies.find((e) => e.hp > 0);
       const target = firstAlive ? findEnemyRect(firstAlive.id) : undefined;
-      fxQ.trigger({ kind: 'ability', cls: hero.class, target });
-      rdSfx(`ability.cast.${hero.class}` as any);
-      if (hero.class === 'warrior') triggerCamShake(8);
+      fxQ.trigger({ kind: "ability", cls: hero.class, target });
+      rdSfx(`ability.cast.${hero.class}`);
+      if (hero.class === "warrior") triggerCamShake(8);
     }
-    const { next, ok } = activateAbility(combat, hero.class, bossRule, activeMasteries, level.level_number, effectiveCost);
+    const { next, ok } = activateAbility(
+      combat,
+      hero.class,
+      bossRule,
+      activeMasteries,
+      level.level_number,
+      effectiveCost,
+    );
     if (!ok) {
-      toast.info('Ability not ready — fill mana orbs first.');
+      toast.info("Ability not ready — fill mana orbs first.");
       return;
     }
-    const turnLogs: Array<Omit<CombatLogEntry, 'id'>> = [];
+    const turnLogs: Array<Omit<CombatLogEntry, "id">> = [];
     const ABILITY_LABEL: Record<string, string> = {
-      warrior: 'Cleave swept the battlefield',
-      mage: 'Arcane bolt crashed home',
-      rogue: 'Shadowstep — next strike doubled',
-      cleric: 'Sanctuary mended you',
+      warrior: "Cleave swept the battlefield",
+      mage: "Arcane bolt crashed home",
+      rogue: "Shadowstep — next strike doubled",
+      cleric: "Sanctuary mended you",
     };
     const dealt = next.totalDamage - combat.totalDamage;
     const killed = next.enemiesDefeated - combat.enemiesDefeated;
     const healed = Math.max(0, next.hp - combat.hp);
     // Track which archetypes died from this ability for the Bestiary.
     if (killed > 0) {
-      const newlyDead = next.enemies
-        .filter(e => e.hp <= 0 && combat.enemies.find(o => o.id === e.id && o.hp > 0));
+      const newlyDead = next.enemies.filter(
+        (e) =>
+          e.hp <= 0 && combat.enemies.find((o) => o.id === e.id && o.hp > 0),
+      );
       newlyDead.forEach(recordKill);
     }
     turnLogs.push({
-      kind: 'ability',
-      text: ABILITY_LABEL[hero.class] ?? 'Ability unleashed',
+      kind: "ability",
+      text: ABILITY_LABEL[hero.class] ?? "Ability unleashed",
       amount: dealt > 0 ? dealt : healed > 0 ? healed : undefined,
     });
-    if (killed > 0) turnLogs.push({ kind: 'kill', text: killed > 1 ? `${killed} foes vanquished!` : 'A foe was vanquished!' });
-    turnLogs.push({ kind: 'info', text: 'Free action — your turn continues.' });
-    toast.success('✨ Ability — free action!', { duration: 1200 });
+    if (killed > 0)
+      turnLogs.push({
+        kind: "kill",
+        text:
+          killed > 1 ? `${killed} foes vanquished!` : "A foe was vanquished!",
+      });
+    turnLogs.push({ kind: "info", text: "Free action — your turn continues." });
+    toast.success("✨ Ability — free action!", { duration: 1200 });
 
     // First Light: the cast already spent 0 mana (effectiveCost 0) — just flag it.
     let finalNext: CombatState = next;
     if (isFreeCast) {
-      turnLogs.push({ kind: 'info', text: '🌅 First Light — free cast (0 mana)' });
-      toast.success('🌅 First Light — free!', { duration: 1100 });
+      turnLogs.push({
+        kind: "info",
+        text: "🌅 First Light — free cast (0 mana)",
+      });
+      toast.success("🌅 First Light — free!", { duration: 1100 });
     }
     // ── Mastery: Mage T5 Overflow — every 4th mana spent refunds 1.
     // Only counts mana that was actually paid (not free casts).
     if (!isFreeCast) {
       const newSpent = totalManaSpent + abilityManaCost;
       setTotalManaSpent(newSpent);
-      if (shouldMasteryRefundMana(activeMasteries, newSpent) && finalNext.mana < MAX_MANA) {
-        finalNext = { ...finalNext, mana: Math.min(MAX_MANA, finalNext.mana + 1) };
-        turnLogs.push({ kind: 'mana', text: '🌀 Overflow refunded mana', amount: 1 });
+      if (
+        shouldMasteryRefundMana(activeMasteries, newSpent, abilityManaCost) &&
+        finalNext.mana < MAX_MANA
+      ) {
+        finalNext = {
+          ...finalNext,
+          mana: Math.min(MAX_MANA, finalNext.mana + 1),
+        };
+        turnLogs.push({
+          kind: "mana",
+          text: "🌀 Overflow refunded mana",
+          amount: 1,
+        });
       }
     }
-    setAbilityUsedCount(c => c + 1);
+    setAbilityUsedCount((c) => c + 1);
 
     // Abilities are now FREE actions: no enemy retaliation, no turn consumed,
     // no corruption spread. Player keeps their turn to chain again.
     let postWave = finalNext;
-    const allDeadAbil = postWave.enemies.every(e => e.hp <= 0);
+    const allDeadAbil = postWave.enemies.every((e) => e.hp <= 0);
     if (allDeadAbil && waveDefs && wavesSpawnedRef.current < waveDefs.length) {
       const nextWave = waveDefs[wavesSpawnedRef.current];
-      const resolveAid = (e: any): string | undefined => {
+      const resolveAid = (e: StoredEnemy): string | undefined => {
         if (e.archetypeId) return e.archetypeId;
-        const raw = String(e.name ?? '').replace(/^(Elite |Boss |Mini-Boss |Echo of )/, '').trim().toLowerCase();
+        const raw = String(e.name ?? "")
+          .replace(/^(Elite |Boss |Mini-Boss |Echo of )/, "")
+          .trim()
+          .toLowerCase();
         if (!raw) return undefined;
-        const hit = ENEMY_ROSTER.find(a => a.name.toLowerCase() === raw);
+        const hit = ENEMY_ROSTER.find((a) => a.name.toLowerCase() === raw);
         return hit?.id;
       };
-      let fresh: Enemy[] = (nextWave.enemies ?? []).map((e: any, i: number) => ({
-        id: e.id ?? `w${wavesSpawnedRef.current + 1}-${i}`,
-        name: e.name, emoji: e.emoji, hp: e.hp, maxHp: e.maxHp ?? e.hp, damage: e.damage,
-        archetypeId: resolveAid(e), family: e.family, role: e.role,
-        ability: e.ability, abilityCooldown: e.abilityCooldown, abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
-        telegraphLabel: e.telegraphLabel, tier: e.tier,
-      }));
+      let fresh: Enemy[] = (nextWave.enemies ?? []).map(
+        (e: StoredEnemy, i: number) => ({
+          id: e.id ?? `w${wavesSpawnedRef.current + 1}-${i}`,
+          name: e.name,
+          emoji: e.emoji,
+          hp: e.hp,
+          maxHp: e.maxHp ?? e.hp,
+          damage: e.damage,
+          archetypeId: resolveAid(e),
+          family: e.family,
+          role: e.role,
+          ability: e.ability,
+          abilityCooldown: e.abilityCooldown,
+          abilityCooldownMax: e.abilityCooldownMax ?? e.abilityCooldown,
+          telegraphLabel: e.telegraphLabel,
+          tier: e.tier,
+        }),
+      );
       // Telegraphed Attacks (L51+): wave-2 enemies must also carry intents.
       if (telegraphActive) {
-        fresh = applyInitialIntents(fresh, level.generation_seed + wavesSpawnedRef.current + 1, level.level_number);
+        fresh = applyInitialIntents(
+          fresh,
+          level.generation_seed + wavesSpawnedRef.current + 1,
+          level.level_number,
+        );
       }
       postWave = spawnWave(postWave, fresh, nextWave.reinforcement_turns ?? 2);
       wavesSpawnedRef.current += 1;
-      const isBossWave = fresh.some(e => e.tier === 'boss');
-      toast.success(isBossWave ? '👑 The Boss arrives!' : '⚔️ Wave 2 — Reinforcements!', { duration: 2000 });
+      const isBossWave = fresh.some((e) => e.tier === "boss");
+      toast.success(
+        isBossWave ? "👑 The Boss arrives!" : "⚔️ Wave 2 — Reinforcements!",
+        { duration: 2000 },
+      );
       pushLog({
-        kind: 'info',
+        kind: "info",
         text: isBossWave
           ? `The ground trembles — the Boss enters! +${nextWave.reinforcement_turns ?? 2} turns granted.`
           : `Reinforcements arrive! +${nextWave.reinforcement_turns ?? 2} turns granted.`,
@@ -1828,13 +2517,16 @@ export default function RuneDelvePlayPage() {
     // for both the standard "turn ended" branch and the wave-spawn
     // branch so phase transitions never get skipped.
     {
-      const transitions = detectPhaseTransitions(postWave.enemies, bossPhasesRef.current);
+      const transitions = detectPhaseTransitions(
+        postWave.enemies,
+        bossPhasesRef.current,
+      );
       for (const t of transitions) {
         bossPhasesRef.current.set(t.enemyId, t.to);
-        const e = postWave.enemies.find(e => e.id === t.enemyId);
+        const e = postWave.enemies.find((e) => e.id === t.enemyId);
         if (e) applyPhaseDamageBump(e, t);
         turnLogs.push({
-          kind: 'info',
+          kind: "info",
           text: `👑 ${t.enemyName} · ${t.def.name} — ${t.def.flavor}`,
         });
       }
@@ -1844,62 +2536,45 @@ export default function RuneDelvePlayPage() {
       // two overlapping cinematics. Phase 2 still logs.
       if (transitions.length > 0) {
         const last = transitions[transitions.length - 1];
-        setPhaseFlashMeta({ phase: last.to as 2 | 3, bossName: last.enemyName, flavor: last.def.flavor });
-        setPhaseFlashKey(k => k + 1);
+        setPhaseFlashMeta({
+          phase: last.to as 2 | 3,
+          bossName: last.enemyName,
+          flavor: last.def.flavor,
+        });
+        setPhaseFlashKey((k) => k + 1);
       }
     }
     setCombat(postWave);
     pushLogs(turnLogs);
-    const status = evaluateObjective(postWave, activeTurnBudget, objType, level.objective_target);
+    const status = evaluateObjective(
+      postWave,
+      activeTurnBudget,
+      objType,
+      level.objective_target,
+    );
     if (status.over) void finalize(postWave, status.cleared);
   };
 
+  const retryFinalization = () => {
+    const pending = failedFinalRef.current;
+    if (pending) void finalize(pending.final, pending.cleared);
+  };
+
   async function finalize(final: CombatState, cleared: boolean) {
-    if (submitting || !level || !hero) return;
+    if (finalizeBusyRef.current || !level || !hero) return;
+    finalizeBusyRef.current = true;
+    failedFinalRef.current = { final, cleared };
+    setSaveError(null);
     setSubmitting(true);
-    // R4: if this was a Daily Chamber run (entered with ?dailyMod
-    // query param), mark today's daily as played so the home card
-    // gates against re-entry until UTC midnight. We mark on finalize
-    // (clear OR fail) so abandoning mid-run doesn't burn the slot.
-    const lockedModId = searchParams.get('dailyMod');
-    if (lockedModId && user?.id) {
-      const dateStr = todayUtcDateString();
-      markDailyChamberPlayed(user.id, dateStr);
-    }
-    // R7: roll for a random relic drop on clear. Independent of the
-    // shard reward — gives every chamber clear a "what will I pull?"
-    // moment. The drop is persisted via the existing relic-unlock
-    // mutation so it appears in the user's collection immediately.
-    if (cleared && user?.id) {
-      const ownedSet = new Set((ownedRelics ?? []).map(r => r.relic_id));
-      const drop = rollRelicDrop({
-        cleared: true,
-        levelNumber: level.level_number,
-        ownedRelicIds: ownedSet,
-        // R2: Elite Path adds +8% drop chance on top of the base rate.
-        bonusChance: pathEffect.bonusDropChance,
-      });
-      if (drop) {
-        setDroppedRelic(drop.relic);
-        try {
-          await unlockRelic.mutateAsync({
-            relic_id: drop.relic.id,
-            level: level.level_number,
-          });
-        } catch {
-          // If the insert fails (e.g. a stale dup race), the local
-          // UI still shows the drop card — server state will catch
-          // up on the next collection refetch. Swallowing keeps the
-          // finalize flow non-blocking.
-        }
-      }
-    }
     const turnsUsed = Math.max(0, activeTurnBudget - final.turnsRemaining);
     const relicsForFinal = activeRelicsSnapshot ?? activeRelics;
     // Optional Layered-Goal bonus (Band 4): met = extra score + shards. It is a
     // pure reward now, never a clear requirement (see evaluateObjective).
-    const secondaryMetThisRun = !!(cleared && secondaryObjective
-      && secondaryMet(secondaryObjective, final, activeTurnBudget));
+    const secondaryMetThisRun = !!(
+      cleared &&
+      secondaryObjective &&
+      secondaryMet(secondaryObjective, final, activeTurnBudget)
+    );
     const rawBreakdown = calculateScore({
       totalDamage: final.totalDamage,
       enemiesDefeated: final.enemiesDefeated,
@@ -1907,13 +2582,19 @@ export default function RuneDelvePlayPage() {
       turnsRemaining: final.turnsRemaining,
       longestChain: final.longestChain,
       cleared,
-      rogueBonus: final.rogueBonusTriggered && hero.class === 'rogue',
+      rogueBonus: final.rogueBonusTriggered && hero.class === "rogue",
       secondaryBonus: secondaryMetThisRun,
     });
     // Momentum: scale final score when longest chain >= 4.
-    const momentumMult = momentumScoreBonusMult(relicsForFinal, final.longestChain);
+    const momentumMult = momentumScoreBonusMult(
+      relicsForFinal,
+      final.longestChain,
+    );
     // Mastery: Rogue T1 Gilded Eye — +2 score per gold rune cleared.
-    const goldEyeBonus = getMasteryGoldScoreBonus(activeMasteries, goldRunesCleared);
+    const goldEyeBonus = getMasteryGoldScoreBonus(
+      activeMasteries,
+      goldRunesCleared,
+    );
     // Chamber-layout treasure bonus accrued during the run (R1).
     // Added flat (after the momentum multiplier) so it reads as its
     // own line — treasure is a board property, not a chain bonus.
@@ -1921,23 +2602,36 @@ export default function RuneDelvePlayPage() {
     // R3 — Run modifier score multiplier. Applied LAST so it composes
     // over everything (base + momentum + goldEye + treasure).
     const modScoreMult = resolveEffect(activeModifier).scoreMult;
-    const preMod = momentumMult > 1
-      ? Math.round(rawBreakdown.total * momentumMult) + goldEyeBonus + treasureScore
-      : rawBreakdown.total + goldEyeBonus + treasureScore;
-    const breakdown = { ...rawBreakdown, total: Math.round(preMod * modScoreMult) };
+    const preMod =
+      momentumMult > 1
+        ? Math.round(rawBreakdown.total * momentumMult) +
+          goldEyeBonus +
+          treasureScore
+        : rawBreakdown.total + goldEyeBonus + treasureScore;
+    const breakdown = {
+      ...rawBreakdown,
+      total: Math.round(preMod * modScoreMult),
+    };
     const xp = xpForRun(breakdown.total, cleared);
-    const reason: 'cleared' | 'defeated' | 'timeout' = cleared ? 'cleared' : final.hp <= 0 ? 'defeated' : 'timeout';
+    const reason: "cleared" | "defeated" | "timeout" = cleared
+      ? "cleared"
+      : final.hp <= 0
+        ? "defeated"
+        : "timeout";
     // OPTIMISTIC isNewBest — used only for the immediate end-state card. The
     // canonical, server-truth value is taken from the mutation result below
     // and used for hero XP/lifetime increments.
-    const isNewBest = !existingRun || breakdown.total > (existingRun.score ?? 0);
+    const isNewBest =
+      !existingRun || breakdown.total > (existingRun.score ?? 0);
 
     // ── Rune Shards reward ────────────────────────────────────────────────
-    const compassEquipped = has(relicsForFinal, 'wanderers_compass');
+    const compassEquipped = has(relicsForFinal, "wanderers_compass");
     const compassMultiplier = compassShardBonus(relicsForFinal);
-    const isFirstClear = cleared && (!existingRun || !existingRun.dungeon_cleared);
+    const isFirstClear =
+      cleared && (!existingRun || !existingRun.dungeon_cleared);
     const bossClear = cleared && level.level_number % 25 === 0;
-    const totalEnemies = (level.enemy_config?.length ?? final.enemies.length) || 1;
+    const totalEnemies =
+      (level.enemy_config?.length ?? final.enemies.length) || 1;
     let shardsAwarded = 0;
     // Daily Greed multiplies shard reward; bonus shards from Rogue T5 mastery
     // get added on top after the base computation.
@@ -1974,9 +2668,12 @@ export default function RuneDelvePlayPage() {
         });
         shardsAwarded = breakdownShards.total;
       }
-    } catch { shardsAwarded = 0; }
+    } catch {
+      shardsAwarded = 0;
+    }
     // Apply Daily Greed multiplier + Rogue T5 bonus shards on top.
-    if (dailyShardMult !== 1) shardsAwarded = Math.round(shardsAwarded * dailyShardMult);
+    if (dailyShardMult !== 1)
+      shardsAwarded = Math.round(shardsAwarded * dailyShardMult);
     // R2: path-variant shard bonus (Treasure +25%, Elite +50%).
     // Applied after the daily multiplier but before the additive
     // bonuses (mastery/treasure cells) so the multiplicative effects
@@ -1991,31 +2688,26 @@ export default function RuneDelvePlayPage() {
     const secondaryBonusShards = secondaryMetThisRun ? 10 : 0;
     shardsAwarded += secondaryBonusShards;
     if (secondaryMetThisRun) {
-      pushLog({ kind: 'info', text: `🎯 Bonus objective met · +250 score · +${secondaryBonusShards} shards` });
+      pushLog({
+        kind: "info",
+        text: `🎯 Bonus objective met · +250 score · +${secondaryBonusShards} shards`,
+      });
     }
-    setEndState({ cleared, reason, score: breakdown.total, isNewBest, shards: shardsAwarded });
-    rdSfx(cleared ? 'victory' : 'defeat');
+    setEndState({
+      cleared,
+      reason,
+      score: breakdown.total,
+      isNewBest,
+      shards: shardsAwarded,
+    });
+    rdSfx(cleared ? "victory" : "defeat");
     try {
-      // Server-truth flags. Default to the optimistic value so legacy
-      // (transient-level) submissions still award XP correctly.
-      let serverWasNewBest = isNewBest;
-      let improvedChain = false;
-      let improvedTurns = false;
-      let improvedHp = false;
-      let firstClear = false;
-
-      // Don't submit transient levels (admin hasn't seeded them yet).
-      if (!level.id.startsWith('transient-')) {
-        // Signal to the results page that a run was just submitted, so
-        // useMyLevelRun knows to briefly retry instead of showing the
-        // "No run yet" empty state if Postgrest hasn't caught up.
-        try {
-          sessionStorage.setItem(
-            `rd-just-submitted-${hero.class}-${level.level_number}`,
-            String(Date.now()),
-          );
-        } catch { /* sessionStorage may be unavailable */ }
-        const result = await submit.mutateAsync({
+      if (level.id.startsWith("transient-"))
+        throw new Error("Chamber is not ready. Please reload and retry.");
+      // Freeze the entire submission on first attempt. A timeout followed by
+      // a cache refresh must retry the same receipt and reward telemetry.
+      if (!pendingSaveRef.current)
+        pendingSaveRef.current = {
           level_id: level.id,
           level_number: level.level_number,
           score: breakdown.total,
@@ -2028,169 +2720,181 @@ export default function RuneDelvePlayPage() {
           xp_earned: xp,
           ability_used: final.abilityUsed,
           hero_class: hero.class,
-        });
-        serverWasNewBest = result.wasNewBest;
-        improvedChain = result.improvedChain;
-        improvedTurns = result.improvedTurns;
-        improvedHp = result.improvedHp;
-        firstClear = result.firstClear;
-        // Hand the improvement flags to the Results page so it can render
-        // the "secondary improvement" chip even though the saved row has
-        // already been merged (and thus doesn't reveal what changed).
-        try {
+          reward_context: {
+            path: pathVariant?.id ?? "standard",
+            treasure_shards: treasureBonusShards,
+            mastery_shards: masteryBonusShards,
+            secondary_met: secondaryMetThisRun,
+            total_enemies: totalEnemies,
+            turn_limit: level.turn_limit,
+            boss_rule: !!bossRule,
+          },
+        };
+      const result = await submit.mutateAsync(pendingSaveRef.current);
+      setSubmitting(false);
+      const serverWasNewBest = result.wasNewBest;
+      const { improvedChain, improvedTurns, improvedHp, firstClear } = result;
+      shardsAwarded = result.shardsAwarded;
+      if (runKey) clearSnapshot(runKey);
+      setEndState((prev) =>
+        prev
+          ? {
+              ...prev,
+              isNewBest: serverWasNewBest,
+              shards: result.shardsAwarded,
+              improvedChain,
+              improvedTurns,
+              improvedHp,
+              firstClear,
+            }
+          : prev,
+      );
+      try {
+        sessionStorage.setItem(
+          `rd-just-submitted-${hero.class}-${level.level_number}`,
+          String(Date.now()),
+        );
+        sessionStorage.setItem(
+          `rd-improvements-${hero.class}-${level.level_number}`,
+          JSON.stringify({
+            ts: Date.now(),
+            wasNewBest: serverWasNewBest,
+            improvedChain,
+            improvedTurns,
+            improvedHp,
+            firstClear,
+            turnsUsed,
+            longestChain: final.longestChain,
+            hpRemaining: final.hp,
+          }),
+        );
+        if (user)
           sessionStorage.setItem(
-            `rd-improvements-${hero.class}-${level.level_number}`,
+            `rd-result-v2:${user.id}:${hero.class}:${level.level_number}`,
             JSON.stringify({
+              version: 2,
+              userId: user.id,
+              heroClass: hero.class,
+              levelNumber: level.level_number,
               ts: Date.now(),
+              score: breakdown.total,
+              totalDamage: final.totalDamage,
+              enemiesDefeated: final.enemiesDefeated,
+              hpRemaining: final.hp,
+              turnsUsed,
+              longestChain: final.longestChain,
+              xpEarned: result.xpAwarded,
+              dungeonCleared: cleared,
+              shardsAwarded: result.shardsAwarded,
               wasNewBest: serverWasNewBest,
               improvedChain,
               improvedTurns,
               improvedHp,
               firstClear,
-              turnsUsed,
-              longestChain: final.longestChain,
-              hpRemaining: final.hp,
             }),
           );
-        } catch { /* sessionStorage may be unavailable */ }
-        // Reflect server truth on the end-state card so the toast + chip
-        // matches what's actually persisted.
-        setEndState(prev => prev ? {
-          ...prev,
-          isNewBest: serverWasNewBest,
-          improvedChain,
-          improvedTurns,
-          improvedHp,
-          firstClear,
-        } : prev);
-        if (cleared) {
-          await advance.mutateAsync({ clearedLevel: level.level_number, heroClass: hero.class });
-        }
+      } catch {
+        /* Storage is optional; server run and rewards are committed. */
       }
-      // Hero + class progression.
-      //   • Lifetime totals (runs, score) and the daily streak advance on
-      //     EVERY completed run — so `lifetime_runs` counts all runs (not just
-      //     new bests) and `lifetime_score` is a true running total instead of
-      //     re-adding the whole best each improved replay.
-      //   • XP / level / title / mastery only advance on a SERVER-confirmed new
-      //     best — keeps grinding fair and prevents stale-cache double-counts.
-      {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const yesterday = format(new Date(Date.now() - 86_400_000), 'yyyy-MM-dd');
-        const continued = hero.last_run_date === yesterday;
-        const newStreak = continued ? hero.current_streak + 1 : hero.last_run_date === today ? hero.current_streak : 1;
-
-        // ── Per-class progression ──────────────────────────────────────
-        // XP, level, and class title belong to the ACTIVE CLASS track only.
-        // Other classes' saved progress is untouched.
-        const activeTrack = classTracks?.find(t => t.class === hero.class);
-        const prevClassXp = activeTrack?.xp ?? hero.xp;
-        const prevClassLevel = activeTrack?.level ?? hero.level;
-        // XP is earned only on a new best; otherwise progression holds steady
-        // while lifetime totals still accrue below.
-        const gainedXp = serverWasNewBest ? xp : 0;
-        const newClassXp = prevClassXp + gainedXp;
-        const newClassLevel = levelFromXp(newClassXp).level;
-        const equippedClassTitle = titleForLevel(newClassLevel, hero.class) ?? activeTrack?.cosmetic_title ?? null;
-        const titleUnlock = serverWasNewBest ? newTitleUnlocked(hero.class, prevClassLevel, newClassLevel) : null;
-
-        await updateClass.mutateAsync({
-          cls: hero.class,
-          patch: {
-            xp: newClassXp,
-            level: newClassLevel,
-            cosmetic_title: equippedClassTitle,
-            lifetime_runs: (activeTrack?.lifetime_runs ?? 0) + 1,
-            lifetime_score: (activeTrack?.lifetime_score ?? 0) + breakdown.total,
-          },
+      const titleUnlock = newTitleUnlocked(
+        hero.class,
+        result.previousClassLevel,
+        result.classLevel,
+      );
+      if (titleUnlock)
+        toast.success(`New title · ${titleUnlock.next}`, { duration: 5000 });
+      const newMastery = masteryUnlockedAt(
+        hero.class,
+        result.previousClassLevel,
+        result.classLevel,
+      );
+      if (newMastery)
+        toast.success(`Mastery unlocked · ${newMastery.name}`, {
+          description: newMastery.summary,
+          duration: 5500,
         });
-
-        // Hero record holds persistent identity + global lifetime totals only.
-        // Mirror the active class's level/xp/title so legacy leaderboard
-        // queries that read from `rune_delve_heroes` still show the right
-        // active-class snapshot.
-        await updateHero.mutateAsync({
-          xp: newClassXp,
-          level: newClassLevel,
-          cosmetic_title: equippedClassTitle,
-          current_streak: newStreak,
-          best_streak: Math.max(hero.best_streak, newStreak),
-          lifetime_runs: hero.lifetime_runs + 1,
-          lifetime_score: hero.lifetime_score + breakdown.total,
-          last_run_date: today,
-        } as any);
-
-        if (titleUnlock) {
-          toast.success(`✨ New Title Unlocked — ${titleUnlock.next}`, {
-            description: titleUnlock.previous
-              ? `From ${titleUnlock.previous} · ${hero.class} Lv ${newClassLevel}`
-              : `Equipped at ${hero.class} Lv ${newClassLevel}`,
-            duration: 6000,
-          });
-        }
-        // ── Class Mastery: celebratory toast when a new tier just unlocked.
-        const newMastery = serverWasNewBest ? masteryUnlockedAt(hero.class, prevClassLevel, newClassLevel) : null;
-        if (newMastery) {
-          toast.success(`🌟 Mastery Unlocked — ${newMastery.name}`, {
-            description: `${newMastery.summary} · Tier ${newMastery.tier} · ${hero.class} Lv ${newMastery.unlockLevel}`,
-            duration: 7000,
-          });
+      if (result.slotsUnlocked > (wallet?.slots_unlocked ?? 2))
+        toast.success("3rd relic slot unlocked");
+      // R4: if this was a Daily Chamber run (entered with ?dailyMod
+      // query param), mark today's daily as played so the home card
+      // gates against re-entry until UTC midnight. We mark on finalize
+      // (clear OR fail) so abandoning mid-run doesn't burn the slot.
+      const lockedModId = searchParams.get("dailyMod");
+      if (lockedModId && user?.id) {
+        const dateStr = todayUtcDateString();
+        markDailyChamberPlayed(user.id, dateStr);
+      }
+      // R7: roll for a random relic drop on clear. Independent of the
+      // shard reward — gives every chamber clear a "what will I pull?"
+      // moment. The drop is persisted via the existing relic-unlock
+      // mutation so it appears in the user's collection immediately.
+      if (cleared && user?.id) {
+        const ownedSet = new Set((ownedRelics ?? []).map((r) => r.relic_id));
+        const drop = rollRelicDrop({
+          cleared: true,
+          levelNumber: level.level_number,
+          ownedRelicIds: ownedSet,
+          // R2: Elite Path adds +8% drop chance on top of the base rate.
+          bonusChance: pathEffect.bonusDropChance,
+        });
+        if (drop) {
+          try {
+            await unlockRelic.mutateAsync({
+              relic_id: drop.relic.id,
+              level: level.level_number,
+            });
+            setDroppedRelic(drop.relic);
+          } catch {
+            // Core run/rewards are already committed. Only show loot whose
+            // ownership was confirmed instead of promising an unsaved drop.
+          }
         }
       }
-
-      // ── Award Rune Shards & track failure curve ─────────────────────────
-      try {
-        if (shardsAwarded > 0) await earnShards.mutateAsync(shardsAwarded);
-        if (cleared) {
-          await resetFailure.mutateAsync({ levelNumber: level.level_number, heroClass: hero.class });
-        } else {
-          await bumpFailure.mutateAsync({ levelNumber: level.level_number, heroClass: hero.class });
-        }
-        // Auto-unlock 3rd slot when ANY class hits the threshold.
-        const tracks = classTracks ?? [];
-        const maxClassLevel = Math.max(
-          hero.level,
-          ...tracks.map(t => t.level),
-        );
-        const desired = slotsForClassLevels(maxClassLevel);
-        if ((wallet?.slots_unlocked ?? 2) < desired) {
-          await unlockSlot.mutateAsync(desired);
-          toast.success('🔓 3rd Relic Slot Unlocked!', { duration: 4500 });
-        }
-      } catch { /* shards are best-effort */ }
 
       // ── Bestiary: record defeats from this run ─────────────────────────
       try {
         const defeats = Array.from(defeatedArchetypesRef.current.entries()).map(
-          ([archetypeId, count]) => ({ archetypeId, count, levelNumber: level.level_number }),
+          ([archetypeId, count]) => ({
+            archetypeId,
+            count,
+            levelNumber: level.level_number,
+          }),
         );
         if (defeats.length > 0) {
           const { newlyDiscovered } = await recordDefeats.mutateAsync(defeats);
           if (newlyDiscovered.length > 0) {
-            const allNames = newlyDiscovered.map(id => rosterById(id)?.name ?? 'Unknown');
+            const allNames = newlyDiscovered.map(
+              (id) => rosterById(id)?.name ?? "Unknown",
+            );
             // Battle Chronicle: one discovery line per newly-logged foe so the
             // post-run log mirrors what the toast announces.
-            pushLogs(allNames.map(name => ({
-              kind: 'info' as const,
-              text: `📖 Bestiary updated: ${name}`,
-            })));
+            pushLogs(
+              allNames.map((name) => ({
+                kind: "info" as const,
+                text: `📖 Bestiary updated: ${name}`,
+              })),
+            );
             const names = allNames.slice(0, 3);
             const more = newlyDiscovered.length - names.length;
             toast.success(
               newlyDiscovered.length === 1
                 ? `📖 Bestiary: ${names[0]} discovered!`
-                : `📖 Bestiary: ${names.join(', ')}${more > 0 ? ` +${more} more` : ''}`,
+                : `📖 Bestiary: ${names.join(", ")}${more > 0 ? ` +${more} more` : ""}`,
               { duration: 4000 },
             );
           }
         }
-      } catch { /* bestiary write is best-effort */ }
+      } catch {
+        /* bestiary write is best-effort */
+      }
 
       // ── Quests: report progress for this run (best-effort, never throws) ─
       try {
-        const enemyKills = Array.from(defeatedArchetypesRef.current.values()).reduce((a, b) => a + b, 0);
+        const enemyKills = Array.from(
+          defeatedArchetypesRef.current.values(),
+        ).reduce((a, b) => a + b, 0);
         const bossKills = Array.from(defeatedArchetypesRef.current.entries())
-          .filter(([id]) => rosterById(id)?.role === 'controller')
+          .filter(([id]) => rosterById(id)?.role === "controller")
           .reduce((sum, [, n]) => sum + n, 0);
         // Use the ACTUAL longest chain length this run (final.longestChain),
         // not the count of chains made — the quest tracks max chain LENGTH.
@@ -2198,72 +2902,123 @@ export default function RuneDelvePlayPage() {
         const heroClass = hero?.class;
         type QEvent = Parameters<typeof reportQuestProgress>[0];
         const events: QEvent[] = [
-          { type: 'enemies_defeated', amount: enemyKills, heroClass },
-          { type: 'longest_chain', amount: 0, heroClass, meta: { chainLength: longestChain } },
-          { type: 'total_score', amount: breakdown.total, heroClass },
+          { type: "enemies_defeated", amount: enemyKills, heroClass },
+          {
+            type: "longest_chain",
+            amount: 0,
+            heroClass,
+            meta: { chainLength: longestChain },
+          },
+          { type: "total_score", amount: breakdown.total, heroClass },
         ];
         if (cleared) {
-          events.push({ type: 'levels_cleared', amount: 1, heroClass });
-          events.push({ type: 'class_run_complete', amount: 1, heroClass });
-          events.push({ type: 'high_level_clears', amount: 1, heroClass, meta: { levelNumber: level.level_number } });
+          events.push({ type: "levels_cleared", amount: 1, heroClass });
+          events.push({ type: "class_run_complete", amount: 1, heroClass });
+          events.push({
+            type: "high_level_clears",
+            amount: 1,
+            heroClass,
+            meta: { levelNumber: level.level_number },
+          });
           // Genuinely damage-free run — the hero never lost HP at any point
           // (not merely healed back to full by the end).
           if (!tookDamageRef.current) {
-            events.push({ type: 'no_damage_clear', amount: 1, heroClass });
+            events.push({ type: "no_damage_clear", amount: 1, heroClass });
           }
         }
         if (bossKills > 0) {
-          events.push({ type: 'bosses_defeated', amount: bossKills, heroClass, meta: { isBoss: true } });
+          events.push({
+            type: "bosses_defeated",
+            amount: bossKills,
+            heroClass,
+            meta: { isBoss: true },
+          });
         }
         if (shardsAwarded > 0) {
-          events.push({ type: 'shards_earned', amount: shardsAwarded, heroClass });
+          events.push({
+            type: "shards_earned",
+            amount: shardsAwarded,
+            heroClass,
+          });
         }
         // Power Move: count special-ability uses per run (not gated by clear).
         if (abilityUsedCount > 0) {
-          events.push({ type: 'abilities_used', amount: abilityUsedCount, heroClass });
+          events.push({
+            type: "abilities_used",
+            amount: abilityUsedCount,
+            heroClass,
+          });
         }
         // Path of Mastery: only credit class XP when the server actually
         // awarded XP (new best clear), so quest progress mirrors progression.
-        if (serverWasNewBest && xp > 0) {
-          events.push({ type: 'class_xp_earned', amount: xp, heroClass });
+        if (result.xpAwarded > 0) {
+          events.push({
+            type: "class_xp_earned",
+            amount: result.xpAwarded,
+            heroClass,
+          });
         }
         for (const e of events) {
           await reportQuestProgress(e);
         }
-      } catch (err) { console.warn('[quests] progress report failed', err); }
+      } catch (err) {
+        console.warn("[quests] progress report failed", err);
+      }
 
       // Daily challenge submission no longer happens here — Endless Survival
       // handles its own submission flow on its own page.
-
-      setTimeout(() => navigate(`/rune-delve/results/${level.level_number}`), 2500);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Could not save run');
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : "Could not save run. Your result is ready to retry.";
+      toast.error(message);
+      setSaveError(message);
       setSubmitting(false);
-      setEndState(null);
+      finalizeBusyRef.current = false;
     }
   }
 
-  const status = evaluateObjective(combat, activeTurnBudget, objType, level.objective_target);
-  const objectiveProgress = getObjectiveProgress(combat, activeTurnBudget, objType, level.objective_target);
-  const primaryTargetId = filterTargetable(bossRule, combat.enemies)[0]?.id ?? null;
+  const status = evaluateObjective(
+    combat,
+    activeTurnBudget,
+    objType,
+    level.objective_target,
+  );
+  const objectiveProgress = getObjectiveProgress(
+    combat,
+    activeTurnBudget,
+    objType,
+    level.objective_target,
+  );
+  const primaryTargetId =
+    filterTargetable(bossRule, combat.enemies)[0]?.id ?? null;
   const turnDisplay = Math.min(
     activeTurnBudget,
-    Math.max(1, activeTurnBudget - combat.turnsRemaining + (status.over ? 0 : 1)),
+    Math.max(
+      1,
+      activeTurnBudget - combat.turnsRemaining + (status.over ? 0 : 1),
+    ),
   );
 
-  const equippedCount = [loadout?.slot_1, loadout?.slot_2, loadout?.slot_3].filter(Boolean).length;
+  const equippedCount = [
+    loadout?.slot_1,
+    loadout?.slot_2,
+    loadout?.slot_3,
+  ].filter(Boolean).length;
 
   // Live, build-aware chain estimates. Red is marked approximate because
   // enemy armor and target HP can reduce applied damage; resource previews
   // show the exact amount that can enter the hero's current pools.
   const previewRelics = activeRelicsSnapshot ?? activeRelics;
   const previewModsFor = (chainType: RuneType, length: number) => {
-    const previewTarget = filterTargetable(bossRule, combat.enemies)[0]
-      ?? combat.enemies.find(enemy => enemy.hp > 0);
+    const previewTarget =
+      filterTargetable(bossRule, combat.enemies)[0] ??
+      combat.enemies.find((enemy) => enemy.hp > 0);
     return computeChainMods(previewRelics, {
       chainType,
       length,
-      redChainCountSoFar: chainType === 'red' ? redChainCount + 1 : 0,
+      redChainCountSoFar: chainType === "red" ? redChainCount + 1 : 0,
       isFirstChainOfRun: chainCountTotal === 0,
       hpRatio: combat.hp / Math.max(1, combat.maxHp),
       enemyHpRatioBeforeHit: previewTarget
@@ -2274,32 +3029,38 @@ export default function RuneDelvePlayPage() {
   };
 
   const redPreview = (length: number) => {
-    const relicMods = previewModsFor('red', length);
+    const relicMods = previewModsFor("red", length);
     const runMods = resolveEffect(activeModifier);
-    let damage = redChainDamage(length, hero.class, level.level_number);
-    if (combat.shadowstepActive) damage = Math.round(damage * 2);
-    damage = Math.round(damage * runMods.redDamageMult);
-    damage = Math.round(damage * relicMods.bonusDamageMult);
-    if (relicMods.effectiveLengthBonus > 0) {
-      damage += Math.max(
-        0,
-        redChainDamage(length + relicMods.effectiveLengthBonus, hero.class, level.level_number)
-          - redChainDamage(length, hero.class, level.level_number),
-      );
-    }
-    const tierMult = length >= 8 ? 1.4 : length >= 7 ? 1.3 : length >= 6 ? 1.2 : 1;
-    damage = Math.round(damage * tierMult);
-    let masteryMult = getMasteryChainDamageMult(activeMasteries, 'red');
-    if (isLastStandActive(activeMasteries, combat.hp, combat.maxHp)) masteryMult *= 1.5;
+    const tierMult = chainTier(length).damageMultiplier;
+    let masteryMult = getMasteryChainDamageMult(activeMasteries, "red");
+    if (isLastStandActive(activeMasteries, combat.hp, combat.maxHp))
+      masteryMult *= 1.5;
     masteryMult *= getMasteryOpeningCritMult(activeMasteries, chainsThisFight);
-    damage = Math.round(damage * masteryMult);
-    if (relicMods.echoMult > 0) damage += Math.round(damage * relicMods.echoMult);
+    if (isDailyMode)
+      masteryMult *=
+        dailyDamageMultiplier(dailyMods, "red") *
+        dailyIroncladDamageMult(dailyMods, length);
+    let damage = redChainPower(
+      length,
+      hero.class,
+      level.level_number,
+      {
+        runMultiplier: runMods.redDamageMult,
+        relicMultiplier: relicMods.bonusDamageMult,
+        lengthBonus: relicMods.effectiveLengthBonus,
+        tierMultiplier: tierMult,
+        combatMultiplier: masteryMult,
+      },
+      combat.shadowstepActive,
+    );
+    if (relicMods.echoMult > 0)
+      damage += Math.round(damage * relicMods.echoMult);
     const critChance = getMasteryChainCritChance(activeMasteries, length);
-    return `≈${damage} dmg${critChance > 0 ? ` · ${Math.round(critChance * 100)}% crit` : ''}${tierMult > 1 ? ' ⚡' : ''}`;
+    return `≈${damage} dmg${critChance > 0 ? ` · ${Math.round(critChance * 100)}% crit` : ""}${tierMult > 1 ? " ⚡" : ""}`;
   };
 
   const bluePreview = (length: number) => {
-    const relicMods = previewModsFor('blue', length);
+    const relicMods = previewModsFor("blue", length);
     let mana = combat.mana;
     let gained = 0;
     const addMana = (amount: number) => {
@@ -2307,7 +3068,7 @@ export default function RuneDelvePlayPage() {
       mana = Math.min(MAX_MANA, mana + amount);
       gained += mana - before;
     };
-    addMana((hero.class === 'mage' ? 2 : 1) + (length >= 5 ? 1 : 0));
+    addMana((hero.class === "mage" ? 2 : 1) + (length >= 5 ? 1 : 0));
     addMana(relicMods.bonusManaFlat);
     if (length < 5 && length + relicMods.effectiveLengthBonus >= 5) addMana(1);
     if (relicMods.echoMult > 0 && gained > 0) {
@@ -2315,15 +3076,16 @@ export default function RuneDelvePlayPage() {
     }
     const heal = Math.min(
       combat.maxHp - combat.hp,
-      getMasteryBlueChainHeal(activeMasteries)
-        + getMasteryOpeningHeal(activeMasteries, chainsThisFight),
+      getMasteryBlueChainHeal(activeMasteries) +
+        getMasteryOpeningHeal(activeMasteries, chainsThisFight),
     );
-    const manaText = gained > 0 ? `+${gained} orb${gained === 1 ? '' : 's'}` : 'Mana full';
+    const manaText =
+      gained > 0 ? `+${gained} orb${gained === 1 ? "" : "s"}` : "Mana full";
     return heal > 0 ? `${manaText} · +${heal} HP` : manaText;
   };
 
   const greenPreview = (length: number) => {
-    const relicMods = previewModsFor('green', length);
+    const relicMods = previewModsFor("green", length);
     const runMods = resolveEffect(activeModifier);
     let hp = combat.hp;
     let healed = 0;
@@ -2332,33 +3094,52 @@ export default function RuneDelvePlayPage() {
       hp += applied;
       healed += applied;
     };
-    const base = hero.class === 'cleric' ? Math.round(length * 6 * 1.5) : length * 6;
+    const base =
+      hero.class === "cleric" ? Math.round(length * 6 * 1.5) : length * 6;
     addHeal(Math.round(base * runMods.healMult));
     addHeal(relicMods.bonusHealFlat);
     if (relicMods.effectiveLengthBonus > 0) {
-      addHeal((hero.class === 'cleric' ? 9 : 6) * relicMods.effectiveLengthBonus);
+      addHeal(
+        (hero.class === "cleric" ? 9 : 6) * relicMods.effectiveLengthBonus,
+      );
     }
     addHeal(getMasteryOpeningHeal(activeMasteries, chainsThisFight));
-    if (relicMods.echoMult > 0 && healed > 0) addHeal(Math.round(healed * relicMods.echoMult));
-    return healed > 0 ? `+${healed} HP` : 'HP full';
+    if (relicMods.echoMult > 0 && healed > 0)
+      addHeal(Math.round(healed * relicMods.echoMult));
+    return healed > 0 ? `+${healed} HP` : "HP full";
   };
 
   const goldPreview = (length: number) => {
-    const relicMods = previewModsFor('gold', length);
+    const relicMods = previewModsFor("gold", length);
     const runMods = resolveEffect(activeModifier);
-    let gained = Math.max(combat.shieldTurns, 1) + Math.floor(length / 3) - combat.shieldTurns;
+    let gained =
+      Math.max(combat.shieldTurns, 1) +
+      Math.floor(length / 3) -
+      combat.shieldTurns;
     gained = Math.max(0, Math.round(gained * runMods.shieldMult));
     gained += relicMods.bonusShieldTurns;
     if (relicMods.effectiveLengthBonus > 0) {
-      gained += Math.floor((length + relicMods.effectiveLengthBonus) / 3) - Math.floor(length / 3);
+      gained +=
+        Math.floor((length + relicMods.effectiveLengthBonus) / 3) -
+        Math.floor(length / 3);
     }
     if (gained > 0) gained += getMasteryShieldBonus(activeMasteries);
-    if (relicMods.echoMult > 0 && gained > 0) gained += Math.max(1, Math.round(gained * relicMods.echoMult));
-    return `+${gained} shield turn${gained === 1 ? '' : 's'}`;
+    if (relicMods.echoMult > 0 && gained > 0)
+      gained += Math.max(1, Math.round(gained * relicMods.echoMult));
+    return `+${gained} shield turn${gained === 1 ? "" : "s"}`;
+  };
+
+  const chooseModifier = (modifier: RunModifier) => {
+    if (!modifierOffer || activeModifier || status.over || submitting) return;
+    const opening = applyOpeningModifier(combat, modifier);
+    initialTurnsRef.current = opening.turnsRemaining;
+    setCombat(opening);
+    setActiveModifier(modifier);
+    setModifierOffer(null);
   };
 
   return (
-    <div ref={playRootRef} className="space-y-2 pb-2 relative">
+    <div ref={playRootRef} className="rd-battle pb-2 relative">
       {/* V5 — chamber atmospheric backdrop. Reads the active layout's
           atmosphere keyword + accent color and paints a per-chamber
           wash behind everything else on the play page. Fixed-position
@@ -2366,10 +3147,20 @@ export default function RuneDelvePlayPage() {
       <ChamberBackdrop layout={activeLayout} />
       {/* Cinematic combat FX overlay — chains, abilities, tier flourishes. */}
       <FxLayer queue={fxQ.queue} onComplete={fxQ.complete} />
-      <FloatingNumberLayer floaters={floaters.floaters} onComplete={floaters.complete} />
-      <ScreenEdgeFlash hurtKey={hurtFlashKey} healKey={healFlashKey} heavyKey={heavyFlashKey} />
+      <FloatingNumberLayer
+        floaters={floaters.floaters}
+        onComplete={floaters.complete}
+      />
+      <ScreenEdgeFlash
+        hurtKey={hurtFlashKey}
+        healKey={healFlashKey}
+        heavyKey={heavyFlashKey}
+      />
       {/* V1 — heavy-strike chyron over the board for chains ≥ 6. */}
-      <HeavyStrikeBanner triggerKey={heavyFlashKey} chainLength={heavyChainLen} />
+      <HeavyStrikeBanner
+        triggerKey={heavyFlashKey}
+        chainLength={heavyChainLen}
+      />
       {/* V1 — full-screen cinematic for R5 boss phase transitions. */}
       <PhaseTransitionFlash
         triggerKey={phaseFlashKey}
@@ -2377,155 +3168,252 @@ export default function RuneDelvePlayPage() {
         bossName={phaseFlashMeta.bossName}
         flavor={phaseFlashMeta.flavor}
       />
-      {/* Compact combined HUD: turn counter + objective on a single row */}
-      <div className="rd-carved rounded-xl px-3 py-2 space-y-1.5" style={{ borderRadius: '0.75rem' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-primary px-1.5 py-0.5 rounded bg-primary/20 shrink-0">
-            L{level.level_number}
-          </span>
-          <span className="text-[11px] font-extrabold tabular-nums text-foreground/95 shrink-0">
-            T{turnDisplay}/{activeTurnBudget}
-          </span>
-          <span className="h-3 w-px bg-foreground/15 shrink-0" />
-          <span className="text-[11px] font-bold flex-1 min-w-0 truncate text-foreground/95">
-            {objectiveLabel(objType)}
-          </span>
-          {existingRun && (
-            <span className="text-[10px] font-mono font-extrabold tabular-nums text-foreground/70 shrink-0">
-              ★{existingRun.score.toLocaleString()}
+      <div className="rd-battle-objective">
+        <span className="rd-battle-level">
+          <small>Depth</small>
+          {level.level_number}
+        </span>
+        <div
+          className="rd-battle-progress"
+          aria-label={`${objectiveLabel(objType)}: ${objectiveProgress.text}`}
+        >
+          <div>
+            <span>{objectiveLabel(objType)}</span>
+            <span
+              className={
+                combat.turnsRemaining <= 3 ? "text-destructive" : "text-primary"
+              }
+            >
+              {combat.turnsRemaining} moves
             </span>
-          )}
+          </div>
+          <div>
+            <span style={{ width: `${objectiveProgress.percent}%` }} />
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEncounterOpen(true)}
+          className="rd-battle-info btn-press"
+          aria-label="Encounter details and battle log"
+        >
+          <Info size={19} />
+        </button>
+      </div>
+      <div className="rd-battle-side">
+        <div className="rd-battle-stage">
+          <EnemyDisplay
+            enemies={combat.enemies}
+            flashId={flashId}
+            primaryTargetId={primaryTargetId}
+          />
+        </div>
+        <HeroStatusBar
+          state={combat}
+          cls={hero.class}
+          onAbility={handleAbility}
+          manaCost={
+            abilityFreeFirstUse(
+              activeRelicsSnapshot ?? activeRelics,
+              abilityUsedCount,
+            )
+              ? 0
+              : abilityManaCost
+          }
+          disabled={status.over || submitting || !!modifierOffer}
+        />
+        <ResonanceMeter
+          state={combat}
+          onInspect={() => setEncounterOpen(true)}
+        />
+      </div>
+      <div className="rd-battle-board">
+        <RuneBoard
+          grid={grid}
+          disabled={status.over || submitting || !!modifierOffer}
+          onChainComplete={handleChain}
+          seals={seals}
+          corruptedCells={corruption.cells}
+          corruptionSources={corruption.sources}
+          eclipsedCells={eclipse}
+          linkedCells={new Set(linkedPairs.pairs.keys())}
+          shiftingColumn={shift.column}
+          treasureCells={layoutZones.treasure}
+          hazardCells={layoutZones.hazard}
+          effectOverride={{
+            red: redPreview,
+            blue: bluePreview,
+            green: greenPreview,
+            gold: goldPreview,
+          }}
+        />
+      </div>
+      <div className="rd-battle-footnote">
+        {bossRule && (
+          <span className="text-gold">
+            <Crown size={12} />
+            {getBossRule(bossRule).label}
+          </span>
+        )}
+        {secondaryObjective && (
+          <span
+            className={
+              secondaryMet(secondaryObjective, combat, activeTurnBudget)
+                ? "text-primary"
+                : ""
+            }
+          >
+            <Target size={12} />
+            Bonus{" "}
+            {secondaryMet(secondaryObjective, combat, activeTurnBudget)
+              ? "✓"
+              : secondaryShort(secondaryObjective)}
+          </span>
+        )}
+        <span>
+          <Sword size={12} />
+          {combat.totalDamage}
+        </span>
+        <span>
+          <Skull size={12} />
+          {combat.enemiesDefeated}
+        </span>
+        <span>
+          <Zap size={12} />
+          {combat.longestChain}
+        </span>
+      </div>
+      <Dialog open={encounterOpen} onOpenChange={setEncounterOpen}>
+        <DialogContent className="rd-dialog-theme rd-battle-dialog">
+          <DialogHeader>
+            <DialogTitle className="rd-title text-xl">
+              {activeLayout?.name ?? `Chamber ${level.level_number}`}
+            </DialogTitle>
+            <DialogDescription>
+              Depth {level.level_number} · Move {turnDisplay}/{activeTurnBudget}{" "}
+              · {objectiveProgress.text}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rd-encounter-rules">
+            <div>
+              <h3>
+                <Target size={15} />
+                {objectiveLabel(objType)}
+              </h3>
+              <p>
+                {activeLayout?.recommendedStrategy ??
+                  "Watch enemy countdowns and match your runes to the encounter."}
+              </p>
+            </div>
+            {bossRule && (
+              <div>
+                <h3>
+                  <Crown size={15} />
+                  {getBossRule(bossRule).label}
+                </h3>
+                <p>{getBossRule(bossRule).rule}</p>
+              </div>
+            )}
+            {secondaryObjective && (
+              <div>
+                <h3>
+                  <Gem size={15} />
+                  Bonus ·{" "}
+                  {secondaryMet(secondaryObjective, combat, activeTurnBudget)
+                    ? "Complete"
+                    : secondaryShort(secondaryObjective)}
+                </h3>
+                <p>{secondaryLabel(secondaryObjective)}</p>
+              </div>
+            )}
+            {activeMechanics.map((id) => {
+              const rule = getMechanic(id);
+              return (
+                <div key={id}>
+                  <h3>
+                    <span aria-hidden>{rule.icon}</span>
+                    {rule.name}
+                  </h3>
+                  <p>{rule.oneLiner}</p>
+                  <p className="mt-1">{rule.tip}</p>
+                </div>
+              );
+            })}
+            <div>
+              <h3>
+                <SparklesIcon size={15} />
+                Resonance · {combat.resonance?.bursts ?? 0} bursts
+              </h3>
+              <p>
+                Connect each of the four rune colors to release a burst across
+                targetable enemies, restore one mana, and gain one turn of
+                guard. Repeat colors keep your charge. Your progress survives
+                abilities and saved runs.
+              </p>
+            </div>
+            {activeModifier && activeModifier.id !== STEADY_PATH.id && (
+              <div>
+                <h3>
+                  {activeModifier.glyph} {activeModifier.name}
+                </h3>
+                <p>{activeModifier.description}</p>
+              </div>
+            )}
+          </div>
+          <CombatLog entries={log} max={8} />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEncounterOpen(false);
+                setHelpOpen(true);
+              }}
+              className="min-h-11 flex-1 rounded-xl border border-border text-xs font-extrabold"
+            >
+              <HelpCircle size={14} className="mr-1 inline" />
+              How to play
+            </button>
+            <button
+              type="button"
+              onClick={() => setEncounterOpen(false)}
+              className="min-h-11 flex-1 rounded-xl bg-primary text-xs font-extrabold text-primary-foreground"
+            >
+              Back to battle
+            </button>
+          </div>
           {equippedCount > 0 && (
             <Link
               to="/rune-delve/armory"
-              aria-label={`${equippedCount} relics equipped`}
-              className="inline-flex items-center gap-0.5 px-1.5 h-6 rounded-full text-[10px] font-extrabold tabular-nums btn-press shrink-0"
-              style={{ background: 'hsl(var(--primary) / 0.18)', color: 'hsl(var(--primary))' }}
+              className="flex min-h-11 items-center justify-center gap-1 text-xs font-bold text-primary"
             >
-              🛡️{equippedCount}
+              <Shield size={14} />
+              {equippedCount} relics equipped · Armory
             </Link>
           )}
-          <button
-            onClick={() => setHelpOpen(true)}
-            aria-label="How to play"
-            className="w-7 h-7 -mr-1 rounded-full flex items-center justify-center text-foreground/70 hover:text-primary btn-press shrink-0"
-          >
-            <HelpCircle className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="flex items-center gap-2" aria-label={`${objectiveLabel(objType)}: ${objectiveProgress.text}`}>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/10">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: `${objectiveProgress.percent}%` }}
-            />
-          </div>
-          <span className="shrink-0 text-[9px] font-extrabold tabular-nums text-foreground/65">
-            {objectiveProgress.text}
-          </span>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Active mechanics strip — only when this level uses any mechanic */}
-      {activeMechanics.length > 0 && <MechanicBanner mechanics={activeMechanics} />}
-
-      {/* Layered Goals — secondary objective pill (Band 4). */}
-      {secondaryObjective && (() => {
-        const met = secondaryMet(secondaryObjective, combat, activeTurnBudget);
-        return (
-          <div
-            className="glass-card px-3 py-2 flex items-center gap-2"
-            style={{ borderColor: met ? 'hsl(var(--primary) / 0.45)' : undefined }}
-          >
-            <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1"
-              style={{ background: 'hsl(var(--accent) / 0.22)', color: 'hsl(var(--accent))', border: '1px solid hsl(var(--accent) / 0.35)' }}>
-              <Target className="w-3 h-3" /> Bonus
-            </span>
-            <span className="text-[12px] font-extrabold flex-1 truncate text-foreground/95">{secondaryLabel(secondaryObjective)}</span>
-            <span className={`text-[10px] font-extrabold tabular-nums ${met ? 'text-primary' : 'text-muted-foreground'}`}>
-              {met ? '✓ Met' : secondaryShort(secondaryObjective)}
-            </span>
-          </div>
-        );
-      })()}
-
-      {/* Boss-rule banner — Band 5 milestone levels. */}
-      {bossRule && (
-        <div
-          className="glass-card px-3 py-2 flex items-start gap-2"
-          style={{
-            background: 'linear-gradient(135deg, hsl(var(--destructive) / 0.14), hsl(var(--gold) / 0.08))',
-            borderColor: 'hsl(var(--destructive) / 0.4)',
-          }}
-        >
-          <span className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md flex items-center gap-1 mt-0.5"
-            style={{ background: 'hsl(var(--destructive) / 0.2)', color: 'hsl(var(--destructive))' }}>
-            <Crown className="w-3 h-3" /> {getBossRule(bossRule).label}
-          </span>
-          <span className="text-[11px] font-semibold flex-1 min-w-0 leading-snug">{getBossRule(bossRule).rule}</span>
-        </div>
-      )}
-      <EnemyDisplay enemies={combat.enemies} flashId={flashId} primaryTargetId={primaryTargetId} />
-      <HeroStatusBar state={combat} cls={hero.class} onAbility={handleAbility} manaCost={abilityManaCost} />
-
-      <RuneBoard
-        grid={grid}
-        disabled={status.over || submitting}
-        onChainComplete={handleChain}
-        seals={seals}
-        corruptedCells={corruption.cells}
-        corruptionSources={corruption.sources}
-        eclipsedCells={eclipse}
-        linkedCells={new Set(linkedPairs.pairs.keys())}
-        shiftingColumn={shift.column}
-        treasureCells={layoutZones.treasure}
-        hazardCells={layoutZones.hazard}
-        effectOverride={{
-          red: redPreview,
-          blue: bluePreview,
-          green: greenPreview,
-          gold: goldPreview,
-        }}
+      <HowToPlaySheet
+        open={helpOpen}
+        onOpenChange={setHelpOpen}
+        heroClass={hero.class}
       />
-
-      {/* Compact single-line combat stats strip — keeps the board above the fold. */}
-      <div
-        className="flex items-center justify-around gap-2 px-3 py-1.5 rounded-lg"
-        style={{
-          background: 'hsl(var(--rd-stone-edge) / 0.6)',
-          border: '1px solid hsl(var(--gold) / 0.12)',
-        }}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-foreground/80">DMG</span>
-          <span className="text-[12px] font-extrabold tabular-nums text-foreground">{combat.totalDamage}</span>
-        </div>
-        <span className="h-3 w-px bg-foreground/25" />
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-foreground/80">KILLS</span>
-          <span className="text-[12px] font-extrabold tabular-nums text-foreground">{combat.enemiesDefeated}</span>
-        </div>
-        <span className="h-3 w-px bg-foreground/25" />
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-extrabold uppercase tracking-wider text-foreground/80">CHAIN</span>
-          <span className="text-[12px] font-extrabold tabular-nums text-foreground">{combat.longestChain}</span>
-        </div>
-      </div>
-
-      {/* Animated battle chronicle — turn-by-turn flavor feed. */}
-      <CombatLog entries={log} />
-
-      <HowToPlaySheet open={helpOpen} onOpenChange={setHelpOpen} heroClass={hero.class} />
 
       {/* One-time intro for a brand-new mechanic taught at this level. */}
       {introMechanic && (
         <MechanicIntroSheet
           open={!!introMechanic}
-          onOpenChange={(o) => { if (!o) setIntroMechanic(null); }}
+          onOpenChange={(o) => {
+            if (!o) setIntroMechanic(null);
+          }}
           mechanicId={introMechanic}
           levelNumber={level.level_number}
           onBegin={() => {
-            try { localStorage.setItem(seenMechanicKey(introMechanic), '1'); } catch {}
+            try {
+              localStorage.setItem(seenMechanicKey(introMechanic), "1");
+            } catch {
+              /* Storage may be unavailable. */
+            }
             setIntroMechanic(null);
           }}
         />
@@ -2535,105 +3423,177 @@ export default function RuneDelvePlayPage() {
       {introBossRule && !introMechanic && (
         <MechanicIntroSheet
           open={!!introBossRule}
-          onOpenChange={(o) => { if (!o) setIntroBossRule(null); }}
+          onOpenChange={(o) => {
+            if (!o) setIntroBossRule(null);
+          }}
           bossRuleId={introBossRule}
           levelNumber={level.level_number}
           onBegin={() => {
-            try { localStorage.setItem(`rd-seen-bossrule-${introBossRule}`, '1'); } catch {}
+            try {
+              localStorage.setItem(`rd-seen-bossrule-${introBossRule}`, "1");
+            } catch {
+              /* Storage may be unavailable. */
+            }
             setIntroBossRule(null);
           }}
         />
       )}
 
-      {endState && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center px-6 backdrop-blur-md bg-background/70 animate-in fade-in"
-          // Don't allow tap-outside to navigate while the run is still being saved —
-          // prevents an orphaned in-flight write and a missed leaderboard update.
-          onClick={() => { if (!submitting) navigate(`/rune-delve/results/${level.level_number}`); }}
-        >
-          <div className="glass-card p-6 max-w-sm w-full text-center space-y-3" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-center">
-              {endState.reason === 'cleared' && <Trophy className="w-12 h-12" style={{ color: 'hsl(var(--gold))' }} />}
-              {endState.reason === 'defeated' && <Skull className="w-12 h-12 text-destructive" />}
-              {endState.reason === 'timeout' && <Hourglass className="w-12 h-12 text-muted-foreground" />}
-            </div>
-            <div>
-              <h2 className="text-2xl font-extrabold tracking-tight">
-                {endState.reason === 'cleared' && `Level ${level.level_number} Cleared!`}
-                {endState.reason === 'defeated' && 'Defeated'}
-                {endState.reason === 'timeout' && 'Out of Turns'}
-              </h2>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                {endState.reason === 'cleared' && (endState.isNewBest ? 'New best score!' : 'Run complete.')}
-                {endState.reason === 'defeated' && 'Your hero fell in battle.'}
-                {endState.reason === 'timeout' && 'Try a different chain strategy.'}
-              </p>
-            </div>
-            <div className="py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Final Score</p>
-              <p className="text-3xl font-extrabold font-mono tabular-nums" style={{ color: 'hsl(var(--gold))' }}>
-                {endState.score.toLocaleString()}
-              </p>
-              {endState.shards > 0 && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold"
-                  style={{ background: 'hsl(var(--primary) / 0.15)', color: 'hsl(var(--primary))' }}>
-                  💠 +{endState.shards} Rune Shards
-                </div>
-              )}
-              {/* R7: relic drop banner — celebratory card when the
+      <Dialog
+        open={!!endState}
+        onOpenChange={(open) => {
+          if (!open && endState && !submitting && !saveError)
+            navigate(`/rune-delve/results/${level.level_number}`);
+        }}
+      >
+        {endState && (
+          <DialogContent
+            className="rd-dialog-theme rd-battle-dialog border-primary/25 p-0 [&>button]:hidden"
+            onEscapeKeyDown={(event) => {
+              if (submitting || saveError) event.preventDefault();
+            }}
+            onPointerDownOutside={(event) => {
+              if (submitting || saveError) event.preventDefault();
+            }}
+          >
+            <div className="p-5 text-center space-y-3">
+              <div className="flex justify-center">
+                {endState.reason === "cleared" && (
+                  <Trophy
+                    className="w-12 h-12"
+                    style={{ color: "hsl(var(--gold))" }}
+                  />
+                )}
+                {endState.reason === "defeated" && (
+                  <Skull className="w-12 h-12 text-destructive" />
+                )}
+                {endState.reason === "timeout" && (
+                  <Hourglass className="w-12 h-12 text-muted-foreground" />
+                )}
+              </div>
+              <div>
+                <DialogTitle className="rd-title text-2xl font-extrabold tracking-tight">
+                  {endState.reason === "cleared" &&
+                    `Level ${level.level_number} Cleared!`}
+                  {endState.reason === "defeated" && "Defeated"}
+                  {endState.reason === "timeout" && "Out of Turns"}
+                </DialogTitle>
+                <DialogDescription className="text-[11px] text-muted-foreground mt-1">
+                  {endState.reason === "cleared" &&
+                    (endState.isNewBest ? "New best score!" : "Run complete.")}
+                  {endState.reason === "defeated" &&
+                    "Your hero fell in battle."}
+                  {endState.reason === "timeout" &&
+                    "Try a different chain strategy."}
+                </DialogDescription>
+              </div>
+              <div className="py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Final Score
+                </p>
+                <p
+                  className="text-3xl font-extrabold font-mono tabular-nums"
+                  style={{ color: "hsl(var(--gold))" }}
+                >
+                  {endState.score.toLocaleString()}
+                </p>
+                {endState.shards > 0 && (
+                  <div
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold"
+                    style={{
+                      background: "hsl(var(--primary) / 0.15)",
+                      color: "hsl(var(--primary))",
+                    }}
+                  >
+                    💠 {submitting ? "Saving " : saveError ? "Pending " : "+"}
+                    {endState.shards} Rune Shards
+                  </div>
+                )}
+                {/* R7: relic drop banner — celebratory card when the
                   clear rolled a free unlock. Sits below the shard
                   bonus so the visual order is: score → shards → relic. */}
-              {droppedRelic && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.92, y: 6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22, delay: 0.15 }}
-                  className="mt-3 rounded-xl p-3 flex items-center gap-3 text-left"
-                  style={{
-                    background: 'linear-gradient(135deg, hsl(var(--gold) / 0.18), hsl(var(--gold) / 0.05))',
-                    border: '1px solid hsl(var(--gold) / 0.45)',
-                    boxShadow: '0 0 24px -6px hsl(var(--gold) / 0.45)',
-                  }}
-                >
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                    style={{
-                      background: 'linear-gradient(135deg, hsl(var(--gold) / 0.28), hsl(var(--gold) / 0.08))',
-                      border: '1px solid hsl(var(--gold) / 0.55)',
+                {droppedRelic && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.92, y: 6 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 280,
+                      damping: 22,
+                      delay: 0.15,
                     }}
-                    aria-hidden
+                    className="mt-3 rounded-xl p-3 flex items-center gap-3 text-left"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, hsl(var(--gold) / 0.18), hsl(var(--gold) / 0.05))",
+                      border: "1px solid hsl(var(--gold) / 0.45)",
+                      boxShadow: "0 0 24px -6px hsl(var(--gold) / 0.45)",
+                    }}
                   >
-                    {droppedRelic.icon}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(var(--gold))' }}>
-                      ✨ Relic dropped
-                    </p>
-                    <p className="text-[13px] font-extrabold tracking-tight leading-tight mt-0.5">
-                      {droppedRelic.name}
-                    </p>
-                    <p className="text-[10.5px] text-foreground/70 leading-snug mt-0.5 line-clamp-2">
-                      {droppedRelic.description}
-                    </p>
-                  </div>
-                </motion.div>
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, hsl(var(--gold) / 0.28), hsl(var(--gold) / 0.08))",
+                        border: "1px solid hsl(var(--gold) / 0.55)",
+                      }}
+                      aria-hidden
+                    >
+                      {droppedRelic.icon}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-[9px] font-extrabold uppercase tracking-[0.22em]"
+                        style={{ color: "hsl(var(--gold))" }}
+                      >
+                        ✨ Relic dropped
+                      </p>
+                      <p className="text-[13px] font-extrabold tracking-tight leading-tight mt-0.5">
+                        {droppedRelic.name}
+                      </p>
+                      <p className="text-[10.5px] text-foreground/70 leading-snug mt-0.5 line-clamp-2">
+                        {droppedRelic.description}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+              {saveError && (
+                <p
+                  role="alert"
+                  className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive"
+                >
+                  {saveError}
+                  <span className="mt-1 block text-muted-foreground">
+                    Your result is ready. Retry to save the run and its rewards.
+                  </span>
+                </p>
               )}
+              <button
+                disabled={submitting}
+                onClick={() =>
+                  saveError
+                    ? retryFinalization()
+                    : navigate(`/rune-delve/results/${level.level_number}`)
+                }
+                className="w-full h-11 rounded-xl font-extrabold text-sm btn-press"
+                style={{
+                  background:
+                    "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)))",
+                  color: "white",
+                  boxShadow: "var(--shadow-glow)",
+                }}
+              >
+                {submitting
+                  ? "Saving your run…"
+                  : saveError
+                    ? "Retry save"
+                    : "View Results"}
+              </button>
             </div>
-            <button
-              onClick={() => navigate(`/rune-delve/results/${level.level_number}`)}
-              className="w-full h-11 rounded-xl font-extrabold text-sm btn-press"
-              style={{
-                background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)))',
-                color: 'white',
-                boxShadow: 'var(--shadow-glow)',
-              }}
-            >
-              View Results
-            </button>
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* R3 — Chamber boon picker. Shown at run-start with three
           random modifiers + a Skip ("Steady Path") option. Once the
@@ -2642,8 +3602,8 @@ export default function RuneDelvePlayPage() {
       {modifierOffer && !activeModifier && !status.over && (
         <RunModifierPicker
           offer={modifierOffer}
-          onPick={(mod) => { setActiveModifier(mod); setModifierOffer(null); }}
-          onSkip={() => { setActiveModifier(STEADY_PATH); setModifierOffer(null); }}
+          onPick={chooseModifier}
+          onSkip={() => chooseModifier(STEADY_PATH)}
         />
       )}
     </div>

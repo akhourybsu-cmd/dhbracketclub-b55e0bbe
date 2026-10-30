@@ -1,17 +1,33 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
-import { RuneCell } from './RuneCell';
-import { BOARD_SIZE, type RuneType } from '@/lib/runedelve/dungeonGenerator';
-import { cellKey, type Cell } from '@/lib/runedelve/boardEngine';
-import { advanceChainSelection, type ChainStepReason } from '@/lib/runedelve/chainControls';
-import { useSoundEffect } from '@/hooks/useSoundEffect';
-import { cn } from '@/lib/utils';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { RuneCell } from "./RuneCell";
+import { BOARD_SIZE, type RuneType } from "@/lib/runedelve/dungeonGenerator";
+import { cellKey, type Cell } from "@/lib/runedelve/boardEngine";
+import {
+  advanceChainSelection,
+  type ChainStepReason,
+} from "@/lib/runedelve/chainControls";
+import { useSoundEffect } from "@/hooks/useSoundEffect";
+import { cn } from "@/lib/utils";
+import { Check, Hand, MousePointer2, RotateCcw } from "lucide-react";
+import "./runeBattle.css";
 
-const RUNE_PREVIEW: Record<RuneType, { glyph: string; label: string; effect: (n: number) => string }> = {
-  red: { glyph: '⚔', label: 'Attack', effect: (n) => `${n * 8} dmg` },
-  blue: { glyph: '✦', label: 'Mana', effect: (n) => `+${n >= 5 ? 2 : 1} orb${n >= 5 ? 's' : ''}` },
-  green: { glyph: '❀', label: 'Heal', effect: (n) => `+${n * 6} HP` },
-  gold: { glyph: '◈', label: 'Guard', effect: (n) => `+${1 + Math.floor(n / 3)} shield` },
+const RUNE_PREVIEW: Record<
+  RuneType,
+  { glyph: string; label: string; effect: (n: number) => string }
+> = {
+  red: { glyph: "⚔", label: "Attack", effect: (n) => `${n * 8} dmg` },
+  blue: {
+    glyph: "✦",
+    label: "Mana",
+    effect: (n) => `+${n >= 5 ? 2 : 1} orb${n >= 5 ? "s" : ""}`,
+  },
+  green: { glyph: "❀", label: "Heal", effect: (n) => `+${n * 6} HP` },
+  gold: {
+    glyph: "◈",
+    label: "Guard",
+    effect: (n) => `+${1 + Math.floor(n / 3)} shield`,
+  },
 };
 
 interface Props {
@@ -42,68 +58,105 @@ interface Props {
   hazardCells?: Set<string>;
 }
 
-type ControlMode = 'drag' | 'tap';
-const CONTROL_MODE_KEY = 'rd-control-mode-v1';
+type ControlMode = "drag" | "tap";
+const CONTROL_MODE_KEY = "rd-control-mode-v1";
 
 function initialControlMode(): ControlMode {
-  if (typeof window === 'undefined') return 'drag';
+  if (typeof window === "undefined") return "drag";
   try {
     const stored = window.localStorage.getItem(CONTROL_MODE_KEY);
-    if (stored === 'drag' || stored === 'tap') return stored;
-  } catch { /* storage can be disabled */ }
-  return window.matchMedia?.('(pointer: coarse)').matches ? 'tap' : 'drag';
+    if (stored === "drag" || stored === "tap") return stored;
+  } catch {
+    /* storage can be disabled */
+  }
+  return window.matchMedia?.("(pointer: coarse)").matches ? "tap" : "drag";
 }
 
 const TAP_ERROR: Partial<Record<ChainStepReason, string>> = {
-  sealed: 'That rune is sealed',
-  'eclipsed-start': '🌑 Eclipsed runes can\'t start a chain',
-  'already-selected': 'That rune is already in the chain',
-  'not-adjacent': 'Choose a neighboring rune',
-  'wrong-rune': 'Keep the chain the same color',
+  sealed: "That rune is sealed",
+  "eclipsed-start": "🌑 Eclipsed runes can't start a chain",
+  "already-selected": "That rune is already in the chain",
+  "not-adjacent": "Choose a neighboring rune",
+  "wrong-rune": "Keep the chain the same color",
 };
 
 function haptic(milliseconds: number) {
-  if (typeof navigator === 'undefined' || !('vibrate' in navigator)) return;
-  try { navigator.vibrate(milliseconds); } catch { /* haptics are optional */ }
+  if (typeof navigator === "undefined" || !("vibrate" in navigator)) return;
+  try {
+    navigator.vibrate(milliseconds);
+  } catch {
+    /* haptics are optional */
+  }
 }
 
 // Device-aware rune board with drag, tap, and keyboard chain selection.
-export function RuneBoard({ grid, disabled, onChainComplete, seals, corruptedCells, corruptionSources, eclipsedCells, linkedCells, shiftingColumn, effectOverride, treasureCells, hazardCells }: Props) {
+export function RuneBoard({
+  grid,
+  disabled,
+  onChainComplete,
+  seals,
+  corruptedCells,
+  corruptionSources,
+  eclipsedCells,
+  linkedCells,
+  shiftingColumn,
+  effectOverride,
+  treasureCells,
+  hazardCells,
+}: Props) {
   const [chain, setChain] = useState<Cell[]>([]);
-  const [controlMode, setControlMode] = useState<ControlMode>(initialControlMode);
+  const chainRef = useRef<Cell[]>([]);
+  const [controlMode, setControlMode] =
+    useState<ControlMode>(initialControlMode);
   const draggingRef = useRef(false);
   const { play } = useSoundEffect();
 
   const chainSet = useMemo(() => new Set(chain.map(cellKey)), [chain]);
   const chainType = chain.length ? grid[chain[0].r]?.[chain[0].c] : null;
 
+  const updateChain = useCallback((next: Cell[]) => {
+    chainRef.current = next;
+    setChain(next);
+  }, []);
+
   const chooseControlMode = (mode: ControlMode) => {
     draggingRef.current = false;
-    setChain([]);
+    updateChain([]);
     setControlMode(mode);
-    try { window.localStorage.setItem(CONTROL_MODE_KEY, mode); } catch { /* optional preference */ }
+    try {
+      window.localStorage.setItem(CONTROL_MODE_KEY, mode);
+    } catch {
+      /* optional preference */
+    }
   };
 
-  const tryAddCell = useCallback((target: Cell, announceInvalid = false) => {
-    if (disabled) return;
-    setChain(prev => {
-      const result = advanceChainSelection(grid, prev, target, seals, eclipsedCells);
+  const tryAddCell = useCallback(
+    (target: Cell, announceInvalid = false) => {
+      if (disabled) return;
+      const result = advanceChainSelection(
+        grid,
+        chainRef.current,
+        target,
+        seals,
+        eclipsedCells,
+      );
       if (!result.changed) {
         if (announceInvalid && result.reason && TAP_ERROR[result.reason]) {
           toast(TAP_ERROR[result.reason], { duration: 1100 });
         }
-        return prev;
+        return;
       }
       haptic(12);
-      play('tap');
-      return result.chain;
-    });
-  }, [disabled, grid, play, seals, eclipsedCells]);
+      play("tap");
+      updateChain(result.chain);
+    },
+    [disabled, grid, play, seals, eclipsedCells, updateChain],
+  );
 
   const cellFromPoint = (x: number, y: number): Cell | null => {
     const el = document.elementFromPoint(x, y) as HTMLElement | null;
     if (!el) return null;
-    const node = el.closest('[data-rune-cell]') as HTMLElement | null;
+    const node = el.closest("[data-rune-cell]") as HTMLElement | null;
     if (!node) return null;
     const r = Number(node.dataset.r);
     const c = Number(node.dataset.c);
@@ -111,34 +164,40 @@ export function RuneBoard({ grid, disabled, onChainComplete, seals, corruptedCel
     return { r, c };
   };
 
-  const handlePointerDown = (r: number, c: number) => (e: React.PointerEvent) => {
-    if (disabled || controlMode !== 'drag') return;
-    e.preventDefault();
-    draggingRef.current = true;
-    // Do NOT setPointerCapture — capturing on the first cell prevents
-    // pointermove from reporting the correct elementFromPoint for sibling cells on iOS.
-    setChain([]);
-    tryAddCell({ r, c }, true);
-  };
+  const handlePointerDown =
+    (r: number, c: number) => (e: React.PointerEvent) => {
+      if (disabled || controlMode !== "drag") return;
+      e.preventDefault();
+      draggingRef.current = true;
+      // Do NOT setPointerCapture — capturing on the first cell prevents
+      // pointermove from reporting the correct elementFromPoint for sibling cells on iOS.
+      updateChain([]);
+      tryAddCell({ r, c }, true);
+    };
 
-  const handleCellClick = (r: number, c: number) => (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Pointer clicks belong to Tap mode. Keyboard activation always works and
-    // switches to Tap so the selected chain remains visible and resolvable.
-    if (controlMode !== 'tap' && e.detail !== 0) return;
-    if (controlMode !== 'tap') chooseControlMode('tap');
-    tryAddCell({ r, c }, true);
-  };
+  const handleCellClick =
+    (r: number, c: number) => (e: React.MouseEvent<HTMLButtonElement>) => {
+      // Pointer clicks belong to Tap mode. Keyboard activation always works and
+      // switches to Tap so the selected chain remains visible and resolvable.
+      if (controlMode !== "tap" && e.detail !== 0) return;
+      if (controlMode !== "tap") chooseControlMode("tap");
+      tryAddCell({ r, c }, true);
+    };
 
   const resolveSelectedChain = useCallback(() => {
-    if (chain.length < 3) {
-      toast('Need 3+ runes to chain', { duration: 1300 });
+    if (disabled) return;
+    const selected = chainRef.current;
+    if (selected.length < 3) {
+      toast("Connect 3 or more matching runes", { duration: 1300 });
       return;
     }
+    // Commit from an event handler. React can replay state updater functions;
+    // keeping gameplay outside them prevents a chain resolving twice.
+    updateChain([]);
     haptic(25);
-    play('success');
-    onChainComplete(chain);
-    setChain([]);
-  }, [chain, onChainComplete, play]);
+    play("success");
+    onChainComplete(selected);
+  }, [disabled, onChainComplete, play, updateChain]);
 
   // Use document-level move so dragging across cells works reliably on iOS Safari.
   useEffect(() => {
@@ -150,78 +209,98 @@ export function RuneBoard({ grid, disabled, onChainComplete, seals, corruptedCel
     const handleUp = () => {
       if (!draggingRef.current) return;
       draggingRef.current = false;
-      setChain(prev => {
-        if (prev.length >= 3) {
-          haptic(25);
-          play('success');
-          onChainComplete(prev);
-        } else if (prev.length > 0) {
-          toast('Need 3+ runes to chain', { duration: 1500 });
-        }
-        return [];
-      });
+      if (chainRef.current.length >= 3) resolveSelectedChain();
+      else updateChain([]);
     };
-    window.addEventListener('pointermove', handleMove, { passive: true });
-    window.addEventListener('pointerup', handleUp);
-    window.addEventListener('pointercancel', handleUp);
+    const handleCancel = () => {
+      draggingRef.current = false;
+      updateChain([]);
+    };
+    window.addEventListener("pointermove", handleMove, { passive: true });
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleCancel);
+    window.addEventListener("blur", handleCancel);
     return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-      window.removeEventListener('pointercancel', handleUp);
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleCancel);
+      window.removeEventListener("blur", handleCancel);
     };
-  }, [disabled, onChainComplete, play, tryAddCell]);
+  }, [disabled, resolveSelectedChain, tryAddCell, updateChain]);
 
   useEffect(() => {
-    if (!disabled) return;
     draggingRef.current = false;
-    setChain([]);
-  }, [disabled]);
+    updateChain([]);
+  }, [disabled, grid, updateChain]);
 
   return (
     <div className="w-full flex flex-col items-center">
-      <div className="rd-play-board w-full mb-1.5 flex items-center justify-between gap-2 px-0.5">
-        <p className="text-[10px] font-bold text-foreground/65 truncate">
-          Chain 3+ matching runes
-        </p>
+      <div className="rd-board-toolbar rd-play-board">
+        <span className="rd-board-hint">Connect 3+ · diagonals count</span>
         <div
           role="group"
           aria-label="Rune controls"
-          className="shrink-0 inline-flex items-center rounded-lg border border-foreground/15 bg-background/45 p-0.5"
+          className="rd-input-switch"
         >
-          {(['drag', 'tap'] as const).map(mode => (
-            <button
-              key={mode}
-              type="button"
-              aria-pressed={controlMode === mode}
-              onClick={() => chooseControlMode(mode)}
-              className={cn(
-                'h-6 px-2 rounded-md text-[9px] font-extrabold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                controlMode === mode
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-foreground/60 hover:text-foreground',
-              )}
-            >
-              {mode === 'drag' ? 'Drag' : 'Tap'}
-            </button>
-          ))}
+          {(["drag", "tap"] as const).map((mode) => {
+            const Icon = mode === "drag" ? MousePointer2 : Hand;
+            return (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={controlMode === mode}
+                onClick={() => chooseControlMode(mode)}
+                title={`${mode === "drag" ? "Drag" : "Tap"} to connect runes`}
+                className={cn(
+                  "rd-input-button",
+                  controlMode === mode && "is-active",
+                )}
+              >
+                <Icon size={14} aria-hidden />{" "}
+                <span>{mode === "drag" ? "Drag" : "Tap"}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <div
         className={cn(
-          'rd-play-board w-full p-2 rounded-2xl select-none rd-board-frame',
+          "rd-play-board rd-interactive-board w-full p-2 rounded-2xl select-none rd-board-frame",
         )}
         style={{
-          touchAction: controlMode === 'drag' ? 'none' : 'pan-y',
+          touchAction: controlMode === "drag" ? "none" : "pan-y",
         }}
       >
         <div
-          className="grid"
+          className="grid relative"
           style={{
             gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
-            gap: 'clamp(5px, 1.5vw, 8px)',
-            justifyContent: 'center',
+            gap: "clamp(5px, 1.5vw, 8px)",
+            justifyContent: "center",
           }}
         >
+          {chain.length > 1 && (
+            <svg
+              className="pointer-events-none absolute inset-0 z-[5] h-full w-full overflow-visible"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <polyline
+                points={chain
+                  .map(
+                    (cell) => `${(cell.c + 0.5) * 20},${(cell.r + 0.5) * 20}`,
+                  )
+                  .join(" ")}
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeOpacity=".7"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
           {grid.map((row, r) =>
             row.map((rune, c) => {
               const isSel = chainSet.has(`${r}-${c}`);
@@ -241,6 +320,13 @@ export function RuneBoard({ grid, disabled, onChainComplete, seals, corruptedCel
                   dataC={c}
                   type={rune}
                   selected={isSel}
+                  selectionOrder={
+                    isSel
+                      ? chain.findIndex(
+                          (cell) => cell.r === r && cell.c === c,
+                        ) + 1
+                      : undefined
+                  }
                   sealed={isSealed}
                   corrupted={isCorrupted}
                   corruptionSource={isSource}
@@ -250,47 +336,68 @@ export function RuneBoard({ grid, disabled, onChainComplete, seals, corruptedCel
                   treasure={isTreasure}
                   hazard={isHazard}
                   disabled={disabled}
-                  touchAction={controlMode === 'drag' ? 'none' : 'pan-y'}
+                  touchAction={controlMode === "drag" ? "none" : "pan-y"}
                   onPointerDown={handlePointerDown(r, c)}
                   onClick={handleCellClick(r, c)}
                 />
               );
-            })
+            }),
           )}
         </div>
       </div>
-      {chain.length > 0 && chainType && (
-        <div className="rd-play-board mt-2 min-h-8 w-full flex items-center justify-center gap-2 text-[12px] font-bold tabular-nums">
-          <span className="text-base">{RUNE_PREVIEW[chainType].glyph}</span>
-          <span>{RUNE_PREVIEW[chainType].label}</span>
-          <span className="text-muted-foreground">·</span>
-          <span className={cn(chain.length >= 3 ? 'text-primary' : 'text-muted-foreground')}>
-            {chain.length >= 3
-              ? (effectOverride?.[chainType] ?? RUNE_PREVIEW[chainType].effect)(chain.length)
-              : `${chain.length}/3`}
+      <div
+        className="rd-chain-command rd-play-board"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <div className="rd-chain-preview">
+          <span className="rd-chain-count" data-ready={chain.length >= 3}>
+            {chain.length || "✦"}
           </span>
-          {controlMode === 'tap' && (
-            <>
-              <button
-                type="button"
-                onClick={resolveSelectedChain}
-                disabled={chain.length < 3}
-                className="ml-auto h-8 px-3 rounded-lg bg-primary text-primary-foreground text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-40 btn-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                Resolve
-              </button>
-              <button
-                type="button"
-                onClick={() => setChain([])}
-                aria-label="Clear selected runes"
-                className="h-8 px-2 rounded-lg border border-foreground/15 text-[10px] font-extrabold text-foreground/65 btn-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                Clear
-              </button>
-            </>
-          )}
+          <div>
+            <span className="rd-chain-label">
+              {chainType ? RUNE_PREVIEW[chainType].label : "Choose your runes"}
+            </span>
+            <strong>
+              {chainType
+                ? chain.length >= 3
+                  ? (
+                      effectOverride?.[chainType] ??
+                      RUNE_PREVIEW[chainType].effect
+                    )(chain.length)
+                  : `${3 - chain.length} more to connect`
+                : controlMode === "tap"
+                  ? "Tap a matching path"
+                  : "Drag a matching path"}
+            </strong>
+          </div>
         </div>
-      )}
+        {controlMode === "tap" ? (
+          <>
+            <button
+              type="button"
+              onClick={() => updateChain([])}
+              disabled={!chain.length || disabled}
+              aria-label="Clear selected runes"
+              className="rd-chain-clear"
+            >
+              <RotateCcw size={17} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={resolveSelectedChain}
+              disabled={chain.length < 3 || disabled}
+              className="rd-chain-resolve"
+            >
+              <Check size={17} aria-hidden /> Cast
+            </button>
+          </>
+        ) : (
+          <span className="rd-chain-release">
+            {chain.length >= 3 ? "Release to cast" : "3+ to cast"}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

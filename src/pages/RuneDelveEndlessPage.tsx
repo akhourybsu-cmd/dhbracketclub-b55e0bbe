@@ -1,431 +1,537 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
-import { ArrowLeft, Timer, Skull, Trophy, Sparkles as SparklesIcon } from 'lucide-react';
-import { useRuneDelveHero, useUpdateHero } from '@/hooks/useRuneDelveHero';
-import { useEarnShards, useRuneWallet, useUnlockSlot } from '@/hooks/useRuneShards';
-import { useSubmitDailyRun, useMyDailyRun } from '@/hooks/useDailyChallenge';
-import { useAllClassProgress, useUpdateClassProgress } from '@/hooks/useRuneDelveClassProgress';
-import { levelFromXp, titleForLevel, newTitleUnlocked } from '@/lib/runedelve/classConfig';
-import { slotsForClassLevels, THIRD_SLOT_UNLOCK_LEVEL } from '@/lib/runedelve/shardEconomy';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Flame,
+  Pause,
+  Play,
+  Skull,
+  Sparkles,
+  Timer,
+  Trophy,
+} from "lucide-react";
+import { useRuneDelveHero } from "@/hooks/useRuneDelveHero";
+import { useMyDailyRun, useSubmitDailyRun } from "@/hooks/useDailyChallenge";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  initialCombat,
+  useAbility as castAbility,
+} from "@/lib/runedelve/combatEngine";
+import {
+  ensurePlayableBoard,
+  isValidChain,
+  resolveBoard,
+  type Cell,
+} from "@/lib/runedelve/boardEngine";
+import { generateBoard } from "@/lib/runedelve/dungeonGenerator";
 import {
   ENDLESS_TIME_LIMIT_SEC,
-  endlessRewardFor,
   endlessScore,
+  endlessStarsFor,
   enemyTickIntervalMs,
   spawnBatch,
-  spawnEnemy,
   waveForElapsed,
-} from '@/lib/runedelve/endlessMode';
-import { mulberry32 } from '@/lib/runedelve/prng';
-import { generateBoard, type RuneType } from '@/lib/runedelve/dungeonGenerator';
-import { isValidChain, resolveBoard, type Cell } from '@/lib/runedelve/boardEngine';
+} from "@/lib/runedelve/endlessMode";
+import { mulberry32 } from "@/lib/runedelve/prng";
 import {
-  applyChain,
-  initialCombat,
-  useAbility,
-  MAX_MANA,
-  type CombatState,
-} from '@/lib/runedelve/combatEngine';
-import { RuneBoard } from '@/components/runedelve/RuneBoard';
-import { EnemyDisplay } from '@/components/runedelve/EnemyDisplay';
-import { HeroStatusBar } from '@/components/runedelve/HeroStatusBar';
-import { applyArmorToDamage } from '@/lib/runedelve/enemyAbilities';
+  arenaStorageKey,
+  parseArenaRun,
+  previewArenaChain,
+  type ArenaRun,
+} from "@/lib/runedelve/arenaState";
+import { RuneBoard } from "@/components/runedelve/RuneBoard";
+import { EnemyDisplay } from "@/components/runedelve/EnemyDisplay";
+import { HeroStatusBar } from "@/components/runedelve/HeroStatusBar";
+import { ResonanceMeter } from "@/components/runedelve/ResonanceMeter";
+import {
+  RuneHeroArt,
+  RUNE_PORTAL_ART,
+} from "@/components/runedelve/RuneArtwork";
+import { getClass } from "@/lib/runedelve/classConfig";
 
-/**
- * Endless Survival — the daily challenge.
- *
- * 2-minute timed arena. Player chains runes freely (no turn limit). Enemies
- * spawn continuously and ramp every 20s. Run ends when timer hits 0 or HP
- * reaches 0. Rewards scale with kill count.
- *
- * This page intentionally does NOT use the campaign play page's heavy
- * relic/mastery/mechanics stack — endless is a pure combat-loop experience
- * focused on raw class power. Class chain damage and abilities still apply
- * (via combatEngine), so investing in your hero meaningfully matters.
- */
+function readRun(key: string): ArenaRun | null {
+  try {
+    return parseArenaRun(sessionStorage.getItem(key));
+  } catch {
+    return null;
+  }
+}
+
+/** Timed daily arena: class-only combat with active-play time and a single atomic result receipt. */
 export default function RuneDelveEndlessPage() {
-  const navigate = useNavigate();
-  const { data: hero } = useRuneDelveHero();
-  const { data: wallet } = useRuneWallet();
-  const { data: classTracks } = useAllClassProgress();
-  const { data: existingRun } = useMyDailyRun();
+  const { user } = useAuth();
+  const heroQuery = useRuneDelveHero();
+  const dailyQuery = useMyDailyRun();
   const submitDaily = useSubmitDailyRun();
-  const earnShards = useEarnShards();
-  const updateClass = useUpdateClassProgress();
-  const updateHero = useUpdateHero();
-  const unlockSlot = useUnlockSlot();
+  const saveDaily = submitDaily.mutateAsync;
+  const key = user ? arenaStorageKey(user.id) : "";
+  const activeKey = useRef(key);
+  activeKey.current = key;
+  const [run, setRun] = useState<ArenaRun | null>(null);
+  const runRef = useRef<ArenaRun | null>(null);
+  const lastTick = useRef(0);
+  const busy = useRef(false);
+  const autoSubmitted = useRef(false);
+  const [inspecting, setInspecting] = useState(false);
+  const inspectRef = useRef(false);
+  const actionLock = useRef(false);
+  const [saved, setSaved] = useState<Awaited<
+    ReturnType<typeof submitDaily.mutateAsync>
+  > | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const hero = heroQuery.data;
+  const cls = run?.cls ?? hero?.class ?? "warrior";
+  const inspectChange = useCallback((open: boolean) => {
+    inspectRef.current = open;
+    lastTick.current = performance.now();
+    setInspecting(open);
+  }, []);
 
-  // ── Run state ────────────────────────────────────────────────────────────
-  const [phase, setPhase] = useState<'ready' | 'playing' | 'over'>('ready');
-  const [grid, setGrid] = useState<RuneType[][] | null>(null);
-  const [combat, setCombat] = useState<CombatState | null>(null);
-  const [kills, setKills] = useState(0);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const [endResult, setEndResult] = useState<null | {
-    kills: number;
-    score: number;
-    reward: ReturnType<typeof endlessRewardFor>;
-    stars: number;
-    reason: 'timeout' | 'defeated';
-  }>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const seedRef = useRef<number>(Date.now() & 0xffffffff);
-  const startTimeRef = useRef<number>(0);
-  const enemySpawnSeqRef = useRef(0);
-  const elapsedRef = useRef(0);
-  const phaseRef = useRef<'ready' | 'playing' | 'over'>('ready');
-  useEffect(() => { phaseRef.current = phase; }, [phase]);
-  useEffect(() => { elapsedRef.current = elapsedSec; }, [elapsedSec]);
-
-  const heroClass = hero?.class ?? 'warrior';
-
-  // ── Start / restart ──────────────────────────────────────────────────────
-  function startRun() {
-    if (existingRun) {
-      toast('You already played today\'s daily.');
-      return;
-    }
-    seedRef.current = Date.now() & 0xffffffff;
-    enemySpawnSeqRef.current = 0;
-    const rng = mulberry32(seedRef.current);
-    setGrid(generateBoard(rng));
-    const initialEnemies = spawnBatch(0, seedRef.current);
-    setCombat(initialCombat(initialEnemies, 9999));
-    setKills(0);
-    setElapsedSec(0);
-    setEndResult(null);
-    startTimeRef.current = performance.now();
-    setPhase('playing');
-  }
-
-  // ── Timer tick ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (phase !== 'playing') return;
-    const id = window.setInterval(() => {
-      const elapsed = (performance.now() - startTimeRef.current) / 1000;
-      setElapsedSec(elapsed);
-      if (elapsed >= ENDLESS_TIME_LIMIT_SEC) {
-        endRun('timeout');
-      }
-    }, 250);
-    return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
-  // ── Enemy attack tick — interval scales with current wave ────────────────
-  // Use refs (not elapsedSec/combat in deps) so the 250ms timer tick doesn't
-  // keep cancelling the attack timeout before it fires.
-  useEffect(() => {
-    if (phase !== 'playing') return;
-    let cancelled = false;
-    let timeoutId: number | null = null;
-    const schedule = () => {
-      if (cancelled) return;
-      const interval = enemyTickIntervalMs(elapsedRef.current);
-      timeoutId = window.setTimeout(() => {
-        if (cancelled || phaseRef.current !== 'playing') return;
-        setCombat(prev => {
-          if (!prev) return prev;
-          let incoming = 0;
-          for (const e of prev.enemies) if (e.hp > 0) incoming += e.damage;
-          if (incoming === 0) return prev;
-          const guarded = prev.shieldTurns > 0 ? Math.round(incoming * 0.4) : incoming;
-          const nextHp = Math.max(0, prev.hp - guarded);
-          return { ...prev, hp: nextHp, shieldTurns: Math.max(0, prev.shieldTurns - 1) };
-        });
-        schedule();
-      }, interval);
-    };
-    schedule();
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
-    };
-  }, [phase]);
-
-  // ── Continuous spawning — refill when field gets empty ───────────────────
-  // Only depend on whether the field is empty, not on elapsedSec, so the
-  // respawn timeout isn't cancelled four times per second by the timer tick.
-  const fieldEmpty = !!combat && combat.enemies.every(e => e.hp <= 0);
-  useEffect(() => {
-    if (phase !== 'playing' || !fieldEmpty) return;
-    const wave = waveForElapsed(elapsedRef.current);
-    const id = window.setTimeout(() => {
-      if (phaseRef.current !== 'playing') return;
-      setCombat(prev => {
-        if (!prev) return prev;
-        enemySpawnSeqRef.current += 1;
-        const fresh = spawnBatch(elapsedRef.current, seedRef.current ^ enemySpawnSeqRef.current);
-        const alive = prev.enemies.filter(e => e.hp > 0);
-        return { ...prev, enemies: [...alive, ...fresh] };
-      });
-    }, wave.respawnDelayMs);
-    return () => window.clearTimeout(id);
-  }, [phase, fieldEmpty]);
-
-  // ── Death check ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (phase === 'playing' && combat && combat.hp <= 0) {
-      endRun('defeated');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [combat?.hp, phase]);
-
-  // ── Chain resolution ─────────────────────────────────────────────────────
-  function handleChain(chain: Cell[]) {
-    if (phase !== 'playing' || !grid || !combat) return;
-    if (!isValidChain(grid, chain)) return;
-    const type = grid[chain[0].r][chain[0].c];
-    const { next, resolution } = applyChain(combat, type, chain.length, heroClass);
-    if (resolution.enemyKills.length > 0) {
-      setKills(k => k + resolution.enemyKills.length);
-    }
-    setCombat(next);
-    const rng = mulberry32((seedRef.current ^ Math.floor(performance.now())) >>> 0);
-    setGrid(g => (g ? resolveBoard(g, chain, rng) : g));
-  }
-
-  function handleAbility() {
-    if (phase !== 'playing' || !combat) return;
-    if (combat.mana < MAX_MANA) return;
-    const before = combat.enemiesDefeated;
-    const { next, ok } = useAbility(combat, heroClass);
-    if (!ok) return;
-    const newKills = next.enemiesDefeated - before;
-    if (newKills > 0) setKills(k => k + newKills);
-    setCombat(next);
-  }
-
-  // ── Run end + submission ─────────────────────────────────────────────────
-  function endRun(reason: 'timeout' | 'defeated') {
-    if (phase === 'over') return;
-    setPhase('over');
-    setCombat(prev => prev); // freeze
-    const finalKills = kills;
-    setTimeout(() => {
-      // Read freshest values via setState callback to avoid stale closure.
-      setKills(k => {
-        setCombat(c => {
-          submitFinal(k, c?.totalDamage ?? 0, reason);
-          return c;
-        });
-        return k;
-      });
-    }, 50);
-    void finalKills;
-  }
-
-  async function submitFinal(finalKills: number, totalDamage: number, reason: 'timeout' | 'defeated') {
-    if (submitting || !hero) return;
-    setSubmitting(true);
-    const score = endlessScore(finalKills, totalDamage);
-    const reward = endlessRewardFor(finalKills);
-    const stars = (finalKills >= 25 ? 3 : finalKills >= 15 ? 2 : finalKills >= 5 ? 1 : 0) as 0 | 1 | 2 | 3;
-    setEndResult({ kills: finalKills, score, reward, stars, reason });
-    try {
-      await submitDaily.mutateAsync({ kills: finalKills, score, heroClass: hero.class });
-      if (reward.shards > 0) {
-        try { await earnShards.mutateAsync(reward.shards); } catch { /* best-effort */ }
-      }
-
-      // ── Class XP + level + title progression ──────────────────────────────
-      // Endless awards XP (preview already promised "+XP" in the toast). Apply
-      // it to the active class track and mirror level/title onto the hero row
-      // so leaderboards reflect the new state.
-      let classLevelUp: { from: number; to: number } | null = null;
-      let titleUnlock: { previous: string | null; next: string } | null = null;
+  const commit = useCallback(
+    (next: ArenaRun | null) => {
+      if (activeKey.current !== key) return;
+      const stamped = next ? { ...next, savedAt: Date.now() } : null;
+      runRef.current = stamped;
+      setRun(stamped);
+      if (!key) return;
       try {
-        if (reward.xp > 0) {
-          const activeTrack = classTracks?.find(t => t.class === hero.class);
-          const prevXp = activeTrack?.xp ?? hero.xp ?? 0;
-          const prevLevel = activeTrack?.level ?? hero.level ?? 1;
-          const newXp = prevXp + reward.xp;
-          const newLevel = levelFromXp(newXp).level;
-          const newTitle = titleForLevel(newLevel, hero.class) ?? activeTrack?.cosmetic_title ?? null;
-          if (newLevel > prevLevel) classLevelUp = { from: prevLevel, to: newLevel };
-          titleUnlock = newTitleUnlocked(hero.class, prevLevel, newLevel);
+        if (stamped) sessionStorage.setItem(key, JSON.stringify(stamped));
+        else sessionStorage.removeItem(key);
+      } catch {
+        /* device storage optional */
+      }
+    },
+    [key],
+  );
 
-          await updateClass.mutateAsync({
-            cls: hero.class,
-            patch: {
-              xp: newXp,
-              level: newLevel,
-              cosmetic_title: newTitle,
-              lifetime_runs: (activeTrack?.lifetime_runs ?? 0) + 1,
-              lifetime_score: (activeTrack?.lifetime_score ?? 0) + score,
-            },
-          });
-          await updateHero.mutateAsync({
-            xp: newXp,
-            level: newLevel,
-            cosmetic_title: newTitle,
-            lifetime_runs: (hero.lifetime_runs ?? 0) + 1,
-            lifetime_score: (hero.lifetime_score ?? 0) + score,
-          } as any);
+  useEffect(() => {
+    commit(key ? readRun(key) : null);
+    autoSubmitted.current = false;
+    busy.current = false;
+    inspectRef.current = false;
+    setInspecting(false);
+    setSaving(false);
+    setSaved(null);
+    setSaveError(false);
+  }, [key, commit]);
 
-          // Auto-unlock the 3rd relic slot when ANY class hits the threshold.
-          const maxClassLevel = Math.max(
-            newLevel,
-            ...(classTracks ?? []).filter(t => t.class !== hero.class).map(t => t.level),
-          );
-          const desired = slotsForClassLevels(maxClassLevel);
-          if ((wallet?.slots_unlocked ?? 2) < desired) {
-            await unlockSlot.mutateAsync(desired);
-            toast.success('🔓 3rd Relic Slot Unlocked!', {
-              description: `Class Lv ${THIRD_SLOT_UNLOCK_LEVEL} reached`,
-              duration: 5500,
-            });
-          }
+  const timerEnabled = !!run && !run.paused && !run.result;
+  useEffect(() => {
+    if (!timerEnabled) return;
+    lastTick.current = performance.now();
+    const timer = window.setInterval(() => {
+      const current = runRef.current;
+      const now = performance.now();
+      if (
+        !current ||
+        current.paused ||
+        current.result ||
+        inspectRef.current ||
+        activeKey.current !== key
+      ) {
+        lastTick.current = now;
+        return;
+      }
+      const elapsed = Math.min(
+        ENDLESS_TIME_LIMIT_SEC,
+        current.elapsed + Math.min(1, (now - lastTick.current) / 1000),
+      );
+      lastTick.current = now;
+      const next = { ...current, elapsed };
+      if (elapsed >= ENDLESS_TIME_LIMIT_SEC) {
+        next.result = {
+          reason: "timeout",
+          kills: next.combat.enemiesDefeated,
+          score: endlessScore(
+            next.combat.enemiesDefeated,
+            next.combat.totalDamage,
+          ),
+        };
+      } else if (
+        elapsed >= current.attackAt &&
+        current.combat.enemies.some((e) => e.hp > 0)
+      ) {
+        // Arena enemies have one readable real-time attack; terrain abilities belong to campaign/Expedition.
+        const incoming = current.combat.enemies
+          .filter((e) => e.hp > 0)
+          .reduce((sum, e) => sum + e.damage, 0);
+        const damage =
+          current.combat.shieldTurns > 0
+            ? Math.round(incoming * 0.4)
+            : incoming;
+        next.combat = {
+          ...current.combat,
+          hp: Math.max(0, current.combat.hp - damage),
+          shieldTurns: Math.max(0, current.combat.shieldTurns - 1),
+        };
+        next.attackAt = elapsed + enemyTickIntervalMs(elapsed) / 1000;
+        if (next.combat.hp <= 0)
+          next.result = {
+            reason: "defeated",
+            kills: next.combat.enemiesDefeated,
+            score: endlessScore(
+              next.combat.enemiesDefeated,
+              next.combat.totalDamage,
+            ),
+          };
+      }
+      if (!next.result && next.combat.enemies.every((e) => e.hp <= 0)) {
+        if (next.spawnAt === null)
+          next.spawnAt =
+            elapsed + waveForElapsed(elapsed).respawnDelayMs / 1000;
+        else if (elapsed >= next.spawnAt) {
+          next.tick += 1;
+          next.combat = {
+            ...next.combat,
+            enemies: spawnBatch(elapsed, next.seed ^ next.tick).map((e) => ({
+              ...e,
+              ability: undefined,
+              abilityCooldown: undefined,
+              abilityCooldownMax: undefined,
+              telegraphLabel: undefined,
+            })),
+          };
+          next.spawnAt = null;
+          next.attackAt = elapsed + enemyTickIntervalMs(elapsed) / 1000;
         }
-      } catch { /* progression is best-effort */ }
+      }
+      commit(next);
+    }, 100);
+    const pause = () => {
+      if (document.hidden && runRef.current && !runRef.current.result)
+        commit({ ...runRef.current, paused: true });
+    };
+    document.addEventListener("visibilitychange", pause);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", pause);
+    };
+  }, [timerEnabled, commit, key]);
 
-      const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
-      toast.success(`${starStr} · ${finalKills} kills`, {
-        description: `+${reward.shards} shards · +${reward.xp} XP${reward.title ? ` · 🏆 ${reward.title}` : ''}`,
-        duration: 6000,
+  const saveResult = useCallback(async () => {
+    const current = runRef.current;
+    if (!current?.result || busy.current) return;
+    busy.current = true;
+    const scope = key;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      const receipt = await saveDaily({
+        kills: current.result.kills,
+        score: current.result.score,
+        heroClass: current.cls,
+        requestId: current.requestId,
       });
-      if (classLevelUp) {
-        toast.success(`⬆️ ${hero.class} Lv ${classLevelUp.from} → ${classLevelUp.to}`, { duration: 5000 });
+      if (activeKey.current !== scope) return;
+      setSaved(receipt);
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        /* optional */
       }
-      if (titleUnlock) {
-        toast.success(`✨ New Title — ${titleUnlock.next}`, { duration: 5500 });
-      }
-    } catch (e: any) {
-      toast.error(`Couldn't save run: ${e?.message ?? 'unknown'}`);
+    } catch {
+      if (activeKey.current === scope) setSaveError(true);
     } finally {
-      setSubmitting(false);
+      if (activeKey.current === scope) {
+        busy.current = false;
+        setSaving(false);
+      }
     }
+  }, [key, saveDaily]);
+
+  useEffect(() => {
+    if (run?.result && runRef.current === run && !autoSubmitted.current) {
+      autoSubmitted.current = true;
+      void saveResult();
+    }
+  }, [run, saveResult]);
+
+  function start() {
+    if (
+      !hero ||
+      runRef.current ||
+      dailyQuery.isLoading ||
+      dailyQuery.isError ||
+      dailyQuery.data
+    )
+      return;
+    const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+    const rng = mulberry32(seed);
+    const grid = ensurePlayableBoard(generateBoard(rng), rng).grid;
+    const enemies = spawnBatch(0, seed).map((e) => ({
+      ...e,
+      ability: undefined,
+      abilityCooldown: undefined,
+      abilityCooldownMax: undefined,
+      telegraphLabel: undefined,
+    }));
+    commit({
+      version: 1,
+      requestId: crypto.randomUUID(),
+      savedAt: Date.now(),
+      cls: hero.class,
+      seed,
+      tick: 0,
+      grid,
+      combat: initialCombat(enemies, 9999),
+      elapsed: 0,
+      attackAt: enemyTickIntervalMs(0) / 1000,
+      spawnAt: null,
+      paused: false,
+      result: null,
+    });
+  }
+  function chainAction(chain: Cell[]) {
+    const current = runRef.current;
+    if (
+      !current ||
+      current.paused ||
+      current.result ||
+      inspectRef.current ||
+      actionLock.current ||
+      !isValidChain(current.grid, chain)
+    )
+      return;
+    const type = current.grid[chain[0].r][chain[0].c];
+    actionLock.current = true;
+    requestAnimationFrame(() => {
+      actionLock.current = false;
+    });
+    const next = previewArenaChain(current, type, chain.length).next;
+    const rng = mulberry32(current.seed ^ (current.tick + 1));
+    commit({
+      ...current,
+      tick: current.tick + 1,
+      combat: next,
+      grid: ensurePlayableBoard(resolveBoard(current.grid, chain, rng), rng)
+        .grid,
+    });
+  }
+  function abilityAction() {
+    const current = runRef.current;
+    if (
+      !current ||
+      current.paused ||
+      current.result ||
+      inspectRef.current ||
+      actionLock.current
+    )
+      return;
+    actionLock.current = true;
+    requestAnimationFrame(() => {
+      actionLock.current = false;
+    });
+    const { next, ok } = castAbility(current.combat, current.cls);
+    if (ok) commit({ ...current, combat: next });
   }
 
-  const remainingSec = Math.max(0, ENDLESS_TIME_LIMIT_SEC - Math.floor(elapsedSec));
-  const wave = waveForElapsed(elapsedSec);
-  const timePct = Math.max(0, Math.min(100, (remainingSec / ENDLESS_TIME_LIMIT_SEC) * 100));
-
-  // ── Render ───────────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-3 pb-8">
-      <div className="flex items-center justify-between">
+  if (heroQuery.isError || dailyQuery.isError)
+    return (
+      <div className="rd-load-error" role="alert">
+        <p>The arena couldn’t connect.</p>
         <button
-          onClick={() => navigate('/rune-delve/daily')}
-          className="flex items-center gap-1 text-[12px] font-bold text-foreground/75 btn-press"
+          onClick={() => {
+            void heroQuery.refetch();
+            void dailyQuery.refetch();
+          }}
         >
-          <ArrowLeft className="w-4 h-4" /> Daily
+          Try again
         </button>
-        <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style={{ color: 'hsl(var(--gold))' }}>
-          <Timer className="w-3.5 h-3.5" /> Endless · {Math.floor(remainingSec / 60)}:{String(remainingSec % 60).padStart(2, '0')}
-        </div>
       </div>
+    );
+  if (heroQuery.isLoading || dailyQuery.isLoading)
+    return (
+      <div className="rd-load-error">
+        <Sparkles className="animate-pulse" />
+        <p>Preparing the arena…</p>
+        <button
+          onClick={() => {
+            void heroQuery.refetch();
+            void dailyQuery.refetch();
+          }}
+        >
+          Reconnect
+        </button>
+      </div>
+    );
+  if (!hero)
+    return (
+      <div className="rd-load-error">
+        <p>Choose a hero to enter.</p>
+        <Link className="rd-primary-action" to="/rune-delve">
+          Create hero
+        </Link>
+      </div>
+    );
 
-      {phase === 'ready' && (
-        <div className="glass-card p-5 text-center space-y-3" style={{
-          background: 'linear-gradient(160deg, hsl(var(--gold) / 0.10), hsl(var(--primary) / 0.06))',
-          borderColor: 'hsl(var(--gold) / 0.25)',
-        }}>
-          <h2 className="rd-title text-2xl">Endless Arena</h2>
-          <p className="text-[12px] text-foreground/80 leading-snug">
-            You have <span className="font-extrabold text-foreground">{ENDLESS_TIME_LIMIT_SEC / 60} minutes</span>.
-            Chain runes, kill enemies, stay alive. No move limit. Stronger relics + masteries → more kills.
-          </p>
-          {existingRun ? (
-            <p className="text-[11px] text-muted-foreground">
-              You already played today. Best: {existingRun.kills_count} kills · {existingRun.score.toLocaleString()} pts.
-            </p>
-          ) : (
-            <button
-              onClick={startRun}
-              disabled={!hero}
-              className="w-full h-12 rounded-xl font-extrabold text-sm btn-press flex items-center justify-center gap-2 disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, hsl(var(--gold)), hsl(var(--primary-glow)))',
-                color: 'hsl(var(--background))',
-                boxShadow: 'var(--shadow-glow)',
-              }}
-            >
-              <SparklesIcon className="w-4 h-4" /> Start Run
-            </button>
-          )}
-        </div>
-      )}
-
-      {phase === 'playing' && combat && grid && (
+  const remaining = Math.max(
+    0,
+    ENDLESS_TIME_LIMIT_SEC - Math.floor(run?.elapsed ?? 0),
+  );
+  const wave = waveForElapsed(run?.elapsed ?? 0);
+  return (
+    <section className="rd-arena space-y-3 pb-3" data-testid="rune-arena">
+      {!run && (
         <>
-          {/* Timer + wave HUD */}
-          <div className="glass-card p-3 space-y-2">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-extrabold uppercase tracking-wider" style={{ color: 'hsl(var(--gold))' }}>
-                Wave {wave.index} · {wave.label}
-              </span>
-              <span className="font-mono font-extrabold tabular-nums">
-                {kills} kills
-              </span>
+          <div className="rd-sanctum" style={{ minHeight: 280 }}>
+            <img src={RUNE_PORTAL_ART} alt="" />
+            <div className="rd-sanctum-copy">
+              <p className="rd-eyebrow">
+                <Flame size={13} /> Daily arena
+              </p>
+              <h1>
+                Two minutes.
+                <br />
+                Every rune counts.
+              </h1>
+              <p>Pure class combat. No relic or mastery advantage.</p>
+              {dailyQuery.data ? (
+                <Link to="/rune-delve/daily" className="rd-primary-action">
+                  <Trophy />
+                  Today’s result
+                </Link>
+              ) : (
+                <button className="rd-primary-action btn-press" onClick={start}>
+                  <Play />
+                  Begin arena
+                </button>
+              )}
             </div>
-            <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
-              <div
-                className="h-full transition-all duration-300"
-                style={{
-                  width: `${timePct}%`,
-                  background: timePct > 25
-                    ? 'linear-gradient(90deg, hsl(var(--gold)), hsl(var(--primary-glow)))'
-                    : 'linear-gradient(90deg, hsl(var(--destructive)), hsl(var(--destructive) / 0.7))',
+          </div>
+          <div className="rd-class-info">
+            <span className="h-12 w-12 rounded-xl overflow-hidden">
+              <RuneHeroArt cls={cls} />
+            </span>
+            <div>
+              <strong>{getClass(cls).name}</strong>
+              <small>
+                Chain to act. Enemies strike on a timer. Backgrounding pauses.
+              </small>
+            </div>
+          </div>
+        </>
+      )}
+      {run && !run.result && (
+        <>
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+            <Flame size={16} className="text-gold" />
+            <span className="flex-1 text-xs font-bold">
+              {wave.label} · {run.combat.enemiesDefeated} slain
+            </span>
+            <Timer size={14} />
+            <span className="font-mono text-sm tabular-nums">
+              {Math.floor(remaining / 60)}:
+              {String(remaining % 60).padStart(2, "0")}
+            </span>
+            <button
+              className="min-h-11 min-w-11 grid place-items-center"
+              aria-label={run.paused ? "Resume arena" : "Pause arena"}
+              onClick={() => commit({ ...run, paused: !run.paused })}
+            >
+              {run.paused ? <Play size={18} /> : <Pause size={18} />}
+            </button>
+          </div>
+          {run.paused ? (
+            <div className="rd-load-error">
+              <Pause />
+              <p>Arena paused · your run is saved.</p>
+              <button onClick={() => commit({ ...run, paused: false })}>
+                Resume arena
+              </button>
+            </div>
+          ) : (
+            <div className="rd-battle-layout">
+              <div className="rd-battle-stage">
+                <EnemyDisplay
+                  enemies={run.combat.enemies}
+                  onInspectChange={inspectChange}
+                />
+                <HeroStatusBar
+                  state={run.combat}
+                  cls={cls}
+                  onAbility={abilityAction}
+                  disabled={inspecting}
+                />
+                <ResonanceMeter state={run.combat} />
+                <div
+                  className="h-1 rounded bg-muted overflow-hidden"
+                  aria-label="Next enemy strike"
+                >
+                  <div
+                    className="h-full bg-destructive"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, (1 - (run.attackAt - run.elapsed) / (enemyTickIntervalMs(run.elapsed) / 1000)) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+              <RuneBoard
+                grid={run.grid}
+                onChainComplete={chainAction}
+                disabled={inspecting}
+                effectOverride={{
+                  red: (n) => previewArenaChain(run, "red", n).text,
+                  blue: (n) => previewArenaChain(run, "blue", n).text,
+                  green: (n) => previewArenaChain(run, "green", n).text,
+                  gold: (n) => previewArenaChain(run, "gold", n).text,
                 }}
               />
             </div>
-          </div>
-
-          <EnemyDisplay enemies={combat.enemies} />
-          <HeroStatusBar state={combat} cls={heroClass} onAbility={handleAbility} />
-          <RuneBoard grid={grid} onChainComplete={handleChain} />
+          )}
         </>
       )}
-
-      {phase === 'over' && endResult && (
-        <div className="glass-card p-5 text-center space-y-3" style={{
-          background: 'linear-gradient(160deg, hsl(var(--gold) / 0.12), hsl(var(--primary) / 0.08))',
-          borderColor: 'hsl(var(--gold) / 0.25)',
-        }}>
-          <div className="flex items-center justify-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-foreground/70">
-            {endResult.reason === 'defeated' ? <Skull className="w-3.5 h-3.5" /> : <Timer className="w-3.5 h-3.5" />}
-            {endResult.reason === 'defeated' ? 'Defeated' : 'Time\'s Up'}
-          </div>
-          <h2 className="rd-title text-3xl" style={{ color: 'hsl(var(--gold))' }}>
-            {'★'.repeat(endResult.stars)}{'☆'.repeat(3 - endResult.stars)}
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label="Kills" value={endResult.kills.toString()} />
-            <Stat label="Score" value={endResult.score.toLocaleString()} />
-            <Stat label="Shards" value={`+${endResult.reward.shards}`} highlight />
-            <Stat label="XP" value={`+${endResult.reward.xp}`} />
-          </div>
-          {endResult.reward.title && (
-            <div className="rounded-xl border border-gold/40 bg-gold/10 p-2.5 text-[11px] font-extrabold flex items-center justify-center gap-1.5" style={{ color: 'hsl(var(--gold))' }}>
-              <Trophy className="w-3.5 h-3.5" /> Title Earned: {endResult.reward.title}
+      {run?.result && (
+        <div className="glass-card p-5 space-y-4 text-center">
+          <p className="rd-eyebrow justify-center">
+            {run.result.reason === "defeated" ? (
+              <Skull size={14} />
+            ) : (
+              <Timer size={14} />
+            )}
+            Arena complete
+          </p>
+          <h1 className="rd-title text-3xl text-gold">
+            {"★".repeat(endlessStarsFor(run.result.kills))}
+            {"☆".repeat(3 - endlessStarsFor(run.result.kills))}
+          </h1>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-muted p-3">
+              <strong className="block text-2xl">{run.result.kills}</strong>
+              <small>Enemies slain</small>
             </div>
-          )}
-          <button
-            onClick={() => navigate('/rune-delve/daily')}
-            className="w-full h-11 rounded-xl font-extrabold text-sm btn-press"
-            style={{
-              background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)))',
-              color: 'hsl(var(--background))',
-            }}
-          >
-            Back to Daily
-          </button>
+            <div className="rounded-xl bg-muted p-3">
+              <strong className="block text-2xl">
+                {run.result.score.toLocaleString()}
+              </strong>
+              <small>Score</small>
+            </div>
+          </div>
+          {saving ? (
+            <p className="text-xs text-muted-foreground">Saving your result…</p>
+          ) : saveError ? (
+            <div role="alert">
+              <p className="text-xs mb-2">
+                Your result is safe on this device. Reconnect to bank it.
+              </p>
+              <button
+                onClick={() => void saveResult()}
+                className="rd-primary-action"
+              >
+                Retry save
+              </button>
+            </div>
+          ) : saved ? (
+            <p className="text-sm text-primary">
+              {saved.rewarded
+                ? `+${saved.reward.shards} shards · +${saved.reward.xp} XP`
+                : "Daily result confirmed · reward already claimed"}
+            </p>
+          ) : null}
+          <Link className="rd-primary-action" to="/rune-delve/daily">
+            Return to daily arena
+          </Link>
         </div>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="glass-card p-2.5 text-center" style={highlight ? { borderColor: 'hsl(var(--gold) / 0.3)' } : undefined}>
-      <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="font-mono font-extrabold text-base tabular-nums mt-0.5" style={highlight ? { color: 'hsl(var(--gold))' } : undefined}>
-        {value}
-      </p>
-    </div>
+    </section>
   );
 }

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import rawCatalog from "@/lib/feats/catalog.json";
+import expeditionCatalog from "@/lib/feats/runeExpeditionCatalog.json";
 import {
   dhRank,
   FEAT_CATEGORIES,
   featProgress,
+  featActionPath,
   formatFeatValue,
   nextFeats,
   unseenFeats,
@@ -32,6 +34,17 @@ describe("DH Feats shared progression", () => {
       });
     }
     expect(new Set(catalog.map((f) => f.category)).size).toBe(18);
+  });
+  it("adds expedition goals without changing legacy families and links each goal to its game mode", () => {
+    const combined = [...catalog, ...expeditionCatalog];
+    expect(new Set(combined.map(feat => feat.key)).size).toBe(66);
+    expect(combined.reduce((sum, feat) => sum + feat.thresholds.length, 0)).toBe(329);
+    for (const feat of expeditionCatalog) {
+      expect(featActionPath(feat)).toBe('/rune-delve/expedition');
+      expect(feat.thresholds).toHaveLength(feat.points.length);
+      expect(feat.category).toBe('rune');
+    }
+    expect(featActionPath(catalog.find(feat => feat.key === 'rune_level')!)).toBe('/rune-delve');
   });
   it("uses earned receipts for tiers and their immutable point values", () => {
     const f = catalog.find((f) => f.key === "drop_posts")!;
