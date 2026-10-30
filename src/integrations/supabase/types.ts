@@ -1070,6 +1070,194 @@ export type Database = {
           },
         ]
       }
+      dh_feat_accounts: {
+        Row: {
+          dirty: boolean
+          evaluated_at: string | null
+          pinned: string[]
+          seen_at: string
+          user_id: string
+        }
+        Insert: {
+          dirty?: boolean
+          evaluated_at?: string | null
+          pinned?: string[]
+          seen_at?: string
+          user_id: string
+        }
+        Update: {
+          dirty?: boolean
+          evaluated_at?: string | null
+          pinned?: string[]
+          seen_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dh_feat_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dh_feat_catalog: {
+        Row: {
+          category: string
+          description: string
+          key: string
+          kind: string
+          points: number[]
+          sort_order: number
+          thresholds: number[]
+          title: string
+          unit: string
+        }
+        Insert: {
+          category: string
+          description: string
+          key: string
+          kind: string
+          points: number[]
+          sort_order: number
+          thresholds: number[]
+          title: string
+          unit: string
+        }
+        Update: {
+          category?: string
+          description?: string
+          key?: string
+          kind?: string
+          points?: number[]
+          sort_order?: number
+          thresholds?: number[]
+          title?: string
+          unit?: string
+        }
+        Relationships: []
+      }
+      dh_feat_progress: {
+        Row: {
+          feat_key: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          feat_key: string
+          user_id: string
+          value?: number
+        }
+        Update: {
+          feat_key?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dh_feat_progress_feat_key_fkey"
+            columns: ["feat_key"]
+            isOneToOne: false
+            referencedRelation: "dh_feat_catalog"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "dh_feat_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "dh_feat_accounts"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      dh_feat_unlocks: {
+        Row: {
+          earned_at: string
+          feat_key: string
+          historical: boolean
+          points: number
+          target: number
+          tier: number
+          user_id: string
+        }
+        Insert: {
+          earned_at?: string
+          feat_key: string
+          historical?: boolean
+          points: number
+          target: number
+          tier: number
+          user_id: string
+        }
+        Update: {
+          earned_at?: string
+          feat_key?: string
+          historical?: boolean
+          points?: number
+          target?: number
+          tier?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dh_feat_unlocks_feat_key_fkey"
+            columns: ["feat_key"]
+            isOneToOne: false
+            referencedRelation: "dh_feat_catalog"
+            referencedColumns: ["key"]
+          },
+          {
+            foreignKeyName: "dh_feat_unlocks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "dh_feat_accounts"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      dh_private_accounts: {
+        Row: {
+          created_at: string
+          display_metadata_snapshot: Json
+          membership_snapshot: Json
+          profile_snapshot: Json
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_metadata_snapshot?: Json
+          membership_snapshot: Json
+          profile_snapshot: Json
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          display_metadata_snapshot?: Json
+          membership_snapshot?: Json
+          profile_snapshot?: Json
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dh_private_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dh_private_accounts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_desk_items: {
         Row: {
           created_at: string
@@ -5554,6 +5742,241 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      nexus_core_ledger: {
+        Row: {
+          balance: number
+          created_at: string
+          delta: number
+          details: Json
+          id: number
+          kind: string
+          run_id: string | null
+          user_id: string
+        }
+        Insert: {
+          balance: number
+          created_at?: string
+          delta: number
+          details?: Json
+          id?: number
+          kind: string
+          run_id?: string | null
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          delta?: number
+          details?: Json
+          id?: number
+          kind?: string
+          run_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nexus_core_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nexus_core_profiles: {
+        Row: {
+          best_wave: number
+          campaign: Json
+          challenges: Json
+          credits: number
+          endless_best: number
+          legacy_slot: boolean
+          loadout: Json
+          research: Json
+          total_runs: number
+          total_waves: number
+          unlocks: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_wave?: number
+          campaign?: Json
+          challenges?: Json
+          credits?: number
+          endless_best?: number
+          legacy_slot?: boolean
+          loadout?: Json
+          research?: Json
+          total_runs?: number
+          total_waves?: number
+          unlocks?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_wave?: number
+          campaign?: Json
+          challenges?: Json
+          credits?: number
+          endless_best?: number
+          legacy_slot?: boolean
+          loadout?: Json
+          research?: Json
+          total_runs?: number
+          total_waves?: number
+          unlocks?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nexus_core_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nexus_core_runs: {
+        Row: {
+          balance_version: number
+          clear_bonus: number
+          club_id: string
+          created_at: string
+          difficulty: number
+          duration_seconds: number
+          id: string
+          kills: number
+          loadout: Json | null
+          mode: string
+          reward: number
+          scenario_id: string
+          score: number
+          stars: number
+          user_id: string
+          victory: boolean
+          wave_reward: number
+          waves: number
+        }
+        Insert: {
+          balance_version?: number
+          clear_bonus?: number
+          club_id: string
+          created_at?: string
+          difficulty?: number
+          duration_seconds: number
+          id: string
+          kills: number
+          loadout?: Json | null
+          mode: string
+          reward: number
+          scenario_id: string
+          score: number
+          stars: number
+          user_id: string
+          victory: boolean
+          wave_reward?: number
+          waves: number
+        }
+        Update: {
+          balance_version?: number
+          clear_bonus?: number
+          club_id?: string
+          created_at?: string
+          difficulty?: number
+          duration_seconds?: number
+          id?: string
+          kills?: number
+          loadout?: Json | null
+          mode?: string
+          reward?: number
+          scenario_id?: string
+          score?: number
+          stars?: number
+          user_id?: string
+          victory?: boolean
+          wave_reward?: number
+          waves?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nexus_core_runs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nexus_core_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nexus_core_sessions: {
+        Row: {
+          balance_version: number
+          club_id: string
+          created_at: string
+          difficulty: number
+          id: string
+          legacy: boolean
+          loadout: Json | null
+          research: Json
+          scenario_id: string
+          seed: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          balance_version?: number
+          club_id: string
+          created_at?: string
+          difficulty?: number
+          id: string
+          legacy?: boolean
+          loadout?: Json | null
+          research: Json
+          scenario_id: string
+          seed: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          balance_version?: number
+          club_id?: string
+          created_at?: string
+          difficulty?: number
+          id?: string
+          legacy?: boolean
+          loadout?: Json | null
+          research?: Json
+          scenario_id?: string
+          seed?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nexus_core_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nexus_core_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nexus_mission_calibrations: {
         Row: {
@@ -11359,6 +11782,26 @@ export type Database = {
         }
       }
       current_user_club_id: { Args: never; Returns: string }
+      dh_feat_metrics: { Args: { uid: string }; Returns: Json }
+      dh_feat_number: { Args: { v: string }; Returns: number }
+      dh_feats_board: { Args: { p_club_id: string }; Returns: Json }
+      dh_feats_pin: { Args: { p_keys: string[] }; Returns: string[] }
+      dh_feats_refresh_club: { Args: { cid: string }; Returns: undefined }
+      dh_feats_refresh_user: { Args: { uid: string }; Returns: undefined }
+      dh_feats_seen: { Args: { p_through: string }; Returns: undefined }
+      dh_feats_summary: { Args: { p_club_id: string }; Returns: Json }
+      dh_home_progress: { Args: { p_club_id: string }; Returns: Json }
+      dh_presence_directory: {
+        Args: { p_club_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+        }[]
+      }
+      dh_public_member: { Args: { uid: string }; Returns: boolean }
+      dh_visible_club: { Args: { cid: string }; Returns: boolean }
+      dh_visible_member: { Args: { uid: string }; Returns: boolean }
       ensure_forge_week: {
         Args: {
           p_club_id: string
@@ -11709,6 +12152,51 @@ export type Database = {
         Args: { _campaign: string; _user: string }
         Returns: string
       }
+      nexus_core_begin: {
+        Args: {
+          p_club_id: string
+          p_id: string
+          p_legacy?: boolean
+          p_scenario: string
+        }
+        Returns: Json
+      }
+      nexus_core_begin_endless: {
+        Args: {
+          p_balance_version?: number
+          p_club_id: string
+          p_difficulty?: number
+          p_id: string
+          p_loadout: Json
+        }
+        Returns: Json
+      }
+      nexus_core_finish: {
+        Args: { p_club_id: string; p_run: Json }
+        Returns: Json
+      }
+      nexus_core_finish_endless: {
+        Args: { p_club_id: string; p_run: Json }
+        Returns: Json
+      }
+      nexus_core_loadout: { Args: { p_loadout: Json }; Returns: Json }
+      nexus_core_loadout_valid: {
+        Args: { p_loadout: Json; p_unlocks: string[] }
+        Returns: boolean
+      }
+      nexus_core_profile: { Args: never; Returns: Json }
+      nexus_core_records: {
+        Args: { p_club_id: string; p_difficulty?: number; p_mode: string }
+        Returns: {
+          display_name: string
+          scenario_id: string
+          score: number
+          user_id: string
+          waves: number
+        }[]
+      }
+      nexus_core_research: { Args: { p_track: string }; Returns: Json }
+      nexus_core_unlock: { Args: { p_item: string }; Returns: Json }
       nfl_chain_board_unlocked: {
         Args: { _club_id: string; _week_id: string }
         Returns: boolean
