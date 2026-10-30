@@ -1,0 +1,95 @@
+.drop-page.drop-social-sheet {
+  min-height: 0;
+  font-family: inherit;
+  --drop-accent: var(--primary);
+  --drop-paper: var(--card);
+  --drop-paper-strong: var(--muted);
+  --drop-edge: var(--border);
+  bottom: var(--drop-sheet-lift, 0px) !important;
+  max-height: min(86dvh, calc(var(--drop-sheet-viewport, 100dvh) - 12px));
+  overscroll-behavior: contain;
+}
+.drop-social-sheet .drop-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.drop-social-sheet input,
+.drop-social-sheet textarea,
+.drop-social-sheet select {
+  font-size: 16px;
+}
+.drop-social-sheet .drop-compose-caption {
+  min-height: 112px;
+  max-height: 220px;
+  resize: vertical;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 10px 4px;
+  line-height: 1.55;
+}
+.drop-compose-tools {
+  display: flex;
+  gap: 6px;
+}
+.drop-compose-tools button {
+  min-height: 44px;
+  padding: 8px 12px;
+  gap: 7px;
+}
+.drop-compose-publish {
+  position: sticky;
+  bottom: -12px;
+  z-index: 2;
+  padding: 12px 0 2px;
+  background: hsl(var(--background));
+}
+.drop-social-sheet .drop-compose-photo {
+  max-height: 200px;
+  width: 100%;
+  object-fit: contain;
+  background: hsl(var(--muted) / 0.3);
+}
+.drop-social-sheet .drop-comments-list {
+  min-height: 100px;
+  max-height: min(48dvh, calc(var(--drop-sheet-viewport, 100dvh) - 210px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.drop-social-sheet .drop-comment-composer {
+  flex-shrink: 0;
+  background: hsl(var(--background));
+}
+.drop-social-sheet .drop-comment-composer input {
+  min-width: 0;
+}
+.drop-social-sheet .drop-share-channel {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 10px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+@media (max-height: 560px) {
+  .drop-social-sheet .drop-compose-caption {
+    min-height: 80px;
+    max-height: 140px;
+  }
+  .drop-social-sheet .drop-comments-list {
+    max-height: calc(var(--drop-sheet-viewport, 100dvh) - 180px);
+    min-height: 60px;
+  }
+}
+.drop-social-sheet > button:last-child {
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  top: 8px;
+  right: 8px;
+}
+.drop-social-sheet > div:first-of-type + div {
+  padding-right: 32px;
+}

@@ -1,161 +1,234 @@
-import { memo, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { BookOpen, Camera, Clock3, Heart, Lightbulb, MessageCircle, Share2 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
-import { useFindImageUrl, useToggleFindReaction } from '@/hooks/useDailyFinds';
-import { FIND_REACTIONS, formatDayKey, kindMeta, type DailyFind } from '@/lib/dailyFind';
-import { FindShareSheet } from './FindShareSheet';
-import { FindLinkPreview } from './FindLinkPreview';
-import { FindCommentsSheet } from './FindCommentsSheet';
-import { toast } from 'sonner';
+import { memo, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Heart, MessageCircle, RotateCcw, Share2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFindImage, useToggleFindReaction } from "@/hooks/useDailyFinds";
+import { FIND_REACTIONS, type DailyFind } from "@/lib/dailyFind";
+import { pauseDropPlayback } from "@/lib/dropPlayback";
+import { FindShareSheet } from "./FindShareSheet";
+import { FindLinkPreview } from "./FindLinkPreview";
+import { FindCommentsSheet } from "./FindCommentsSheet";
+import { toast } from "sonner";
+import "./dropSocial.css";
 
-const KIND_ICON = { learned: Lightbulb, article: BookOpen, photo: Camera } as const;
-const KIND_TONE = { learned: 'drop-kind-learned', article: 'drop-kind-read', photo: 'drop-kind-saw' } as const;
-
-function compactCount(count: number) {
-  return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(count);
-}
-
-export function FindPhoto({ path, className }: { path: string | null; className?: string }) {
-  const url = useFindImageUrl(path);
+export function FindPhoto({
+  path,
+  className,
+}: {
+  path: string | null;
+  className?: string;
+}) {
+  const image = useFindImage(path);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [path, image.url]);
   if (!path) return null;
   return (
-    <div className={cn('overflow-hidden bg-muted/40', className)}>
-      {url
-        ? <img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
-        : <div className="h-full w-full animate-pulse" />}
+    <div className={"drop-social-photo " + (className || "")}>
+      {image.error || failed ? (
+        <button
+          className="drop-photo-retry"
+          onClick={() => {
+            setFailed(false);
+            image.retry();
+          }}
+        >
+          <RotateCcw size={18} />
+          Load photo
+        </button>
+      ) : image.url ? (
+        <img
+          src={image.url}
+          alt="Shared photo"
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div
+          className="drop-photo-placeholder"
+          role="status"
+          aria-label="Loading photo"
+        />
+      )}
     </div>
   );
 }
-
-export function FindReactionBar({ find, compact }: { find: DailyFind; compact?: boolean }) {
-  const { user } = useAuth();
-  const toggle = useToggleFindReaction();
-  const reactions = find.reactions ?? [];
-  const shown = compact ? FIND_REACTIONS.filter(e => reactions.some(r => r.emoji === e)) : FIND_REACTIONS;
-  const list = compact && shown.length === 0 ? FIND_REACTIONS.slice(0, 3) : shown;
+export function FindReactionBar({
+  find,
+  compact,
+}: {
+  find: DailyFind;
+  compact?: boolean;
+}) {
+  const { user } = useAuth(),
+    toggle = useToggleFindReaction();
+  const reactions = find.reactions || [];
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {list.map(emoji => {
-        const count = reactions.filter(r => r.emoji === emoji).length;
-        const has = reactions.some(r => r.emoji === emoji && r.user_id === user?.id);
+    <div className="drop-social-reactions">
+      {(compact ? ["❤️"] : FIND_REACTIONS).map((emoji) => {
+        const count = reactions.filter((r) => r.emoji === emoji).length,
+          has = reactions.some(
+            (r) => r.emoji === emoji && r.user_id === user?.id,
+          );
         return (
-          <motion.button
+          <button
             key={emoji}
-            type="button"
-            whileTap={{ scale: 0.85 }}
-            onClick={(e) => {
-              e.preventDefault(); e.stopPropagation();
-              toggle.mutate({ findId: find.id, emoji, has }, { onError: (err: Error) => toast.error(err.message) });
-            }}
+            aria-label={"React " + emoji}
             aria-pressed={has}
-            aria-label={`React ${emoji}`}
-            className={cn(
-              'flex h-9 min-w-[2.75rem] items-center justify-center gap-1 rounded-full border px-2.5 text-sm transition-colors',
-              has ? 'border-[hsl(var(--drop-accent)/0.6)] bg-[hsl(var(--drop-accent)/0.12)]' : 'border-border/50 bg-muted/30 hover:bg-muted/60',
-            )}
+            disabled={toggle.isPending}
+            onClick={() =>
+              toggle.mutate(
+                { findId: find.id, emoji, has },
+                { onError: (error: Error) => toast.error(error.message) },
+              )
+            }
           >
-            <span>{emoji}</span>
-            {count > 0 && <span className="text-xs font-bold tabular-nums text-foreground/80">{count}</span>}
-          </motion.button>
+            {emoji}
+            {count > 0 && <span>{count}</span>}
+          </button>
         );
       })}
     </div>
   );
 }
-
-function FindCardInner({ find, index = 0, immersive = false }: { find: DailyFind; index?: number; immersive?: boolean }) {
-  const [shareOpen, setShareOpen] = useState(false);
-  const [commentsOpen, setCommentsOpen] = useState(false);
-  const [active, setActive] = useState(!immersive);
-  const cardRef = useRef<HTMLElement>(null);
-  const { user } = useAuth();
-  const toggle = useToggleFindReaction();
-  const meta = kindMeta(find.kind);
-  const KindIcon = KIND_ICON[find.kind];
-  const name = find.profiles?.display_name ?? 'Member';
-  const comments = find.comments?.[0]?.count ?? 0;
-  const postedAt = new Date(find.created_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  const ageMs = Date.now() - new Date(find.created_at).getTime();
-  const fresh = Number.isFinite(ageMs) && ageMs >= 0 && ageMs < 24 * 60 * 60 * 1000;
-  const reactions = find.reactions ?? [];
-  const liked = reactions.some(reaction => reaction.emoji === '❤️' && reaction.user_id === user?.id);
-  const likes = reactions.filter(reaction => reaction.emoji === '❤️').length;
-
-  useEffect(() => {
-    if (!immersive) return;
-    const card = cardRef.current;
-    if (!card) return;
-    const observer = new IntersectionObserver(([entry]) => setActive(Boolean(entry && entry.intersectionRatio >= 0.55)), { threshold: [0, 0.55, 1] });
-    observer.observe(card);
-    return () => observer.disconnect();
-  }, [immersive]);
-
+function timeLabel(value: string) {
+  const date = new Date(value),
+    minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (!Number.isFinite(minutes)) return "";
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return minutes + "m";
+  if (minutes < 1440) return Math.floor(minutes / 60) + "h";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+function FindCardInner({
+  find,
+  expanded = false,
+  onComments,
+}: {
+  find: DailyFind;
+  index?: number;
+  immersive?: boolean;
+  expanded?: boolean;
+  onComments?: () => void;
+}) {
+  const { user } = useAuth(),
+    toggle = useToggleFindReaction();
+  const [showMore, setShowMore] = useState(expanded);
+  const [shareOpen, setShareOpen] = useState(false),
+    [commentsOpen, setCommentsOpen] = useState(false),
+    [visitedComments, setVisitedComments] = useState(false);
+  const name = find.profiles?.display_name || "Member",
+    reactions = find.reactions || [];
+  const likes = reactions.filter((r) => r.emoji === "❤️").length,
+    liked = reactions.some((r) => r.emoji === "❤️" && r.user_id === user?.id);
+  const commentCount = find.comments?.[0]?.count || 0;
+  const long = (find.note?.length || 0) > 220;
+  const note =
+    find.note && !showMore && long ? find.note.slice(0, 220) + "…" : find.note;
+  const openComments = () => {
+    pauseDropPlayback();
+    if (onComments) onComments();
+    else {
+      setVisitedComments(true);
+      setCommentsOpen(true);
+    }
+  };
   return (
-    <motion.article
-      ref={cardRef}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index, 8) * 0.04, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={immersive ? undefined : { y: -3 }}
-      className={cn('drop-card drop-surface overflow-hidden border-y sm:rounded-xl sm:border', immersive && 'drop-snap-card drop-reel', KIND_TONE[find.kind])}
-    >
-      <Link to={`/finds/${find.id}`} className={cn('block active:opacity-90', immersive && 'drop-reel-copy')}>
-        <header className={cn('flex items-center gap-3 px-4 pb-2 pt-4 sm:px-5', immersive && 'drop-reel-author')}>
-          <Avatar className="h-10 w-10 border border-border/60"><AvatarImage src={find.profiles?.avatar_url ?? undefined} /><AvatarFallback className="text-[10px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-          <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{name}</p><p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="h-3 w-3" />{formatDayKey(find.find_date, { month: 'short', day: 'numeric' })} · {postedAt}</p></div>
-           {fresh && !immersive && <span className="drop-fresh-badge">Fresh</span>}
-        </header>
-
-        <div className={cn('px-4 pb-1 pt-2 sm:px-5', immersive && 'drop-reel-caption')}>
-          <span className="drop-kind-tab"><KindIcon className="h-3.5 w-3.5" /> {meta.label}</span>
-          <h3 className={cn('drop-card-title mt-3 text-[25px] leading-[1.08] sm:text-[30px]', find.kind === 'learned' && 'drop-thought-title')}>{find.title}</h3>
-          {find.note && <p className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground/75 line-clamp-4">{find.note}</p>}
-          {find.tags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {find.tags.map(t => <span key={t} className="text-xs font-semibold text-[hsl(var(--drop-accent))]">#{t}</span>)}
-            </div>
-          )}
+    <article className="drop-social-card" data-drop-id={find.id}>
+      <header className="drop-social-author">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={find.profiles?.avatar_url || undefined} />
+          <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div>
+          <strong>{name}</strong>
+          <Link
+            to={"/finds/" + find.id}
+            aria-label={"Open Drop: " + find.title}
+          >
+            <time dateTime={find.created_at}>{timeLabel(find.created_at)}</time>
+          </Link>
         </div>
-      </Link>
-
-      {find.image_path && <Link to={`/finds/${find.id}`} className={cn('block', immersive && 'drop-reel-media')}><FindPhoto path={find.image_path} className={cn('mt-3 w-full border-y border-[hsl(var(--drop-accent)/0.2)]', immersive ? 'drop-photo-immersive' : find.kind === 'photo' ? 'aspect-[4/5] max-h-[680px]' : 'aspect-[16/10] max-h-96')} /></Link>}
-      {find.url && (!immersive || active) && <FindLinkPreview url={find.url} compact={!immersive} immersive={immersive} className={cn(immersive ? 'drop-reel-media sm:mx-5' : 'mx-4 mt-4 sm:mx-5')} />}
-
-      {immersive && (
-        <aside className="drop-action-rail" aria-label="Drop actions">
-          <Button type="button" variant="ghost" size="icon" onClick={() => toggle.mutate({ findId: find.id, emoji: '❤️', has: liked }, { onError: (error: Error) => toast.error(error.message) })} disabled={toggle.isPending} aria-pressed={liked} aria-label={liked ? `Unlike, ${likes} likes` : `Like, ${likes} likes`} className={cn('drop-rail-action', liked && 'is-active')}>
-            <span className="drop-rail-icon"><Heart className={cn('h-6 w-6', liked && 'fill-current')} /></span>
-            <span className="drop-rail-count">{likes ? compactCount(likes) : 'Like'}</span>
-          </Button>
-          <Button type="button" variant="ghost" size="icon" onClick={() => setCommentsOpen(true)} aria-label={`Open comments, ${comments} comments`} className="drop-rail-action">
-            <span className="drop-rail-icon"><MessageCircle className="h-6 w-6" /></span>
-            <span className="drop-rail-count">{comments ? compactCount(comments) : 'Comment'}</span>
-          </Button>
-          <Button type="button" variant="ghost" size="icon" onClick={() => setShareOpen(true)} aria-label="Share this Drop" className="drop-rail-action">
-            <span className="drop-rail-icon"><Share2 className="h-6 w-6" /></span>
-            <span className="drop-rail-count">Share</span>
-          </Button>
-        </aside>
-      )}
-
-       {!immersive && <footer className="flex items-center gap-2 border-t border-border/50 px-4 py-3 sm:px-5">
-        <div className="min-w-0 flex-1"><FindReactionBar find={find} compact /></div>
-        <Link to={`/finds/${find.id}`} aria-label="Comments" className="flex h-10 items-center gap-1 rounded-full px-3 text-sm text-muted-foreground hover:bg-muted/50">
-          <MessageCircle className="h-4 w-4" />{comments > 0 && <span className="font-bold tabular-nums">{comments}</span>}
-        </Link>
-        <button type="button" onClick={() => setShareOpen(true)} aria-label="Share" className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/50">
-          <Share2 className="h-4 w-4" />
+      </header>
+      <div className="drop-social-caption">
+        <h2>{find.title}</h2>
+        {note && <p>{note}</p>}
+        {long && !expanded && (
+          <button
+            className="drop-social-expand"
+            onClick={() => setShowMore((value) => !value)}
+          >
+            {showMore ? "Less" : "More"}
+          </button>
+        )}
+        {!!find.tags?.length && (
+          <div className="drop-social-tags">
+            {find.tags.slice(0, 3).map((tag) => (
+              <Link
+                key={tag}
+                to={"/finds?tag=" + encodeURIComponent(tag)}
+                onClick={() => pauseDropPlayback()}
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+      {find.image_path && <FindPhoto path={find.image_path} />}
+      {find.url && <FindLinkPreview url={find.url} />}
+      <footer className="drop-social-actions">
+        <button
+          aria-label={(liked ? "Unlike" : "Like") + " Drop"}
+          aria-pressed={liked}
+          disabled={toggle.isPending}
+          onClick={() =>
+            toggle.mutate(
+              { findId: find.id, emoji: "❤️", has: liked },
+              { onError: (error: Error) => toast.error(error.message) },
+            )
+          }
+        >
+          <Heart size={21} fill={liked ? "currentColor" : "none"} />
+          <span>{likes || "Like"}</span>
         </button>
-      </footer>}
-      <FindShareSheet open={shareOpen} onOpenChange={setShareOpen} find={find} />
-      <FindCommentsSheet open={commentsOpen} onOpenChange={setCommentsOpen} find={find} />
-    </motion.article>
+        <button aria-label="Open comments" onClick={openComments}>
+          <MessageCircle size={21} />
+          <span>{commentCount || "Comment"}</span>
+        </button>
+        <button
+          aria-label="Share this Drop"
+          onClick={() => {
+            pauseDropPlayback();
+            setShareOpen(true);
+          }}
+        >
+          <Share2 size={20} />
+          <span>Share</span>
+        </button>
+      </footer>
+      {commentCount > 0 && (
+        <button className="drop-social-comment-link" onClick={openComments}>
+          View{" "}
+          {commentCount === 1 ? "comment" : "all " + commentCount + " comments"}
+        </button>
+      )}
+      {shareOpen && (
+        <FindShareSheet
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          find={find}
+        />
+      )}
+      {visitedComments && (
+        <FindCommentsSheet
+          open={commentsOpen}
+          onOpenChange={setCommentsOpen}
+          find={find}
+        />
+      )}
+    </article>
   );
 }
-
 export const FindCard = memo(FindCardInner);
