@@ -1258,6 +1258,424 @@ export type Database = {
           },
         ]
       }
+      draft_commissioner_adjustments: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string
+          delta: number
+          id: string
+          reason: string
+          revocation_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          season_id: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by: string
+          delta: number
+          id?: string
+          reason: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          season_id: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string
+          delta?: number
+          id?: string
+          reason?: string
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          season_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_commissioner_adjustments_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_adjustments_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_adjustments_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "draft_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_adjustments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_commissioner_audit: {
+        Row: {
+          action: string
+          actor_user_id: string
+          after_data: Json | null
+          before_data: Json | null
+          club_id: string
+          created_at: string
+          id: string
+          reason: string
+          request_id: string
+          request_payload: Json
+          season_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          after_data?: Json | null
+          before_data?: Json | null
+          club_id: string
+          created_at?: string
+          id?: string
+          reason: string
+          request_id: string
+          request_payload?: Json
+          season_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          after_data?: Json | null
+          before_data?: Json | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          reason?: string
+          request_id?: string
+          request_payload?: Json
+          season_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_commissioner_audit_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_audit_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "draft_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_commissioner_plans: {
+        Row: {
+          ai_context: string
+          club_id: string
+          created_at: string
+          created_by: string
+          draft_id: string | null
+          due_at: string | null
+          id: string
+          is_live: boolean
+          live_settings: Json
+          notes: string
+          num_rounds: number
+          preset_id: string | null
+          scheduled_at: string | null
+          season_id: string
+          status: string
+          topic: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          ai_context?: string
+          club_id: string
+          created_at?: string
+          created_by: string
+          draft_id?: string | null
+          due_at?: string | null
+          id?: string
+          is_live?: boolean
+          live_settings?: Json
+          notes?: string
+          num_rounds?: number
+          preset_id?: string | null
+          scheduled_at?: string | null
+          season_id: string
+          status?: string
+          topic: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          ai_context?: string
+          club_id?: string
+          created_at?: string
+          created_by?: string
+          draft_id?: string | null
+          due_at?: string | null
+          id?: string
+          is_live?: boolean
+          live_settings?: Json
+          notes?: string
+          num_rounds?: number
+          preset_id?: string | null
+          scheduled_at?: string | null
+          season_id?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_commissioner_plans_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_plans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_plans_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_plans_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "draft_commissioner_presets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_plans_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "draft_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_plans_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_commissioner_presets: {
+        Row: {
+          club_id: string
+          config: Json
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          season_id: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          club_id: string
+          config: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          season_id: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          club_id?: string
+          config?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          season_id?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_commissioner_presets_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_presets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_presets_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "draft_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_presets_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      draft_commissioner_reminders: {
+        Row: {
+          club_id: string
+          created_at: string
+          created_by: string
+          draft_id: string | null
+          id: string
+          kind: string
+          match_id: string | null
+          notification_id: string | null
+          plan_id: string | null
+          season_id: string
+          target_user_id: string
+        }
+        Insert: {
+          club_id: string
+          created_at?: string
+          created_by: string
+          draft_id?: string | null
+          id?: string
+          kind: string
+          match_id?: string | null
+          notification_id?: string | null
+          plan_id?: string | null
+          season_id: string
+          target_user_id: string
+        }
+        Update: {
+          club_id?: string
+          created_at?: string
+          created_by?: string
+          draft_id?: string | null
+          id?: string
+          kind?: string
+          match_id?: string | null
+          notification_id?: string | null
+          plan_id?: string | null
+          season_id?: string
+          target_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_commissioner_reminders_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "draft_playoff_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "draft_commissioner_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "draft_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_commissioner_reminders_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_desk_items: {
         Row: {
           created_at: string
@@ -9966,6 +10384,33 @@ export type Database = {
           },
         ]
       }
+      rune_delve_action_receipts: {
+        Row: {
+          action_key: Json
+          action_kind: string
+          created_at: string
+          request_id: string
+          result: Json
+          user_id: string
+        }
+        Insert: {
+          action_key: Json
+          action_kind: string
+          created_at?: string
+          request_id: string
+          result: Json
+          user_id: string
+        }
+        Update: {
+          action_key?: Json
+          action_kind?: string
+          created_at?: string
+          request_id?: string
+          result?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       rune_delve_active_quests: {
         Row: {
           claimed_at: string | null
@@ -10139,6 +10584,7 @@ export type Database = {
         Row: {
           club_id: string
           completed_at: string
+          completion_reported: boolean | null
           created_at: string
           daily_date: string
           dungeon_cleared: boolean
@@ -10146,6 +10592,8 @@ export type Database = {
           id: string
           kills_count: number
           modifiers: Json
+          reward_shards_awarded: number | null
+          reward_xp_awarded: number | null
           score: number
           stars: number
           updated_at: string
@@ -10154,6 +10602,7 @@ export type Database = {
         Insert: {
           club_id?: string
           completed_at?: string
+          completion_reported?: boolean | null
           created_at?: string
           daily_date: string
           dungeon_cleared?: boolean
@@ -10161,6 +10610,8 @@ export type Database = {
           id?: string
           kills_count?: number
           modifiers?: Json
+          reward_shards_awarded?: number | null
+          reward_xp_awarded?: number | null
           score?: number
           stars?: number
           updated_at?: string
@@ -10169,6 +10620,7 @@ export type Database = {
         Update: {
           club_id?: string
           completed_at?: string
+          completion_reported?: boolean | null
           created_at?: string
           daily_date?: string
           dungeon_cleared?: boolean
@@ -10176,6 +10628,8 @@ export type Database = {
           id?: string
           kills_count?: number
           modifiers?: Json
+          reward_shards_awarded?: number | null
+          reward_xp_awarded?: number | null
           score?: number
           stars?: number
           updated_at?: string
@@ -10258,6 +10712,109 @@ export type Database = {
           seed?: number
         }
         Relationships: []
+      }
+      rune_delve_expedition_progress: {
+        Row: {
+          best_score: number
+          club_id: string
+          highest_ascension: number
+          total_clears: number
+          total_runs: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_score?: number
+          club_id: string
+          highest_ascension?: number
+          total_clears?: number
+          total_runs?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_score?: number
+          club_id?: string
+          highest_ascension?: number
+          total_clears?: number
+          total_runs?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rune_delve_expedition_progress_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rune_delve_expedition_runs: {
+        Row: {
+          ascension: number
+          cleared: boolean
+          club_id: string
+          finished_at: string | null
+          hero_class: string
+          id: string
+          reward: number
+          rooms: number
+          score: number
+          seed: number
+          settlement: Json | null
+          started_at: string
+          status: string
+          turns: number
+          user_id: string
+          xp_awarded: number
+        }
+        Insert: {
+          ascension: number
+          cleared?: boolean
+          club_id: string
+          finished_at?: string | null
+          hero_class: string
+          id: string
+          reward?: number
+          rooms?: number
+          score?: number
+          seed: number
+          settlement?: Json | null
+          started_at?: string
+          status?: string
+          turns?: number
+          user_id: string
+          xp_awarded?: number
+        }
+        Update: {
+          ascension?: number
+          cleared?: boolean
+          club_id?: string
+          finished_at?: string | null
+          hero_class?: string
+          id?: string
+          reward?: number
+          rooms?: number
+          score?: number
+          seed?: number
+          settlement?: Json | null
+          started_at?: string
+          status?: string
+          turns?: number
+          user_id?: string
+          xp_awarded?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rune_delve_expedition_runs_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rune_delve_failure_rewards: {
         Row: {
@@ -10725,6 +11282,136 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      rune_puzzle_definitions: {
+        Row: {
+          active: boolean
+          created_at: string
+          definition: Json
+          definition_version: number
+          ordinal: number
+          room_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          definition: Json
+          definition_version: number
+          ordinal: number
+          room_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          definition?: Json
+          definition_version?: number
+          ordinal?: number
+          room_id?: string
+        }
+        Relationships: []
+      }
+      rune_puzzle_profiles: {
+        Row: {
+          avatar: string
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar?: string
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar?: string
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      rune_puzzle_receipts: {
+        Row: {
+          actions: Json
+          created_at: string
+          definition_version: number
+          request_id: string
+          result: Json
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          actions: Json
+          created_at?: string
+          definition_version: number
+          request_id: string
+          result: Json
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          actions?: Json
+          created_at?: string
+          definition_version?: number
+          request_id?: string
+          result?: Json
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rune_puzzle_receipts_room_id_definition_version_fkey"
+            columns: ["room_id", "definition_version"]
+            isOneToOne: false
+            referencedRelation: "rune_puzzle_definitions"
+            referencedColumns: ["room_id", "definition_version"]
+          },
+        ]
+      }
+      rune_puzzle_results: {
+        Row: {
+          best_moves: number
+          best_pushes: number
+          definition_version: number
+          first_completed_at: string
+          last_completed_at: string
+          room_id: string
+          stars: number
+          treasure_collected: boolean
+          user_id: string
+        }
+        Insert: {
+          best_moves: number
+          best_pushes: number
+          definition_version: number
+          first_completed_at?: string
+          last_completed_at?: string
+          room_id: string
+          stars: number
+          treasure_collected?: boolean
+          user_id: string
+        }
+        Update: {
+          best_moves?: number
+          best_pushes?: number
+          definition_version?: number
+          first_completed_at?: string
+          last_completed_at?: string
+          room_id?: string
+          stars?: number
+          treasure_collected?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rune_puzzle_results_room_id_definition_version_fkey"
+            columns: ["room_id", "definition_version"]
+            isOneToOne: false
+            referencedRelation: "rune_puzzle_definitions"
+            referencedColumns: ["room_id", "definition_version"]
           },
         ]
       }
@@ -11782,6 +12469,10 @@ export type Database = {
         }
       }
       current_user_club_id: { Args: never; Returns: string }
+      delete_unassigned_draft: {
+        Args: { p_draft_id: string }
+        Returns: undefined
+      }
       dh_feat_metrics: { Args: { uid: string }; Returns: Json }
       dh_feat_number: { Args: { v: string }; Returns: number }
       dh_feats_board: { Args: { p_club_id: string }; Returns: Json }
@@ -11802,6 +12493,40 @@ export type Database = {
       dh_public_member: { Args: { uid: string }; Returns: boolean }
       dh_visible_club: { Args: { cid: string }; Returns: boolean }
       dh_visible_member: { Args: { uid: string }; Returns: boolean }
+      draft_commissioner_actor_can_manage: {
+        Args: { p_actor_id: string; p_season_id: string }
+        Returns: boolean
+      }
+      draft_commissioner_can_create: {
+        Args: { p_club_id: string }
+        Returns: boolean
+      }
+      draft_commissioner_can_manage: {
+        Args: { p_season_id: string }
+        Returns: boolean
+      }
+      draft_commissioner_mutate: {
+        Args: {
+          p_action: string
+          p_payload: Json
+          p_reason: string
+          p_request_id: string
+          p_season_id: string
+        }
+        Returns: Json
+      }
+      draft_commissioner_validate_config: {
+        Args: { p_config: Json }
+        Returns: undefined
+      }
+      draft_commissioner_visible_payload: {
+        Args: { p_data: Json }
+        Returns: boolean
+      }
+      draft_commissioner_workspace: {
+        Args: { p_season_id: string }
+        Returns: Json
+      }
       ensure_forge_week: {
         Args: {
           p_club_id: string
@@ -12268,6 +12993,10 @@ export type Database = {
         Args: { _club_id: string; _season_id: string }
         Returns: undefined
       }
+      recalculate_draft_season_standings: {
+        Args: { p_season_id: string }
+        Returns: undefined
+      }
       recompute_nfl_week_status: {
         Args: { _week_id: string }
         Returns: undefined
@@ -12280,6 +13009,33 @@ export type Database = {
         Args: { _draft_id: string; _request_id: string; _results: Json }
         Returns: undefined
       }
+      rune_delve_assign_quests: { Args: never; Returns: Json }
+      rune_delve_bootstrap: {
+        Args: {
+          p_class?: string
+          p_create_hero?: boolean
+          p_hero_name?: string
+        }
+        Returns: Json
+      }
+      rune_delve_buy_relic: {
+        Args: {
+          p_expected_rank: number
+          p_relic_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      rune_delve_claim_quest: { Args: { p_quest_id: string }; Returns: Json }
+      rune_delve_class_title: {
+        Args: { p_class: string; p_level: number }
+        Returns: string
+      }
+      rune_delve_credit_xp: {
+        Args: { p_class: string; p_uid: string; p_xp: number }
+        Returns: Json
+      }
+      rune_delve_daily_reward: { Args: { p_kills: number }; Returns: Json }
       rune_delve_earn_shards: {
         Args: { p_amount: number }
         Returns: {
@@ -12298,6 +13054,105 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      rune_delve_ensure_level: {
+        Args: { p_definition: Json }
+        Returns: {
+          board_size: number
+          chapter: number
+          created_at: string
+          difficulty_tier: number
+          enemy_config: Json
+          generation_seed: number
+          id: string
+          level_number: number
+          metadata: Json
+          modifiers: Json
+          objective_target: number
+          objective_type: string
+          starting_board_layout: Json | null
+          status: string
+          turn_limit: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rune_delve_levels"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rune_delve_equip: {
+        Args: {
+          p_class: string
+          p_slot_1: string
+          p_slot_2: string
+          p_slot_3: string
+        }
+        Returns: {
+          class: string
+          club_id: string
+          id: string
+          slot_1: string | null
+          slot_2: string | null
+          slot_3: string | null
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "rune_delve_loadouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rune_delve_expedition_begin: {
+        Args: {
+          p_ascension: number
+          p_club_id: string
+          p_hero_class: string
+          p_id: string
+        }
+        Returns: Json
+      }
+      rune_delve_expedition_finish: {
+        Args: {
+          p_cleared: boolean
+          p_id: string
+          p_rooms: number
+          p_score: number
+          p_turns: number
+        }
+        Returns: Json
+      }
+      rune_delve_expedition_profile: {
+        Args: { p_club_id: string }
+        Returns: Json
+      }
+      rune_delve_level_from_xp: { Args: { p_xp: number }; Returns: number }
+      rune_delve_report_quest: { Args: { p_event: Json }; Returns: Json }
+      rune_delve_roll_drop: {
+        Args: {
+          p_level: number
+          p_path: string
+          p_request_id: string
+          p_uid: string
+        }
+        Returns: Json
+      }
+      rune_delve_save_daily: {
+        Args: {
+          p_class: string
+          p_kills: number
+          p_request_id: string
+          p_score: number
+        }
+        Returns: Json
+      }
+      rune_delve_save_run: {
+        Args: { p_request_id: string; p_run: Json }
+        Returns: Json
+      }
+      rune_delve_select_class: { Args: { p_class: string }; Returns: Json }
       rune_delve_spend_shards: {
         Args: { p_amount: number }
         Returns: {
@@ -12315,6 +13170,65 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      rune_delve_treasure_cells: {
+        Args: { p_level: number; p_path: string }
+        Returns: number
+      }
+      rune_puzzle_area_count: { Args: { p_definition: Json }; Returns: number }
+      rune_puzzle_blocked: {
+        Args: {
+          p_cell: number
+          p_definition: Json
+          p_ignore_stone?: string
+          p_state: Json
+        }
+        Returns: string
+      }
+      rune_puzzle_collect_keys: {
+        Args: { p_cell: number; p_definition: Json; p_state: Json }
+        Returns: Json
+      }
+      rune_puzzle_complete: {
+        Args: {
+          p_actions: Json
+          p_definition_version: number
+          p_request_id: string
+          p_room_id: string
+        }
+        Returns: Json
+      }
+      rune_puzzle_guardian_calm: {
+        Args: { p_definition: Json; p_state: Json }
+        Returns: boolean
+      }
+      rune_puzzle_neighbor: {
+        Args: { p_cell: number; p_direction: string }
+        Returns: number
+      }
+      rune_puzzle_passage_destination: {
+        Args: { p_cell: number; p_definition: Json }
+        Returns: number
+      }
+      rune_puzzle_profile: { Args: never; Returns: Json }
+      rune_puzzle_progress: { Args: { p_uid: string }; Returns: Json }
+      rune_puzzle_replay: {
+        Args: { p_actions: Json; p_definition: Json }
+        Returns: Json
+      }
+      rune_puzzle_select_avatar: { Args: { p_avatar: string }; Returns: Json }
+      rune_puzzle_sigils_filled: {
+        Args: { p_color?: string; p_definition: Json; p_state: Json }
+        Returns: number
+      }
+      rune_puzzle_stone_blocked: {
+        Args: {
+          p_cell: number
+          p_definition: Json
+          p_ignore_stone?: string
+          p_state: Json
+        }
+        Returns: string
       }
       save_nfl_chain_card: {
         Args: { _market_ids: string[]; _week_id: string }
