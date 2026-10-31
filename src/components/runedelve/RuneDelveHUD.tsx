@@ -19,6 +19,8 @@ import { CodexSheet } from "./CodexSheet";
 import { chapterFor } from "@/lib/runedelve/levelGenerator";
 import { cn } from "@/lib/utils";
 import { useRuneDialogFocus } from "./useRuneDialogFocus";
+import { isRunePuzzleRoute } from "@/lib/runedelve/puzzles/routes";
+import { RunePuzzleHUD } from "./RunePuzzleHUD";
 
 /**
  * Sticky in-game HUD for Rune Delve.
@@ -27,6 +29,11 @@ import { useRuneDialogFocus } from "./useRuneDialogFocus";
  * exit-confirmation sheet instead of immediate navigation.
  */
 export function RuneDelveHUD() {
+  const { pathname } = useLocation();
+  return isRunePuzzleRoute(pathname) ? <RunePuzzleHUD /> : <RuneLegacyHUD />;
+}
+
+function RuneLegacyHUD() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: hero } = useRuneDelveHero();

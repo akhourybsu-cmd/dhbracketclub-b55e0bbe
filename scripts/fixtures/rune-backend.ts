@@ -1,5 +1,17 @@
 // Isolated Rune Delve transport. All mutations stay inside this browser fixture.
 import { generateLevel } from "../../src/lib/runedelve/levelGenerator";
+import { PUZZLE_ROOMS } from "../../src/lib/runedelve/puzzles/rooms";
+import {
+  puzzleStars,
+  replayPuzzle,
+} from "../../src/lib/runedelve/puzzles/engine";
+import type {
+  PuzzleCompletionReceipt,
+  PuzzleDirection,
+  PuzzleProgress,
+  PuzzleRecord,
+  PuzzleRoom,
+} from "../../src/lib/runedelve/puzzles/types";
 import {
   CLASS_LIST,
   levelFromXp,
@@ -140,6 +152,16 @@ const tables: Record<string, any[]> = {
     ...generateLevel(i + 1),
     status: "active",
   })),
+  rune_puzzle_definitions: PUZZLE_ROOMS.map((room) => ({
+    room_id: room.id,
+    definition_version: room.version,
+    ordinal: room.order,
+    definition: structuredClone(room),
+    active: true,
+  })),
+  rune_puzzle_profiles: [],
+  rune_puzzle_results: [],
+  rune_puzzle_receipts: [],
   rune_delve_runs: [],
   rune_delve_action_receipts: [],
   rune_delve_expedition_progress: [],
@@ -299,6 +321,11 @@ if (scenario === "archive") {
 }
 export const qa = {
   tables,
+  authenticated: true,
+  puzzleUserId: params.get("puzzleUser") || uid,
+  failRpcOnce: [] as string[],
+  delayRpc: {} as Record<string, number>,
+  losePuzzleReceiptOnce: false,
   queries: [] as any[],
   writes: [] as any[],
   rpcs: [] as any[],
@@ -316,6 +343,10 @@ const persistTickets = () =>
   localStorage.setItem("__rune-qa-tickets", JSON.stringify(savedTickets));
 const fail = (message: string) => ({ data: null, error: { message } });
 const protectedTables = new Set([
+  "rune_puzzle_definitions",
+  "rune_puzzle_profiles",
+  "rune_puzzle_results",
+  "rune_puzzle_receipts",
   "rune_delve_heroes",
   "rune_delve_wallet",
   "rune_delve_relic_unlocks",
@@ -585,8 +616,14 @@ function from(table: string) {
       );
     if (qa.failTables.includes(table))
       return fail("Connection interrupted. Please try again.");
-    let rows = (tables[table] || []).filter((row) =>
-      filters.every((filter) => filter(row)),
+    if (table.startsWith("rune_puzzle_") && !qa.authenticated)
+      return fail(`permission denied for table ${table}`);
+    let rows = (tables[table] || []).filter(
+      (row) =>
+        filters.every((filter) => filter(row)) &&
+        (!table.startsWith("rune_puzzle_") ||
+          table === "rune_puzzle_definitions" ||
+          row.user_id === qa.puzzleUserId),
     );
     if (verb !== "select") {
       qa.writes.push({ table, verb, body: structuredClone(body) });
@@ -666,9 +703,271 @@ function from(table: string) {
   }
   return builder;
 }
+// New spatial journey data is separate from every legacy wallet, XP and run table.
+const puzzleReceipts = new Map<
+  string,
+  { input: unknown; result: PuzzleCompletionReceipt }
+>();
+const puzzleFixtureStorage = "__rune-qa-puzzle-state";
+try {
+  const saved = JSON.parse(
+    localStorage.getItem(puzzleFixtureStorage) || "null",
+  );
+  if (saved)
+    for (const table of [
+      "rune_puzzle_profiles",
+      "rune_puzzle_results",
+      "rune_puzzle_receipts",
+    ]) {
+      if (Array.isArray(saved[table])) tables[table] = saved[table];
+    }
+} catch {
+  /* Fixture storage is optional. */
+}
+for (const row of tables.rune_puzzle_receipts)
+  puzzleReceipts.set(`${row.user_id}:${row.request_id}`, {
+    input: {
+      roomId: row.room_id,
+      definitionVersion: row.definition_version,
+      actions: row.actions,
+    },
+    result: row.result,
+  });
+function persistPuzzleFixture() {
+  try {
+    localStorage.setItem(
+      puzzleFixtureStorage,
+      JSON.stringify(
+        Object.fromEntries(
+          [
+            "rune_puzzle_profiles",
+            "rune_puzzle_results",
+            "rune_puzzle_receipts",
+          ].map((table) => [table, tables[table]]),
+        ),
+      ),
+    );
+  } catch {
+    /* Fixture storage is optional. */
+  }
+}
+const seededPuzzleCompleted = Math.max(
+  0,
+  Math.min(
+    PUZZLE_ROOMS.length,
+    Math.floor(Number(params.get("puzzleCompleted")) || 0),
+  ),
+);
+for (const room of PUZZLE_ROOMS.slice(0, seededPuzzleCompleted)) {
+  if (
+    !tables.rune_puzzle_results.some(
+      (row) =>
+        row.user_id === qa.puzzleUserId &&
+        row.room_id === room.id &&
+        row.definition_version === room.version,
+    )
+  )
+    tables.rune_puzzle_results.push({
+      user_id: qa.puzzleUserId,
+      room_id: room.id,
+      definition_version: room.version,
+      stars: 3,
+      best_pushes: room.parPushes,
+      best_moves: room.solution.length,
+      treasure_collected: true,
+    });
+}
+function puzzleProfile(owner = qa.puzzleUserId): PuzzleProgress {
+  let profile = tables.rune_puzzle_profiles.find(
+    (row) => row.user_id === owner,
+  );
+  if (!profile) {
+    profile = {
+      user_id: owner,
+      avatar:
+        owner === (params.get("puzzleUser") || uid) &&
+        isClass(params.get("avatar"))
+          ? params.get("avatar")
+          : "warrior",
+    };
+    tables.rune_puzzle_profiles.push(profile);
+    persistPuzzleFixture();
+  }
+  const active = tables.rune_puzzle_definitions
+    .filter((row) => row.active)
+    .sort((a, b) => a.ordinal - b.ordinal);
+  const current = active.flatMap((definition) => {
+    const row = tables.rune_puzzle_results.find(
+      (result) =>
+        result.user_id === owner &&
+        result.room_id === definition.room_id &&
+        result.definition_version === definition.definition_version,
+    );
+    return row ? [{ definition, row }] : [];
+  });
+  const records: PuzzleRecord[] = current.map(({ row }) => ({
+    room_id: row.room_id,
+    definition_version: row.definition_version,
+    stars: row.stars,
+    best_pushes: row.best_pushes,
+    best_moves: row.best_moves,
+    treasure_collected: row.treasure_collected,
+  }));
+  return {
+    avatar: profile.avatar,
+    completed: records.length,
+    stars: records.reduce((sum, row) => sum + row.stars, 0),
+    unlocked: Math.min(
+      Math.max(1, ...active.map((row) => row.ordinal)),
+      Math.max(1, ...current.map(({ definition }) => definition.ordinal + 1)),
+    ),
+    records,
+  };
+}
+function completePuzzle(
+  args: Record<string, unknown>,
+  owner = qa.puzzleUserId,
+) {
+  if (
+    typeof args.p_request_id !== "string" ||
+    !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(args.p_request_id)
+  )
+    return fail("missing_request_id");
+  const action = {
+    roomId: args.p_room_id,
+    definitionVersion: args.p_definition_version,
+    actions: args.p_actions,
+  };
+  const receiptKey = `${owner}:${args.p_request_id}`;
+  const oldReceipt = puzzleReceipts.get(receiptKey);
+  if (oldReceipt)
+    return canonical(oldReceipt.input) === canonical(action)
+      ? { data: structuredClone(oldReceipt.result), error: null }
+      : fail("request_id_reused");
+  if (
+    typeof args.p_room_id !== "string" ||
+    !Number.isInteger(args.p_definition_version) ||
+    !Array.isArray(args.p_actions) ||
+    args.p_actions.length > 1200 ||
+    !args.p_actions.every(
+      (value) =>
+        typeof value === "string" &&
+        ["up", "right", "down", "left"].includes(value),
+    )
+  )
+    return fail("invalid_puzzle_actions");
+  const definition = tables.rune_puzzle_definitions.find(
+    (row) =>
+      row.active &&
+      row.room_id === args.p_room_id &&
+      row.definition_version === args.p_definition_version,
+  );
+  if (!definition) return fail("puzzle_definition_unavailable");
+  if (definition.ordinal > puzzleProfile(owner).unlocked)
+    return fail("puzzle_still_locked");
+  const room = definition.definition as PuzzleRoom;
+  const replay = replayPuzzle(room, args.p_actions as PuzzleDirection[]);
+  if (!replay.valid || replay.state.status !== "solved")
+    return fail("puzzle_not_solved");
+  const stars = puzzleStars(room, replay.state),
+    treasure = room.treasures.every((cell) =>
+      replay.state.collected.includes(cell),
+    );
+  let result = tables.rune_puzzle_results.find(
+    (row) =>
+      row.user_id === owner &&
+      row.room_id === room.id &&
+      row.definition_version === room.version,
+  );
+  const firstClear = !result,
+    oldStars = result?.stars ?? 0;
+  if (!result) {
+    result = {
+      user_id: owner,
+      room_id: room.id,
+      definition_version: room.version,
+      stars,
+      best_pushes: replay.state.pushes,
+      best_moves: replay.state.moves,
+      treasure_collected: treasure,
+    };
+    tables.rune_puzzle_results.push(result);
+  } else {
+    if (replay.state.pushes < result.best_pushes) {
+      result.best_pushes = replay.state.pushes;
+      result.best_moves = replay.state.moves;
+    } else if (replay.state.pushes === result.best_pushes)
+      result.best_moves = Math.min(result.best_moves, replay.state.moves);
+    result.stars = Math.max(result.stars, stars);
+    result.treasure_collected ||= treasure;
+  }
+  const profile = puzzleProfile(owner);
+  const receipt: PuzzleCompletionReceipt = {
+    requestId: args.p_request_id,
+    roomId: room.id,
+    definitionVersion: room.version,
+    stars: result.stars,
+    starsGained: result.stars - oldStars,
+    pushes: replay.state.pushes,
+    moves: replay.state.moves,
+    treasureCollected: treasure,
+    firstClear,
+    unlocked: profile.unlocked,
+    progress: profile,
+  };
+  puzzleReceipts.set(
+    receiptKey,
+    structuredClone({ input: action, result: receipt }),
+  );
+  tables.rune_puzzle_receipts.push({
+    user_id: owner,
+    request_id: args.p_request_id,
+    room_id: room.id,
+    definition_version: room.version,
+    actions: structuredClone(args.p_actions),
+    result: structuredClone(receipt),
+  });
+  qa.writes.push({
+    table: "rune_puzzle_results",
+    body: structuredClone(receipt),
+  });
+  persistPuzzleFixture();
+  return { data: structuredClone(receipt), error: null };
+}
+
 async function rpc(name: string, args: any = {}) {
   qa.rpcs.push({ name, args });
   if (qa.failRpc.includes(name)) return fail("Fixture request interrupted");
+  const failOnce = qa.failRpcOnce.indexOf(name);
+  if (failOnce >= 0) {
+    qa.failRpcOnce.splice(failOnce, 1);
+    return fail("Fixture request interrupted");
+  }
+  if (name.startsWith("rune_puzzle_")) {
+    if (!qa.authenticated) return fail("not_authenticated");
+    const owner = qa.puzzleUserId;
+    if (qa.delayRpc[name] > 0)
+      await new Promise((resolve) => setTimeout(resolve, qa.delayRpc[name]));
+    if (name === "rune_puzzle_profile")
+      return { data: structuredClone(puzzleProfile(owner)), error: null };
+    if (name === "rune_puzzle_select_avatar") {
+      if (!isClass(args.p_avatar)) return fail("invalid_avatar");
+      puzzleProfile(owner);
+      tables.rune_puzzle_profiles.find((row) => row.user_id === owner)!.avatar =
+        args.p_avatar;
+      persistPuzzleFixture();
+      return { data: structuredClone(puzzleProfile(owner)), error: null };
+    }
+    if (name === "rune_puzzle_complete") {
+      const result = completePuzzle(args, owner);
+      if (result.data && qa.losePuzzleReceiptOnce) {
+        qa.losePuzzleReceiptOnce = false;
+        return fail("Fixture lost result acknowledgement");
+      }
+      return result;
+    }
+    return fail(`Puzzle fixture RPC not implemented: ${name}`);
+  }
   if (name === "dh_presence_directory")
     return { data: tables.profiles, error: null };
   if (name === "dh_feats_summary")

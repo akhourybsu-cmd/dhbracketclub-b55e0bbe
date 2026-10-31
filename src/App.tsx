@@ -84,6 +84,10 @@ const CrazyChainLeaderboardPage = lazyWithRetry(() => import("./pages/CrazyChain
 const CrazyChainHistoryPage = lazyWithRetry(() => import("./pages/CrazyChainHistoryPage"));
 const CrazyChainAdminPage = lazyWithRetry(() => import("./pages/CrazyChainAdminPage"));
 const RuneDelveHomePage = lazyWithRetry(() => import("./pages/RuneDelveHomePage"));
+const RunePuzzleHomePage = lazyWithRetry(() => import("./pages/RunePuzzleHomePage"));
+const RunePuzzleJourneyPage = lazyWithRetry(() => import("./pages/RunePuzzleJourneyPage"));
+const RunePuzzlePlayPage = lazyWithRetry(() => import("./pages/RunePuzzlePlayPage"));
+const RunePuzzleGuidePage = lazyWithRetry(() => import("./pages/RunePuzzleGuidePage"));
 const RuneDelveLevelMapPage = lazyWithRetry(() => import("./pages/RuneDelveLevelMapPage"));
 const RuneDelvePlayPage = lazyWithRetry(() => import("./pages/RuneDelvePlayPage"));
 const RuneDelveResultsPage = lazyWithRetry(() => import("./pages/RuneDelveResultsPage"));
@@ -294,7 +298,11 @@ function AnimatedRoutes() {
         <Route path="/pickem/admin" element={<ProtectedPage assetSlug="nfl-pickem"><PickemLayout><PickemAdminPage /></PickemLayout></ProtectedPage>} />
 
         {/* Rune Delve module — campaign */}
-        <Route path="/rune-delve" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveHomePage /></RuneDelveLayout></ProtectedPage>} />
+        <Route path="/rune-delve" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RunePuzzleHomePage /></RuneDelveLayout></ProtectedPage>} />
+        <Route path="/rune-delve/journey" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RunePuzzleJourneyPage /></RuneDelveLayout></ProtectedPage>} />
+        <Route path="/rune-delve/chamber/:roomId" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RunePuzzlePlayPage /></RuneDelveLayout></ProtectedPage>} />
+        <Route path="/rune-delve/guide" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RunePuzzleGuidePage /></RuneDelveLayout></ProtectedPage>} />
+        <Route path="/rune-delve/legacy" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveHomePage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/levels" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveLevelMapPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/play/:levelNumber" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelvePlayPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/results/:levelNumber" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveResultsPage /></RuneDelveLayout></ProtectedPage>} />

@@ -142,7 +142,7 @@ export default function RuneDelveHomePage() {
       >
         <div className="rd-forge-heading">
           <p className="rd-eyebrow">
-            <Sparkles size={13} /> Rune Delve
+            <Sparkles size={13} /> Combat Archive
           </p>
           <h1>Choose your legend.</h1>
           <p>Four classes. One world beneath the runes.</p>
@@ -244,7 +244,7 @@ export default function RuneDelveHomePage() {
         <img src={RUNE_PORTAL_ART} alt="" width="1440" height="960" />
         <div className="rd-sanctum-copy">
           <p className="rd-eyebrow">
-            <Sparkles size={13} /> Rune Delve · Expeditions
+            <Sparkles size={13} /> Combat Archive · Expeditions
           </p>
           <h1>
             The depths

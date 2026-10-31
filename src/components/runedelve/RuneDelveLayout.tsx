@@ -5,7 +5,7 @@ import { RuneDelveBoot } from "./RuneDelveBoot";
 import { RouteWipe } from "./fx/RouteWipe";
 import { useRuneDelveSfx } from "@/hooks/useRuneDelveSfx";
 import { NavLink, useLocation } from "react-router-dom";
-import { Compass, Map as MapIcon, Shield, UserRound } from "lucide-react";
+import { Archive, BookOpen, Compass, Map as MapIcon, Shield, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import "./runeWorld.css";
 import { useActiveQuests } from "@/hooks/useQuests";
@@ -14,6 +14,9 @@ import { useRuneViewport } from "@/hooks/useRuneViewport";
 import "./runeViewport.css";
 import "./runeMenuMotion.css";
 import { RuneRewardProvider } from "./RuneRewardReveal";
+import { isRunePuzzleRoute } from "@/lib/runedelve/puzzles/routes";
+
+function LegacyQuestSync() { useActiveQuests(); return null; }
 
 /**
  * Full-screen game shell for Rune Delve. Applies the `.rd-mode` skin to the
@@ -24,9 +27,9 @@ import { RuneRewardProvider } from "./RuneRewardReveal";
  * `/rune-delve/*` route is active, so this shell owns the full viewport.
  */
 export function RuneDelveLayout({ children }: { children: ReactNode }) {
-  useActiveQuests();
   const { play } = useRuneDelveSfx();
   const { pathname } = useLocation();
+  const puzzleRoute = isRunePuzzleRoute(pathname);
   const viewport = useRuneViewport();
   useEffect(() => {
     document.documentElement.classList.add("rd-viewport-active");
@@ -55,6 +58,7 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
   }, [hidden, reducedMotion]);
   const isBattle =
     pathname.startsWith("/rune-delve/play/") ||
+    pathname.startsWith("/rune-delve/chamber/") ||
     pathname === "/rune-delve/endless" ||
     pathname === "/rune-delve/expedition";
 
@@ -98,7 +102,7 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
         return;
       // Skip rune cells and FX overlays — they have their own audio.
       if (
-        btn.closest("[data-rune-cell]") ||
+        btn.closest("[data-rune-cell], [data-puzzle-cell]") ||
         btn.closest('[aria-hidden="true"]')
       )
         return;
@@ -189,6 +193,7 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
       data-rd-motion={reducedMotion ? "reduced" : "full"}
     >
       {/* Decorative ambient motes — non-interactive. */}
+      {!puzzleRoute && <LegacyQuestSync />}
       <RuneWorldScene />
 
       <RuneDelveHUD />
@@ -208,21 +213,21 @@ export function RuneDelveLayout({ children }: { children: ReactNode }) {
       {!isBattle && (
         <nav className="rd-game-nav" aria-label="Rune Delve navigation">
           <div>
-            <NavLink end to="/rune-delve">
+            <NavLink end to={puzzleRoute ? "/rune-delve" : "/rune-delve/legacy"}>
               <Compass />
-              Sanctum
+              {puzzleRoute ? "Sanctum" : "Archive"}
             </NavLink>
-            <NavLink to="/rune-delve/levels">
+            <NavLink to={puzzleRoute ? "/rune-delve/journey" : "/rune-delve/levels"}>
               <MapIcon />
-              Campaign
+              {puzzleRoute ? "Journey" : "Campaign"}
             </NavLink>
-            <NavLink to="/rune-delve/hero">
-              <UserRound />
-              Hero
+            <NavLink to={puzzleRoute ? "/rune-delve/guide" : "/rune-delve/hero"}>
+              {puzzleRoute ? <BookOpen /> : <UserRound />}
+              {puzzleRoute ? "Guide" : "Hero"}
             </NavLink>
-            <NavLink to="/rune-delve/armory">
-              <Shield />
-              Armory
+            <NavLink to={puzzleRoute ? "/rune-delve/legacy" : "/rune-delve/armory"}>
+              {puzzleRoute ? <Archive /> : <Shield />}
+              {puzzleRoute ? "Archive" : "Armory"}
             </NavLink>
           </div>
         </nav>

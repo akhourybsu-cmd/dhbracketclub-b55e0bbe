@@ -9,6 +9,10 @@ import { AppLayout } from "../../src/components/AppLayout";
 import { RuneDelveLayout } from "../../src/components/runedelve/RuneDelveLayout";
 import { RuneBoard } from "../../src/components/runedelve/RuneBoard";
 import RuneDelveHomePage from "../../src/pages/RuneDelveHomePage";
+import RunePuzzleHomePage from "../../src/pages/RunePuzzleHomePage";
+import RunePuzzleJourneyPage from "../../src/pages/RunePuzzleJourneyPage";
+import RunePuzzlePlayPage from "../../src/pages/RunePuzzlePlayPage";
+import RunePuzzleGuidePage from "../../src/pages/RunePuzzleGuidePage";
 import RuneDelveLevelMapPage from "../../src/pages/RuneDelveLevelMapPage";
 import RuneDelvePlayPage from "../../src/pages/RuneDelvePlayPage";
 import RuneDelveResultsPage from "../../src/pages/RuneDelveResultsPage";
@@ -66,7 +70,11 @@ createRoot(document.getElementById("root")!).render(
             <RuneDelveLayout>
               <CurrentRoute />
               <Routes>
-                <Route path="/rune-delve" element={<RuneDelveHomePage />} />
+                <Route path="/rune-delve" element={<RunePuzzleHomePage />} />
+                <Route path="/rune-delve/journey" element={<RunePuzzleJourneyPage />} />
+                <Route path="/rune-delve/chamber/:roomId" element={<RunePuzzlePlayPage />} />
+                <Route path="/rune-delve/guide" element={<RunePuzzleGuidePage />} />
+                <Route path="/rune-delve/legacy" element={<RuneDelveHomePage />} />
                 <Route
                   path="/rune-delve/levels"
                   element={<RuneDelveLevelMapPage />}

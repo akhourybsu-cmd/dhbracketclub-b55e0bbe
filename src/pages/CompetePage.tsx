@@ -208,7 +208,7 @@ function RuneDelveCompeteCard() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(152 70% 65%)' }}>◆ Campaign</span>
+                <span className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(152 70% 65%)' }}>◆ Puzzle adventure</span>
               </div>
               <h2 className="font-extrabold text-[22px] leading-none tracking-tight mb-2.5"
                 style={{ background: 'linear-gradient(180deg, hsl(150 30% 98%), hsl(152 70% 70%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 0 18px hsl(152 80% 40% / 0.4)' }}>

@@ -1,8 +1,20 @@
-# Rune Delve: the Hollow
+# Rune Delve: The Living Hollow
 
-Rune Delve is a mobile fantasy puzzle RPG. Campaign preserves existing heroes, class tracks, relic collections and scores. Expeditions add a separate fresh-build roguelite loop; no player reset is required.
+Rune Delve is a mobile spatial puzzle adventure. The primary journey uses a deterministic 6×6 board: move the delver, push colored runestones onto matching sigils, and reach the restored portal. Existing heroes, rune glyphs, realm artwork, monster portraits and premium menu/reward presentation are reused.
 
-## Play loop
+## Puzzle journey
+
+- **18 authored chambers:** six introduce spatial runestone routing, six add pressure plates and gates, and six combine ice with gate dependencies. Every room has a verified solution and optional treasure; the latter two chapter capstones need eight purposeful pushes. This is an initial curated campaign, not a claim of unlimited generated content or fifty hours.
+- **One common toolkit:** orthogonal movement, one-stone pushes, tap/swipe/arrow/WASD controls, free undo/restart, and bounded hints. Efficiency prioritizes pushes before walking. There are no lives, timers, equipment requirements or health checks. Delver appearances share the same rules.
+- **World rules:** occupied plates open gates; occupied gates remain open until vacated. Pushed stones slide across ice; the delver walks normally. Guardians calm when their matching sigils are restored and can be bypassed; no enemy kill is required to escape.
+- **Mastery:** one star for escape, one for reaching the room’s push par, and one for collecting every treasure. Any clear unlocks the next chamber. Best records improve monotonically; replaying an acknowledgement never grants stars twice.
+- **Fresh progression:** the new journey starts at chamber one in its own versioned track. The Combat Archive retains previous campaign, Expedition, Arena, class, relic and currency records. Shared DH Score history is retained; new source-backed puzzle Feats count unique rooms and best stars.
+- **Persistence:** the server replays the canonical action trail before confirming completion. Account-scoped local checkpoints replay the same rules and keep pending result IDs until acknowledged. See [puzzle data contracts](RUNE_DELVE_PUZZLE_DATA.md).
+
+## Combat Archive
+
+The previous combat modes remain available under the Archive. Their rules and saved progression are retained independently of the new journey.
+
 
 - **Expeditions:** six seeded chambers, persistent health/mana, twelve stackable blessings drafted from three choices (four after a Vault), two revealed routes between encounters, and eight sequentially unlocked Ascensions. The crypt offers balanced foes, Blood Hunt stronger foes and double-rank blessings, Sunken Vault an extra foe, score, three extra moves and a wider next draft, and Lost Shrine healing with armored opponents. Earn shards and class XP by banking a result; active and abandoned runs earn nothing. Campaign equipment and masteries do not apply.
 - **Campaign:** generated chamber objectives, layout zones, relic builds, class masteries, run bargains, branching milestones and boss mechanics. Existing canonical level identities remain unchanged; generator balance hydrates on read. Class experience reaches level 150.
@@ -40,6 +52,9 @@ node scripts/test-rune-expedition-db.mjs
 node scripts/test-rune-settlement-db.mjs
 node scripts/test-rune-feats-db.mjs
 node scripts/test-rune-balance-db.mjs
+node scripts/test-rune-puzzle-db.mjs
+node scripts/test-rune-puzzle-feats-db.mjs
+node scripts/check-rune-puzzles.mjs
 node scripts/check-rune-polish.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-mobile.mjs
 RUNE_QA_URL=http://127.0.0.1:8092 node scripts/check-rune-menus.mjs
@@ -64,6 +79,14 @@ Campaign quest events are part of settlement. Cached older clients receive bound
 
 The additional browser journeys use production UI input to clear chambers 1, 25, and 150, finish all six Expedition rooms with each class, and settle natural defeats and move exhaustion. Menu checks exercise failed writes, equipment slots, class switches, keyboard focus, first-run help, archived records, and secondary-source retries. No live player writes are made by these fixtures.
 
-## Menu and acquisition polish verification
+## Spatial puzzle release verification
+
+The puzzle release passes 888 unit tests, app TypeScript, the production build and scoped lint. Isolated PostgreSQL suites pass 18 replay/persistence groups and 12 DH Feat integration groups. All 18 authored gold routes were also completed through production tap, swipe, keyboard and directional controls, reaching 54 stars.
+
+The mobile suite passes 60 additional checks at 320×568, 390×844 with reduced motion, and 844×390. It covers screen fit and 44px controls, all chapter tabs and guide pages, touch handoffs, undo/restart, genuine off-route worker hints, ignored stale hints, account-scoped reload recovery and an acknowledged retry after a lost completion response. Fixtures make no live player writes. Mobile taps activate on pointer release; compatibility clicks cannot duplicate a move, and canceled gestures do nothing.
+
+The live backend contains the same 18 immutable gameplay definitions as the tested client. Before/after fingerprints match for twelve existing data sets, including combat records, wallets, class progress, equipment and permanent DH Score unlocks. The app introduction and game catalog now describe the puzzle journey; no old player data was reset.
+
+## Earlier menu and acquisition polish verification
 
 The polish pass passed 807 unit tests, app TypeScript, the production build and scoped lint. Browser checks exercised eleven menu routes at 320×568, 390×844 and 844×390, plus reduced motion. Actual fixture purchases, rank upgrades and quest claims reached centered confirmations; queued rewards deduplicated and acknowledged correctly. All 64 atlas cells decoded, battle and Bestiary identities matched, and inspection artwork/statistics/page controls stayed separate at all three sizes. The generated atlas originals remain in the cloud image workspace; the app serves four optimized local WebP sheets totaling about 2.3 MB. No player-data migration or reset is part of this presentation pass.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import rawCatalog from "@/lib/feats/catalog.json";
 import expeditionCatalog from "@/lib/feats/runeExpeditionCatalog.json";
+import puzzleCatalog from "@/lib/feats/runePuzzleCatalog.json";
 import {
   dhRank,
   FEAT_CATEGORIES,
@@ -37,14 +38,51 @@ describe("DH Feats shared progression", () => {
   });
   it("adds expedition goals without changing legacy families and links each goal to its game mode", () => {
     const combined = [...catalog, ...expeditionCatalog];
-    expect(new Set(combined.map(feat => feat.key)).size).toBe(66);
-    expect(combined.reduce((sum, feat) => sum + feat.thresholds.length, 0)).toBe(329);
+    expect(new Set(combined.map((feat) => feat.key)).size).toBe(66);
+    expect(
+      combined.reduce((sum, feat) => sum + feat.thresholds.length, 0),
+    ).toBe(329);
     for (const feat of expeditionCatalog) {
-      expect(featActionPath(feat)).toBe('/rune-delve/expedition');
+      expect(featActionPath(feat)).toBe("/rune-delve/expedition");
       expect(feat.thresholds).toHaveLength(feat.points.length);
-      expect(feat.category).toBe('rune');
+      expect(feat.category).toBe("rune");
     }
-    expect(featActionPath(catalog.find(feat => feat.key === 'rune_level')!)).toBe('/rune-delve');
+    expect(
+      featActionPath(catalog.find((feat) => feat.key === "rune_level")!),
+    ).toBe("/rune-delve/legacy");
+  });
+  it("adds puzzle goals and sends each Rune ruleset to the matching experience", () => {
+    const combined = [...catalog, ...expeditionCatalog, ...puzzleCatalog];
+    expect(new Set(combined.map((feat) => feat.key)).size).toBe(68);
+    expect(
+      combined.reduce((sum, feat) => sum + feat.thresholds.length, 0),
+    ).toBe(338);
+    expect(puzzleCatalog.map((feat) => feat.sort_order)).toEqual([66, 67]);
+    expect(puzzleCatalog.map((feat) => feat.thresholds)).toEqual([
+      [1, 6, 12, 18],
+      [3, 12, 24, 42, 54],
+    ]);
+    expect(puzzleCatalog.map((feat) => feat.points)).toEqual([
+      [5, 10, 15, 25],
+      [5, 10, 15, 20, 30],
+    ]);
+    for (const feat of puzzleCatalog) {
+      expect(featActionPath(feat)).toBe("/rune-delve/journey");
+      expect(feat.category).toBe("rune");
+      expect(feat.thresholds.length).toBe(feat.points.length);
+      feat.thresholds.forEach((value, index) =>
+        expect(value).toBeGreaterThan(index ? feat.thresholds[index - 1] : 0),
+      );
+    }
+    for (const feat of catalog.filter((feat) => feat.category === "rune")) {
+      expect(featActionPath(feat)).toBe("/rune-delve/legacy");
+    }
+    expect(
+      featActionPath(catalog.find((feat) => feat.key === "drop_posts")!),
+    ).toBe("/finds");
+    expect(featActionPath({ key: "unknown", category: "unknown" })).toBe(
+      "/club",
+    );
   });
   it("uses earned receipts for tiers and their immutable point values", () => {
     const f = catalog.find((f) => f.key === "drop_posts")!;
