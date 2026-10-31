@@ -16,9 +16,11 @@ import "./dropSocial.css";
 export function FindPhoto({
   path,
   className,
+  interactive = true,
 }: {
   path: string | null;
   className?: string;
+  interactive?: boolean;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
@@ -43,16 +45,25 @@ export function FindPhoto({
   return (
     <div ref={frame} className={"drop-social-photo " + (className || "")}>
       {image.error || failed ? (
-        <button
-          className="drop-photo-retry"
-          onClick={() => {
-            setFailed(false);
-            image.retry();
-          }}
-        >
-          <RotateCcw size={18} />
-          Load photo
-        </button>
+        interactive ? (
+          <button
+            type="button"
+            className="drop-photo-retry"
+            onClick={() => {
+              setFailed(false);
+              image.retry();
+            }}
+          >
+            <RotateCcw size={18} />
+            Load photo
+          </button>
+        ) : (
+          <div
+            className="drop-photo-placeholder"
+            role="img"
+            aria-label="Photo unavailable"
+          />
+        )
       ) : image.url ? (
         <img
           src={image.url}

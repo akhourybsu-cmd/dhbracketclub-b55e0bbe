@@ -1,7 +1,7 @@
 {
   "name": "DH Club",
   "short_name": "DH Club",
-  "description": "Brackets, drafts, chat, and games with your crew \u2014 for fun, not funds.",
+  "description": "Chat, The Drop, club games and challenges \u2014 for fun, not funds.",
   "id": "/?source=pwa",
   "scope": "/",
   "start_url": "/dashboard?source=pwa",
@@ -10,7 +10,7 @@
     "standalone",
     "minimal-ui"
   ],
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "theme_color": "#0D1210",
   "background_color": "#0D1210",
   "categories": [
@@ -27,7 +27,7 @@
     },
     {
       "src": "/pwa-icon-512.png",
-      "sizes": "512x512",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     },

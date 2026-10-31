@@ -1,0 +1,1388 @@
+{
+  "schemaVersion": 1,
+  "scope": "Repository-owned public and bundled assets, production source imports/literal URLs/CSS, index metadata and PWA declarations. No network calls or player data reads.",
+  "limitations": [
+    "Uploaded avatars, club logos, photos, chat attachments and database-authored URLs are runtime content and are not proven present or current by this report.",
+    "Dynamic provider images and embeds remain provider-controlled; their source templates are recorded without requesting external services.",
+    "Reachability is a conservative module graph including type imports and CSS fallback declarations. A reference is evidence to review, not proof that every CSS declaration paints on screen."
+  ],
+  "entryPoints": [
+    "src/main.tsx",
+    "index.html"
+  ],
+  "summary": {
+    "assets": 25,
+    "assetBytes": 7299829,
+    "imageAssets": 20,
+    "sourceFilesInspected": 909,
+    "reachableFiles": 781,
+    "localReferences": 3465,
+    "missingReferences": 0,
+    "unreferencedReviewCandidates": [],
+    "duplicateGroups": 2,
+    "errors": 0
+  },
+  "retiredBrandAssets": [
+    {
+      "path": "src/assets/dh-logo-full.png",
+      "reason": "Unreferenced blue DH BRACKET CLUB identity replaced by the current green DH mark.",
+      "present": false
+    }
+  ],
+  "findings": [],
+  "duplicateContent": [
+    {
+      "sha256": "d6d075967e9729484552a6ffd0e03546513f06557c5ed58b359dc0287addbed3",
+      "paths": [
+        "public/favicon.png",
+        "public/pwa-icon-192.png"
+      ],
+      "note": "Intentional current-brand delivery aliases for bundled UI, browser favicon and installed app icon; do not remove an externally consumed URL just to deduplicate bytes."
+    },
+    {
+      "sha256": "f2bab1c33537c7b601c911a2d473d6d95369a45b1080e562cf693cb0fa870bb3",
+      "paths": [
+        "public/pwa-icon-512.png",
+        "src/assets/dh-monogram.png"
+      ],
+      "note": "Intentional current-brand delivery aliases for bundled UI, browser favicon and installed app icon; do not remove an externally consumed URL just to deduplicate bytes."
+    }
+  ],
+  "remoteVisualSources": [
+    {
+      "source": "index.html",
+      "line": 57,
+      "value": "https://dryhorse.app/pwa-icon-512.png",
+      "kind": "social-image"
+    },
+    {
+      "source": "index.html",
+      "line": 64,
+      "value": "https://dryhorse.app/pwa-icon-512.png",
+      "kind": "social-image"
+    },
+    {
+      "source": "src/components/chat/LinkPreviewCard.tsx",
+      "line": 90,
+      "value": "https://img.youtube.com/vi/${link.embedId}/mqdefault.jpg",
+      "kind": "dynamic-provider-image"
+    },
+    {
+      "source": "src/lib/dropMedia.ts",
+      "line": 48,
+      "value": "https://img.youtube.com/vi/${id}/hqdefault.jpg",
+      "kind": "dynamic-provider-image"
+    },
+    {
+      "source": "src/pages/SharedMediaPage.tsx",
+      "line": 429,
+      "value": "https://img.youtube.com/vi/${item.embed_id}/mqdefault.jpg",
+      "kind": "dynamic-provider-image"
+    }
+  ],
+  "assets": [
+    {
+      "path": "public/apple-touch-icon.png",
+      "bytes": 4859,
+      "sha256": "0f79fd83597428fe40af7845af83dcf9c7c8f2ae963c3acf9f897c120b677b2a",
+      "width": 180,
+      "height": 180,
+      "status": "current",
+      "references": [
+        {
+          "source": "index.html",
+          "line": 18,
+          "target": "public/apple-touch-icon.png",
+          "kind": "icon"
+        }
+      ]
+    },
+    {
+      "path": "public/campaigns/the-discovery-below.json",
+      "bytes": 263487,
+      "sha256": "b78d7b0a15c36e329da4fbc5c711c7613e9458617722e0ba7b7b28cce0ef0aaa",
+      "status": "current",
+      "references": [
+        {
+          "source": "src/pages/journey/JourneyStudioPage.tsx",
+          "line": 148,
+          "target": "public/campaigns/the-discovery-below.json",
+          "kind": "resource"
+        }
+      ]
+    },
+    {
+      "path": "public/favicon.png",
+      "bytes": 7497,
+      "sha256": "d6d075967e9729484552a6ffd0e03546513f06557c5ed58b359dc0287addbed3",
+      "width": 192,
+      "height": 192,
+      "status": "current",
+      "references": [
+        {
+          "source": "index.html",
+          "line": 17,
+          "target": "public/favicon.png",
+          "kind": "icon"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/heroes.webp",
+      "bytes": 345388,
+      "sha256": "077021e1c8f6a900ebd8cca89b98be2e3022cba404d1e7e7144721ec37004831",
+      "width": 1440,
+      "height": 960,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/components/runedelve/runeWorld.css",
+          "line": 55,
+          "target": "public/images/rune-delve/heroes.webp",
+          "kind": "css"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/monsters-crystal.webp",
+      "bytes": 576592,
+      "sha256": "079a55c6a93f75bef57b2d9192278b06f90f26eb26f7627b4d1ec7cd47b6129f",
+      "width": 1254,
+      "height": 1254,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 108,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 114,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 120,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 126,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 132,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 138,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 144,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 150,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 156,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 162,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 168,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 174,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 180,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 186,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 192,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 198,
+          "target": "public/images/rune-delve/monsters-crystal.webp",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/monsters-ember.webp",
+      "bytes": 568758,
+      "sha256": "02e46e6a569ee6e5ffed80239ca94725ee0a02aeab0cc7703fdc5998150877c2",
+      "width": 1254,
+      "height": 1254,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 12,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 18,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 24,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 30,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 36,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 42,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 48,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 54,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 60,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 66,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 72,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 78,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 84,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 90,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 96,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 102,
+          "target": "public/images/rune-delve/monsters-ember.webp",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/monsters-legends.webp",
+      "bytes": 574846,
+      "sha256": "74074cdba080e557bfa42a3798aca04c4d040c0eecb59e9586984f021d82a5a3",
+      "width": 1254,
+      "height": 1254,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 300,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 306,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 312,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 318,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 324,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 330,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 336,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 342,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 348,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 354,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 360,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 366,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 372,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 378,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 384,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 390,
+          "target": "public/images/rune-delve/monsters-legends.webp",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/monsters-vault.webp",
+      "bytes": 536486,
+      "sha256": "e82c549047a7a479a93928d420ac161cd5075ce62341b31a35d2feba2f37a4d9",
+      "width": 1254,
+      "height": 1254,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 204,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 210,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 216,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 222,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 228,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 234,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 240,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 246,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 252,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 258,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 264,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 270,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 276,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 282,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 288,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        },
+        {
+          "source": "src/lib/runedelve/monsterPortraits.ts",
+          "line": 294,
+          "target": "public/images/rune-delve/monsters-vault.webp",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/realms.webp",
+      "bytes": 315390,
+      "sha256": "3748e30abd80958247fd2620acf6d444c9c7157a5bcef66b2456ee6b7909a442",
+      "width": 1440,
+      "height": 960,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/components/runedelve/runePuzzles.css",
+          "line": 287,
+          "target": "public/images/rune-delve/realms.webp",
+          "kind": "css"
+        },
+        {
+          "source": "src/components/runedelve/runeWorld.css",
+          "line": 521,
+          "target": "public/images/rune-delve/realms.webp",
+          "kind": "css"
+        }
+      ]
+    },
+    {
+      "path": "public/images/rune-delve/sanctum.webp",
+      "bytes": 265840,
+      "sha256": "a1c7543a82bb5e9106197d5a0ab22e548d3561aa3099088572b9dc1427f3a480",
+      "width": 1440,
+      "height": 960,
+      "status": "current-and-retained-game-art",
+      "note": "Rune Delve reuses current artwork and retains its Combat Archive. Age alone is not grounds for removing these assets.",
+      "references": [
+        {
+          "source": "src/components/runedelve/RuneArtwork.tsx",
+          "line": 11,
+          "target": "public/images/rune-delve/sanctum.webp",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "public/manifest.webmanifest",
+      "bytes": 2545,
+      "sha256": "42f3dbe69fd4524ecbcfe68a6042a9a71d52ce54e40570268d0197575c0241b0",
+      "status": "current",
+      "references": [
+        {
+          "source": "index.html",
+          "line": 19,
+          "target": "public/manifest.webmanifest",
+          "kind": "manifest"
+        }
+      ]
+    },
+    {
+      "path": "public/placeholder.svg",
+      "bytes": 3253,
+      "sha256": "64badf7aabda0b9630b87020ffb6095cb858ccbcf66b355c2aa08b1063954d3b",
+      "width": 1200,
+      "height": 1200,
+      "status": "public-compatibility-entry",
+      "note": "Retained public compatibility fallback. No current source reference; database/user-authored references are outside this static inventory.",
+      "references": []
+    },
+    {
+      "path": "public/pwa-icon-192.png",
+      "bytes": 7497,
+      "sha256": "d6d075967e9729484552a6ffd0e03546513f06557c5ed58b359dc0287addbed3",
+      "width": 192,
+      "height": 192,
+      "status": "current",
+      "references": [
+        {
+          "source": "public/manifest.webmanifest",
+          "line": 1,
+          "target": "public/pwa-icon-192.png",
+          "kind": "icon"
+        }
+      ]
+    },
+    {
+      "path": "public/pwa-icon-512.png",
+      "bytes": 85064,
+      "sha256": "f2bab1c33537c7b601c911a2d473d6d95369a45b1080e562cf693cb0fa870bb3",
+      "width": 1024,
+      "height": 1024,
+      "status": "current",
+      "references": [
+        {
+          "source": "index.html",
+          "line": 57,
+          "target": "public/pwa-icon-512.png",
+          "kind": "social-image"
+        },
+        {
+          "source": "index.html",
+          "line": 64,
+          "target": "public/pwa-icon-512.png",
+          "kind": "social-image"
+        },
+        {
+          "source": "public/manifest.webmanifest",
+          "line": 1,
+          "target": "public/pwa-icon-512.png",
+          "kind": "icon"
+        },
+        {
+          "source": "public/sw-push.js",
+          "line": 97,
+          "target": "public/pwa-icon-512.png",
+          "kind": "visual"
+        },
+        {
+          "source": "public/sw-push.js",
+          "line": 98,
+          "target": "public/pwa-icon-512.png",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "public/pwa-icon-maskable-192.png",
+      "bytes": 5131,
+      "sha256": "8d1a7fa608bbc1fd0d89208252984b97ac37cb7b21c1d8f5428a7b65f230831a",
+      "width": 192,
+      "height": 192,
+      "status": "current",
+      "references": [
+        {
+          "source": "public/manifest.webmanifest",
+          "line": 1,
+          "target": "public/pwa-icon-maskable-192.png",
+          "kind": "icon"
+        }
+      ]
+    },
+    {
+      "path": "public/pwa-icon-maskable-512.png",
+      "bytes": 19234,
+      "sha256": "db997773275d09fcc1902b116c619065524a45576d179a51ec9756caa8fe6a56",
+      "width": 512,
+      "height": 512,
+      "status": "current",
+      "references": [
+        {
+          "source": "public/manifest.webmanifest",
+          "line": 1,
+          "target": "public/pwa-icon-maskable-512.png",
+          "kind": "icon"
+        }
+      ]
+    },
+    {
+      "path": "public/robots.txt",
+      "bytes": 160,
+      "sha256": "a3d27b3ca5ce32341fa9f96f01169b521b1657c05d1860c45d1e53a6258e9e8b",
+      "status": "public-compatibility-entry",
+      "note": "Crawler entry point; it does not need an app import.",
+      "references": []
+    },
+    {
+      "path": "public/sw-push.js",
+      "bytes": 4346,
+      "sha256": "cb017021860e3587c1bf6d7036c64dd1c6e4ea3a4a04dc6cc2c257c5e3c5e251",
+      "status": "current",
+      "references": [
+        {
+          "source": "index.html",
+          "line": 156,
+          "target": "public/sw-push.js",
+          "kind": "resource"
+        }
+      ]
+    },
+    {
+      "path": "public/version.json",
+      "bytes": 21,
+      "sha256": "aae023feaa0e6370232c0da4848cd7dac281b0cce27ba6e099cf166f7bd39a31",
+      "status": "current",
+      "references": [
+        {
+          "source": "index.html",
+          "line": 117,
+          "target": "public/version.json",
+          "kind": "resource"
+        }
+      ]
+    },
+    {
+      "path": "src/assets/dh-monogram.png",
+      "bytes": 85064,
+      "sha256": "f2bab1c33537c7b601c911a2d473d6d95369a45b1080e562cf693cb0fa870bb3",
+      "width": 1024,
+      "height": 1024,
+      "status": "current",
+      "references": [
+        {
+          "source": "src/components/AppDrawer.tsx",
+          "line": 12,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/AppDrawer.tsx",
+          "line": 12,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/AppLayout.tsx",
+          "line": 9,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/AppLayout.tsx",
+          "line": 9,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/dashboard/HomeHeader.tsx",
+          "line": 19,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/dashboard/HomeHeader.tsx",
+          "line": 19,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/EmptyClubState.tsx",
+          "line": 12,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/EmptyClubState.tsx",
+          "line": 12,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/HomeHero.tsx",
+          "line": 7,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/HomeHero.tsx",
+          "line": 7,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 17,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 17,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/AuthPage.tsx",
+          "line": 12,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/AuthPage.tsx",
+          "line": 12,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/LandingPage.tsx",
+          "line": 7,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/LandingPage.tsx",
+          "line": 7,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/LeaderboardPage.tsx",
+          "line": 7,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/LeaderboardPage.tsx",
+          "line": 7,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/NotFound.tsx",
+          "line": 4,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/NotFound.tsx",
+          "line": 4,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/ProfilePage.tsx",
+          "line": 13,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/ProfilePage.tsx",
+          "line": 13,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/ResetPasswordPage.tsx",
+          "line": 8,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/ResetPasswordPage.tsx",
+          "line": 8,
+          "target": "src/assets/dh-monogram.png",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "src/assets/draft-emblem.png",
+      "bytes": 1124477,
+      "sha256": "079db4ed7980960aea98c01512e162f0e53070a1852b7c7978c1678ce9fe9c73",
+      "width": 1024,
+      "height": 1024,
+      "status": "current",
+      "references": [
+        {
+          "source": "src/components/drafts/DraftArenaBoot.tsx",
+          "line": 3,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/drafts/DraftArenaBoot.tsx",
+          "line": 3,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/drafts/DraftArenaHUD.tsx",
+          "line": 4,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/drafts/DraftArenaHUD.tsx",
+          "line": 4,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 24,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 24,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 27,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 27,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 21,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 21,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 22,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 22,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 18,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 18,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 22,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 22,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "src/assets/nexus-emblem.png",
+      "bytes": 196263,
+      "sha256": "722e2a138a02f0b49680140470ad172d0a3fa3ff02f244a20247dc9b354e8340",
+      "width": 512,
+      "height": 512,
+      "status": "current",
+      "references": [
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 26,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 26,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 29,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 29,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/HomeFeatureGrid.tsx",
+          "line": 19,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/HomeFeatureGrid.tsx",
+          "line": 19,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 23,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 23,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 24,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 24,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/nexus/NexusBoot.tsx",
+          "line": 3,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/nexus/NexusBoot.tsx",
+          "line": 3,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/nexus/NexusHUD.tsx",
+          "line": 8,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/nexus/NexusHUD.tsx",
+          "line": 8,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 20,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 20,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 20,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 20,
+          "target": "src/assets/nexus-emblem.png",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "src/assets/pickem-emblem.png",
+      "bytes": 225551,
+      "sha256": "8df15a04c326073b5de99db6262f93824fb86fd138402a7b3e0f19e09e44f352",
+      "width": 512,
+      "height": 512,
+      "status": "current",
+      "references": [
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 27,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 27,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 30,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 30,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 24,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 24,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 25,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 25,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 21,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 21,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/pickem/PickemBoot.tsx",
+          "line": 3,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/pickem/PickemBoot.tsx",
+          "line": 3,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/pickem/PickemHUD.tsx",
+          "line": 5,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/pickem/PickemHUD.tsx",
+          "line": 5,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 21,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 21,
+          "target": "src/assets/pickem-emblem.png",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "src/assets/portfolio-wars-emblem.png",
+      "bytes": 1114614,
+      "sha256": "4ba93d452764c47c4a5cfbb18a6c94b59c3666280f5b915af72daab66f000f7a",
+      "width": 1024,
+      "height": 1024,
+      "status": "current",
+      "references": [
+        {
+          "source": "src/components/portfolioWars/PwBoot.tsx",
+          "line": 3,
+          "target": "src/assets/portfolio-wars-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/portfolioWars/PwBoot.tsx",
+          "line": 3,
+          "target": "src/assets/portfolio-wars-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/portfolioWars/PwHUD.tsx",
+          "line": 4,
+          "target": "src/assets/portfolio-wars-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/portfolioWars/PwHUD.tsx",
+          "line": 4,
+          "target": "src/assets/portfolio-wars-emblem.png",
+          "kind": "visual"
+        }
+      ]
+    },
+    {
+      "path": "src/assets/runedelve-emblem.png",
+      "bytes": 967466,
+      "sha256": "3d2b7a2ab10fd704e8b1498ab658aa65f470ffd447b8f65280c38ad52d557560",
+      "width": 1024,
+      "height": 1024,
+      "status": "current",
+      "references": [
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 25,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AppDock.tsx",
+          "line": 25,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 28,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/AssetLauncher.tsx",
+          "line": 28,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/HomeFeatureGrid.tsx",
+          "line": 20,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/HomeFeatureGrid.tsx",
+          "line": 20,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 22,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBar.tsx",
+          "line": 22,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 23,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/home/QuickBarSheet.tsx",
+          "line": 23,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 19,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
+          "line": 19,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/components/runedelve/RuneDelveBoot.tsx",
+          "line": 4,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/components/runedelve/RuneDelveBoot.tsx",
+          "line": 4,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 19,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/CompetePage.tsx",
+          "line": 19,
+          "target": "src/assets/runedelve-emblem.png",
+          "kind": "visual"
+        }
+      ]
+    }
+  ]
+}

@@ -68,6 +68,8 @@ body.nc-menu-active {
 .nc-game-brand {
   display: flex;
   align-items: center;
+  min-height: 44px;
+  min-width: 44px;
   gap: 8px;
   margin-right: auto;
   color: hsl(173 85% 70%);

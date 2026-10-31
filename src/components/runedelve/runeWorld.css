@@ -722,8 +722,6 @@
   position: absolute;
   inset: 0;
   display: block;
-  background-image: url("/images/rune-delve/creatures.webp");
-  background-size: 400% 200%;
   background-repeat: no-repeat;
   border-radius: inherit;
 }

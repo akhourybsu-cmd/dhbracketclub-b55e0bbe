@@ -41,10 +41,10 @@ export function RuneDataState({
             Retry
           </button>
           <Link
-            to="/rune-delve"
+            to="/rune-delve/legacy"
             className="min-h-11 px-4 rounded-xl bg-muted flex items-center text-xs font-bold"
           >
-            Base camp
+            Combat Archive
           </Link>
         </div>
       )}

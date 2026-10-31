@@ -397,8 +397,8 @@ export default function RuneDelveExpeditionPage() {
         <button className="rd-exp-primary" onClick={() => void game.refetch()}>
           Retry connection
         </button>
-        <Link to="/rune-delve" className="rd-exp-secondary">
-          Return to camp
+        <Link to="/rune-delve/legacy" className="rd-exp-secondary">
+          Return to archive
         </Link>
       </section>
     );
@@ -417,8 +417,8 @@ export default function RuneDelveExpeditionPage() {
               <h1>Expeditions</h1>
             </div>
             <Link
-              to="/rune-delve"
-              aria-label="Back to camp"
+              to="/rune-delve/legacy"
+              aria-label="Back to Combat Archive"
               className="rd-exp-icon"
             >
               <X />
@@ -838,8 +838,8 @@ export default function RuneDelveExpeditionPage() {
                     <RotateCcw />
                     Another expedition
                   </button>
-                  <Link to="/rune-delve" className="rd-exp-secondary">
-                    Return to camp
+                  <Link to="/rune-delve/legacy" className="rd-exp-secondary">
+                    Return to archive
                   </Link>
                 </>
               ) : (
@@ -929,8 +929,10 @@ export default function RuneDelveExpeditionPage() {
               {expeditionReward(run.roomsCleared, run.ascension, false)} shards
             </button>
           )}
-          <Link to="/rune-delve" className="rd-exp-secondary">
-            {saved ? "Save & return to camp" : "Return to camp · board resets"}
+          <Link to="/rune-delve/legacy" className="rd-exp-secondary">
+            {saved
+              ? "Save & return to archive"
+              : "Return to archive · board resets"}
           </Link>
         </ExpeditionDialog>
       )}

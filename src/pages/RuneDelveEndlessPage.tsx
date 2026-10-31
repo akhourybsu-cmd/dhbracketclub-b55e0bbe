@@ -298,7 +298,7 @@ export default function RuneDelveEndlessPage() {
     return (
       <div className="rd-load-error">
         <p>Choose a hero to enter.</p>
-        <Link className="rd-primary-action" to="/rune-delve">
+        <Link className="rd-primary-action" to="/rune-delve/legacy">
           Create hero
         </Link>
       </div>

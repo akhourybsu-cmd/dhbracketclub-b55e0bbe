@@ -48,7 +48,7 @@ function RuneLegacyHUD() {
     if (exitOpen) window.dispatchEvent(new Event("rune-delve:pause"));
   }, [exitOpen]);
 
-  const isHome = location.pathname === "/rune-delve";
+  const isHome = location.pathname === "/rune-delve/legacy";
   const isPlaying =
     location.pathname.startsWith("/rune-delve/play/") ||
     location.pathname === "/rune-delve/expedition" ||
@@ -58,11 +58,11 @@ function RuneLegacyHUD() {
 
   const handleBack = () => {
     if (isHome) {
-      navigate("/compete");
+      navigate("/rune-delve");
     } else if (isPlaying) {
       setExitOpen(true);
     } else {
-      navigate("/rune-delve");
+      navigate("/rune-delve/legacy");
     }
   };
 
@@ -82,15 +82,15 @@ function RuneLegacyHUD() {
         <div className="flex items-center gap-2 h-12 px-2 max-w-[640px] mx-auto">
           <button
             onClick={handleBack}
-            aria-label={isHome ? "Exit Rune Delve" : "Back"}
+            aria-label={isHome ? "Return to puzzle journey" : "Back"}
             className="w-11 h-11 rounded-xl flex items-center justify-center btn-press text-foreground/90 hover:text-primary"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
           <Link
-            to="/rune-delve"
-            aria-label="Return to Rune Delve Sanctum"
+            to="/rune-delve/legacy"
+            aria-label="Return to Combat Archive"
             className="rd-hud-home flex-1 min-w-0 min-h-11 flex items-center gap-2 btn-press"
           >
             {hero ? (
@@ -114,11 +114,13 @@ function RuneLegacyHUD() {
                 <span className="rd-hud-compact-title">Rune Delve</span>
               </p>
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/70 truncate">
-                {location.pathname === "/rune-delve/expedition"
-                  ? "Expedition"
-                  : location.pathname === "/rune-delve/endless"
-                    ? "Daily arena"
-                    : `Chapter ${chapter}${isCampaignBattle ? ` · L${location.pathname.split("/").pop()}` : ""}`}
+                {isHome
+                  ? "Combat Archive"
+                  : location.pathname === "/rune-delve/expedition"
+                    ? "Expedition"
+                    : location.pathname === "/rune-delve/endless"
+                      ? "Daily arena"
+                      : `Chapter ${chapter}${isCampaignBattle ? ` · L${location.pathname.split("/").pop()}` : ""}`}
               </p>
             </div>
           </Link>
@@ -164,7 +166,7 @@ function RuneLegacyHUD() {
         onOpenChange={setExitOpen}
         onConfirm={() => {
           setExitOpen(false);
-          navigate("/rune-delve");
+          navigate("/rune-delve/legacy");
         }}
       />
       <CodexSheet open={codexOpen} onOpenChange={setCodexOpen} />

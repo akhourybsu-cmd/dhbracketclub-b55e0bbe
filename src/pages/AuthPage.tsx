@@ -146,7 +146,7 @@ export default function AuthPage() {
               key={key}
               type="button"
               onClick={() => setMode(key)}
-              className="relative flex flex-col items-center gap-1 py-2 rounded-lg btn-press transition-colors"
+              className="relative flex min-h-11 flex-col items-center gap-1 py-2 rounded-lg btn-press transition-colors"
               style={{
                 background: mode === key ? 'hsl(var(--primary) / 0.14)' : 'transparent',
                 color: mode === key ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
@@ -170,13 +170,14 @@ export default function AuthPage() {
                 className="space-y-4 overflow-hidden"
               >
                 <div>
-                  <label className="form-label">Club Password</label>
+                  <label htmlFor="auth-club-password" className="form-label">Club Password</label>
                   <Input
+                    id="auth-club-password"
                     required
                     value={clubPassword}
                     onChange={(e) => setClubPassword(e.target.value)}
                     placeholder="The password your club admin gave you"
-                    className="form-input"
+                    className="form-input h-11 min-h-11 text-base"
                     autoComplete="off"
                   />
                   <p className="text-[11px] text-muted-foreground/80 mt-1.5 px-0.5">
@@ -204,39 +205,42 @@ export default function AuthPage() {
 
           {mode !== 'signin' && (
             <div>
-              <label className="form-label">Display Name</label>
+              <label htmlFor="auth-display-name" className="form-label">Display Name</label>
               <Input
+                id="auth-display-name"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Your name"
-                className="form-input"
+                className="form-input h-11 min-h-11 text-base"
               />
             </div>
           )}
 
           <div>
-            <label className="form-label">Email</label>
+            <label htmlFor="auth-email" className="form-label">Email</label>
             <Input
+              id="auth-email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="form-input"
+              className="form-input h-11 min-h-11 text-base"
               autoComplete="email"
             />
           </div>
 
           <div>
-            <label className="form-label">Password</label>
+            <label htmlFor="auth-password" className="form-label">Password</label>
             <Input
+              id="auth-password"
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="form-input"
+              className="form-input h-11 min-h-11 text-base"
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
             />
           </div>
@@ -359,35 +363,34 @@ export default function AuthPage() {
                 if (error) toast.error(error.message);
                 else toast.success('Password reset link sent! Check your email.');
               }}
-              className="text-primary/85 hover:text-primary hover:underline font-semibold transition-colors"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 text-primary/85 hover:text-primary hover:underline font-semibold transition-colors"
             >
               Forgot password?
             </button>
           </p>
         )}
 
-        <p className="text-center text-xs text-muted-foreground mt-5">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-1 text-center text-xs text-muted-foreground">
           {mode === 'signin' ? (
             <>
-              New here?{' '}
-              <button onClick={() => setMode('join')} className="text-primary hover:underline font-bold">
+              <span>New here?</span>
+              <button onClick={() => setMode('join')} className="inline-flex min-h-11 items-center justify-center rounded-lg px-1 text-primary hover:underline font-bold">
                 Use a club password
-              </button>{' '}
-              or{' '}
-              <button onClick={() => setMode('request')} className="text-primary hover:underline font-bold">
+              </button>
+              <span>or</span>
+              <button onClick={() => setMode('request')} className="inline-flex min-h-11 items-center justify-center rounded-lg px-1 text-primary hover:underline font-bold">
                 start a club
               </button>
-              .
             </>
           ) : (
             <>
-              Already have an account?{' '}
-              <button onClick={() => setMode('signin')} className="text-primary hover:underline font-bold">
+              <span>Already have an account?</span>
+              <button onClick={() => setMode('signin')} className="inline-flex min-h-11 items-center justify-center rounded-lg px-1 text-primary hover:underline font-bold">
                 Sign In
               </button>
             </>
           )}
-        </p>
+        </div>
       </motion.div>
     </div>
   );

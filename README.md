@@ -544,7 +544,7 @@ Do not implement live score widgets yet.
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://dhbracketclub.lovable.app
+**Live app**: https://dryhorse.app
 
 ## Build with Lovable
 

@@ -72,8 +72,8 @@ export default function RuneDelveBestiaryPage() {
     <div className="rd-screen rd-codex-page" data-testid="rune-bestiary">
       <header className="rd-codex-heading">
         <Link
-          to="/rune-delve"
-          aria-label="Back to sanctum"
+          to="/rune-delve/legacy"
+          aria-label="Back to Combat Archive"
           className="rd-codex-back"
         >
           <ArrowLeft size={17} />

@@ -36,7 +36,7 @@ export function ExitRunDialog({
       >
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {canResume ? "Return to the sanctum?" : "Leave the arena?"}
+            {canResume ? "Return to Combat Archive?" : "Leave the arena?"}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {canResume

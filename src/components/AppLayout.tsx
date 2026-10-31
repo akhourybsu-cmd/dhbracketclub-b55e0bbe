@@ -115,7 +115,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
     <div className="min-h-[100dvh] bg-background flex flex-col">
       <DHScoreSync />
       {showMobileHeader && !desktop && <MobileAppHeader title={isDashboard ? club?.name || 'Home' : mobileTitle}
-        onOpenMenu={() => { play('tap'); setDrawerOpen(true); }} />}
+        onOpenMenu={(opener) => { play('tap'); setDrawerOpen(true, opener); }} />}
 
       {/* Drawer */}
       <AppDrawer open={drawerOpen} onOpenChange={setDrawerOpen} unreadChatCount={unreadChatCount} />
@@ -123,7 +123,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
       {/* Chat keeps its compact header and the shared bottom destinations.
           Full-screen game shells retain their own navigation. */}
       {showMobileBottomNav && <BottomTabBar unreadChatCount={unreadChatCount} items={mobileNavItems}
-        onOpenMore={() => setDrawerOpen(true)} />}
+        onOpenMore={(opener) => setDrawerOpen(true, opener)} />}
 
       {/* Main Content */}
       <main className={cn(

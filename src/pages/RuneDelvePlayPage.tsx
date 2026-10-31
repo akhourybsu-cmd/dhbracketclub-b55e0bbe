@@ -1323,10 +1323,10 @@ export default function RuneDelvePlayPage() {
               Retry
             </button>
             <Link
-              to="/rune-delve"
+              to="/rune-delve/legacy"
               className="flex min-h-11 items-center text-xs font-bold text-muted-foreground"
             >
-              Return to the Sanctum
+              Return to Combat Archive
             </Link>
           </div>
         )}

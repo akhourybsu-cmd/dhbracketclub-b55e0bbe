@@ -1,26 +1,28 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSoundEffect } from '@/hooks/useSoundEffect';
 import { activeTabPath, type AppNavItem } from '@/lib/appNavigation';
+import { scrollAppToTop } from '@/lib/appScroll';
 
 /**
  * Floating mobile tab bar: Home + installed Chat + most used destinations + More
  * (opens the full app drawer). Tapping the active tab scrolls back to top.
  */
 export function BottomTabBar({ unreadChatCount = 0, items, onOpenMore }: {
-  unreadChatCount?: number; items: AppNavItem[]; onOpenMore: () => void;
+  unreadChatCount?: number; items: AppNavItem[]; onOpenMore: (opener: HTMLButtonElement) => void;
 }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { play } = useSoundEffect();
+  const reducedMotion = useReducedMotion();
   const active = activeTabPath(pathname, items);
 
   const tap = () => { play('tap'); navigator.vibrate?.(8); };
   const go = (path: string) => {
     tap();
-    if (path === pathname) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (path === pathname) { scrollAppToTop(reducedMotion ? 'auto' : 'smooth'); return; }
     navigate(path);
   };
 
@@ -43,16 +45,16 @@ export function BottomTabBar({ unreadChatCount = 0, items, onOpenMore }: {
           return (
             <button
               key={tab.key}
-              onClick={() => (isMore ? (tap(), onOpenMore()) : go(tab.path))}
+              onClick={(event) => (isMore ? (tap(), onOpenMore(event.currentTarget)) : go(tab.path))}
               aria-label={isMore ? 'More apps' : tab.label}
               aria-current={on ? 'page' : undefined}
-              className="relative flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.3rem] touch-manipulation transition-transform duration-100 active:scale-[0.92]"
+              className={cn('relative flex h-[52px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.3rem] touch-manipulation', reducedMotion ? 'transition-none' : 'transition-transform duration-100 active:scale-[0.92]')}
             >
               {on && (
                 <motion.span
-                  layoutId="bottomTabPill"
+                  layoutId={reducedMotion ? undefined : 'bottomTabPill'}
                   className="absolute inset-0 rounded-[1.3rem] bg-primary/12 ring-1 ring-primary/20"
-                  transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+                  transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 38 }}
                 />
               )}
               <span className="relative flex h-6 items-center justify-center">

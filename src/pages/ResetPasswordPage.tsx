@@ -48,8 +48,8 @@ export default function ResetPasswordPage() {
       if (error) throw error;
       toast.success('Password updated successfully!');
       navigate('/dashboard');
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-sm text-muted-foreground mb-4">Invalid or expired reset link.</p>
-          <Button onClick={() => navigate('/auth')} variant="outline" className="rounded-xl font-bold">
+          <Button onClick={() => navigate('/auth')} variant="outline" className="h-11 min-h-11 rounded-xl font-bold">
             Back to Sign In
           </Button>
         </div>
@@ -94,27 +94,29 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={handleSubmit} className="glass-card p-6 space-y-4">
           <div>
-            <label className="form-label">New Password</label>
+            <label htmlFor="reset-new-password" className="form-label">New Password</label>
             <Input
+              id="reset-new-password"
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="form-input"
+              className="form-input h-11 min-h-11 text-base"
             />
           </div>
           <div>
-            <label className="form-label">Confirm Password</label>
+            <label htmlFor="reset-confirm-password" className="form-label">Confirm Password</label>
             <Input
+              id="reset-confirm-password"
               type="password"
               required
               minLength={6}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
-              className="form-input"
+              className="form-input h-11 min-h-11 text-base"
             />
           </div>
           <Button type="submit" className="w-full h-11 font-bold rounded-xl btn-press" disabled={loading}>

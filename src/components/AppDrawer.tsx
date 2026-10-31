@@ -11,6 +11,7 @@ import { useClubAssets } from '@/hooks/useClubAssets';
 import { NAV_ASSET_SLUGS } from '@/types/assets';
 import dhMonogram from '@/assets/dh-monogram.png';
 import { APP_NAV_SECTIONS, isRouteActive, type AppNavItem } from '@/lib/appNavigation';
+import { useNavDrawer } from '@/contexts/NavDrawerContext';
 
 type NavEntry = AppNavItem & { badge?: number };
 type Section = { label: string; items: NavEntry[] };
@@ -27,6 +28,11 @@ export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawer
   const { club, isClubAdmin, isPlatformOwner, isAppAdmin } = useClub();
   const { play } = useSoundEffect();
   const { filterNavPaths, installedAssets, isVisible } = useClubAssets();
+  const { restoreFocus } = useNavDrawer();
+  const openingPathRef = useRef(location.pathname);
+  const wasOpenRef = useRef(false);
+  if (open && !wasOpenRef.current) openingPathRef.current = location.pathname;
+  wasOpenRef.current = open;
 
   // Close only when navigation actually completes, not whenever the sheet's
   // own open state changes.
@@ -76,6 +82,12 @@ export function AppDrawer({ open, onOpenChange, unreadChatCount = 0 }: AppDrawer
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="left"
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          // Manual dismissal returns to the actual opener. Navigating through
+          // the drawer leaves focus with the destination instead.
+          restoreFocus(openingPathRef.current === location.pathname);
+        }}
         className="p-0 w-[86vw] max-w-[340px] sm:max-w-[360px] flex flex-col gap-0 border-r border-border/30 bg-background"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',

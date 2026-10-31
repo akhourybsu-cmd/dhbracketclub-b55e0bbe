@@ -9,21 +9,10 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, ChevronLeft, ChevronRight, Check,
-  Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
-  MessageSquareText, CalendarDays, ScrollText, Newspaper,
-  MessageCircle, BarChart3, FileText, Link2, Star,
-  BellRing, AtSign, DoorOpen, Clock, Users, VenetianMask, Eye,
+  X, ChevronLeft, ChevronRight, Check, Sparkles,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import type { FeatureOnboarding } from '@/lib/onboarding/registry';
-
-const ICON_BY_NAME: Record<string, LucideIcon> = {
-  Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
-  MessageSquareText, CalendarDays, ScrollText, Newspaper,
-  MessageCircle, BarChart3, FileText, Link2, Star,
-  BellRing, AtSign, DoorOpen, Clock, Users, Check, VenetianMask, Eye,
-};
+import { ONBOARDING_ICONS as ICON_BY_NAME } from '@/lib/onboarding/icons';
 
 interface Props {
   open: boolean;

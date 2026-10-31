@@ -51,8 +51,8 @@ export default function RuneDelveQuestsPage() {
     <div className="rd-screen rd-codex-page" data-testid="rune-quests">
       <header className="rd-codex-heading">
         <Link
-          to="/rune-delve"
-          aria-label="Back to sanctum"
+          to="/rune-delve/legacy"
+          aria-label="Back to Combat Archive"
           className="rd-codex-back"
         >
           <ArrowLeft size={17} />
@@ -68,7 +68,12 @@ export default function RuneDelveQuestsPage() {
         <RuneDataState label="Loading your quests…" onRetry={retry} />
       ) : !heroQuery.data ? (
         <div className="rd-codex-empty">
-          <Link to="/rune-delve">Create a hero to unlock quests</Link>
+          <Link
+            to="/rune-delve/legacy"
+            className="inline-flex min-h-11 items-center justify-center px-4"
+          >
+            Create a hero to unlock quests
+          </Link>
         </div>
       ) : (
         <Tabs value={scope} onValueChange={setScope} className="rd-codex-tabs">

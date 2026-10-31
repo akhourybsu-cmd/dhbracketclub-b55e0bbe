@@ -45,7 +45,7 @@ const PREFETCH_MAP: Array<{ test: (p: string) => boolean; loaders: PrefetchFn[] 
   },
   {
     test: (p) => p === '/nexus',
-    loaders: [() => import('@/pages/NexusMissionsPage')],
+    loaders: [() => import('@/pages/NexusLoadoutPage')],
   },
 ];
 

@@ -600,7 +600,7 @@ function MessageBubbleInner({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onReplyJump?.(msg.reply_to!.id); }}
-                  className="flex items-center gap-1.5 max-w-[88%] pl-1 pr-2 py-0.5 rounded-md hover:bg-muted/25 transition-colors group/ref"
+                  className="flex min-h-11 min-w-11 items-center gap-1.5 max-w-[88%] pl-1 pr-2 py-0.5 rounded-md hover:bg-muted/25 transition-colors group/ref"
                   title="Jump to message"
                 >
                   <Reply className="w-3 h-3 flex-shrink-0 text-muted-foreground/45 -scale-x-100" />
@@ -731,10 +731,7 @@ function MessageBubbleInner({
                         transition={reduceMotion ? { duration: 0 } : { type: 'spring', damping: 22, stiffness: 480 }}
                         onClick={(e) => { e.stopPropagation(); handleReaction(r.emoji); }}
                         className={cn(
-                          // Mobile: h-7 (28px) for reliable tap target.
-                          // Desktop keeps the original h-6 (24px) so
-                          // reaction rows stay dense alongside text.
-                          "chat-reaction relative inline-flex items-center gap-1 h-7 lg:h-6 px-2 lg:px-1.5 rounded-full text-[11px] border shadow-sm backdrop-blur-sm transition-colors duration-150 active:scale-90",
+                          "chat-reaction relative inline-flex min-h-11 min-w-11 items-center gap-1 px-2 lg:px-1.5 rounded-full text-[11px] border shadow-sm backdrop-blur-sm transition-colors duration-150 active:scale-90",
                           r.user_reacted
                             ? "border-primary/30 bg-primary/15 text-primary"
                             : "border-border/30 bg-background/95 text-foreground/80 hover:bg-background"

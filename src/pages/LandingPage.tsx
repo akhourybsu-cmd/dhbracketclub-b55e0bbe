@@ -21,11 +21,9 @@ export default function LandingPage() {
         <div className="flex items-center gap-2">
           <img src={dhMonogram} alt="DH" className="w-6 h-6 object-contain opacity-60" />
         </div>
-        <Link to="/auth">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground font-semibold text-[12px] h-8 px-3 tracking-wide uppercase">
-            Enter
-          </Button>
-        </Link>
+        <Button asChild variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground font-semibold text-[12px] h-11 min-h-11 px-3 tracking-wide uppercase">
+          <Link to="/auth">Enter</Link>
+        </Button>
       </header>
 
       {/* Hero — minimal, mysterious */}
@@ -63,11 +61,9 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.7 }}
           >
-            <Link to="/auth">
-              <Button size="lg" className="gap-2.5 px-10 h-12 text-[14px] font-bold rounded-xl btn-press">
-                Get In <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
+            <Button asChild size="lg" className="gap-2.5 px-10 h-12 text-[14px] font-bold rounded-xl btn-press">
+              <Link to="/auth">Get In <ArrowRight className="w-4 h-4" /></Link>
+            </Button>
           </motion.div>
 
           {/* Subtle invite hint */}
@@ -87,7 +83,7 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 1.2 }}
             className="mt-10 pt-6 border-t border-border/30"
           >
-            <Link to="/auth" className="text-[11px] text-muted-foreground/60 hover:text-primary transition-colors">
+            <Link to="/auth" className="inline-flex min-h-11 items-center justify-center py-2 text-[11px] text-muted-foreground/60 hover:text-primary transition-colors">
               Want your own circle? <span className="font-semibold underline-offset-2 underline">Request a club →</span>
             </Link>
           </motion.div>

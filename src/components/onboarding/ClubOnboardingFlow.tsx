@@ -12,12 +12,8 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronLeft, ChevronRight, X, Sparkles,
-  Bookmark, Shield, Trophy, TrendingUp, Lock,
-  MessageSquareText, CalendarDays, ScrollText, Newspaper,
-  MessageCircle, BarChart3, FileText, Link2, Star,
+  ChevronLeft, ChevronRight, X, Sparkles, Star, Bookmark,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import dhMonogram from '@/assets/dh-monogram.png';
 import draftEmblem from '@/assets/draft-emblem.png';
 import runedelveEmblem from '@/assets/runedelve-emblem.png';
@@ -26,12 +22,7 @@ import pickemEmblem from '@/assets/pickem-emblem.png';
 import type { Club } from '@/contexts/ClubContext';
 import type { InstalledAsset } from '@/types/assets';
 import { resolveOnboarding, isVisibleToRole } from '@/lib/onboarding/registry';
-
-const ICON_BY_NAME: Record<string, LucideIcon> = {
-  Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
-  MessageSquareText, CalendarDays, ScrollText, Newspaper,
-  MessageCircle, BarChart3, FileText, Link2, Star,
-};
+import { ONBOARDING_ICONS as ICON_BY_NAME } from '@/lib/onboarding/icons';
 
 const EMBLEM_BY_SLUG: Record<string, string> = {
   'draft-arena':   draftEmblem,
@@ -212,9 +203,9 @@ function WelcomeStep({ club, displayName, accent }: { club: Club | null; display
 
 function HomeOverviewStep({ accent }: { accent: string }) {
   const highlights = [
-    { icon: Sparkles, title: 'Right Now', body: 'The single most important next action — your draft turn, an open op, today\'s daily.' },
-    { icon: Bookmark, title: 'Your Apps', body: 'Pinned dock for the apps you use most. Tap the pencil to customize.' },
-    { icon: Star,     title: 'Highlights & Pulse', body: 'Recent club wins and high-signal activity — only when there\'s something worth seeing.' },
+    { icon: Sparkles, title: 'Your next move', body: 'See draft turns, unread conversations and the club activity that needs your attention.' },
+    { icon: Bookmark, title: 'Your apps', body: 'Keep your most-used apps close. Edit your shortcuts from Home.' },
+    { icon: Star,     title: 'Your DH Score', body: 'Track achievements across the club and see what to work toward next.' },
   ];
 
   return (

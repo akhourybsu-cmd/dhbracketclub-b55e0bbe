@@ -163,7 +163,7 @@ export default function LorePage() {
       </div>
 
       {/* Filter chips */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-none -mx-4 px-4 pb-1" role="group" aria-label="Lore filters">
+      <div className="flex flex-wrap gap-1.5 mb-5 pb-1" role="group" aria-label="Lore filters">
         {FILTERS.map((f) => {
           const active = filter.value === f.value;
           return (
@@ -173,7 +173,7 @@ export default function LorePage() {
               aria-pressed={active}
               onClick={() => setFilter(f)}
               className={cn(
-                'flex-shrink-0 px-3.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all btn-press min-h-11',
+                'flex-shrink-0 px-3.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all btn-press min-h-11 min-w-11',
                 active
                   ? 'text-white'
                   : 'text-muted-foreground bg-[hsl(var(--surface-elevated))] border border-border/40',

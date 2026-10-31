@@ -308,7 +308,7 @@ function AnimatedRoutes() {
         <Route path="/rune-delve/results/:levelNumber" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveResultsPage /></RuneDelveLayout></ProtectedPage>} />
         {/* Back-compat redirects from old daily routes */}
         <Route path="/rune-delve/play" element={<Navigate to="/rune-delve/levels" replace />} />
-        <Route path="/rune-delve/results" element={<Navigate to="/rune-delve" replace />} />
+        <Route path="/rune-delve/results" element={<Navigate to="/rune-delve/legacy" replace />} />
         <Route path="/rune-delve/leaderboard" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveLeaderboardPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/hero" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveHeroPage /></RuneDelveLayout></ProtectedPage>} />
         <Route path="/rune-delve/history" element={<ProtectedPage assetSlug="rune-delve"><RuneDelveLayout><RuneDelveHistoryPage /></RuneDelveLayout></ProtectedPage>} />

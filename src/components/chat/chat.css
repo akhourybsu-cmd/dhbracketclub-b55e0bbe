@@ -165,13 +165,9 @@
   max-width: calc(100% - 24px);
 }
 .dh-chat .chat-reaction {
-  min-height: 36px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 5px 10px;
-}
-.dh-chat .chat-reaction::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
 }
 .dh-chat .chat-history-retry {
   display: block;

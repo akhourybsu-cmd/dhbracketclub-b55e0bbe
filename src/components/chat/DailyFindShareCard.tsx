@@ -12,7 +12,7 @@ export function DailyFindShareCard({ findId }: { findId: string }) {
   const meta = kindMeta(find.kind);
   return (
     <button type="button" onClick={() => navigate(`/finds/${find.id}`)} className="drop-surface mt-2 block w-full max-w-[330px] overflow-hidden rounded-xl border text-left active:scale-[0.99]">
-      {find.image_path && <FindPhoto path={find.image_path} className="aspect-[16/9] w-full" />}
+      {find.image_path && <FindPhoto path={find.image_path} interactive={false} className="aspect-[16/9] w-full" />}
       <div className="p-3">
         <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[hsl(var(--drop-accent))]">▣ The Drop · {meta.label} · {formatDayKey(find.find_date)}</p>
         <p className="mt-1 text-sm font-extrabold leading-snug">{find.title}</p>

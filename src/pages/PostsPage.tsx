@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -29,11 +29,12 @@ type Post = {
 export default function PostsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { play } = useSoundEffect();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(pathname === '/posts/create');
   const [form, setForm] = useState({ title: '', content: '' });
   const [creating, setCreating] = useState(false);
 
@@ -67,6 +68,14 @@ export default function PostsPage() {
   }, []);
 
   useEffect(() => { void fetchPosts(); }, [fetchPosts]);
+  useEffect(() => {
+    if (pathname === '/posts/create') setShowCreate(true);
+  }, [pathname]);
+
+  const closeCreate = () => {
+    setShowCreate(false);
+    if (pathname === '/posts/create') navigate('/posts', { replace: true });
+  };
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.content.trim() || !user) return;
@@ -112,7 +121,7 @@ export default function PostsPage() {
               <div className="glass-card p-4 space-y-3">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-sm font-bold">New Discussion</h3>
-                  <button onClick={() => setShowCreate(false)} className="w-11 h-11 -m-2 rounded-xl hover:bg-muted/50 flex items-center justify-center" aria-label="Close new discussion"><X className="w-4 h-4" /></button>
+                  <button onClick={closeCreate} className="w-11 h-11 -m-2 rounded-xl hover:bg-muted/50 flex items-center justify-center" aria-label="Close new discussion"><X className="w-4 h-4" /></button>
                 </div>
                 <Input aria-label="Discussion title" placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="h-11 text-sm rounded-xl" />
                 <Textarea aria-label="Discussion message" placeholder="What's on your mind?" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} className="text-sm min-h-[100px]" />

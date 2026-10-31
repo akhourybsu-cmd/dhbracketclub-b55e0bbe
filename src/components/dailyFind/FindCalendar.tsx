@@ -60,7 +60,7 @@ export function FindCalendar({ month, onMonthChange, finds, selectedDay, onSelec
                 key === today && !selected && 'ring-1 ring-foreground/30',
               )}
             >
-              {photo && <FindPhoto path={photo.image_path} className="absolute inset-0 opacity-60" />}
+              {photo && <FindPhoto path={photo.image_path} interactive={false} className="absolute inset-0 opacity-60" />}
               <span className={cn('relative', photo && 'drop-shadow-[0_1px_2px_hsl(var(--background))]')}>{day}</span>
               {list.length > 0 && (
                 <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">

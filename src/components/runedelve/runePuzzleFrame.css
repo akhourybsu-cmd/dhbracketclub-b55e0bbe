@@ -40,6 +40,7 @@
   white-space: nowrap;
 }
 .rd-puzzle-hud-stars {
+  min-width: 44px;
   gap: 4px;
   padding: 0 8px;
   color: hsl(var(--gold));
