@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
@@ -30,7 +30,7 @@ export default function DailyFindDetailPage() {
   const delComment = useDeleteFindComment();
   const delFind = useDeleteFind();
   const [body, setBody] = useState("");
-  const commentInput = useRef<HTMLInputElement>(null);
+  const commentInput = useRef<HTMLTextAreaElement>(null);
   const sendLock = useRef(false);
 
   if (isLoading)
@@ -181,15 +181,27 @@ export default function DailyFindDetailPage() {
             e.preventDefault();
             post();
           }}
-          className="drop-surface sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] mt-4 flex gap-2 rounded-xl border p-2 lg:bottom-3"
+          className="drop-surface sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] mt-4 flex items-end gap-2 rounded-xl border p-2 lg:bottom-3"
         >
-          <Input
+          <Textarea
             ref={commentInput}
             aria-label="Add a comment"
             value={body}
             onChange={(e) => setBody(e.target.value.slice(0, 1000))}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                (event.ctrlKey || event.metaKey) &&
+                !event.nativeEvent.isComposing
+              ) {
+                event.preventDefault();
+                post();
+              }
+            }}
             placeholder="Add a comment"
-            className="h-11 border-0 bg-transparent text-base shadow-none"
+            rows={2}
+            maxLength={1000}
+            className="min-h-11 max-h-32 min-w-0 resize-y border-0 bg-transparent text-base shadow-none"
           />
           <Button
             type="submit"

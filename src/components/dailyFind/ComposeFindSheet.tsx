@@ -9,6 +9,8 @@ import { useCreateFind } from "@/hooks/useDailyFinds";
 import { normalizeTags } from "@/lib/dailyFind";
 import { cn } from "@/lib/utils";
 import { isSafeUrl } from "@/lib/linkParser";
+import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { validateImageFile } from "@/lib/uploadValidation";
 import {
   composeDropContent,
@@ -25,12 +27,15 @@ interface Props {
   initial?: { title: string; url: string; note: string } | null;
 }
 
-export function ComposeFindSheet({
-  open,
-  onOpenChange,
-  onCreated,
-  initial,
-}: Props) {
+export function ComposeFindSheet(props: Props) {
+  const { user } = useAuth();
+  const { club } = useClub();
+  return (
+    <ComposeFindDraft key={JSON.stringify([user?.id, club?.id])} {...props} />
+  );
+}
+
+function ComposeFindDraft({ open, onOpenChange, onCreated, initial }: Props) {
   const [caption, setCaption] = useState("");
   const [url, setUrl] = useState("");
   const [tags, setTags] = useState("");
@@ -44,8 +49,16 @@ export function ComposeFindSheet({
   const linkRef = useRef<HTMLInputElement>(null);
   const seededInitial = useRef<Props["initial"]>();
   const submitLock = useRef(false);
+  const active = useRef(true);
   const create = useCreateFind();
   useDropSheetViewport(open);
+
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!open || !initial || seededInitial.current === initial) return;
@@ -88,6 +101,7 @@ export function ComposeFindSheet({
       { ...content, url: trimmedUrl, tags: normalizeTags(tags), image },
       {
         onSuccess: ({ id }) => {
+          if (!active.current) return;
           toast.success("Shared with your club");
           setCaption("");
           setUrl("");
@@ -99,9 +113,12 @@ export function ComposeFindSheet({
           onOpenChange(false);
           onCreated?.(id);
         },
-        onError: () =>
-          setError("Couldn’t share this Drop. Your draft is ready to retry."),
+        onError: () => {
+          if (active.current)
+            setError("Couldn’t share this Drop. Your draft is ready to retry.");
+        },
         onSettled: () => {
+          if (!active.current) return;
           submitLock.current = false;
           setSubmitting(false);
         },

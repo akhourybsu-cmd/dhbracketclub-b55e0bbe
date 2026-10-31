@@ -27,6 +27,19 @@ interface Props {
 
 export function FindShareSheet({ open, onOpenChange, find }: Props) {
   const { user } = useAuth();
+  const { club } = useClub();
+  return (
+    <FindShareSession
+      key={`${user?.id}:${club?.id}:${find.id}`}
+      open={open}
+      onOpenChange={onOpenChange}
+      find={find}
+    />
+  );
+}
+
+function FindShareSession({ open, onOpenChange, find }: Props) {
+  const { user } = useAuth();
   const { club, isClubAdmin } = useClub();
   const { isInstalled } = useClubAssets();
   const chatInstalled = isInstalled("chat");
@@ -39,9 +52,19 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [externalPending, setExternalPending] = useState(false);
+  const alive = useRef(true);
+  const externalLock = useRef(false);
   const sendLock = useRef(false);
   const deliveryId = useRef<string | null>(null);
   useDropSheetViewport(open);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     deliveryId.current = null;
@@ -104,7 +127,15 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
 
   const url = buildFindShareUrl(find.id);
   const toChat = async () => {
-    if (!user || !club || !selected || sendLock.current) return;
+    if (
+      !open ||
+      !user ||
+      !club ||
+      !selected ||
+      sendLock.current ||
+      externalLock.current
+    )
+      return;
     const channelId = selected;
     sendLock.current = true;
     setSending(true);
@@ -144,6 +175,7 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
         );
       } else if (result.error) throw result.error;
       if (!data) throw new Error("Message unavailable");
+      if (!alive.current) return;
       if (created)
         void supabase.functions
           .invoke("send-push-notification", { body: { record: data } })
@@ -153,21 +185,29 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
         `/chat?channel=${encodeURIComponent(channelId)}&message=${encodeURIComponent(data.id)}`,
       );
     } catch {
-      setError("Couldn’t send to Chat. Try again.");
+      if (alive.current) setError("Couldn’t send to Chat. Try again.");
     } finally {
       sendLock.current = false;
-      setSending(false);
+      if (alive.current) setSending(false);
     }
   };
 
   const copyLink = async () => {
+    if (!open || externalLock.current || sendLock.current) return;
+    externalLock.current = true;
+    setExternalPending(true);
     setError("");
     try {
       await navigator.clipboard.writeText(url);
+      if (!alive.current) return;
       setCopied(true);
       toast.success("Link copied");
     } catch {
-      setError("Couldn’t copy the link. Try your device’s Share option.");
+      if (alive.current)
+        setError("Couldn’t copy the link. Try your device’s Share option.");
+    } finally {
+      externalLock.current = false;
+      if (alive.current) setExternalPending(false);
     }
   };
   const elsewhere = async () => {
@@ -175,6 +215,10 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
       await copyLink();
       return;
     }
+    if (!open || externalLock.current || sendLock.current) return;
+    externalLock.current = true;
+    setExternalPending(true);
+    setError("");
     try {
       await navigator.share({
         title: find.title,
@@ -182,10 +226,16 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
         url,
       });
     } catch (shareError) {
-      if (!(
-        shareError instanceof DOMException && shareError.name === "AbortError"
-      ))
+      if (
+        alive.current &&
+        !(
+          shareError instanceof DOMException && shareError.name === "AbortError"
+        )
+      )
         setError("Couldn’t open sharing. You can copy the link instead.");
+    } finally {
+      externalLock.current = false;
+      if (alive.current) setExternalPending(false);
     }
   };
 
@@ -248,7 +298,13 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
             <Button
               type="button"
               onClick={toChat}
-              disabled={!selected || sending || loading || channelError}
+              disabled={
+                !selected ||
+                sending ||
+                loading ||
+                channelError ||
+                externalPending
+              }
               className="drop-primary h-12 w-full"
             >
               {sending ? (
@@ -268,7 +324,7 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
             type="button"
             variant="outline"
             className="h-12"
-            disabled={sending}
+            disabled={sending || externalPending}
             onClick={copyLink}
           >
             {copied ? (
@@ -282,7 +338,7 @@ export function FindShareSheet({ open, onOpenChange, find }: Props) {
             type="button"
             variant="outline"
             className="h-12"
-            disabled={sending}
+            disabled={sending || externalPending}
             onClick={elsewhere}
           >
             <Share2 className="h-4 w-4" /> Share…

@@ -8,7 +8,17 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-const mock = vi.hoisted(() => ({ mutate: vi.fn() }));
+const mock = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  user: "member",
+  club: "club",
+}));
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { id: mock.user } }),
+}));
+vi.mock("@/contexts/ClubContext", () => ({
+  useClub: () => ({ club: { id: mock.club } }),
+}));
 vi.mock("@/hooks/useDailyFinds", () => ({
   useCreateFind: () => ({ mutate: mock.mutate, isPending: false }),
 }));
@@ -42,11 +52,44 @@ import {
 } from "@/components/dailyFind/composeDraft";
 beforeEach(() => {
   mock.mutate.mockReset();
+  mock.user = "member";
+  mock.club = "club";
   URL.createObjectURL = vi.fn(() => "blob:drop-photo");
   URL.revokeObjectURL = vi.fn();
 });
 afterEach(() => cleanup());
 describe("social Drop composition", () => {
+  it("isolates drafts and ignores pending publish callbacks after account or club changes", () => {
+    const close = vi.fn();
+    const created = vi.fn();
+    const props = { open: true, onOpenChange: close, onCreated: created };
+    const view = render(<ComposeFindSheet {...props} />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Your Drop" }), {
+      target: { value: "First account draft" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Share Drop" }));
+    const pending = mock.mutate.mock.calls[0][1];
+    mock.user = "another-member";
+    view.rerender(<ComposeFindSheet {...props} />);
+    expect(screen.getByRole("textbox", { name: "Your Drop" })).toHaveValue("");
+    fireEvent.change(screen.getByRole("textbox", { name: "Your Drop" }), {
+      target: { value: "Second account draft" },
+    });
+    act(() => {
+      pending.onSuccess({ id: "old-post" });
+      pending.onError(new Error("Late response"));
+      pending.onSettled();
+    });
+    expect(close).not.toHaveBeenCalled();
+    expect(created).not.toHaveBeenCalled();
+    expect(screen.getByRole("textbox", { name: "Your Drop" })).toHaveValue(
+      "Second account draft",
+    );
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    mock.club = "another-club";
+    view.rerender(<ComposeFindSheet {...props} />);
+    expect(screen.getByRole("textbox", { name: "Your Drop" })).toHaveValue("");
+  });
   it("infers kind and preserves the existing headline/note limits", () => {
     expect(composeDropContent("A thought\nThe rest", "", false)).toEqual({
       kind: "learned",

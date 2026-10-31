@@ -1,8 +1,9 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Heart, MessageCircle, RotateCcw, Share2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import { useFindImage, useToggleFindReaction } from "@/hooks/useDailyFinds";
 import { FIND_REACTIONS, type DailyFind } from "@/lib/dailyFind";
 import { pauseDropPlayback } from "@/lib/dropPlayback";
@@ -19,12 +20,28 @@ export function FindPhoto({
   path: string | null;
   className?: string;
 }) {
-  const image = useFindImage(path);
+  const frame = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
+  const image = useFindImage(path, nearViewport);
   const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setNearViewport(entry.isIntersecting),
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [path]);
   useEffect(() => setFailed(false), [path, image.url]);
   if (!path) return null;
   return (
-    <div className={"drop-social-photo " + (className || "")}>
+    <div ref={frame} className={"drop-social-photo " + (className || "")}>
       {image.error || failed ? (
         <button
           className="drop-photo-retry"
@@ -114,10 +131,17 @@ function FindCardInner({
 }) {
   const { user } = useAuth(),
     toggle = useToggleFindReaction();
+  const { club } = useClub();
   const [showMore, setShowMore] = useState(expanded);
   const [shareOpen, setShareOpen] = useState(false),
     [commentsOpen, setCommentsOpen] = useState(false),
     [visitedComments, setVisitedComments] = useState(false);
+  useEffect(() => {
+    setShowMore(expanded);
+    setShareOpen(false);
+    setCommentsOpen(false);
+    setVisitedComments(false);
+  }, [find.id, user?.id, club?.id, expanded]);
   const name = find.profiles?.display_name || "Member",
     reactions = find.reactions || [];
   const likes = reactions.filter((r) => r.emoji === "❤️").length,
@@ -138,18 +162,22 @@ function FindCardInner({
     <article className="drop-social-card" data-drop-id={find.id}>
       <header className="drop-social-author">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={find.profiles?.avatar_url || undefined} />
+          <AvatarImage src={find.profiles?.avatar_url || undefined} alt="" />
           <AvatarFallback>{name.slice(0, 2).toUpperCase()}</AvatarFallback>
         </Avatar>
-        <div>
+        <Link
+          className="drop-social-author-info"
+          to={"/finds/" + find.id}
+          aria-label={"Open Drop: " + find.title + ". Shared by " + name}
+        >
           <strong>{name}</strong>
-          <Link
-            to={"/finds/" + find.id}
-            aria-label={"Open Drop: " + find.title}
+          <time
+            dateTime={find.created_at}
+            title={new Date(find.created_at).toLocaleString()}
           >
-            <time dateTime={find.created_at}>{timeLabel(find.created_at)}</time>
-          </Link>
-        </div>
+            {timeLabel(find.created_at)}
+          </time>
+        </Link>
       </header>
       <div className="drop-social-caption">
         <h2>{find.title}</h2>
@@ -182,6 +210,7 @@ function FindCardInner({
         <button
           aria-label={(liked ? "Unlike" : "Like") + " Drop"}
           aria-pressed={liked}
+          aria-busy={toggle.isPending || undefined}
           disabled={toggle.isPending}
           onClick={() =>
             toggle.mutate(

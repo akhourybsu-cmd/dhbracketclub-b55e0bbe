@@ -9,6 +9,7 @@
   background: hsl(var(--muted));
   border-radius: 12px;
   isolation: isolate;
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.35);
 }
 .drop-player-tall {
   aspect-ratio: 4/5;
@@ -57,6 +58,14 @@
   background: hsl(var(--background) / 0.94);
   box-shadow: 0 4px 24px hsl(0 0% 0%/0.16);
   touch-action: manipulation;
+  backdrop-filter: blur(12px);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    scale 160ms ease;
+}
+.drop-player-play:active {
+  scale: 0.94;
 }
 .drop-player-play:focus-visible,
 .drop-player-footer a:focus-visible,
@@ -86,6 +95,7 @@
   font-size: 12px;
   color: hsl(var(--muted-foreground));
   pointer-events: none;
+  backdrop-filter: blur(2px);
 }
 .drop-player-footer {
   display: flex;
@@ -104,6 +114,11 @@
   padding: 4px 3px;
   font-size: 12px;
   color: hsl(var(--muted-foreground));
+  touch-action: manipulation;
+  border-radius: 8px;
+  transition:
+    color 140ms ease,
+    background-color 140ms ease;
 }
 .drop-player-footer a {
   min-width: 0;
@@ -120,6 +135,9 @@
   border: 1px solid hsl(var(--border) / 0.6);
   border-radius: 12px;
   background: hsl(var(--muted) / 0.2);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
 }
 .drop-link-card-image {
   position: relative;
@@ -176,5 +194,25 @@
 @media (prefers-reduced-motion: reduce) {
   .drop-media-preview .animate-spin {
     animation: none;
+  }
+  .drop-media-preview *,
+  .drop-player-play {
+    transition: none;
+  }
+}
+@media (hover: hover) {
+  .drop-player-play:hover {
+    background: hsl(var(--background));
+    border-color: hsl(var(--primary) / 0.55);
+    scale: 1.04;
+  }
+  .drop-player-footer a:hover,
+  .drop-player-footer button:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted) / 0.5);
+  }
+  .drop-link-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    background: hsl(var(--muted) / 0.35);
   }
 }

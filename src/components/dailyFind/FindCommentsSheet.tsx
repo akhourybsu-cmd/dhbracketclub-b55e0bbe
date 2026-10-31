@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Loader2, MessageCircle, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
   SheetContent,
@@ -30,6 +30,20 @@ interface Props {
 
 export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
   const { user } = useAuth();
+  const { club } = useClub();
+  return (
+    <FindCommentsSession
+      key={`${user?.id}:${club?.id}:${find.id}`}
+      open={open}
+      onOpenChange={onOpenChange}
+      find={find}
+    />
+  );
+}
+
+/** Keep drafts and pending callbacks inside the account that opened them. */
+function FindCommentsSession({ open, onOpenChange, find }: Props) {
+  const { user } = useAuth();
   const { isClubAdmin } = useClub();
   const comments = useFindComments(open ? find.id : undefined);
   const addComment = useAddFindComment();
@@ -37,13 +51,29 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
   const [body, setBody] = useState("");
   const [error, setError] = useState("");
   const [posting, setPosting] = useState(false);
+  const [status, setStatus] = useState("");
+  const alive = useRef(true);
   const submitLock = useRef(false);
   const composing = useRef(false);
   const listRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const followLatest = useRef(true);
   const commentCount = comments.data?.length ?? find.comments?.[0]?.count ?? 0;
   useDropSheetViewport(open);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (!input || !open) return;
+    input.style.height = "auto";
+    input.style.height = `${Math.min(112, Math.max(44, input.scrollHeight))}px`;
+  }, [body, open]);
 
   useEffect(() => {
     if (open) followLatest.current = true;
@@ -56,20 +86,26 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
 
   const submit = () => {
     const sent = body.trim();
-    if (!sent || submitLock.current || composing.current) return;
+    if (!open || !sent || submitLock.current || composing.current) return;
     submitLock.current = true;
     setPosting(true);
     setError("");
+    setStatus("");
     addComment.mutate(
       { findId: find.id, body: sent },
       {
         onSuccess: () => {
+          if (!alive.current) return;
           setBody((current) => (current.trim() === sent ? "" : current));
           followLatest.current = true;
+          setStatus("Comment posted.");
         },
-        onError: () =>
-          setError("Couldn’t post. Your comment is ready to retry."),
+        onError: () => {
+          if (alive.current)
+            setError("Couldn’t post. Your comment is ready to retry.");
+        },
         onSettled: () => {
+          if (!alive.current) return;
           submitLock.current = false;
           setPosting(false);
         },
@@ -138,6 +174,7 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
                 <Avatar className="mt-1 h-8 w-8 flex-none">
                   <AvatarImage
                     src={comment.profiles?.avatar_url ?? undefined}
+                    alt=""
                   />
                   <AvatarFallback className="text-[10px]">
                     {name.slice(0, 2).toUpperCase()}
@@ -145,10 +182,12 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-h-6 items-center gap-2">
-                    <p className="truncate text-xs font-bold">{name}</p>
+                    <p className="truncate text-xs font-bold" title={name}>
+                      {name}
+                    </p>
                     <time
                       dateTime={comment.created_at}
-                      className="text-[10px] text-muted-foreground"
+                      className="flex-none whitespace-nowrap text-[10px] text-muted-foreground"
                     >
                       {new Date(comment.created_at).toLocaleDateString(
                         undefined,
@@ -171,10 +210,12 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
                       deleteComment.mutate(
                         { id: comment.id, findId: find.id },
                         {
-                          onError: () =>
-                            toast.error(
-                              "Couldn’t remove that comment. Try again.",
-                            ),
+                          onError: () => {
+                            if (alive.current)
+                              toast.error(
+                                "Couldn’t remove that comment. Try again.",
+                              );
+                          },
                         },
                       )
                     }
@@ -208,12 +249,30 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
             </p>
           )}
           <div className="flex gap-2">
-            <Input
+            <Textarea
+              ref={inputRef}
+              rows={1}
+              maxLength={1000}
               aria-label="Add a comment"
               value={body}
               onChange={(event) => {
                 setBody(event.target.value.slice(0, 1000));
                 setError("");
+                setStatus("");
+              }}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  (event.ctrlKey || event.metaKey) &&
+                  !event.shiftKey &&
+                  !event.altKey &&
+                  !event.nativeEvent.isComposing &&
+                  event.nativeEvent.keyCode !== 229 &&
+                  !composing.current
+                ) {
+                  event.preventDefault();
+                  submit();
+                }
               }}
               onCompositionStart={() => {
                 composing.current = true;
@@ -222,7 +281,7 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
                 composing.current = false;
               }}
               placeholder="Add a comment…"
-              className="h-11 flex-1 rounded-full bg-muted/30 px-4 text-base"
+              className="drop-comment-input flex-1 rounded-2xl bg-muted/30 px-4 text-base"
             />
             <Button
               type="submit"
@@ -238,6 +297,9 @@ export function FindCommentsSheet({ open, onOpenChange, find }: Props) {
               )}
             </Button>
           </div>
+          <p role="status" className="sr-only" aria-live="polite">
+            {status}
+          </p>
         </form>
       </SheetContent>
     </Sheet>

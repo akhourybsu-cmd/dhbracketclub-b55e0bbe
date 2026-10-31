@@ -15,16 +15,17 @@ export function patchDropData<T>(
   patch: (find: DailyFind) => DailyFind,
 ): T {
   if (!data || typeof data !== "object") return data;
-  if (Array.isArray(data))
-    return data.map((row) => patchDropData(row, id, patch)) as T;
+  if (Array.isArray(data)) {
+    const rows = data.map((row) => patchDropData(row, id, patch));
+    return rows.some((row, index) => row !== data[index]) ? (rows as T) : data;
+  }
   const value = data as Record<string, unknown>;
   if (value.id === id && typeof value.title === "string")
     return patch(data as unknown as DailyFind) as T;
-  if (Array.isArray(value.pages))
-    return {
-      ...value,
-      pages: value.pages.map((page) => patchDropData(page, id, patch)),
-    } as T;
+  if (Array.isArray(value.pages)) {
+    const pages = patchDropData(value.pages, id, patch);
+    return pages === value.pages ? data : ({ ...value, pages } as T);
+  }
   return data;
 }
 

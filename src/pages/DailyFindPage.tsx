@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarDays, Loader2, Plus, Search, X } from "lucide-react";
+import {
+  ArrowUp,
+  CalendarDays,
+  Check,
+  Loader2,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useClub } from "@/contexts/ClubContext";
 import {
   useDailyFinds,
   useDropFeed,
@@ -33,6 +42,30 @@ function Cards({ finds }: { finds: DailyFind[] }) {
     </div>
   );
 }
+function FeedSkeleton() {
+  return (
+    <div className="drop-feed-loading" role="status" aria-label="Loading Drops">
+      {[0, 1].map((n) => (
+        <div className="drop-feed-skeleton" key={n} aria-hidden="true">
+          <div className="drop-feed-skeleton-author">
+            <Skeleton className="h-10 w-10 rounded-full" />
+            <div>
+              <Skeleton className="h-3 w-28 rounded" />
+              <Skeleton className="h-2.5 w-12 rounded" />
+            </div>
+          </div>
+          <Skeleton className="mx-4 mb-4 h-4 w-3/5 rounded" />
+          <Skeleton className="drop-feed-skeleton-media rounded-none" />
+          <div className="drop-feed-skeleton-actions">
+            <Skeleton className="h-3 w-12 rounded" />
+            <Skeleton className="h-3 w-16 rounded" />
+            <Skeleton className="h-3 w-12 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 function Archive() {
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -50,7 +83,10 @@ function Archive() {
     <>
       <FindCalendar
         month={month}
-        onMonthChange={setMonth}
+        onMonthChange={(next) => {
+          setMonth(next);
+          setDay(localDayKey(next));
+        }}
         finds={query.data || []}
         selectedDay={day}
         onSelectDay={setDay}
@@ -61,11 +97,18 @@ function Archive() {
         <Skeleton className="h-32" />
       ) : (
         <div className="drop-archive-items">
+          <p className="drop-archive-day">
+            {new Date(day + "T12:00:00").toLocaleDateString(undefined, {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </p>
           <Cards
             finds={(query.data || []).filter((find) => find.find_date === day)}
           />
           {!(query.data || []).some((find) => find.find_date === day) && (
-            <p>No Drops on this day.</p>
+            <div className="drop-archive-empty">No Drops on this day.</div>
           )}
         </div>
       )}
@@ -93,6 +136,13 @@ function SearchResults({ term, tag }: { term: string; tag: string | null }) {
 }
 export default function DailyFindPage() {
   const { user } = useAuth();
+  const { club } = useClub();
+  return (
+    <DropFeedScreen key={`${user?.id ?? "guest"}:${club?.id ?? "none"}`} />
+  );
+}
+function DropFeedScreen() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [mode, setMode] = useState<"all" | "mine">("all");
   const [composeOpen, setComposeOpen] = useState(false);
@@ -102,6 +152,7 @@ export default function DailyFindPage() {
   const [searchOpen, setSearchOpen] = useState(
     params.get("tab") === "search" || params.has("q") || params.has("tag"),
   );
+  const [focusSearch, setFocusSearch] = useState(false);
   const [shared, setShared] = useState<{
     title: string;
     url: string;
@@ -177,6 +228,8 @@ export default function DailyFindPage() {
     if (
       !node ||
       searchOpen ||
+      composeOpen ||
+      archiveOpen ||
       !hasNextPage ||
       isFetchingNextPage ||
       isFetchNextPageError
@@ -192,6 +245,8 @@ export default function DailyFindPage() {
     return () => observer.disconnect();
   }, [
     searchOpen,
+    composeOpen,
+    archiveOpen,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
@@ -199,6 +254,7 @@ export default function DailyFindPage() {
   ]);
   const closeSearch = () => {
     setSearchOpen(false);
+    setFocusSearch(false);
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
@@ -220,13 +276,55 @@ export default function DailyFindPage() {
       <header className="drop-social-header">
         <div>
           <h1>The Drop</h1>
-          <p>A little of what everyone’s into.</p>
+          <p>The good stuff, from your club.</p>
         </div>
-        <div className="drop-social-tools">
+      </header>
+      <button
+        className="drop-social-compose"
+        onClick={openComposer}
+        aria-label="Share a Drop"
+      >
+        <span className="drop-social-self" aria-hidden="true">
+          {Array.from(
+            String(user?.user_metadata?.display_name || "You").trim(),
+          )[0]?.toLocaleUpperCase() || "Y"}
+        </span>
+        <span>Share something good…</span>
+        <span className="drop-social-compose-add" aria-hidden="true">
+          <Plus size={20} />
+        </span>
+      </button>
+      <div className="drop-social-toolbar">
+        <div className="drop-social-filter" role="group" aria-label="Drop feed">
+          {(["all", "mine"] as const).map((feedMode) => (
+            <button
+              key={feedMode}
+              aria-pressed={!searchOpen && mode === feedMode}
+              onClick={() => {
+                pauseDropPlayback();
+                if (searchOpen) closeSearch();
+                setMode(feedMode);
+              }}
+            >
+              {feedMode === "all" ? "Latest" : "Yours"}
+            </button>
+          ))}
+        </div>
+        <div
+          className="drop-social-tools"
+          role="group"
+          aria-label="Find a Drop"
+        >
           <button
             aria-label={searchOpen ? "Close Drop search" : "Search Drops"}
             aria-pressed={searchOpen}
-            onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
+            onClick={() => {
+              if (searchOpen) closeSearch();
+              else {
+                setFocusSearch(true);
+                setSearchOpen(true);
+              }
+            }}
           >
             {searchOpen ? <X size={19} /> : <Search size={19} />}
           </button>
@@ -237,44 +335,52 @@ export default function DailyFindPage() {
             <CalendarDays size={19} />
           </button>
         </div>
-      </header>
-      <button
-        className="drop-social-compose"
-        onClick={openComposer}
-        aria-label="Share a Drop"
-      >
-        <span className="drop-social-self" aria-hidden="true">
-          {(user?.user_metadata?.display_name || "You")
-            .slice(0, 1)
-            .toUpperCase()}
-        </span>
-        <span>Share something with the club…</span>
-        <Plus size={21} />
-      </button>
-      {searchOpen ? (
+      </div>
+      {searchOpen && (
         <div className="drop-social-search">
           <label className="sr-only" htmlFor="drop-query">
             Search Drops
           </label>
-          <Input
-            id="drop-query"
-            type="search"
-            value={term}
-            placeholder="Search captions or notes"
-            onChange={(event) =>
-              setParams(
-                (previous) => {
-                  const next = new URLSearchParams(previous);
-                  next.set("q", event.target.value);
-                  return next;
-                },
-                { replace: true },
-              )
-            }
-            autoFocus
-          />
+          <div className="drop-social-search-field">
+            <Search size={17} aria-hidden="true" />
+            <Input
+              id="drop-query"
+              type="search"
+              value={term}
+              placeholder="Search captions or notes"
+              onChange={(event) =>
+                setParams(
+                  (previous) => {
+                    const next = new URLSearchParams(previous);
+                    next.set("q", event.target.value);
+                    return next;
+                  },
+                  { replace: true },
+                )
+              }
+              autoFocus={focusSearch}
+            />
+            {term && (
+              <button
+                aria-label="Clear search text"
+                onClick={() =>
+                  setParams(
+                    (previous) => {
+                      const next = new URLSearchParams(previous);
+                      next.delete("q");
+                      return next;
+                    },
+                    { replace: true },
+                  )
+                }
+              >
+                <X size={17} />
+              </button>
+            )}
+          </div>
           {tag && (
             <button
+              aria-label={`Remove tag filter: ${tag}`}
               onClick={() =>
                 setParams(
                   (previous) => {
@@ -286,40 +392,15 @@ export default function DailyFindPage() {
                 )
               }
             >
-              #{tag} <X size={14} />
+              #{tag} <X size={14} aria-hidden="true" />
             </button>
           )}
-        </div>
-      ) : (
-        <div className="drop-social-filter" role="group" aria-label="Drop feed">
-          <button
-            aria-pressed={mode === "all"}
-            onClick={() => {
-              pauseDropPlayback();
-              setMode("all");
-            }}
-          >
-            Latest
-          </button>
-          <button
-            aria-pressed={mode === "mine"}
-            onClick={() => {
-              pauseDropPlayback();
-              setMode("mine");
-            }}
-          >
-            Yours
-          </button>
         </div>
       )}
       {searchOpen ? (
         <SearchResults term={term} tag={tag} />
       ) : query.isPending ? (
-        <div className="space-y-4" role="status" aria-label="Loading Drops">
-          {[0, 1].map((n) => (
-            <Skeleton key={n} className="h-72 rounded-xl" />
-          ))}
-        </div>
+        <FeedSkeleton />
       ) : query.isError && !finds.length ? (
         <MemberLoadError onRetry={() => void query.refetch()} />
       ) : finds.length ? (
@@ -344,7 +425,29 @@ export default function DailyFindPage() {
                 )}
               </Button>
             )}
-            {!query.hasNextPage && <span>You’re all caught up.</span>}
+            {!query.hasNextPage && (
+              <div className="drop-social-end">
+                <span>
+                  <Check size={16} aria-hidden="true" /> You’re all caught up.
+                </span>
+                {finds.length > 6 && (
+                  <button
+                    onClick={() =>
+                      document.body.scrollTo({
+                        top: 0,
+                        behavior: window.matchMedia(
+                          "(prefers-reduced-motion: reduce)",
+                        ).matches
+                          ? "auto"
+                          : "smooth",
+                      })
+                    }
+                  >
+                    <ArrowUp size={15} aria-hidden="true" /> Back to top
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </>
       ) : (

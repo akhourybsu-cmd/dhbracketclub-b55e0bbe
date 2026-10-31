@@ -63,6 +63,43 @@
 .drop-social-sheet .drop-comment-composer input {
   min-width: 0;
 }
+.drop-social-sheet .drop-comment-input {
+  min-width: 0;
+  min-height: 44px;
+  max-height: 112px;
+  padding-block: 10px;
+  line-height: 22px;
+  resize: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.drop-social-sheet .drop-comment-composer > div {
+  align-items: flex-end;
+}
+.drop-social-sheet .drop-comment-input:focus-visible {
+  border-color: hsl(var(--primary) / 0.45);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+}
+.drop-social-sheet button {
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.drop-social-sheet button:active:not(:disabled) {
+  opacity: 0.78;
+}
+.drop-social-sheet .drop-comment-row {
+  contain: layout style;
+}
+@media (prefers-reduced-motion: reduce) {
+  .drop-social-sheet *,
+  .drop-social-sheet *::before {
+    transition: none !important;
+    animation: none !important;
+  }
+}
 .drop-social-sheet .drop-share-channel {
   width: 100%;
   min-height: 48px;
@@ -92,4 +129,14 @@
 }
 .drop-social-sheet > div:first-of-type + div {
   padding-right: 32px;
+}
+.drop-comments-sheet .drop-comments-list {
+  min-height: 0;
+}
+.drop-comments-sheet .drop-comment-input {
+  max-height: clamp(
+    44px,
+    calc(var(--drop-sheet-viewport, 100dvh) - 170px),
+    112px
+  );
 }

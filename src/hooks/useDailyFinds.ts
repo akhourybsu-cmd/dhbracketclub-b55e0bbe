@@ -21,7 +21,6 @@ import { localDayKey, type DailyFind, type FindKind } from "@/lib/dailyFind";
 import { isSafeUrl } from "@/lib/linkParser";
 import {
   beforeDrop,
-  changeDropCommentCount,
   DROP_PAGE_SIZE,
   patchDropData,
   setDropReaction,
@@ -104,8 +103,8 @@ export function useDailyFinds(range: { from: string; to: string }) {
     { user } = useAuth();
   return useQuery({
     queryKey: ["daily-finds", club?.id, user?.id, range.from, range.to],
-    enabled: !!club?.id,
-    queryFn: async () =>
+    enabled: !!club?.id && !!user?.id,
+    queryFn: async ({ signal }) =>
       (await run<DailyFind[]>(
         db
           .from("daily_finds")
@@ -116,7 +115,8 @@ export function useDailyFinds(range: { from: string; to: string }) {
           .order("find_date", { ascending: false })
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
-          .limit(500),
+          .limit(500)
+          .abortSignal(signal),
         "Load finds",
       )) || [],
   });
@@ -127,8 +127,8 @@ export function useSearchFinds(term: string, tag: string | null) {
   const text = term.trim().replace(/[%,()]/g, " ");
   return useQuery({
     queryKey: ["daily-finds-search", club?.id, user?.id, term, tag],
-    enabled: !!club?.id && (text.length >= 2 || !!tag),
-    queryFn: async () => {
+    enabled: !!club?.id && !!user?.id && (text.length >= 2 || !!tag),
+    queryFn: async ({ signal }) => {
       let q = db.from("daily_finds").select(SELECT).eq("club_id", club!.id);
       if (text.length >= 2)
         q = q.or(`title.ilike.%${text}%,note.ilike.%${text}%`);
@@ -138,7 +138,8 @@ export function useSearchFinds(term: string, tag: string | null) {
           q
             .order("created_at", { ascending: false })
             .order("id", { ascending: false })
-            .limit(100),
+            .limit(100)
+            .abortSignal(signal),
           "Search finds",
         )) || []
       );
@@ -150,14 +151,15 @@ export function useDailyFind(id: string | undefined) {
     { user } = useAuth();
   return useQuery({
     queryKey: ["daily-find", id, club?.id, user?.id],
-    enabled: !!id && !!club?.id,
-    queryFn: async () =>
+    enabled: !!id && !!club?.id && !!user?.id,
+    queryFn: async ({ signal }) =>
       (await run<DailyFind | null>(
         db
           .from("daily_finds")
           .select(SELECT)
           .eq("id", id)
           .eq("club_id", club!.id)
+          .abortSignal(signal)
           .maybeSingle(),
         "Load find",
       )) || null,
@@ -175,8 +177,8 @@ export function useFindComments(findId: string | undefined) {
     { user } = useAuth();
   return useQuery({
     queryKey: ["daily-find-comments", findId, club?.id, user?.id],
-    enabled: !!findId && !!club?.id,
-    queryFn: async () =>
+    enabled: !!findId && !!club?.id && !!user?.id,
+    queryFn: async ({ signal }) =>
       (await run<FindComment[]>(
         db
           .from("daily_find_comments")
@@ -185,60 +187,107 @@ export function useFindComments(findId: string | undefined) {
           )
           .eq("find_id", findId)
           .order("created_at")
-          .order("id"),
+          .order("id")
+          .abortSignal(signal),
         "Load comments",
       )) || [],
   });
 }
 
-function isDropCache(
-  key: QueryKey,
-  clubId: string | undefined,
-  findId?: string,
-) {
+interface DropScope {
+  clubId: string;
+  userId: string;
+}
+function isDropCache(key: QueryKey, scope: DropScope, findId?: string) {
   return (
     (["drop-feed", "daily-finds", "daily-finds-search"].includes(
       String(key[0]),
     ) &&
-      key[1] === clubId) ||
+      key[1] === scope.clubId &&
+      key[2] === scope.userId) ||
     (key[0] === "daily-find" &&
-      key[2] === clubId &&
+      key[2] === scope.clubId &&
+      key[3] === scope.userId &&
       (!findId || key[1] === findId))
   );
 }
 function patchFindCaches(
   cache: QueryClient,
-  clubId: string | undefined,
+  scope: DropScope,
   findId: string,
   patch: (find: DailyFind) => DailyFind,
 ) {
   cache.setQueriesData(
-    { predicate: (query) => isDropCache(query.queryKey, clubId, findId) },
+    { predicate: (query) => isDropCache(query.queryKey, scope, findId) },
     (data) => patchDropData(data, findId, patch),
   );
 }
 function useInvalidate() {
-  const cache = useQueryClient(),
-    { club } = useClub(),
-    { user } = useAuth();
-  return (findId?: string) => {
+  const cache = useQueryClient();
+  return (
+    scope: DropScope,
+    findId?: string,
+    structural = true,
+    comments = structural,
+  ) => {
     void cache.invalidateQueries({
-      predicate: (q) => isDropCache(q.queryKey, club?.id, findId),
+      predicate: (q) => isDropCache(q.queryKey, scope, findId),
+      // Interaction reads reconcile one row; structural changes still refresh
+      // page boundaries. Reading positions do not move after a like/comment.
+      refetchType: structural ? "active" : "none",
     });
-    if (findId)
+    if (findId && comments)
       void cache.invalidateQueries({
-        queryKey: ["daily-find-comments", findId, club?.id],
+        queryKey: ["daily-find-comments", findId, scope.clubId, scope.userId],
       });
     void cache.invalidateQueries({
-      queryKey: ["home-signals", user?.id, club?.id],
+      queryKey: ["home-signals", scope.userId, scope.clubId],
     });
     void cache.invalidateQueries({
-      queryKey: ["dh-score", user?.id, club?.id],
+      queryKey: ["dh-score", scope.userId, scope.clubId],
     });
     void cache.invalidateQueries({
-      queryKey: ["dh-feats", user?.id, club?.id],
+      queryKey: ["dh-feats", scope.userId, scope.clubId],
     });
   };
+}
+
+let reconciliationSerial = 0;
+const reconciliations = new Map<string, number>();
+/** Confirm the changed entity without refetching every accumulated feed page. */
+async function reconcileFind(
+  cache: QueryClient,
+  scope: DropScope,
+  findId: string,
+) {
+  const key = JSON.stringify([scope.clubId, scope.userId, findId]);
+  const serial = ++reconciliationSerial;
+  reconciliations.set(key, serial);
+  try {
+    const find = await run<DailyFind | null>(
+      db
+        .from("daily_finds")
+        .select(SELECT)
+        .eq("id", findId)
+        .eq("club_id", scope.clubId)
+        .maybeSingle(),
+      "Update Drop",
+    );
+    if (reconciliations.get(key) !== serial) return;
+    if (find) patchFindCaches(cache, scope, findId, () => find);
+    else {
+      // A concurrent deletion changes page boundaries and merits a list read.
+      void cache.invalidateQueries({
+        predicate: (q) => isDropCache(q.queryKey, scope, findId),
+      });
+    }
+  } catch {
+    // The write already succeeded. Keep its acknowledged state and leave the
+    // affected caches stale for the next normal read instead of reporting a
+    // failed interaction or automatically replaying a write.
+  } finally {
+    if (reconciliations.get(key) === serial) reconciliations.delete(key);
+  }
 }
 async function removePhoto(path: string) {
   await run(
@@ -269,6 +318,7 @@ export function useCreateFind() {
     retry: false,
     mutationFn: async (input: NewFindInput) => {
       if (!user || !club) throw new Error("Not signed in");
+      const scope = { userId: user.id, clubId: club.id };
       const title = input.title.trim(),
         note = input.note?.trim() || null,
         url = input.url?.trim() || null;
@@ -345,7 +395,7 @@ export function useCreateFind() {
             .single(),
           "Share Drop",
         );
-        return result;
+        return { ...result, scope };
       } catch (error) {
         if (error instanceof DropRequestError && error.code === "23505") {
           const saved = await run<{ id: string } | null>(
@@ -358,33 +408,38 @@ export function useCreateFind() {
               .maybeSingle(),
             "Confirm Drop",
           );
-          if (saved) return saved;
+          if (saved) return { ...saved, scope };
         }
         if (error instanceof DropRequestError && !error.uncertain) {
           if (attempt.uploaded && attempt.path) void removePhoto(attempt.path);
-          attemptRef.current = null;
+          if (attemptRef.current === attempt) attemptRef.current = null;
         }
         throw error;
       }
     },
-    onSuccess: () => {
-      attemptRef.current = null;
-      invalidate();
+    onSuccess: (result) => {
+      if (attemptRef.current?.id === result.id) attemptRef.current = null;
+      invalidate(result.scope);
     },
   });
 }
 export function useDeleteFind() {
-  const invalidate = useInvalidate();
+  const { user } = useAuth(),
+    { club } = useClub(),
+    invalidate = useInvalidate();
   return useMutation({
     retry: false,
     mutationFn: async (find: DailyFind) => {
+      if (!user || !club) throw new Error("Not signed in");
+      const scope = { userId: user.id, clubId: club.id };
       await run(
         db.from("daily_finds").delete().eq("id", find.id),
         "Delete find",
       );
       if (find.image_path) void removePhoto(find.image_path);
+      return { scope };
     },
-    onSuccess: (_data, find) => invalidate(find.id),
+    onSuccess: (result, find) => invalidate(result.scope, find.id),
   });
 }
 export function useToggleFindReaction() {
@@ -403,7 +458,8 @@ export function useToggleFindReaction() {
       emoji: string;
       has: boolean;
     }) => {
-      if (!user) throw new Error("Not signed in");
+      if (!user || !club) throw new Error("Not signed in");
+      const scope = { userId: user.id, clubId: club.id };
       if (has)
         await run(
           db
@@ -427,20 +483,22 @@ export function useToggleFindReaction() {
             throw error;
         }
       }
+      return { scope };
     },
     onMutate: async (variables) => {
+      const scope = user && club ? { userId: user.id, clubId: club.id } : null;
+      if (!scope) return null;
       await cache.cancelQueries({
-        predicate: (q) => isDropCache(q.queryKey, club?.id, variables.findId),
+        predicate: (q) => isDropCache(q.queryKey, scope, variables.findId),
       });
-      if (user)
-        patchFindCaches(cache, club?.id, variables.findId, (find) =>
-          setDropReaction(find, user.id, variables.emoji, !variables.has),
-        );
-      return { userId: user?.id, clubId: club?.id };
+      patchFindCaches(cache, scope, variables.findId, (find) =>
+        setDropReaction(find, scope.userId, variables.emoji, !variables.has),
+      );
+      return scope;
     },
     onError: (_error, variables, context) => {
       if (context?.userId)
-        patchFindCaches(cache, context.clubId, variables.findId, (find) =>
+        patchFindCaches(cache, context, variables.findId, (find) =>
           setDropReaction(
             find,
             context.userId!,
@@ -449,7 +507,10 @@ export function useToggleFindReaction() {
           ),
         );
     },
-    onSuccess: (_data, variables) => invalidate(variables.findId),
+    onSuccess: async (result, variables) => {
+      invalidate(result.scope, variables.findId, false);
+      await reconcileFind(cache, result.scope, variables.findId);
+    },
   });
 }
 export function useAddFindComment() {
@@ -461,17 +522,19 @@ export function useAddFindComment() {
   return useMutation({
     retry: false,
     mutationFn: async ({ findId, body }: { findId: string; body: string }) => {
-      if (!user) throw new Error("Not signed in");
+      if (!user || !club) throw new Error("Not signed in");
+      const scope = { userId: user.id, clubId: club.id };
       const text = body.trim();
       if (!text || text.length > 1000)
         throw new Error("Comments must be 1–1,000 characters");
-      const key = JSON.stringify([user.id, findId, text]);
+      const key = JSON.stringify([club.id, user.id, findId, text]);
       if (attempt.current?.key !== key)
         attempt.current = { key, id: crypto.randomUUID() };
+      const request = attempt.current;
       try {
         await run(
           db.from("daily_find_comments").insert({
-            id: attempt.current.id,
+            id: request.id,
             find_id: findId,
             user_id: user.id,
             body: text,
@@ -482,48 +545,56 @@ export function useAddFindComment() {
         if (!(error instanceof DropRequestError) || error.code !== "23505")
           throw error;
       }
+      return { scope, attemptId: request.id };
     },
-    onSuccess: (_data, variables) => {
-      attempt.current = null;
-      patchFindCaches(cache, club?.id, variables.findId, (find) =>
-        changeDropCommentCount(find, 1),
-      );
-      invalidate(variables.findId);
+    onSuccess: async (result, variables) => {
+      if (attempt.current?.id === result.attemptId) attempt.current = null;
+      invalidate(result.scope, variables.findId, false, true);
+      await reconcileFind(cache, result.scope, variables.findId);
     },
   });
 }
 export function useDeleteFindComment() {
   const cache = useQueryClient(),
+    { user } = useAuth(),
     { club } = useClub(),
     invalidate = useInvalidate();
   return useMutation({
     retry: false,
     mutationFn: async ({ id }: { id: string; findId: string }) => {
+      if (!user || !club) throw new Error("Not signed in");
+      const scope = { userId: user.id, clubId: club.id };
       await run(
         db.from("daily_find_comments").delete().eq("id", id),
         "Delete comment",
       );
+      return { scope };
     },
-    onSuccess: (_data, variables) => {
-      patchFindCaches(cache, club?.id, variables.findId, (find) =>
-        changeDropCommentCount(find, -1),
-      );
+    onSuccess: async (result, variables) => {
       cache.setQueriesData<FindComment[]>(
-        { queryKey: ["daily-find-comments", variables.findId, club?.id] },
+        {
+          queryKey: [
+            "daily-find-comments",
+            variables.findId,
+            result.scope.clubId,
+            result.scope.userId,
+          ],
+        },
         (rows) => rows?.filter((row) => row.id !== variables.id),
       );
-      invalidate(variables.findId);
+      invalidate(result.scope, variables.findId, false, true);
+      await reconcileFind(cache, result.scope, variables.findId);
     },
   });
 }
 
 /** Signed photos are scoped to the current account and reset immediately on path changes. */
-export function useFindImage(path: string | null | undefined) {
+export function useFindImage(path: string | null | undefined, enabled = true) {
   const { user } = useAuth(),
     { club } = useClub();
   const query = useQuery({
     queryKey: ["daily-find-image", user?.id, club?.id, path],
-    enabled: !!path && !!user,
+    enabled: enabled && !!path && !!user && !!club,
     queryFn: async () => {
       const data = await run<{ signedUrl: string }>(
         supabase.storage.from(BUCKET).createSignedUrl(path!, 3600),
@@ -535,6 +606,7 @@ export function useFindImage(path: string | null | undefined) {
     staleTime: 50 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchInterval: 50 * 60 * 1000,
+    refetchOnWindowFocus: true,
     retry: 1,
   });
   return {

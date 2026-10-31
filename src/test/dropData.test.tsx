@@ -18,6 +18,8 @@ const mock = vi.hoisted(() => ({
   uploads: 0,
   photoFails: false,
   photoGate: null as null | (() => Promise<void>),
+  photosSigned: 0,
+  comments: [] as any[],
 }));
 function from(table: string) {
   const filters: Array<(r: any) => boolean> = [];
@@ -26,11 +28,12 @@ function from(table: string) {
     verb = "select",
     body: any,
     single = false;
-  const request: any = { table, cursor: null };
+  const request: any = { table, cursor: null, equals: {} };
   const q: any = {
     select: () => q,
     eq: (k: string, v: any) => {
       filters.push((r) => r[k] === v);
+      request.equals[k] = v;
       return q;
     },
     gte: (k: string, v: any) => {
@@ -87,6 +90,43 @@ function from(table: string) {
       if (mock.gate) await mock.gate();
       if (table === "daily_find_reactions" && mock.failReaction)
         return { data: null, error: { message: "Rejected", code: "42501" } };
+      if (table === "daily_find_reactions") {
+        for (const row of mock.rows) {
+          if (verb === "insert" && row.id === body.find_id)
+            row.reactions = [
+              ...(row.reactions || []),
+              { user_id: body.user_id, emoji: body.emoji },
+            ];
+          if (verb === "delete")
+            row.reactions = (row.reactions || []).filter(
+              (reaction: any) =>
+                !filters.every((filter) =>
+                  filter({ ...reaction, find_id: row.id }),
+                ),
+            );
+        }
+      }
+      if (table === "daily_find_comments") {
+        if (verb === "insert") {
+          mock.comments.push(body);
+          const row = mock.rows.find((row) => row.id === body.find_id);
+          if (row)
+            row.comments = [{ count: (row.comments?.[0]?.count || 0) + 1 }];
+        } else if (verb === "delete") {
+          for (const comment of mock.comments.filter((comment) =>
+            filters.every((filter) => filter(comment)),
+          )) {
+            const row = mock.rows.find((row) => row.id === comment.find_id);
+            if (row)
+              row.comments = [
+                { count: Math.max(0, (row.comments?.[0]?.count || 0) - 1) },
+              ];
+          }
+          mock.comments = mock.comments.filter(
+            (comment) => !filters.every((filter) => filter(comment)),
+          );
+        }
+      }
       if (table === "daily_finds" && verb === "insert") {
         if (mock.rows.some((r) => r.id === body.id))
           return { data: null, error: { code: "23505", message: "duplicate" } };
@@ -112,7 +152,10 @@ function from(table: string) {
         return 0;
       })
       .slice(0, limit);
-    return { data: single ? rows[0] || null : rows, error: null };
+    return {
+      data: structuredClone(single ? rows[0] || null : rows),
+      error: null,
+    };
   }
   return q;
 }
@@ -127,6 +170,7 @@ vi.mock("@/integrations/supabase/client", () => ({
         },
         remove: async () => ({ data: [], error: null }),
         createSignedUrl: async (path: string) => {
+          mock.photosSigned++;
           if (mock.photoGate) await mock.photoGate();
           return mock.photoFails
             ? { data: null, error: { message: "Unavailable", code: "404" } }
@@ -144,6 +188,8 @@ vi.mock("@/contexts/ClubContext", () => ({
 }));
 import {
   useCreateFind,
+  useAddFindComment,
+  useDeleteFindComment,
   useDropFeed,
   useFindImage,
   useToggleFindReaction,
@@ -181,6 +227,8 @@ beforeEach(() => {
   mock.uploads = 0;
   mock.photoFails = false;
   mock.photoGate = null;
+  mock.photosSigned = 0;
+  mock.comments = [];
   cache = new QueryClient({
     defaultOptions: { queries: { retryDelay: 1, gcTime: Infinity } },
   });
@@ -285,6 +333,169 @@ describe("Drop social data", () => {
       ])!.reactions,
     ).toHaveLength(0);
   });
+  it("confirms a like with one entity read while preserving loaded page order and unrelated pages", async () => {
+    mock.rows = Array.from({ length: 65 }, (_, n) => row(n));
+    const { result } = renderHook(
+      () => ({ feed: useDropFeed(), react: useToggleFindReaction() }),
+      { wrapper: Wrapper },
+    );
+    await waitFor(() =>
+      expect(result.current.feed.data?.pages[0]).toHaveLength(30),
+    );
+    await act(() => result.current.feed.fetchNextPage());
+    await waitFor(() =>
+      expect(result.current.feed.data?.pages).toHaveLength(2),
+    );
+    await act(() => result.current.feed.fetchNextPage());
+    await waitFor(() =>
+      expect(result.current.feed.data?.pages).toHaveLength(3),
+    );
+    const before = result.current.feed.data!;
+    const ids = before.pages.flat().map((find) => find.id);
+    const target = before.pages[2][0];
+    const selects = mock.requests.filter(
+      (request) => request.table === "daily_finds" && request.verb === "select",
+    ).length;
+    await act(() =>
+      result.current.react.mutateAsync({
+        findId: target.id,
+        emoji: "❤️",
+        has: false,
+      }),
+    );
+    await waitFor(() =>
+      expect(result.current.feed.data!.pages[2][0].reactions).toEqual([
+        { user_id: "member", emoji: "❤️" },
+      ]),
+    );
+    const reads = mock.requests
+      .filter(
+        (request) =>
+          request.table === "daily_finds" && request.verb === "select",
+      )
+      .slice(selects);
+    expect(reads).toHaveLength(1);
+    expect(reads[0].equals.id).toBe(target.id);
+    expect(
+      result.current.feed.data!.pages.flat().map((find) => find.id),
+    ).toEqual(ids);
+    expect(result.current.feed.data!.pages[0]).toBe(before.pages[0]);
+    expect(result.current.feed.data!.pages[1]).toBe(before.pages[1]);
+    expect(result.current.feed.data!.pages[2][0].reactions).toEqual([
+      { user_id: "member", emoji: "❤️" },
+    ]);
+  });
+  it("reconciles authoritative comment counts instead of deriving totals from stale feed counts", async () => {
+    const target = row(1, { comments: [{ count: 8 }] });
+    mock.rows = [target];
+    const key = ["drop-feed", "club", "member", "all"];
+    cache.setQueryData(key, {
+      pages: [[{ ...target, comments: [{ count: 0 }] }]],
+      pageParams: [null],
+    });
+    const { result } = renderHook(
+      () => ({ add: useAddFindComment(), remove: useDeleteFindComment() }),
+      { wrapper: Wrapper },
+    );
+    await act(() =>
+      result.current.add.mutateAsync({
+        findId: target.id,
+        body: "A new comment",
+      }),
+    );
+    expect(cache.getQueryData<any>(key).pages[0][0].comments).toEqual([
+      { count: 9 },
+    ]);
+    await act(() =>
+      result.current.remove.mutateAsync({
+        id: mock.comments[0].id,
+        findId: target.id,
+      }),
+    );
+    expect(cache.getQueryData<any>(key).pages[0][0].comments).toEqual([
+      { count: 8 },
+    ]);
+    const reads = mock.requests.filter(
+      (request) => request.table === "daily_finds" && request.verb === "select",
+    );
+    expect(reads).toHaveLength(2);
+    expect(reads.every((request) => request.equals.id === target.id)).toBe(
+      true,
+    );
+  });
+  it("keeps a late confirmed reaction within its originating account cache", async () => {
+    const target = row(1);
+    mock.rows = [target];
+    const origin = ["drop-feed", "club", "member", "all"];
+    const nextOwner = ["drop-feed", "club", "other", "all"];
+    cache.setQueryData(origin, { pages: [[target]], pageParams: [null] });
+    cache.setQueryData(nextOwner, {
+      pages: [[structuredClone(target)]],
+      pageParams: [null],
+    });
+    let release!: () => void;
+    mock.gate = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const { result, rerender } = renderHook(() => useToggleFindReaction(), {
+      wrapper: Wrapper,
+    });
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = result.current.mutateAsync({
+        findId: target.id,
+        emoji: "❤️",
+        has: false,
+      });
+    });
+    await waitFor(() => expect(release).toBeTypeOf("function"));
+    mock.user = "other";
+    rerender();
+    await act(async () => {
+      release();
+      await pending;
+    });
+    expect(cache.getQueryData<any>(origin).pages[0][0].reactions).toEqual([
+      { user_id: "member", emoji: "❤️" },
+    ]);
+    expect(cache.getQueryData<any>(nextOwner).pages[0][0].reactions).toEqual(
+      [],
+    );
+  });
+  it("invalidates the publishing scope even after account and club switch", async () => {
+    const origin = ["drop-feed", "club", "member", "all"];
+    const nextOwner = ["drop-feed", "next-club", "other", "all"];
+    cache.setQueryData(origin, { pages: [], pageParams: [] });
+    cache.setQueryData(nextOwner, { pages: [], pageParams: [] });
+    let release!: () => void;
+    mock.gate = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const { result, rerender } = renderHook(() => useCreateFind(), {
+      wrapper: Wrapper,
+    });
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = result.current.mutateAsync({
+        kind: "learned",
+        title: "From the first club",
+        tags: [],
+      });
+    });
+    await waitFor(() => expect(release).toBeTypeOf("function"));
+    mock.user = "other";
+    mock.club = "next-club";
+    rerender();
+    await act(async () => {
+      release();
+      await pending;
+    });
+    expect(cache.getQueryState(origin)?.isInvalidated).toBe(true);
+    expect(cache.getQueryState(nextOwner)?.isInvalidated).toBe(false);
+    expect(mock.rows[0]).toMatchObject({ club_id: "club", user_id: "member" });
+  });
   it("confirms an uncertain successful post with the same UUID and reuses its uploaded photo", async () => {
     mock.uncertainInsert = true;
     const { result } = renderHook(() => useCreateFind(), { wrapper: Wrapper });
@@ -331,5 +542,21 @@ describe("Drop social data", () => {
     mock.photoFails = false;
     await act(() => result.current.retry());
     await waitFor(() => expect(result.current.url).toBe("signed:second.png"));
+  });
+  it("defers offscreen photo signing and preserves the cached image when visibility changes", async () => {
+    const { result, rerender } = renderHook(
+      ({ visible }) => useFindImage("photo.png", visible),
+      { wrapper: Wrapper, initialProps: { visible: false } },
+    );
+    expect(result.current.url).toBeNull();
+    expect(mock.photosSigned).toBe(0);
+    rerender({ visible: true });
+    await waitFor(() => expect(result.current.url).toBe("signed:photo.png"));
+    expect(mock.photosSigned).toBe(1);
+    rerender({ visible: false });
+    expect(result.current.url).toBe("signed:photo.png");
+    rerender({ visible: true });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(mock.photosSigned).toBe(1);
   });
 });
