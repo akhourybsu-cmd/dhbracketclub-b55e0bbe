@@ -537,6 +537,7 @@
     inset 0 0 0 3px hsl(var(--gold) / 0.045);
 }
 .rp-board {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(6, minmax(44px, 1fr));
   grid-template-rows: repeat(6, minmax(44px, 1fr));
@@ -546,19 +547,67 @@
   touch-action: none;
   border-radius: 10px;
   outline-offset: 6px;
+}
+.rp-board[data-motion-kind="travel"] {
   animation: rp-area-entry 240ms ease-out both;
 }
 @keyframes rp-area-entry {
   from {
     opacity: 0.35;
-    transform: scale(0.97);
     filter: brightness(1.4);
   }
   to {
     opacity: 1;
-    transform: scale(1);
     filter: brightness(1);
   }
+}
+.rp-motion-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  gap: 3px;
+  pointer-events: none;
+}
+.rp-motion-actor {
+  position: relative;
+  border: 1px solid transparent;
+  pointer-events: none;
+  animation: rp-actor-arrival 160ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.rp-motion-actor.is-stone {
+  animation-duration: 210ms;
+}
+@keyframes rp-actor-arrival {
+  from { transform: translate(var(--rp-move-x), var(--rp-move-y)); }
+  to { transform: translate(0, 0); }
+}
+.rp-tile[data-moving-delver="true"] > .rp-delver,
+.rp-tile[data-moving-stone="true"] > .rp-stone {
+  visibility: hidden;
+}
+.rp-tile[data-puzzle-effect]::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 2px solid hsl(var(--primary));
+  border-radius: 7px;
+  z-index: 8;
+  pointer-events: none;
+  animation: rp-seal-confirm 400ms ease-out both;
+}
+.rp-tile[data-puzzle-effect~="pickup"]::before {
+  border-color: hsl(var(--gold));
+}
+@keyframes rp-seal-confirm {
+  0% { opacity: 0.9; box-shadow: inset 0 0 18px hsl(var(--primary) / 0.35); }
+  100% { opacity: 0; box-shadow: inset 0 0 0 hsl(var(--primary) / 0); }
+}
+.rp-board[data-motion-paused="true"] * {
+  animation: none !important;
+  transition: none !important;
 }
 .rp-tile {
   position: relative;
@@ -598,14 +647,14 @@
 .rp-tile:disabled {
   cursor: default;
 }
-.rp-tile.is-hinted {
+.rp-tile.is-hinted:not(.is-wall) {
   z-index: 1;
   border-color: hsl(var(--gold));
   box-shadow:
     inset 0 0 0 2px hsl(var(--gold)),
     0 0 14px hsl(var(--gold) / 0.3);
 }
-.rp-tile.is-coached {
+.rp-tile.is-coached:not(.is-wall) {
   border-color: hsl(var(--gold));
   box-shadow:
     inset 0 0 0 2px hsl(var(--gold) / 0.6),
@@ -817,7 +866,8 @@
   box-shadow: inset 0 0 10px hsl(var(--primary) / 0.2);
   border-color: hsl(var(--primary) / 0.75);
 }
-.rp-tile.is-restored .rp-stone {
+.rp-tile.is-restored .rp-stone,
+.rp-motion-actor.is-restored .rp-stone {
   box-shadow:
     0 0 12px hsl(var(--rp-rune) / 0.3),
     inset 0 0 8px hsl(var(--rp-rune) / 0.12);
@@ -852,7 +902,9 @@
   box-shadow:
     inset 0 0 10px hsl(var(--primary) / 0.15),
     0 0 9px hsl(var(--primary) / 0.2);
-  animation: rp-portal-restore 600ms ease-out;
+}
+.rp-tile[data-puzzle-effect~="portal"] .rp-portal {
+  animation: rp-portal-restore 400ms ease-out;
 }
 .rp-treasure {
   position: absolute;
@@ -1075,6 +1127,82 @@
 }
 .rp-coach small {
   font-size: inherit;
+}
+.rp-tutorial-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border: 1px solid hsl(var(--gold) / 0.35);
+  border-radius: 5px;
+  color: hsl(var(--gold));
+  background: hsl(var(--gold) / 0.07);
+  font-size: 8px;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.rp-tutorial-phase[data-phase="practice"] {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.35);
+  background: hsl(var(--primary) / 0.07);
+}
+.rp-tutorial-phase[data-phase="trial"] {
+  color: hsl(var(--foreground) / 0.8);
+  border-color: hsl(var(--border));
+  background: hsl(var(--card));
+}
+.rp-tutorial-controls {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+.rp-tutorial-controls .rp-coach {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rp-coach-dismiss {
+  flex: 0 0 44px;
+  align-self: center;
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border: 1px solid hsl(var(--gold) / 0.2);
+  border-radius: 9px;
+  background: hsl(var(--gold) / 0.045);
+  color: hsl(var(--gold));
+  font-size: 9px;
+  font-weight: 800;
+}
+.rp-guidance-toggle,
+.rp-tutorial-replay {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid hsl(var(--primary) / 0.35);
+  border-radius: 10px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.07);
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+.rp-tutorial-graduation {
+  color: hsl(var(--gold));
+  animation: rp-graduation-seal 260ms ease-out both;
+}
+@keyframes rp-graduation-seal {
+  from { opacity: 0.3; filter: brightness(1.5); }
+  to { opacity: 1; filter: brightness(1); }
 }
 .rp-direction-pad,
 .rp-command-deck {
@@ -1770,12 +1898,25 @@
     transition: none !important;
     scroll-behavior: auto !important;
   }
+  .rp-motion-layer { display: none; }
+  .rp-tile[data-moving-delver="true"] > .rp-delver,
+  .rp-tile[data-moving-stone="true"] > .rp-stone { visibility: visible; }
+  .rp-tile[data-puzzle-effect]::before {
+    animation: none !important;
+    opacity: 0;
+  }
 }
 html[data-rd-hidden="true"]
   :is(.rp-screen, .rp-avatar-dialog, .rp-map-dialog, .rp-result-dialog)
   * {
   animation: none !important;
   transition: none !important;
+}
+html[data-rd-hidden="true"] .rp-motion-layer { display: none; }
+html[data-rd-hidden="true"] .rp-tile[data-puzzle-effect]::before,
+.rp-board[data-motion-paused="true"] .rp-tile[data-puzzle-effect]::before {
+  animation: none !important;
+  opacity: 0;
 }
 
 /* Floor rules remain readable when objects share a cell. */

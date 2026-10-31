@@ -617,8 +617,7 @@ async function playRoom(page, room, { modes = true, snapshot = false } = {}) {
     });
   }
   const result = page.getByRole("dialog", {
-    name: "Chamber restored",
-    exact: true,
+    name: /^(Chamber restored|Tutorial complete)$/,
   });
   await expect(result).toBeVisible();
   await expect(
@@ -629,7 +628,7 @@ async function playRoom(page, room, { modes = true, snapshot = false } = {}) {
   ).toBeVisible();
   await expect(
     result.getByRole("link", {
-      name: /^(Enter the next (?:chamber|adventure)|Return to the journey)/,
+      name: /^(Enter the next (?:chamber|adventure)|Return to the journey|Continue your journey)/,
     }),
   ).toBeVisible();
   await fit(page, `${room.id}-result`, ".rp-result-dialog");
@@ -704,7 +703,7 @@ async function fullJourney() {
       });
       await result
         .getByRole("link", {
-          name: /^(Enter the next (?:chamber|adventure)|Return to the journey)/,
+          name: /^(Enter the next (?:chamber|adventure)|Return to the journey|Continue your journey)/,
         })
         .click();
     }
@@ -1422,10 +1421,575 @@ async function lostReceipt() {
   }
 }
 
+async function expectTutorialPhase(page, phase, label) {
+  await expect(page.getByTestId("puzzle-play")).toHaveAttribute(
+    "data-tutorial-phase",
+    phase,
+  );
+  if (phase === "none") {
+    await expect(page.getByTestId("puzzle-tutorial-phase")).toHaveCount(0);
+  } else {
+    await expect(page.getByTestId("puzzle-tutorial-phase")).toHaveText(
+      `${label} ${{ learn: 1, practice: 2, trial: 3 }[phase]}/3`,
+    );
+  }
+}
+async function nextTutorialChamber(result) {
+  await result
+    .getByRole("link", {
+      name: /^(Enter the next (?:chamber|adventure)|Return to the journey|Continue your journey)/,
+    })
+    .click();
+}
+async function assertStaticTutorialMarker(page, label) {
+  await settle(page);
+  const marker = page.locator(".rp-tile.is-coached");
+  await expect(marker).toHaveCount(1);
+  const style = await marker.evaluate((tile) => {
+    const css = getComputedStyle(tile);
+    const context = document.createElement("canvas").getContext("2d");
+    const pixel = (color) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return [...context.getImageData(0, 0, 1, 1).data];
+    };
+    return {
+      isNeighbor: tile.classList.contains("is-neighbor"),
+      border: pixel(css.borderTopColor),
+      gold: pixel(`hsl(${css.getPropertyValue("--gold")})`),
+      shadow: css.boxShadow,
+      finiteRunning: tile
+        .getAnimations()
+        .filter(
+          (animation) =>
+            animation.playState === "running" &&
+            animation.effect?.getTiming().iterations !== Infinity,
+        ).length,
+    };
+  });
+  assert.equal(
+    style.isNeighbor,
+    true,
+    `${label}: checks a highlighted neighboring tile`,
+  );
+  assert.deepEqual(
+    style.border,
+    style.gold,
+    `${label}: the static gold marker wins over neighboring-tile styling`,
+  );
+  assert.match(
+    style.shadow,
+    /inset/,
+    `${label}: static emphasis remains when the pulse ends`,
+  );
+  assert.equal(
+    style.finiteRunning,
+    0,
+    `${label}: the marker stays clear without a running pulse`,
+  );
+  report.checks.push({ label, ok: true });
+}
+async function tutorialProgression() {
+  const { page, context } = await setup();
+  try {
+    await go(page, "/rune-delve");
+    const { rooms } = await roomData(page);
+    const first = rooms[0],
+      practice = rooms[1],
+      trial = rooms[2];
+    await page
+      .getByTestId("puzzle-home")
+      .locator("a.rp-primary")
+      .first()
+      .click();
+    await expectTutorialPhase(page, "learn", "Learn");
+    const model = await modelPath(page, first);
+    const coach = page.getByTestId("puzzle-coach");
+    await expect(coach).toHaveAttribute("data-coach-step", "first-step");
+    await assertStaticTutorialMarker(
+      page,
+      "learn-static-gold-marker-after-pulse",
+    );
+    await actMove(page, first.solution[0], model.states[0], "tap");
+    await assertBoard(page, model.states[1], first, "Learn: real first walk");
+    await expect(coach).toHaveAttribute("data-coach-step", "first-push");
+    await page
+      .getByRole("button", { name: "Undo last step", exact: true })
+      .click();
+    await assertBoard(
+      page,
+      model.states[0],
+      first,
+      "Learn: undo restores the lesson",
+    );
+    await expect(coach).toHaveAttribute("data-coach-step", "first-step");
+    for (let index = 0; index < 2; index++) {
+      await actMove(
+        page,
+        first.solution[index],
+        model.states[index],
+        index ? "tap" : "swipe",
+      );
+      await assertBoard(
+        page,
+        model.states[index + 1],
+        first,
+        "Learn: walk and push",
+      );
+    }
+    await reloadChamber(page, first);
+    await assertBoard(
+      page,
+      model.states[2],
+      first,
+      "Learn: restored route teaches the current objective",
+    );
+    await expect(coach).toHaveAttribute("data-coach-step", "first-cache");
+    await page
+      .getByRole("button", { name: "Try on my own", exact: true })
+      .click();
+    await expect(page.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-guidance",
+      "off",
+    );
+    await expect(coach).toHaveCount(0);
+    await expect(page.locator(".rp-tile.is-coached")).toHaveCount(0);
+    const soloBoard = await readBoard(page);
+    await page
+      .getByRole("button", { name: "Puzzle rules", exact: true })
+      .click();
+    const help = page.getByRole("dialog", {
+      name: "Read the room",
+      exact: true,
+    });
+    await help
+      .getByRole("button", { name: "Turn guidance on", exact: true })
+      .click();
+    await closeDialogAndSettle(page, help, "Back to the chamber");
+    assert.deepEqual(
+      await readBoard(page),
+      soloBoard,
+      "Guidance controls never move the delver",
+    );
+    await expect(coach).toHaveAttribute("data-coach-step", "first-cache");
+    await page
+      .getByRole("button", { name: "Restart chamber", exact: true })
+      .click();
+    await nextTutorialChamber(await playRoom(page, first, { modes: false }));
+
+    await expectTutorialPhase(page, "practice", "Practice");
+    await expect(coach).toBeVisible();
+    await expect(page.locator(".rp-tile.is-coached")).toHaveCount(0);
+    const practiceModel = await modelPath(page, practice);
+    await actMove(page, practice.solution[0], practiceModel.states[0], "tap");
+    await assertBoard(
+      page,
+      practiceModel.states[1],
+      practice,
+      "Practice: real input remains unguided",
+    );
+    await expect(page.locator(".rp-tile.is-coached")).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Restart chamber", exact: true })
+      .click();
+    await nextTutorialChamber(await playRoom(page, practice, { modes: false }));
+
+    await expectTutorialPhase(page, "trial", "Trial");
+    await expect(coach).toBeVisible();
+    await expect(page.locator(".rp-tile.is-coached")).toHaveCount(0);
+    const trialActions = ["up", "right"];
+    const trialModel = await modelPath(page, trial, trialActions);
+    const demonstrated = trialActions.length;
+    assert.equal(trialModel.states[1].pushes, 0);
+    assert.equal(trialModel.states[1].collected.length, 0);
+    assert.equal(trialModel.states[demonstrated].pushes, 1);
+    for (let index = 0; index < demonstrated; index++) {
+      await actMove(
+        page,
+        trialActions[index],
+        trialModel.states[index],
+        "arrow",
+      );
+      await assertBoard(
+        page,
+        trialModel.states[index + 1],
+        trial,
+        "Trial: demonstrate a real push",
+      );
+      if (index === 0) await expect(coach).toBeVisible();
+    }
+    await expect(coach).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Undo last step", exact: true })
+      .click();
+    await assertBoard(
+      page,
+      trialModel.states[demonstrated - 1],
+      trial,
+      "Trial: undo restores the introduction",
+    );
+    await expect(coach).toBeVisible();
+    await actMove(
+      page,
+      trialActions[demonstrated - 1],
+      trialModel.states[demonstrated - 1],
+      "tap",
+    );
+    await expect(coach).toHaveCount(0);
+    await reloadChamber(page, trial);
+    await assertBoard(
+      page,
+      trialModel.states[demonstrated],
+      trial,
+      "Trial: reload preserves earned independence",
+    );
+    await expect(coach).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "Restart chamber", exact: true })
+      .click();
+    const graduation = await playRoom(page, trial, { modes: false });
+    await expect(graduation).toHaveAccessibleName("Tutorial complete");
+    await shot(page, "tutorial-graduation");
+    await nextTutorialChamber(graduation);
+    await routeIs(page, `/rune-delve/chamber/${rooms[3].id}`);
+    await expectTutorialPhase(page, "none");
+    await expect(coach).toHaveCount(0);
+    await expect(page.locator(".rp-tile.is-coached")).toHaveCount(0);
+    const records = await page.evaluate(() =>
+      structuredClone(window.runeQa.tables.rune_puzzle_results),
+    );
+    await page
+      .getByRole("button", { name: "Back to journey", exact: true })
+      .click();
+    await expect(page.getByTestId("puzzle-journey")).toBeVisible();
+    await page.locator('.rd-game-nav a[href="/rune-delve/guide"]').click();
+    await page
+      .getByRole("link", { name: "Replay tutorial", exact: true })
+      .click();
+    for (const [index, room] of rooms.slice(0, 3).entries()) {
+      await expect(page.getByTestId("puzzle-play")).toHaveAttribute(
+        "data-tutorial-replay",
+        "true",
+      );
+      await expectTutorialPhase(
+        page,
+        ["learn", "practice", "trial"][index],
+        ["Learn", "Practice", "Trial"][index],
+      );
+      await nextTutorialChamber(await playRoom(page, room, { modes: false }));
+    }
+    assert.deepEqual(
+      await page.evaluate(() => window.runeQa.tables.rune_puzzle_results),
+      records,
+      "Replaying the tutorial preserves all saved records and never duplicates stars",
+    );
+    await routeIs(page, `/rune-delve/chamber/${rooms[3].id}`);
+    await expect(page.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-tutorial-replay",
+      "false",
+    );
+    report.checks.push({
+      label: "learn-practice-trial-graduation-solo-help-veteran-replay",
+      ok: true,
+    });
+    console.log("PASS tutorial progression and veteran replay");
+  } finally {
+    await context.close();
+  }
+}
+async function setFixtureVisibility(page, hidden) {
+  // Environment simulation only: gameplay still receives normal user inputs.
+  await page.evaluate((value) => {
+    for (const [property, state] of [
+      ["hidden", value],
+      ["visibilityState", value ? "hidden" : "visible"],
+    ]) {
+      if (value)
+        Object.defineProperty(document, property, {
+          configurable: true,
+          value: state,
+        });
+      else delete document[property];
+    }
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, hidden);
+}
+async function tutorialMotionLifecycle(motion) {
+  const { page, context } = await setup(390, 844, motion);
+  try {
+    await go(page, "/rune-delve/chamber/ember-01", {
+      puzzleCompleted: motion === "reduce" ? "0" : "9999",
+    });
+    if (motion === "reduce")
+      await assertStaticTutorialMarker(
+        page,
+        "reduced-motion-static-gold-tutorial-marker",
+      );
+    const { rooms } = await roomData(page);
+    const room = rooms[0],
+      model = await modelPath(page, room);
+    const board = page.getByTestId("puzzle-board");
+    await expect(board).toHaveAttribute("data-motion-active", "false");
+    await expect(page.locator("[data-puzzle-effect]")).toHaveCount(0);
+    const sequence = async () =>
+      Number(await board.getAttribute("data-motion-sequence"));
+    const firstSequence = await sequence();
+    const tileGeometry = await board
+      .locator("[data-puzzle-cell]")
+      .evaluateAll((tiles) =>
+        tiles.map((tile) => {
+          const { x, y, width, height } = tile.getBoundingClientRect();
+          return [x, y, width, height];
+        }),
+      );
+    if (motion !== "reduce") {
+      // Arm before input so the sampler catches the actual short CSS transition.
+      await page.evaluate(() => {
+        window.__runeQaRenderedPush = new Promise((resolve) => {
+          const started = performance.now();
+          const watch = () => {
+            const root = document.querySelector('[data-testid="puzzle-board"]');
+            const actor = root?.querySelector(".rp-motion-actor.is-stone");
+            if (actor) {
+              const sequence = root.getAttribute("data-motion-sequence");
+              const animation = actor
+                .getAnimations()
+                .find((item) => item.animationName === "rp-actor-arrival");
+              const snapshot = () => ({
+                transform: getComputedStyle(actor).transform,
+                progress:
+                  animation?.effect?.getComputedTiming().progress ?? null,
+              });
+              const before = snapshot();
+              requestAnimationFrame(() =>
+                requestAnimationFrame(async () => {
+                  const after = snapshot();
+                  await Promise.race([
+                    animation?.finished.catch(() => {}),
+                    new Promise((done) => setTimeout(done, 300)),
+                  ]);
+                  const targetCell =
+                    Number(root.getAttribute("data-area-index")) * 36 +
+                    (Number(actor.style.gridRow) - 1) * 6 +
+                    Number(actor.style.gridColumn) -
+                    1;
+                  const canonical = root.querySelector(
+                    `[data-puzzle-cell="${targetCell}"] > .rp-stone`,
+                  );
+                  const ghost = actor.querySelector(":scope > .rp-stone");
+                  const bounds = (node) => {
+                    if (!node) return null;
+                    const { x, y, width, height } =
+                      node.getBoundingClientRect();
+                    return [x, y, width, height];
+                  };
+                  resolve({
+                    sequence,
+                    sameActor:
+                      actor.isConnected &&
+                      root.getAttribute("data-motion-sequence") === sequence,
+                    before,
+                    after,
+                    endpoint: {
+                      targetCell,
+                      ghost: bounds(ghost),
+                      canonical: bounds(canonical),
+                    },
+                  });
+                }),
+              );
+            } else if (performance.now() - started < 1200)
+              requestAnimationFrame(watch);
+            else resolve({ error: "No rendered stone transition appeared" });
+          };
+          requestAnimationFrame(watch);
+        });
+      });
+    }
+    for (let index = 0; index < 2; index++) {
+      await page.keyboard.press(keyFor(room.solution[index]));
+    }
+    await assertBoard(
+      page,
+      model.states[2],
+      room,
+      "Rapid controls commit each real input once",
+    );
+    if (motion === "reduce") {
+      await expect(board).toHaveAttribute("data-motion-paused", "true");
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      await expect(page.locator("[data-puzzle-effect]")).toHaveCount(0);
+      await expect(page.locator(".rp-motion-actor")).toHaveCount(0);
+      assert.equal(
+        await board.evaluate(
+          (node) =>
+            node
+              .getAnimations({ subtree: true })
+              .filter((animation) => animation.playState === "running").length,
+        ),
+        0,
+        "Reduced motion runs no CSS animations",
+      );
+    } else {
+      const renderedPush = await page.evaluate(
+        () => window.__runeQaRenderedPush,
+      );
+      assert.equal(renderedPush.sameActor, true, JSON.stringify(renderedPush));
+      assert.equal(Number(renderedPush.sequence), firstSequence + 2);
+      assert.ok(
+        renderedPush.before.progress !== null &&
+          renderedPush.after.progress > renderedPush.before.progress,
+        "The real CSS push animation advances between rendered frames",
+      );
+      assert.notEqual(
+        renderedPush.before.transform,
+        renderedPush.after.transform,
+        "The stone visibly travels between rendered frames",
+      );
+      assert.ok(
+        renderedPush.endpoint.ghost && renderedPush.endpoint.canonical,
+        "The finished ghost and its authoritative target stone both have bounds",
+      );
+      renderedPush.endpoint.ghost.forEach((value, index) => {
+        assert.ok(
+          Math.abs(value - renderedPush.endpoint.canonical[index]) <= 0.5,
+          `Ghost handoff matches target cell ${renderedPush.endpoint.targetCell} within half a pixel`,
+        );
+      });
+      assert.equal(
+        await sequence(),
+        firstSequence + 2,
+        "Each rapid move emits exactly one feedback sequence",
+      );
+      await expect(board).toHaveAttribute("data-motion-active", "true");
+      await expect(board).toHaveAttribute("data-motion-kind", "push");
+      await expect(page.locator('[data-puzzle-effect~="seal"]')).toHaveCount(1);
+      assert.ok(
+        (await page.locator(".rp-motion-layer > .rp-motion-actor").count()) <=
+          5,
+      );
+      await expect(board).toHaveAttribute("data-motion-active", "false", {
+        timeout: 1200,
+      });
+      await expect(page.locator("[data-puzzle-effect]")).toHaveCount(0);
+      await expect(page.locator(".rp-motion-actor")).toHaveCount(0);
+      const settledGeometry = await board
+        .locator("[data-puzzle-cell]")
+        .evaluateAll((tiles) =>
+          tiles.map((tile) => {
+            const { x, y, width, height } = tile.getBoundingClientRect();
+            return [x, y, width, height];
+          }),
+        );
+      assert.deepEqual(
+        settledGeometry,
+        tileGeometry,
+        "Moving actors preserve the authoritative tile geometry",
+      );
+      assert.ok(
+        settledGeometry.every(
+          ([, , width, height]) => width >= 43.5 && height >= 43.5,
+        ),
+        "Motion preserves 44 px touch targets",
+      );
+      await page
+        .getByRole("button", { name: "Undo last step", exact: true })
+        .click();
+      await assertBoard(
+        page,
+        model.states[1],
+        room,
+        "Undo changes state without replaying feedback",
+      );
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      assert.equal(await sequence(), firstSequence + 2);
+      await reloadChamber(page, room);
+      await assertBoard(
+        page,
+        model.states[1],
+        room,
+        "Restoring a checkpoint does not animate old inputs",
+      );
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      await expect(page.locator("[data-puzzle-effect]")).toHaveCount(0);
+      await actMove(page, room.solution[1], model.states[1], "arrow");
+      await assertBoard(
+        page,
+        model.states[2],
+        room,
+        "Visible push before lifecycle pause",
+      );
+      const beforeHidden = await sequence();
+      await setFixtureVisibility(page, true);
+      await expect(board).toHaveAttribute("data-motion-paused", "true");
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      await expect(page.locator("[data-puzzle-effect]")).toHaveCount(0);
+      await page.keyboard.press(keyFor(room.solution[2]));
+      await assertBoard(
+        page,
+        model.states[2],
+        room,
+        "Hidden page ignores gameplay input",
+      );
+      await setFixtureVisibility(page, false);
+      await expect(board).toHaveAttribute("data-motion-paused", "false");
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      assert.equal(
+        await sequence(),
+        beforeHidden,
+        "Visibility resume never replays an old effect",
+      );
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await expect(board).toHaveAttribute("data-motion-paused", "true");
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      await page.emulateMedia({ reducedMotion: "no-preference" });
+      await page
+        .getByRole("button", { name: "Restart chamber", exact: true })
+        .click();
+      await assertBoard(
+        page,
+        model.states[0],
+        room,
+        "Restart returns to a quiet baseline",
+      );
+      await expect(board).toHaveAttribute("data-motion-active", "false");
+      await expect(page.locator("[data-puzzle-effect]")).toHaveCount(0);
+      assert.equal(await sequence(), beforeHidden);
+    }
+    await settle(page);
+    const finiteRunning = await board.evaluate(
+      (node) =>
+        node
+          .getAnimations({ subtree: true })
+          .filter(
+            (animation) =>
+              animation.playState === "running" &&
+              animation.effect?.getTiming().iterations !== Infinity,
+          ).length,
+    );
+    assert.equal(
+      finiteRunning,
+      0,
+      "No finite motion remains after feedback settles",
+    );
+    report.checks.push({
+      label: `tutorial-motion-${motion}-rapid-undo-restore-visibility`,
+      ok: true,
+    });
+    console.log(`PASS tutorial motion lifecycle ${motion}`);
+  } finally {
+    await context.close();
+  }
+}
+
 try {
   await start();
   if (!checksOnly) await fullJourney();
   if (!journeyOnly) {
+    await tutorialProgression();
+    await tutorialMotionLifecycle("no-preference");
+    await tutorialMotionLifecycle("reduce");
     await releasedFrontierCarriesForward();
     for (const [width, height, motion] of [
       [320, 568, "no-preference"],

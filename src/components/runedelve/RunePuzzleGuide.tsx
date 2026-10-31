@@ -16,6 +16,13 @@ import "./runePuzzleFrame.css";
 
 const PAGES = [
   {
+    title: "Learn. Practice. Trial.",
+    icon: Compass,
+    text: "Your first chamber teaches each action. Practice asks you to find a route. The Trial leaves the choices to you.",
+    example:
+      "Play solo whenever you like. Guidance and free hints are always in reach.",
+  },
+  {
     title: "One step. A new possibility.",
     icon: Footprints,
     text: "Tap a neighbouring tile or use the arrow keys. Push a runestone by standing behind it.",

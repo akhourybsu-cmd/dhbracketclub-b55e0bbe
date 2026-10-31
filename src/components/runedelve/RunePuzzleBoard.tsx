@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useRef, type CSSProperties } from "react";
+import { useRunePuzzleMotion } from "@/hooks/useRunePuzzleMotion";
 import {
   ArrowUpRight,
   CircleDot,
@@ -38,6 +39,7 @@ export function RunePuzzleBoard({
   state,
   avatar,
   disabled,
+  motionPaused = disabled,
   hint,
   coachedCell,
   onDirection,
@@ -47,11 +49,15 @@ export function RunePuzzleBoard({
   state: PuzzleState;
   avatar: HeroClass;
   disabled?: boolean;
+  motionPaused?: boolean;
   hint?: PuzzleDirection | null;
   coachedCell?: number;
   onDirection: (direction: PuzzleDirection) => void;
   onDistantTap?: () => void;
 }) {
+  const { motion, sequence, paused: motionSuppressed } = useRunePuzzleMotion(
+    room, state, motionPaused,
+  );
   const start = useRef<{
     x: number;
     y: number;
@@ -84,6 +90,10 @@ export function RunePuzzleBoard({
         data-testid="puzzle-board"
         data-puzzle-room={room.id}
         data-area-index={area}
+        data-motion-active={!!motion}
+        data-motion-kind={motion?.kind}
+        data-motion-sequence={sequence}
+        data-motion-paused={motionSuppressed}
         onPointerDown={(event) => {
           if (!disabled && event.isPrimary && event.button === 0) {
             const tile =
@@ -197,6 +207,9 @@ export function RunePuzzleBoard({
               data-puzzle-cell={cell}
               data-puzzle-stone={stone?.color}
               data-puzzle-player={isPlayer || undefined}
+              data-moving-delver={isPlayer && motion?.actors.some((actor) => actor.id === "delver") || undefined}
+              data-moving-stone={stone && motion?.actors.some((actor) => actor.id === stone.id) || undefined}
+              data-puzzle-effect={motion?.effects.get(cell)?.join(" ")}
               data-puzzle-passage={
                 passage ? (passage.kind ?? "passage") : undefined
               }
@@ -324,6 +337,38 @@ export function RunePuzzleBoard({
             </button>
           );
         })}
+        {!!motion?.actors.length && (
+          <div className="rp-motion-layer" aria-hidden="true" key={motion.sequence}>
+            {motion.actors.map((actor) => {
+              const from = actor.from % 36, to = actor.to % 36;
+              const dx = from % 6 - to % 6;
+              const dy = Math.floor(from / 6) - Math.floor(to / 6);
+              const restored = !!actor.color && room.sigils.some(
+                (sigil) => sigil.cell === actor.to && sigil.color === actor.color,
+              );
+              return (
+                <span
+                  className={`rp-motion-actor ${actor.color ? "is-stone" : "is-delver"}${restored ? " is-restored" : ""}`}
+                  key={actor.id}
+                  style={{
+                    gridColumn: to % 6 + 1,
+                    gridRow: Math.floor(to / 6) + 1,
+                    "--rp-move-x": `calc(${dx * 100}% + ${dx * 3}px)`,
+                    "--rp-move-y": `calc(${dy * 100}% + ${dy * 3}px)`,
+                  } as CSSProperties}
+                >
+                  {actor.color ? (
+                    <span className="rp-stone" data-color={actor.color}>
+                      <RuneSigil type={actor.color} />
+                    </span>
+                  ) : (
+                    <span className="rp-delver"><RuneHeroArt cls={avatar} /></span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

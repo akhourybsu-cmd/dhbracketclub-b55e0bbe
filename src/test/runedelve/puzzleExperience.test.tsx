@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   PuzzleCompletionReceipt,
@@ -16,7 +16,11 @@ import type {
 import RunePuzzlePlayPage from "@/pages/RunePuzzlePlayPage";
 import RunePuzzleHomePage from "@/pages/RunePuzzleHomePage";
 import RunePuzzleJourneyPage from "@/pages/RunePuzzleJourneyPage";
-import { puzzleCheckpointKey } from "@/lib/runedelve/puzzles/checkpoint";
+import RunePuzzleGuidePage from "@/pages/RunePuzzleGuidePage";
+import {
+  puzzleCheckpointKey,
+  writePuzzleCheckpoint,
+} from "@/lib/runedelve/puzzles/checkpoint";
 
 const fixture = vi.hoisted(() => ({
   userId: "alice",
@@ -116,6 +120,13 @@ vi.mock("@/lib/runedelve/puzzles/rooms", () => ({
   PUZZLE_ROOMS: [
     fixture.room,
     { ...fixture.room, id: "ember-02", order: 2, title: "The Second Seal" },
+    { ...fixture.room, id: "ember-03", order: 3, title: "The First Trial" },
+    {
+      ...fixture.room,
+      id: "ember-04",
+      order: 4,
+      title: "Beyond the Threshold",
+    },
     fixture.adventure,
   ],
   getPuzzleRoom: (id: string) =>
@@ -123,9 +134,13 @@ vi.mock("@/lib/runedelve/puzzles/rooms", () => ({
       ? fixture.room
       : id === "ember-02"
         ? { ...fixture.room, id, order: 2, title: "The Second Seal" }
-        : id === fixture.adventure.id
-          ? fixture.adventure
-          : undefined,
+        : id === "ember-03"
+          ? { ...fixture.room, id, order: 3, title: "The First Trial" }
+          : id === "ember-04"
+            ? { ...fixture.room, id, order: 4, title: "Beyond the Threshold" }
+            : id === fixture.adventure.id
+              ? fixture.adventure
+              : undefined,
   PUZZLE_CHAPTERS: [
     {
       id: 1,
@@ -210,6 +225,7 @@ function mount(route = "/rune-delve/chamber/ember-01") {
       <Routes>
         <Route path="/rune-delve" element={<RunePuzzleHomePage />} />
         <Route path="/rune-delve/journey" element={<RunePuzzleJourneyPage />} />
+        <Route path="/rune-delve/guide" element={<RunePuzzleGuidePage />} />
         <Route
           path="/rune-delve/chamber/:roomId"
           element={<RunePuzzlePlayPage />}
@@ -263,6 +279,263 @@ afterEach(() => {
 });
 
 describe("Rune Delve spatial journey UI", () => {
+  it("keeps the Solo choice when an explicit tutorial replay reloads while a fresh replay starts guided", () => {
+    function CurrentLocation() {
+      const location = useLocation();
+      return (
+        <output data-testid="test-location">
+          {location.pathname}
+          {location.search}
+        </output>
+      );
+    }
+    const replay = (route: string) =>
+      render(
+        <MemoryRouter
+          initialEntries={[route]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <Routes>
+            <Route
+              path="/rune-delve/chamber/:roomId"
+              element={<RunePuzzlePlayPage />}
+            />
+          </Routes>
+          <CurrentLocation />
+        </MemoryRouter>,
+      );
+    const page = replay("/rune-delve/chamber/ember-01?tutorial=1");
+    move("ArrowRight");
+    fireEvent.click(screen.getByRole("button", { name: "Try on my own" }));
+    const reloadRoute = screen.getByTestId("test-location").textContent!;
+    expect(reloadRoute).toBe(
+      "/rune-delve/chamber/ember-01?tutorial=1&guidance=off",
+    );
+    expect(
+      screen
+        .getByTestId("puzzle-board")
+        .querySelector('[data-puzzle-player="true"]'),
+    ).toHaveAttribute("data-puzzle-cell", "14");
+    page.unmount();
+    const resumed = replay(reloadRoute);
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-guidance",
+      "off",
+    );
+    expect(screen.queryByTestId("puzzle-coach")).toBeNull();
+    expect(
+      screen
+        .getByTestId("puzzle-board")
+        .querySelector('[data-puzzle-player="true"]'),
+    ).toHaveAttribute("data-puzzle-cell", "14");
+    resumed.unmount();
+    replay("/rune-delve/chamber/ember-01?tutorial=1");
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-guidance",
+      "on",
+    );
+    expect(screen.getByTestId("puzzle-coach")).toBeVisible();
+  });
+
+  it("hands off Learn to Practice to Trial and graduates only after the third server confirmation", async () => {
+    let confirmTrial!: () => void;
+    fixture.complete.mockImplementation(
+      ({ requestId, roomId }: { requestId: string; roomId: string }) => {
+        const order = Number(roomId.slice(-2));
+        const result = {
+          ...receipt(requestId),
+          roomId,
+          unlocked: order + 1,
+          progress: {
+            ...fixture.progress,
+            unlocked: order + 1,
+            completed: order,
+            stars: order * 3,
+            records: [
+              ...fixture.progress.records,
+              {
+                room_id: roomId,
+                definition_version: 1,
+                stars: 3,
+                best_moves: 2,
+                best_pushes: 1,
+                treasure_collected: true,
+              },
+            ],
+          },
+        };
+        const confirm = () => {
+          fixture.progress = result.progress;
+          return result;
+        };
+        return order === 3
+          ? new Promise<PuzzleCompletionReceipt>((resolve) => {
+              confirmTrial = () => resolve(confirm());
+            })
+          : Promise.resolve(confirm());
+      },
+    );
+    mount();
+    expect(screen.getByTestId("puzzle-tutorial-phase")).toHaveTextContent(
+      "Learn 1/3",
+    );
+    move("ArrowRight");
+    move("ArrowUp");
+    fireEvent.click(
+      await screen.findByRole("link", { name: "Enter the next chamber" }),
+    );
+    expect(screen.getByTestId("puzzle-tutorial-phase")).toHaveTextContent(
+      "Practice 2/3",
+    );
+    expect(screen.getByTestId("puzzle-coach")).toHaveAttribute(
+      "data-coach-phase",
+      "practice",
+    );
+    expect(document.querySelectorAll(".rp-tile.is-coached")).toHaveLength(0);
+    move("ArrowRight");
+    move("ArrowUp");
+    fireEvent.click(
+      await screen.findByRole("link", { name: "Enter the next chamber" }),
+    );
+    expect(screen.getByTestId("puzzle-tutorial-phase")).toHaveTextContent(
+      "Trial 3/3",
+    );
+    expect(screen.getByTestId("puzzle-coach")).toBeVisible();
+    move("ArrowRight");
+    expect(screen.queryByTestId("puzzle-coach")).toBeNull();
+    move("ArrowUp");
+    await screen.findByRole("button", { name: "Saving…" });
+    expect(
+      screen.queryByRole("heading", { name: "Tutorial complete" }),
+    ).toBeNull();
+    await act(async () => {
+      confirmTrial();
+    });
+    expect(
+      await screen.findByRole("heading", { name: "Tutorial complete" }),
+    ).toBeVisible();
+    expect(fixture.progress.records).toHaveLength(3);
+    expect(screen.getByTestId("puzzle-tutorial-phase")).toHaveTextContent(
+      "Trial 3/3",
+    );
+    fireEvent.click(
+      screen.getByRole("link", { name: "Enter the next chamber" }),
+    );
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-room",
+      "ember-04",
+    );
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-tutorial-phase",
+      "none",
+    );
+    expect(screen.queryByTestId("puzzle-coach")).toBeNull();
+  });
+
+  it("lets a delver play solo, restore guidance through Help and keeps the preference account-scoped", () => {
+    const page = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Try on my own" }));
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-guidance",
+      "off",
+    );
+    expect(screen.queryByTestId("puzzle-coach")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Restart chamber" }),
+    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Show a hint" })).toBeEnabled();
+    page.unmount();
+    const own = mount();
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-guidance",
+      "off",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Puzzle rules" }));
+    fireEvent.click(screen.getByRole("button", { name: "Turn guidance on" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back to the chamber" }),
+    );
+    expect(screen.getByTestId("puzzle-coach")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Try on my own" }));
+    own.unmount();
+    fixture.userId = "bob";
+    mount();
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-guidance",
+      "on",
+    );
+  });
+
+  it("replays training for a veteran in a separate checkpoint without resetting mastery or trapping the main journey", async () => {
+    fixture.progress = {
+      ...fixture.progress,
+      unlocked: 19,
+      completed: 18,
+      stars: 42,
+      records: [1, 2, 3].map((order) => ({
+        room_id: `ember-0${order}`,
+        definition_version: 1,
+        stars: 3,
+        best_moves: 2,
+        best_pushes: 1,
+        treasure_collected: true,
+      })),
+    };
+    writePuzzleCheckpoint("alice", fixture.room, { actions: ["right"] });
+    const normalSave = localStorage.getItem(
+      puzzleCheckpointKey("alice", "ember-01", 1),
+    );
+    fixture.complete.mockImplementation(
+      ({ requestId, roomId }: { requestId: string; roomId: string }) =>
+        Promise.resolve({
+          ...receipt(requestId),
+          roomId,
+          starsGained: 0,
+          firstClear: false,
+          unlocked: 19,
+          progress: fixture.progress,
+        }),
+    );
+    const page = mount("/rune-delve/guide");
+    fireEvent.click(screen.getByRole("link", { name: "Replay tutorial" }));
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-tutorial-replay",
+      "true",
+    );
+    expect(screen.getByTestId("puzzle-coach")).toBeVisible();
+    expect(
+      screen
+        .getByTestId("puzzle-board")
+        .querySelector('[data-puzzle-player="true"]'),
+    ).toHaveAttribute("data-puzzle-cell", "13");
+    for (let order = 1; order <= 3; order++) {
+      move("ArrowRight");
+      move("ArrowUp");
+      const next = await screen.findByRole("link", {
+        name: order < 3 ? "Enter the next chamber" : "Continue your journey",
+      });
+      if (order < 3)
+        expect(next).toHaveAttribute(
+          "href",
+          `/rune-delve/chamber/ember-0${order + 1}?tutorial=1`,
+        );
+      fireEvent.click(next);
+    }
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-room",
+      "galleries-01",
+    );
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-tutorial-replay",
+      "false",
+    );
+    expect(fixture.progress.stars).toBe(42);
+    expect(
+      localStorage.getItem(puzzleCheckpointKey("alice", "ember-01", 1)),
+    ).toBe(normalSave);
+    page.unmount();
+  });
+
   it("teaches through the live board and updates its cue after a real push and undo", () => {
     mount();
     expect(screen.getByTestId("puzzle-coach")).toHaveAttribute(

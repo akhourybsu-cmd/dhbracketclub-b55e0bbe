@@ -39,6 +39,8 @@ Authenticated players can read only their own profiles and results. Direct mutat
 
 ## Mastery and retries
 
+The opening tutorial teaches through the existing canonical chambers, without a separate reward source. Guide → Replay tutorial uses the normal authenticated completion RPC and a separate device-checkpoint scope, `${userId}:tutorial`, so it cannot overwrite a pending main-journey route or request UUID. Tutorial query parameters carry only through the first three chambers; graduation returns to the account's current frontier. Guidance preferences are account-scoped device settings, and replay query state retains a Solo choice across reloads. Storage failures leave guidance usable in memory. Tutorial progress follows replayed actions and confirmed receipts; only normal validated completion can improve mastery.
+
 A solved attempt earns one star, an additional star for staying within the push par, and another for collecting every optional treasure. The best single-attempt star total is retained; repeated clears cannot mint additional stars after that best is reached. Treasure discovery is also retained independently. The efficiency record minimizes pushes first and walking moves only when push counts tie.
 
 The first valid clear unlocks the next adventure. Progress counts, stars and the frontier are derived from active canonical definitions and saved results. Adding adventures 19–36 therefore opens adventure 19 for a player who already completed the original 18, retaining all 54 earned stars and every record. The expanded frontier caps at 36. A connected adventure still settles a single result across all its areas; its treasures and sigils are evaluated together.

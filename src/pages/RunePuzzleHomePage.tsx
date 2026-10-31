@@ -54,6 +54,7 @@ function RunePuzzleHomeScreen() {
   if (query.isError || !query.data)
     return <PuzzleDataState error retry={() => void query.refetch()} />;
   const progress = query.data;
+  const guidedOpening = progress.unlocked <= 3 && progress.completed < 3;
   const complete = progress.completed >= PUZZLE_ROOMS.length;
   const room = complete
     ? (PUZZLE_ROOMS.find(
@@ -94,18 +95,28 @@ function RunePuzzleHomeScreen() {
             <Sparkles size={13} /> RUNE DELVE
           </p>
           <h1>The Living Hollow</h1>
-          <p>Restore the runes. Find your way out.</p>
+          <p>
+            {guidedOpening
+              ? "Learn. Practice. Take your first trial."
+              : "Restore the runes. Find your way out."}
+          </p>
           <Link className="rp-primary rd-btn-juice" to={puzzleRoomHref(room)}>
             <span>
               {complete
                 ? progress.stars >= PUZZLE_ROOMS.length * 3
                   ? "Revisit the Hollow"
                   : "Chase your next star"
-                : progress.completed
-                  ? "Continue journey"
-                  : "Enter the Hollow"}
+                : guidedOpening
+                  ? progress.completed
+                    ? "Continue your training"
+                    : "Begin guided journey"
+                  : progress.completed
+                    ? "Continue journey"
+                    : "Enter the Hollow"}
               <small>
-                Chamber {room.order} · {room.title}
+                {guidedOpening
+                  ? `Training ${room.order}/3 · ${room.title}`
+                  : `Chamber ${room.order} · ${room.title}`}
               </small>
             </span>
             <ArrowRight aria-hidden="true" />

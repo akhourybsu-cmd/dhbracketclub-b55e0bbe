@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   ArrowDown,
   ArrowLeft,
@@ -46,7 +51,11 @@ import type {
 } from "@/lib/runedelve/puzzles/types";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
 import type { RuneType } from "@/lib/runedelve/dungeonGenerator";
-import { getPuzzleCoach } from "@/lib/runedelve/puzzles/tutorial";
+import {
+  getPuzzleCoach,
+  getPuzzleCoachIntro,
+  getPuzzleTutorialProgress,
+} from "@/lib/runedelve/puzzles/tutorial";
 import { RunePuzzleBoard } from "@/components/runedelve/RunePuzzleBoard";
 import {
   PuzzleDataState,
@@ -93,12 +102,23 @@ const BLOCK_REASON = {
   passage: "Only your delver can travel through a passage or rift.",
   finished: "This chamber is already restored.",
 };
+const guidancePreferenceKey = (userId: string) =>
+  `rd-puzzle-guidance:v1:${encodeURIComponent(userId)}`;
+function readGuidancePreference(userId: string) {
+  try {
+    return localStorage.getItem(guidancePreferenceKey(userId)) !== "off";
+  } catch {
+    return true;
+  }
+}
 
 export default function RunePuzzlePlayPage() {
   const { roomId } = useParams<{ roomId: string }>();
+  const [search] = useSearchParams();
   const { user } = useAuth();
   const query = useRunePuzzleProgress();
   const room = getPuzzleRoom(roomId ?? "");
+  const rehearsal = search.get("tutorial") === "1" && !!room && room.order <= 3;
   if (!room)
     return (
       <section className="rd-screen rp-screen rp-data">
@@ -124,10 +144,12 @@ export default function RunePuzzlePlayPage() {
     );
   return (
     <PuzzleRoomSession
-      key={`${user.id}:${room.id}:${room.version}`}
+      key={`${user.id}:${room.id}:${room.version}:${rehearsal ? "tutorial" : "journey"}`}
       room={room}
       userId={user.id}
       avatar={query.data.avatar}
+      rehearsal={rehearsal}
+      rehearsalGuidance={search.get("guidance") !== "off"}
       learning={
         !query.data.records.some(
           (record) =>
@@ -144,17 +166,32 @@ function PuzzleRoomSession({
   userId,
   avatar,
   learning,
+  rehearsal,
+  rehearsalGuidance,
 }: {
   room: PuzzleRoom;
   userId: string;
   avatar: HeroClass;
   learning: boolean;
+  rehearsal: boolean;
+  rehearsalGuidance: boolean;
 }) {
   const complete = useCompleteRunePuzzle();
   const { play } = useRuneDelveSfx();
   const navigate = useNavigate();
+  const [, setSearch] = useSearchParams();
   const viewport = useRuneViewport();
-  const [initial] = useState(() => inspectPuzzleCheckpoint(userId, room));
+  const checkpointScope = rehearsal ? `${userId}:tutorial` : userId;
+  const [trainingActive] = useState(
+    () => room.order <= 3 && (learning || rehearsal),
+  );
+  const [initial] = useState(() =>
+    inspectPuzzleCheckpoint(checkpointScope, room),
+  );
+  const [guidance, setGuidance] = useState(() =>
+    rehearsal ? rehearsalGuidance : learning && readGuidancePreference(userId),
+  );
+  const [introRequested, setIntroRequested] = useState(false);
   const [route, setRoute] = useState<RouteState>(() => {
     const saved = initial.checkpoint;
     const actions = saved?.actions ?? [];
@@ -211,9 +248,42 @@ function PuzzleRoomSession({
   const discovered = state.visitedAreas ?? [area];
   const carriedKeys = state.keys ?? [];
   const coach = useMemo(
-    () => (learning ? getPuzzleCoach(room, state) : null),
-    [learning, room, state],
+    () =>
+      guidance
+        ? (getPuzzleCoach(room, state, { actions: route.actions }) ??
+          (introRequested ? getPuzzleCoachIntro(room) : null))
+        : null,
+    [guidance, introRequested, room, state, route.actions],
   );
+  const tutorial = trainingActive
+    ? getPuzzleTutorialProgress(room, state, {
+        actions: route.actions,
+      })
+    : null;
+  const changeGuidance = (enabled: boolean) => {
+    setGuidance(enabled);
+    setIntroRequested(enabled);
+    setNotice("");
+    clearHint();
+    if (rehearsal) {
+      setSearch(
+        (previous) => {
+          const next = new URLSearchParams(previous);
+          next.set("guidance", enabled ? "on" : "off");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+    try {
+      localStorage.setItem(
+        guidancePreferenceKey(userId),
+        enabled ? "on" : "off",
+      );
+    } catch {
+      /* Guidance also works without device storage. */
+    }
+  };
   const previousKeys = useRef([...carriedKeys]);
   const pickupTimer = useRef<number>();
   const [keyPickup, setKeyPickup] = useState<RuneType | null>(null);
@@ -237,6 +307,23 @@ function PuzzleRoomSession({
     pickupTimer.current = window.setTimeout(() => setKeyPickup(null), 1100);
   }, [state.keys]);
   useEffect(() => () => window.clearTimeout(pickupTimer.current), []);
+  useEffect(() => {
+    const clearPickup = () => {
+      window.clearTimeout(pickupTimer.current);
+      setKeyPickup(null);
+    };
+    if (help || mapOpen || paused || saving) clearPickup();
+    const visibility = () => {
+      if (document.hidden) clearPickup();
+    };
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    document.addEventListener("visibilitychange", visibility);
+    reduced?.addEventListener?.("change", clearPickup);
+    return () => {
+      document.removeEventListener("visibilitychange", visibility);
+      reduced?.removeEventListener?.("change", clearPickup);
+    };
+  }, [help, mapOpen, paused, saving]);
 
   useEffect(() => {
     active.current = true;
@@ -246,8 +333,9 @@ function PuzzleRoomSession({
   }, []);
   useEffect(() => {
     if (receipt) return;
-    if (!writePuzzleCheckpoint(userId, room, route)) setStorageProblem(true);
-  }, [userId, room, route, receipt]);
+    if (!writePuzzleCheckpoint(checkpointScope, room, route))
+      setStorageProblem(true);
+  }, [checkpointScope, room, route, receipt]);
   const commit = useCallback(
     (next: RouteState, nextState: PuzzleState) => {
       routeRef.current = next;
@@ -255,6 +343,7 @@ function PuzzleRoomSession({
       clearHint();
       setRoute(next);
       setNotice("");
+      setIntroRequested(false);
     },
     [clearHint],
   );
@@ -324,9 +413,9 @@ function PuzzleRoomSession({
     submitted.current = null;
     setPaused(false);
     setKeyPickup(null);
-    clearPuzzleCheckpoint(userId, room);
+    clearPuzzleCheckpoint(checkpointScope, room);
     commit({ actions: [] }, initialPuzzleState(room));
-  }, [receipt, room, userId, commit]);
+  }, [receipt, room, checkpointScope, commit]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (
@@ -393,7 +482,7 @@ function PuzzleRoomSession({
         throw new Error("Your route could not be confirmed. Please retry.");
       setReceipt(saved);
       play("victory");
-      clearPuzzleCheckpoint(userId, room);
+      clearPuzzleCheckpoint(checkpointScope, room);
     } catch (error) {
       if (active.current)
         setSaveError(
@@ -407,7 +496,7 @@ function PuzzleRoomSession({
         setSaving(false);
       }
     }
-  }, [complete, room, userId, receipt, play]);
+  }, [complete, room, checkpointScope, receipt, play]);
   useEffect(() => {
     if (
       state.status === "solved" &&
@@ -420,6 +509,18 @@ function PuzzleRoomSession({
     }
   }, [state.status, route.requestId, receipt, save]);
   const nextRoom = PUZZLE_ROOMS.find((item) => item.order === room.order + 1);
+  const graduated = !!receipt && room.order === 3 && trainingActive;
+  const resumeRoom = receipt
+    ? PUZZLE_ROOMS.find((item) => item.order === receipt.unlocked)
+    : undefined;
+  const nextHref =
+    rehearsal && room.order === 3
+      ? resumeRoom
+        ? puzzleRoomHref(resumeRoom)
+        : "/rune-delve/journey"
+      : nextRoom && receipt && nextRoom.order <= receipt.unlocked
+        ? `${puzzleRoomHref(nextRoom)}${rehearsal && nextRoom.order <= 3 ? `?tutorial=1${guidance ? "" : "&guidance=off"}` : ""}`
+        : "/rune-delve/journey";
 
   return (
     <section
@@ -430,11 +531,24 @@ function PuzzleRoomSession({
       data-room={room.id}
       data-puzzle-keys={carriedKeys.join(",")}
       data-puzzle-visited={(state.visitedAreas ?? []).join(",")}
+      data-tutorial-phase={tutorial?.phase ?? "none"}
+      data-tutorial-replay={rehearsal}
+      data-guidance={guidance ? "on" : "off"}
     >
       <header className="rp-play-heading">
         <div className="rp-play-title">
           <p className="rp-eyebrow">
-            CHAMBER {String(room.order).padStart(2, "0")}
+            {tutorial ? (
+              <span
+                className="rp-tutorial-phase"
+                data-testid="puzzle-tutorial-phase"
+                data-phase={tutorial.phase}
+              >
+                {tutorial.label} {tutorial.stage}/{tutorial.stages}
+              </span>
+            ) : (
+              `CHAMBER ${String(room.order).padStart(2, "0")}`
+            )}
             {areas.length > 1 && (
               <span>
                 · ROOM {area + 1}/{areas.length}
@@ -477,6 +591,7 @@ function PuzzleRoomSession({
             state={state}
             avatar={avatar}
             disabled={frozen}
+            motionPaused={help || mapOpen || paused || saving}
             hint={hintDirection}
             coachedCell={hintDirection ? undefined : coach?.cell}
             onDirection={step}
@@ -616,16 +731,38 @@ function PuzzleRoomSession({
             {hintMessage ||
               notice ||
               (coach ? (
-                <span
-                  className="rp-coach"
-                  data-testid="puzzle-coach"
-                  data-coach-step={coach.id}
-                >
-                  <Lightbulb aria-hidden="true" />
-                  <span>
-                    <b>{coach.title}</b>
-                    <small>{coach.text}</small>
+                <span className="rp-tutorial-controls">
+                  <span
+                    className="rp-coach"
+                    data-testid="puzzle-coach"
+                    data-coach-step={coach.id}
+                    data-coach-phase={tutorial?.phase ?? "introduction"}
+                    data-coach-step-index={tutorial?.step}
+                    data-coach-step-count={tutorial?.steps}
+                  >
+                    <Lightbulb aria-hidden="true" />
+                    <span>
+                      <b>
+                        {coach.title}
+                        {tutorial?.phase === "learn" && (
+                          <small className="rp-coach-step">
+                            {" "}
+                            · Step {tutorial.step}/{tutorial.steps}
+                          </small>
+                        )}
+                      </b>
+                      <small>{coach.text}</small>
+                    </span>
                   </span>
+                  <button
+                    type="button"
+                    className="rp-coach-dismiss"
+                    aria-label="Try on my own"
+                    title="Try on my own"
+                    onClick={() => changeGuidance(false)}
+                  >
+                    Solo
+                  </button>
                 </span>
               ) : (
                 "Tap a neighbor. Swipe a direction."
@@ -804,6 +941,16 @@ function PuzzleRoomSession({
           )}
           <button
             type="button"
+            className="rp-guidance-toggle rp-secondary"
+            aria-label={guidance ? "Turn guidance off" : "Turn guidance on"}
+            aria-pressed={guidance}
+            onClick={() => changeGuidance(!guidance)}
+          >
+            <Lightbulb size={17} aria-hidden="true" />
+            {guidance ? "Guidance on · Try on my own" : "Turn guidance on"}
+          </button>
+          <button
+            type="button"
             className="rp-primary"
             onClick={() => setHelp(false)}
           >
@@ -829,12 +976,22 @@ function PuzzleRoomSession({
           <span className="rp-result-seal" aria-hidden="true">
             <DoorOpen />
           </span>
-          <DialogTitle className="rd-title">Chamber restored</DialogTitle>
+          <DialogTitle
+            className={`rd-title${graduated ? " rp-tutorial-graduation" : ""}`}
+          >
+            {graduated ? "Tutorial complete" : "Chamber restored"}
+          </DialogTitle>
           <DialogDescription>
             {receipt
-              ? receipt.starsGained > 0
-                ? `+${receipt.starsGained} mastery star${receipt.starsGained > 1 ? "s" : ""} added to your journey.`
-                : "Your best mastery is retained. Every return is a chance to refine the route."
+              ? graduated
+                ? "The Hollow is yours to explore. New mechanics arrive as your journey unfolds."
+                : tutorial?.phase === "learn"
+                  ? "Learn complete. Next, find a route of your own in Practice."
+                  : tutorial?.phase === "practice"
+                    ? "Practice complete. Your Trial brings the skills together."
+                    : receipt.starsGained > 0
+                      ? `+${receipt.starsGained} mastery star${receipt.starsGained > 1 ? "s" : ""} added to your journey.`
+                      : "Your best mastery is retained. Every return is a chance to refine the route."
               : "Saving your route and mastery…"}
           </DialogDescription>
           <PuzzleStars count={stars} label="Saved best mastery" />
@@ -868,17 +1025,12 @@ function PuzzleRoomSession({
               </button>
             ) : (
               <>
-                <Link
-                  className="rp-primary"
-                  to={
-                    nextRoom && nextRoom.order <= receipt.unlocked
-                      ? puzzleRoomHref(nextRoom)
-                      : "/rune-delve/journey"
-                  }
-                >
-                  {nextRoom && nextRoom.order <= receipt.unlocked
-                    ? "Enter the next chamber"
-                    : "Return to the journey"}
+                <Link className="rp-primary" to={nextHref}>
+                  {rehearsal && room.order === 3
+                    ? "Continue your journey"
+                    : nextRoom && nextRoom.order <= receipt.unlocked
+                      ? "Enter the next chamber"
+                      : "Return to the journey"}
                   <ArrowRight size={17} />
                 </Link>
                 <button
