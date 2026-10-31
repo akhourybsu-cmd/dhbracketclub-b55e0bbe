@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -33,22 +34,42 @@ const distance = (a: number, b: number) =>
   Math.abs(Math.floor(a / 6) - Math.floor(b / 6)) + Math.abs((a % 6) - (b % 6));
 
 describe("Rune Delve · authored spatial journey", () => {
-  it("keeps all 18 immutable room identities and SQL definitions identical", () => {
-    expect(PUZZLE_ROOMS).toHaveLength(18);
+  it("preserves the original 18 definitions and expands the canonical journey to 36", () => {
+    expect(PUZZLE_ROOMS).toHaveLength(36);
     expect(PUZZLE_ROOMS.map((room) => room.order)).toEqual(
-      Array.from({ length: 18 }, (_, i) => i + 1),
+      Array.from({ length: 36 }, (_, i) => i + 1),
     );
     expect(
       PUZZLE_CHAPTERS.map(
         (chapter) =>
           PUZZLE_ROOMS.filter((room) => room.chapter === chapter.id).length,
       ),
-    ).toEqual([6, 6, 6]);
-    expect(new Set(PUZZLE_ROOMS.map((room) => room.id)).size).toBe(18);
+    ).toEqual([6, 6, 6, 6, 6, 6]);
+    expect(new Set(PUZZLE_ROOMS.map((room) => room.id)).size).toBe(36);
     const canonical = JSON.parse(
       readFileSync(resolve("src/lib/runedelve/puzzles/rooms.json"), "utf8"),
     );
     expect(canonical).toEqual(PUZZLE_ROOMS);
+    const stable = (value: unknown): string =>
+      JSON.stringify(
+        value && typeof value === "object"
+          ? Array.isArray(value)
+            ? value.map((item) => JSON.parse(stable(item)))
+            : Object.fromEntries(
+                Object.keys(value)
+                  .sort()
+                  .map((key) => [
+                    key,
+                    JSON.parse(stable((value as Record<string, unknown>)[key])),
+                  ]),
+              )
+          : value,
+      );
+    expect(
+      createHash("sha256")
+        .update(stable(PUZZLE_ROOMS.slice(0, 18)))
+        .digest("hex"),
+    ).toBe("c9c42e63af6c3e44694b4471fbceaed0efa98ae7681f6e05b96581778e5da169");
     for (const room of PUZZLE_ROOMS) {
       expect(room.version).toBe(1);
       expect(validatePuzzleRoom(room), room.id).toEqual([]);
@@ -181,7 +202,7 @@ describe("Rune Delve · authored spatial journey", () => {
       expect(solved.status, room.id).toBe("solved");
       const final = replayPuzzle(room, solved.actions).state;
       if (final.collected.length < room.treasures.length) bypassedTreasures++;
-      expect(room.stones.length).toBeLessThanOrEqual(3);
+      expect(room.stones.length).toBeLessThanOrEqual(4);
     }
     expect(bypassedTreasures).toBeGreaterThanOrEqual(9);
     const keeper = getPuzzleRoom("crystal-05")!;
@@ -195,5 +216,86 @@ describe("Rune Delve · authored spatial journey", () => {
     expect(state.status).toBe("solved");
     expect(visited).not.toContain(keeper.guardian!.cell);
     expect(keeper.guardian!.archetypeId).toBe("stone_golem");
+  });
+
+  it("makes every new adventure explore real connected rooms and return to its portal", () => {
+    for (const room of PUZZLE_ROOMS.slice(18)) {
+      expect(room.areas?.length, room.id).toBeGreaterThanOrEqual(2);
+      expect(room.areas?.length, room.id).toBeLessThanOrEqual(3);
+      const states = trace(room);
+      const visited = new Set(
+        states.map((state) => Math.floor(state.player / 36)),
+      );
+      expect(visited.size, room.id).toBe(room.areas!.length);
+      expect(states.at(-1)!.visitedAreas, room.id).toEqual(
+        [...visited].sort((a, b) => a - b),
+      );
+      const transitions = states
+        .slice(1)
+        .filter(
+          (state, index) =>
+            Math.floor(state.player / 36) !==
+            Math.floor(states[index].player / 36),
+        ).length;
+      expect(transitions, room.id).toBeGreaterThanOrEqual(
+        (room.areas!.length - 1) * 2,
+      );
+      expect(Math.floor(room.exit / 36), room.id).toBe(0);
+    }
+  });
+
+  it("uses keys before crossing their locks and makes every rift chapter need its rifts", () => {
+    for (const room of PUZZLE_ROOMS.filter((room) => room.keys?.length)) {
+      const states = trace(room);
+      for (const door of room.doors ?? []) {
+        const crossed = states.filter(
+          (state) =>
+            state.player === door.cell ||
+            state.stones.some((stone) => stone.cell === door.cell),
+        );
+        expect(
+          crossed.length,
+          `${room.id}: lock is an actual route dependency`,
+        ).toBeGreaterThan(0);
+        expect(
+          crossed.every((state) => state.keys?.includes(door.color)),
+          room.id,
+        ).toBe(true);
+      }
+      expect(states.at(-1)!.keys?.length, room.id).toBe(
+        new Set(room.keys!.map((key) => key.color)).size,
+      );
+    }
+    for (const room of PUZZLE_ROOMS.filter(
+      (room) => room.mechanic === "rifts",
+    )) {
+      const withoutRifts = {
+        ...room,
+        passages: room.passages!.filter((link) => link.kind !== "rift"),
+      };
+      expect(validatePuzzleRoom(withoutRifts), room.id).toEqual([]);
+      expect(
+        solvePuzzle(withoutRifts, undefined, { maxStates: 75000 }).status,
+        `${room.id}: rifts provide a necessary pushing position`,
+      ).toBe("unsolvable");
+    }
+  });
+
+  it("ramps the new capstones through purposeful pushes rather than walking alone", () => {
+    const caps = [
+      getPuzzleRoom("galleries-06")!,
+      getPuzzleRoom("keep-06")!,
+      getPuzzleRoom("astral-06")!,
+    ];
+    expect(caps.map((room) => room.parPushes)).toEqual([12, 14, 15]);
+    expect(caps[2].solution.length).toBeGreaterThanOrEqual(60);
+    expect(caps[2].areas).toHaveLength(3);
+    expect(
+      PUZZLE_ROOMS.slice(18).reduce((sum, room) => sum + room.parPushes, 0) /
+        18,
+    ).toBeGreaterThan(9);
+    expect(
+      PUZZLE_ROOMS.reduce((sum, room) => sum + (room.areas?.length ?? 1), 0),
+    ).toBe(58);
   });
 });

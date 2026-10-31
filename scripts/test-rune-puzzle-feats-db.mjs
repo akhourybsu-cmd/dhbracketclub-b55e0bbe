@@ -18,6 +18,14 @@ const migration = await readFile(
   "supabase/migrations/20261031060000_rune_puzzle_feats.sql",
   "utf8",
 );
+const expansion = await readFile(
+  "supabase/migrations/20261031090000_rune_delve_adventures.sql",
+  "utf8",
+);
+const progression = await readFile(
+  "supabase/migrations/20261031100000_rune_adventure_progression.sql",
+  "utf8",
+);
 let checks = 0,
   requestNumber = 3000;
 const check = async (name, run) => {
@@ -35,6 +43,10 @@ const metrics = async (user = id(1)) =>
 const puzzlePoints = (b) =>
   b.unlocks
     .filter((unlock) => unlock.feat_key.startsWith("rune_puzzle_"))
+    .reduce((sum, unlock) => sum + unlock.points, 0);
+const adventurePoints = (b) =>
+  b.unlocks
+    .filter((unlock) => unlock.feat_key.startsWith("rune_adventure_"))
     .reduce((sum, unlock) => sum + unlock.points, 0);
 const ago = (days) => new Date(Date.now() - days * 86400000).toISOString();
 let rooms;
@@ -74,6 +86,8 @@ try {
   await exec(`
     insert into auth.users(id) values('${id(1)}'),('${id(2)}'),('${id(3)}');
     create table rune_delve_expedition_runs(id uuid primary key default gen_random_uuid(),user_id uuid,rooms integer,ascension integer,cleared boolean,status text,finished_at timestamptz);
+    create table platform_assets(slug text primary key,short_description text,full_description text,updated_at timestamptz);
+    insert into platform_assets(slug,short_description) values('rune-delve','Original puzzle journey');
     insert into dh_feat_accounts(user_id,dirty) values('${id(1)}',false) on conflict(user_id) do nothing;
     insert into dh_feat_unlocks(user_id,feat_key,tier,points,target,historical) values('${id(1)}','drop_posts',1,7,1,false);
   `);
@@ -89,12 +103,13 @@ try {
       "utf8",
     ),
   );
+  await exec(expansion);
   rooms = (
     await query(
       "select room_id,definition_version,ordinal from rune_puzzle_definitions where active order by ordinal",
     )
   ).rows;
-  assert.equal(rooms.length, 18);
+  assert.equal(rooms.length, 36);
   const oldReceipt = (
     await query(
       "select to_jsonb(u) r from dh_feat_unlocks u where user_id=$1 and feat_key='drop_posts'",
@@ -108,15 +123,17 @@ try {
   ).rows[0].r;
   await exec(migration);
   await exec(migration);
+  await exec(progression);
+  await exec(progression);
 
   await check(
     "catalog extension is additive and idempotent; old definitions and earned receipts are unchanged",
     async () => {
       const b = await board();
-      assert.equal(b.catalog.length, 68);
+      assert.equal(b.catalog.length, 70);
       assert.equal(
         b.catalog.reduce((sum, item) => sum + item.thresholds.length, 0),
-        338,
+        347,
       );
       for (const old of [...legacy, ...expedition])
         assert.deepEqual(
@@ -302,6 +319,54 @@ try {
           )
         ).rows,
         [],
+      );
+    },
+  );
+
+  await check(
+    "connected adventures add separate mastery goals without changing any earned puzzle tier",
+    async () => {
+      const originalAwards = (
+        await query(
+          "select feat_key,tier,points,target from dh_feat_unlocks where user_id=$1 and feat_key like 'rune_puzzle_%' order by feat_key,tier",
+          [id(1)],
+        )
+      ).rows;
+      assert.equal(originalAwards.length, 9);
+      await exec(progression);
+      for (let ordinal = 19; ordinal <= 36; ordinal++) await source(ordinal, 3);
+      const m = await metrics(),
+        before = await board();
+      assert.equal(m.rune_puzzle_rooms, 36);
+      assert.equal(m.rune_puzzle_stars, 108);
+      assert.equal(m.rune_adventure_rooms, 18);
+      assert.equal(m.rune_adventure_stars, 54);
+      assert.equal(puzzlePoints(before), 135);
+      assert.equal(adventurePoints(before), 135);
+      const allAwards = (
+        await query(
+          "select feat_key,tier,points,target from dh_feat_unlocks where user_id=$1 and feat_key like 'rune_puzzle_%' order by feat_key,tier",
+          [id(1)],
+        )
+      ).rows;
+      assert.equal(allAwards.length, 9);
+      for (const old of originalAwards)
+        assert.deepEqual(
+          allAwards.find(
+            (a) => a.feat_key === old.feat_key && a.tier === old.tier,
+          ),
+          old,
+        );
+      await exec(progression);
+      await source(36, 3);
+      const after = await board();
+      assert.equal(after.score, before.score);
+      assert.equal(puzzlePoints(after), 135);
+      assert.equal(adventurePoints(after), 135);
+      assert.equal(
+        after.unlocks.filter((u) => u.feat_key.startsWith("rune_adventure_"))
+          .length,
+        9,
       );
     },
   );

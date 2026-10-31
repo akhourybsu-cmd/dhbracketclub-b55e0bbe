@@ -69,7 +69,10 @@ function RuneLegacyHUD() {
   return (
     <>
       <header
-        className={cn("sticky top-0 z-40 w-full border-b backdrop-blur-xl")}
+        className={cn(
+          "rd-archive-hud sticky top-0 z-40 w-full border-b backdrop-blur-xl",
+        )}
+        data-rune-edition="archive"
         style={{
           paddingTop: "env(safe-area-inset-top, 0px)",
           background:
@@ -108,18 +111,16 @@ function RuneLegacyHUD() {
             )}
             <div className="flex-1 min-w-0 leading-tight">
               <p className="font-rd-display text-[13px] font-extrabold truncate tracking-wide">
-                <span className="rd-hud-hero-title">
-                  {hero?.hero_name ?? "Rune Delve"}
-                </span>
-                <span className="rd-hud-compact-title">Rune Delve</span>
+                <span className="rd-hud-hero-title">Combat Archive</span>
+                <span className="rd-hud-compact-title">Archive</span>
               </p>
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-foreground/70 truncate">
                 {isHome
-                  ? "Combat Archive"
+                  ? "Original combat · separate progress"
                   : location.pathname === "/rune-delve/expedition"
-                    ? "Expedition"
+                    ? `${hero?.hero_name ? hero.hero_name + " · " : ""}Expedition`
                     : location.pathname === "/rune-delve/endless"
-                      ? "Daily arena"
+                      ? `${hero?.hero_name ? hero.hero_name + " · " : ""}Daily arena`
                       : `Chapter ${chapter}${isCampaignBattle ? ` · L${location.pathname.split("/").pop()}` : ""}`}
               </p>
             </div>

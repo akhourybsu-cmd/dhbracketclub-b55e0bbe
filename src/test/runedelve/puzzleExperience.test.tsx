@@ -57,6 +57,47 @@ const fixture = vi.hoisted(() => ({
     parPushes: 1,
     solution: ["right", "up"],
   } as PuzzleRoom,
+  adventure: {
+    id: "galleries-01",
+    version: 1,
+    order: 19,
+    chapter: 4,
+    title: "The Hidden Library",
+    lesson: "Carry a discovery between rooms.",
+    mechanic: "passages",
+    width: 6,
+    height: 6,
+    areas: [
+      { id: "courtyard", title: "Courtyard" },
+      { id: "library", title: "Secret Library" },
+    ],
+    walls: [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 17, 18, 23, 24, 29, 30, 31, 32, 33, 34, 35,
+    ].flatMap((cell) => [cell, cell + 36]),
+    start: 13,
+    exit: 46,
+    stones: [{ id: "a", color: "blue", cell: 14 }],
+    sigils: [{ color: "blue", cell: 15 }],
+    plates: [],
+    gates: [],
+    ice: [],
+    treasures: [14],
+    passages: [{ a: 22, b: 43 }],
+    keys: [{ color: "blue", cell: 44 }],
+    doors: [{ color: "blue", cell: 45 }],
+    parPushes: 1,
+    solution: [
+      "right",
+      "up",
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "right",
+      "right",
+    ],
+  } as PuzzleRoom,
 }));
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ user: { id: fixture.userId } }),
@@ -75,13 +116,16 @@ vi.mock("@/lib/runedelve/puzzles/rooms", () => ({
   PUZZLE_ROOMS: [
     fixture.room,
     { ...fixture.room, id: "ember-02", order: 2, title: "The Second Seal" },
+    fixture.adventure,
   ],
   getPuzzleRoom: (id: string) =>
     id === "ember-01"
       ? fixture.room
       : id === "ember-02"
         ? { ...fixture.room, id, order: 2, title: "The Second Seal" }
-        : undefined,
+        : id === fixture.adventure.id
+          ? fixture.adventure
+          : undefined,
   PUZZLE_CHAPTERS: [
     {
       id: 1,
@@ -106,6 +150,30 @@ vi.mock("@/lib/runedelve/puzzles/rooms", () => ({
       mechanic: "ice",
       firstRoom: 13,
       lastRoom: 18,
+    },
+    {
+      id: 4,
+      title: "Sunken Galleries",
+      subtitle: "Discover connected rooms.",
+      mechanic: "passages",
+      firstRoom: 19,
+      lastRoom: 24,
+    },
+    {
+      id: 5,
+      title: "Verdant Keep",
+      subtitle: "Bring discoveries back.",
+      mechanic: "keys",
+      firstRoom: 25,
+      lastRoom: 30,
+    },
+    {
+      id: 6,
+      title: "Astral Observatory",
+      subtitle: "Find another approach.",
+      mechanic: "rifts",
+      firstRoom: 31,
+      lastRoom: 36,
     },
   ],
 }));
@@ -195,6 +263,155 @@ afterEach(() => {
 });
 
 describe("Rune Delve spatial journey UI", () => {
+  it("teaches through the live board and updates its cue after a real push and undo", () => {
+    mount();
+    expect(screen.getByTestId("puzzle-coach")).toHaveAttribute(
+      "data-coach-step",
+      "first-step",
+    );
+    expect(document.querySelectorAll(".rp-tile.is-coached")).toHaveLength(1);
+    expect(document.querySelector(".rp-tile.is-coached")).toHaveAttribute(
+      "data-puzzle-cell",
+      "14",
+    );
+    move("ArrowRight");
+    expect(screen.getByTestId("puzzle-coach")).toHaveAttribute(
+      "data-coach-step",
+      "first-exit",
+    );
+    expect(document.querySelector(".rp-tile.is-coached")).toHaveAttribute(
+      "data-puzzle-cell",
+      "8",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Undo last step" }));
+    expect(screen.getByTestId("puzzle-coach")).toHaveAttribute(
+      "data-coach-step",
+      "first-step",
+    );
+  });
+
+  it("discovers rooms on foot, keeps the map read-only and preserves keys across checkpoints", () => {
+    fixture.progress.unlocked = 19;
+    let page = mount("/rune-delve/chamber/galleries-01");
+    const board = () => screen.getByTestId("puzzle-board");
+    const player = () => board().querySelector('[data-puzzle-player="true"]');
+    expect(board()).toHaveAttribute("data-area-index", "0");
+    expect(screen.queryByText("Secret Library")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open chamber map" }));
+    const map = screen.getByRole("dialog", { name: "Chamber map" });
+    const undiscovered = map.querySelector('[data-map-area="1"]')!;
+    expect(undiscovered).toHaveAttribute("data-discovered", "false");
+    expect(undiscovered).toHaveTextContent("Uncharted room");
+    expect(map.querySelectorAll("article button, article a")).toHaveLength(0);
+    fireEvent.click(undiscovered);
+    move("ArrowRight");
+    expect(player()).toHaveAttribute("data-puzzle-cell", "13");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Return to exploration" }),
+    );
+
+    for (const key of [
+      "ArrowRight",
+      "ArrowUp",
+      "ArrowRight",
+      "ArrowRight",
+      "ArrowDown",
+      "ArrowDown",
+    ])
+      move(key);
+    expect(board()).toHaveAttribute("data-area-index", "1");
+    expect(player()).toHaveAttribute("data-puzzle-cell", "43");
+    expect(board().querySelectorAll("[data-puzzle-cell]")).toHaveLength(36);
+    expect(board().querySelector('[data-puzzle-cell="0"]')).toBeNull();
+    expect(board().querySelector('[data-puzzle-cell="71"]')).not.toBeNull();
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-puzzle-visited",
+      "0,1",
+    );
+    expect(
+      screen.getByRole("heading", { name: "Secret Library" }),
+    ).toBeVisible();
+    expect(board().querySelector('[data-puzzle-cell="45"]')).toHaveAttribute(
+      "data-door-open",
+      "false",
+    );
+    fireEvent.click(board().querySelector('[data-puzzle-cell="44"]')!);
+    expect(player()).toHaveAttribute("data-puzzle-cell", "44");
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-puzzle-keys",
+      "blue",
+    );
+    expect(board().querySelector('[data-puzzle-cell="45"]')).toHaveAttribute(
+      "data-door-open",
+      "true",
+    );
+    expect(screen.getByText("Key discovered")).toBeVisible();
+    page.unmount();
+    page = mount("/rune-delve/chamber/galleries-01");
+    expect(player()).toHaveAttribute("data-puzzle-cell", "44");
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-puzzle-keys",
+      "blue",
+    );
+    expect(screen.queryByText("Key discovered")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open chamber map" }));
+    expect(
+      screen
+        .getByRole("dialog", { name: "Chamber map" })
+        .querySelector('[data-map-area="1"]'),
+    ).toHaveTextContent("Secret Library");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Return to exploration" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Undo last step" }));
+    expect(player()).toHaveAttribute("data-puzzle-cell", "43");
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-puzzle-keys",
+      "",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Undo last step" }));
+    expect(board()).toHaveAttribute("data-area-index", "0");
+    expect(player()).toHaveAttribute("data-puzzle-cell", "16");
+    expect(board().querySelector('[data-puzzle-cell="15"]')).toHaveAttribute(
+      "data-puzzle-stone",
+      "blue",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Restart chamber" }));
+    expect(player()).toHaveAttribute("data-puzzle-cell", "13");
+    expect(board().querySelector('[data-puzzle-cell="14"]')).toHaveAttribute(
+      "data-puzzle-stone",
+      "blue",
+    );
+    expect(screen.getByTestId("puzzle-play")).toHaveAttribute(
+      "data-puzzle-visited",
+      "0",
+    );
+  });
+
+  it("offers six chapter choices and opens the chapter at the unlocked frontier", () => {
+    fixture.progress.unlocked = 19;
+    mount("/rune-delve/journey");
+    const chapters = screen.getByRole("navigation", {
+      name: "Puzzle chapters",
+    });
+    expect(chapters.querySelectorAll("button")).toHaveLength(6);
+    expect(
+      screen.getByRole("button", { name: /Sunken Galleries/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("link", {
+        name: "Enter chamber 19: The Hidden Library",
+      }),
+    ).toHaveTextContent("2 rooms");
+    fireEvent.click(screen.getByRole("button", { name: /Astral Observatory/ }));
+    expect(
+      screen.getByRole("button", { name: /Astral Observatory/ }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("heading", { name: "Astral Observatory" }),
+    ).toBeVisible();
+  });
+
   it("moves, pushes, undoes and restarts through production controls while invalid moves cost nothing", () => {
     mount();
     const board = screen.getByTestId("puzzle-board");

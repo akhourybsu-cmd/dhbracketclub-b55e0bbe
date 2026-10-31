@@ -3,12 +3,16 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowDown,
   ArrowLeft,
+  ArrowLeftRight,
   ArrowRight,
   ArrowUp,
   CircleHelp,
+  Compass,
   DoorOpen,
   Gem,
   Lightbulb,
+  KeyRound,
+  LockKeyhole,
   RotateCcw,
   Sparkles,
   Undo2,
@@ -24,6 +28,7 @@ import {
   initialPuzzleState,
   movePuzzle,
   puzzleGuardianCalm,
+  puzzleAreaIndex,
   puzzleSigilsFilled,
   replayPuzzle,
 } from "@/lib/runedelve/puzzles/engine";
@@ -40,6 +45,8 @@ import type {
   PuzzleState,
 } from "@/lib/runedelve/puzzles/types";
 import type { HeroClass } from "@/lib/runedelve/classConfig";
+import type { RuneType } from "@/lib/runedelve/dungeonGenerator";
+import { getPuzzleCoach } from "@/lib/runedelve/puzzles/tutorial";
 import { RunePuzzleBoard } from "@/components/runedelve/RunePuzzleBoard";
 import {
   PuzzleDataState,
@@ -82,6 +89,8 @@ const BLOCK_REASON = {
   stone: "The runestone cannot move there.",
   gate: "Hold a pressure plate to open that gate.",
   guardian: "Restore its matching sigils to calm the guardian.",
+  door: "Find the matching key to unlock this door.",
+  passage: "Only your delver can travel through a passage or rift.",
   finished: "This chamber is already restored.",
 };
 
@@ -119,6 +128,13 @@ export default function RunePuzzlePlayPage() {
       room={room}
       userId={user.id}
       avatar={query.data.avatar}
+      learning={
+        !query.data.records.some(
+          (record) =>
+            record.room_id === room.id &&
+            record.definition_version === room.version,
+        )
+      }
     />
   );
 }
@@ -127,10 +143,12 @@ function PuzzleRoomSession({
   room,
   userId,
   avatar,
+  learning,
 }: {
   room: PuzzleRoom;
   userId: string;
   avatar: HeroClass;
+  learning: boolean;
 }) {
   const complete = useCompleteRunePuzzle();
   const { play } = useRuneDelveSfx();
@@ -172,6 +190,7 @@ function PuzzleRoomSession({
       : "",
   );
   const [help, setHelp] = useState(false),
+    [mapOpen, setMapOpen] = useState(false),
     [paused, setPaused] = useState(false);
   const {
     busy: hintBusy,
@@ -181,12 +200,43 @@ function PuzzleRoomSession({
     request: requestHint,
   } = useRunePuzzleHint(room);
   const helpFocus = useRuneDialogFocus(),
+    mapFocus = useRuneDialogFocus(),
     resultFocus = useRuneDialogFocus();
   const stars = receipt?.stars ?? 0,
     sigils = puzzleSigilsFilled(room, state),
     allSigils = sigils === room.sigils.length;
   const treasure = state.collected.length === room.treasures.length;
-  const frozen = state.status === "solved" || saving || help || paused;
+  const area = puzzleAreaIndex(state.player);
+  const areas = room.areas ?? [{ id: "chamber", title: room.title }];
+  const discovered = state.visitedAreas ?? [area];
+  const carriedKeys = state.keys ?? [];
+  const coach = useMemo(
+    () => (learning ? getPuzzleCoach(room, state) : null),
+    [learning, room, state],
+  );
+  const previousKeys = useRef([...carriedKeys]);
+  const pickupTimer = useRef<number>();
+  const [keyPickup, setKeyPickup] = useState<RuneType | null>(null);
+  const frozen =
+    state.status === "solved" || saving || help || mapOpen || paused;
+
+  useEffect(() => {
+    const keys = state.keys ?? [];
+    const added = keys.find((key) => !previousKeys.current.includes(key));
+    const removed = previousKeys.current.some((key) => !keys.includes(key));
+    previousKeys.current = [...keys];
+    if (!added) {
+      if (removed) {
+        window.clearTimeout(pickupTimer.current);
+        setKeyPickup(null);
+      }
+      return;
+    }
+    window.clearTimeout(pickupTimer.current);
+    setKeyPickup(added);
+    pickupTimer.current = window.setTimeout(() => setKeyPickup(null), 1100);
+  }, [state.keys]);
+  useEffect(() => () => window.clearTimeout(pickupTimer.current), []);
 
   useEffect(() => {
     active.current = true;
@@ -216,6 +266,7 @@ function PuzzleRoomSession({
         current.status !== "playing" ||
         busy.current ||
         help ||
+        mapOpen ||
         paused ||
         document.hidden
       )
@@ -238,7 +289,8 @@ function PuzzleRoomSession({
           stone.cell,
       );
       play(
-        move.state.collected.length > current.collected.length
+        move.state.collected.length > current.collected.length ||
+          (move.state.keys?.length ?? 0) > (current.keys?.length ?? 0)
           ? "coin.pickup"
           : move.pushed && pushedStone
             ? `rune.fire.${pushedStone.color}`
@@ -251,7 +303,7 @@ function PuzzleRoomSession({
       };
       commit(next, move.state);
     },
-    [room, help, paused, commit, clearHint, play],
+    [room, help, mapOpen, paused, commit, clearHint, play],
   );
   const undo = useCallback(() => {
     if (
@@ -271,6 +323,7 @@ function PuzzleRoomSession({
     setSaveError("");
     submitted.current = null;
     setPaused(false);
+    setKeyPickup(null);
     clearPuzzleCheckpoint(userId, room);
     commit({ actions: [] }, initialPuzzleState(room));
   }, [receipt, room, userId, commit]);
@@ -375,22 +428,47 @@ function PuzzleRoomSession({
       data-landscape={viewport.landscape}
       data-compact={viewport.short && !viewport.landscape}
       data-room={room.id}
+      data-puzzle-keys={carriedKeys.join(",")}
+      data-puzzle-visited={(state.visitedAreas ?? []).join(",")}
     >
       <header className="rp-play-heading">
-        <div>
+        <div className="rp-play-title">
           <p className="rp-eyebrow">
             CHAMBER {String(room.order).padStart(2, "0")}
+            {areas.length > 1 && (
+              <span>
+                · ROOM {area + 1}/{areas.length}
+              </span>
+            )}
           </p>
-          <h1>{room.title}</h1>
+          <h1>
+            {areas.length > 1 ? (areas[area]?.title ?? room.title) : room.title}
+          </h1>
         </div>
-        <button
-          type="button"
-          className="rp-icon-button"
-          aria-label="Puzzle rules"
-          onClick={() => setHelp(true)}
-        >
-          <CircleHelp size={19} />
-        </button>
+        <div className="rp-play-heading-tools">
+          {areas.length > 1 && (
+            <button
+              type="button"
+              className="rp-icon-button rp-map-trigger"
+              aria-label="Open chamber map"
+              disabled={state.status === "solved" || saving}
+              onClick={() => setMapOpen(true)}
+            >
+              <Compass size={19} />
+              <small>
+                {discovered.length}/{areas.length}
+              </small>
+            </button>
+          )}
+          <button
+            type="button"
+            className="rp-icon-button"
+            aria-label="Puzzle rules"
+            onClick={() => setHelp(true)}
+          >
+            <CircleHelp size={19} />
+          </button>
+        </div>
       </header>
       <div className="rp-play-stage">
         <div className="rp-board-area">
@@ -400,11 +478,26 @@ function PuzzleRoomSession({
             avatar={avatar}
             disabled={frozen}
             hint={hintDirection}
+            coachedCell={hintDirection ? undefined : coach?.cell}
             onDirection={step}
             onDistantTap={() =>
               setNotice("Tap a neighboring tile or swipe to move.")
             }
           />
+          {keyPickup && (
+            <div
+              className="rp-key-discovery"
+              data-color={keyPickup}
+              role="status"
+              aria-live="polite"
+            >
+              <span>
+                <KeyRound />
+              </span>
+              <strong>Key discovered</strong>
+              <small>Matching locks are open</small>
+            </div>
+          )}
           {paused && (
             <div className="rp-pause">
               <b>Take a breath.</b>
@@ -433,6 +526,25 @@ function PuzzleRoomSession({
                 ? "Reach the glowing portal"
                 : "Restore the matching sigils"}
             </b>
+            {room.keys?.length || room.doors?.length ? (
+              <span
+                className="rp-keyring"
+                role="img"
+                aria-label={`Keys carried: ${carriedKeys.join(", ") || "none"}`}
+              >
+                {carriedKeys.length ? (
+                  carriedKeys.map((color) => (
+                    <KeyRound
+                      key={color}
+                      data-color={color}
+                      aria-hidden="true"
+                    />
+                  ))
+                ) : (
+                  <KeyRound className="is-missing" aria-hidden="true" />
+                )}
+              </span>
+            ) : null}
             <span>
               {sigils}/{room.sigils.length}
             </span>
@@ -495,9 +607,30 @@ function PuzzleRoomSession({
               </div>
             </div>
           )}
-          <p className="rp-feedback" role="status" aria-live="polite">
-            {hintMessage || notice || "Tap a neighbor. Swipe a direction."}
-          </p>
+          <div
+            className="rp-feedback"
+            role="status"
+            aria-live="polite"
+            data-coaching={!!coach && !hintMessage && !notice}
+          >
+            {hintMessage ||
+              notice ||
+              (coach ? (
+                <span
+                  className="rp-coach"
+                  data-testid="puzzle-coach"
+                  data-coach-step={coach.id}
+                >
+                  <Lightbulb aria-hidden="true" />
+                  <span>
+                    <b>{coach.title}</b>
+                    <small>{coach.text}</small>
+                  </span>
+                </span>
+              ) : (
+                "Tap a neighbor. Swipe a direction."
+              ))}
+          </div>
           {(viewport.landscape || !viewport.short) && (
             <div className="rp-direction-pad" aria-label="Move delver">
               {(["left", "up", "down", "right"] as PuzzleDirection[]).map(
@@ -554,6 +687,77 @@ function PuzzleRoomSession({
           )}
         </aside>
       </div>
+      <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+        <DialogContent {...mapFocus} className="rd-dialog-theme rp-map-dialog">
+          <DialogTitle className="rd-title">Chamber map</DialogTitle>
+          <DialogDescription>
+            {room.title} · {discovered.length}/{areas.length} rooms explored
+          </DialogDescription>
+          <div className="rp-discovery-map">
+            {areas.map((place, index) => {
+              const known = discovered.includes(index);
+              const localSigils = room.sigils.filter(
+                (sigil) => puzzleAreaIndex(sigil.cell) === index,
+              );
+              const lit = localSigils.filter((sigil) =>
+                state.stones.some(
+                  (stone) =>
+                    stone.cell === sigil.cell && stone.color === sigil.color,
+                ),
+              ).length;
+              return (
+                <article
+                  key={place.id}
+                  data-map-area={index}
+                  data-discovered={known}
+                  aria-current={area === index ? "location" : undefined}
+                  className={`${known ? "is-discovered" : "is-unknown"}${area === index ? " is-current" : ""}`}
+                >
+                  <span>{known ? <Compass /> : <LockKeyhole />}</span>
+                  <small>ROOM {String(index + 1).padStart(2, "0")}</small>
+                  <h3>{known ? place.title : "Uncharted room"}</h3>
+                  <p>
+                    {known
+                      ? `${lit}/${localSigils.length} sigils restored`
+                      : "Find a doorway to reveal it"}
+                  </p>
+                  {area === index && <b>You are here</b>}
+                </article>
+              );
+            })}
+          </div>
+          <div className="rp-map-links" aria-label="Discovered connections">
+            {room.passages
+              ?.filter(
+                (passage) =>
+                  puzzleAreaIndex(passage.a) !== puzzleAreaIndex(passage.b) &&
+                  (discovered.includes(puzzleAreaIndex(passage.a)) ||
+                    discovered.includes(puzzleAreaIndex(passage.b))),
+              )
+              .map((passage, index) => {
+                const a = puzzleAreaIndex(passage.a),
+                  b = puzzleAreaIndex(passage.b);
+                return (
+                  <span key={index}>
+                    {discovered.includes(a) ? `Room ${a + 1}` : "?"}{" "}
+                    <ArrowLeftRight size={12} aria-hidden="true" />{" "}
+                    {discovered.includes(b) ? `Room ${b + 1}` : "?"}
+                  </span>
+                );
+              })}
+          </div>
+          <p className="rp-map-note">
+            Doorways connect the rooms. Walk back to revisit your discoveries.
+          </p>
+          <button
+            type="button"
+            className="rp-primary"
+            onClick={() => setMapOpen(false)}
+          >
+            Return to exploration
+          </button>
+        </DialogContent>
+      </Dialog>
       <Dialog open={help} onOpenChange={setHelp}>
         <DialogContent
           {...helpFocus}
@@ -589,7 +793,13 @@ function PuzzleRoomSession({
             <p className="rp-rule-note">
               {room.mechanic === "ice"
                 ? "Pushed stones slide across ice until clear ground or an obstacle."
-                : "An occupied plate opens every gate. A gate stays open while something occupies it."}
+                : room.mechanic === "passages"
+                  ? "Step into a doorway to travel. Runes stay in their room; every room keeps its state."
+                  : room.mechanic === "keys"
+                    ? "Collect a colored key to open every matching lock across the chamber. Keys are reusable."
+                    : room.mechanic === "rifts"
+                      ? "Rifts move your delver to their paired endpoint. Runes cannot enter a doorway or rift."
+                      : "An occupied plate opens every gate. A gate stays open while something occupies it."}
             </p>
           )}
           <button

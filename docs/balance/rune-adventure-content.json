@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "solverBudget": 75000,
+  "certificate": "Exact push-first solver with all treasure required; each route also replayed through the production resolver.",
+  "released18Hash": "c9c42e63af6c3e44694b4471fbceaed0efa98ae7681f6e05b96581778e5da169",
+  "catalogHash": "3fc3766727d2908ccdd068d17d5a64b70325b560a23d54bac89c9f89e6acdf5e",
+  "gameplayHash": "ddc77787115138880f0b0569ec504be0d5d300cbb4e34df802f36f4d5e8ed601",
+  "campaign": {
+    "adventures": 36,
+    "chapters": 6,
+    "boards": 58,
+    "masteryStars": 108
+  },
+  "original": {
+    "adventures": 18,
+    "meanPushes": 3.388888888888889,
+    "meanGoldActions": 14.166666666666666
+  },
+  "additions": {
+    "adventures": 18,
+    "boards": 40,
+    "meanPushes": 9.555555555555555,
+    "meanGoldActions": 38.333333333333336,
+    "goldActions": 690,
+    "maxExplored": 52074
+  },
+  "rooms": [
+    {
+      "id": "galleries-01",
+      "chapter": 4,
+      "areas": 2,
+      "pushes": 2,
+      "moves": 17,
+      "explored": 115,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "galleries-02",
+      "chapter": 4,
+      "areas": 2,
+      "pushes": 7,
+      "moves": 27,
+      "explored": 1467,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "galleries-03",
+      "chapter": 4,
+      "areas": 2,
+      "pushes": 7,
+      "moves": 29,
+      "explored": 757,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "galleries-04",
+      "chapter": 4,
+      "areas": 2,
+      "pushes": 10,
+      "moves": 43,
+      "explored": 48967,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "galleries-05",
+      "chapter": 4,
+      "areas": 2,
+      "pushes": 10,
+      "moves": 45,
+      "explored": 1932,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "galleries-06",
+      "chapter": 4,
+      "areas": 2,
+      "pushes": 12,
+      "moves": 37,
+      "explored": 14708,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "keep-01",
+      "chapter": 5,
+      "areas": 2,
+      "pushes": 7,
+      "moves": 29,
+      "explored": 757,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "keep-02",
+      "chapter": 5,
+      "areas": 2,
+      "pushes": 10,
+      "moves": 35,
+      "explored": 2577,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "keep-03",
+      "chapter": 5,
+      "areas": 2,
+      "pushes": 10,
+      "moves": 43,
+      "explored": 5164,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "keep-04",
+      "chapter": 5,
+      "areas": 2,
+      "pushes": 11,
+      "moves": 41,
+      "explored": 13489,
+      "transitions": 2,
+      "riftTrips": 0
+    },
+    {
+      "id": "keep-05",
+      "chapter": 5,
+      "areas": 3,
+      "pushes": 9,
+      "moves": 41,
+      "explored": 2312,
+      "transitions": 4,
+      "riftTrips": 0
+    },
+    {
+      "id": "keep-06",
+      "chapter": 5,
+      "areas": 3,
+      "pushes": 14,
+      "moves": 45,
+      "explored": 52074,
+      "transitions": 4,
+      "riftTrips": 0
+    },
+    {
+      "id": "astral-01",
+      "chapter": 6,
+      "areas": 2,
+      "pushes": 7,
+      "moves": 29,
+      "explored": 1786,
+      "transitions": 2,
+      "riftTrips": 1
+    },
+    {
+      "id": "astral-02",
+      "chapter": 6,
+      "areas": 2,
+      "pushes": 10,
+      "moves": 37,
+      "explored": 3065,
+      "transitions": 2,
+      "riftTrips": 3
+    },
+    {
+      "id": "astral-03",
+      "chapter": 6,
+      "areas": 2,
+      "pushes": 10,
+      "moves": 39,
+      "explored": 6149,
+      "transitions": 2,
+      "riftTrips": 1
+    },
+    {
+      "id": "astral-04",
+      "chapter": 6,
+      "areas": 2,
+      "pushes": 11,
+      "moves": 43,
+      "explored": 8797,
+      "transitions": 2,
+      "riftTrips": 3
+    },
+    {
+      "id": "astral-05",
+      "chapter": 6,
+      "areas": 3,
+      "pushes": 10,
+      "moves": 43,
+      "explored": 12654,
+      "transitions": 4,
+      "riftTrips": 1
+    },
+    {
+      "id": "astral-06",
+      "chapter": 6,
+      "areas": 3,
+      "pushes": 15,
+      "moves": 67,
+      "explored": 13233,
+      "transitions": 4,
+      "riftTrips": 5
+    }
+  ]
+}

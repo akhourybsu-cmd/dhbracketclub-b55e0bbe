@@ -1143,7 +1143,7 @@ try {
     .fill("Elara");
   await page.evaluate(() => window.runeQa.failTables.push("rune_delve_heroes"));
   await page
-    .getByRole("button", { name: "Enter the sanctum", exact: true })
+    .getByRole("button", { name: "Enter Combat Archive", exact: true })
     .click();
   await expect(
     page.getByRole("textbox", { name: "Hero name", exact: true }),
@@ -1152,7 +1152,7 @@ try {
     window.runeQa.failTables = [];
   });
   await page
-    .getByRole("button", { name: "Enter the sanctum", exact: true })
+    .getByRole("button", { name: "Enter Combat Archive", exact: true })
     .click();
   await expect(page.getByTestId("rune-home")).toBeVisible();
   assert.equal(

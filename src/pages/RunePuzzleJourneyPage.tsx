@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import {
+  ArrowRight,
+  DoorOpen,
+  KeyRound,
+  LockKeyhole,
+  Orbit,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRunePuzzleProgress } from "@/hooks/useRunePuzzles";
 import { PUZZLE_CHAPTERS, PUZZLE_ROOMS } from "@/lib/runedelve/puzzles/rooms";
@@ -19,7 +25,13 @@ export default function RunePuzzleJourneyPage() {
   useEffect(() => {
     if (!query.data || initialized.current === user?.id) return;
     initialized.current = user?.id ?? null;
-    setChapter(Math.min(3, Math.max(1, Math.ceil(query.data.unlocked / 6))));
+    const frontier =
+      PUZZLE_CHAPTERS.find(
+        (item) =>
+          query.data!.unlocked >= item.firstRoom &&
+          query.data!.unlocked <= item.lastRoom,
+      ) ?? PUZZLE_CHAPTERS[PUZZLE_CHAPTERS.length - 1];
+    setChapter(frontier.id);
   }, [query.data, user?.id]);
   if (query.isLoading)
     return <PuzzleDataState retry={() => void query.refetch()} />;
@@ -79,6 +91,19 @@ export default function RunePuzzleJourneyPage() {
                 )}
               </span>
               <b>{room.title}</b>
+              {(room.areas?.length ?? 1) > 1 && (
+                <small className="rp-room-detail">
+                  <DoorOpen aria-hidden="true" />
+                  {room.areas!.length} rooms
+                  {room.keys?.length ? (
+                    <KeyRound aria-hidden="true" />
+                  ) : room.passages?.some(
+                      (passage) => passage.kind === "rift",
+                    ) ? (
+                    <Orbit aria-hidden="true" />
+                  ) : null}
+                </small>
+              )}
               <PuzzleStars
                 count={record?.stars ?? 0}
                 label={`${room.title} mastery`}
@@ -113,7 +138,7 @@ export default function RunePuzzleJourneyPage() {
         })}
       </div>
       <p className="rp-journey-note">
-        Restore a chamber to open the next. Return for a sharper route.
+        Follow the seals. Discover new rooms. Return for a sharper route.
       </p>
     </section>
   );

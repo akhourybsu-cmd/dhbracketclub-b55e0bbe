@@ -56,7 +56,7 @@ export function RunePuzzleHUD() {
         >
           <strong className="rd-title">Rune Delve</strong>
           <small>
-            {playing ? "The living labyrinth" : "A puzzle adventure"}
+            {playing ? "The living labyrinth" : "An exploration adventure"}
           </small>
         </Link>
         {!playing && (

@@ -102,7 +102,7 @@ export default function RuneDelveHomePage() {
     return (
       <div className="rd-load-error" role="alert">
         <Sparkles className="h-8 w-8 text-primary" />
-        <p>The sanctum couldn’t connect.</p>
+        <p>The Combat Archive couldn’t connect.</p>
         <button
           onClick={() => {
             void heroQuery.refetch();
@@ -118,7 +118,7 @@ export default function RuneDelveHomePage() {
     return (
       <div className="rd-load-error" aria-busy="true">
         <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-        <p>Opening the sanctum…</p>
+        <p>Opening the Combat Archive…</p>
         <button
           onClick={() => {
             void heroQuery.refetch();
@@ -144,8 +144,8 @@ export default function RuneDelveHomePage() {
           <p className="rd-eyebrow">
             <Sparkles size={13} /> Combat Archive
           </p>
-          <h1>Choose your legend.</h1>
-          <p>Four classes. One world beneath the runes.</p>
+          <h1>Your archived legend.</h1>
+          <p>Original combat modes. Separate progression.</p>
         </div>
         <div
           className="rd-class-grid"
@@ -184,7 +184,7 @@ export default function RuneDelveHomePage() {
             onChange={(e) => setName(e.target.value)}
             maxLength={24}
             autoComplete="nickname"
-            placeholder="Your legend begins here"
+            placeholder="Name your Archive hero"
           />
         </label>
         <div className="rd-forge-actions">
@@ -204,7 +204,7 @@ export default function RuneDelveHomePage() {
             }}
           >
             <Sparkles />
-            {ensureHero.isPending ? "Summoning…" : "Enter the sanctum"}
+            {ensureHero.isPending ? "Summoning…" : "Enter Combat Archive"}
             <ChevronRight />
           </button>
           <button
@@ -213,7 +213,7 @@ export default function RuneDelveHomePage() {
             className="rd-hub-foot min-h-11"
           >
             <HelpCircle />
-            Learn the runes
+            Combat guide
           </button>
         </div>
         <HowToPlaySheet
@@ -244,14 +244,14 @@ export default function RuneDelveHomePage() {
         <img src={RUNE_PORTAL_ART} alt="" width="1440" height="960" />
         <div className="rd-sanctum-copy">
           <p className="rd-eyebrow">
-            <Sparkles size={13} /> Combat Archive · Expeditions
+            <Sparkles size={13} /> Rune Delve · Original edition
           </p>
           <h1>
-            The depths
+            Combat
             <br />
-            are calling.
+            Archive.
           </h1>
-          <p>Choose your path. Forge a different build every run.</p>
+          <p>Original combat modes. Your heroes and records live here.</p>
           <Link
             className="rd-primary-action rd-btn-juice"
             to="/rune-delve/expedition"

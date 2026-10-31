@@ -90,6 +90,7 @@ export function useRunePuzzleHint(room: PuzzleRoom) {
           value.player,
           value.stones.map((stone) => [stone.id, stone.color, stone.cell]),
           [...value.collected].sort((a, b) => a - b),
+          [...(value.keys ?? [])].sort(),
         ]);
       const currentKey = key(state);
       let canonical = initialPuzzleState(room);

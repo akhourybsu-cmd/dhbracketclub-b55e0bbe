@@ -14,7 +14,7 @@ import {
   useRunePuzzleProgress,
   useSelectRunePuzzleAvatar,
 } from "@/hooks/useRunePuzzles";
-import { PUZZLE_ROOMS } from "@/lib/runedelve/puzzles/rooms";
+import { PUZZLE_CHAPTERS, PUZZLE_ROOMS } from "@/lib/runedelve/puzzles/rooms";
 import { CLASS_LIST, type HeroClass } from "@/lib/runedelve/classConfig";
 import {
   RuneHeroArt,
@@ -99,7 +99,7 @@ function RunePuzzleHomeScreen() {
             <span>
               {complete
                 ? progress.stars >= PUZZLE_ROOMS.length * 3
-                  ? "Return to the vault"
+                  ? "Revisit the Hollow"
                   : "Chase your next star"
                 : progress.completed
                   ? "Continue journey"
@@ -144,21 +144,21 @@ function RunePuzzleHomeScreen() {
         <Link to="/rune-delve/journey" className="rp-menu-link">
           <Compass />
           <span>
-            Chambers<small>Three worlds to unravel</small>
+            Chambers<small>{PUZZLE_CHAPTERS.length} worlds to explore</small>
           </span>
           <ArrowRight />
         </Link>
         <Link to="/rune-delve/legacy" className="rp-menu-link">
           <Archive />
           <span>
-            Legacy archive<small>Your combat adventures</small>
+            Combat archive<small>Original combat modes</small>
           </span>
           <ArrowRight />
         </Link>
       </div>
       {complete && (
         <p className="rp-home-finish">
-          The portal is restored. Every chamber still holds a perfect route.
+          The Hollow is restored. Return to refine your routes.
         </p>
       )}
       <Dialog open={avatarOpen} onOpenChange={setAvatarOpen}>

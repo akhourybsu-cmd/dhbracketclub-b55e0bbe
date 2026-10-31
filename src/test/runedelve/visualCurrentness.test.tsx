@@ -46,6 +46,9 @@ describe("Rune visual currentness", () => {
     ["ember-01", "ember"],
     ["crystal-01", "crystal"],
     ["vault-06", "hollow"],
+    ["galleries-01", "crystal"],
+    ["keep-01", "ember"],
+    ["astral-01", "hollow"],
   ])(
     "uses the active %s puzzle realm without reading archived progression",
     (id, realm) => {

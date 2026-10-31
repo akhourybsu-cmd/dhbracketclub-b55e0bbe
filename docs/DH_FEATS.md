@@ -4,6 +4,8 @@ DH Score is an account's permanent achievement total. A club's board compares it
 
 The launch collection has **63 families, 314 tier unlocks and 18 areas**. Each family has up to five tiers: Bronze +10, Silver +20, Gold +40, Platinum +80 and Mythic +150. These are individual awards, so a full five-tier family contributes 300 DH. The four-weapon Nexus family stops at Platinum. All thresholds, copy and points are versioned in `src/lib/feats/catalog.json`; the app displays the deployed server catalog, including for older clients.
 
+Rune extensions bring the current collection to **70 families and 347 tier unlocks**. Three Expedition families and the original two puzzle families retain their deployed targets and point values. Two additional connected-adventure families, Beyond the Seal and Secrets of the Hollow, count distinct completed adventures 19–36 and their best mastery stars. Area visits and repeated clears do not add volume. Each of the original and expansion puzzle collections awards at most 135 DH; all existing award receipts remain unchanged. Extension catalogs live beside `catalog.json` and may use smaller point values appropriate to their targets.
+
 ## Member experience
 
 - `/feats` opens an immersive, animated board with Next up, Feats and Club views. It is a core account feature and requires authentication and active club membership, not a separately installed plugin.

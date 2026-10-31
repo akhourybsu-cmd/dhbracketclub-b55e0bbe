@@ -7,6 +7,20 @@
   border-bottom: 1px solid hsl(var(--primary) / 0.18);
   background: hsl(var(--background) / 0.92);
 }
+.rd-archive-hud .rd-hud-home > div > p:first-child {
+  color: hsl(var(--gold));
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.rd-archive-hud .rd-hud-home > div > p:last-child {
+  letter-spacing: 0.08em;
+}
+.rd-world-scene[data-puzzle-chapter="5"] .rd-world-illustration {
+  filter: hue-rotate(85deg) saturate(0.75);
+}
+.rd-world-scene[data-puzzle-chapter="6"] .rd-world-illustration {
+  filter: hue-rotate(35deg);
+}
 .rd-puzzle-hud > button,
 .rd-puzzle-hud > a {
   min-height: 44px;

@@ -53,16 +53,22 @@ describe("DH Feats shared progression", () => {
   });
   it("adds puzzle goals and sends each Rune ruleset to the matching experience", () => {
     const combined = [...catalog, ...expeditionCatalog, ...puzzleCatalog];
-    expect(new Set(combined.map((feat) => feat.key)).size).toBe(68);
+    expect(new Set(combined.map((feat) => feat.key)).size).toBe(70);
     expect(
       combined.reduce((sum, feat) => sum + feat.thresholds.length, 0),
-    ).toBe(338);
-    expect(puzzleCatalog.map((feat) => feat.sort_order)).toEqual([66, 67]);
+    ).toBe(347);
+    expect(puzzleCatalog.map((feat) => feat.sort_order)).toEqual([
+      66, 67, 68, 69,
+    ]);
     expect(puzzleCatalog.map((feat) => feat.thresholds)).toEqual([
+      [1, 6, 12, 18],
+      [3, 12, 24, 42, 54],
       [1, 6, 12, 18],
       [3, 12, 24, 42, 54],
     ]);
     expect(puzzleCatalog.map((feat) => feat.points)).toEqual([
+      [5, 10, 15, 25],
+      [5, 10, 15, 20, 30],
       [5, 10, 15, 25],
       [5, 10, 15, 20, 30],
     ]);

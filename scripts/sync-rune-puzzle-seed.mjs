@@ -1,11 +1,29 @@
 // Regenerate the launch SQL seed only after all authored gold routes validate.
 // Running this edits a local migration; it never connects to any database.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { build } from "esbuild";
 
 const rooms = JSON.parse(
   await readFile("src/lib/runedelve/puzzles/rooms.json", "utf8"),
+).filter((room) => room.order <= 18);
+const stable = (value) =>
+  Array.isArray(value)
+    ? value.map(stable)
+    : value && typeof value === "object"
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map((key) => [key, stable(value[key])]),
+        )
+      : value;
+assert.equal(
+  createHash("sha256")
+    .update(JSON.stringify(stable(rooms)))
+    .digest("hex"),
+  "c9c42e63af6c3e44694b4471fbceaed0efa98ae7681f6e05b96581778e5da169",
+  "Released puzzles stay immutable; append new content through a new migration",
 );
 const compiled = await build({
   entryPoints: ["src/lib/runedelve/puzzles/engine.ts"],

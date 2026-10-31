@@ -1,5 +1,6 @@
 // Isolated PostgreSQL replay, RLS and idempotency checks. Never touches live data.
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { build } from "esbuild";
 import { PGlite } from "@electric-sql/pglite";
@@ -23,9 +24,27 @@ const preliminary = process.argv.includes("--allow-unseeded");
 if (!preliminary)
   assert.equal(
     canonical.length,
-    18,
-    "The launch migration must contain the complete verified campaign",
+    36,
+    "Both migrations must contain the complete verified six-chapter campaign",
   );
+const stable = (value) =>
+  Array.isArray(value)
+    ? value.map(stable)
+    : value && typeof value === "object"
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map((key) => [key, stable(value[key])]),
+        )
+      : value;
+const launch = canonical.slice(0, 18);
+assert.equal(
+  createHash("sha256")
+    .update(JSON.stringify(stable(launch)))
+    .digest("hex"),
+  "c9c42e63af6c3e44694b4471fbceaed0efa98ae7681f6e05b96581778e5da169",
+  "Every released room, including its supplied solution, remains unchanged",
+);
 const db = new PGlite();
 const uid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 await db.exec(`
@@ -56,6 +75,60 @@ const migration = await readFile(
 );
 await db.exec(migration);
 await db.exec(migration);
+const adventures = await readFile(
+  "supabase/migrations/20261031090000_rune_delve_adventures.sql",
+  "utf8",
+);
+const launchDefinitionHash = async () =>
+  (
+    await db.query(
+      "select md5(string_agg(to_jsonb(d)::text,E'\\n' order by ordinal)) hash from rune_puzzle_definitions d where ordinal<=18",
+    )
+  ).rows[0].hash;
+const launchBefore = await launchDefinitionHash();
+let veteranReceipt;
+let veteranRowsBefore;
+const veteranRowsHash = async () =>
+  (
+    await db.query(`select md5(string_agg(value::text,E'\n' order by value::text)) hash from (
+ select to_jsonb(p) value from rune_puzzle_profiles p where user_id='${uid(4)}'
+ union all select to_jsonb(r) from rune_puzzle_results r where user_id='${uid(4)}'
+ union all select to_jsonb(r) from rune_puzzle_receipts r where user_id='${uid(4)}') rows`)
+  ).rows[0].hash;
+if (!preliminary) {
+  await db.exec("set role authenticated");
+  await db.query("select set_config('test.user',$1,false)", [uid(4)]);
+  for (const room of launch)
+    veteranReceipt = (
+      await db.query(
+        "select rune_puzzle_complete($1,$2,$3::jsonb,$4::uuid) r",
+        [
+          room.id,
+          room.version,
+          JSON.stringify(room.solution),
+          uid(4500 + room.order),
+        ],
+      )
+    ).rows[0].r;
+  assert.equal(veteranReceipt.progress.completed, 18);
+  assert.equal(veteranReceipt.unlocked, 18);
+  assert.equal(veteranReceipt.progress.stars, 54);
+  await db.exec("reset role");
+  veteranRowsBefore = await veteranRowsHash();
+}
+await db.exec(adventures);
+await db.exec(adventures);
+assert.equal(
+  await launchDefinitionHash(),
+  launchBefore,
+  "Extension never rewrites or retires a released definition",
+);
+if (!preliminary)
+  assert.equal(
+    await veteranRowsHash(),
+    veteranRowsBefore,
+    "Extension preserves original profiles, results and pending receipt bodies",
+  );
 let checks = 0;
 const check = async (name, fn) => {
   await fn();
@@ -131,6 +204,157 @@ const slow = [
   "right",
   "down",
 ];
+const connected = {
+  ...base,
+  id: "sql-adventure-04",
+  order: 4,
+  chapter: 4,
+  mechanic: "keys",
+  areas: [
+    { id: "hall", title: "Entry Hall" },
+    { id: "cache", title: "Sealed Cache" },
+  ],
+  exit: 53,
+  passages: [{ a: 17, b: 49 }],
+  keys: [{ color: "green", cell: 43 }],
+  doors: [{ color: "green", cell: 52 }],
+  treasures: [43],
+};
+const connectedGold = [
+  ...base.solution,
+  "up",
+  "right",
+  "down",
+  "right",
+  "right",
+  "right",
+];
+const adventureModels = [
+  [connected, connectedGold],
+  [{ ...connected, start: 35 }, ["down"]],
+  [{ ...connected, start: 36 }, ["up"]],
+  [{ ...connected, start: 71 }, ["down"]],
+  [{ ...connected, passages: [{ a: 15, b: 49 }] }, ["right"]],
+  [
+    {
+      ...connected,
+      passages: [{ a: 16, b: 49 }],
+      sigils: [{ color: "red", cell: 22 }],
+      ice: [15],
+    },
+    ["right"],
+  ],
+  [
+    {
+      ...base,
+      exit: 35,
+      keys: [{ color: "blue", cell: 14 }],
+      doors: [{ color: "blue", cell: 16 }],
+      ice: [15],
+      sigils: [{ color: "red", cell: 17 }],
+    },
+    ["right"],
+  ],
+  [
+    {
+      ...base,
+      exit: 35,
+      keys: [{ color: "blue", cell: 14 }],
+      doors: [{ color: "blue", cell: 15 }],
+    },
+    ["right"],
+  ],
+  [
+    {
+      ...base,
+      keys: [
+        { color: "red", cell: 13 },
+        { color: "blue", cell: 7 },
+      ],
+      doors: [{ color: "red", cell: 15 }],
+      exit: 35,
+    },
+    ["up", "down", "right"],
+  ],
+  [
+    {
+      ...base,
+      start: 13,
+      exit: 35,
+      stones: [{ id: "a", color: "red", cell: 20 }],
+      sigils: [{ color: "red", cell: 21 }],
+      passages: [{ a: 7, b: 28, kind: "rift" }],
+      treasures: [22],
+    },
+    ["up", "left", "right", "up", "down"],
+  ],
+  [
+    {
+      ...connected,
+      keys: [{ color: "blue", cell: 43 }],
+      doors: [
+        { color: "blue", cell: 52 },
+        { color: "blue", cell: 58 },
+      ],
+      exit: 59,
+    },
+    [
+      ...base.solution,
+      "up",
+      "right",
+      "down",
+      "right",
+      "right",
+      "down",
+      "right",
+    ],
+  ],
+  [
+    {
+      ...connected,
+      areas: [...connected.areas, { id: "observatory", title: "Observatory" }],
+      stones: [{ id: "a", color: "red", cell: 20 }],
+      sigils: [{ color: "red", cell: 21 }],
+      passages: [
+        { a: 14, b: 49 },
+        { a: 50, b: 85 },
+      ],
+      keys: [{ color: "red", cell: 79 }],
+      doors: [{ color: "red", cell: 86 }],
+      treasures: [79],
+      exit: 87,
+    },
+    ["right", "right", "up", "right", "down", "right"],
+  ],
+  [
+    {
+      ...connected,
+      keys: [],
+      doors: [],
+      stones: [{ id: "a", color: "red", cell: 20 }],
+      sigils: [{ color: "red", cell: 21 }],
+      passages: [{ a: 14, b: 49 }],
+      guardian: {
+        cell: 55,
+        color: "red",
+        archetypeId: "rune_wraith",
+        name: "Rune Wraith",
+      },
+    },
+    ["down", "right", "up", "down"],
+  ],
+  [
+    {
+      ...connected,
+      keys: [],
+      doors: [],
+      stones: [...connected.stones, { id: "weight", color: "gold", cell: 30 }],
+      plates: [30],
+      gates: [55],
+    },
+    [...base.solution, "down"],
+  ],
+];
 const originals = (
   await db.query(
     "select room_id,definition_version from rune_puzzle_definitions where active",
@@ -139,7 +363,7 @@ const originals = (
 if (!preliminary) {
   assert.equal(
     originals.length,
-    18,
+    36,
     "SQL canonical definitions match the shipped campaign",
   );
   for (const room of canonical) {
@@ -156,6 +380,25 @@ if (!preliminary) {
       `Immutable server definition matches client ${room.id}`,
     );
   }
+}
+if (!preliminary) {
+  await db.exec("set role authenticated");
+  await check(
+    "a completed launch journey opens adventure19 without resetting its stars, records or old frozen acknowledgement",
+    async () => {
+      await actor(4);
+      const current = await profile();
+      assert.equal(current.unlocked, 19);
+      assert.equal(current.completed, 18);
+      assert.equal(current.stars, 54);
+      const last = launch[17];
+      assert.deepEqual(
+        await complete(last, last.solution, uid(4518)),
+        veteranReceipt,
+      );
+    },
+  );
+  await db.exec("reset role");
 }
 await db.exec("update rune_puzzle_definitions set active=false");
 const rooms = [
@@ -201,6 +444,10 @@ await check(
       "select * from rune_puzzle_receipts",
       "select rune_puzzle_progress(auth.uid())",
       "select rune_puzzle_replay('{}','[]')",
+      "select rune_puzzle_area_count('{}')",
+      "select rune_puzzle_passage_destination('{}',0)",
+      "select rune_puzzle_stone_blocked('{}','{}',0)",
+      "select rune_puzzle_collect_keys('{}','{}',0)",
     ])
       await assert.rejects(db.exec(sql), /permission denied/);
   },
@@ -287,8 +534,11 @@ await check(
     );
     assert.equal((await profile()).completed, 0);
     assert.equal(
-      (await owner("select count(*)::integer n from rune_puzzle_receipts"))
-        .rows[0].n,
+      (
+        await owner(
+          `select count(*)::integer n from rune_puzzle_receipts where user_id='${uid(1)}'`,
+        )
+      ).rows[0].n,
       0,
     );
   },
@@ -510,15 +760,18 @@ await check(
       return seed;
     };
     const dirs = ["up", "right", "down", "left"];
-    for (let trial = 0; trial < 160; trial++) {
-      const room = {
-        ...base,
-        plates: trial % 2 ? [13] : [],
-        gates: trial % 2 ? [16] : [],
-        ice: trial % 3 ? [15, 16] : [],
-        walls: trial % 5 ? [] : [4, 5, 10, 11, 28, 29, 34, 35],
-        treasures: [7, 13, 22],
-      };
+    for (let trial = 0; trial < 280; trial++) {
+      const room =
+        trial % 3 === 0
+          ? adventureModels[trial % adventureModels.length][0]
+          : {
+              ...base,
+              plates: trial % 2 ? [13] : [],
+              gates: trial % 2 ? [16] : [],
+              ice: trial % 3 ? [15, 16] : [],
+              walls: trial % 5 ? [] : [4, 5, 10, 11, 28, 29, 34, 35],
+              treasures: [7, 13, 22],
+            };
       const actions = [];
       let state = engine.initialPuzzleState(room);
       const length = (random() >>> 16) % 36;
@@ -543,9 +796,127 @@ await check(
   },
 );
 
+await check(
+  "global cell neighbors never cross an area edge or wrap between rooms",
+  async () => {
+    const room = {
+      ...connected,
+      areas: [...connected.areas, { id: "third", title: "Third Room" }],
+    };
+    const rows = (
+      await owner(
+        "select cell,direction,rune_puzzle_neighbor(cell,direction) neighbor from generate_series(0,107) cell cross join (values('up'),('right'),('down'),('left')) directions(direction)",
+      )
+    ).rows;
+    for (const row of rows)
+      assert.equal(
+        row.neighbor,
+        engine.puzzleNeighbor(room, row.cell, row.direction),
+        `${row.cell}/${row.direction}`,
+      );
+    for (const cell of [35, 36, 71, 72]) {
+      for (const direction of ["up", "right", "down", "left"]) {
+        const test = { ...room, start: cell };
+        assert.deepEqual(
+          await replaySql(test, [direction]),
+          engine.replayPuzzle(test, [direction]),
+        );
+      }
+    }
+  },
+);
+
+await check(
+  "passages, rifts, reusable keys, locked doors and exploration replay exactly like the production engine",
+  async () => {
+    for (const [room, actions] of adventureModels) {
+      for (let length = 0; length <= actions.length; length++) {
+        const trace = actions.slice(0, length);
+        assert.deepEqual(
+          await replaySql(room, trace),
+          engine.replayPuzzle(room, trace),
+          `${room.id}: ${JSON.stringify(trace)}`,
+        );
+      }
+    }
+    const solved = await replaySql(connected, connectedGold);
+    assert.equal(solved.valid, true);
+    assert.equal(solved.state.status, "solved");
+    assert.deepEqual(solved.state.keys, ["green"]);
+    assert.deepEqual(solved.state.visitedAreas, [0, 1]);
+    const oneStep = await replaySql(adventureModels[11][0], ["right"]);
+    assert.equal(
+      oneStep.state.player,
+      49,
+      "A passage travels once, not through every available link",
+    );
+    assert.equal(oneStep.state.moves, 1);
+    assert.deepEqual(oneStep.state.visitedAreas, [0, 1]);
+  },
+);
+
+await check(
+  "key pickup occurs after initial collision checks but before a pushed stone continues over ice",
+  async () => {
+    const revealed = await replaySql(adventureModels[6][0], ["right"]);
+    assert.equal(revealed.valid, true);
+    assert.deepEqual(revealed.state.keys, ["blue"]);
+    assert.equal(
+      revealed.state.stones[0].cell,
+      16,
+      "Revealed key opens the later ice-slide door",
+    );
+    const blocked = await replaySql(adventureModels[7][0], ["right"]);
+    assert.equal(blocked.valid, false);
+    assert.equal(blocked.error, "door:0");
+    assert.deepEqual(blocked.state.keys, []);
+    assert.equal(blocked.state.moves, 0);
+    const passage = await replaySql(adventureModels[4][0], ["right"]);
+    assert.equal(passage.valid, false);
+    assert.equal(passage.error, "passage:0");
+    const iceStop = await replaySql(adventureModels[5][0], ["right"]);
+    assert.equal(iceStop.valid, true);
+    assert.equal(
+      iceStop.state.stones[0].cell,
+      15,
+      "Ice stops a runestone before a player-only passage",
+    );
+  },
+);
+
+await check(
+  "a connected adventure settles one canonical result and an identical retry never mints extra stars",
+  async () => {
+    await owner(
+      "insert into rune_puzzle_definitions(room_id,definition_version,ordinal,definition) values($1,1,$2,$3::jsonb)",
+      [connected.id, connected.order, JSON.stringify(connected)],
+    );
+    await actor(1);
+    const receipt = await complete(connected, connectedGold, uid(2200));
+    assert.equal(receipt.firstClear, true);
+    assert.equal(receipt.stars, 3);
+    assert.equal(receipt.starsGained, 3);
+    assert.equal(receipt.progress.completed, 4);
+    assert.equal(receipt.progress.stars, 12);
+    assert.deepEqual(
+      await complete(connected, connectedGold, uid(2200)),
+      receipt,
+    );
+    const replayed = await complete(connected, connectedGold, uid(2201));
+    assert.equal(replayed.firstClear, false);
+    assert.equal(replayed.starsGained, 0);
+    await actor(2);
+    await assert.rejects(
+      complete(connected, connectedGold, uid(2200)),
+      /puzzle_locked/,
+    );
+    await actor(1);
+  },
+);
+
 if (!preliminary)
   await check(
-    "all18 shipped solutions replay and settle sequentially for a fresh account",
+    "all36 shipped solutions replay and settle sequentially for a fresh account",
     async () => {
       await owner("update rune_puzzle_definitions set active=false");
       for (const room of canonical)
@@ -577,9 +948,9 @@ if (!preliminary)
         assert.equal(receipt.progress.completed, room.order, room.id);
       }
       const final = await profile();
-      assert.equal(final.unlocked, 18);
-      assert.equal(final.completed, 18);
-      assert.equal(final.stars, 54);
+      assert.equal(final.unlocked, 36);
+      assert.equal(final.completed, 36);
+      assert.equal(final.stars, 108);
       await actor(1);
     },
   );
@@ -596,6 +967,7 @@ await check(
       ).hash;
     const old = await snapshot();
     await db.exec(migration);
+    await db.exec(adventures);
     assert.equal(await snapshot(), old);
     await db.exec("set role authenticated");
   },
@@ -614,6 +986,30 @@ if (!preliminary)
       );
       await assert.rejects(
         db.exec(migration),
+        /puzzle_definition_version_immutable/,
+      );
+      await db.exec("rollback");
+      await db.query(
+        "update rune_puzzle_definitions set definition=$3::jsonb where room_id=$1 and definition_version=$2",
+        [room.id, room.version, JSON.stringify(original)],
+      );
+      await db.exec("set role authenticated");
+    },
+  );
+
+if (!preliminary)
+  await check(
+    "a changed adventure definition cannot silently overwrite its released version",
+    async () => {
+      await db.exec("reset role");
+      const room = canonical[18];
+      const { solution: _solution, ...original } = room;
+      await db.query(
+        "update rune_puzzle_definitions set definition=jsonb_set(definition,'{parPushes}',to_jsonb((definition->>'parPushes')::integer+1)) where room_id=$1 and definition_version=$2",
+        [room.id, room.version],
+      );
+      await assert.rejects(
+        db.exec(adventures),
         /puzzle_definition_version_immutable/,
       );
       await db.exec("rollback");

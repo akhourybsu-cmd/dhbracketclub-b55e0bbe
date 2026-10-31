@@ -20,5 +20,27 @@
     "kind": "mastery",
     "unit": "count",
     "sort_order": 67
+  },
+  {
+    "key": "rune_adventure_rooms",
+    "category": "rune",
+    "title": "Beyond the Seal",
+    "description": "Complete distinct connected-room adventures in chapters 4–6. Visiting areas or replaying an adventure does not add clears.",
+    "thresholds": [1, 6, 12, 18],
+    "points": [5, 10, 15, 25],
+    "kind": "volume",
+    "unit": "count",
+    "sort_order": 68
+  },
+  {
+    "key": "rune_adventure_stars",
+    "category": "rune",
+    "title": "Secrets of the Hollow",
+    "description": "Earn mastery stars in connected-room adventures. Each adventure contributes only its best result.",
+    "thresholds": [3, 12, 24, 42, 54],
+    "points": [5, 10, 15, 20, 30],
+    "kind": "mastery",
+    "unit": "count",
+    "sort_order": 69
   }
 ]

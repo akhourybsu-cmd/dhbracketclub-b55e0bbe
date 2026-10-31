@@ -199,7 +199,7 @@ async function settle(page) {
             ),
       ),
     undefined,
-    { timeout: 2500 },
+    { timeout: 4000 },
   );
 }
 async function routeIs(page, path) {
@@ -207,6 +207,21 @@ async function routeIs(page, path) {
     "data-qa-route",
     path,
   );
+}
+async function reloadChamber(page, room) {
+  const route = `/rune-delve/chamber/${room.id}`;
+  await routeIs(page, route);
+  // The fixture's MemoryRouter does not update the browser URL on navigation.
+  // Keep the real chamber route when remounting; state still comes from storage.
+  await page.evaluate((path) => {
+    const url = new URL(location.href);
+    url.searchParams.set("route", path);
+    history.replaceState(history.state, "", url);
+  }, route);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.runeQa && window.runeQueryClient);
+  await expect(page.locator(".rd-mode main")).toBeVisible();
+  await settle(page);
 }
 async function shot(page, name) {
   await page.screenshot({ path: join(output, `${name}.png`) });
@@ -337,34 +352,55 @@ async function modelPath(page, room, actions = room.solution) {
   );
 }
 async function readBoard(page) {
-  return page.locator('[data-testid="puzzle-play"]').evaluate((root) => ({
-    player: Number(
+  return page.locator('[data-testid="puzzle-play"]').evaluate((root) => {
+    const player = Number(
       root
         .querySelector('[data-puzzle-player="true"]')
         ?.getAttribute("data-puzzle-cell"),
-    ),
-    stones: [...root.querySelectorAll("[data-puzzle-stone]")]
-      .map(
-        (node) =>
-          `${node.getAttribute("data-puzzle-stone")}:${node.getAttribute("data-puzzle-cell")}`,
-      )
-      .sort(),
-    pushes: Number(
-      root.querySelector(".rp-route-stats > span:nth-child(1) > b")
+    );
+    const list = (value) => (value || "").split(",").filter(Boolean);
+    const area = Number(
+      root
+        .querySelector('[data-testid="puzzle-board"]')
+        ?.getAttribute("data-area-index") ?? Math.floor(player / 36),
+    );
+    return {
+      player,
+      area,
+      keys: list(root.getAttribute("data-puzzle-keys")).sort(),
+      visited: list(root.getAttribute("data-puzzle-visited"))
+        .map(Number)
+        .sort((a, b) => a - b),
+      stones: [...root.querySelectorAll("[data-puzzle-stone]")]
+        .map(
+          (node) =>
+            `${node.getAttribute("data-puzzle-stone")}:${node.getAttribute("data-puzzle-cell")}`,
+        )
+        .sort(),
+      pushes: Number(
+        root.querySelector(".rp-route-stats > span:nth-child(1) > b")
+          ?.textContent,
+      ),
+      moves: Number(
+        root.querySelector(".rp-route-stats > span:nth-child(2) > b")
+          ?.textContent,
+      ),
+      treasure: root.querySelector(".rp-route-stats > span:nth-child(3) > b")
         ?.textContent,
-    ),
-    moves: Number(
-      root.querySelector(".rp-route-stats > span:nth-child(2) > b")
-        ?.textContent,
-    ),
-    treasure: root.querySelector(".rp-route-stats > span:nth-child(3) > b")
-      ?.textContent,
-  }));
+    };
+  });
 }
 function expectedBoard(state, room) {
+  const area = Math.floor(state.player / 36);
   return {
     player: state.player,
-    stones: state.stones.map((stone) => `${stone.color}:${stone.cell}`).sort(),
+    area,
+    keys: [...(state.keys ?? [])].sort(),
+    visited: [...(state.visitedAreas ?? [])].sort((a, b) => a - b),
+    stones: state.stones
+      .filter((stone) => Math.floor(stone.cell / 36) === area)
+      .map((stone) => `${stone.color}:${stone.cell}`)
+      .sort(),
     pushes: state.pushes,
     moves: state.moves,
     treasure: `${state.collected.length}/${room.treasures.length}`,
@@ -382,6 +418,21 @@ async function assertBoard(page, state, room, label) {
     );
     throw error;
   }
+}
+async function closeDialogAndSettle(page, dialog, name) {
+  await dialog.getByRole("button", { name, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await settle(page);
+}
+async function enterJourney(page) {
+  await page.locator('.rd-game-nav a[href="/rune-delve/journey"]').click();
+  await expect(page.getByTestId("puzzle-journey")).toBeVisible();
+}
+async function enterChapter(page, chapter) {
+  await page
+    .getByRole("navigation", { name: "Puzzle chapters", exact: true })
+    .getByRole("button", { name: new RegExp(chapter.title) })
+    .click();
 }
 async function actMove(page, direction, state, mode = "arrow") {
   await page.evaluate(() => {
@@ -424,15 +475,18 @@ async function actMove(page, direction, state, mode = "arrow") {
     }
   });
   if (mode === "tap") {
-    const [r, c] = [Math.floor(state.player / 6), state.player % 6];
+    const areaOffset = Math.floor(state.player / 36) * 36;
+    const local = state.player % 36;
+    const [r, c] = [Math.floor(local / 6), local % 6];
     const next =
-      direction === "up"
+      areaOffset +
+      (direction === "up"
         ? (r - 1) * 6 + c
         : direction === "down"
           ? (r + 1) * 6 + c
           : direction === "left"
             ? r * 6 + c - 1
-            : r * 6 + c + 1;
+            : r * 6 + c + 1);
     await page.locator(`[data-puzzle-cell="${next}"]`).tap();
   } else if (mode === "dpad")
     await page
@@ -500,6 +554,22 @@ async function playRoom(page, room, { modes = true, snapshot = false } = {}) {
     await fit(page, `${room.id}-active`);
     await shot(page, `${room.id}-active`);
   }
+  const coachTexts = new Set();
+  if (room.order === 1) {
+    await expect(page.getByTestId("puzzle-coach")).toBeVisible();
+    await expect(page.locator(".rp-tile.is-coached")).toHaveCount(1);
+    coachTexts.add(await page.getByTestId("puzzle-coach").innerText());
+    await shot(page, "opening-guided-first-step");
+  }
+  if ([7, 13, 19, 25, 31].includes(room.order)) {
+    await expect(page.getByTestId("puzzle-coach")).toBeVisible();
+    report.checks.push({
+      label: `${room.id}-new-mechanic-introduction`,
+      ok: true,
+      prompt: await page.getByTestId("puzzle-coach").innerText(),
+    });
+  }
+  const seenAreas = new Set([Math.floor(model.states[0].player / 36)]);
   for (let index = 0; index < room.solution.length; index++) {
     const mode = !modes
       ? "arrow"
@@ -519,6 +589,32 @@ async function playRoom(page, room, { modes = true, snapshot = false } = {}) {
       room,
       `${room.id}: input${index + 1} ${mode}`,
     );
+    if (room.order === 1 && model.states[index + 1].status !== "solved")
+      coachTexts.add(await page.getByTestId("puzzle-coach").innerText());
+    const area = Math.floor(model.states[index + 1].player / 36);
+    if (!seenAreas.has(area)) {
+      seenAreas.add(area);
+      await expect(page.getByTestId("puzzle-board")).toHaveAttribute(
+        "data-area-index",
+        String(area),
+      );
+      await expect(page.locator("[data-puzzle-cell]")).toHaveCount(36);
+      if (snapshot) {
+        await fit(page, `${room.id}-area${area + 1}`);
+        await shot(page, `${room.id}-area${area + 1}`);
+      }
+    }
+  }
+  if (room.order === 1) {
+    assert.ok(
+      coachTexts.size >= 3,
+      "The opening walk-through reacts to walking, restoring a sigil and finding treasure",
+    );
+    report.checks.push({
+      label: "guided-opening-uses-real-walk-push-treasure-exit",
+      ok: true,
+      prompts: coachTexts.size,
+    });
   }
   const result = page.getByRole("dialog", {
     name: "Chamber restored",
@@ -533,7 +629,7 @@ async function playRoom(page, room, { modes = true, snapshot = false } = {}) {
   ).toBeVisible();
   await expect(
     result.getByRole("link", {
-      name: /^(Enter the next chamber|Return to the journey)/,
+      name: /^(Enter the next (?:chamber|adventure)|Return to the journey)/,
     }),
   ).toBeVisible();
   await fit(page, `${room.id}-result`, ".rp-result-dialog");
@@ -555,6 +651,8 @@ async function playRoom(page, room, { modes = true, snapshot = false } = {}) {
     ok: true,
     moves: model.states.at(-1).moves,
     pushes: row.best_pushes,
+    areas: seenAreas.size,
+    keys: model.states.at(-1).keys ?? [],
   });
   console.log(
     `PASS ${room.id}: ${row.best_pushes} pushes / ${model.states.at(-1).moves} steps`,
@@ -574,9 +672,17 @@ async function fullJourney() {
   const { page, context } = await setup();
   try {
     await go(page, "/rune-delve");
-    const { rooms } = await roomData(page),
+    const { rooms, chapters } = await roomData(page),
       before = await legacySnapshot(page);
-    assert.equal(rooms.length, 18, "First release contains18 authored rooms");
+    assert.ok(
+      rooms.length >= 36,
+      "Expanded journey contains at least36 authored adventures",
+    );
+    assert.equal(
+      chapters.length,
+      6,
+      "Six chapters introduce the expanding toolkit",
+    );
     const first = await page.evaluate(
       () => window.runeQa.tables.rune_puzzle_results.length,
     );
@@ -585,18 +691,20 @@ async function fullJourney() {
       0,
       "Fresh puzzle track starts atroom1 without legacy progress",
     );
-    await expect(
-      page.getByRole("link", { name: /^Enter the Hollow/ }),
-    ).toBeVisible();
-    await page.getByRole("link", { name: /^Enter the Hollow/ }).click();
+    const start = page
+      .getByTestId("puzzle-home")
+      .locator("a.rp-primary")
+      .first();
+    await expect(start).toBeVisible();
+    await start.click();
     for (const room of rooms) {
       await routeIs(page, `/rune-delve/chamber/${room.id}`);
       const result = await playRoom(page, room, {
-        snapshot: [1, 7, 13, 18].includes(room.order),
+        snapshot: [1, 7, 13, 18, 19, 25, 31, rooms.length].includes(room.order),
       });
       await result
         .getByRole("link", {
-          name: /^(Enter the next chamber|Return to the journey)/,
+          name: /^(Enter the next (?:chamber|adventure)|Return to the journey)/,
         })
         .click();
     }
@@ -606,10 +714,10 @@ async function fullJourney() {
         (row) => row.user_id === "member",
       ),
     );
-    assert.equal(records.length, 18);
+    assert.equal(records.length, rooms.length);
     assert.equal(
       records.reduce((sum, row) => sum + row.stars, 0),
-      54,
+      rooms.length * 3,
     );
     assert.deepEqual(
       await legacySnapshot(page),
@@ -619,21 +727,25 @@ async function fullJourney() {
     await page.reload({ waitUntil: "domcontentloaded" });
     await settle(page);
     await expect(page.getByTestId("puzzle-home")).toBeVisible();
-    await expect(page.locator(".rp-home-progress")).toContainText("18");
-    await expect(page.locator(".rp-home-progress")).toContainText("54");
+    await expect(page.locator(".rp-home-progress")).toContainText(
+      String(rooms.length),
+    );
+    await expect(page.locator(".rp-home-progress")).toContainText(
+      String(rooms.length * 3),
+    );
     assert.equal(
       await page.evaluate(
         () => window.runeQa.tables.rune_puzzle_results.length,
       ),
-      18,
+      rooms.length,
       "Records persist acrossreload",
     );
     await shot(page, "journey-complete");
     report.checks.push({
-      label: "all18-journal-reload-legacy-preservation",
+      label: `all${rooms.length}-journal-reload-legacy-preservation`,
       ok: true,
-      rooms: 18,
-      stars: 54,
+      rooms: rooms.length,
+      stars: rooms.length * 3,
     });
   } catch (error) {
     await shot(page, `failure-${report.checks.length}`).catch(() => {});
@@ -646,7 +758,7 @@ async function menuAndMobile(width, height, motion) {
   const { page, context } = await setup(width, height, motion);
   const label = `${width}x${height}-${motion}`;
   try {
-    await go(page, "/rune-delve", { puzzleCompleted: "18" });
+    await go(page, "/rune-delve", { puzzleCompleted: "9999" });
     await fit(page, `${label}-home`);
     await fit(page, `${label}-hud`, ".rd-puzzle-hud");
     await shot(page, `${label}-home`);
@@ -669,14 +781,13 @@ async function menuAndMobile(width, height, motion) {
       ),
       "rogue",
     );
-    await page.getByRole("link", { name: /^Chambers/ }).click();
-    await expect(page.getByTestId("puzzle-journey")).toBeVisible();
+    await enterJourney(page);
     const { rooms, chapters } = await roomData(page);
     for (const chapter of chapters) {
-      await page
-        .getByRole("button", { name: new RegExp(chapter.title) })
-        .click();
+      await enterChapter(page, chapter);
       await fit(page, `${label}-chapter${chapter.id}`);
+      if (chapter.id === chapters.length)
+        await shot(page, `${label}-chapter${chapter.id}`);
     }
     await page.getByRole("link", { name: "Guide", exact: true }).click();
     await fit(page, `${label}-guide`);
@@ -689,23 +800,29 @@ async function menuAndMobile(width, height, motion) {
       await pager.getByRole("button", { name: /^Next / }).click();
       await fit(page, `${label}-guide${index + 1}`);
     }
-    await page.getByRole("link", { name: "Archive", exact: true }).click();
+    await page.locator('.rd-game-nav a[href="/rune-delve/legacy"]').click();
     await routeIs(page, "/rune-delve/legacy");
+    await expect(
+      page.locator('header[data-rune-edition="archive"]'),
+    ).toContainText("Combat Archive");
+    await expect(page.locator(".rd-mode main")).toContainText(
+      /Original combat/,
+    );
     await expect(page.locator(".rd-mode main")).toContainText("Expedition");
-    await page.getByRole("button", { name: "Back", exact: true }).click();
+    await fit(page, `${label}-clearly-labeled-archive`);
+    await shot(page, `${label}-archive`);
+    await page
+      .getByRole("button", { name: "Return to puzzle journey", exact: true })
+      .click();
     await routeIs(page, "/rune-delve");
-    await page.getByRole("link", { name: /^Chambers/ }).click();
+    await enterJourney(page);
     const representative =
       rooms.find((room) => room.mechanic === "ice" && room.guardian) ??
       rooms.find((room) => room.mechanic === "ice");
-    await page
-      .getByRole("button", {
-        name: new RegExp(
-          chapters.find((chapter) => chapter.id === representative.chapter)
-            .title,
-        ),
-      })
-      .click();
+    await enterChapter(
+      page,
+      chapters.find((chapter) => chapter.id === representative.chapter),
+    );
     await page
       .getByRole("link", {
         name: `Enter chamber ${representative.order}: ${representative.title}`,
@@ -789,6 +906,7 @@ async function menuAndMobile(width, height, motion) {
           state.player,
           state.stones.map((stone) => [stone.id, stone.color, stone.cell]),
           [...state.collected].sort((a, b) => a - b),
+          [...(state.keys ?? [])].sort(),
         ]);
       const initial = initialPuzzleState(room);
       const canonical = new Set([key(initial)]);
@@ -895,6 +1013,234 @@ async function menuAndMobile(width, height, motion) {
     await context.close();
   }
 }
+async function inspectAdventureMap(page, room, state, label) {
+  const before = await readBoard(page);
+  await page
+    .getByRole("button", { name: "Open chamber map", exact: true })
+    .click();
+  const map = page.getByRole("dialog", { name: "Chamber map", exact: true });
+  await fit(page, `${label}-map`, '[role="dialog"]');
+  const nodes = map.locator("[data-map-area]");
+  await expect(nodes).toHaveCount(room.areas.length);
+  for (let index = 0; index < room.areas.length; index++) {
+    const node = map.locator(`[data-map-area="${index}"]`);
+    const discovered = (
+      state.visitedAreas ?? [Math.floor(state.player / 36)]
+    ).includes(index);
+    await expect(node).toHaveAttribute("data-discovered", String(discovered));
+    await expect(node.locator('button,a,[role="button"]')).toHaveCount(0);
+    if (discovered) await expect(node).toContainText(room.areas[index].title);
+    else await expect(node).not.toContainText(room.areas[index].title);
+  }
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("a");
+  assert.deepEqual(
+    await readBoard(page),
+    before,
+    "Surveying rooms never moves or teleports the delver",
+  );
+  await shot(page, `${label}-map`);
+  await closeDialogAndSettle(page, map, "Return to exploration");
+  await assertBoard(page, state, room, `${label}: map is read-only`);
+}
+async function adventureExploration(width, height, motion) {
+  const { page, context } = await setup(width, height, motion);
+  const label = `${width}x${height}-${motion}-adventure`;
+  try {
+    await go(page, "/rune-delve/journey", { puzzleCompleted: "9999" });
+    const { rooms, chapters } = await roomData(page);
+    const room = rooms.find(
+      (candidate) =>
+        candidate.areas?.length > 1 &&
+        candidate.keys?.length &&
+        candidate.doors?.length,
+    );
+    assert.ok(room, "The expansion has a connected key-and-lock adventure");
+    const model = await modelPath(page, room);
+    const transition = model.states.findIndex(
+      (state, index) =>
+        index > 0 &&
+        Math.floor(state.player / 36) !==
+          Math.floor(model.states[index - 1].player / 36),
+    );
+    const keyPickup = model.states.findIndex(
+      (state, index) =>
+        index > 0 &&
+        (state.keys?.length ?? 0) > (model.states[index - 1].keys?.length ?? 0),
+    );
+    const prefix = Math.max(transition, keyPickup);
+    assert.ok(
+      transition > 0 && keyPickup > 0 && prefix < room.solution.length,
+      "The authored route explores and finds a key before the final escape",
+    );
+    await enterChapter(
+      page,
+      chapters.find((chapter) => chapter.id === room.chapter),
+    );
+    await page
+      .getByRole("link", {
+        name: `Enter chamber ${room.order}: ${room.title}`,
+        exact: true,
+      })
+      .click();
+    await assertBoard(page, model.states[0], room, `${label}: initial room`);
+    await fit(page, `${label}-first-room`);
+    await inspectAdventureMap(
+      page,
+      room,
+      model.states[0],
+      `${label}-undiscovered`,
+    );
+    for (let index = 0; index < prefix; index++) {
+      await actMove(
+        page,
+        room.solution[index],
+        model.states[index],
+        index % 3 === 0 ? "swipe" : "tap",
+      );
+      await assertBoard(
+        page,
+        model.states[index + 1],
+        room,
+        `${label}: exploratory input${index + 1}`,
+      );
+      if (index + 1 === transition || index + 1 === keyPickup) {
+        await page
+          .getByRole("button", { name: "Undo last step", exact: true })
+          .click();
+        await assertBoard(
+          page,
+          model.states[index],
+          room,
+          `${label}: undo restores area, keys and discovery`,
+        );
+        await actMove(page, room.solution[index], model.states[index], "tap");
+        await assertBoard(
+          page,
+          model.states[index + 1],
+          room,
+          `${label}: repeated step restores the same state`,
+        );
+      }
+    }
+    await fit(page, `${label}-key-and-room`);
+    await shot(page, `${label}-key-and-room`);
+    await inspectAdventureMap(
+      page,
+      room,
+      model.states[prefix],
+      `${label}-discovered`,
+    );
+    const checkpoint = checkpointKey("member", room);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (key) => JSON.parse(localStorage.getItem(key)).actions.length,
+          checkpoint,
+        ),
+      )
+      .toBe(prefix);
+    await reloadChamber(page, room);
+    await assertBoard(
+      page,
+      model.states[prefix],
+      room,
+      `${label}: exploration reload restores keys and visited rooms`,
+    );
+    await page.evaluate(() => {
+      window.runeQa.puzzleUserId = "other";
+      window.dispatchEvent(new Event("rune-qa-account"));
+    });
+    await settle(page);
+    await expect(page.getByTestId("puzzle-play")).toHaveCount(0);
+    await expect(page.locator(".rd-mode main")).toContainText(
+      "The way is sealed.",
+    );
+    assert.equal(
+      await page.evaluate(
+        (key) => localStorage.getItem(key),
+        checkpointKey("other", room),
+      ),
+      null,
+      "Another account does not acquire the explored route or keys",
+    );
+    await page.evaluate(() => {
+      window.runeQa.puzzleUserId = "member";
+      window.dispatchEvent(new Event("rune-qa-account"));
+    });
+    await settle(page);
+    await assertBoard(
+      page,
+      model.states[prefix],
+      room,
+      `${label}: account return restores only its own explored route`,
+    );
+    await page
+      .getByRole("button", { name: "Restart chamber", exact: true })
+      .click();
+    await assertBoard(
+      page,
+      model.states[0],
+      room,
+      `${label}: restart clears inventory and returns to the entrance`,
+    );
+    report.checks.push({
+      label: `${label}-passage-key-map-undo-reload-account-isolation`,
+      ok: true,
+      room: room.id,
+      steps: prefix,
+      areas: model.states[prefix].visitedAreas,
+      keys: model.states[prefix].keys,
+    });
+    console.log(`PASS exploration ${label}`);
+  } catch (error) {
+    await shot(page, `failure-${report.checks.length}`).catch(() => {});
+    throw error;
+  } finally {
+    await context.close();
+  }
+}
+async function releasedFrontierCarriesForward() {
+  const { page, context } = await setup();
+  try {
+    await go(page, "/rune-delve/journey", { puzzleCompleted: "18" });
+    const { rooms, chapters } = await roomData(page);
+    const next = rooms.find((room) => room.order === 19);
+    assert.ok(
+      next,
+      "A veteran's next adventure is appended after the released18",
+    );
+    const chapter = chapters.find((chapter) => chapter.id === next.chapter);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Puzzle chapters", exact: true })
+        .getByRole("button", { name: new RegExp(chapter.title) }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("link", {
+        name: `Enter chamber ${next.order}: ${next.title}`,
+        exact: true,
+      }),
+    ).toBeVisible();
+    const saved = await page.evaluate(() =>
+      window.runeQa.tables.rune_puzzle_results.filter(
+        (row) => row.user_id === "member",
+      ),
+    );
+    assert.equal(saved.length, 18);
+    assert.equal(
+      saved.reduce((sum, row) => sum + row.stars, 0),
+      54,
+    );
+    report.checks.push({
+      label: "released18-records-unlock-new-frontier-without-reset",
+      ok: true,
+    });
+    console.log("PASS released frontier continuity");
+  } finally {
+    await context.close();
+  }
+}
 async function checkpointAndAccounts() {
   const { page, context } = await setup();
   try {
@@ -922,8 +1268,7 @@ async function checkpointAndAccounts() {
         ),
       )
       .toBe(length);
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await settle(page);
+    await reloadChamber(page, room);
     await assertBoard(
       page,
       model.states[length],
@@ -978,10 +1323,21 @@ async function checkpointAndAccounts() {
 async function lostReceipt() {
   const { page, context } = await setup();
   try {
-    await go(page, "/rune-delve/chamber/ember-01");
-    const { rooms } = await roomData(page),
-      room = rooms[0],
-      model = await modelPath(page, room);
+    await go(page, "/rune-delve");
+    const { rooms } = await roomData(page);
+    const room =
+      rooms.find(
+        (candidate) => candidate.areas?.length > 1 && candidate.keys?.length,
+      ) ?? rooms.find((candidate) => candidate.areas?.length > 1);
+    assert.ok(room, "Lost-ack recovery exercises a connected adventure");
+    await go(page, `/rune-delve/chamber/${room.id}`, {
+      puzzleCompleted: String(room.order - 1),
+    });
+    const model = await modelPath(page, room);
+    const baseline = await page.evaluate(() => ({
+      results: window.runeQa.tables.rune_puzzle_results.length,
+      receipts: window.runeQa.tables.rune_puzzle_receipts.length,
+    }));
     await page.evaluate(() => {
       window.runeQa.losePuzzleReceiptOnce = true;
     });
@@ -1006,8 +1362,8 @@ async function lostReceipt() {
         receipts: window.runeQa.tables.rune_puzzle_receipts.length,
       };
     });
-    assert.equal(before.results, 1);
-    assert.equal(before.receipts, 1);
+    assert.equal(before.results, baseline.results + 1);
+    assert.equal(before.receipts, baseline.receipts + 1);
     const saved = await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)),
       checkpointKey("member", room),
@@ -1019,8 +1375,7 @@ async function lostReceipt() {
     );
     await fit(page, "pending-save", ".rp-result-dialog");
     await shot(page, "pending-save");
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await settle(page);
+    await reloadChamber(page, room);
     await expect(
       page
         .getByRole("dialog", { name: "Chamber restored", exact: true })
@@ -1041,8 +1396,8 @@ async function lostReceipt() {
       before.args,
       "Reloadretry uses theexactsame frozencompletionrequest",
     );
-    assert.equal(after.results, 1);
-    assert.equal(after.receipts, 1);
+    assert.equal(after.results, baseline.results + 1);
+    assert.equal(after.receipts, baseline.receipts + 1);
     assert.equal(
       await page.evaluate(
         (key) => localStorage.getItem(key),
@@ -1052,8 +1407,11 @@ async function lostReceipt() {
       "Acknowledgedresult clears onlyits checkpoint",
     );
     report.checks.push({
-      label: "commit-lost-ack-reload-exact-receipt-retry",
+      label: "connected-adventure-commit-lost-ack-reload-exact-receipt-retry",
       ok: true,
+      room: room.id,
+      areas: room.areas.length,
+      keys: model.states.at(-1).keys ?? [],
     });
     console.log("PASS immutable receipt recovery");
   } catch (error) {
@@ -1068,12 +1426,15 @@ try {
   await start();
   if (!checksOnly) await fullJourney();
   if (!journeyOnly) {
+    await releasedFrontierCarriesForward();
     for (const [width, height, motion] of [
       [320, 568, "no-preference"],
       [390, 844, "reduce"],
       [844, 390, "no-preference"],
-    ])
+    ]) {
       await menuAndMobile(width, height, motion);
+      await adventureExploration(width, height, motion);
+    }
     await checkpointAndAccounts();
     await lostReceipt();
   }

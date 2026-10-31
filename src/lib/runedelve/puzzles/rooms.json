@@ -1048,5 +1048,2080 @@
       "right",
       "right"
     ]
+  },
+  {
+    "id": "galleries-01",
+    "version": 1,
+    "order": 19,
+    "chapter": 4,
+    "title": "A Door Beyond",
+    "lesson": "Follow the archway. A second room remembers your first.",
+    "mechanic": "passages",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 17, 18, 23, 24, 29, 30, 31, 32, 33, 34, 35,
+      36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 56,
+      57, 58, 59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 7,
+    "exit": 10,
+    "stones": [
+      {
+        "id": "area-1-rune-1",
+        "color": "red",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Arrival Court"
+      },
+      {
+        "id": "room-2",
+        "title": "First Annex"
+      }
+    ],
+    "passages": [
+      {
+        "a": 28,
+        "b": 67
+      }
+    ],
+    "parPushes": 2,
+    "solution": [
+      "right",
+      "right",
+      "right",
+      "down",
+      "down",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up"
+    ]
+  },
+  {
+    "id": "galleries-02",
+    "version": 1,
+    "order": 20,
+    "chapter": 4,
+    "title": "Two Seals, One Portal",
+    "lesson": "Both rooms share one portal. Restore a seal, then find the other.",
+    "mechanic": "passages",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 30, 32, 33, 34,
+      35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54,
+      56, 57, 58, 59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Ember Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Aqua Annex"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      }
+    ],
+    "parPushes": 7,
+    "solution": [
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ]
+  },
+  {
+    "id": "galleries-03",
+    "version": 1,
+    "order": 21,
+    "chapter": 4,
+    "title": "The Distant Shutter",
+    "lesson": "A restored seal can hold a distant pressure gate open.",
+    "mechanic": "passages",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 30, 32, 33, 34,
+      35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54,
+      56, 57, 58, 59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      }
+    ],
+    "plates": [43],
+    "gates": [29],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Shutter Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Counterweight Room"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      }
+    ],
+    "parPushes": 7,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ]
+  },
+  {
+    "id": "galleries-04",
+    "version": 1,
+    "order": 22,
+    "chapter": 4,
+    "title": "The Borrowed Brake",
+    "lesson": "The annex has its own ice problem. Leave every room ready for your return.",
+    "mechanic": "passages",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 14, 15, 17, 18, 20, 21, 30, 33, 34, 36, 37,
+      38, 39, 40, 41, 42, 47, 48, 53, 54, 57, 59, 60, 65, 66, 67, 68, 69, 70, 71
+    ],
+    "start": 8,
+    "exit": 9,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "gold",
+        "cell": 16
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "red",
+        "cell": 50
+      },
+      {
+        "id": "area-1-rune-2",
+        "color": "blue",
+        "cell": 58
+      }
+    ],
+    "sigils": [
+      {
+        "color": "gold",
+        "cell": 7
+      },
+      {
+        "color": "red",
+        "cell": 51
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [51],
+    "treasures": [24, 63],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Turning Gallery"
+      },
+      {
+        "id": "room-2",
+        "title": "Frozen Workshop"
+      }
+    ],
+    "passages": [
+      {
+        "a": 35,
+        "b": 43
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "down",
+      "down",
+      "down",
+      "down",
+      "right",
+      "down",
+      "right",
+      "right",
+      "up",
+      "down",
+      "left",
+      "left",
+      "up",
+      "left",
+      "up",
+      "right",
+      "up",
+      "left",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "right",
+      "right",
+      "right",
+      "up",
+      "up",
+      "up",
+      "left"
+    ]
+  },
+  {
+    "id": "galleries-05",
+    "version": 1,
+    "order": 23,
+    "chapter": 4,
+    "title": "The Keeper's Far Room",
+    "lesson": "Restore the far seal to reopen the rear lane; return for the keeper’s cache.",
+    "mechanic": "passages",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      1, 2, 3, 4, 5, 8, 9, 10, 11, 14, 15, 16, 17, 18, 30, 32, 33, 34, 35, 36,
+      37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 66, 68,
+      69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 58
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      }
+    ],
+    "plates": [43],
+    "gates": [29],
+    "ice": [],
+    "treasures": [0, 24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Keeper's Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Blue Counterweight"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "right",
+      "down",
+      "right",
+      "right",
+      "down"
+    ],
+    "guardian": {
+      "cell": 6,
+      "color": "red",
+      "archetypeId": "stone_golem",
+      "name": "Stone Golem"
+    }
+  },
+  {
+    "id": "galleries-06",
+    "version": 1,
+    "order": 24,
+    "chapter": 4,
+    "title": "The Gallery Relay",
+    "lesson": "Lend the shutter a weight, restore the far room, then finish the exchange.",
+    "mechanic": "passages",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 9, 11, 12, 17, 18, 23, 24, 29, 30, 31, 32, 33, 35,
+      36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 66,
+      68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 8,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "blue",
+        "cell": 19
+      },
+      {
+        "id": "area-0-rune-2",
+        "color": "red",
+        "cell": 20
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "gold",
+        "cell": 58
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 10
+      },
+      {
+        "color": "blue",
+        "cell": 25
+      },
+      {
+        "color": "gold",
+        "cell": 43
+      }
+    ],
+    "plates": [13],
+    "gates": [15, 21, 27, 65],
+    "ice": [],
+    "treasures": [22, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "The Shutter Exchange"
+      },
+      {
+        "id": "room-2",
+        "title": "Gold Carry"
+      }
+    ],
+    "passages": [
+      {
+        "a": 34,
+        "b": 67
+      }
+    ],
+    "parPushes": 12,
+    "solution": [
+      "left",
+      "up",
+      "right",
+      "right",
+      "down",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "left",
+      "left",
+      "up",
+      "left",
+      "down",
+      "down",
+      "up",
+      "up",
+      "right"
+    ]
+  },
+  {
+    "id": "keep-01",
+    "version": 1,
+    "order": 25,
+    "chapter": 5,
+    "title": "The First Brass Key",
+    "lesson": "A key opens every matching lock. Find it beyond the archway, then return.",
+    "mechanic": "keys",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 30, 32, 33, 34,
+      35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54,
+      56, 57, 58, 59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "green",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Brass Lock Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Key Shrine"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      }
+    ],
+    "parPushes": 7,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ],
+    "keys": [
+      {
+        "color": "gold",
+        "cell": 49
+      }
+    ],
+    "doors": [
+      {
+        "color": "gold",
+        "cell": 29
+      }
+    ]
+  },
+  {
+    "id": "keep-02",
+    "version": 1,
+    "order": 26,
+    "chapter": 5,
+    "title": "Unlock the Turning Room",
+    "lesson": "Park the rune at a turn if its final pushing side is locked away.",
+    "mechanic": "keys",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 14, 15, 17, 18, 20, 21, 30, 33, 34, 36, 37,
+      38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 56, 57, 58,
+      59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 8,
+    "exit": 9,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 16
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "green",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Three-Turn Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Blue Key Shrine"
+      }
+    ],
+    "passages": [
+      {
+        "a": 35,
+        "b": 67
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "down",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "right",
+      "right",
+      "right",
+      "up",
+      "up",
+      "up",
+      "left"
+    ],
+    "keys": [
+      {
+        "color": "blue",
+        "cell": 49
+      }
+    ],
+    "doors": [
+      {
+        "color": "blue",
+        "cell": 31
+      }
+    ]
+  },
+  {
+    "id": "keep-03",
+    "version": 1,
+    "order": 27,
+    "chapter": 5,
+    "title": "One Key Leads to Another",
+    "lesson": "Read both locks. The first key opens the route to the second.",
+    "mechanic": "keys",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 30, 32, 33, 34,
+      35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54,
+      66, 68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 58
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 63],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Gold Key Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Blue Key Annex"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "up",
+      "left",
+      "up",
+      "down",
+      "down",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ],
+    "keys": [
+      {
+        "color": "blue",
+        "cell": 60
+      },
+      {
+        "color": "gold",
+        "cell": 13
+      }
+    ],
+    "doors": [
+      {
+        "color": "blue",
+        "cell": 29
+      },
+      {
+        "color": "gold",
+        "cell": 65
+      }
+    ]
+  },
+  {
+    "id": "keep-04",
+    "version": 1,
+    "order": 28,
+    "chapter": 5,
+    "title": "The Frozen Key",
+    "lesson": "A far key opens the last pushing side. Solve the ice room without spending it.",
+    "mechanic": "keys",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 14, 15, 17, 18, 20, 21, 30, 33, 34, 36, 37,
+      38, 39, 40, 41, 42, 45, 47, 48, 53, 54, 59, 60, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 8,
+    "exit": 9,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "gold",
+        "cell": 16
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 49
+      },
+      {
+        "id": "area-1-rune-2",
+        "color": "red",
+        "cell": 50
+      }
+    ],
+    "sigils": [
+      {
+        "color": "gold",
+        "cell": 7
+      },
+      {
+        "color": "red",
+        "cell": 46
+      }
+    ],
+    "plates": [43],
+    "gates": [51, 57, 63],
+    "ice": [51],
+    "treasures": [24, 62],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Turning Keep"
+      },
+      {
+        "id": "room-2",
+        "title": "Ice Key Room"
+      }
+    ],
+    "passages": [
+      {
+        "a": 35,
+        "b": 67
+      }
+    ],
+    "parPushes": 11,
+    "solution": [
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "right",
+      "right",
+      "down",
+      "right",
+      "up",
+      "down",
+      "down",
+      "left",
+      "left",
+      "left",
+      "down",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "right",
+      "right",
+      "right",
+      "up",
+      "up",
+      "up",
+      "left"
+    ],
+    "keys": [
+      {
+        "color": "blue",
+        "cell": 64
+      }
+    ],
+    "doors": [
+      {
+        "color": "blue",
+        "cell": 31
+      }
+    ]
+  },
+  {
+    "id": "keep-05",
+    "version": 1,
+    "order": 29,
+    "chapter": 5,
+    "title": "The Three-Room Circuit",
+    "lesson": "Three rooms make one circuit: a key, a counterweight, and a return route.",
+    "mechanic": "keys",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 30, 32, 33, 34,
+      35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54,
+      56, 57, 58, 59, 64, 65, 66, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78,
+      80, 81, 82, 83, 84, 86, 87, 88, 89, 90, 92, 93, 94, 95, 100, 101, 102,
+      104, 105, 106, 107
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 55
+      },
+      {
+        "id": "area-2-rune-1",
+        "color": "green",
+        "cell": 91
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      },
+      {
+        "color": "green",
+        "cell": 79
+      }
+    ],
+    "plates": [43],
+    "gates": [97],
+    "ice": [],
+    "treasures": [24, 60, 96],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Outer Lock"
+      },
+      {
+        "id": "room-2",
+        "title": "Counterweight"
+      },
+      {
+        "id": "room-3",
+        "title": "Inner Key"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      },
+      {
+        "a": 63,
+        "b": 103
+      }
+    ],
+    "parPushes": 9,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "right",
+      "right",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "left",
+      "left",
+      "down",
+      "up",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ],
+    "keys": [
+      {
+        "color": "gold",
+        "cell": 85
+      }
+    ],
+    "doors": [
+      {
+        "color": "gold",
+        "cell": 29
+      }
+    ]
+  },
+  {
+    "id": "keep-06",
+    "version": 1,
+    "order": 30,
+    "chapter": 5,
+    "title": "The Keep's Returning Seal",
+    "lesson": "The final key lies beyond a borrowed weight. Return before sealing your route.",
+    "mechanic": "keys",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 9, 11, 12, 17, 18, 23, 24, 29, 30, 31, 32, 33, 35,
+      36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 66,
+      68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87,
+      88, 89, 90, 92, 93, 94, 95, 100, 101, 102, 104, 105, 106, 107
+    ],
+    "start": 26,
+    "exit": 8,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "blue",
+        "cell": 19
+      },
+      {
+        "id": "area-0-rune-2",
+        "color": "red",
+        "cell": 20
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 58
+      },
+      {
+        "id": "area-2-rune-1",
+        "color": "gold",
+        "cell": 91
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 10
+      },
+      {
+        "color": "blue",
+        "cell": 25
+      },
+      {
+        "color": "green",
+        "cell": 43
+      },
+      {
+        "color": "gold",
+        "cell": 79
+      }
+    ],
+    "plates": [13],
+    "gates": [15, 21, 27, 64],
+    "ice": [],
+    "treasures": [22, 60, 96],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Shutter Keep"
+      },
+      {
+        "id": "room-2",
+        "title": "Blue Lock Gallery"
+      },
+      {
+        "id": "room-3",
+        "title": "Key of the Keep"
+      }
+    ],
+    "passages": [
+      {
+        "a": 34,
+        "b": 67
+      },
+      {
+        "a": 63,
+        "b": 103
+      }
+    ],
+    "parPushes": 14,
+    "solution": [
+      "left",
+      "up",
+      "right",
+      "right",
+      "down",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "left",
+      "left",
+      "up",
+      "left",
+      "down",
+      "down",
+      "up",
+      "up",
+      "right"
+    ],
+    "keys": [
+      {
+        "color": "blue",
+        "cell": 85
+      }
+    ],
+    "doors": [
+      {
+        "color": "blue",
+        "cell": 65
+      }
+    ]
+  },
+  {
+    "id": "astral-01",
+    "version": 1,
+    "order": 31,
+    "chapter": 6,
+    "title": "A Fold in the Room",
+    "lesson": "Rifts move you, not runestones. Use the fold to reach the pushing side.",
+    "mechanic": "rifts",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 14, 15, 16, 17, 18, 28, 30, 32, 33,
+      34, 35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53,
+      54, 56, 57, 58, 59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Folded Hall"
+      },
+      {
+        "id": "room-2",
+        "title": "Quiet Annex"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      },
+      {
+        "a": 8,
+        "b": 29,
+        "kind": "rift"
+      }
+    ],
+    "parPushes": 7,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "up",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ]
+  },
+  {
+    "id": "astral-02",
+    "version": 1,
+    "order": 32,
+    "chapter": 6,
+    "title": "The Rift at the Last Turn",
+    "lesson": "A rift can reach a pushing position that an ordinary corridor cannot.",
+    "mechanic": "rifts",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 15, 17, 18, 20, 21, 30, 32, 33, 34, 36, 37,
+      38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 56, 57, 58,
+      59, 64, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 8,
+    "exit": 9,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "gold",
+        "cell": 16
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "blue",
+        "cell": 55
+      }
+    ],
+    "sigils": [
+      {
+        "color": "gold",
+        "cell": 7
+      },
+      {
+        "color": "blue",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Star Turning Room"
+      },
+      {
+        "id": "room-2",
+        "title": "Blue Annex"
+      }
+    ],
+    "passages": [
+      {
+        "a": 35,
+        "b": 67
+      },
+      {
+        "a": 14,
+        "b": 31,
+        "kind": "rift"
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "down",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "left",
+      "left",
+      "left",
+      "right",
+      "right",
+      "up",
+      "up",
+      "up",
+      "left",
+      "left",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "right",
+      "up",
+      "down",
+      "up",
+      "right"
+    ]
+  },
+  {
+    "id": "astral-03",
+    "version": 1,
+    "order": 33,
+    "chapter": 6,
+    "title": "Return Through Starlight",
+    "lesson": "Carry a key through the fold, then come back to release the waiting rune.",
+    "mechanic": "rifts",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 14, 15, 16, 17, 18, 28, 30, 32, 33,
+      34, 35, 36, 37, 38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53,
+      54, 66, 68, 69, 70, 71
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 58
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "green",
+        "cell": 43
+      }
+    ],
+    "plates": [],
+    "gates": [],
+    "ice": [],
+    "treasures": [24, 60],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Folded Lock"
+      },
+      {
+        "id": "room-2",
+        "title": "Green Key Gallery"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      },
+      {
+        "a": 8,
+        "b": 29,
+        "kind": "rift"
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "up",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ],
+    "keys": [
+      {
+        "color": "green",
+        "cell": 49
+      }
+    ],
+    "doors": [
+      {
+        "color": "green",
+        "cell": 23
+      }
+    ]
+  },
+  {
+    "id": "astral-04",
+    "version": 1,
+    "order": 34,
+    "chapter": 6,
+    "title": "The Frozen Constellation",
+    "lesson": "Ice carries stones; rifts carry you. Plan where each journey ends.",
+    "mechanic": "rifts",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 15, 17, 18, 20, 21, 30, 32, 33, 34, 36, 37,
+      38, 39, 40, 41, 42, 45, 47, 48, 53, 54, 59, 60, 65, 66, 68, 69, 70, 71
+    ],
+    "start": 8,
+    "exit": 9,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "gold",
+        "cell": 16
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 49
+      },
+      {
+        "id": "area-1-rune-2",
+        "color": "red",
+        "cell": 50
+      }
+    ],
+    "sigils": [
+      {
+        "color": "gold",
+        "cell": 7
+      },
+      {
+        "color": "red",
+        "cell": 46
+      }
+    ],
+    "plates": [43],
+    "gates": [51, 57, 63],
+    "ice": [51],
+    "treasures": [24, 62],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Folded Turning Room"
+      },
+      {
+        "id": "room-2",
+        "title": "Frozen Shutter"
+      }
+    ],
+    "passages": [
+      {
+        "a": 35,
+        "b": 67
+      },
+      {
+        "a": 14,
+        "b": 31,
+        "kind": "rift"
+      }
+    ],
+    "parPushes": 11,
+    "solution": [
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "down",
+      "down",
+      "up",
+      "up",
+      "up",
+      "right",
+      "right",
+      "down",
+      "right",
+      "up",
+      "down",
+      "down",
+      "left",
+      "left",
+      "left",
+      "down",
+      "up",
+      "left",
+      "left",
+      "left",
+      "right",
+      "right",
+      "up",
+      "up",
+      "up",
+      "left",
+      "left",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "right",
+      "up",
+      "down",
+      "up",
+      "right"
+    ]
+  },
+  {
+    "id": "astral-05",
+    "version": 1,
+    "order": 35,
+    "chapter": 6,
+    "title": "The Observatory Circuit",
+    "lesson": "Restore the counterweight, cross the fold, then recover the key behind the last seal.",
+    "mechanic": "rifts",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 14, 15, 16, 17, 18, 28, 30, 32, 33,
+      34, 35, 36, 37, 38, 39, 40, 41, 42, 45, 47, 48, 53, 54, 59, 60, 65, 66,
+      68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87,
+      88, 89, 90, 92, 93, 94, 95, 100, 101, 102, 104, 105, 106, 107
+    ],
+    "start": 26,
+    "exit": 27,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "red",
+        "cell": 22
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "green",
+        "cell": 49
+      },
+      {
+        "id": "area-1-rune-2",
+        "color": "red",
+        "cell": 50
+      },
+      {
+        "id": "area-2-rune-1",
+        "color": "blue",
+        "cell": 91
+      }
+    ],
+    "sigils": [
+      {
+        "color": "red",
+        "cell": 7
+      },
+      {
+        "color": "red",
+        "cell": 46
+      },
+      {
+        "color": "blue",
+        "cell": 79
+      }
+    ],
+    "plates": [43],
+    "gates": [51, 57, 63, 97],
+    "ice": [51],
+    "treasures": [24, 62, 96],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "Star Lock"
+      },
+      {
+        "id": "room-2",
+        "title": "Frozen Counterweight"
+      },
+      {
+        "id": "room-3",
+        "title": "Green Key Shrine"
+      }
+    ],
+    "passages": [
+      {
+        "a": 31,
+        "b": 67
+      },
+      {
+        "a": 64,
+        "b": 103
+      },
+      {
+        "a": 8,
+        "b": 29,
+        "kind": "rift"
+      }
+    ],
+    "parPushes": 10,
+    "solution": [
+      "left",
+      "left",
+      "right",
+      "down",
+      "up",
+      "up",
+      "up",
+      "right",
+      "right",
+      "down",
+      "right",
+      "up",
+      "down",
+      "down",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "left",
+      "left",
+      "left",
+      "down",
+      "up",
+      "up",
+      "up",
+      "up",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "right",
+      "right",
+      "down"
+    ],
+    "keys": [
+      {
+        "color": "green",
+        "cell": 85
+      }
+    ],
+    "doors": [
+      {
+        "color": "green",
+        "cell": 23
+      }
+    ]
+  },
+  {
+    "id": "astral-06",
+    "version": 1,
+    "order": 36,
+    "chapter": 6,
+    "title": "The Living Hollow",
+    "lesson": "Every discovery has a purpose. Read the three rooms before sealing the final route.",
+    "mechanic": "rifts",
+    "width": 6,
+    "height": 6,
+    "walls": [
+      0, 1, 2, 3, 4, 5, 6, 11, 12, 15, 17, 18, 20, 21, 30, 32, 33, 34, 36, 37,
+      38, 39, 40, 41, 42, 44, 45, 46, 47, 48, 50, 51, 52, 53, 54, 66, 68, 69,
+      70, 71, 72, 73, 74, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 88, 89,
+      90, 92, 93, 94, 95, 100, 101, 102, 104, 105, 106, 107
+    ],
+    "start": 8,
+    "exit": 9,
+    "stones": [
+      {
+        "id": "area-0-rune-1",
+        "color": "gold",
+        "cell": 16
+      },
+      {
+        "id": "area-1-rune-1",
+        "color": "red",
+        "cell": 58
+      },
+      {
+        "id": "area-2-rune-1",
+        "color": "blue",
+        "cell": 91
+      }
+    ],
+    "sigils": [
+      {
+        "color": "gold",
+        "cell": 7
+      },
+      {
+        "color": "red",
+        "cell": 43
+      },
+      {
+        "color": "blue",
+        "cell": 79
+      }
+    ],
+    "plates": [43],
+    "gates": [23],
+    "ice": [],
+    "treasures": [24, 60, 96],
+    "areas": [
+      {
+        "id": "room-1",
+        "title": "The Last Turning Room"
+      },
+      {
+        "id": "room-2",
+        "title": "Keeper's Red Gallery"
+      },
+      {
+        "id": "room-3",
+        "title": "Green Key Sanctuary"
+      }
+    ],
+    "passages": [
+      {
+        "a": 35,
+        "b": 67
+      },
+      {
+        "a": 63,
+        "b": 103
+      },
+      {
+        "a": 14,
+        "b": 31,
+        "kind": "rift"
+      }
+    ],
+    "parPushes": 15,
+    "solution": [
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "right",
+      "right",
+      "down",
+      "up",
+      "left",
+      "right",
+      "right",
+      "right",
+      "up",
+      "left",
+      "right",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "right",
+      "right",
+      "up",
+      "left",
+      "left",
+      "left",
+      "down",
+      "left",
+      "up",
+      "up",
+      "down",
+      "down",
+      "down",
+      "up",
+      "left",
+      "left",
+      "left",
+      "left",
+      "down",
+      "up",
+      "right",
+      "right",
+      "down",
+      "down",
+      "right",
+      "down",
+      "left",
+      "left",
+      "left",
+      "right",
+      "right",
+      "up",
+      "up",
+      "up",
+      "left",
+      "left",
+      "down",
+      "up",
+      "up",
+      "up",
+      "right",
+      "up",
+      "down",
+      "up",
+      "right"
+    ],
+    "keys": [
+      {
+        "color": "green",
+        "cell": 85
+      }
+    ],
+    "doors": [
+      {
+        "color": "green",
+        "cell": 65
+      }
+    ]
   }
 ]

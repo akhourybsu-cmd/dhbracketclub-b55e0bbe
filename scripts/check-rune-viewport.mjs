@@ -999,7 +999,7 @@ async function menus(page, name, route) {
     await dialog(
       page,
       "forge-help",
-      page.getByRole("button", { name: "Learn the runes", exact: true }),
+      page.getByRole("button", { name: "Combat guide", exact: true }),
     );
   } else if (name === "map") {
     for (const chapter of [1, 2, 3]) {

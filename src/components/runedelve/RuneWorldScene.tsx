@@ -24,8 +24,12 @@ function PuzzleWorldScene({ pathname }: { pathname: string }) {
     (roomId ? getPuzzleRoom(roomId) : undefined) ??
     getPuzzleRoom(progress?.unlocked ?? 1);
   const biome: RuneBiome =
-    room?.chapter === 3 ? "hollow" : room?.chapter === 2 ? "crystal" : "ember";
-  return <WorldScenery biome={biome} />;
+    room?.chapter === 3 || room?.chapter === 6
+      ? "hollow"
+      : room?.chapter === 2 || room?.chapter === 4
+        ? "crystal"
+        : "ember";
+  return <WorldScenery biome={biome} puzzleChapter={room?.chapter} />;
 }
 
 function LegacyWorldScene({ pathname }: { pathname: string }) {
@@ -47,9 +51,20 @@ function LegacyWorldScene({ pathname }: { pathname: string }) {
   return <WorldScenery biome={biome} />;
 }
 
-function WorldScenery({ biome }: { biome: RuneBiome }) {
+function WorldScenery({
+  biome,
+  puzzleChapter,
+}: {
+  biome: RuneBiome;
+  puzzleChapter?: number;
+}) {
   return (
-    <div className="rd-world-scene" data-biome={biome} aria-hidden="true">
+    <div
+      className="rd-world-scene"
+      data-biome={biome}
+      data-puzzle-chapter={puzzleChapter}
+      aria-hidden="true"
+    >
       <div className="rd-world-illustration" />
       <div className="rd-world-vignette" />
       <div className="rd-world-motes">

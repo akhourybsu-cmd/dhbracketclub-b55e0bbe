@@ -3,6 +3,9 @@ import {
   DoorOpen,
   Footprints,
   Gem,
+  Compass,
+  KeyRound,
+  Orbit,
   RotateCcw,
   Snowflake,
   ToggleLeft,
@@ -48,6 +51,27 @@ const PAGES = [
     text: "Treasure is optional. Restore a guardian’s matching sigils to calm its ward.",
     example:
       "Earn a star for escaping, one for efficient pushes, and one for all the treasure.",
+  },
+  {
+    title: "Beyond one room",
+    icon: Compass,
+    text: "Step through a doorway to discover another room. Every room stays as you left it.",
+    example:
+      "Only your delver travels. The map records places you have explored.",
+  },
+  {
+    title: "Bring discoveries back",
+    icon: KeyRound,
+    text: "Walk over a colored key to open its matching locks across the whole chamber.",
+    example:
+      "Keys are reusable. An earlier room can hold a newly opened route.",
+  },
+  {
+    title: "Find a new approach",
+    icon: Orbit,
+    text: "A rift carries your delver to its pair. Use it to reach a new pushing position.",
+    example:
+      "Runestones cannot enter doorways or rifts. Undo still works across rooms.",
   },
 ];
 

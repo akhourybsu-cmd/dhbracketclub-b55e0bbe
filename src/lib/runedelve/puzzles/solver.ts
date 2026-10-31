@@ -94,7 +94,7 @@ export function puzzleStateKey(state: PuzzleState): string {
     .join(",")}|${state.collected
     .slice()
     .sort((a, b) => a - b)
-    .join(",")}`;
+    .join(",")}|${[...(state.keys ?? [])].sort().join(",")}`;
 }
 
 function actionsTo(node: SearchNode): PuzzleDirection[] {

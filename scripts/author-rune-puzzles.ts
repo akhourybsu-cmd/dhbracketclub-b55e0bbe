@@ -1,6 +1,6 @@
 // Offline authoring: solve the actual rules, then freeze the resulting room data.
 // Bundle with esbuild --bundle --platform=node --format=esm before running.
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import {
   initialPuzzleState,
   replayPuzzle,
@@ -313,11 +313,24 @@ writeFileSync(
 if (failed)
   throw Error("Room authoring failed; definitions were not overwritten");
 const encoded = JSON.stringify(rooms, null, 2);
-writeFileSync("src/lib/runedelve/puzzles/rooms.json", encoded + "\n");
-writeFileSync(
-  "src/lib/runedelve/puzzles/rooms.ts",
-  `// Authored rooms. Regenerate with scripts/author-rune-puzzles.ts; do not edit a released version in place.\nimport type { PuzzleRoom } from "./types";\n\nexport const PUZZLE_CHAPTERS = ${JSON.stringify(chapters, null, 2)} as const;\n\nexport const PUZZLE_ROOMS: readonly PuzzleRoom[] = ${encoded};\n\nexport const PUZZLE_ROOM_BY_ID: ReadonlyMap<string, PuzzleRoom> = new Map(PUZZLE_ROOMS.map(room => [room.id, room]));\nexport function getPuzzleRoom(id: string | number): PuzzleRoom | undefined {\n return typeof id === "number" ? PUZZLE_ROOMS.find(room => room.order === id) : PUZZLE_ROOM_BY_ID.get(id);\n}\n`,
+const currentCatalog: PuzzleRoom[] = JSON.parse(
+  readFileSync("src/lib/runedelve/puzzles/rooms.json", "utf8"),
 );
-console.log(
-  `Wrote ${rooms.length} ${process.argv.includes("--draft") ? "draft" : "verified"} rooms.`,
-);
+if (currentCatalog.length > 18) {
+  if (JSON.stringify(currentCatalog.slice(0, 18)) !== JSON.stringify(rooms))
+    throw Error(
+      "Released definitions are immutable. Legacy authoring cannot replace the expanded catalog.",
+    );
+  console.log(
+    "Verified the 18 released chambers; expanded catalog left intact. Use scripts/author-rune-adventures.ts for additions.",
+  );
+} else {
+  writeFileSync("src/lib/runedelve/puzzles/rooms.json", encoded + "\n");
+  writeFileSync(
+    "src/lib/runedelve/puzzles/rooms.ts",
+    `// Authored rooms. Regenerate with scripts/author-rune-puzzles.ts; do not edit a released version in place.\nimport type { PuzzleRoom } from "./types";\n\nexport const PUZZLE_CHAPTERS = ${JSON.stringify(chapters, null, 2)} as const;\n\nexport const PUZZLE_ROOMS: readonly PuzzleRoom[] = ${encoded};\n\nexport const PUZZLE_ROOM_BY_ID: ReadonlyMap<string, PuzzleRoom> = new Map(PUZZLE_ROOMS.map(room => [room.id, room]));\nexport function getPuzzleRoom(id: string | number): PuzzleRoom | undefined {\n return typeof id === "number" ? PUZZLE_ROOMS.find(room => room.order === id) : PUZZLE_ROOM_BY_ID.get(id);\n}\n`,
+  );
+  console.log(
+    `Wrote ${rooms.length} ${process.argv.includes("--draft") ? "draft" : "verified"} rooms.`,
+  );
+}

@@ -109,7 +109,11 @@ export const FEAT_CATEGORIES: Record<
 export function featActionPath(
   feat: Pick<FeatDefinition, "key" | "category">,
 ): string {
-  if (feat.key.startsWith("rune_puzzle_")) return "/rune-delve/journey";
+  if (
+    feat.key.startsWith("rune_puzzle_") ||
+    feat.key.startsWith("rune_adventure_")
+  )
+    return "/rune-delve/journey";
   if (feat.key.startsWith("rune_expedition_")) return "/rune-delve/expedition";
   if (feat.category === "rune") return "/rune-delve/legacy";
   return FEAT_CATEGORIES[feat.category]?.path || "/club";

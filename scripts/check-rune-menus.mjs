@@ -548,7 +548,7 @@ try {
     .fill("Mira");
   await keyActivate(
     onboarding,
-    onboarding.getByRole("button", { name: "Enter the sanctum", exact: true }),
+    onboarding.getByRole("button", { name: "Enter Combat Archive", exact: true }),
   );
   const help = onboarding.getByRole("dialog", {
     name: "One chain. One decision.",

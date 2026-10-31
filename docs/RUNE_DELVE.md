@@ -1,19 +1,21 @@
 # Rune Delve: The Living Hollow
 
-Rune Delve is a mobile spatial puzzle adventure. The primary journey uses a deterministic 6×6 board: move the delver, push colored runestones onto matching sigils, and reach the restored portal. Existing heroes, rune glyphs, realm artwork, monster portraits and premium menu/reward presentation are reused.
+Rune Delve is a mobile spatial puzzle adventure. Each area uses a deterministic 6×6 board: move the delver, push colored runestones onto matching sigils, and reach the restored portal. Later adventures connect two or three areas while keeping only the current area on screen. Existing heroes, rune glyphs, realm artwork, monster portraits and premium menu/reward presentation are reused.
 
 ## Puzzle journey
 
-- **18 authored chambers:** six introduce spatial runestone routing, six add pressure plates and gates, and six combine ice with gate dependencies. Every room has a verified solution and optional treasure; the latter two chapter capstones need eight purposeful pushes. This is an initial curated campaign, not a claim of unlimited generated content or fifty hours.
+- **36 authored adventures, six chapters:** the original 18 introduce runestone routing, pressure gates and ice. Sunken Galleries adds connected areas and remote dependencies; Verdant Keep adds reusable keys and locked return routes; Astral Observatory combines spatial rifts with the earlier mechanics. The original 18 definitions remain unchanged. This is a curated campaign rather than unlimited generated content or a promised playtime.
+- **Learn by playing:** the opening coach follows walking, pushing, restored sigils, treasure and escape. Contextual introductions explain each new mechanic when it first appears. Advice never takes control of the delver or blocks experimentation.
+- **Exploration:** player-only archways and rifts link areas; runestones remain in their own area. Inventory, restored runes and held plates persist across travel. A read-only discovery map shows visited areas without teleporting the player. Colored keys open every matching lock and can make an earlier route newly useful.
 - **One common toolkit:** orthogonal movement, one-stone pushes, tap/swipe/arrow/WASD controls, free undo/restart, and bounded hints. Efficiency prioritizes pushes before walking. There are no lives, timers, equipment requirements or health checks. Delver appearances share the same rules.
 - **World rules:** occupied plates open gates; occupied gates remain open until vacated. Pushed stones slide across ice; the delver walks normally. Guardians calm when their matching sigils are restored and can be bypassed; no enemy kill is required to escape.
-- **Mastery:** one star for escape, one for reaching the room’s push par, and one for collecting every treasure. Any clear unlocks the next chamber. Best records improve monotonically; replaying an acknowledgement never grants stars twice.
-- **Fresh progression:** the new journey starts at chamber one in its own versioned track. The Combat Archive retains previous campaign, Expedition, Arena, class, relic and currency records. Shared DH Score history is retained; new source-backed puzzle Feats count unique rooms and best stars.
+- **Mastery:** one star for escape, one for reaching the adventure’s push par, and one for collecting every treasure across its areas, for 108 available stars. Any clear unlocks the next adventure. Best records improve monotonically; replaying an acknowledgement never grants stars twice.
+- **Progression continuity:** the journey retains its versioned track. Players who cleared the original 18 can continue into adventure 19 with their records intact. The persistently labeled Combat Archive retains previous campaign, Expedition, Arena, class, relic and currency records. Shared DH Score history is retained; two additional adventure Feat families reward unique expansion clears and best stars without changing any existing tiers.
 - **Persistence:** the server replays the canonical action trail before confirming completion. Account-scoped local checkpoints replay the same rules and keep pending result IDs until acknowledged. See [puzzle data contracts](RUNE_DELVE_PUZZLE_DATA.md).
 
 ## Combat Archive
 
-The previous combat modes remain available under the Archive. Their rules and saved progression are retained independently of the new journey.
+The previous combat modes remain available under the Combat Archive. Its header is labeled throughout the original routes, and its home links back to the puzzle journey. Combat rules and saved progression are retained independently of the new journey.
 
 
 - **Expeditions:** six seeded chambers, persistent health/mana, twelve stackable blessings drafted from three choices (four after a Vault), two revealed routes between encounters, and eight sequentially unlocked Ascensions. The crypt offers balanced foes, Blood Hunt stronger foes and double-rank blessings, Sunken Vault an extra foe, score, three extra moves and a wider next draft, and Lost Shrine healing with armored opponents. Earn shards and class XP by banking a result; active and abandoned runs earn nothing. Campaign equipment and masteries do not apply.
@@ -79,7 +81,15 @@ Campaign quest events are part of settlement. Cached older clients receive bound
 
 The additional browser journeys use production UI input to clear chambers 1, 25, and 150, finish all six Expedition rooms with each class, and settle natural defeats and move exhaustion. Menu checks exercise failed writes, equipment slots, class switches, keyboard focus, first-run help, archived records, and secondary-source retries. No live player writes are made by these fixtures.
 
-## Spatial puzzle release verification
+## Connected-adventure verification
+
+The expansion passes 984 unit tests, app TypeScript, scoped ESLint and the production build. Isolated PostgreSQL passes 24 replay/persistence groups and 13 DH Feat integration groups. Every one of the 36 authored gold routes was completed through production tap, swipe, arrow/WASD and directional controls, reaching 108 stars. A separate mobile/recovery pass completes 97 checks at 320×568, 390×844 with reduced motion, and 844×390. It verifies all six chapter tabs, guided first actions, mechanic introductions, area travel, concealed read-only maps, key pickup/door state, undo, restart, reload, account changes and exact request-ID recovery after a lost completion response. Browser fixtures make no live account writes.
+
+The live database matches all 36 client gameplay definitions. Before/after fingerprints match across 20 existing datasets, including the original 18 definitions, puzzle profiles/results/receipts, archived combat data, wallets, equipment, and permanent DH Score receipts. Players who cleared the original 18 retain their records and can start adventure 19. The original combat routes retain their rules and receive a persistent Archive label. Asset auditing reports zero missing references or unused owned artwork.
+
+The [pacing certificate](balance/rune-adventure-content.json) records each new adventure's exact push-first gold-route measurements, search effort, area transitions and rift use. The additions average 9.56 pushes and 38.33 actions versus 3.39 and 14.17 in the original campaign. Chapter capstones require 12, 14 and 15 pushes; the three-room finale takes 67 actions on its certified route. These are solver measurements, not human playtime estimates. All gold routes fit the live 75,000-state hint budget. Removing required locks or rifts prevents completion, so the mechanics contribute real dependencies.
+
+## Initial spatial puzzle release verification
 
 The puzzle release passes 888 unit tests, app TypeScript, the production build and scoped lint. Isolated PostgreSQL suites pass 18 replay/persistence groups and 12 DH Feat integration groups. All 18 authored gold routes were also completed through production tap, swipe, keyboard and directional controls, reaching 54 stars.
 
