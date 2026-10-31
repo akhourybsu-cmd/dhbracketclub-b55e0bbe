@@ -25,18 +25,28 @@ const BEHAVIORS: PickTimeoutBehavior[] = ['alert', 'auto_skip', 'none'];
 export function LiveDraftSettingsSheet({ open, onClose, settings, onSave }: LiveDraftSettingsSheetProps) {
   const { palette } = useDraftArenaPalette();
   const [draft, setDraft] = useState(settings);
+  const [openingSettings, setOpeningSettings] = useState(() => ({ ...settings }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const pending = useRef(false);
   const session = useRef(0);
   const opener = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
-    if (open) {
-      setDraft(settings);
+    const justOpened = open && !wasOpen.current;
+    wasOpen.current = open;
+    // Realtime hydration replaces the settings object even when its values
+    // are unchanged. Only a new editor session should replace local choices.
+    if (justOpened) {
+      setDraft({ ...settings });
+      setOpeningSettings({ ...settings });
       setSaveError('');
     }
   }, [open, settings]);
+
+  const settingsChangedElsewhere = (Object.keys(openingSettings) as (keyof LiveDraftSettings)[])
+    .some((key) => openingSettings[key] !== settings[key]);
 
   useEffect(() => {
     session.current += 1;
@@ -150,6 +160,7 @@ export function LiveDraftSettingsSheet({ open, onClose, settings, onSave }: Live
           </div>
 
           <footer className="da-live-settings-footer border-t border-border/60 pt-3">
+            {settingsChangedElsewhere && <p className="mb-2 text-xs text-muted-foreground" role="status">Room settings changed elsewhere. Your choices are kept; review them before saving.</p>}
             {saveError && <p className="mb-2 text-xs text-destructive" role="alert">{saveError}</p>}
             <button type="button" onClick={() => void save()} disabled={saving} className="dl-cta min-h-11 w-full disabled:opacity-50">
               {saving ? 'Saving…' : 'Save Settings'}

@@ -159,6 +159,7 @@ function DraftDetailSession() {
   const [showPickSheet, setShowPickSheet] = useState(false);
   const [ceremonyBusy, setCeremonyBusy] = useState(false);
   const pickCountWhenSheetOpened = useRef(0);
+  const pickSlotWhenSheetOpened = useRef<number | null>(null);
 
   const { season } = useCurrentSeason();
   const { entries: seasonEntries, refetch: refetchSeasonEntries } = useSeasonEntries(season?.id);
@@ -543,14 +544,25 @@ function DraftDetailSession() {
     return null;
   }, [participants, currentPickNumber, user, isParticipant, isMyTurn, draft?.num_rounds]);
 
-  // Close the pick sheet once the submitted pick lands via refetch/realtime.
-  // If the AI check holds submission, pick count doesn't change and the
-  // sheet stays open so the user can review the suggestion.
+  const openPickSheet = () => {
+    pickCountWhenSheetOpened.current = picks.length;
+    pickSlotWhenSheetOpened.current = consumedSlots;
+    setShowPickSheet(true);
+  };
+
+  // A composer belongs to one slot. Suggestions may keep that slot open,
+  // while a saved pick, host pass or phase change closes the old composer.
   useEffect(() => {
-    if (showPickSheet && picks.length > pickCountWhenSheetOpened.current) {
+    const changedSlot = pickSlotWhenSheetOpened.current !== null && pickSlotWhenSheetOpened.current !== consumedSlots;
+    if (showPickSheet && (picks.length > pickCountWhenSheetOpened.current || changedSlot || !isMyTurn || !isInProgress || isDraftComplete)) {
       setShowPickSheet(false);
+      if (changedSlot || !isMyTurn || !isInProgress || isDraftComplete) {
+        setPickText('');
+        setText('');
+        clearSuggestion();
+      }
     }
-  }, [picks.length, showPickSheet]);
+  }, [picks.length, showPickSheet, consumedSlots, isMyTurn, isInProgress, isDraftComplete, setText, clearSuggestion]);
 
   const handleStartDraft = async () => {
     if (!draftId) return;
@@ -1236,7 +1248,7 @@ function DraftDetailSession() {
           <h1>{draft.topic}</h1>
         </div>
         <div className="da-room-position"><b>{isSetup ? participants.length : isDraftComplete ? picks.length : currentRound}</b><span>{isSetup ? 'players' : isDraftComplete ? 'picks' : `of ${draft.num_rounds} rounds`}</span></div>
-        {isMyTurn && isInProgress && !isDraftComplete && !isPlayoffDraft && <button type="button" className="da-room-pick-shortcut da-cta" aria-label="Make selection" onClick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}><Send size={16} aria-hidden="true" /><span>Pick</span></button>}
+        {isMyTurn && isInProgress && !isDraftComplete && !isPlayoffDraft && <button type="button" className="da-room-pick-shortcut da-cta" aria-label="Make selection" onClick={() => { openPickSheet(); }}><Send size={16} aria-hidden="true" /><span>Pick</span></button>}
       </header>
       <nav className="da-room-tabs" role="tablist" aria-label="Draft room views" onKeyDown={(event) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -1656,7 +1668,7 @@ function DraftDetailSession() {
               allPicks={picks.map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
               announce={liveHost.settings.announce}
               sound={liveHost.settings.sound}
-              onMakePick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}
+              onMakePick={() => { openPickSheet(); }}
               board={
                 <DraftBoard
                   participants={participants}
@@ -1672,6 +1684,7 @@ function DraftDetailSession() {
               broadcast={liveHost.settings.broadcast ? <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} /> : undefined}
               hostControls={canManage ? (
                 <LiveHostPanel
+                  turnKey={consumedSlots}
                   draftId={draftId!}
                   clock={liveClock}
                   settings={liveHost.settings}
@@ -1708,7 +1721,7 @@ function DraftDetailSession() {
                   draftId={draftId}
                   userId={user?.id}
                   taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
-                  onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); setShowPickSheet(true); } : undefined}
+                  onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); openPickSheet(); } : undefined}
                 />
               }
             />
@@ -1738,6 +1751,7 @@ function DraftDetailSession() {
                     <div className="da-live-zone-label"><span>01</span> Clock &amp; control</div>
                     {canManage ? (
                       <LiveHostPanel
+                        turnKey={consumedSlots}
                         draftId={draftId!}
                         clock={liveClock}
                         settings={liveHost.settings}
@@ -1916,7 +1930,8 @@ function DraftDetailSession() {
                   maxLength={100}
                   className="form-input flex-1"
                   onKeyDown={e => {
-                    if (e.key === 'Enter' && pickText.trim() && !submitting && !localDuplicate) {
+                    if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && pickText.trim() && !submitting && !localDuplicate) {
+                      e.preventDefault();
                       handleMakePick();
                     }
                   }}
@@ -2028,7 +2043,7 @@ function DraftDetailSession() {
                 draftId={draftId}
                 userId={user?.id}
                 taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
-                onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); if (!isPlayoffDraft) setShowPickSheet(true); } : undefined}
+                onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); if (!isPlayoffDraft) openPickSheet(); } : undefined}
               />
             </div>
           )}

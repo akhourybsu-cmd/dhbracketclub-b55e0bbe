@@ -55,7 +55,9 @@ export function PickComposerFields({
           autoFocus={autoFocus}
           className="form-input flex-1 h-12 text-[15px]"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && pickText.trim() && !submitting && !localDuplicate) onSubmit();
+            if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return;
+            e.preventDefault();
+            if (pickText.trim() && !submitting && !localDuplicate) onSubmit();
           }}
         />
         <button

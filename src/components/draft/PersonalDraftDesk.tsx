@@ -61,7 +61,9 @@ function DraftDeskSession({ draftId, userId, taken, onChoose, compact = false }:
     </button>
     {expanded && <div className="da-desk-body">
       <div className="grid gap-2 sm:grid-cols-[1fr_1.25fr_auto]">
-        <Input value={title} disabled={saving} onChange={event => setTitle(event.target.value)} placeholder="Save an idea…" maxLength={100} onKeyDown={event => { if (event.key === 'Enter') void save(); }} />
+        <Input value={title} disabled={saving} onChange={event => setTitle(event.target.value)} placeholder="Save an idea…" maxLength={100} onKeyDown={event => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) void save();
+        }} />
         <Textarea value={notes} disabled={saving} onChange={event => setNotes(event.target.value)} placeholder="Private note (optional)" maxLength={500} className="min-h-11 h-11 resize-none" />
         <Button type="button" onClick={() => void save()} disabled={!title.trim() || saving} aria-busy={saving} className="h-11">{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ListPlus className="h-4 w-4" />}<span className="sr-only">Add idea</span></Button>
       </div>

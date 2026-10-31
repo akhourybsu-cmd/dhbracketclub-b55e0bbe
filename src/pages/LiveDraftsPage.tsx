@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowUpRight, Hash, Loader2, Radio, RefreshCw, Swords, Ticket } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Hash, Loader2, Radio, RefreshCw, Swords, Ticket, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useFeatureFlag } from '@/hooks/useFeatureFlags';
@@ -38,6 +38,7 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
   const navigate = useNavigate();
   const formId = useId();
   const [rooms, setRooms] = useState<LiveRoomSummary[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [filter, setFilter] = useState<RoomFilter>('all');
@@ -47,6 +48,7 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
   const active = useRef(true);
   const requests = useRef({ fetch: 0, lookup: 0, lookupBusy: false }).current;
   const scroller = useRef<HTMLDivElement>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     if (!active.current) return;
@@ -55,7 +57,10 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
     setLoadError('');
     try {
       const rows = await fetchLiveRooms(clubId);
-      if (active.current && request === requests.fetch) setRooms(rows);
+      if (active.current && request === requests.fetch) {
+        setRooms(rows);
+        setHasLoaded(true);
+      }
     } catch {
       if (active.current && request === requests.fetch) setLoadError('Live rooms could not be loaded. Try again.');
     } finally {
@@ -94,17 +99,22 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
     const normalized = normalizeLiveCode(code);
     if (normalized.length !== 5) {
       setJoinError('Enter the five-character code from your host.');
+      codeInput.current?.focus();
       return;
     }
     requests.lookupBusy = true;
     const request = ++requests.lookup;
     setJoining(true);
     setJoinError('');
+    setCode(normalized);
     try {
       const room = await resolveLiveRoom(normalized, clubId);
       if (active.current && request === requests.lookup) navigate(`/drafts/live/${encodeURIComponent(room.id)}`);
     } catch {
-      if (active.current && request === requests.lookup) setJoinError(LIVE_ROOM_UNAVAILABLE_MESSAGE);
+      if (active.current && request === requests.lookup) {
+        setJoinError(LIVE_ROOM_UNAVAILABLE_MESSAGE);
+        codeInput.current?.focus();
+      }
     } finally {
       if (active.current && request === requests.lookup) {
         requests.lookupBusy = false;
@@ -128,10 +138,10 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
           {hostingEnabled && <Link className="da-live-host-action da-cta" to="/drafts/live/create"><Swords aria-hidden="true" />Host live event<ArrowUpRight aria-hidden="true" /></Link>}
         </header>
 
-        <form className="da-live-join" onSubmit={(event) => void findRoom(event)} aria-label="Find a live room">
+        <form className="da-live-join" onSubmit={(event) => void findRoom(event)} aria-label="Find a live room" aria-busy={joining}>
           <div className="da-live-join-heading"><Ticket aria-hidden="true" /><label htmlFor={`${formId}-code`}>Room code</label><span>From your host</span></div>
           <div className="da-live-join-fields">
-            <span className="da-live-code-input"><Hash aria-hidden="true" /><Input id={`${formId}-code`} value={code} maxLength={16} onChange={(event) => { setCode(event.target.value.toUpperCase()); setJoinError(''); }} disabled={joining} placeholder="ABCDE" autoComplete="off" autoCapitalize="characters" spellCheck={false} aria-invalid={!!joinError} aria-describedby={`${formId}-code-help${joinError ? ` ${formId}-code-error` : ''}`} /></span>
+            <span className="da-live-code-input"><Hash aria-hidden="true" /><Input ref={codeInput} id={`${formId}-code`} value={code} maxLength={16} onChange={(event) => { if (!requests.lookupBusy) { setCode(event.target.value.toUpperCase()); setJoinError(''); } }} readOnly={joining} placeholder="ABCDE" autoComplete="off" autoCapitalize="characters" enterKeyHint="go" spellCheck={false} aria-invalid={!!joinError} aria-describedby={`${formId}-code-help${joinError ? ` ${formId}-code-error` : ''}`} /></span>
             <Button type="submit" className="da-live-find-action da-cta" disabled={joining || !code.trim()}>{joining ? <Loader2 className="animate-spin" aria-hidden="true" /> : <ArrowRight aria-hidden="true" />}<span>{joining ? 'Finding room…' : 'Find live room'}</span></Button>
           </div>
           <p id={`${formId}-code-help`} className="da-live-join-help">Enter the five-character code to open your player room.</p>
@@ -141,16 +151,16 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
 
       <Tabs value={filter} onValueChange={(value) => { setFilter(value as RoomFilter); if (scroller.current) scroller.current.scrollTop = 0; }} className="da-live-hub-workspace">
         <div className="da-live-rooms-heading">
-          <h2>Recent rooms <span>{rooms.length}</span></h2>
-          <Button type="button" variant="ghost" className="da-live-refresh h-11 w-11 shrink-0 p-0" aria-label="Refresh live rooms" disabled={loading} onClick={() => void load()}><RefreshCw className={loading ? 'animate-spin' : ''} aria-hidden="true" /></Button>
+          <div className="da-live-rooms-title"><h2>Recent rooms <span>{rooms.length}</span></h2><p className="da-live-room-sync" role="status" data-sync-state={hasLoaded && loadError ? 'error' : loading ? 'loading' : 'ready'}>{hasLoaded && loading ? 'Updating rooms…' : hasLoaded && loadError ? 'Update paused · showing saved rooms' : ''}</p></div>
+          <Button type="button" variant="ghost" className="da-live-refresh h-11 w-11 shrink-0 p-0" aria-label={hasLoaded && loadError ? 'Retry room update' : 'Refresh live rooms'} title={hasLoaded && loadError ? 'Retry room update' : 'Refresh live rooms'} disabled={loading} onClick={() => void load()}><RefreshCw className={loading ? 'animate-spin' : ''} aria-hidden="true" /></Button>
         </div>
         <TabsList className="da-live-status-tabs h-auto min-h-11 justify-start overflow-x-auto" aria-label="Live room status">
           {FILTERS.map((item) => <TabsTrigger value={item.id} className="min-h-11 shrink-0" key={item.id}>{item.label}<span>{item.id === 'all' ? rooms.length : rooms.filter((room) => room.status === item.id).length}</span></TabsTrigger>)}
         </TabsList>
-        <div className="da-live-room-scroll" ref={scroller} aria-busy={loading}>
+        <div className="da-live-room-scroll" ref={scroller} aria-busy={loading && !hasLoaded}>
           <TabsContent value={filter} className="da-live-room-panel">
-            {loadError ? <div className="da-live-room-state" role="alert"><Radio aria-hidden="true" /><h3>Connection interrupted</h3><p>{loadError}</p><Button type="button" className="min-h-11" onClick={() => void load()}>Retry live rooms</Button></div>
-              : loading && rooms.length === 0 ? <div className="da-live-room-state" role="status"><Loader2 className="animate-spin" aria-hidden="true" /><p>Finding your club’s rooms…</p></div>
+            {!hasLoaded && loadError ? <div className="da-live-room-state" role="alert"><Radio aria-hidden="true" /><h3>Connection interrupted</h3><p>{loadError}</p><Button type="button" className="min-h-11" onClick={() => void load()}>Retry live rooms</Button></div>
+              : loading && !hasLoaded ? <div className="da-live-room-state" role="status"><Loader2 className="animate-spin" aria-hidden="true" /><p>Finding your club’s rooms…</p></div>
                 : visibleRooms.length === 0 ? <div className="da-live-room-state"><Radio aria-hidden="true" /><h3>{rooms.length === 0 ? 'The stage is clear.' : 'No rooms in this view.'}</h3><p>{rooms.length === 0 ? hostingEnabled ? 'Host an event or use a code to find your room.' : 'Use a room code to enter your club’s event.' : 'Choose another status to find your event.'}</p></div>
                   : <div className="da-live-room-grid">{visibleRooms.map((room) => <LiveRoomCard key={room.id} room={room} hosting={room.created_by === userId} />)}</div>}
           </TabsContent>
@@ -163,10 +173,11 @@ function LiveHubSession({ userId, clubId, clubName, hostingEnabled, queryCode }:
 function LiveRoomCard({ room, hosting }: { room: LiveRoomSummary; hosting: boolean }) {
   const state = room.status === 'in_progress' ? 'Live now' : room.status === 'complete' ? 'Final' : room.status === 'setup' ? 'Lobby' : 'Room';
   const action = room.status === 'complete' ? 'View final' : room.status === 'setup' ? 'Enter lobby' : 'Open live room';
+  const StatusIcon = room.status === 'complete' ? Trophy : room.status === 'setup' ? Ticket : Radio;
   return <Link to={`/drafts/live/${encodeURIComponent(room.id)}`} className="da-live-room-card" data-room-status={room.status} aria-label={`${action}: ${room.topic}`}>
-    <div className="da-live-room-card-heading"><span className="da-live-room-status"><Radio aria-hidden="true" />{state}</span>{hosting && <span className="da-live-owned">Your event</span>}</div>
+    <div className="da-live-room-card-heading"><span className="da-live-room-status"><StatusIcon aria-hidden="true" />{state}</span>{hosting && <span className="da-live-owned">Your event</span>}</div>
     <h3>{room.topic}</h3>
-    <div className="da-live-room-meta"><span>{room.num_rounds} rounds</span>{room.kiosk_code && <code aria-label={`Room code ${room.kiosk_code}`}>{room.kiosk_code}</code>}</div>
+    <div className="da-live-room-meta"><span>{room.num_rounds} {room.num_rounds === 1 ? 'round' : 'rounds'}</span>{room.kiosk_code && <code aria-label={`Room code ${room.kiosk_code}`}>{room.kiosk_code}</code>}</div>
     <footer><span>{action}</span><ArrowUpRight aria-hidden="true" /></footer>
   </Link>;
 }

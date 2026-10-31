@@ -35,10 +35,14 @@ The Player screen traps focus, supports a nested pick composer, and returns to t
 
 Order reveals retain the persisted host-controlled ceremony fields. Pick announcements on phones are docked away from the clock and pick action; the projector retains the full cinematic presentation. Completed events display their real report readiness and persisted final results. Motion respects reduced-motion preferences.
 
+The ceremony now gives the current position and player a central stage, with real reveal progress and a separate keyboard-accessible lineup scroller. Its footer remains visible for a 20-player room; short landscape layouts place the current player beside the lineup. No animation advances the persisted reveal or starts a clock.
+
+Host pass confirmation is tied to the current slot, can be cancelled and expires when the turn changes. Pending host commands cannot be duplicated before busy state renders. An auto-skip closes the old player's open composer even when no new pick row arrives. Realtime updates preserve unsaved settings and valid hub cards; failures provide retry feedback without discarding those views. IME confirmation does not publish unfinished picks or desk ideas.
+
 ## Verification
 
 The browser harness retains the existing Arena matrix and adds a full two-actor lifecycle. Host and player pages share canonical browser-local table snapshots and mocked realtime changes while retaining separate write logs. The journey creates an event, checks player/projector links, saves settings, turns ceremony off and back on, joins by code, verifies host-only reveal controls, begins play and observes a canonical pick from both actors.
 
 Small-phone and landscape checks cover LIVE setup, fixed Green Room actions, player entry and normal-draft route compatibility. The real standalone projector continues to read saved reports. Tests make no live account writes; no schema, policy or scoring migration is included.
 
-The completed suite passes 1,120 unit tests across 136 files and 398 browser checks, including the prior 348-check matrix. App TypeScript, the production build and scoped lint pass. The asset audit reports zero missing references; 40 protected core declarations and all 71 existing action bindings are preserved. Protected clock, judging and report files retain the previous preservation guarantees.
+The completed suite passes 1,146 unit tests across 139 files and 475 browser checks, including the prior 398-check matrix. App TypeScript, the production build and scoped lint pass. The asset audit reports zero missing references; 40 protected core declarations remain unchanged. Composer-entry and host-command UI bindings add slot/pending guards while retaining the original canonical callbacks, permissions and payloads. Protected clock, judging and report files retain the previous preservation guarantees.

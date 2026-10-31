@@ -995,3 +995,27 @@ html[data-da-short-viewport="true"] .da-create-stage { flex: 0 0 auto; height: a
 }
 html[data-da-short-viewport="true"] .da-live-hub-hero { display: none; }
 html[data-da-short-viewport="true"] .da-live-join { margin-top: 0; }
+
+/* Keep event actions in view while the reveal lineup owns its scroll. */
+.da-room-stage:has(> .da-ceremony) { height: 100%; min-height: 0; }
+.da-live-event-room:has(.da-room-panel[data-room-view="board"] .da-ceremony) > .da-room-topbar { display: none; }
+.da-live-rooms-title { flex: 1 1 0; min-width: 0; }
+.da-live-rooms-title > h2 { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; }
+.da-live-rooms-title > h2 > span { color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-live-room-sync { min-height: 13px; margin-top: 3px; color: hsl(var(--muted-foreground)); font-size: 9px; line-height: 1.4; }
+.da-live-room-sync[data-sync-state="error"] { color: hsl(var(--primary)); }
+.da-host-pass-confirmation { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 9px; border: 1px solid hsl(var(--destructive) / .3); border-radius: 12px; background: hsl(var(--destructive) / .035); }
+.da-host-pass-confirmation > button { min-height: 44px; margin: 0; }
+.da-host-action-status { padding: 7px 10px; border: 1px solid hsl(var(--primary) / .25); border-radius: 9px; background: hsl(var(--primary) / .04); }
+.da-host-action-error { background: hsl(var(--destructive) / .035); }
+.da-host-action-error button { min-height: 44px; padding: 9px 12px; }
+@media (max-width: 420px) {
+  .da-host-pass-confirmation { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 360px) {
+  .da-live-code-input > svg { left: 8px; width: 12px; }
+  .da-live-code-input input { padding-left: 25px; font-size: 14px; letter-spacing: .1em; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .da-live-rooms-title { display: none; }
+}

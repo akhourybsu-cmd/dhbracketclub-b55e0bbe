@@ -104,20 +104,27 @@ describe('Live draft green room and sharing', () => {
     render(<MemoryRouter><LiveHostPanel draftId="draft-a"
       clock={{ running: true, paused: false, remainingMs: 45000, totalMs: 90000, expired: false }}
       settings={DEFAULT_LIVE_SETTINGS} busy={false} pickerName="Alice" slotsLeft={8} {...handlers} /></MemoryRouter>);
+    const idle = () => waitFor(() => expect(document.querySelector('.da-live-host-panel')).toHaveAttribute('aria-busy', 'false'));
     fireEvent.click(screen.getByRole('button', { name: 'Copy player invite' }));
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith('https://dryhorse.app/drafts/live/draft-a'));
+    await idle();
     expect(handlers.onEnsureKioskCode).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Copy projector link' }));
     await waitFor(() => expect(writeText).toHaveBeenLastCalledWith('https://dryhorse.app/drafts/draft-a/kiosk'));
+    await idle();
     expect(handlers.onEnsureKioskCode).toHaveBeenCalledExactlyOnceWith();
     fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
     expect(handlers.onPause).toHaveBeenCalledExactlyOnceWith();
+    await idle();
     fireEvent.click(screen.getByRole('button', { name: '30 seconds' }));
     expect(handlers.onAddTime).toHaveBeenCalledExactlyOnceWith(30);
+    await idle();
     fireEvent.click(screen.getByRole('button', { name: 'Reset clock' }));
     expect(handlers.onStartClock).toHaveBeenCalledExactlyOnceWith();
+    await idle();
     fireEvent.click(screen.getByRole('button', { name: 'Clock off' }));
     expect(handlers.onStopClock).toHaveBeenCalledExactlyOnceWith();
+    await idle();
     fireEvent.click(screen.getByRole('button', { name: 'Pass this pick' }));
     expect(handlers.onSkip).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm — pass Alice' }));

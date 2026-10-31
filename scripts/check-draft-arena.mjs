@@ -330,6 +330,17 @@ async function submitPick() {
     await shot(page, "initial-active-room");
     const before = await page.evaluate(() => structuredClone(window.daQa.tables.draft_picks.filter((pick) => pick.draft_id === "active")));
     assert.equal(before.length, 6);
+    await tab(page, 'My desk');
+    const deskHeading = page.locator('.da-room-panel .da-room-desk .da-desk-heading');
+    if (await deskHeading.getAttribute('aria-expanded') === 'false') await deskHeading.click();
+    await page.locator('.da-room-panel .da-desk-item').filter({ hasText: 'Interstellar' }).getByRole('button', { name: 'Choose', exact: true }).click();
+    const deskComposer = page.locator('.da-pick-dialog[role="dialog"]');
+    await expect(deskComposer.getByRole('textbox', { name: 'Your draft pick', exact: true })).toHaveValue('Interstellar');
+    await settle(page); await expect(deskComposer).toBeVisible();
+    await shot(page, 'desk-choice-keeps-composer-open'); await page.keyboard.press('Escape');
+    await expect(deskComposer).toHaveCount(0);
+    report.checks.push({ label: 'existing-saved-picks-do-not-close-composer-opened-from-desk', ok: true });
+    await tab(page, 'Board');
     const make = page.getByRole("button", { name: /^Make [Ss]election$/ });
     await writeFile(join(output, "make-selection-control.json"), JSON.stringify({ html: await make.first().evaluate((node) => node.outerHTML) }, null, 2));
     await make.first().click();
@@ -338,6 +349,15 @@ async function submitPick() {
     await expect(composer).toContainText("Round 3 · Pick #7");
     await expect(composer).toBeVisible(); await fit(page, "pick-composer", '[role="dialog"]');
     const input = composer.getByPlaceholder("Enter your pick…");
+    await input.fill('千と千尋の神隠し');
+    await input.dispatchEvent('compositionstart', { data: '千と千尋の神隠し' });
+    await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, which: 229, isComposing: true });
+    await input.dispatchEvent('compositionend', { data: '千と千尋の神隠し' });
+    await input.dispatchEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 229, which: 229, isComposing: false });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await expect(composer).toBeVisible(); await expect(input).toHaveValue('千と千尋の神隠し');
+    assert.equal(await page.evaluate(() => window.daQa.operations.filter((operation) => operation.table === 'draft_picks' && operation.mode === 'insert').length), 0, 'IME confirmation and keyCode 229 never submit a draft pick');
+    report.checks.push({ label: 'pick-composer-ime-enter-never-submits', ok: true });
     await input.fill("Arrival");
     await expect(composer).toContainText("Already on the board");
     await input.fill("Interstellar");
@@ -782,6 +802,14 @@ async function hostSettingsDialog() {
     assert.equal(await settings.evaluate((node) => node.contains(document.activeElement)), true, 'Tab wraps inside settings');
     await controls.first().focus(); await page.keyboard.press('Shift+Tab');
     assert.equal(await settings.evaluate((node) => node.contains(document.activeElement)), true, 'Shift+Tab wraps inside settings');
+    await settings.getByRole('button', { name: '2m', exact: true }).click();
+    const callsBeforeRefresh = await page.evaluate(() => window.daQa.calls.filter((call) => call.table === 'drafts' && call.mode === 'select').length);
+    await page.evaluate(() => window.daQa.refreshRow('drafts', 'active'));
+    await expect.poll(() => page.evaluate(() => window.daQa.calls.filter((call) => call.table === 'drafts' && call.mode === 'select').length)).toBeGreaterThan(callsBeforeRefresh);
+    await settle(page);
+    await expect(settings.getByRole('button', { name: '2m', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    assert.deepEqual(await page.evaluate(() => window.daQa.tables.drafts.find((draft) => draft.id === 'active').live_settings), original, 'A realtime refresh does not persist unsaved settings');
+    report.checks.push({ label: 'live-settings-unsaved-choice-survives-realtime-refresh', ok: true });
     await settings.getByRole('button', { name: '3m', exact: true }).click();
     await shot(page, 'host-settings-dialog');
     await page.keyboard.press('Escape');
@@ -974,6 +1002,16 @@ async function liveEventLifecycle() {
     }
     const picker = started.draft.current_pick_user_id === 'u1' ? host : player;
     const observer = picker === host ? player : host;
+    const hostScreen = host.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
+    const hostPanel = hostScreen.locator('.da-live-host-panel');
+    const beforeCancel = await host.evaluate((draftId) => ({ draft: structuredClone(window.daQa.tables.drafts.find((row) => row.id === draftId)), operations: window.daQa.operations.length }), id);
+    await hostPanel.getByRole('button', { name: 'Pass this pick', exact: true }).click();
+    await expect(hostPanel.getByRole('button', { name: /^Confirm — pass / })).toBeVisible();
+    await hostPanel.getByRole('button', { name: 'Cancel pass', exact: true }).click();
+    await expect(hostPanel.getByRole('button', { name: 'Pass this pick', exact: true })).toBeVisible();
+    assert.deepEqual(await host.evaluate((draftId) => ({ draft: structuredClone(window.daQa.tables.drafts.find((row) => row.id === draftId)), operations: window.daQa.operations.length }), id), beforeCancel, 'Cancelling a host pass changes no persisted row, deadline or turn');
+    await hostPanel.getByRole('button', { name: 'Pass this pick', exact: true }).click();
+    await expect(hostPanel.getByRole('button', { name: /^Confirm — pass / })).toBeVisible();
     await picker.getByRole('dialog', { name: 'Draft Arena player screen', exact: true }).getByRole('button', { name: 'Make my pick', exact: true }).click();
     const composer = picker.locator('.da-pick-dialog[role="dialog"]');
     await expect(composer).toContainText('Round 1 · Pick #1');
@@ -985,6 +1023,10 @@ async function liveEventLifecycle() {
     const state = await host.evaluate((draftId) => ({ draft: window.daQa.tables.drafts.find((row) => row.id === draftId), picks: window.daQa.tables.draft_picks.filter((row) => row.draft_id === draftId) }), id);
     assert.deepEqual(state.picks.map(({ pick_text, user_id, round, pick_number }) => ({ pick_text, user_id, round, pick_number })), [{ pick_text: 'Interstellar', user_id: started.participants[0].user_id, round: 1, pick_number: 1 }]);
     assert.equal(state.draft.current_pick_number, 2); assert.equal(state.draft.current_pick_user_id, started.participants[1].user_id);
+    await expect(hostPanel.getByRole('button', { name: /^Confirm — pass / })).toHaveCount(0);
+    await expect(hostPanel.getByRole('button', { name: 'Pass this pick', exact: true })).toBeVisible();
+    assert.equal(await host.evaluate((draftId) => window.daQa.tables.draft_skips.filter((row) => row.draft_id === draftId).length, id), 0, 'A pending old-turn pass cannot follow a real selection into the next turn');
+    report.checks.push({ label: 'live-host-pass-cancel-and-confirmation-reset-on-real-pick', ok: true });
     const writes = await Promise.all([host, player].map((page) => page.evaluate((draftId) => window.daQa.operations.filter((operation) => operation.table === 'draft_picks' && operation.mode === 'insert' && operation.rows.some((row) => row.draft_id === draftId)).length, id)));
     assert.equal(writes.reduce((sum, count) => sum + count, 0), 1, 'Both actors observe one canonical pick without a duplicate write');
     const observerScreen = observer.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
@@ -997,9 +1039,178 @@ async function liveEventLifecycle() {
   finally { await context.close(); }
 }
 
+async function liveHubRecoveryAndFinale(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, 'reduce');
+  const label = `live-hub-recovery-finale-${width}x${height}-${theme}`;
+  try {
+    await go(page, '/drafts/live', { stress: 'projector', theme });
+    const roomCode = page.getByRole('textbox', { name: 'Room code', exact: true });
+    await roomCode.fill('DH5ZX');
+    assert.equal(await roomCode.evaluate((node) => node.scrollWidth <= node.clientWidth + 1), true, 'All five room-code characters fit without horizontal input scrolling');
+    report.checks.push({ label: `${label}-five-character-code-readable`, ok: true });
+    await roomCode.fill('');
+    const active = page.getByRole('link', { name: 'Open live room: Greatest movie night', exact: true });
+    const final = page.getByRole('link', { name: 'View final: All-time movie icons', exact: true });
+    await expect(active).toBeVisible(); await expect(final).toBeVisible();
+    await tab(page, 'Live now');
+    await expect(active).toBeVisible(); await expect(final).toHaveCount(0);
+    await page.evaluate(() => window.daQa.failNextRead('drafts'));
+    await page.getByRole('button', { name: 'Refresh live rooms', exact: true }).click();
+    await expect(page.locator('.da-live-room-sync')).toContainText('Update paused');
+    await expect(active).toBeVisible();
+    await expect(active).toHaveAttribute('href', '/drafts/live/active');
+    await expect(page.getByRole('tab', { name: /^Live now(?:\s*\d+)?$/ })).toHaveAttribute('aria-selected', 'true');
+    await fit(page, `${label}-retained-error`); await interactiveAudit(page, `${label}-error-controls`);
+    await shot(page, `${label}-retained-error`);
+    await page.getByRole('button', { name: 'Retry room update', exact: true }).click();
+    await expect(page.locator('.da-live-room-sync')).toHaveAttribute('data-sync-state', 'ready');
+    await expect(page.locator('.da-live-room-sync')).not.toContainText('Update paused');
+    await expect(active).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^Live now(?:\s*\d+)?$/ })).toHaveAttribute('aria-selected', 'true');
+    await active.click();
+    await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/live/active');
+    await expect(page.locator('.da-live-event-entry')).toBeVisible();
+    const menu = await drawer(page);
+    await menu.locator('a[href="/drafts/live"]').click();
+    await expect(menu).toHaveCount(0);
+    await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/live');
+    await tab(page, 'Finished'); await final.click();
+    await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/live/complete');
+    await expect(page.getByRole('region', { name: 'Live event finale', exact: true })).toContainText('The results are in.');
+    await expect(page.getByRole('button', { name: 'Enter live draft', exact: true })).toHaveCount(0);
+    await tab(page, 'Results'); await fit(page, `${label}-finale`); await shot(page, `${label}-finale`);
+    const magazine = page.getByRole('link', { name: 'Open Draft Magazine', exact: true });
+    await magazine.scrollIntoViewIfNeeded(); await magazine.click();
+    await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/complete/magazine?live=1');
+    await expect(page.locator('.da-magazine-deck')).toContainText('Live edition');
+    await expect(page.locator('.da-magazine-winner')).toContainText('Alex');
+    await fit(page, `${label}-magazine`); await shot(page, `${label}-magazine`);
+    const back = page.getByRole('link', { name: 'Back to draft', exact: true });
+    await back.scrollIntoViewIfNeeded(); await expect(back).toHaveAttribute('href', '/drafts/live/complete'); await back.click();
+    await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/live/complete');
+    await expect(page.getByRole('region', { name: 'Live event finale', exact: true })).toBeVisible();
+    assert.equal(await page.evaluate(() => window.daQa.calls.some((call) => call.function === 'rate-draft')), false, 'The LIVE finale and magazine read persisted results without generating a score');
+    assert.equal(await page.evaluate(() => window.daQa.operations.filter((operation) => ['draft_picks', 'draft_skips', 'draft_results'].includes(operation.table)).length), 0, 'Ending navigation never writes a pick, pass or judging result');
+    report.checks.push({ label: `${label}-retained-refresh-retry-and-live-report-navigation`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function liveTimeoutClosesComposer() {
+  const { page: host, context } = await setup(390, 844, 'dark', 'reduce');
+  const label = 'live-real-timeout-closes-and-clears-open-composer';
+  const shared = `timeout-${Date.now()}`;
+  let player;
+  try {
+    await go(host, '/drafts/live/active', { stress: 'live-actions', shared });
+    const hostPanel = host.locator('.da-live-host-panel');
+    await expect(hostPanel.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
+    player = await context.newPage(); await player.setViewportSize({ width: 320, height: 568 }); await installFixturePage(player);
+    await go(player, '/drafts/live/active', { stress: 'live-actions', shared, user: 'u2' });
+    await player.getByRole('button', { name: 'Enter live draft', exact: true }).click();
+    const screen = player.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
+    await screen.getByRole('button', { name: 'Make my pick', exact: true }).click();
+    const composer = player.locator('.da-pick-dialog[role="dialog"]');
+    await expect(composer).toContainText('Round 2 · Pick #5');
+    await composer.getByRole('textbox', { name: 'Your draft pick', exact: true }).fill('This unfinished selection must be discarded');
+    await hostPanel.getByRole('button', { name: 'Resume', exact: true }).click();
+    await expect.poll(() => host.evaluate(() => window.daQa.tables.draft_skips.filter((row) => row.draft_id === 'active').length)).toBe(1);
+    await expect(composer).toHaveCount(0);
+    await expect(screen).toBeVisible();
+    const passed = await player.evaluate(() => ({ picks: window.daQa.tables.draft_picks.filter((row) => row.draft_id === 'active'), skips: window.daQa.tables.draft_skips.filter((row) => row.draft_id === 'active'), draft: window.daQa.tables.drafts.find((row) => row.id === 'active') }));
+    assert.equal(passed.picks.length, 4, 'A real timeout closes the composer without inserting a new pick row');
+    assert.deepEqual(passed.skips.map(({ user_id, pick_number, round }) => ({ user_id, pick_number, round })), [{ user_id: 'u2', pick_number: 5, round: 2 }]);
+    await expect.poll(() => host.evaluate(() => window.daQa.tables.drafts.find((row) => row.id === 'active').current_pick_number)).toBe(6);
+    await shot(player, 'live-timeout-player-composer-closed');
+    for (const [number, title] of [[6, 'Interstellar'], [7, 'Blade Runner 2049']]) {
+      const make = host.getByRole('button', { name: 'Make selection', exact: true });
+      await expect(make).toBeVisible(); await make.click();
+      const sheet = host.locator('.da-pick-dialog[role="dialog"]');
+      await expect(sheet).toContainText(`Pick #${number}`);
+      const input = sheet.getByRole('textbox', { name: 'Your draft pick', exact: true });
+      await input.fill(title); await input.press('Enter');
+      await expect(sheet).toHaveCount(0);
+      await expect.poll(() => host.evaluate(() => window.daQa.tables.drafts.find((row) => row.id === 'active').current_pick_number)).toBe(number + 1);
+    }
+    await expect(screen.getByRole('button', { name: 'Make my pick', exact: true })).toBeVisible();
+    await screen.getByRole('button', { name: 'Make my pick', exact: true }).click();
+    await expect(composer).toContainText('Round 3 · Pick #8');
+    await expect(composer.getByRole('textbox', { name: 'Your draft pick', exact: true })).toHaveValue('');
+    assert.equal(await player.evaluate(() => window.daQa.operations.filter((operation) => operation.table === 'draft_picks' && operation.mode === 'insert').length), 0, 'The timed-out player never submitted the discarded text');
+    await player.keyboard.press('Escape');
+    report.checks.push({ label, ok: true }); console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(host, `${label}-host`); if (player) await captureFailure(player, `${label}-player`); throw error; }
+  finally { await context.close(); }
+}
+
+async function largeCeremony(width, height) {
+  const { page, context } = await setup(width, height, width < 640 ? 'dark' : 'light', 'reduce');
+  const label = `live-ceremony-20-players-${width}x${height}`;
+  try {
+    await go(page, '/drafts/live/ceremony', { stress: 'ceremony', theme: width < 640 ? 'dark' : 'light' });
+    const stage = page.getByRole('region', { name: 'Draft order ceremony', exact: true });
+    const lineup = stage.getByRole('region', { name: 'Draft order lineup', exact: true });
+    await expect(stage).toHaveAttribute('data-total-positions', '20');
+    await expect(lineup.locator('li[data-ceremony-position]')).toHaveCount(20);
+    const progress = stage.getByRole('progressbar', { name: 'Draft positions revealed', exact: true });
+    await expect(progress).toHaveAttribute('aria-valuenow', '0');
+    const reveal = stage.getByRole('button', { name: 'Reveal pick 1', exact: true });
+    const skip = stage.getByRole('button', { name: 'Skip ceremony', exact: true });
+    for (const [control, name] of [[reveal, 'reveal'], [skip, 'skip']]) {
+      await fullyVisibleControl(control, `${label}-${name}-footer-visible`);
+      const box = await control.boundingBox(); assert.ok(box.width >= 44 && box.height >= 44, 'Ceremony footer targets remain at least 44px');
+    }
+    await fit(page, `${label}-initial`); await interactiveAudit(page, `${label}-initial-controls`, '.da-ceremony');
+    await shot(page, `${label}-early`);
+    for (let position = 1; position <= 20; position++) {
+      await stage.getByRole('button', { name: `Reveal pick ${position}`, exact: true }).click();
+      await expect(progress).toHaveAttribute('aria-valuenow', String(position));
+    }
+    await expect(stage.locator('.da-ceremony-current')).toContainText('Player 20');
+    for (let position = 1; position <= 20; position++) {
+      const row = lineup.locator(`li[data-ceremony-position="${position}"]`);
+      await expect(row).toHaveClass(/is-revealed/);
+      await reachByScrolling(page, row, lineup, `${label}-lineup-position-${position}-reachable`);
+    }
+    const begin = stage.getByRole('button', { name: 'Begin Draft', exact: true });
+    await fullyVisibleControl(begin, `${label}-begin-footer-visible-after-lineup-scroll`);
+    await fullyVisibleControl(stage.locator('.da-ceremony-footer'), `${label}-whole-footer-remains-visible`);
+    await fit(page, `${label}-all-revealed`); await interactiveAudit(page, `${label}-final-controls`, '.da-ceremony');
+    await shot(page, `${label}-last-lineup`);
+    const stored = await page.evaluate(() => ({ draft: window.daQa.tables.drafts.find((row) => row.id === 'ceremony'), picks: window.daQa.tables.draft_picks.filter((row) => row.draft_id === 'ceremony') }));
+    assert.equal(stored.draft.status, 'setup'); assert.equal(stored.draft.ceremony_reveal_index, 20); assert.equal(stored.picks.length, 0);
+    report.checks.push({ label: `${label}-actual-reveals-bounded-lineup-and-fixed-footer`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function projectorCeremony() {
+  const { page, context } = await setup(1440, 900);
+  const label = 'projector-saved-20-player-ceremony';
+  try {
+    await go(page, '/drafts/ceremony/kiosk', { stress: 'ceremony' });
+    const stage = page.getByRole('region', { name: 'Draft order ceremony', exact: true });
+    await expect(stage).toHaveAttribute('data-revealed-count', '12');
+    await expect(stage.locator('.da-ceremony-current')).toContainText('Player 12');
+    await expect(stage.getByRole('button')).toHaveCount(0);
+    await fit(page, label, '.da-kiosk', { allowDocumentScroll: true });
+    await shot(page, label);
+    assert.equal(await page.evaluate(() => window.daQa.operations.length), 0, 'Projector ceremony stays read-only and does not advance the saved reveal');
+    await expect(stage).toHaveAttribute('data-revealed-count', '12');
+    report.checks.push({ label: `${label}-persisted-order-read-only`, ok: true }); console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
   // Exercise newly added stress cases first; retain the complete core matrix.
+  for (const args of [[320,568],[844,390]]) await largeCeremony(...args);
+  await projectorCeremony();
+  await liveTimeoutClosesComposer();
+  for (const args of [[320,568,'dark'],[844,390,'light']]) await liveHubRecoveryAndFinale(...args);
   await liveEventLifecycle();
   for (const args of [[320,568,'dark'],[844,390,'light']]) await liveCreationLayout(...args);
   for (const args of [[320,568],[844,390],[1440,900]]) await projectorSmoke(...args);

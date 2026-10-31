@@ -1,0 +1,73 @@
+/* Shared ceremony stage: usable on a phone and full-bleed on the projector. */
+.da-ceremony {
+  display: flex; flex-direction: column; gap: 12px;
+  width: 100%; height: 100%; min-height: 0; max-height: 100%;
+  padding: 18px; margin: 0; overflow: hidden; isolation: isolate;
+  border: 1px solid hsl(var(--primary) / .3); border-radius: 18px;
+  background: radial-gradient(ellipse at 50% 0%, hsl(202 80% 55% / .08), transparent 65%), hsl(var(--card));
+  color: hsl(var(--foreground)); text-align: center;
+}
+.da-ceremony .da-ceremony-glow { animation: none; opacity: .6; }
+.da-ceremony > :is(.da-ceremony-copy,.da-ceremony-progress,.da-ceremony-current-wrap,.da-ceremony-footer) { position: relative; z-index: 1; flex: 0 0 auto; min-width: 0; }
+.da-ceremony .da-ceremony-copy h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; margin: 7px auto 5px; max-width: 32ch; font-size: clamp(21px, 3vw, 32px); line-height: 1.1; font-weight: 800; letter-spacing: -.04em; }
+.da-ceremony .da-ceremony-copy > p:last-child { font-size: 10px; line-height: 1.4; }
+.da-ceremony-progress { display: flex; align-items: center; gap: 12px; width: min(100%, 460px); margin: 0 auto; }
+.da-ceremony-progress > span { flex: 0 0 auto; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: hsl(var(--primary)); }
+.da-ceremony-progress small { color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 600; }
+.da-ceremony-progress > i { flex: 1; height: 3px; overflow: hidden; border-radius: 5px; background: hsl(var(--border)); }
+.da-ceremony-progress > i > i { display: block; height: 100%; background: hsl(var(--primary)); transition: width 250ms ease; }
+.da-ceremony .da-ceremony-current { position: relative; display: grid; justify-items: center; gap: 5px; width: min(100%, 540px); padding: 14px 18px; margin: 0 auto; border: 1px solid hsl(var(--primary) / .35); border-radius: 15px; background: linear-gradient(135deg, hsl(var(--primary) / .1), hsl(var(--card) / .5)); box-shadow: inset 0 1px 0 hsl(var(--foreground) / .04), 0 12px 40px -26px hsl(var(--primary) / .25); }
+.da-ceremony .da-ceremony-current > b { color: hsl(var(--primary)); font-size: 42px; line-height: .95; font-weight: 800; letter-spacing: -.05em; text-shadow: 0 0 32px hsl(var(--primary) / .15); }
+.da-ceremony .da-ceremony-current > strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; max-width: 100%; font-size: clamp(19px, 3vw, 26px); line-height: 1.1; font-weight: 800; letter-spacing: -.03em; }
+.da-ceremony-lineup { position: relative; z-index: 1; flex: 1 1 0; min-height: 48px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: hsl(var(--primary) / .4) transparent; padding: 3px; outline-offset: -2px; border-radius: 11px; }
+.da-ceremony .da-ceremony-order { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; max-width: 760px; padding: 0; margin: 0 auto; list-style: none; }
+.da-ceremony-order > li { display: grid; grid-template-columns: 25px minmax(0, 1fr) 16px; align-items: center; gap: 6px; min-width: 0; min-height: 44px; padding: 7px 9px; border: 1px solid hsl(var(--border) / .7); border-radius: 10px; background: hsl(var(--secondary) / .4); color: hsl(var(--muted-foreground)); text-align: left; }
+.da-ceremony-order > li > span { color: hsl(var(--primary)); font-size: 13px; font-weight: 800; }
+.da-ceremony-order > li > strong { min-width: 0; overflow-wrap: anywhere; font-size: 11px; line-height: 1.35; font-weight: 700; }
+.da-ceremony-order > li.is-revealed { color: hsl(var(--foreground)); border-color: hsl(var(--primary) / .35); background: linear-gradient(90deg, hsl(var(--primary) / .08), hsl(var(--card))); }
+.da-ceremony-order > li[aria-current="step"] { border-color: hsl(var(--primary) / .75); box-shadow: inset 3px 0 0 hsl(var(--primary)); }
+.da-ceremony .da-ceremony-footer { width: 100%; padding-top: 10px; border-top: 1px solid hsl(var(--border) / .7); }
+.da-ceremony .da-ceremony-controls { display: flex; justify-content: center; gap: 8px; max-width: 560px; margin: 0 auto; }
+.da-ceremony-controls > button { flex: 1 1 0; min-width: 0; min-height: 48px; height: auto; padding: 9px 13px; border-radius: 11px; white-space: normal; font-size: 11px; line-height: 1.4; font-weight: 800; }
+.da-ceremony-controls > button > svg { flex: 0 0 auto; }
+.da-ceremony .da-ceremony-wait { font-size: 10px; line-height: 1.5; letter-spacing: .08em; }
+.da-ceremony :is(button,[tabindex]):focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: -3px; }
+.da-ceremony.da-ceremony-projector { height: min(80dvh, 760px); min-height: min(400px, calc(100dvh - 100px)); max-height: none; gap: 14px; }
+.da-ceremony-projector .da-ceremony-copy h2 { font-size: clamp(23px, 3.5vw, 42px); }
+.da-ceremony-projector .da-ceremony-current { max-width: 700px; padding: 20px; }
+.da-ceremony-projector .da-ceremony-current > b { font-size: clamp(54px, 7vw, 96px); }
+.da-ceremony-projector .da-ceremony-current > strong { font-size: clamp(26px, 4vw, 52px); }
+@media (min-width: 1024px) {
+  .da-ceremony .da-ceremony-order { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .da-ceremony { gap: 9px; padding: 13px; border-radius: 15px; }
+  .da-ceremony .da-ceremony-copy h2 { font-size: 22px; }
+  .da-ceremony .da-ceremony-copy > p:last-child { display: none; }
+  .da-ceremony .da-ceremony-current { padding: 11px; }
+  .da-ceremony .da-ceremony-current > b { font-size: 38px; }
+  .da-ceremony .da-ceremony-current > strong { font-size: 20px; }
+  .da-ceremony-order > li { grid-template-columns: 19px minmax(0, 1fr) 12px; padding: 7px; }
+  .da-ceremony-order > li > strong { font-size: 10px; }
+  .da-ceremony.da-ceremony-projector { gap: 10px; }
+  .da-ceremony-projector .da-ceremony-current > b { font-size: 58px; }
+  .da-ceremony-projector .da-ceremony-current > strong { font-size: 25px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .da-ceremony { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 6px 12px; padding: 10px 13px; }
+  .da-ceremony-copy { grid-column: 1/-1; grid-row: 1; }
+  .da-ceremony-progress { grid-column: 1/-1; grid-row: 2; }
+  .da-ceremony-current-wrap { grid-column: 1; grid-row: 3; display: grid; align-content: center; min-height: 0; }
+  .da-ceremony-lineup { grid-column: 2; grid-row: 3; min-height: 0; }
+  .da-ceremony-footer { grid-column: 1/-1; grid-row: 4; }
+  .da-ceremony .da-ceremony-copy h2 { margin: 3px auto; font-size: 19px; -webkit-line-clamp: 1; }
+  .da-ceremony .da-ceremony-copy > p:last-child { display: none; }
+  .da-ceremony .da-ceremony-current { grid-template-columns: auto 1fr; gap: 3px 14px; align-items: center; padding: 9px 13px; }
+  .da-ceremony-current > span { grid-column: 2; }
+  .da-ceremony .da-ceremony-current > b { grid-column: 1; grid-row: 1/3; font-size: 38px; }
+  .da-ceremony .da-ceremony-current > strong { grid-column: 2; font-size: 20px; }
+  .da-ceremony .da-ceremony-footer { padding-top: 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .da-ceremony, .da-ceremony * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

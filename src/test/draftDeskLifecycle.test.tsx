@@ -152,6 +152,41 @@ describe('Private draft desk session ownership', () => {
     expect(screen.getByText('One pending idea')).toBeVisible();
   });
 
+  it.each([
+    { name: 'composition flag', isComposing: true, keyCode: 13 },
+    { name: 'legacy IME key code', isComposing: false, keyCode: 229 },
+  ])('waits for committed input before saving an Enter from $name', async ({ isComposing, keyCode }) => {
+    const saving = pending<SaveResult>();
+    backend.save.mockImplementationOnce(() => saving.promise);
+    render(<PersonalDraftDesk draftId="draft-a" userId="alice" taken={taken} />);
+    expect(await screen.findByText('Keep your next move ready here.')).toBeVisible();
+    const title = screen.getByPlaceholderText('Save an idea…');
+    const notes = screen.getByPlaceholderText('Private note (optional)');
+    fireEvent.compositionStart(title);
+    fireEvent.change(title, { target: { value: '東京' } });
+    fireEvent.change(notes, { target: { value: 'Keep the complete title' } });
+    fireEvent.keyDown(title, { key: 'Enter', code: 'Enter', isComposing, keyCode });
+    expect(backend.insert).not.toHaveBeenCalled();
+    expect(title).toHaveValue('東京');
+    expect(title).not.toBeDisabled();
+    expect(notes).not.toBeDisabled();
+
+    fireEvent.change(title, { target: { value: '東京の名所' } });
+    fireEvent.compositionEnd(title, { data: '東京の名所' });
+    fireEvent.keyDown(title, { key: 'Enter', code: 'Enter', isComposing: false, keyCode: 13 });
+    expect(backend.insert).toHaveBeenCalledTimes(1);
+    expect(backend.insert).toHaveBeenCalledWith({
+      draft_id: 'draft-a', user_id: 'alice', title: '東京の名所', notes: 'Keep the complete title', position: 0, is_on_deck: true,
+    });
+    expect(title).toBeDisabled();
+    expect(notes).toBeDisabled();
+    await act(async () => { saving.resolve({ data: idea('東京の名所', 'alice', 'draft-a'), error: null }); });
+    expect(backend.insert).toHaveBeenCalledTimes(1);
+    expect(title).toHaveValue('');
+    expect(title).not.toBeDisabled();
+    expect(screen.getByText('東京の名所')).toBeVisible();
+  });
+
   it('releases the save guard after failure and retains the idea for a deliberate retry', async () => {
     const saving = pending<SaveResult>();
     backend.save.mockImplementationOnce(() => saving.promise)

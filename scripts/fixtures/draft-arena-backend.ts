@@ -53,6 +53,7 @@ const tables: Record<string, Row[]> = {
 };
 const operations: Row[] = [];
 const calls: Row[] = [];
+const failedReads = new Map<string, number>();
 const heldReads = new Set<() => void>();
 let holdActiveReads = params.get("stress") === "delayed-room";
 function releaseActiveReads() {
@@ -63,13 +64,25 @@ function releaseActiveReads() {
 let serial = 100;
 const clone = <T,>(value: T): T => structuredClone(value);
 const imageURL = (name: string) => new URL(`/images/qa-draft-art/${name}.svg`, location.origin).href;
-if (params.get("stress") === "projector" || params.get("stress") === "live-host") {
+if (["projector", "live-host", "live-actions"].includes(params.get("stress") || "")) {
   const clockStart = new Date().toISOString();
   const deadline = new Date(Date.now() + 90_000).toISOString();
   for (const item of tables.drafts.filter((row) => row.id === "active" || row.id === "complete")) Object.assign(item, {
     is_live: true, kiosk_code: item.id === "active" ? "DH5ZX" : "END4X",
     clock_started_at: clockStart, clock_paused_at: clockStart, pick_deadline_at: deadline,
     live_settings: { pickSeconds: 90, timeoutBehavior: "alert", autoStartClock: false, announce: true, ticker: true, sound: false, ceremony: false, broadcast: true, reportBroadcast: true },
+  });
+}
+if (params.get("stress") === "live-actions") {
+  // A legitimate saved round-two position: Blair owns slot five. The host
+  // must deliberately resume the paused near-expiry clock to trigger timeout.
+  tables.draft_picks = tables.draft_picks.filter((pick) => pick.draft_id !== "active" || pick.pick_number <= 4);
+  const active = tables.drafts.find((row) => row.id === "active")!;
+  const pausedAt = new Date().toISOString();
+  Object.assign(active, { current_pick_number: 5, current_round: 2, current_pick_user_id: "u2",
+    clock_started_at: new Date(Date.now() - 88_500).toISOString(), clock_paused_at: pausedAt,
+    pick_deadline_at: new Date(Date.parse(pausedAt) + 1_500).toISOString(),
+    live_settings: { ...active.live_settings, timeoutBehavior: "auto_skip", autoStartClock: false },
   });
 }
 if (params.get("stress") === "empty") {
@@ -91,6 +104,19 @@ if (params.get("stress") === "large") {
     tables.draft_picks.push(pick);
     tables.item_enrichments.push({ ...clone(tables.item_enrichments[0]), id: `image-${pick.id}`, item_id: pick.id, matched_name: pick.pick_text, image_url: imageURL(["portrait", "wide", "square", "slow"][index % 4]), thumbnail_url: imageURL(["portrait", "wide", "square", "slow"][index % 4]) });
   }
+}
+if (params.get("stress") === "ceremony") {
+  for (let index = 4; index <= 20; index++) profiles.push({ id: `u${index}`, display_name: `Player ${index} · 星際`, avatar_url: null });
+  const ceremony = draft("ceremony", "Legends of draft night · Twenty-player LIVE event", "setup", 5);
+  Object.assign(ceremony, { is_live: true, kiosk_code: "DH7ZX", current_pick_user_id: null,
+    ceremony_enabled: true, ceremony_status: "revealing",
+    // A projector may reconnect to a reveal already in progress.
+    ceremony_reveal_index: params.get("route")?.endsWith("/kiosk") ? 12 : 0,
+    live_settings: { pickSeconds: 90, timeoutBehavior: "alert", autoStartClock: false, announce: true, ticker: true, sound: false, ceremony: true, broadcast: true, reportBroadcast: true },
+  });
+  tables.drafts.push(ceremony);
+  tables.competitions.push({ id: ceremony.competition_id, title: ceremony.topic, status: "active", type: "draft", created_by: "u1" });
+  for (const [index, profile] of profiles.entries()) tables.draft_participants.push({ id: `ceremony-part-${profile.id}`, draft_id: "ceremony", user_id: profile.id, pick_order: index + 1, joined_at: date });
 }
 if (params.get("stress") === "secondary") {
   profiles[0].avatar_url = new URL("/images/qa-draft-missing.jpg", location.origin).href;
@@ -198,6 +224,10 @@ class Query implements PromiseLike<any> {
   abortSignal() { return this; }
   async run() {
     calls.push({ table: this.table, mode: this.mode });
+    if (this.mode === "select" && (failedReads.get(this.table) || 0) > 0) {
+      failedReads.set(this.table, failedReads.get(this.table)! - 1);
+      return { data: null, error: { message: "Fixture: interrupted read" } };
+    }
     const source = tables[this.table] ||= [];
     let rows = source.filter((row) => this.filters.every((filter) => filter(row)));
     if (holdActiveReads && this.mode === "select" && this.table === "drafts" && this.singular && rows.some((row) => row.id === "active")) await new Promise<void>((resolve) => heldReads.add(resolve));
@@ -234,5 +264,12 @@ export const supabase = {
   auth: { getSession: async () => ({ data: { session: { access_token: "fixture-only", user: { id: userId } } }, error: null }), getUser: async () => ({ data: { user: { id: userId } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
   storage: { from: () => ({ getPublicUrl: (path: string) => ({ data: { publicUrl: path } }) }) },
 };
-Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads, setConnection: (status: string) => { for (const item of channels) item.status?.(status); } } });
+Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads,
+  failNextRead: (table: string) => failedReads.set(table, (failedReads.get(table) || 0) + 1),
+  refreshRow: (table: string, id: string) => {
+    const row = tables[table]?.find((item) => item.id === id);
+    if (row) emitChange({ schema: "public", table, eventType: "UPDATE", new: clone(row), old: clone(row) });
+  },
+  setConnection: (status: string) => { for (const item of channels) item.status?.(status); },
+} });
 export const draftArenaFixture = { tables, userId };

@@ -26,8 +26,9 @@ function room(id: string, status = 'setup', overrides: Partial<LiveRoomSummary> 
 }
 function pending<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => { resolve = done; });
-  return { promise, resolve };
+  let reject!: (error: Error) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
 }
 let navigate: ReturnType<typeof useNavigate>;
 function Hub() {
@@ -92,6 +93,58 @@ describe('Draft Arena LIVE entry', () => {
     expect(wire.fetchRooms).toHaveBeenCalledTimes(2);
   });
 
+  it('retains visible rooms, selected filter and scroll through background loading, errors and retry', async () => {
+    const refresh = pending<LiveRoomSummary[]>();
+    wire.fetchRooms.mockResolvedValueOnce([room('saved'), room('finished', 'complete')])
+      .mockReturnValueOnce(refresh.promise).mockResolvedValueOnce([room('saved', 'setup', { num_rounds: 6 })]);
+    const view = render(<Harness />);
+    expect(await screen.findByRole('link', { name: 'Enter lobby: Topic saved' })).toBeVisible();
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Lobby/ }), { button: 0, ctrlKey: false });
+    const scroller = view.container.querySelector('.da-live-room-scroll') as HTMLDivElement;
+    scroller.scrollTop = 120;
+    act(() => { void wire.listUpdate?.(); });
+    expect(screen.getByText('Updating rooms…')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Enter lobby: Topic saved' })).toBeVisible();
+    expect(scroller).toHaveAttribute('aria-busy', 'false');
+    expect(screen.queryByText('Finding your club’s rooms…')).not.toBeInTheDocument();
+    await act(async () => { refresh.reject(new Error('private network details')); });
+    expect(screen.getByText('Update paused · showing saved rooms')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Enter lobby: Topic saved' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Connection interrupted' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'View final: Topic finished' })).not.toBeInTheDocument();
+    expect(scroller.scrollTop).toBe(120);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry room update' }));
+    await screen.findByText('6 rounds');
+    expect(screen.getByRole('tab', { name: /Lobby/ })).toHaveAttribute('aria-selected', 'true');
+    expect(scroller.scrollTop).toBe(120);
+    expect(screen.queryByText('Update paused · showing saved rooms')).not.toBeInTheDocument();
+  });
+
+  it('retains a successfully empty room list if a later update fails', async () => {
+    wire.fetchRooms.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('refresh failed'));
+    render(<Harness />);
+    await screen.findByRole('heading', { name: 'The stage is clear.' });
+    await act(async () => { await wire.listUpdate?.(); });
+    expect(screen.getByRole('heading', { name: 'The stage is clear.' })).toBeVisible();
+    expect(screen.getByText('Update paused · showing saved rooms')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Retry room update' })).toBeEnabled();
+    expect(screen.queryByRole('heading', { name: 'Connection interrupted' })).not.toBeInTheDocument();
+  });
+
+  it('ignores an older background response after a newer refresh succeeds', async () => {
+    const older = pending<LiveRoomSummary[]>();
+    wire.fetchRooms.mockResolvedValueOnce([room('current')]).mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce([room('latest', 'in_progress')]);
+    render(<Harness />);
+    await screen.findByRole('link', { name: 'Enter lobby: Topic current' });
+    act(() => { void wire.listUpdate?.(); });
+    await act(async () => { await wire.listUpdate?.(); });
+    expect(screen.getByRole('link', { name: 'Open live room: Topic latest' })).toBeVisible();
+    await act(async () => { older.resolve([room('outdated', 'complete')]); });
+    expect(screen.getByRole('link', { name: 'Open live room: Topic latest' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'View final: Topic outdated' })).not.toBeInTheDocument();
+  });
+
   it('allows retry after loading or lookup errors without exposing private lookup details', async () => {
     wire.fetchRooms.mockRejectedValueOnce(new Error('backend details')).mockResolvedValueOnce([room('recovered')]);
     wire.resolveRoom.mockRejectedValueOnce(new Error('private room metadata'));
@@ -103,6 +156,7 @@ describe('Draft Arena LIVE entry', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('That live room is unavailable. Check the code and your active club.');
     expect(screen.queryByText(/private room metadata|backend details/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Room code')).toBeEnabled();
+    expect(screen.getByLabelText('Room code')).toHaveFocus();
   });
 
   it('ignores list and code lookup results from a previous club and account', async () => {
@@ -131,10 +185,14 @@ describe('Draft Arena LIVE entry', () => {
     const form = screen.getByRole('form', { name: 'Find a live room' });
     fireEvent.submit(form); fireEvent.submit(form);
     expect(wire.resolveRoom).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText('Room code')).toBeDisabled();
+    expect(screen.getByLabelText('Room code')).toHaveAttribute('readonly');
+    expect(screen.getByRole('form', { name: 'Find a live room' })).toHaveAttribute('aria-busy', 'true');
+    fireEvent.change(screen.getByLabelText('Room code'), { target: { value: 'ZZZZZ' } });
+    expect(screen.getByLabelText('Room code')).toHaveValue('DH5ZX');
     act(() => navigate('/drafts/live?code=ABCDE'));
     expect(screen.getByLabelText('Room code')).toHaveValue('ABCDE');
     expect(screen.getByLabelText('Room code')).toBeEnabled();
+    expect(screen.getByLabelText('Room code')).not.toHaveAttribute('readonly');
     await act(async () => { oldLookup.resolve({ id: 'stale', topic: 'Stale', status: 'setup' }); });
     expect(screen.getByTestId('live-route')).toHaveTextContent('/drafts/live?code=ABCDE');
   });
@@ -145,6 +203,7 @@ describe('Draft Arena LIVE entry', () => {
     fireEvent.change(screen.getByLabelText('Room code'), { target: { value: 'ABC' } });
     fireEvent.submit(screen.getByRole('form', { name: 'Find a live room' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Enter the five-character code from your host.');
+    expect(screen.getByLabelText('Room code')).toHaveFocus();
     expect(wire.resolveRoom).not.toHaveBeenCalled();
   });
 });
