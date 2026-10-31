@@ -3,7 +3,7 @@
 // The Draft Arena has exactly one commissioner per season. This card lets
 // the current commissioner (or a global app admin) hand the role off to
 // another member of the club. Backed by draft_seasons.commissioner_user_id
-// with RLS "commissioner or admin can update".
+// through the audited, season-scoped commissioner mutation RPC.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Crown, Shield, ArrowRightLeft, Loader2 } from 'lucide-react';
@@ -128,15 +128,16 @@ export function TransferCommissionerCard({ season, isAppAdmin, onTransferred }: 
         <>
           <p className="text-[10.5px] text-muted-foreground/75">
             The Draft Arena has one commissioner at a time. Transferring hands over season controls,
-            playoff seeding, and dispute resolution to the selected member. You&apos;ll lose commissioner access immediately.
+            playoff oversight, and dispute resolution for this season to the selected member. Your commissioner role ends immediately; app administrators retain their admin access.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-2">
             <select
+              aria-label="New season commissioner"
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
               disabled={loading || candidates.length === 0}
-              className="flex-1 h-10 rounded-lg bg-muted/40 border border-border/40 px-3 text-[12px] font-semibold focus:outline-none focus:ring-2 focus:ring-gold/40"
+              className="flex-1 h-11 rounded-lg bg-muted/40 border border-border/40 px-3 text-[12px] font-semibold focus:outline-none focus:ring-2 focus:ring-gold/40"
             >
               <option value="">
                 {loading ? 'Loading members…' : candidates.length === 0 ? 'No other members in club' : 'Select new commissioner…'}
@@ -151,7 +152,7 @@ export function TransferCommissionerCard({ season, isAppAdmin, onTransferred }: 
               type="button"
               onClick={() => setConfirmOpen(true)}
               disabled={!selectedId || busy}
-              className="h-10 px-3.5 rounded-lg text-[11.5px] font-extrabold btn-press flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
+              className="h-11 px-3.5 rounded-lg text-[11.5px] font-extrabold btn-press flex items-center gap-1.5 disabled:opacity-50 disabled:pointer-events-none"
               style={{
                 background: 'linear-gradient(135deg, hsl(var(--gold) / 0.95), hsl(var(--gold) / 0.7))',
                 color: 'hsl(0 0% 8%)',

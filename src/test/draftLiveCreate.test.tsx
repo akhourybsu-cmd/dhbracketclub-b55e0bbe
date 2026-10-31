@@ -3,15 +3,21 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CreateDraftPage from '@/pages/CreateDraftPage';
 import { DEFAULT_LIVE_SETTINGS } from '@/lib/draft/liveDraft';
+import type { CommissionerPlan, CommissionerPreset, CommissionerPresetConfig } from '@/lib/draft/commissioner';
 
 const wire = vi.hoisted(() => ({
   liveEnabled: true,
   flagLoading: false,
+  clubId: null as string | null,
+  presets: vi.fn(),
+  plan: vi.fn(),
   competition: vi.fn(),
   draft: vi.fn(),
   writes: [] as { table: string; payload: Record<string, unknown> }[],
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'host-1' } }) }));
+vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: wire.clubId ? { id: wire.clubId } : null }) }));
+vi.mock('@/lib/draft/commissioner', () => ({ fetchCommissionerPresets: (...args: unknown[]) => wire.presets(...args), fetchCommissionerPlan: (...args: unknown[]) => wire.plan(...args) }));
 vi.mock('@/hooks/useFeatureFlags', () => ({ useFeatureFlag: () => ({ enabled: wire.liveEnabled, loading: wire.flagLoading }) }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('framer-motion', async () => ({ ...await vi.importActual<typeof import('framer-motion')>('framer-motion'), useReducedMotion: () => true }));
@@ -43,13 +49,79 @@ const draftPayload = () => wire.writes.find((write) => write.table === 'drafts')
 beforeEach(() => {
   wire.liveEnabled = true;
   wire.flagLoading = false;
+  wire.clubId = null;
   wire.writes = [];
   wire.competition.mockResolvedValue({ data: { id: 'competition-1' }, error: null });
   wire.draft.mockResolvedValue({ data: { id: 'draft-1' }, error: null });
+  wire.presets.mockResolvedValue([]);
+  wire.plan.mockResolvedValue(null);
 });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Dedicated Draft Arena LIVE creation', () => {
+  it('keeps existing creation defaults for a persisted preset with omitted optional settings', async () => {
+    wire.clubId = 'club-1';
+    wire.presets.mockResolvedValueOnce([{ id: 'preset-default', club_id: 'club-1', season_id: 'season-1', name: 'Original defaults', config: {} as CommissionerPresetConfig, version: 1, created_by: 'host-1', updated_by: 'host-1', created_at: '', updated_at: '' }]);
+    render(<Harness route="/drafts/create?preset=preset-default&season=season-1" />);
+    enterTopic();
+    fireEvent.click(await screen.findByRole('button', { name: 'Apply saved preset' }));
+    step('Review');
+    fireEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
+    await waitFor(() => expect(screen.getByTestId('created-route')).toBeVisible());
+    expect(draftPayload()).toEqual({ competition_id: 'competition-1', topic: 'Best film villains', created_by: 'host-1', num_rounds: 5, status: 'setup', ai_context: null });
+  });
+
+  it('loads a persisted preset without resetting inputs and applies every existing LIVE setting only on request', async () => {
+    wire.clubId = 'club-1';
+    let complete!: (rows: CommissionerPreset[]) => void;
+    wire.presets.mockReturnValueOnce(new Promise((resolve) => { complete = resolve; }));
+    const config = { topic: 'Template topic', description: 'Template description', num_rounds: 8, ai_context: 'Use the original topic scope.', is_live: true, live_settings: { ...DEFAULT_LIVE_SETTINGS, pickSeconds: 75, timeoutBehavior: 'auto_skip' as const, sound: false, autoStartClock: false, reportBroadcast: false } };
+    const preset: CommissionerPreset = { id: 'preset-1', club_id: 'club-1', season_id: 'season-1', name: 'Club show', config, version: 1, created_by: 'host-1', updated_by: 'host-1', created_at: '', updated_at: '' };
+    render(<Harness route="/drafts/live/create?preset=preset-1&season=season-1" />);
+    enterTopic();
+    fireEvent.change(screen.getByLabelText(/Description/), { target: { value: 'Keep my description' } });
+    await act(async () => complete([preset]));
+    expect(wire.presets).toHaveBeenCalledWith('club-1', 'season-1');
+    step('Rules');
+    expect(screen.getByRole('button', { name: '5' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('AI Judging Context')).toHaveValue('');
+    step('Topic');
+    expect(screen.getByLabelText('Topic')).toHaveValue('  Best film villains  ');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply saved preset' }));
+    expect(screen.getByText(/Started from Club show/)).toBeVisible();
+    expect(screen.getByLabelText('Topic')).toHaveValue('  Best film villains  ');
+    expect(screen.getByLabelText(/Description/)).toHaveValue('Keep my description');
+    step('Rules');
+    expect(screen.getByRole('button', { name: '8' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('AI Judging Context')).toHaveValue(config.ai_context);
+    step('Stage');
+    expect(screen.getByRole('button', { name: '75s' })).toHaveAttribute('aria-pressed', 'true');
+    step('Review');
+    fireEvent.click(screen.getByRole('button', { name: 'Create live event' }));
+    await waitFor(() => expect(screen.getByTestId('created-route')).toBeVisible());
+    expect(draftPayload()).toMatchObject({ num_rounds: 8, ai_context: config.ai_context, is_live: true, timer_seconds: 75, live_settings: config.live_settings });
+    expect(wire.writes[0].payload.description).toBe('Keep my description');
+  });
+
+  it('uses a persisted plan in a new draft while leaving the plan link as an explicit later commissioner action', async () => {
+    wire.clubId = 'club-1';
+    const plan: CommissionerPlan = { id: 'plan-1', club_id: 'club-1', season_id: 'season-1', topic: 'Planned book heroes', notes: 'Private planning notes are not a public description', ai_context: 'Include all books.', num_rounds: 7, is_live: false, live_settings: {}, scheduled_at: '2026-11-06T18:00:00Z', due_at: null, status: 'ready', preset_id: null, draft_id: null, version: 3, created_by: 'host-1', updated_by: 'host-1', created_at: '', updated_at: '' };
+    wire.plan.mockResolvedValueOnce(plan);
+    render(<Harness route="/drafts/create?plan=plan-1&season=season-1" />);
+    expect(await screen.findByRole('button', { name: 'Apply planned draft' })).toBeEnabled();
+    expect(screen.getByLabelText('Topic')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply planned draft' }));
+    expect(wire.plan).toHaveBeenCalledWith('club-1', 'season-1', 'plan-1');
+    expect(screen.getByLabelText('Topic')).toHaveValue(plan.topic);
+    expect(screen.getByLabelText(/Description/)).toHaveValue('');
+    step('Review');
+    expect(screen.getByText(/After creation, add the draft/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
+    await waitFor(() => expect(screen.getByTestId('created-route')).toBeVisible());
+    expect(draftPayload()).toEqual({ competition_id: 'competition-1', topic: plan.topic, created_by: 'host-1', num_rounds: 7, status: 'setup', ai_context: plan.ai_context });
+    expect(wire.writes.map((write) => write.table)).toEqual(['competitions', 'drafts', 'draft_participants', 'activity_feed']);
+  });
+
   it('keeps LIVE fixed, preserves choices across stages and creates a setup event before entering its greenroom', async () => {
     render(<Harness />);
     expect(screen.getByRole('heading', { name: 'Draft Arena LIVE' })).toBeVisible();

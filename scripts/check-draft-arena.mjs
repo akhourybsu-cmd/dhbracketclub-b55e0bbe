@@ -14,7 +14,7 @@ const output = process.env.DRAFT_QA_OUTPUT || await mkdtemp(join(tmpdir(), "draf
 await mkdir(output, { recursive: true });
 const base = process.env.DRAFT_QA_URL || "http://127.0.0.1:8098";
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
-  fixtures: "Production pages/hooks/rules; browser-local identity, Supabase and image transport. No live writes." };
+  fixtures: "Production pages/hooks/rules; browser-local identity, Supabase/commissioner RPC and image transport. No live writes." };
 let server, browser, currentPage, serverLog;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 console.log("Draft Arena artifacts:", output);
@@ -114,6 +114,7 @@ async function captureFailure(page, label) {
     text: document.body.innerText.slice(0, 7000),
     draft: window.daQa?.tables.drafts.find((draft) => draft.id === 'active'),
     picks: window.daQa?.tables.draft_picks.filter((pick) => pick.draft_id === 'active'),
+    commissioner: window.daQa ? Object.fromEntries(Object.entries(window.daQa.tables).filter(([table]) => table.startsWith('draft_commissioner_') || table === 'notifications' || table === 'draft_season_standings')) : null,
     calls: window.daQa?.calls.slice(-35),
   })).catch((error) => ({ captureError: String(error) }));
   await writeFile(join(output, `${label}-diagnostics.json`), JSON.stringify(state, null, 2));
@@ -1204,9 +1205,282 @@ async function projectorCeremony() {
   finally { await context.close(); }
 }
 
+async function commissionerMemberDenied() {
+  const { page, context } = await setup(320, 568, 'dark', 'reduce');
+  const label = 'commissioner-ordinary-member-direct-route-denied';
+  try {
+    await go(page, '/drafts?tab=commissioner', { stress: 'commissioner' });
+    await expect(page.getByRole('tab', { name: 'Manage', exact: true })).toHaveCount(0);
+    await expect(page.locator('[data-testid="commissioner-workspace"]')).toHaveCount(0);
+    await expect(page.locator('.da-lobby-hero')).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^Rooms(?:\s*\d+)?$/ })).toHaveAttribute('aria-selected', 'true');
+    const state = await page.evaluate(() => ({ calls: window.daQa.calls.filter((call) => ['draft_commissioner_workspace', 'draft_commissioner_mutate'].includes(call.rpc)), writes: window.daQa.operations.length }));
+    assert.deepEqual(state, { calls: [], writes: 0 }, 'A direct management query cannot mount privileged controls or issue commissioner operations');
+    await fit(page, label); await shot(page, label);
+    report.checks.push({ label, ok: true }); console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function commissionerPlannerFlow(page, workspace, label) {
+  await workspace.getByRole('tab', { name: 'Planner', exact: true }).click();
+  const views = workspace.getByRole('tablist', { name: 'Planning views', exact: true });
+  await views.getByRole('tab', { name: 'Presets', exact: true }).click();
+  const writesBefore = await page.evaluate(() => window.daQa.operations.length);
+  await workspace.getByRole('button', { name: 'New preset', exact: true }).click();
+  let editor = workspace.getByRole('form', { name: 'Preset details', exact: true });
+  await editor.getByRole('textbox', { name: 'Preset name', exact: true }).fill('Discard this setup');
+  await editor.getByRole('button', { name: 'Cancel editing', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.daQa.operations.length), writesBefore, 'Cancelling a preset editor never writes a saved setup');
+  await workspace.getByRole('button', { name: 'New preset', exact: true }).click();
+  editor = workspace.getByRole('form', { name: 'Preset details', exact: true });
+  await editor.getByRole('textbox', { name: 'Preset name', exact: true }).fill('Cinema night setup');
+  await editor.getByRole('textbox', { name: 'Default topic (optional)', exact: true }).fill('Cinema legends');
+  await editor.getByRole('textbox', { name: 'Default description (optional)', exact: true }).fill('A compact film night for the club.');
+  await editor.getByRole('combobox', { name: 'Rounds', exact: true }).selectOption('3');
+  await editor.getByRole('textbox', { name: 'Judging instructions (optional)', exact: true }).fill('World cinema is eligible.');
+  await editor.getByRole('textbox', { name: 'Reason for change', exact: true }).fill('Save a reusable film night format.');
+  const savePreset = editor.getByRole('button', { name: 'Save preset', exact: true });
+  await savePreset.scrollIntoViewIfNeeded(); await fullyVisibleControl(savePreset, `${label}-preset-save-reachable`);
+  await savePreset.click(); await expect(editor).toHaveCount(0);
+  await settle(page);
+  await fullyVisibleControl(workspace.getByRole('heading', { name: 'Cinema night setup', exact: true }), `${label}-saved-preset-title-visible`);
+  let preset = await page.evaluate(() => structuredClone(window.daQa.tables.draft_commissioner_presets[0]));
+  assert.equal(preset.name, 'Cinema night setup'); assert.equal(preset.config.num_rounds, 3);
+  assert.equal(preset.config.ai_context, 'World cinema is eligible.'); assert.equal(preset.config.is_live, false);
+  const presetCard = workspace.locator('.da-planner-item').filter({ hasText: 'Cinema night setup' });
+  await presetCard.getByRole('button', { name: 'Plan draft', exact: true }).click();
+  editor = workspace.getByRole('form', { name: 'Planned draft details', exact: true });
+  await settle(page);
+  await fullyVisibleControl(editor.getByRole('heading', { name: 'New planned draft', exact: true }), `${label}-new-plan-title-visible`);
+  await expect(editor.getByRole('combobox', { name: 'Rounds', exact: true })).toHaveValue('3');
+  await expect(editor.getByRole('textbox', { name: 'Judging instructions (optional)', exact: true })).toHaveValue('World cinema is eligible.');
+  await editor.getByRole('textbox', { name: 'Planned topic', exact: true }).fill('November cinema night');
+  const start = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);
+  const end = new Date(Date.now() + 7 * 86_400_000 + 3_600_000).toISOString().slice(0, 16);
+  await editor.getByLabel('Scheduled start', { exact: true }).fill(start);
+  await editor.getByLabel('Deadline (optional)', { exact: true }).fill(end);
+  await editor.getByRole('textbox', { name: 'Planning notes', exact: true }).fill('Bring a list of three films.');
+  await editor.getByRole('combobox', { name: 'Plan status', exact: true }).selectOption('ready');
+  await editor.getByRole('textbox', { name: 'Reason for change', exact: true }).fill('Schedule the next club draft.');
+  const savePlan = editor.getByRole('button', { name: 'Save planned draft', exact: true });
+  await savePlan.scrollIntoViewIfNeeded(); await fullyVisibleControl(savePlan, `${label}-plan-save-reachable`);
+  await savePlan.click(); await expect(editor).toHaveCount(0);
+  await settle(page);
+  await fullyVisibleControl(workspace.getByRole('heading', { name: 'November cinema night', exact: true }), `${label}-saved-plan-title-visible`);
+  const plan = await page.evaluate(() => structuredClone(window.daQa.tables.draft_commissioner_plans[0]));
+  assert.equal(plan.topic, 'November cinema night'); assert.equal(plan.preset_id, preset.id); assert.equal(plan.status, 'ready');
+  assert.equal(plan.num_rounds, 3); assert.equal(plan.draft_id, null);
+  assert.ok(Date.parse(plan.due_at) > Date.parse(plan.scheduled_at));
+  assert.equal(await page.evaluate(() => window.daQa.tables.drafts.length), 3, 'Saving a plan does not create or start a game');
+  await shot(page, `${label}-saved-plan`);
+  const remind = workspace.getByRole('button', { name: 'Remind participants about November cinema night', exact: true });
+  await remind.click();
+  const prompt = page.getByRole('dialog', { name: 'Send plan reminder', exact: true });
+  await prompt.getByRole('combobox', { name: 'Recipient', exact: true }).selectOption('u2');
+  await prompt.getByRole('textbox', { name: 'Reminder reason', exact: true }).fill('Your next club draft is ready to review.');
+  await prompt.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(await page.evaluate(() => window.daQa.tables.notifications.length), 0, 'Cancelling a reminder never delivers a notification');
+  await remind.click();
+  await prompt.getByRole('combobox', { name: 'Recipient', exact: true }).selectOption('u2');
+  await prompt.getByRole('textbox', { name: 'Reminder reason', exact: true }).fill('Your next club draft is ready to review.');
+  await page.evaluate(() => window.daQa.failNextRPC('draft_commissioner_mutate'));
+  await prompt.getByRole('button', { name: 'Send in-app reminder', exact: true }).click();
+  await expect(prompt.getByRole('alert')).toContainText('could not be saved');
+  assert.equal(await page.evaluate(() => window.daQa.tables.notifications.length), 0, 'A failed reminder shows no delivery and commits no notification');
+  await fit(page, `${label}-reminder-error`, '.da-planner-dialog'); await shot(page, `${label}-reminder-error`);
+  await prompt.getByRole('button', { name: 'Send in-app reminder', exact: true }).click();
+  await expect(prompt).toHaveCount(0);
+  const delivered = await page.evaluate(() => ({ reminders: window.daQa.tables.draft_commissioner_reminders, notifications: window.daQa.tables.notifications, calls: window.daQa.calls.filter((call) => call.rpc === 'draft_commissioner_mutate' && call.args.p_action === 'send_reminder') }));
+  assert.equal(delivered.reminders.length, 1); assert.equal(delivered.notifications.length, 1);
+  assert.equal(delivered.reminders[0].target_user_id, 'u2'); assert.equal(delivered.reminders[0].plan_id, plan.id);
+  assert.equal(delivered.reminders[0].notification_id, delivered.notifications[0].id);
+  assert.equal(delivered.notifications[0].user_id, 'u2'); assert.equal(delivered.notifications[0].url, '/drafts?tab=season');
+  assert.equal(delivered.calls.length, 2); assert.equal(delivered.calls[0].args.p_request_id, delivered.calls[1].args.p_request_id, 'Retry reuses the same confirmed delivery identity');
+  assert.deepEqual(delivered.calls[0].args.p_payload, { kind: 'plan', plan_id: plan.id, target_user_id: 'u2' });
+  await views.getByRole('tab', { name: 'Presets', exact: true }).click();
+  await expect(presetCard).toBeVisible();
+  preset = await page.evaluate(() => structuredClone(window.daQa.tables.draft_commissioner_presets[0]));
+  report.checks.push({ label: `${label}-persistent-preset-plan-reminder-cancel-and-retry`, ok: true });
+  return { preset, plan };
+}
+
+async function commissionerPresetApplication(page, workspace, preset, label) {
+  const card = workspace.locator('.da-planner-item').filter({ hasText: 'Cinema night setup' });
+  await card.getByRole('link', { name: 'Use in draft', exact: true }).click();
+  await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', `/drafts/create?preset=${preset.id}&season=season-4`);
+  const topic = page.getByRole('textbox', { name: 'Topic', exact: true });
+  const description = page.getByRole('textbox', { name: 'Description (optional)', exact: true });
+  await expect(topic).toHaveValue('');
+  await expect(page.getByRole('combobox', { name: 'Saved setup', exact: true })).toHaveValue(preset.id);
+  const apply = page.getByRole('button', { name: 'Apply saved preset', exact: true });
+  await expect(apply).toBeEnabled();
+  await topic.fill('Keep the host’s topic'); await description.fill('Keep the description already entered.');
+  await apply.click();
+  await expect(topic).toHaveValue('Keep the host’s topic');
+  await expect(description).toHaveValue('Keep the description already entered.');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'AI Judging Context', exact: true })).toHaveValue('World cinema is eligible.');
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.locator('.da-create-stage')).toContainText('3 picks each');
+  assert.equal(await page.evaluate(() => window.daQa.tables.drafts.length), 3, 'Applying a saved setup changes the editable form without creating a draft');
+  await fit(page, `${label}-applied-preset`); await shot(page, `${label}-applied-preset`);
+  await page.getByRole('link', { name: 'Back to Drafts', exact: true }).click();
+  await tab(page, 'Manage');
+  await expect(page.locator('[data-testid="commissioner-workspace"]')).toBeVisible();
+  report.checks.push({ label: `${label}-saved-preset-explicit-application-preserves-host-input`, ok: true });
+}
+
+async function commissionerPointsFlow(page, workspace, label) {
+  await workspace.getByRole('tablist', { name: 'Commissioner sections', exact: true }).getByRole('tab', { name: 'Points', exact: true }).click();
+  await workspace.getByRole('button', { name: 'Adjustments', exact: true }).click();
+  await workspace.getByRole('combobox', { name: 'Points member', exact: true }).selectOption('u2');
+  await workspace.getByLabel('Point change', { exact: true }).fill('4');
+  await workspace.getByRole('textbox', { name: 'Adjustment reason', exact: true }).fill('Correct a documented season ruling.');
+  const before = await page.evaluate(() => JSON.stringify(window.daQa.tables));
+  await workspace.getByRole('button', { name: 'Preview adjustment', exact: true }).click();
+  const review = page.getByRole('dialog', { name: 'Point adjustment', exact: true });
+  await expect(review.locator('.da-commissioner-impact')).toContainText('Blair');
+  await expect(review.locator('.da-commissioner-impact')).toContainText('7 pts');
+  await expect(review.locator('.da-commissioner-impact')).toContainText('11 pts');
+  await expect(review.locator('.da-commissioner-impact')).toContainText('Rank 2 → 1');
+  for (const name of ['Cancel preview', 'Confirm adjustment']) {
+    const button = review.getByRole('button', { name, exact: true });
+    await fullyVisibleControl(button, `${label}-${name.toLowerCase().replaceAll(' ', '-')}-visible`);
+    const box = await button.boundingBox(); assert.ok(box.width >= 44 && box.height >= 44, 'Points review actions are at least 44px');
+  }
+  assert.equal(await page.evaluate(() => JSON.stringify(window.daQa.tables)), before, 'Point preview changes no persisted table');
+  assert.equal(await page.evaluate(() => window.daQa.calls.filter((call) => call.rpc === 'draft_commissioner_mutate').length), 0, 'Preview never calls the mutation service');
+  await fit(page, `${label}-point-preview`, '.da-commissioner-review'); await shot(page, `${label}-point-preview`);
+  await review.getByRole('button', { name: 'Cancel preview', exact: true }).click();
+  assert.equal(await page.evaluate(() => JSON.stringify(window.daQa.tables)), before, 'Cancelling a point preview changes no persisted table');
+  await workspace.getByRole('button', { name: 'Preview adjustment', exact: true }).click();
+  await page.evaluate(() => window.daQa.failNextRPC('draft_commissioner_mutate'));
+  await review.getByRole('button', { name: 'Confirm adjustment', exact: true }).click();
+  await expect(review.getByRole('alert')).toContainText('could not be saved');
+  await expect(review.getByRole('textbox', { name: 'Reason for this change', exact: true })).toHaveValue('Correct a documented season ruling.');
+  assert.equal(await page.evaluate(() => JSON.stringify(window.daQa.tables)), before, 'A failed point adjustment leaves the projection and ledger unchanged');
+  await shot(page, `${label}-point-confirmation-error`);
+  await review.getByRole('button', { name: 'Confirm adjustment', exact: true }).click();
+  await expect(review).toHaveCount(0);
+  const saved = await page.evaluate(() => ({ adjustments: window.daQa.tables.draft_commissioner_adjustments, audit: window.daQa.tables.draft_commissioner_audit, standing: window.daQa.tables.draft_season_standings.find((row) => row.user_id === 'u2'), calls: window.daQa.calls.filter((call) => call.rpc === 'draft_commissioner_mutate' && call.args.p_action === 'add_adjustment') }));
+  assert.equal(saved.adjustments.length, 1); assert.equal(saved.audit.length, 1);
+  assert.equal(saved.adjustments[0].user_id, 'u2'); assert.equal(saved.adjustments[0].delta, 4);
+  assert.equal(saved.adjustments[0].reason, 'Correct a documented season ruling.');
+  assert.equal(saved.standing.season_points, 11); assert.equal(saved.standing.rank, 1); assert.equal(saved.standing.playoff_seed, 1);
+  assert.equal(saved.audit[0].action, 'add_adjustment'); assert.equal(saved.audit[0].actor_user_id, 'u1');
+  assert.equal(saved.calls.length, 2); assert.equal(saved.calls[0].args.p_request_id, saved.calls[1].args.p_request_id, 'Point confirmation retry reuses its original identity');
+  assert.deepEqual(saved.calls[0].args.p_payload, { user_id: 'u2', delta: 4 });
+  const original = JSON.parse(before);
+  assert.deepEqual(await page.evaluate(() => window.daQa.tables.draft_results), original.draft_results, 'A season adjustment does not alter judged scores or DH awards');
+  assert.deepEqual(await page.evaluate(() => window.daQa.tables.draft_picks), original.draft_picks, 'A season adjustment does not change a pick');
+  report.checks.push({ label: `${label}-point-preview-cancel-no-write-and-idempotent-confirmation`, ok: true });
+}
+
+async function commissionerJourney(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, 'reduce');
+  const label = `commissioner-${width}x${height}-${theme}`;
+  const options = { stress: 'commissioner', role: 'commissioner', theme, shared: `${label}-${Date.now()}` };
+  try {
+    await go(page, '/drafts', options);
+    await page.evaluate(() => window.daQa.blockRPC('draft_commissioner_workspace'));
+    await tab(page, 'Manage');
+    const workspace = page.locator('[data-testid="commissioner-workspace"]');
+    await expect(workspace).toContainText('Workspace unavailable');
+    await expect(workspace.getByRole('button', { name: 'Retry workspace', exact: true })).toBeVisible();
+    assert.equal(await page.evaluate(() => window.daQa.operations.length), 0, 'A workspace load failure never changes a season');
+    await fit(page, `${label}-load-error`); await shot(page, `${label}-load-error`);
+    await page.evaluate(() => window.daQa.releaseRPC('draft_commissioner_workspace'));
+    await workspace.getByRole('button', { name: 'Retry workspace', exact: true }).click();
+    await expect(workspace).toContainText('Season at a glance');
+    await expect(page.locator('.da-lobby-hero')).not.toBeVisible();
+    await expect(page.locator('.da-lobby-career')).not.toBeVisible();
+    await expect(workspace.getByRole('button', { name: 'Refresh workspace', exact: true })).toBeEnabled();
+    const nav = workspace.getByRole('tablist', { name: 'Commissioner sections', exact: true });
+    for (const name of ['Overview', 'Points', 'Disputes', 'Planner', 'Participation', 'Playoffs', 'History', 'Season tools']) {
+      const button = nav.getByRole('tab', { name, exact: true });
+      await button.click(); await expect(button).toHaveAttribute('aria-selected', 'true');
+      await expect(workspace.locator('.da-commissioner-pane[role="tabpanel"]:visible')).toHaveCount(1);
+      await fullyVisibleControl(button, `${label}-${name.toLowerCase().replaceAll(' ', '-')}-tab-reachable`);
+      const box = await button.boundingBox(); assert.ok(box.width >= 44 && box.height >= 44, 'Commissioner section tabs are at least 44px');
+      await fit(page, `${label}-${name.toLowerCase().replaceAll(' ', '-')}`);
+      await interactiveAudit(page, `${label}-${name.toLowerCase().replaceAll(' ', '-')}-controls`, '.da-commissioner-workspace');
+      if (['Overview', 'Points', 'Planner', 'Participation'].includes(name)) await shot(page, `${label}-${name.toLowerCase()}`);
+    }
+    await commissionerPointsFlow(page, workspace, label);
+    const { preset, plan } = await commissionerPlannerFlow(page, workspace, label);
+    await commissionerPresetApplication(page, workspace, preset, label);
+    await nav.getByRole('tab', { name: 'History', exact: true }).click();
+    const history = workspace.locator('.da-commissioner-history');
+    for (const reason of ['Correct a documented season ruling.', 'Save a reusable film night format.', 'Schedule the next club draft.', 'Your next club draft is ready to review.']) await expect(history).toContainText(reason);
+    await expect(history.locator('li')).toHaveCount(4);
+    const adjustmentHistory = history.locator('li').filter({ hasText: 'Correct a documented season ruling.' });
+    await adjustmentHistory.locator('summary').click();
+    await expect(adjustmentHistory.locator('dl')).toContainText('Point change');
+    await expect(adjustmentHistory.locator('dl')).toContainText('Blair');
+    await expect(adjustmentHistory.locator('dl')).toContainText('4');
+    await shot(page, `${label}-history`);
+    const persisted = await page.evaluate(() => JSON.stringify({ adjustments: window.daQa.tables.draft_commissioner_adjustments, plans: window.daQa.tables.draft_commissioner_plans, presets: window.daQa.tables.draft_commissioner_presets, audit: window.daQa.tables.draft_commissioner_audit, reminders: window.daQa.tables.draft_commissioner_reminders, notifications: window.daQa.tables.notifications }));
+    await go(page, '/drafts?tab=commissioner&tool=history', options);
+    await expect(history.locator('li')).toHaveCount(4);
+    assert.equal(await page.evaluate(() => JSON.stringify({ adjustments: window.daQa.tables.draft_commissioner_adjustments, plans: window.daQa.tables.draft_commissioner_plans, presets: window.daQa.tables.draft_commissioner_presets, audit: window.daQa.tables.draft_commissioner_audit, reminders: window.daQa.tables.draft_commissioner_reminders, notifications: window.daQa.tables.notifications })), persisted, 'Reload reads persisted commissioner history and delivery receipts');
+    assert.equal(await page.evaluate(() => window.daQa.operations.length), 0, 'Reading persisted commissioner history performs no new mutation');
+    assert.equal(await page.evaluate((planId) => window.daQa.tables.draft_commissioner_plans.find((row) => row.id === planId).preset_id, plan.id), preset.id);
+    await fit(page, `${label}-persisted-history`); await shot(page, `${label}-persisted-history`);
+    report.checks.push({ label: `${label}-workspace-sections-role-scoped-persistence-and-history`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function commissionerPresentation(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, 'reduce');
+  const label = `commissioner-gallery-${width}x${height}-${theme}`;
+  try {
+    await go(page, '/drafts?tab=commissioner', { stress: 'commissioner-gallery', role: 'commissioner', theme });
+    const workspace = page.locator('[data-testid="commissioner-workspace"]');
+    const nav = workspace.getByRole('tablist', { name: 'Commissioner sections', exact: true });
+    await expect(workspace).toContainText('Season at a glance');
+    await expect(page.locator('.da-lobby-hero')).not.toBeVisible();
+    await expect(page.locator('.da-lobby-career')).not.toBeVisible();
+    await fit(page, `${label}-overview`); await shot(page, `${label}-overview`);
+    await nav.getByRole('tab', { name: 'Points', exact: true }).click();
+    await workspace.getByRole('combobox', { name: 'Points member', exact: true }).selectOption('u2');
+    await fit(page, `${label}-points`); await shot(page, `${label}-points`);
+    await workspace.getByRole('button', { name: 'Adjustments', exact: true }).click();
+    await workspace.getByLabel('Point change', { exact: true }).fill('-2');
+    await workspace.getByRole('textbox', { name: 'Adjustment reason', exact: true }).fill('Review a local presentation preview.');
+    const before = await page.evaluate(() => JSON.stringify(window.daQa.tables));
+    await workspace.getByRole('button', { name: 'Preview adjustment', exact: true }).click();
+    const review = page.getByRole('dialog', { name: 'Point adjustment', exact: true });
+    await expect(review.locator('.da-commissioner-impact')).toContainText('11 pts');
+    await expect(review.locator('.da-commissioner-impact')).toContainText('9 pts');
+    await fit(page, `${label}-review`, '.da-commissioner-review');
+    await fullyVisibleControl(review.getByRole('button', { name: 'Cancel preview', exact: true }), `${label}-review-cancel-visible`);
+    await fullyVisibleControl(review.getByRole('button', { name: 'Confirm adjustment', exact: true }), `${label}-review-confirm-visible`);
+    await shot(page, `${label}-review`); await review.getByRole('button', { name: 'Cancel preview', exact: true }).click();
+    assert.equal(await page.evaluate(() => JSON.stringify(window.daQa.tables)), before, 'Presentation preview and cancellation remain read-only');
+    await nav.getByRole('tab', { name: 'Planner', exact: true }).click();
+    await expect(workspace.locator('.da-planner-item')).toContainText('November cinema night');
+    await fit(page, `${label}-planner`); await shot(page, `${label}-planner`);
+    await nav.getByRole('tab', { name: 'History', exact: true }).click();
+    const history = workspace.locator('.da-commissioner-history');
+    const changes = history.locator('li').filter({ hasText: 'Correct a documented season ruling.' });
+    await changes.locator('summary').click();
+    await expect(changes.locator('dl')).toContainText('Blair');
+    await fit(page, `${label}-history`); await shot(page, `${label}-history`);
+    assert.equal(await page.evaluate(() => window.daQa.operations.length), 0, 'Saved presentation records are read without writing or delivering a reminder');
+    report.checks.push({ label: `${label}-saved-state-and-read-only-review`, ok: true }); console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
   // Exercise newly added stress cases first; retain the complete core matrix.
+  await commissionerMemberDenied();
+  for (const args of [[320,568,'dark'],[1440,900,'light']]) await commissionerJourney(...args);
+  for (const args of [[320,568,'light'],[390,844,'dark'],[390,844,'light'],[1440,900,'dark']]) await commissionerPresentation(...args);
   for (const args of [[320,568],[844,390]]) await largeCeremony(...args);
   await projectorCeremony();
   await liveTimeoutClosesComposer();

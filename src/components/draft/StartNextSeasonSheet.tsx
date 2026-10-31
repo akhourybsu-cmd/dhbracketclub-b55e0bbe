@@ -8,7 +8,6 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   createSeason,
-  setSeasonCommissioner,
   formatSeasonTitle,
   type DraftSeason,
 } from '@/hooks/useDraftSeasons';
@@ -60,8 +59,8 @@ export function StartNextSeasonSheet({ open, onOpenChange, previousSeason, onCre
   const newTitle = `Season ${nextNumber}`;
 
   const handleSubmit = async () => {
-    if (regularSeasonDrafts < 1 || regularSeasonDrafts > 50) {
-      toast.error('Drafts must be between 1 and 50');
+    if (!Number.isInteger(regularSeasonDrafts) || regularSeasonDrafts < 1 || regularSeasonDrafts > 50 || !Number.isInteger(bestOf) || bestOf < 1 || bestOf > regularSeasonDrafts) {
+      toast.error('Choose 1–50 drafts and a best-of count no larger than that total.');
       return;
     }
 
@@ -77,14 +76,8 @@ export function StartNextSeasonSheet({ open, onOpenChange, previousSeason, onCre
         subtitle: subtitle.trim() || null,
         regularSeasonDrafts,
         bestOf,
+        commissionerUserId: previousSeason.commissioner_user_id || user?.id,
       });
-
-      // Carry the commissioner forward (or claim it if previous season had none)
-      const commissionerId = previousSeason.commissioner_user_id || user?.id;
-      if (commissionerId && created?.id) {
-        try { await setSeasonCommissioner(created.id, commissionerId); }
-        catch (e) { console.warn('Could not set commissioner; continuing.', e); }
-      }
 
       const title = created?.season_number ? `Season ${created.season_number}` : newTitle;
       toast.success(`${title} is live! 🏆`);

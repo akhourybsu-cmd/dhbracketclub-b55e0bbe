@@ -116,21 +116,25 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "No participants or picks found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Any participant, the creator, or a global app admin can trigger report generation.
-    // Admin bypass lets the commissioner regenerate reports for playoff drafts
-    // they're not playing in.
+    // Reports are club scoped. Commissioners may repair reports only for their
+    // own season; creator/participant access retains the existing generation flow.
+    const { data: activeClub, error: clubError } = await userClient.rpc("current_user_club_id");
+    if (clubError || !activeClub || activeClub !== draft.club_id) {
+      return new Response(JSON.stringify({ error: "This draft is outside your active club" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const isParticipant = participants.some((p: any) => p.user_id === userId);
-    let isAppAdmin = false;
     if (draft.created_by !== userId && !isParticipant) {
-      const { data: adminRow } = await admin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-      isAppAdmin = !!adminRow;
-      if (!isAppAdmin) {
-        return new Response(JSON.stringify({ error: "Only draft participants can generate the report" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const [{ data: adminAllowed }, { data: seasonEntry }] = await Promise.all([
+        userClient.rpc("is_app_admin", { _user_id: userId }),
+        admin.from("draft_season_entries").select("season_id").eq("draft_id", draft_id).eq("club_id", draft.club_id).maybeSingle(),
+      ]);
+      let commissionerAllowed = false;
+      if (seasonEntry?.season_id) {
+        const { data, error } = await userClient.rpc("draft_commissioner_can_manage", { p_season_id: seasonEntry.season_id });
+        commissionerAllowed = !error && data === true;
+      }
+      if (!adminAllowed && !commissionerAllowed) {
+        return new Response(JSON.stringify({ error: "Only this draft's participants, creator, or season commissioner can generate its report" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -678,132 +682,15 @@ Use the rate_draft_results tool to return your structured analysis.`;
       console.error("draft-complete push error (non-fatal):", pushErr);
     }
 
-    // ── Auto-recalculate season standings if draft belongs to a season ──
+    // One authoritative transaction preserves adjustments, IDs and locked seeds.
     try {
-      const { data: seasonEntry } = await admin
-        .from("draft_season_entries")
-        .select("season_id")
-        .eq("draft_id", draft_id)
-        .maybeSingle();
-
+      const { data: seasonEntry, error: entryError } = await admin
+        .from("draft_season_entries").select("season_id")
+        .eq("draft_id", draft_id).maybeSingle();
+      if (entryError) throw entryError;
       if (seasonEntry?.season_id) {
-        const seasonId = seasonEntry.season_id;
-        console.log("Recalculating season standings for season:", seasonId);
-
-        // Get all season entries
-        const { data: allEntries } = await admin
-          .from("draft_season_entries")
-          .select("draft_id, week_number, is_playoff")
-          .eq("season_id", seasonId)
-          .eq("is_playoff", false);
-
-        if (allEntries && allEntries.length > 0) {
-          const allDraftIds = allEntries.map((e: any) => e.draft_id);
-          const { data: allResults } = await admin
-            .from("draft_results")
-            .select("draft_id, user_id, rank, total_score, points_awarded")
-            .in("draft_id", allDraftIds);
-
-          if (allResults && allResults.length > 0) {
-            // Get season config
-            const { data: seasonData } = await admin
-              .from("draft_seasons")
-              .select("best_of")
-              .eq("id", seasonId)
-              .single();
-
-            const bestOf = seasonData?.best_of || 10;
-
-            // Season points by placement
-            const SEASON_POINTS: Record<number, number> = { 1: 10, 2: 7, 3: 5, 4: 3, 5: 2 };
-            const getSeasonPts = (rank: number) => SEASON_POINTS[rank] || 1;
-
-            // Group results by user
-            const userResults = new Map<string, Array<{ rank: number; total_score: number }>>();
-            for (const r of allResults) {
-              const arr = userResults.get(r.user_id) || [];
-              arr.push({ rank: r.rank, total_score: Number(r.total_score) });
-              userResults.set(r.user_id, arr);
-            }
-
-            // Calculate standings
-            const standingsUpdates: any[] = [];
-            for (const [uid, draftsArr] of userResults) {
-              const withPts = draftsArr.map(d => ({ ...d, seasonPts: getSeasonPts(d.rank) }));
-              withPts.sort((a, b) => b.seasonPts - a.seasonPts);
-              const counted = withPts.slice(0, bestOf);
-              const seasonPoints = counted.reduce((s, d) => s + d.seasonPts, 0);
-              const wins = draftsArr.filter(d => d.rank === 1).length;
-              const podiums = draftsArr.filter(d => d.rank <= 3).length;
-              const avgFinish = draftsArr.reduce((s, d) => s + d.rank, 0) / draftsArr.length;
-              const scores = draftsArr.map(d => d.total_score);
-              const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-              const bestScore = Math.max(...scores);
-              const worstScore = Math.min(...scores);
-              const variance = scores.reduce((s, v) => s + (v - avgScore) ** 2, 0) / scores.length;
-
-              standingsUpdates.push({
-                season_id: seasonId, user_id: uid,
-                season_points: seasonPoints, drafts_played: draftsArr.length,
-                wins, podiums,
-                avg_finish: Math.round(avgFinish * 100) / 100,
-                avg_score: Math.round(avgScore * 100) / 100,
-                best_score: Math.round(bestScore * 100) / 100,
-                worst_score: Math.round(worstScore * 100) / 100,
-                consistency: Math.round(Math.sqrt(variance) * 100) / 100,
-              });
-            }
-
-            // Multi-factor tiebreaker sort
-            standingsUpdates.sort((a: any, b: any) => {
-              if (b.season_points !== a.season_points) return b.season_points - a.season_points;
-              if (b.wins !== a.wins) return b.wins - a.wins;
-              if (b.podiums !== a.podiums) return b.podiums - a.podiums;
-              if (a.avg_finish !== b.avg_finish) return a.avg_finish - b.avg_finish;
-              return b.avg_score - a.avg_score;
-            });
-            let sRank = 1;
-            for (let i = 0; i < standingsUpdates.length; i++) {
-              if (i > 0 && standingsUpdates[i].season_points < standingsUpdates[i - 1].season_points) sRank = i + 1;
-              standingsUpdates[i].rank = sRank;
-              standingsUpdates[i].playoff_seed = i + 1;
-            }
-
-            // ── Lock playoff seeds once playoffs have started ───────────────
-            // Recomputing rank/playoff_seed after the bracket exists can swap
-            // closely-ranked users mid-bracket, causing the same player to land
-            // in two semifinal slots. Preserve existing seeds in that case.
-            const { data: seasonStatusRow } = await admin
-              .from("draft_seasons").select("status").eq("id", seasonId).single();
-            const seedsLocked =
-              seasonStatusRow?.status === "playoffs" ||
-              seasonStatusRow?.status === "complete";
-
-            let priorSeedByUser = new Map<string, { rank: number | null; playoff_seed: number | null }>();
-            if (seedsLocked) {
-              const { data: priorStandings } = await admin
-                .from("draft_season_standings")
-                .select("user_id, rank, playoff_seed")
-                .eq("season_id", seasonId);
-              for (const p of priorStandings || []) {
-                priorSeedByUser.set(p.user_id, { rank: p.rank, playoff_seed: p.playoff_seed });
-              }
-            }
-
-            await admin.from("draft_season_standings").delete().eq("season_id", seasonId);
-            for (const s of standingsUpdates) {
-              if (seedsLocked) {
-                const prior = priorSeedByUser.get(s.user_id);
-                if (prior) {
-                  s.rank = prior.rank ?? s.rank;
-                  s.playoff_seed = prior.playoff_seed ?? s.playoff_seed;
-                }
-              }
-              await admin.from("draft_season_standings").insert(s);
-            }
-            console.log("Season standings recalculated:", standingsUpdates.length, "entries");
-          }
-        }
+        const { error } = await admin.rpc("recalculate_draft_season_standings", { p_season_id: seasonEntry.season_id });
+        if (error) throw error;
       }
     } catch (seasonErr) {
       console.error("Season recalc error (non-fatal):", seasonErr);

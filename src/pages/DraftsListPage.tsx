@@ -1,6 +1,8 @@
 import { DaStatChip, DaSectionHeader } from '@/components/draft/ui/DraftKit';
 import { draftInitials } from '@/lib/draft/presentation';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { mutateCommissioner } from '@/lib/draft/commissioner';
+import { CommissionerWorkspace } from '@/components/draft/commissioner/CommissionerWorkspace';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +30,6 @@ import {
   useIsCommissioner,
   useUnassignedDrafts,
   addDraftToSeason,
-  removeDraftFromSeason,
   recalculateSeasonStandings,
   advancePlayoffs,
   suggestPlayoffTopics,
@@ -506,6 +507,8 @@ function PlayoffFormatGuide({ embedded = false }: { embedded?: boolean }) {
    ══════════════════════════════════════════════════════════ */
 function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonStanding[]; matches: PlayoffMatch[]; seasonId: string | undefined }) {
   const { user } = useAuth();
+  const [reminderBusy, setReminderBusy] = useState<string | null>(null);
+  const reminderInFlight = useRef(false);
   const [pickerMatch, setPickerMatch] = useState<PlayoffMatch | null>(null);
   const seeds = standings.filter(s => s.playoff_seed).sort((a, b) => (a.playoff_seed || 99) - (b.playoff_seed || 99));
   const getName = (seed: number) => { const s = seeds.find(s => s.playoff_seed === seed); return s ? (s.profiles as any)?.display_name || '?' : 'TBD'; };
@@ -702,10 +705,12 @@ function PlayoffPicture({ standings, matches, seasonId }: { standings: SeasonSta
 /* ══════════════════════════════════════════════════════════
    PLAYOFF CONTROL CENTER
    ══════════════════════════════════════════════════════════ */
-function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: {
+function PlayoffControlCenter({ season, matches, standings, userId, canManage, onUpdate }: {
   season: any; matches: PlayoffMatch[]; standings: SeasonStanding[];
-  userId: string | undefined; onUpdate: () => void;
+  userId: string | undefined; canManage: boolean; onUpdate: () => void;
 }) {
+  const [reminderBusy, setReminderBusy] = useState<string | null>(null);
+  const reminderInFlight = useRef(false);
   const [pickerMatch, setPickerMatch] = useState<PlayoffMatch | null>(null);
   const [showRules, setShowRules] = useState(false);
   const [advancing, setAdvancing] = useState(false);
@@ -746,6 +751,19 @@ function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: 
       onUpdate();
     } catch (err: any) { toast.error(err.message || 'Failed to advance'); }
     finally { setAdvancing(false); }
+  };
+
+  const sendTopicReminder = async (match: PlayoffMatch) => {
+    if (!seasonId || !canManage || !match.topic_picker_user_id || reminderInFlight.current) return;
+    reminderInFlight.current = true;
+    setReminderBusy(match.id);
+    try {
+      const receipt = await mutateCommissioner(seasonId, 'send_reminder', { kind: 'topic', match_id: match.id, target_user_id: match.topic_picker_user_id }, 'Commissioner reminder to choose the playoff topic.');
+      if (typeof receipt.record?.notification_id !== 'string') throw new Error('Delivery could not be verified. Refresh before retrying.');
+      toast.success(`In-app reminder delivered to ${getNameByUser(match.topic_picker_user_id)}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'The reminder could not be delivered.');
+    } finally { reminderInFlight.current = false; setReminderBusy(null); }
   };
 
   const roundLabelForMatch = (m: PlayoffMatch): string => {
@@ -894,9 +912,9 @@ function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: 
                       <Sparkles className="w-3.5 h-3.5" /> Choose Topic
                     </button>
                   )}
-                  {m.status === 'awaiting_topic' && !isPicker && (
-                    <button onClick={() => toast.success(`Reminder sent to ${pickerName}`)} className="w-full h-9 rounded-lg text-[11px] font-bold bg-muted/50 text-foreground/70 hover:bg-muted/70 transition-colors flex items-center justify-center gap-1.5">
-                      Nudge {pickerName}
+                  {m.status === 'awaiting_topic' && !isPicker && canManage && (
+                    <button disabled={reminderBusy !== null} onClick={() => void sendTopicReminder(m)} className="w-full h-9 rounded-lg text-[11px] font-bold bg-muted/50 text-foreground/70 hover:bg-muted/70 transition-colors flex items-center justify-center gap-1.5">
+                      {reminderBusy === m.id ? 'Sending…' : `Remind ${pickerName}`}
                     </button>
                   )}
                   {(m.status === 'in_progress' || m.status === 'pending') && m.draft_id && (
@@ -1041,17 +1059,6 @@ function CommissionerPanel({ season, entries, onUpdate }: { season: any; entries
     finally { setBusy(null); }
   };
 
-  const handleRemove = async (draftId: string) => {
-    setBusy(draftId);
-    try {
-      await removeDraftFromSeason(draftId);
-      await recalculateSeasonStandings(season.id);
-      toast.success('Removed from season');
-      refetchUnassigned(); onUpdate();
-    } catch (err: any) { toast.error(err.message || 'Failed to remove'); }
-    finally { setBusy(null); }
-  };
-
   return (
     <div className="glass-card overflow-hidden border" style={{ borderColor: 'hsl(var(--gold) / 0.2)' }}>
       <div className="p-3.5 border-b border-border/20 flex items-center justify-between" style={{ background: 'hsl(var(--gold) / 0.05)' }}>
@@ -1062,7 +1069,7 @@ function CommissionerPanel({ season, entries, onUpdate }: { season: any; entries
           {slotsFilled} / {totalDrafts} slots
         </span>
       </div>
-      {unassigned.length > 0 && slotsRemaining > 0 && (
+      {season.status === 'regular_season' && unassigned.length > 0 && slotsRemaining > 0 && (
         <div className="p-3 border-b border-border/10">
           <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-2">Unassigned Drafts</p>
           <div className="space-y-1.5 max-h-48 overflow-y-auto">
@@ -1074,7 +1081,7 @@ function CommissionerPanel({ season, entries, onUpdate }: { season: any; entries
                   <span className={cn('text-[9px] font-semibold', d.status === 'complete' ? 'text-primary' : d.status === 'in_progress' ? 'text-success' : 'text-muted-foreground')}>{d.status}</span>
                 </div>
                 <button onClick={() => handleAdd(d.id)} disabled={busy === d.id}
-                  className="px-2 py-1 rounded-md text-[9px] font-bold transition-colors flex items-center gap-1 btn-press"
+                  className="min-h-11 px-3 rounded-md text-[11px] font-bold transition-colors flex items-center gap-1 btn-press"
                   style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>
                   {busy === d.id ? '…' : <><Plus className="w-3 h-3" /> Add</>}
                 </button>
@@ -1094,10 +1101,7 @@ function CommissionerPanel({ season, entries, onUpdate }: { season: any; entries
                 <span className={cn('text-[9px] font-semibold', e.drafts?.status === 'complete' ? 'text-primary' : e.drafts?.status === 'in_progress' ? 'text-success' : 'text-muted-foreground')}>
                   {e.drafts?.status || '?'}
                 </span>
-                <button onClick={() => handleRemove(e.draft_id)} disabled={busy === e.draft_id}
-                  className="p-1 rounded text-muted-foreground/40 hover:text-destructive transition-colors" title="Remove from season">
-                  <X className="w-3 h-3" />
-                </button>
+                <Link to={`/drafts?tab=commissioner&tool=points&season=${season.id}&draft=${e.draft_id}`} className="min-h-11 px-2 flex items-center text-[10px] font-bold text-muted-foreground hover:text-foreground">Review</Link>
               </div>
             ))}
           </div>
@@ -1164,7 +1168,7 @@ export default function DraftsListPage() {
 
 
   // Season state
-  const { season, loading: seasonLoading, refetch: refetchSeason } = useCurrentSeason();
+  const { season, loading: seasonLoading, refetch: refetchSeason } = useCurrentSeason(requestedTab === 'commissioner' ? searchParams.get('season') || undefined : undefined);
   const { standings, loading: standingsLoading, refetch: refetchStandings } = useSeasonStandings(season?.id);
   const { entries, loading: entriesLoading, refetch: refetchEntries } = useSeasonEntries(season?.id);
   const { matches } = usePlayoffMatchesLive(season?.id);
@@ -1182,17 +1186,17 @@ export default function DraftsListPage() {
   }, [user?.id]);
 
   const handleSeasonUpdate = useCallback(() => {
-    refetchEntries(); refetchStandings();
-  }, [refetchEntries, refetchStandings]);
+    refetchEntries(); refetchStandings(); void refetchSeason();
+  }, [refetchEntries, refetchStandings, refetchSeason]);
 
   // Visibility-based refetch
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && season?.id) { refetchStandings(); refetchEntries(); }
+      if (document.visibilityState === 'visible' && season?.id) { refetchStandings(); refetchEntries(); void refetchSeason(); }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [season?.id, refetchStandings, refetchEntries]);
+  }, [season?.id, refetchStandings, refetchEntries, refetchSeason]);
 
   // Auto-recalc stale standings
   useEffect(() => {
@@ -1480,10 +1484,11 @@ export default function DraftsListPage() {
   };
 
   const nextTurn = sortedDrafts.find(d => d.status === 'in_progress' && d.current_pick_user_id === user?.id);
+  const managingSeason = defaultTab === 'commissioner' && canSeeCommissioner;
 
   return (
     <div className="da-lobby da-ledger-page" data-testid="draft-arena-lobby">
-      <header className="da-lobby-hero">
+      {!managingSeason && <header className="da-lobby-hero">
         <img src={draftEmblem} className="da-lobby-hero-emblem" alt="" aria-hidden="true" />
         <div className="da-lobby-hero-copy">
           <p className="da-lobby-eyebrow">{season ? formatSeasonTitle(season) : 'The club draft room'} <span>•</span> DRAFT ARENA</p>
@@ -1494,8 +1499,8 @@ export default function DraftsListPage() {
           {nextTurn ? <><Play size={17} aria-hidden="true" /> Make your pick</> : <><Plus size={17} aria-hidden="true" /> Create draft</>}
           <ArrowRight size={17} aria-hidden="true" />
         </Link>
-      </header>
-      {myDraftStats.draftsRated > 0 && (
+      </header>}
+      {!managingSeason && myDraftStats.draftsRated > 0 && (
         <div className="da-lobby-career" aria-label="Your draft career">
           <span><Trophy aria-hidden="true" /><b>{myDraftStats.totalPoints}</b><small>points</small></span>
           <span><Crown aria-hidden="true" /><b>{myDraftStats.wins}</b><small>wins</small></span>
@@ -1672,7 +1677,7 @@ export default function DraftsListPage() {
                 </>}
                 {seasonView === 'standings' && <><StandingsCard standings={standings} userId={user?.id} /><LifetimeStatsCard userId={user?.id} /></>}
                 {seasonView === 'playoffs' && (season.status !== 'complete'
-                  ? <><PlayoffControlCenter season={season} matches={matches} standings={standings} userId={user?.id} onUpdate={handleSeasonUpdate} /><PlayoffPicture standings={standings} matches={matches} seasonId={season.id} /></>
+                  ? <><PlayoffControlCenter season={season} matches={matches} standings={standings} userId={user?.id} canManage={canSeeCommissioner} onUpdate={handleSeasonUpdate} /><PlayoffPicture standings={standings} matches={matches} seasonId={season.id} /></>
                   : <Link to={`/drafts/seasons/${season.id}`} className="da-season-finish da-glass"><Trophy aria-hidden="true" /><span><b>The championship is complete</b><small>Open the final bracket in the season recap.</small></span><ArrowRight aria-hidden="true" /></Link>)}
                 {seasonView === 'history' && <>
                   <SeasonDraftHistory entries={entries} totalDrafts={totalDrafts} />
@@ -1714,10 +1719,11 @@ export default function DraftsListPage() {
 
         {/* ── COMMISSIONER TAB ── */}
         {canSeeCommissioner && (
-          <TabsContent value="commissioner" className="da-lobby-panel"><div className="da-lobby-scroll">
+          <TabsContent value="commissioner" className="da-lobby-panel">
             {seasonLoading ? (
               <div className="glass-card p-5"><div className="h-4 rounded-lg w-1/3 mb-2.5 skeleton-shimmer" /></div>
             ) : season ? (
+              <CommissionerWorkspace key={season.id} seasonId={season.id} seasonTitle={formatSeasonTitle(season)} onRefresh={handleSeasonUpdate}>
               <div className="space-y-3">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -1777,6 +1783,7 @@ export default function DraftsListPage() {
                 )}
                 <StartNextSeasonSheet open={startNextOpen} onOpenChange={setStartNextOpen} previousSeason={season} onCreated={() => { refetchSeason(); }} />
               </div>
+              </CommissionerWorkspace>
             ) : (
               <div className="glass-card p-6 text-center">
                 <Shield className="w-8 h-8 mx-auto mb-3 text-muted-foreground/40" />
@@ -1789,7 +1796,7 @@ export default function DraftsListPage() {
                 </Button>
               </div>
             )}
-          </div></TabsContent>
+          </TabsContent>
         )}
       </Tabs>
     </div>

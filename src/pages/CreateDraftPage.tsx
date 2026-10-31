@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClub } from '@/contexts/ClubContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,19 +15,24 @@ const LIVE_STEPS = ['Topic', 'Rules', 'Stage', 'Review'] as const;
 import { Bookmark, ArrowLeft, Sparkles, Radio, MonitorPlay } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useFeatureFlag } from '@/hooks/useFeatureFlags';
+import { fetchCommissionerPlan, fetchCommissionerPresets, type CommissionerPlan, type CommissionerPreset, type CommissionerPresetConfig } from '@/lib/draft/commissioner';
 import {
   DEFAULT_LIVE_SETTINGS,
   PICK_SECONDS_OPTIONS,
   TIMEOUT_BEHAVIOR_HINTS,
   TIMEOUT_BEHAVIOR_LABELS,
   newKioskCode,
+  parseLiveSettings,
+  type LiveDraftSettings,
   type PickTimeoutBehavior,
 } from '@/lib/draft/liveDraft';
 
 export default function CreateDraftPage() {
   const { user } = useAuth();
+  const { club } = useClub();
   const navigate = useNavigate();
   const location = useLocation();
+  const [search] = useSearchParams();
   const dedicatedLive = location.pathname.replace(/\/+$/, '') === '/drafts/live/create';
   const { enabled: liveEnabled, loading: liveFlagLoading } = useFeatureFlag('live-draft');
   const reduce = useReducedMotion();
@@ -45,6 +51,75 @@ export default function CreateDraftPage() {
   const [ceremony, setCeremony] = useState(true);
   const [broadcast, setBroadcast] = useState(true);
   const [stagePanel, setStagePanel] = useState<'clock' | 'presentation'>('clock');
+  const [selectedPreset, setSelectedPreset] = useState(() => search.get('preset') ?? '');
+  const [appliedPreset, setAppliedPreset] = useState('');
+  const [appliedPlan, setAppliedPlan] = useState('');
+  const [presetLiveSettings, setPresetLiveSettings] = useState<LiveDraftSettings | null>(null);
+  const [presetReload, setPresetReload] = useState(0);
+  const [presetError, setPresetError] = useState('');
+  const presetSeason = search.get('season');
+  const requestedPlan = search.get('plan');
+  const presetScope = JSON.stringify([user?.id, club?.id, presetSeason]);
+  const currentPresetScope = useRef(presetScope);
+  currentPresetScope.current = presetScope;
+  const [presetSnapshot, setPresetSnapshot] = useState<{ scope: string; rows: CommissionerPreset[]; loading: boolean; error: string }>({ scope: presetScope, rows: [], loading: !!club?.id && !!user?.id, error: '' });
+  useEffect(() => {
+    if (!club?.id || !user?.id) return;
+    let active = true;
+    setPresetSnapshot({ scope: presetScope, rows: [], loading: true, error: '' });
+    void fetchCommissionerPresets(club.id, presetSeason).then((rows) => {
+      if (active && currentPresetScope.current === presetScope) setPresetSnapshot({ scope: presetScope, rows, loading: false, error: '' });
+    }).catch((failure) => {
+      if (active && currentPresetScope.current === presetScope) setPresetSnapshot({ scope: presetScope, rows: [], loading: false, error: failure instanceof Error ? failure.message : 'Saved setups could not be loaded.' });
+    });
+    return () => { active = false; };
+  }, [club?.id, user?.id, presetSeason, presetScope, presetReload]);
+  const savedPresets = presetSnapshot.scope === presetScope ? presetSnapshot.rows : [];
+  const availablePresets = savedPresets.filter((preset) => !dedicatedLive || preset.config.is_live);
+  const chosenPreset = availablePresets.find((preset) => preset.id === selectedPreset);
+  const presetsLoading = !!club?.id && (presetSnapshot.scope !== presetScope || presetSnapshot.loading);
+  const [planReload, setPlanReload] = useState(0);
+  const planScope = JSON.stringify([presetScope, requestedPlan]);
+  const currentPlanScope = useRef(planScope);
+  currentPlanScope.current = planScope;
+  const [planSnapshot, setPlanSnapshot] = useState<{ scope: string; row: CommissionerPlan | null; loading: boolean; error: string }>({ scope: planScope, row: null, loading: !!requestedPlan, error: '' });
+  useEffect(() => {
+    if (!requestedPlan || !club?.id || !user?.id) return;
+    if (!presetSeason) { setPlanSnapshot({ scope: planScope, row: null, loading: false, error: 'This planned draft link needs a season. Open it from Planner again.' }); return; }
+    let active = true;
+    setPlanSnapshot({ scope: planScope, row: null, loading: true, error: '' });
+    void fetchCommissionerPlan(club.id, presetSeason, requestedPlan).then((row) => {
+      if (active && currentPlanScope.current === planScope) setPlanSnapshot({ scope: planScope, row, loading: false, error: row ? '' : 'This planned draft is unavailable. Continue manually or return to Planner.' });
+    }).catch((failure) => {
+      if (active && currentPlanScope.current === planScope) setPlanSnapshot({ scope: planScope, row: null, loading: false, error: failure instanceof Error ? failure.message : 'The planned draft could not be loaded.' });
+    });
+    return () => { active = false; };
+  }, [club?.id, user?.id, requestedPlan, presetSeason, planScope, planReload]);
+  const chosenPlan = planSnapshot.scope === planScope ? planSnapshot.row : null;
+  const planLoading = !!requestedPlan && (planSnapshot.scope !== planScope || planSnapshot.loading);
+  const applySetup = (config: Partial<CommissionerPresetConfig>, name: string, fromPlan = false) => {
+    const rounds = Number(config.num_rounds ?? 5), instructions = config.ai_context ?? '', live = config.is_live ?? false;
+    if (dedicatedLive && !live) { setPresetError('This saved setup is for a standard draft. Choose a LIVE setup for this event.'); return; }
+    if (live && (liveFlagLoading || !liveEnabled)) { setPresetError('LIVE access is required to apply this saved setup.'); return; }
+    if (!Number.isInteger(rounds) || rounds < 1 || rounds > 20 || typeof instructions !== 'string' || instructions.length > 1000 || typeof live !== 'boolean') { setPresetError('This saved setup has invalid rounds or judging instructions.'); return; }
+    if ((config.topic != null && typeof config.topic !== 'string') || (config.description != null && typeof config.description !== 'string')) { setPresetError('This saved setup has an invalid topic or description.'); return; }
+    if ((!topic.trim() && (config.topic?.length ?? 0) > 100) || (!description.trim() && (config.description?.length ?? 0) > 200)) { setPresetError('Enter a topic under 100 characters and a description under 200 characters before applying this setup.'); return; }
+    const settings = parseLiveSettings(config.live_settings);
+    setNumRounds(rounds);
+    setAiContext(instructions);
+    setIsLive(live);
+    setPresetLiveSettings(settings);
+    setPickSeconds(settings.pickSeconds);
+    setTimeoutBehavior(settings.timeoutBehavior);
+    setAnnounce(settings.announce); setTicker(settings.ticker); setKioskSoundOn(settings.sound);
+    setCeremony(settings.ceremony); setBroadcast(settings.broadcast);
+    if (!topic.trim() && config.topic) setTopic(config.topic);
+    if (!description.trim() && config.description) setDescription(config.description);
+    setAppliedPreset(name);
+    setAppliedPlan(fromPlan ? name : '');
+    setPresetError('');
+  };
+  const applyPreset = () => { if (chosenPreset) applySetup(chosenPreset.config, chosenPreset.name); };
   const creating = useRef(false);
   const steps = dedicatedLive ? LIVE_STEPS : STEPS;
   const wantsLive = dedicatedLive || isLive;
@@ -64,7 +139,7 @@ export default function CreateDraftPage() {
         <span className="text-[10px] font-semibold normal-case tracking-normal text-muted-foreground/70">{numRounds} picks each</span>
       </p>
       <div className="flex gap-2" role="group" aria-label="Rounds">
-        {[3, 5, 7, 10].map(n => (
+        {[...new Set([3, 5, 7, 10, numRounds])].sort((a, b) => a - b).map(n => (
           <button key={n} type="button" onClick={() => setNumRounds(n)} aria-pressed={numRounds === n}
             className={`flex-1 min-h-11 py-2.5 rounded-lg text-xs font-bold transition-all btn-press ${numRounds === n ? 'shadow-md' : 'text-muted-foreground'}`}
             style={numRounds === n
@@ -114,7 +189,7 @@ export default function CreateDraftPage() {
                 kiosk_code: newKioskCode(),
                 timer_seconds: pickSeconds,
                 live_settings: {
-                  ...DEFAULT_LIVE_SETTINGS,
+                  ...(presetLiveSettings ?? DEFAULT_LIVE_SETTINGS),
                   pickSeconds,
                   timeoutBehavior,
                   announce,
@@ -198,6 +273,34 @@ export default function CreateDraftPage() {
         <motion.div key={step} initial={reduce ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: -12 }} transition={{ duration: reduce ? 0 : 0.2 }}
           className="da-glass da-ledger-section p-5 space-y-5 da-create-stage" aria-label={`${steps[step]} setup`}>
           {step === 0 && (<>
+          {club?.id && requestedPlan && <section className="da-creator-plan space-y-2 rounded-xl border border-border p-3" aria-label="Planned draft setup">
+            <p className="text-[11px] font-bold">Planned draft</p>
+            {planLoading ? <p className="text-xs text-muted-foreground" role="status">Loading planned draft…</p> : chosenPlan ? <>
+              <p className="break-words text-xs font-bold">{chosenPlan.topic}</p>
+              <p className="text-[10px] text-muted-foreground">{chosenPlan.num_rounds} rounds · {chosenPlan.is_live ? 'LIVE event' : 'Standard draft'}</p>
+              <Button type="button" className="min-h-11" disabled={loading || (chosenPlan.is_live && liveUnavailable)} onClick={() => applySetup({ topic: chosenPlan.topic, num_rounds: chosenPlan.num_rounds, ai_context: chosenPlan.ai_context, is_live: chosenPlan.is_live, live_settings: chosenPlan.live_settings }, chosenPlan.topic, true)}>Apply planned draft</Button>
+              <p className="text-[10px] leading-snug text-muted-foreground">Your entered topic and description are kept. Create first, add it to the intended season, then link it in Planner.</p>
+            </> : null}
+            {planSnapshot.error && <p className="text-[11px] text-destructive" role="alert">{planSnapshot.error}</p>}
+            {planSnapshot.error && <Button type="button" variant="outline" className="min-h-11" onClick={() => setPlanReload((value) => value + 1)}>Retry planned draft</Button>}
+          </section>}
+          {club?.id && (presetsLoading || savedPresets.length > 0 || presetSnapshot.error || selectedPreset) && <section className="da-creator-presets space-y-2 rounded-xl border border-border p-3" aria-label="Saved draft setups">
+            <label className="block text-[11px] font-bold" htmlFor="draft-saved-preset">Saved setup</label>
+            {presetsLoading ? <p className="text-xs text-muted-foreground" role="status">Loading saved setups…</p> : <div className="flex gap-2">
+              <select id="draft-saved-preset" className="form-input min-h-11 min-w-0 flex-1" value={selectedPreset} onChange={(event) => { setSelectedPreset(event.target.value); setPresetError(''); }}>
+                <option value="">Choose a saved setup</option>
+                {selectedPreset && !chosenPreset && <option value={selectedPreset} disabled>Unavailable in this setup</option>}
+                {availablePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name} · {preset.config.num_rounds ?? 5} rounds{preset.config.is_live ? ' · LIVE' : ''}</option>)}
+              </select>
+              <Button type="button" className="min-h-11 shrink-0" disabled={!chosenPreset || loading || (!!chosenPreset?.config.is_live && liveUnavailable)} onClick={applyPreset}>Apply saved preset</Button>
+            </div>}
+            <p className="text-[10px] leading-snug text-muted-foreground">Apply replaces rounds, judging instructions and stage settings. Your entered topic and description are kept.</p>
+            {appliedPreset && <p className="text-[11px] font-bold text-primary" role="status">Started from {appliedPreset} · settings stay editable</p>}
+            {!presetsLoading && selectedPreset && !chosenPreset && !presetSnapshot.error && <p className="text-[11px] text-muted-foreground">This saved setup is unavailable for this draft mode. Choose another or continue manually.</p>}
+            {presetSnapshot.error && <p className="text-[11px] text-destructive" role="alert">{presetSnapshot.error}</p>}
+            {presetSnapshot.error && <Button type="button" variant="outline" className="min-h-11" onClick={() => setPresetReload((value) => value + 1)}>Retry saved setups</Button>}
+          </section>}
+          {presetError && <p className="text-[11px] text-destructive" role="alert">{presetError}</p>}
           <div>
             <label className="form-label" htmlFor="draft-topic">Topic</label>
             <Input
@@ -274,7 +377,7 @@ export default function CreateDraftPage() {
                 <div>
                   <p className="form-label">Time per pick</p>
                   <div className="da-live-clock-options grid grid-cols-4 gap-1.5" role="group" aria-label="Time per pick">
-                    {PICK_SECONDS_OPTIONS.map((seconds) => <button key={seconds} type="button" aria-pressed={pickSeconds === seconds}
+                    {[...new Set([...PICK_SECONDS_OPTIONS, pickSeconds])].sort((a, b) => a - b).map((seconds) => <button key={seconds} type="button" aria-pressed={pickSeconds === seconds}
                       onClick={() => setPickSeconds(seconds)} className={`min-h-11 rounded-lg border px-2 text-xs font-bold ${pickSeconds === seconds ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}>
                       {seconds >= 60 && seconds % 60 === 0 ? `${seconds / 60}m` : `${seconds}s`}
                     </button>)}
@@ -333,7 +436,7 @@ export default function CreateDraftPage() {
                   <div>
                     <p className="form-label">Time per pick</p>
                     <div className="flex flex-wrap gap-2">
-                      {PICK_SECONDS_OPTIONS.map(sec => (
+                      {[...new Set([...PICK_SECONDS_OPTIONS, pickSeconds])].sort((a, b) => a - b).map(sec => (
                         <button
                           key={sec}
                           type="button"
@@ -407,6 +510,7 @@ export default function CreateDraftPage() {
               {description.trim() && <DaInfoRow icon={Bookmark} label="Description" value={description.trim()} />}
               <DaInfoRow icon={Sparkles} label="AI judging context" value={aiContext.trim() ? 'Added' : 'None'} />
               <DaInfoRow icon={Bookmark} label="Rounds" value={`${numRounds} picks each`} />
+              {appliedPlan && <p className="text-[11px] leading-snug text-muted-foreground">Started from plan: {appliedPlan}. After creation, add the draft to the intended season and attach it in Planner.</p>}
               {(liveEnabled || wantsLive) && <DaInfoRow icon={Radio} label={dedicatedLive ? 'Pick clock' : 'Live draft'} value={wantsLive ? `${dedicatedLive ? '' : 'On · '}${pickSeconds}s per pick` : 'Off'} />}
               {dedicatedLive && <>
                 <DaInfoRow icon={Radio} label="Clock expiry" value={TIMEOUT_BEHAVIOR_LABELS[timeoutBehavior]} />

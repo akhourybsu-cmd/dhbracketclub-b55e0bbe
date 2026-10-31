@@ -28,6 +28,7 @@ import { useItemEnrichments, useEnrichDraftPicks } from '@/hooks/useItemEnrichme
 import EnrichedItemCard, { EnrichedItemSkeleton } from '@/components/EnrichedItemCard';
 import ImagePickerDialog from '@/components/draft/ImagePickerDialog';
 import { useDraftResults } from '@/hooks/useDraftResults';
+import { useDraftReviewAccess } from '@/hooks/useDraftReviewAccess';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDerivedDraftTurn } from '@/lib/draftTurn';
 import { getSeasonJoinEligibility } from '@/lib/draft/seasonEligibility';
@@ -44,7 +45,6 @@ import {
   useSeasonEntries,
   useIsCommissioner,
   addDraftToSeason,
-  removeDraftFromSeason,
   recalculateSeasonStandings,
   advancePlayoffs,
 } from '@/hooks/useDraftSeasons';
@@ -272,6 +272,8 @@ function DraftDetailSession() {
   const isParticipant = participants.some(p => p.user_id === user?.id);
   const { palette: daPalette } = useDraftArenaPalette();
   const canManage = isCreator || isAppAdmin;
+  const reviewAccess = useDraftReviewAccess(draftId, draft?.club_id);
+  const canReviewDisputes = reviewAccess.allowed || (reviewAccess.verified && !reviewAccess.seasonId && (isCreator || isAppAdmin));
 
   /* ── Live draft hosting ──
      A live draft shares one clock across every device. Skipped slots are real
@@ -438,6 +440,7 @@ function DraftDetailSession() {
   };
 
   const handleResolveDispute = async (disputeId: string) => {
+    if (!canReviewDisputes) return;
     setResolvingDisputeId(disputeId);
     try {
       const { data, error } = await supabase.functions.invoke('resolve-pick-dispute', {
@@ -462,12 +465,22 @@ function DraftDetailSession() {
   };
 
   const handleDismissDispute = async (disputeId: string) => {
+    if (!canReviewDisputes) return;
     try {
+      if (reviewAccess.seasonId) {
+        const { error } = await supabase.rpc('draft_commissioner_mutate' as never, {
+          p_season_id: reviewAccess.seasonId, p_action: 'dismiss_dispute',
+          p_payload: { dispute_id: disputeId }, p_reason: 'Dismissed after review; the original pick rating is retained.',
+          p_request_id: crypto.randomUUID(),
+        } as never);
+        if (error) throw error;
+      } else {
       const { error } = await supabase
         .from('draft_pick_disputes' as any)
         .update({ status: 'dismissed', resolved_at: new Date().toISOString(), resolved_by: user?.id } as any)
         .eq('id', disputeId);
       if (error) throw error;
+      }
       toast.success('Dispute dismissed');
       fetchDisputes();
     } catch (err: any) {
@@ -476,9 +489,17 @@ function DraftDetailSession() {
   };
 
   const handleConfirmReject = async () => {
-    if (!rejectDialog || !rejectRationale.trim()) return;
+    if (!rejectDialog || !rejectRationale.trim() || !canReviewDisputes) return;
     setRejectingDispute(true);
     try {
+      if (reviewAccess.seasonId) {
+        const { error } = await supabase.rpc('draft_commissioner_mutate' as never, {
+          p_season_id: reviewAccess.seasonId, p_action: 'reject_dispute',
+          p_payload: { dispute_id: rejectDialog.id }, p_reason: rejectRationale.trim(),
+          p_request_id: crypto.randomUUID(),
+        } as never);
+        if (error) throw error;
+      } else {
       const { error } = await supabase
         .from('draft_pick_disputes' as any)
         .update({
@@ -489,6 +510,7 @@ function DraftDetailSession() {
         } as any)
         .eq('id', rejectDialog.id);
       if (error) throw error;
+      }
       toast.success('Dispute rejected');
       setRejectDialog(null);
       setRejectRationale('');
@@ -832,36 +854,10 @@ function DraftDetailSession() {
     if (!draftId || !canManage) return;
     setDeleting(true);
     try {
-      const pIds = picks.map(p => p.id);
-      if (pIds.length > 0) {
-        await supabase.from('item_enrichments').delete().in('item_id', pIds);
-      }
-      await supabase.from('draft_results' as any).delete().eq('draft_id', draftId);
-      await supabase.from('draft_picks').delete().eq('draft_id', draftId);
-      await supabase.from('draft_participants').delete().eq('draft_id', draftId);
-
-      // Check season membership before deleting entry so we can recalc after
-      const { data: seasonEntryData } = await supabase
-        .from('draft_season_entries' as any)
-        .select('season_id')
-        .eq('draft_id', draftId)
-        .maybeSingle();
-      const deletedSeasonId = (seasonEntryData as any)?.season_id;
-
-      await supabase.from('draft_season_entries' as any).delete().eq('draft_id', draftId);
-      const { error } = await supabase.from('drafts').delete().eq('id', draftId);
+      // The server locks membership and commits cleanup together. A concurrent
+      // season assignment cannot leave behind a partially deleted report.
+      const { error } = await supabase.rpc('delete_unassigned_draft' as never, { p_draft_id: draftId } as never);
       if (error) throw error;
-      if (draft?.competition_id) {
-        await supabase.from('competitions').delete().eq('id', draft.competition_id);
-      }
-
-      // Recalculate season standings if draft was in a season
-      if (deletedSeasonId) {
-        recalculateSeasonStandings(deletedSeasonId).catch(err =>
-          console.error('Season recalc after deletion failed:', err)
-        );
-      }
-
       toast.success('Draft deleted');
       navigate('/drafts');
     } catch (err: any) {
@@ -1350,22 +1346,11 @@ function DraftDetailSession() {
                         <Pencil className="w-3.5 h-3.5 mr-2" /> Edit Topic
                       </DropdownMenuItem>
                       {isCommissioner && seasonEntry && (
-                        <DropdownMenuItem
-                          onClick={async () => {
-                            setSeasonActionBusy(true);
-                            try {
-                              await removeDraftFromSeason(draftId!);
-                              await recalculateSeasonStandings(season!.id);
-                              toast.success('Removed from season');
-                              refetchSeasonEntries();
-                            } catch (err: any) { toast.error(err.message); }
-                            finally { setSeasonActionBusy(false); }
-                          }}
-                        >
-                          <X className="w-3.5 h-3.5 mr-2" /> Remove from Season
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive focus:text-destructive">
+                      <DropdownMenuItem onClick={() => navigate(`/drafts?tab=commissioner&tool=points&season=${seasonEntry.season_id}&draft=${draftId}`)}>
+                        <X className="w-3.5 h-3.5 mr-2" /> Review Season Membership
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem disabled={!reviewAccess.verified || !!reviewAccess.seasonId} title={reviewAccess.seasonId ? 'Review season membership in Commissioner → Points before deleting.' : undefined} onClick={() => setShowDeleteDialog(true)} className="text-destructive focus:text-destructive">
                         <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Draft
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -1460,20 +1445,11 @@ function DraftDetailSession() {
                       <Pencil className="w-3.5 h-3.5 mr-2" /> Edit Topic
                     </DropdownMenuItem>
                     {isCommissioner && seasonEntry && (
-                      <DropdownMenuItem onClick={async () => {
-                        setSeasonActionBusy(true);
-                        try {
-                          await removeDraftFromSeason(draftId!);
-                          await recalculateSeasonStandings(season!.id);
-                          toast.success('Removed from season');
-                          refetchSeasonEntries();
-                        } catch (err: any) { toast.error(err.message); }
-                        finally { setSeasonActionBusy(false); }
-                      }}>
-                        <X className="w-3.5 h-3.5 mr-2" /> Remove from Season
+                      <DropdownMenuItem onClick={() => navigate(`/drafts?tab=commissioner&tool=points&season=${seasonEntry.season_id}&draft=${draftId}`)}>
+                        <X className="w-3.5 h-3.5 mr-2" /> Review Season Membership
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem disabled={!reviewAccess.verified || !!reviewAccess.seasonId} title={reviewAccess.seasonId ? 'Review season membership in Commissioner → Points before deleting.' : undefined} onClick={() => setShowDeleteDialog(true)} className="text-destructive focus:text-destructive">
                       <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Draft
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -2441,11 +2417,12 @@ function DraftDetailSession() {
               </div>
 
               {/* Commissioner Dispute Resolution Panel */}
-              {canManage && disputes.filter(d => d.status === 'pending').length > 0 && (
+              {canReviewDisputes && disputes.filter(d => d.status === 'pending').length > 0 && (
                 <div className="glass-card p-4 mt-4">
                   <h3 className="text-[13px] font-bold mb-3 flex items-center gap-2">
                     <Flag className="w-4 h-4 text-warning" /> Pending Disputes ({disputes.filter(d => d.status === 'pending').length})
                   </h3>
+                  <p className="text-xs text-muted-foreground mb-3">AI re-evaluation may change the saved rating and season totals. Dismissal and rejection keep the rating; rejection records your explanation.</p>
                   <div className="space-y-3">
                     {disputes.filter(d => d.status === 'pending').map(dispute => {
                       const pickInfo = draftResults.flatMap(r => (r.pick_ratings as any[]).map((pr: any) => pr)).find((pr: any) => pr.pick_id === dispute.pick_id);
@@ -2473,7 +2450,7 @@ function DraftDetailSession() {
                               {resolvingDisputeId === dispute.id ? (
                                 <><RefreshCw className="w-3 h-3 animate-spin" /> Resolving…</>
                               ) : (
-                                <><Sparkles className="w-3 h-3" /> Resolve</>
+                                <><Sparkles className="w-3 h-3" /> AI re-evaluate</>
                               )}
                             </Button>
                             <Button
@@ -2501,8 +2478,8 @@ function DraftDetailSession() {
               )}
 
 
-              {/* Regenerate button — admin only */}
-              {isAppAdmin && (
+              {/* Persisted report repair is scoped to this season. */}
+              {(isAppAdmin || reviewAccess.allowed) && (
                 <Button
                   onClick={regenerateResults}
                   variant="outline"

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- This isolated Supabase transport intentionally carries heterogeneous saved rows. */
 // In-memory transport fixture only. Uses production turn/results/rendering logic.
+import { commissionerTables, createCommissionerFixture } from './draft-arena-commissioner';
 type Row = Record<string, any>;
 const params = new URLSearchParams(location.search);
 const userId = params.get("user") || "u1";
@@ -11,7 +12,7 @@ const profiles = [
   { id: "u3", display_name: "Casey", avatar_url: null },
 ];
 const season = {
-  id: "season-4", name: "Season 4", year: 2026, season_number: 4, season_label: "S4",
+  id: "season-4", club_id: "club", name: "Season 4", year: 2026, season_number: 4, season_label: "S4",
   subtitle: "The championship circuit", starts_at: "2026-10-01T00:00:00Z", ends_at: "2026-12-31T00:00:00Z",
   status: "regular_season", regular_season_drafts: 12, regular_season_weeks: 12, playoff_weeks: 3,
   best_of: 3, commissioner_user_id: params.get("role") === "commissioner" ? userId : "u2",
@@ -50,10 +51,15 @@ const tables: Record<string, Row[]> = {
   draft_season_acknowledgements: [{ id: "ack", season_id: season.id, user_id: userId }],
   draft_playoff_matches: [], draft_pick_disputes: [], draft_skips: [], channels: [], messages: [], activity_feed: [],
   feature_flags: [{ key: "live-draft", enabled: false }], app_feature_flags: params.get("stress") === "live-flow" ? [{ key: "live-draft", enabled: true, rollout: {} }] : [],
+  club_members: profiles.map((profile) => ({ id: `member-${profile.id}`, club_id: 'club', user_id: profile.id, role: 'member', joined_at: date })),
+  notifications: [], ...Object.fromEntries(Object.values(commissionerTables).map((table) => [table, []])),
 };
+for (const table of ['draft_season_entries', 'draft_season_standings', 'draft_participants', 'draft_picks', 'draft_results', 'draft_pick_disputes', 'draft_playoff_matches'])
+  for (const row of tables[table]) row.club_id = 'club';
 const operations: Row[] = [];
 const calls: Row[] = [];
 const failedReads = new Map<string, number>();
+const failedRpcs = new Map<string, number>();
 const heldReads = new Set<() => void>();
 let holdActiveReads = params.get("stress") === "delayed-room";
 function releaseActiveReads() {
@@ -87,6 +93,27 @@ if (params.get("stress") === "live-actions") {
 }
 if (params.get("stress") === "empty") {
   for (const table of ["drafts", "competitions", "draft_participants", "draft_picks", "draft_results", "draft_season_entries", "draft_season_standings", "draft_seasons", "item_enrichments", "draft_desk_items"]) tables[table] = [];
+}
+if (["commissioner", "commissioner-gallery"].includes(params.get("stress") || '')) {
+  tables.draft_season_standings.find((row) => row.user_id === 'u3')!.season_points = 5;
+  tables.draft_season_entries.find((row) => row.draft_id === 'complete')!.season_points_awarded = { u1: 10, u2: 7, u3: 5 };
+}
+if (params.get('stress') === 'commissioner-gallery') {
+  // Persisted local records exercise presentation; this branch never calls a mutation.
+  const base = { season_id: season.id, club_id: 'club', created_by: 'u1', created_at: date };
+  const settings = { pickSeconds: 90, timeoutBehavior: 'alert', sound: true, ticker: true, autoStartClock: true, announce: true, ceremony: true, broadcast: true, reportBroadcast: true };
+  const preset = { ...base, id: crypto.randomUUID(), name: 'Cinema night setup', version: 1, updated_by: 'u1', updated_at: date, config: { topic: 'Cinema legends', description: 'A compact film night for the club.', num_rounds: 3, ai_context: 'World cinema is eligible.', is_live: false, live_settings: settings } };
+  const plan = { ...base, id: crypto.randomUUID(), topic: 'November cinema night', notes: 'Bring a list of three films.', ai_context: 'World cinema is eligible.', num_rounds: 3, is_live: false, live_settings: settings, scheduled_at: new Date(Date.now() + 7 * 86_400_000).toISOString(), due_at: new Date(Date.now() + 7 * 86_400_000 + 3_600_000).toISOString(), draft_id: null, preset_id: preset.id, status: 'ready', version: 1, updated_by: 'u1', updated_at: date };
+  const adjustment = { ...base, id: crypto.randomUUID(), user_id: 'u2', delta: 4, reason: 'Correct a documented season ruling.', revoked_at: null, revoked_by: null, revocation_reason: null };
+  const notification = { id: crypto.randomUUID(), user_id: 'u2', club_id: 'club', type: 'draft', title: 'Upcoming draft: November cinema night', body: 'Your next club draft is ready to review.', url: '/drafts?tab=season', actor_user_id: 'u1', created_at: date, read_at: null };
+  const reminder = { ...base, id: crypto.randomUUID(), target_user_id: 'u2', draft_id: null, match_id: null, plan_id: plan.id, kind: 'plan', notification_id: notification.id };
+  tables[commissionerTables.presets].push(preset); tables[commissionerTables.plans].push(plan);
+  tables[commissionerTables.adjustments].push(adjustment); tables[commissionerTables.reminders].push(reminder); tables.notifications.push(notification);
+  for (const [action, record, reason] of [['add_adjustment', adjustment, adjustment.reason], ['upsert_preset', preset, 'Save a reusable film night format.'], ['upsert_plan', plan, 'Schedule the next club draft.'], ['send_reminder', reminder, notification.body]] as [string, Row, string][]) tables[commissionerTables.audit].push({ ...base, id: crypto.randomUUID(), actor_user_id: 'u1', action, reason, before_data: null, after_data: clone(record), request_id: crypto.randomUUID() });
+  for (const standing of tables.draft_season_standings) {
+    if (standing.user_id === 'u2') { standing.season_points = 11; standing.rank = 1; standing.playoff_seed = 1; }
+    if (standing.user_id === 'u1') { standing.rank = 2; standing.playoff_seed = 2; }
+  }
 }
 if (params.get("stress") === "large") {
   profiles[0].display_name = "ÆTHER⚡無限🚀".repeat(8);
@@ -173,6 +200,10 @@ function publish(table: string, mode: string, rows: Row[]) {
   localStorage.setItem(sharedKey, JSON.stringify({ tables, serial, events, revision: crypto.randomUUID() }));
   for (const event of events) emitChange(event);
 }
+const commissionerFixture = createCommissionerFixture(tables, userId, (table, mode, rows) => {
+  operations.push({ table, mode, rows: clone(rows), transport: 'commissioner-rpc' });
+  publish(table, mode, rows);
+});
 if (sharedKey) window.addEventListener("storage", (event) => {
   if (event.key !== sharedKey || !event.newValue) return;
   const snapshot = JSON.parse(event.newValue);
@@ -255,8 +286,13 @@ class Query implements PromiseLike<any> {
 const channel = () => new FixtureChannel();
 export const supabase = {
   from: (table: string) => new Query(table),
-  rpc: async (name: string) => {
-    calls.push({ rpc: name });
+  rpc: async (name: string, args: Row = {}) => {
+    calls.push({ rpc: name, args: clone(args) });
+    if ((failedRpcs.get(name) || 0) > 0) {
+      failedRpcs.set(name, failedRpcs.get(name)! - 1);
+      return { data: null, error: { code: '08006', message: 'Fixture: interrupted commissioner request' } };
+    }
+    if (commissionerFixture.handles(name)) return commissionerFixture.rpc(name, args);
     return { data: name === "is_app_admin" ? false : name === "current_user_club_id" ? "club" : name === "server_now" ? new Date().toISOString() : null, error: null };
   },
   functions: { invoke: async (name: string, args?: any) => { calls.push({ function: name, args: clone(args || {}) }); return { data: { success: true, enriched: 0 }, error: null }; } },
@@ -266,6 +302,9 @@ export const supabase = {
 };
 Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads,
   failNextRead: (table: string) => failedReads.set(table, (failedReads.get(table) || 0) + 1),
+  failNextRPC: (name: string) => failedRpcs.set(name, (failedRpcs.get(name) || 0) + 1),
+  blockRPC: (name: string) => failedRpcs.set(name, Infinity),
+  releaseRPC: (name: string) => failedRpcs.delete(name),
   refreshRow: (table: string, id: string) => {
     const row = tables[table]?.find((item) => item.id === id);
     if (row) emitChange({ schema: "public", table, eventType: "UPDATE", new: clone(row), old: clone(row) });

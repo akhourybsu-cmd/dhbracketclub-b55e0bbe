@@ -1,7 +1,8 @@
 // Draft seasons hooks – commissioner controls, standings, entries, playoffs
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClub } from '@/contexts/ClubContext';
 
 export interface DraftSeason {
   id: string;
@@ -115,37 +116,49 @@ export function getSeasonDraftTarget(season: DraftSeason): number {
   return season.regular_season_drafts || season.regular_season_weeks || 12;
 }
 
-export function useCurrentSeason() {
-  const [season, setSeason] = useState<DraftSeason | null>(null);
+export function useCurrentSeason(selectedSeasonId?: string) {
+  const { user } = useAuth();
+  const { club } = useClub();
+  const scope = `${user?.id ?? ''}:${club?.id ?? ''}:${selectedSeasonId ?? 'current'}`;
+  const [snapshot, setSnapshot] = useState<{ scope: string; season: DraftSeason | null }>({ scope: '', season: null });
   const [loading, setLoading] = useState(true);
+  const loadedScope = useRef('');
+  const generation = useRef({ value: 0 }).current;
 
   const refetch = useCallback(async () => {
-    setLoading(true);
-    // Get active season (regular_season or playoffs), or most recent upcoming
-    const { data } = await supabase
-      .from('draft_seasons' as any)
-      .select('*')
-      .in('status', ['regular_season', 'playoffs'])
-      .order('starts_at', { ascending: false })
-      .limit(1);
+    const ticket = ++generation.value;
+    // Refreshes keep the current workspace mounted; route/account changes do not
+    // inherit the previous season's permission or race with its pending read.
+    if (loadedScope.current !== scope) setLoading(true);
+    let found: DraftSeason | null = null;
+    try {
+      if (selectedSeasonId) {
+        const { data, error } = await supabase.from('draft_seasons').select('*').eq('id', selectedSeasonId).maybeSingle();
+        if (error) throw error;
+        found = data as unknown as DraftSeason | null;
+      } else {
+        const { data, error } = await supabase.from('draft_seasons').select('*')
+          .in('status', ['regular_season', 'playoffs']).order('starts_at', { ascending: false }).limit(1);
+        if (error) throw error;
+        if (data?.length) found = data[0] as unknown as DraftSeason;
+        else {
+          const { data: fallback, error: fallbackError } = await supabase.from('draft_seasons').select('*')
+            .order('starts_at', { ascending: false }).limit(1);
+          if (fallbackError) throw fallbackError;
+          found = fallback?.length ? fallback[0] as unknown as DraftSeason : null;
+        }
+      }
+      if (ticket === generation.value) {
+        loadedScope.current = scope;
+        setSnapshot({ scope, season: found });
+      }
+    } catch {
+      if (ticket === generation.value && loadedScope.current !== scope) setSnapshot({ scope, season: null });
+    } finally { if (ticket === generation.value) setLoading(false); }
+  }, [scope, selectedSeasonId, generation]);
 
-    if (data && data.length > 0) {
-      setSeason(data[0] as unknown as DraftSeason);
-    } else {
-      // fallback: most recent season
-      const { data: fallback } = await supabase
-        .from('draft_seasons' as any)
-        .select('*')
-        .order('starts_at', { ascending: false })
-        .limit(1);
-      setSeason(fallback && fallback.length > 0 ? (fallback[0] as unknown as DraftSeason) : null);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { refetch(); }, [refetch]);
-
-  return { season, loading, refetch };
+  useEffect(() => { void refetch(); return () => { generation.value++; }; }, [refetch, generation]);
+  return { season: snapshot.scope === scope ? snapshot.season : null, loading: loading || snapshot.scope !== scope, refetch };
 }
 
 export function useSeasonStandings(seasonId: string | undefined) {
@@ -285,146 +298,23 @@ export function useLifetimeStats(userId: string | undefined) {
   return { stats, loading };
 }
 
-/** Recalculate season standings from draft_results for a given season */
+/** Rebuild persisted standings atomically, including the commissioner adjustment ledger. */
 export async function recalculateSeasonStandings(seasonId: string) {
-  // 1. Get all season entries with their draft results
-  const { data: entries } = await supabase
-    .from('draft_season_entries' as any)
-    .select('draft_id, week_number, is_playoff')
-    .eq('season_id', seasonId)
-    .eq('is_playoff', false);
+  const { error } = await supabase.rpc('recalculate_draft_season_standings' as never, { p_season_id: seasonId } as never);
+  if (error) throw error;
+}
 
-  if (!entries || entries.length === 0) {
-    // No drafts in season — wipe all standings for this season
-    await supabase
-      .from('draft_season_standings' as any)
-      .delete()
-      .eq('season_id', seasonId);
-    return;
-  }
-
-  const draftIds = (entries as any[]).map(e => e.draft_id);
-  const { data: results } = await supabase
-    .from('draft_results' as any)
-    .select('draft_id, user_id, rank, total_score, points_awarded')
-    .in('draft_id', draftIds);
-
-  if (!results || (results as any[]).length === 0) {
-    await supabase
-      .from('draft_season_standings' as any)
-      .delete()
-      .eq('season_id', seasonId);
-    return;
-  }
-
-  // Get season config
-  const { data: seasonData } = await supabase
-    .from('draft_seasons' as any)
-    .select('best_of, regular_season_drafts, regular_season_weeks')
-    .eq('id', seasonId)
-    .single();
-
-  const bestOf = (seasonData as any)?.best_of || 10;
-
-  // Group results by user
-  const userResults = new Map<string, Array<{ rank: number; total_score: number; draft_id: string }>>();
-  for (const r of results as any[]) {
-    const arr = userResults.get(r.user_id) || [];
-    arr.push({ rank: r.rank, total_score: Number(r.total_score), draft_id: r.draft_id });
-    userResults.set(r.user_id, arr);
-  }
-
-  // Calculate standings per user
-  const standingsUpdates: Array<{
-    season_id: string;
-    user_id: string;
-    season_points: number;
-    drafts_played: number;
-    wins: number;
-    podiums: number;
-    avg_finish: number;
-    avg_score: number;
-    best_score: number;
-    worst_score: number;
-    consistency: number;
-  }> = [];
-
-  for (const [userId, drafts] of userResults) {
-    const withPoints = drafts.map(d => ({
-      ...d,
-      seasonPts: getSeasonPointsForRank(d.rank),
-    }));
-    withPoints.sort((a, b) => b.seasonPts - a.seasonPts);
-
-    const counted = withPoints.slice(0, bestOf);
-    const seasonPoints = counted.reduce((s, d) => s + d.seasonPts, 0);
-    const wins = drafts.filter(d => d.rank === 1).length;
-    const podiums = drafts.filter(d => d.rank <= 3).length;
-    const avgFinish = drafts.reduce((s, d) => s + d.rank, 0) / drafts.length;
-    const scores = drafts.map(d => d.total_score);
-    const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
-    const bestScore = Math.max(...scores);
-    const worstScore = Math.min(...scores);
-    const mean = avgScore;
-    const variance = scores.reduce((s, v) => s + (v - mean) ** 2, 0) / scores.length;
-    const consistency = Math.sqrt(variance);
-
-    standingsUpdates.push({
-      season_id: seasonId,
-      user_id: userId,
-      season_points: seasonPoints,
-      drafts_played: drafts.length,
-      wins,
-      podiums,
-      avg_finish: Math.round(avgFinish * 100) / 100,
-      avg_score: Math.round(avgScore * 100) / 100,
-      best_score: Math.round(bestScore * 100) / 100,
-      worst_score: Math.round(worstScore * 100) / 100,
-      consistency: Math.round(consistency * 100) / 100,
-    });
-  }
-
-  // Sort by season points with multi-factor tiebreaker, then assign ranks
-  standingsUpdates.sort((a, b) => {
-    if (b.season_points !== a.season_points) return b.season_points - a.season_points;
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    if (b.podiums !== a.podiums) return b.podiums - a.podiums;
-    if (a.avg_finish !== b.avg_finish) return a.avg_finish - b.avg_finish; // lower is better
-    return b.avg_score - a.avg_score;
-  });
-  let rank = 1;
-  for (let i = 0; i < standingsUpdates.length; i++) {
-    if (i > 0 && standingsUpdates[i].season_points < standingsUpdates[i - 1].season_points) {
-      rank = i + 1;
-    }
-    (standingsUpdates[i] as any).rank = rank;
-    (standingsUpdates[i] as any).playoff_seed = i + 1;
-  }
-
-  // Clear old standings then insert fresh — ensures removed-draft users don't linger
-  await supabase
-    .from('draft_season_standings' as any)
-    .delete()
-    .eq('season_id', seasonId);
-
-  for (const s of standingsUpdates) {
-    await supabase
-      .from('draft_season_standings' as any)
-      .insert(s as any);
-  }
-
-  // Update season_points_awarded on entries
-  for (const entry of entries as any[]) {
-    const entryResults = (results as any[]).filter(r => r.draft_id === (entry as any).draft_id);
-    const pointsMap: Record<string, number> = {};
-    for (const r of entryResults) {
-      pointsMap[r.user_id] = getSeasonPointsForRank(r.rank);
-    }
-    await supabase
-      .from('draft_season_entries' as any)
-      .update({ season_points_awarded: pointsMap })
-      .eq('draft_id', (entry as any).draft_id);
-  }
+/** All season management changes share server authorization, idempotency and history. */
+async function mutateSeason(seasonId: string, action: string, payload: Record<string, unknown>, reason: string) {
+  const { data, error } = await supabase.rpc('draft_commissioner_mutate' as never, {
+    p_season_id: seasonId,
+    p_action: action,
+    p_payload: payload,
+    p_reason: reason,
+    p_request_id: crypto.randomUUID(),
+  } as never);
+  if (error) throw error;
+  return data as unknown as { record: { week_number?: number } | null };
 }
 
 /** Create a new season (draft-count based). Auto-assigns the next per-club season_number. */
@@ -434,7 +324,13 @@ export async function createSeason(params: {
   subtitle?: string | null;
   regularSeasonDrafts?: number;
   bestOf?: number;
+  commissionerUserId?: string;
 }) {
+  const target = params.regularSeasonDrafts ?? 12;
+  const best = params.bestOf ?? 10;
+  if (!Number.isInteger(target) || target < 1 || target > 50 || !Number.isInteger(best) || best < 1 || best > target) {
+    throw new Error('Choose 1–50 regular drafts and a best-of count between 1 and that total.');
+  }
   // Resolve current user's club to compute next season_number per club.
   const { data: clubRow } = await supabase.rpc('current_user_club_id' as any);
   const clubId = (clubRow as unknown as string) || null;
@@ -452,6 +348,9 @@ export async function createSeason(params: {
   }
 
   const cleanSubtitle = (params.subtitle || '').trim() || null;
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError || !authData.user) throw new Error('Sign in to create a season.');
+  const commissionerUserId = params.commissionerUserId || authData.user.id;
 
   const { data, error } = await supabase
     .from('draft_seasons' as any)
@@ -465,6 +364,8 @@ export async function createSeason(params: {
       regular_season_weeks: params.regularSeasonDrafts || 12, // keep in sync for compat
       best_of: params.bestOf || 10,
       status: 'regular_season',
+      commissioner_user_id: commissionerUserId,
+      club_id: clubId,
     } as any)
     .select()
     .single();
@@ -475,25 +376,13 @@ export async function createSeason(params: {
 
 /** Set the commissioner on a season (admin / commissioner-only via RLS). */
 export async function setSeasonCommissioner(seasonId: string, userId: string) {
-  const { error } = await supabase
-    .from('draft_seasons' as any)
-    .update({ commissioner_user_id: userId } as any)
-    .eq('id', seasonId);
-  if (error) throw error;
+  await mutateSeason(seasonId, 'transfer_commissioner', { user_id: userId }, 'Commissioner role transferred to the selected club member.');
 }
 
 /** Assign a draft to the current season (draft_number = sequential position) */
-export async function assignDraftToSeason(seasonId: string, draftId: string, draftNumber: number, isPlayoff = false) {
-  const { error } = await supabase
-    .from('draft_season_entries' as any)
-    .upsert({
-      season_id: seasonId,
-      draft_id: draftId,
-      week_number: draftNumber,
-      is_playoff: isPlayoff,
-    } as any, { onConflict: 'draft_id' });
-
-  if (error) throw error;
+export async function assignDraftToSeason(seasonId: string, draftId: string, _draftNumber: number, isPlayoff = false) {
+  if (isPlayoff) throw new Error('Playoff drafts are assigned by the bracket system.');
+  await addDraftToSeason(seasonId, draftId);
 }
 
 /** Check if the current user is the commissioner for the active season */
@@ -523,6 +412,7 @@ export function useUnassignedDrafts(seasonId: string | undefined) {
     const { data: allDrafts } = await supabase
       .from('drafts')
       .select('id, topic, status, created_at, category, num_rounds, profiles:created_by(display_name)')
+      .eq('is_live', false)
       .order('created_at', { ascending: false });
 
     const unassigned = (allDrafts || []).filter(d => !assignedIds.has(d.id));
@@ -537,50 +427,20 @@ export function useUnassignedDrafts(seasonId: string | undefined) {
 
 /** Commissioner: add a draft to the season with auto-numbered position */
 export async function addDraftToSeason(seasonId: string, draftId: string) {
-  // Get current max week_number for this season
-  const { data: existing } = await supabase
-    .from('draft_season_entries' as any)
-    .select('week_number')
-    .eq('season_id', seasonId)
-    .eq('is_playoff', false)
-    .order('week_number', { ascending: false })
-    .limit(1);
-
-  const nextNumber = existing && existing.length > 0 ? (existing[0] as any).week_number + 1 : 1;
-
-  const { error } = await supabase
-    .from('draft_season_entries' as any)
-    .insert({
-      season_id: seasonId,
-      draft_id: draftId,
-      week_number: nextNumber,
-      is_playoff: false,
-    } as any);
-
-  if (error) throw error;
-  return nextNumber;
+  const result = await mutateSeason(seasonId, 'add_draft', { draft_id: draftId }, 'Commissioner added this draft to the regular season.');
+  return result.record?.week_number;
 }
 
-/** Commissioner: remove a draft from the season and renumber remaining entries */
-export async function removeDraftFromSeason(draftId: string) {
-  // Get the season_id before deleting so we can renumber
-  const { data: entry } = await supabase
-    .from('draft_season_entries' as any)
+/** Remove only season membership; the draft and its original report stay intact. */
+export async function removeDraftFromSeason(draftId: string, reason = 'Commissioner removed this draft from the regular season.') {
+  const { data: entry, error } = await supabase
+    .from('draft_season_entries')
     .select('season_id')
     .eq('draft_id', draftId)
     .single();
-
-  const { error } = await supabase
-    .from('draft_season_entries' as any)
-    .delete()
-    .eq('draft_id', draftId);
-
   if (error) throw error;
-
-  // Renumber remaining regular-season entries sequentially
-  if (entry) {
-    await renumberSeasonEntries((entry as any).season_id);
-  }
+  if (!entry) throw new Error('This draft is no longer assigned to a season.');
+  await mutateSeason(entry.season_id, 'remove_draft', { draft_id: draftId }, reason);
 }
 
 /** Trigger playoff advancement (transition + winner scoring + next-round generation) */
@@ -671,29 +531,6 @@ export function usePlayoffMatchesLive(seasonId: string | undefined) {
   }, [seasonId, fetch]);
 
   return { matches, loading, refetch: fetch };
-}
-
-/** Renumber all regular-season entries sequentially (1, 2, 3…) by current week_number order */
-async function renumberSeasonEntries(seasonId: string) {
-  const { data: remaining } = await supabase
-    .from('draft_season_entries' as any)
-    .select('id, week_number')
-    .eq('season_id', seasonId)
-    .eq('is_playoff', false)
-    .order('week_number');
-
-  if (!remaining) return;
-
-  for (let i = 0; i < (remaining as any[]).length; i++) {
-    const entry = (remaining as any[])[i];
-    const correctNumber = i + 1;
-    if (entry.week_number !== correctNumber) {
-      await supabase
-        .from('draft_season_entries' as any)
-        .update({ week_number: correctNumber } as any)
-        .eq('id', entry.id);
-    }
-  }
 }
 
 /** Fetch a single season by id. */

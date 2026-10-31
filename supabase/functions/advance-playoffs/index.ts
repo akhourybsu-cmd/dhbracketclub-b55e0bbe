@@ -63,6 +63,13 @@ Deno.serve(async (req) => {
       .from("draft_seasons").select("*").eq("id", seasonId).single();
     if (sErr || !season) throw new Error("season not found");
 
+    const { data: activeClub, error: clubError } = await userClient.rpc("current_user_club_id");
+    if (clubError || !activeClub || activeClub !== season.club_id) {
+      return new Response(JSON.stringify({ error: "This season is outside your active club" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const log: string[] = [];
     let needsQfCheck = false;
 
