@@ -121,8 +121,8 @@ export default function CreateDraftPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto pb-6 da-ledger-page">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="max-w-xl mx-auto pb-6 da-ledger-page da-create-page" data-create-step={step + 1}>
+      <div className="flex items-center gap-2 mb-4 da-create-header">
         <Link to="/drafts" className="da-back" aria-label="Back to Drafts">
           <ArrowLeft className="w-4 h-4" />
         </Link>
@@ -141,8 +141,8 @@ export default function CreateDraftPage() {
         </motion.div>
       </div>
 
-      <motion.form onSubmit={(e) => { if (step < STEPS.length - 1) { e.preventDefault(); if (topic.trim()) setStep(step + 1); return; } handleCreate(e); }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5">
-        <ol className="flex items-center gap-1.5" aria-label="Steps">
+      <motion.form onSubmit={(e) => { if (step < STEPS.length - 1) { e.preventDefault(); if (topic.trim()) setStep(step + 1); return; } handleCreate(e); }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5 da-create-form">
+        <ol className="flex items-center gap-1.5 da-create-steps" aria-label="Steps">
           {STEPS.map((label, i) => (
             <li key={label} className="flex-1">
               <button type="button" disabled={i > 0 && !topic.trim()} onClick={() => setStep(i)}
@@ -157,7 +157,7 @@ export default function CreateDraftPage() {
         </ol>
         <AnimatePresence mode="wait" initial={false}>
         <motion.div key={step} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}
-          className="da-glass da-ledger-section p-5 space-y-5">
+          className="da-glass da-ledger-section p-5 space-y-5 da-create-stage" aria-label={`${STEPS[step]} setup`}>
           {step === 0 && (<>
           <div>
             <label className="form-label">Topic</label>
@@ -352,7 +352,7 @@ export default function CreateDraftPage() {
         </motion.div>
         </AnimatePresence>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 da-create-actions">
         {step > 0 && (
           <button type="button" onClick={() => setStep(step - 1)} className="h-12 px-5 rounded-lg border border-border font-bold text-[13px] btn-press">Back</button>
         )}

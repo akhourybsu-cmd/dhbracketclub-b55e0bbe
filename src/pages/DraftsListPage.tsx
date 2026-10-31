@@ -14,7 +14,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getDerivedDraftTurn } from '@/lib/draftTurn';
-import { springSnap, useCountUp } from '@/lib/draft/animations';
+import draftEmblem from '@/assets/draft-emblem.png';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useDraftListUpdates } from '@/hooks/useRealtimeSubscription';
 import {
@@ -43,7 +43,6 @@ import {
   getSeasonProgressText,
 } from '@/lib/seasonUtils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -52,14 +51,9 @@ import { getPlayoffGameLabel } from '@/lib/playoffStyle';
 import { StartNextSeasonSheet } from '@/components/draft/StartNextSeasonSheet';
 import { TransferCommissionerCard } from '@/components/draft/TransferCommissionerCard';
 
-import { forwardRef, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 
 const DraftStatsHub = lazy(() => import('@/components/draft/stats/DraftStatsHub'));
-
-const CountedNumber = forwardRef<HTMLSpanElement, { value: number }>(function CountedNumber({ value }, ref) {
-  const animated = useCountUp(value);
-  return <span ref={ref}>{Math.round(animated)}</span>;
-});
 
 const DRAFT_LIST_PAGE_SIZE = 1000;
 
@@ -1170,6 +1164,7 @@ export default function DraftsListPage() {
   const [draftWinners, setDraftWinners] = useState<Map<string, { user_id: string; display_name: string }>>(new Map());
   const [myDraftStats, setMyDraftStats] = useState({ totalPoints: 0, wins: 0, draftsRated: 0, podiums: 0, bestFinish: 0, avgScore: 0 });
   const [loading, setLoading] = useState(true);
+  const [draftLoadError, setDraftLoadError] = useState(false);
   // Season grouping: map every draft id → { seasonId, seasonName, startsAt, status }
   const [seasonByDraft, setSeasonByDraft] = useState<Map<string, { seasonId: string; name: string; startsAt: string; status: string }>>(new Map());
   const [allSeasons, setAllSeasons] = useState<Array<{ id: string; name: string; startsAt: string; status: string }>>([]);
@@ -1232,8 +1227,9 @@ export default function DraftsListPage() {
 
   const fetchDrafts = useCallback(async () => {
     if (!user) return;
+    setDraftLoadError(false);
     try {
-    const { data } = await withTimeout(
+    const { data, error } = await withTimeout(
       Promise.resolve(
         supabase
           .from('drafts')
@@ -1243,6 +1239,7 @@ export default function DraftsListPage() {
       QUERY_TIMEOUT_MS,
       'drafts list query',
     );
+    if (error) throw error;
 
     if (data) {
       const draftIds = data.map(d => d.id);
@@ -1322,6 +1319,7 @@ export default function DraftsListPage() {
       }
     }
     } catch (err) {
+      setDraftLoadError(true);
       console.error('[DraftsListPage] fetchDrafts failed', err);
     } finally {
       setLoading(false);
@@ -1363,6 +1361,8 @@ export default function DraftsListPage() {
   // lists never disagree about what's visible.
   const [draftQuery, setDraftQuery] = useState('');
   const [draftFilter, setDraftFilter] = useState<'all' | 'mine' | 'live' | 'complete'>('all');
+  const [roomGroup, setRoomGroup] = useState('all');
+  const [seasonView, setSeasonView] = useState<'overview' | 'standings' | 'playoffs' | 'history'>('overview');
 
   const visibleDrafts = useMemo(() => {
     const q = draftQuery.trim().toLowerCase();
@@ -1401,6 +1401,7 @@ export default function DraftsListPage() {
     const isMyTurn = isLive && d.current_pick_user_id === user?.id;
     const made = draftPickCounts.get(d.id) || 0;
     const roomParticipants = [...(draftParticipants.get(d.id) || [])].sort((a, b) => a.pick_order - b.pick_order);
+    const currentPickerName = roomParticipants.find(participant => participant.user_id === d.current_pick_user_id)?.profiles?.display_name || d.current_pick_profiles?.display_name || 'Another player';
     const totalExpected = count * d.num_rounds;
     const progressLabel = isLive
       ? `Round ${d.current_round || 1} · Pick ${Math.min(d.current_pick_number || made + 1, totalExpected || made + 1)}/${totalExpected || '—'}`
@@ -1439,273 +1440,100 @@ export default function DraftsListPage() {
       : isLive  ? 'hsl(var(--success))'
       : null;
     return (
-      <motion.div key={d.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { ...springSnap, delay: staggerIdx * 0.04 } } }}>
-        <Link to={`/drafts/${d.id}`} className="block group">
-           <div className={cn('da-glass da-ledger-row p-4 hover-lift cursor-pointer relative overflow-hidden transition-transform',
-            isPlayoff && 'arena-edge', isLive && !isPlayoff && 'draft-row-live', isMyTurn && !isPlayoff && 'draft-row-mine')}
-            style={isPlayoff ? {
-              borderLeft: '3px solid hsl(var(--da-gold))',
-               background: 'hsl(var(--card))',
-            } : edgeAccent ? {
-              borderLeft: `3px solid ${edgeAccent}`,
-            } : undefined}>
-            {isPlayoff && (
-              <div
-                aria-hidden
-                className="absolute inset-x-0 top-0 h-px pointer-events-none"
-                style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--da-gold) / 0.7), transparent)' }}
-              />
-            )}
-            {isPlayoff && <div className="absolute -right-2 -top-2 text-3xl opacity-10 select-none pointer-events-none" aria-hidden>✦</div>}
-            {isLive && !isPlayoff && <div className="absolute -right-2 -top-2 text-2xl opacity-[0.07] select-none pointer-events-none" aria-hidden>✦</div>}
-            <div className="flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={isPlayoff ? { background: 'linear-gradient(135deg, hsl(var(--da-gold) / 0.28), hsl(var(--da-gold-bright) / 0.10))', boxShadow: '0 0 10px hsl(var(--da-gold) / 0.25)' } : { background: 'linear-gradient(135deg, hsl(var(--gold) / 0.15), hsl(var(--gold) / 0.04))' }}>
-                  {isPlayoff ? <Trophy className="w-5 h-5" style={{ color: 'hsl(var(--da-gold))' }} strokeWidth={2.5} /> : <Bookmark className="w-5 h-5" style={{ color: 'hsl(var(--gold))' }} />}
-                </div>
-                <div className="min-w-0">
-                  {isPlayoff && <div className="mb-0.5"><PlayoffBadge round={playoffMatch!.round} matchNumber={playoffMatch!.match_number} size="xs" /></div>}
-                   <h3 className="dl-display font-extrabold text-[15px] leading-tight break-words">{d.topic}</h3>
-                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                    {isPlayoff ? (
-                      <DaStatChip tone="gold" value={getPlayoffGameLabel(playoffMatch!.round, playoffMatch!.match_number)} />
-                    ) : (
-                      <DaStatChip value={progressLabel} />
-                    )}
-                    <DaStatChip icon={Users} value={count} />
-                    {winner && <DaStatChip icon={Trophy} tone="gold" value={winner.display_name} />}
-                  </div>
-                  {d.status === 'in_progress' && d.current_pick_user_id && (
-                    isMyTurn ? (
-                      <motion.span
-                        initial={{ scale: 0.96 }}
-                        animate={{ scale: [0.96, 1, 0.96] }}
-                        transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                        className="inline-flex items-center gap-1 mt-1.5 px-1.5 py-[2px] rounded-full text-[9px] font-extrabold uppercase tracking-[0.18em]"
-                        style={{
-                          background: 'hsl(var(--gold) / 0.18)',
-                          color: 'hsl(var(--gold))',
-                          border: '1px solid hsl(var(--gold) / 0.5)',
-                          boxShadow: '0 0 8px hsl(var(--gold) / 0.25)',
-                        }}
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'hsl(var(--gold))', boxShadow: '0 0 5px hsl(var(--gold))' }} />
-                        You're up
-                      </motion.span>
-                    ) : (
-                      <p className="text-[10px] font-semibold mt-1" style={{ color: 'hsl(var(--success))' }}>
-                        <span className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle animate-pulse" style={{ background: 'hsl(var(--success))' }} />
-                         {(d as any).current_pick_profiles?.display_name || 'Someone'} is choosing
-                      </p>
-                    )
-                  )}
-                  {isLive && !isMyTurn && picksUntilYou !== null && (
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/75 mt-1">
-                      {picksUntilYou === 1 ? 'You pick next' : `${picksUntilYou} picks until you`}
-                    </p>
-                  )}
-                  {newSinceVisit > 0 && (
-                    <p className="text-[9px] font-extrabold uppercase tracking-wider text-primary mt-1">
-                      {newSinceVisit} new {newSinceVisit === 1 ? 'pick' : 'picks'} since your visit
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                <span className={cn(isPlayoff ? 'da-status-complete' : sc.cls)}>
-                  {d.status === 'in_progress' && <Play className="w-2.5 h-2.5 mr-0.5" />}
-                  {sc.label}
-                </span>
-                <ArrowRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-muted-foreground draft-chevron" />
-              </div>
+      <motion.article
+        key={d.id}
+        className="da-room-card-wrapper"
+        variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.22, delay: staggerIdx * 0.025 } } }}
+      >
+        <Link
+          to={`/drafts/${d.id}`}
+          className={cn('da-room-card da-glass', isPlayoff && 'is-playoff', isLive && 'is-live', isMyTurn && 'is-your-turn')}
+          style={edgeAccent ? { '--da-room-accent': edgeAccent } as React.CSSProperties : undefined}
+          data-room-status={d.status}
+          data-your-turn={isMyTurn}
+        >
+          <div className="da-room-card-top">
+            <span className="da-room-card-mark" aria-hidden="true">{isPlayoff ? <Trophy /> : isLive ? <Swords /> : d.status === 'complete' ? <Award /> : <Bookmark />}</span>
+            {isPlayoff && <PlayoffBadge round={playoffMatch!.round} matchNumber={playoffMatch!.match_number} size="xs" />}
+            <span className={cn('da-room-status', isPlayoff ? 'da-status-complete' : sc.cls)}>{isMyTurn ? 'YOUR TURN' : sc.label}</span>
+          </div>
+          <h3>{d.topic}</h3>
+          <div className="da-room-card-meta">
+            <span>{isPlayoff ? getPlayoffGameLabel(playoffMatch!.round, playoffMatch!.match_number) : progressLabel}</span>
+            <span><Users size={12} aria-hidden="true" />{count}</span>
+          </div>
+          <div className="da-room-card-meter" aria-label={`${made} of ${totalExpected || 0} selections`}>
+            <span style={{ width: `${totalExpected > 0 ? Math.min(100, made / totalExpected * 100) : 0}%` }} />
+          </div>
+          <div className="da-room-card-detail">
+            {winner ? <span className="da-room-card-winner"><Crown size={13} aria-hidden="true" />{winner.display_name}</span> : isLive ? (
+              <span>{isMyTurn ? 'Your roster is waiting.' : `${currentPickerName} is choosing`}{!isMyTurn && picksUntilYou !== null ? ` · ${picksUntilYou === 1 ? 'You’re next' : `${picksUntilYou} until you`}` : ''}</span>
+            ) : <span>{d.status === 'complete' ? 'The final board is in.' : 'Build a room. Bring your rivals.'}</span>}
+            {newSinceVisit > 0 && <b>{newSinceVisit} new</b>}
+          </div>
+          <div className="da-room-card-footer">
+            <div className="da-room-card-players" aria-label={`${count} participants`}>
+              {roomParticipants.slice(0, 4).map((participant) => {
+                const name = participant.profiles?.display_name || 'Player';
+                return <span key={participant.user_id} title={name} aria-hidden="true">{name.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase()}</span>;
+              })}
+              {count > 4 && <small>+{count - 4}</small>}
             </div>
+            <span className="da-room-card-action">{isMyTurn ? 'Make your pick' : d.status === 'complete' ? 'View results' : isLive ? 'Enter draft' : 'Open lobby'}<ArrowRight size={15} aria-hidden="true" /></span>
           </div>
         </Link>
-      </motion.div>
+      </motion.article>
     );
   };
 
+  const nextTurn = sortedDrafts.find(d => d.status === 'in_progress' && d.current_pick_user_id === user?.id);
+
   return (
-    <div className="pb-6 da-ledger-page">
+    <div className="da-lobby da-ledger-page" data-testid="draft-arena-lobby">
+      <header className="da-lobby-hero">
+        <img src={draftEmblem} className="da-lobby-hero-emblem" alt="" aria-hidden="true" />
+        <div className="da-lobby-hero-copy">
+          <p className="da-lobby-eyebrow">{season ? formatSeasonTitle(season) : 'The club draft room'} <span>•</span> DRAFT ARENA</p>
+          <h1>{nextTurn ? 'You’re on the clock.' : 'Make your mark.'}</h1>
+          <p>{nextTurn ? nextTurn.topic : 'Every pick builds your legacy.'}</p>
+        </div>
+        <Link to={nextTurn ? `/drafts/${nextTurn.id}` : '/drafts/create'} className="da-lobby-enter da-cta btn-press">
+          {nextTurn ? <><Play size={17} aria-hidden="true" /> Make your pick</> : <><Plus size={17} aria-hidden="true" /> Create draft</>}
+          <ArrowRight size={17} aria-hidden="true" />
+        </Link>
+      </header>
+      {myDraftStats.draftsRated > 0 && (
+        <div className="da-lobby-career" aria-label="Your draft career">
+          <span><Trophy aria-hidden="true" /><b>{myDraftStats.totalPoints}</b><small>points</small></span>
+          <span><Crown aria-hidden="true" /><b>{myDraftStats.wins}</b><small>wins</small></span>
+          <span><Medal aria-hidden="true" /><b>{myDraftStats.podiums}</b><small>podiums</small></span>
+          <Link to="/drafts?tab=stats" aria-label="View career stats"><BarChart3 aria-hidden="true" /><span>Career</span><ChevronRight aria-hidden="true" /></Link>
+        </div>
+      )}
       <Tabs
-        value={defaultTab}
+        value={defaultTab === 'commissioner' && !canSeeCommissioner ? 'drafts' : defaultTab}
         onValueChange={(value) => {
           if (value === 'drafts') setSearchParams({});
           else setSearchParams({ tab: value });
         }}
-        className="w-full"
+        className="da-lobby-tabs"
       >
-        {/* Tab bar.
-            Previous bug: the active TabsTrigger inherits shadcn's
-            `data-[state=active]:bg-background` from its base styles.
-            In `.da-mode` dark, `bg-background` resolves to the same
-            near-black that the override `text-[hsl(160_30%_6%)]` was
-            using for active-tab text — so the active label was being
-            painted dark-on-dark and effectively invisible. The fix:
-            force the active state to a solid gold fill so the dark
-            text reads as black-on-gold (the intended look). */}
-          <div className="flex items-center mb-5 gap-2 da-ledger-toolbar">
-          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
-            <TabsList className="inline-flex w-max gap-1 p-1 rounded-lg h-auto da-ledger-tabs">
-              <TabsTrigger value="drafts"
-                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md"
-                style={{ '--tw-ring-color': 'transparent' } as any}>
-                Rooms
-              </TabsTrigger>
-              <TabsTrigger value="season"
-                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
-                Season
-              </TabsTrigger>
-              <TabsTrigger value="stats"
-                 className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
-                Stats
-              </TabsTrigger>
-              {canSeeCommissioner && (
-                <TabsTrigger value="commissioner"
-                   className="da-ledger-tab flex-shrink-0 text-[10px] font-bold px-3 py-1.5 rounded-md">
-                  Commissioner
-                </TabsTrigger>
-              )}
-            </TabsList>
-          </div>
-
-          {/* Create button always visible — never squeezed off-screen by the tab row */}
-          <Link to="/drafts/create" className="flex-shrink-0">
-            <Button size="sm" aria-label="Create draft" className="gap-1.5 rounded-lg font-bold btn-press da-cta">
-              <Plus className="w-4 h-4" /> Create
-            </Button>
-          </Link>
+        <div className="da-lobby-nav da-ledger-toolbar">
+          <TabsList className="da-ledger-tabs" aria-label="Draft Arena sections">
+            <TabsTrigger value="drafts" className="da-ledger-tab"><Swords size={15} aria-hidden="true" /> Rooms</TabsTrigger>
+            <TabsTrigger value="season" className="da-ledger-tab"><Trophy size={15} aria-hidden="true" /> Season</TabsTrigger>
+            <TabsTrigger value="stats" className="da-ledger-tab"><BarChart3 size={15} aria-hidden="true" /> Stats</TabsTrigger>
+            {canSeeCommissioner && <TabsTrigger value="commissioner" className="da-ledger-tab"><Shield size={15} aria-hidden="true" /><span>Manage</span></TabsTrigger>}
+          </TabsList>
         </div>
 
-
         {/* ── DRAFTS TAB ── */}
-        <TabsContent value="drafts" className="mt-0">
-          {myDraftStats.draftsRated > 0 && (
-            // Personal stats card — "trophy room" treatment.
-            //
-            // Layout from top:
-            //   1. Header strip — small Sparkles icon + "Your Card" label
-            //      so the card has an identity rather than being raw numbers.
-            //   2. Hero row — 3 stats balanced on a flex track: TOTAL PTS
-            //      is the anchor (big gold), WINS + PODIUMS sit beside it
-            //      at medium weight. Each has an icon chip for fast scan.
-            //   3. Divider hairline.
-            //   4. Secondary row — Avg Score / Best Finish / Rated, smaller
-            //      type, each anchored by an icon. These are "averaged"
-            //      stats so they read as supporting context.
-            //
-            // The card sits on a radial gold wash + hairline top-edge strip
-            // so it visually anchors to the rest of the gold-themed shell.
-            <div
-               className="da-glass da-ledger-metrics mb-5 relative overflow-hidden"
-              style={{
-                 background: 'hsl(var(--card))',
-              }}
-            >
-              {/* Top edge gold accent strip */}
-              <div
-                aria-hidden
-                className="absolute inset-x-0 top-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--gold) / 0.6), transparent)' }}
-              />
-              <div className="p-4 lg:p-3">
-                {/* Header strip — small label gives the card an anchor */}
-                <div className="flex items-center gap-1.5 mb-3 lg:mb-2">
-                  <Sparkles className="w-3 h-3" style={{ color: 'hsl(var(--gold))' }} />
-                  <p className="text-[9px] font-extrabold uppercase tracking-[0.22em]" style={{ color: 'hsl(var(--gold) / 0.85)' }}>
-                    Your Card
-                  </p>
-                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, hsl(var(--gold) / 0.18), transparent)' }} />
-                </div>
-
-                {/* Hero row — 3 stats on a single track.
-                    Using flex with `flex-1` on each so they share the row
-                    fairly while Total Pts can grow into its space; the
-                    gold pulse-glow on TOTAL PTS makes it the anchor. */}
-                <div className="flex items-end gap-3">
-                  {/* TOTAL PTS — anchor */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Trophy className="w-3 h-3" style={{ color: 'hsl(var(--gold))' }} strokeWidth={2.5} />
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.2em]" style={{ color: 'hsl(var(--gold) / 0.7)' }}>
-                        Total Pts
-                      </p>
-                    </div>
-                    <p
-                      className="dl-display text-[34px] lg:text-[26px] font-black leading-none tabular-nums"
-                      style={{
-                        color: 'hsl(var(--gold))',
-                        textShadow: '0 0 18px hsl(var(--gold) / 0.4)',
-                      }}
-                    >
-                      <CountedNumber value={myDraftStats.totalPoints} />
-                    </p>
-                  </div>
-                  {/* WINS */}
-                  <div className="flex-1 min-w-0 pb-1">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Crown className="w-3 h-3 text-muted-foreground/60" strokeWidth={2.5} />
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Wins</p>
-                    </div>
-                    <p className="dl-display text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
-                      <CountedNumber value={myDraftStats.wins} />
-                    </p>
-                  </div>
-                  {/* PODIUMS */}
-                  <div className="flex-1 min-w-0 pb-1">
-                    <div className="flex items-center gap-1 mb-1">
-                      <Medal className="w-3 h-3 text-muted-foreground/60" strokeWidth={2.5} />
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground/60">Podiums</p>
-                    </div>
-                    <p className="dl-display text-[22px] lg:text-[18px] font-extrabold tabular-nums leading-none">
-                      <CountedNumber value={myDraftStats.podiums} />
-                    </p>
-                  </div>
-                </div>
-
-                <hr className="da-divider my-3 lg:my-2" />
-
-                {/* Secondary row — icon-anchored, smaller numbers, finer
-                    typography. These three stats read as "context for the
-                    hero" rather than achievements in their own right. */}
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { icon: BarChart3, label: 'Avg Score', value: myDraftStats.avgScore.toFixed(1) },
-                    {
-                      icon: Award,
-                      label: 'Best Finish',
-                      value: myDraftStats.bestFinish > 0
-                        ? `${myDraftStats.bestFinish}${myDraftStats.bestFinish === 1 ? 'st' : myDraftStats.bestFinish === 2 ? 'nd' : myDraftStats.bestFinish === 3 ? 'rd' : 'th'}`
-                        : '—',
-                    },
-                    { icon: ListChecks, label: 'Rated', value: myDraftStats.draftsRated },
-                  ].map(s => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={s.label} className="flex items-center gap-2 min-w-0">
-                        <div
-                          className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'hsl(var(--gold) / 0.08)', border: '1px solid hsl(var(--gold) / 0.18)' }}
-                        >
-                          <Icon className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold) / 0.85)' }} strokeWidth={2.2} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[13px] font-extrabold leading-none tabular-nums">{s.value}</p>
-                          <p className="text-[10px] text-muted-foreground/55 font-bold mt-0.5 uppercase tracking-wider truncate">{s.label}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
+        <TabsContent value="drafts" className="da-lobby-rooms">
+          {draftLoadError && <div className="da-lobby-load-error" role="alert"><span>Rooms couldn’t refresh.</span><button type="button" onClick={() => void fetchDrafts()}><RefreshCw size={14} aria-hidden="true" />Retry</button></div>}
           {/* Search + status filters — keeps long season archives scannable */}
           {!loading && drafts.length > 0 && (
-            <div className="mb-3 flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="relative flex-1 min-w-0">
+            <div className="da-lobby-room-tools">
+              <div className="da-lobby-search relative flex-1 min-w-0">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
                 <input
                   value={draftQuery}
@@ -1715,11 +1543,11 @@ export default function DraftsListPage() {
                          className="w-full h-9 pl-9 pr-3 rounded-lg bg-card border border-border text-[12.5px] font-semibold placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary/60"
                 />
               </div>
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <div className="da-lobby-status-filters" aria-label="Filter draft rooms">
                 {([
                   { key: 'all', label: 'All' },
                   { key: 'mine', label: 'Your turn' },
-                  { key: 'live', label: 'In Progress' },
+                  { key: 'live', label: 'Live' },
                   { key: 'complete', label: 'Complete' },
                 ] as const).map(f => {
                   const active = draftFilter === f.key;
@@ -1728,6 +1556,7 @@ export default function DraftsListPage() {
                       key={f.key}
                       type="button"
                       onClick={() => setDraftFilter(f.key)}
+                      aria-pressed={active}
                       className={cn(
                          'da-filter-chip flex-shrink-0 h-9 px-3 rounded-lg text-[11px] font-extrabold border transition-colors',
                         active
@@ -1744,6 +1573,7 @@ export default function DraftsListPage() {
             </div>
           )}
 
+          <div className="da-lobby-scroll da-lobby-room-scroll" aria-label="Draft rooms">
           {loading ? (
             <div className="space-y-2.5">
               {[1, 2].map(i => (
@@ -1753,6 +1583,8 @@ export default function DraftsListPage() {
                 </div>
               ))}
             </div>
+          ) : draftLoadError && drafts.length === 0 ? (
+            <div className="da-lobby-empty" role="status"><RefreshCw size={28} aria-hidden="true" /><h2>Rooms are unavailable.</h2><p>Try again in a moment to return to the arena.</p></div>
           ) : drafts.length === 0 ? (
             <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="empty-state">
               <div className="da-page-icon" style={{ width: '3.5rem', height: '3.5rem', borderRadius: '1rem' }}>
@@ -1791,198 +1623,86 @@ export default function DraftsListPage() {
               ...(miscDrafts.length > 0 ? [{ id: '__misc__', name: 'One-off Drafts', status: null, startsAt: null, drafts: miscDrafts }] : []),
             ];
 
-            // Default-open: most-recent + currently-active season groups.
-            const defaultOpen = orderedGroups
-              .filter((g, idx) => idx === 0 || g.status === 'regular_season' || g.status === 'playoffs')
-              .map(g => g.id);
-
-            const statusChip = (g: Group): { label: string; cls: string; live: boolean } | null => {
-              if (g.id === '__misc__') return null;
-              switch (g.status) {
-                case 'regular_season': return { label: 'In Progress', cls: 'bg-success/15 text-success border border-success/25', live: true };
-                case 'playoffs': return { label: 'Playoffs', cls: 'bg-gold/15 text-gold border border-gold/25', live: true };
-                case 'complete': return { label: 'Complete', cls: 'bg-muted/40 text-muted-foreground border border-border/30', live: false };
-                case 'upcoming': return { label: 'Upcoming', cls: 'bg-muted/40 text-muted-foreground border border-border/30', live: false };
-                default: return null;
-              }
-            };
-
-            // renderRow is the shared component-scope renderer
-            // (`renderDraftRow`) so the Drafts tab and Misc tab stay
-            // in visual lockstep.
-            const renderRow = renderDraftRow;
-
-            const yourTurn = visibleDrafts.filter((d: any) => d.status === 'in_progress' && user?.id && d.current_pick_user_id === user.id);
+            const selected = roomGroup === 'all' ? undefined : orderedGroups.find(group => group.id === roomGroup);
+            const shown = selected ? selected.drafts : visibleDrafts;
             return (
               <>
-              {yourTurn.length > 0 && (
-                <section className="mb-4" aria-label="Your turn">
-                  <DaSectionHeader eyebrow="Action needed" title={<span className="flex items-center gap-2">Your turn <DaStatChip tone="gold" value={yourTurn.length} /></span>} />
-                  <motion.div className="space-y-2" initial="hidden" animate="show" variants={{ hidden: {}, show: {} }}>
-                    {yourTurn.map((d: any, i: number) => renderRow(d, i))}
+                <nav className="da-room-groups" aria-label="Room seasons">
+                  <button type="button" aria-pressed={!selected} onClick={() => setRoomGroup('all')}>All rooms <span>{visibleDrafts.length}</span></button>
+                  {orderedGroups.map(group => <button type="button" key={group.id} aria-pressed={selected?.id === group.id} onClick={() => setRoomGroup(group.id)}>{group.name}<span>{group.drafts.length}</span></button>)}
+                </nav>
+                {shown.length ? (
+                  <motion.div className="da-room-card-grid" initial="hidden" animate="show" key={`${selected?.id ?? 'all'}:${draftFilter}:${draftQuery}`}>
+                    {shown.map((draft, index) => renderDraftRow(draft, index))}
                   </motion.div>
-                </section>
-              )}
-              <Accordion type="multiple" defaultValue={defaultOpen} className="space-y-2.5">
-                {orderedGroups.map(g => {
-                  const chip = statusChip(g);
-                  const liveCount = g.drafts.filter(d => d.status === 'in_progress').length;
-                  return (
-                    <AccordionItem
-                      key={g.id}
-                      value={g.id}
-                       className="border-0 rounded-lg overflow-hidden da-glass da-ledger-section"
-                    >
-                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                        <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                          {/* Trophy icon container — bumped from 8 → 9 with
-                              slightly stronger shadow so the season header
-                              reads as a chapter divider, not another row. */}
-                          <div
-                            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={
-                              g.id === '__misc__'
-                                ? { background: 'hsl(var(--muted) / 0.5)' }
-                                : {
-                                    background:
-                                      'linear-gradient(135deg, hsl(var(--gold) / 0.28), hsl(var(--gold) / 0.08))',
-                                    boxShadow: '0 0 10px hsl(var(--gold) / 0.18)',
-                                  }
-                            }
-                          >
-                            {g.id === '__misc__'
-                              ? <Archive className="w-4 h-4 text-muted-foreground" />
-                              : <Trophy className="w-[18px] h-[18px]" style={{ color: 'hsl(var(--gold))' }} strokeWidth={2.2} />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            {/* Title row — name + status chip + live count chip
-                                all on one line. Previously the count sat on a
-                                second line which made the header feel taller
-                                than it needed to be. */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-extrabold text-[14px] truncate">{g.name}</span>
-                              {chip && (
-                                <span className={cn('inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-[2px] rounded-full', chip.cls)}>
-                                  {chip.live && <span className="w-1 h-1 rounded-full bg-current animate-pulse" />}
-                                  {chip.label}
-                                </span>
-                              )}
-                              {liveCount > 0 && (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-[2px] rounded-full"
-                                  style={{
-                                    background: 'hsl(var(--success) / 0.15)',
-                                    color: 'hsl(var(--success))',
-                                    border: '1px solid hsl(var(--success) / 0.3)',
-                                  }}
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-current animate-pulse" />
-                                  {liveCount} live
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-muted-foreground/65 font-medium mt-0.5 tabular-nums">
-                              {g.drafts.length} {g.drafts.length === 1 ? 'draft' : 'drafts'}
-                            </p>
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-2 pb-2 pt-0">
-                        <motion.div className="space-y-2" initial="hidden" animate="show"
-                          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.04 } } }}>
-                          {g.drafts.map((d, i) => renderRow(d, i))}
-                        </motion.div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
+                ) : (
+                  <div className="da-lobby-empty" role="status">
+                    <Search size={28} aria-hidden="true" /><h2>No rooms match.</h2><p>Try another topic or status.</p>
+                    <button type="button" className="da-cta" onClick={() => { setDraftQuery(''); setDraftFilter('all'); setRoomGroup('all'); }}>Show all rooms</button>
+                  </div>
+                )}
               </>
             );
           })()}
+          </div>
 
 
 
         </TabsContent>
 
         {/* ── SEASON TAB ── */}
-        <TabsContent value="season" className="mt-0">
-          {seasonLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="glass-card p-5">
-                  <div className="h-4 rounded-lg w-1/3 mb-2.5 skeleton-shimmer" />
-                  <div className="h-3 rounded-lg w-1/2 skeleton-shimmer" />
-                </div>
-              ))}
-            </div>
-          ) : season ? (
-            <div className="space-y-3">
-              <SeasonHeaderCard season={season} entries={entries} />
-              {season.status === 'complete' ? (
-                <>
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                    <Link to={`/drafts/seasons/${season.id}`}>
-                      <div className="glass-card p-4 flex items-center gap-3 border-gold/15 hover-lift"
-                        style={{ background: 'linear-gradient(135deg, hsl(var(--gold) / 0.08), transparent 60%), hsl(var(--card))', borderLeft: '3px solid hsl(var(--gold))' }}>
-                        <Trophy className="w-5 h-5 flex-shrink-0" style={{ color: 'hsl(var(--gold))' }} />
-                        <div className="flex-1">
-                          <p className="text-[13px] font-extrabold">Season Complete</p>
-                          <p className="text-[10px] text-muted-foreground/70 mt-0.5">View the full archive & podium</p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/60" />
-                      </div>
-                    </Link>
-                  </motion.div>
-                  {canSeeCommissioner && (
-                    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
-                      <div className="glass-card p-4 flex items-center gap-3"
-                        style={{ background: 'linear-gradient(135deg, hsl(var(--gold) / 0.10), transparent 60%), hsl(var(--card))', border: '1px solid hsl(var(--gold) / 0.25)', boxShadow: '0 0 24px -10px hsl(var(--gold) / 0.45)' }}>
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'linear-gradient(135deg, hsl(var(--gold) / 0.22), hsl(var(--gold) / 0.06))', border: '1px solid hsl(var(--gold) / 0.3)' }}>
-                          <Sparkles className="w-5 h-5" style={{ color: 'hsl(var(--gold))' }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-extrabold">Ready for the next season?</p>
-                          <p className="text-[10px] text-muted-foreground/70 mt-0.5 leading-snug">Archive {formatSeasonTitle(season)} and open fresh standings.</p>
-                        </div>
-                        <button onClick={() => setStartNextOpen(true)}
-                          className="h-9 px-3 rounded-lg text-[11px] font-extrabold btn-press flex items-center gap-1.5 flex-shrink-0"
-                          style={{ background: 'linear-gradient(135deg, hsl(var(--gold) / 0.95), hsl(var(--gold) / 0.7))', color: 'hsl(0 0% 8%)', boxShadow: '0 4px 12px -4px hsl(var(--gold) / 0.5)' }}>
-                          <Plus className="w-3.5 h-3.5" /> Start
-                        </button>
-                      </div>
-                    </motion.div>
+        <TabsContent value="season" className="da-lobby-panel">
+          <nav className="da-season-nav" aria-label="Season views">
+            {([
+              { value: 'overview', label: 'Overview', icon: Target },
+              { value: 'standings', label: 'Standings', icon: Trophy },
+              { value: 'playoffs', label: 'Playoffs', icon: Swords },
+              { value: 'history', label: 'History', icon: Archive },
+            ] as const).map(view => <button key={view.value} type="button" aria-pressed={seasonView === view.value} onClick={() => setSeasonView(view.value)}><view.icon size={14} aria-hidden="true" />{view.label}</button>)}
+          </nav>
+          <div className="da-lobby-scroll" key={seasonView}>
+            {seasonLoading ? (
+              <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="da-glass p-5"><div className="h-4 rounded-lg w-1/3 mb-2.5 da-shimmer" /><div className="h-3 rounded-lg w-1/2 da-shimmer" /></div>)}</div>
+            ) : season ? (
+              <div className="da-season-content space-y-3" data-season-view={seasonView}>
+                {seasonView === 'overview' && <>
+                  <SeasonHeaderCard season={season} entries={entries} />
+                  {season.status !== 'complete' ? <NextDraftCard entries={entries} totalDrafts={totalDrafts} /> : (
+                    <Link to={`/drafts/seasons/${season.id}`} className="da-season-finish da-glass"><Trophy aria-hidden="true" /><span><b>Season complete</b><small>Open the final podium and season recap.</small></span><ArrowRight aria-hidden="true" /></Link>
                   )}
-                  <StandingsCard standings={standings} userId={user?.id} />
-                  <LifetimeStatsCard userId={user?.id} />
-                  <StartNextSeasonSheet open={startNextOpen} onOpenChange={setStartNextOpen} previousSeason={season} onCreated={() => { refetchSeason(); }} />
-                </>
-              ) : (
-                <>
-                  <NextDraftCard entries={entries} totalDrafts={totalDrafts} />
-                  <StandingsCard standings={standings} userId={user?.id} />
-                  <PlayoffControlCenter season={season} matches={matches} standings={standings} userId={user?.id} onUpdate={handleSeasonUpdate} />
-                  <PlayoffPicture standings={standings} matches={matches} seasonId={season?.id} />
+                  <div className="da-season-destinations">
+                    <button type="button" onClick={() => setSeasonView('standings')}><Trophy aria-hidden="true" /><span><b>The standings</b><small>{standings.length} contenders</small></span><ChevronRight aria-hidden="true" /></button>
+                    <button type="button" onClick={() => setSeasonView('playoffs')}><Swords aria-hidden="true" /><span><b>The championship</b><small>Bracket and matchups</small></span><ChevronRight aria-hidden="true" /></button>
+                  </div>
+                  {season.status === 'complete' && canSeeCommissioner && <button type="button" onClick={() => setStartNextOpen(true)} className="da-season-next da-cta"><Plus size={17} aria-hidden="true" />Start the next season<ArrowRight size={17} aria-hidden="true" /></button>}
+                </>}
+                {seasonView === 'standings' && <><StandingsCard standings={standings} userId={user?.id} /><LifetimeStatsCard userId={user?.id} /></>}
+                {seasonView === 'playoffs' && (season.status !== 'complete'
+                  ? <><PlayoffControlCenter season={season} matches={matches} standings={standings} userId={user?.id} onUpdate={handleSeasonUpdate} /><PlayoffPicture standings={standings} matches={matches} seasonId={season.id} /></>
+                  : <Link to={`/drafts/seasons/${season.id}`} className="da-season-finish da-glass"><Trophy aria-hidden="true" /><span><b>The championship is complete</b><small>Open the final bracket in the season recap.</small></span><ArrowRight aria-hidden="true" /></Link>)}
+                {seasonView === 'history' && <>
                   <SeasonDraftHistory entries={entries} totalDrafts={totalDrafts} />
-                  <LifetimeStatsCard userId={user?.id} />
-                </>
-              )}
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
-                <Link to="/drafts/seasons" className="block">
-                  <button className="w-full h-9 rounded-lg bg-muted/50 text-[11px] font-bold text-foreground/80 transition-colors flex items-center justify-center gap-1.5 btn-press">
-                    Seasons Archive <ChevronRight className="w-3 h-3" />
-                  </button>
-                </Link>
-              </motion.div>
-            </div>
-          ) : (
-            <NoSeasonState />
-          )}
+                  <Link to="/drafts/seasons" className="da-season-archive da-glass"><Archive size={18} aria-hidden="true" /><span>Explore past seasons</span><ArrowRight size={17} aria-hidden="true" /></Link>
+                </>}
+                <StartNextSeasonSheet open={startNextOpen} onOpenChange={setStartNextOpen} previousSeason={season} onCreated={() => { refetchSeason(); }} />
+              </div>
+            ) : <NoSeasonState />}
+          </div>
         </TabsContent>
 
         {/* ── STATS TAB ── */}
-        <TabsContent value="stats" className="mt-0">
+        <TabsContent value="stats" className="da-lobby-panel"><div className="da-lobby-scroll">
+          {myDraftStats.draftsRated > 0 && <section className="da-career-summary da-glass" aria-label="Your career summary">
+            <p className="da-lobby-eyebrow">YOUR PLAYER CARD</p>
+            <div>{[
+              { label: 'Points', value: myDraftStats.totalPoints, icon: Trophy },
+              { label: 'Wins', value: myDraftStats.wins, icon: Crown },
+              { label: 'Podiums', value: myDraftStats.podiums, icon: Medal },
+              { label: 'Average score', value: myDraftStats.avgScore.toFixed(1), icon: BarChart3 },
+              { label: 'Best finish', value: myDraftStats.bestFinish > 0 ? getOrdinalSuffix(myDraftStats.bestFinish) : '—', icon: Award },
+              { label: 'Rated drafts', value: myDraftStats.draftsRated, icon: ListChecks },
+            ].map(stat => <article key={stat.label}><stat.icon aria-hidden="true" /><b>{stat.value}</b><span>{stat.label}</span></article>)}</div>
+          </section>}
           <Suspense fallback={
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
@@ -1995,11 +1715,12 @@ export default function DraftsListPage() {
           }>
             <DraftStatsHub />
           </Suspense>
+          </div>
         </TabsContent>
 
         {/* ── COMMISSIONER TAB ── */}
         {canSeeCommissioner && (
-          <TabsContent value="commissioner" className="mt-0">
+          <TabsContent value="commissioner" className="da-lobby-panel"><div className="da-lobby-scroll">
             {seasonLoading ? (
               <div className="glass-card p-5"><div className="h-4 rounded-lg w-1/3 mb-2.5 skeleton-shimmer" /></div>
             ) : season ? (
@@ -2074,7 +1795,7 @@ export default function DraftsListPage() {
                 </Link>
               </div>
             )}
-          </TabsContent>
+          </div></TabsContent>
         )}
       </Tabs>
     </div>

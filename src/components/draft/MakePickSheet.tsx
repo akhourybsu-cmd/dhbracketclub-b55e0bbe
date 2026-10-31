@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AlertTriangle, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 import { PersonalDraftDesk } from '@/components/draft/PersonalDraftDesk';
+import { Dialog, DialogOverlay, DialogPortal, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 
 export interface PickSuggestionState {
   corrected_text?: string | null;
@@ -42,13 +42,14 @@ export function PickComposerFields({
   inputRef,
 }: PickComposerFieldsProps) {
   return (
-    <div>
+    <div className="da-pick-compose">
       <div className="flex gap-2">
         <Input
           ref={inputRef}
           value={pickText}
           onChange={(e) => onTextChange(e.target.value)}
           placeholder="Enter your pick…"
+          aria-label="Your draft pick"
           maxLength={100}
           autoFocus={autoFocus}
           className="form-input flex-1 h-12 text-[15px]"
@@ -58,6 +59,7 @@ export function PickComposerFields({
         />
         <button
           type="button"
+          aria-label="Submit pick"
           onClick={onSubmit}
           disabled={submitting || !pickText.trim() || localDuplicate}
           title={localDuplicate ? 'This pick has already been taken' : undefined}
@@ -84,6 +86,7 @@ export function PickComposerFields({
                 <span className="text-foreground/80 flex-1">
                   Did you mean{' '}
                   <button
+                    type="button"
                     onClick={() => onApplyCorrection(suggestion.corrected_text!)}
                     className="font-bold text-primary hover:underline"
                   >
@@ -91,7 +94,7 @@ export function PickComposerFields({
                   </button>
                   ?
                 </span>
-                <button onClick={onDismissSuggestion} className="w-8 h-8 -mr-1 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors" aria-label="Dismiss">
+                <button type="button" onClick={onDismissSuggestion} className="w-11 h-11 shrink-0 -mr-1 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors" aria-label="Dismiss">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -102,7 +105,7 @@ export function PickComposerFields({
                 <span className="text-foreground/80 flex-1">
                   {suggestion.relevance_note || 'This pick may already have been taken.'}
                 </span>
-                <button onClick={onDismissSuggestion} className="w-8 h-8 -mr-1 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors" aria-label="Dismiss">
+                <button type="button" onClick={onDismissSuggestion} className="w-11 h-11 shrink-0 -mr-1 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors" aria-label="Dismiss">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -113,7 +116,7 @@ export function PickComposerFields({
                 <span className="text-foreground/80 flex-1">
                   {suggestion.relevance_note || `This might not be relevant to "${topic}".`}
                 </span>
-                <button onClick={onDismissSuggestion} className="w-8 h-8 -mr-1 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors" aria-label="Dismiss">
+                <button type="button" onClick={onDismissSuggestion} className="w-11 h-11 shrink-0 -mr-1 inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground transition-colors" aria-label="Dismiss">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -149,43 +152,23 @@ export function MakePickSheet({
   taken = new Set<string>(),
   ...fields
 }: MakePickSheetProps) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (typeof document === 'undefined') return null;
-
-  return createPortal(
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] bg-background/70 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-            className="da-lounge fixed inset-x-0 bottom-0 z-[90] dl-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Make your pick"
-          >
-            <div className="mx-auto w-10 h-1 rounded-full bg-muted-foreground/30 mb-4" />
-            <div className="flex items-start justify-between mb-4">
+  const { palette } = useDraftArenaPalette();
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogPortal>
+      <DialogOverlay className="z-[80]" />
+      <DialogPrimitive.Content
+        className="da-appearance-panel da-arena-dialog da-pick-dialog da-lounge fixed left-1/2 top-1/2 z-[90] w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border p-5 shadow-2xl"
+        data-da-palette={palette}
+        aria-label="Make your pick"
+      >
+            <div className="da-pick-dialog-heading flex items-start justify-between gap-3">
               <div>
                 <p className="dl-eyebrow">Your Pick</p>
-                <p className="dl-display text-lg font-bold text-foreground">
+                <DialogTitle className="dl-display text-lg font-bold text-foreground">
                   Round {currentRound} · Pick #{currentPickNumber}
-                </p>
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-xs">{fields.topic}</DialogDescription>
               </div>
               <button
                 type="button"
@@ -197,7 +180,7 @@ export function MakePickSheet({
               </button>
             </div>
             <PickComposerFields {...fields} autoFocus />
-            <div className="mt-4">
+            <div className="da-pick-dialog-desk">
               <PersonalDraftDesk
                 compact
                 draftId={draftId}
@@ -206,13 +189,11 @@ export function MakePickSheet({
                 onChoose={fields.onTextChange}
               />
             </div>
-            <p className="mt-3 text-center text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-bold">
-              The board stays visible above — check what's taken
+            <p className="text-center text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-bold">
+              Your shortlist. Your next contender.
             </p>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>,
-    document.body,
+      </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   );
 }

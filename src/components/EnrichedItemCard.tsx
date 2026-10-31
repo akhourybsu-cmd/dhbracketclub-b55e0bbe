@@ -1,7 +1,9 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { ImageOff, Sparkles, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import type { ItemEnrichment } from '@/hooks/useItemEnrichments';
+import { DraftPickArtwork } from '@/components/draft/DraftPickArtwork';
+import { artworkUrl, draftArtworkCandidates } from '@/lib/draft/artwork';
 
 interface EnrichedItemCardProps {
   label: string;
@@ -14,20 +16,6 @@ interface EnrichedItemCardProps {
   actions?: React.ReactNode;
   className?: string;
 }
-
-// Category-specific gradient fallbacks
-const categoryGradients: Record<string, string> = {
-  movie: 'from-purple-900/40 to-indigo-900/40',
-  tv: 'from-blue-900/40 to-cyan-900/40',
-  book: 'from-amber-900/40 to-orange-900/40',
-  music: 'from-pink-900/40 to-rose-900/40',
-  food: 'from-red-900/40 to-orange-900/40',
-  brand: 'from-slate-800/40 to-zinc-900/40',
-  sport: 'from-green-900/40 to-emerald-900/40',
-  game: 'from-violet-900/40 to-fuchsia-900/40',
-  person: 'from-sky-900/40 to-blue-900/40',
-  generic: 'from-slate-800/40 to-gray-900/40',
-};
 
 function MetadataSubtitle({ enrichment }: { enrichment?: ItemEnrichment }) {
   if (!enrichment?.metadata) return null;
@@ -65,20 +53,19 @@ export default function EnrichedItemCard({
   actions,
   className,
 }: EnrichedItemCardProps) {
-  const hasImage = enrichment?.image_url || enrichment?.thumbnail_url;
-  const imageUrl = enrichment?.thumbnail_url || enrichment?.image_url;
-  const category = enrichment?.category || 'generic';
-  const gradient = categoryGradients[category] || categoryGradients.generic;
+  const reduce = useReducedMotion();
   const isLowConfidence = enrichment?.status === 'low_confidence';
-  const hasImageCandidates = onImageClick && (enrichment?.metadata?.image_candidates as any[])?.length > 0;
+  const options = enrichment ? draftArtworkCandidates(enrichment, label) : [];
+  const currentUrl = artworkUrl(enrichment?.image_url || enrichment?.thumbnail_url);
+  const hasImageCandidates = !!onImageClick && options.length > (currentUrl ? 1 : 0);
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
+      layout={!reduce}
+      initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "flex items-center gap-3 px-3 py-2.5 group card-tilt rounded-xl",
+        "da-pick-card flex items-center gap-3 px-3 py-2.5 group rounded-xl",
         "transition-colors duration-150 hover:bg-muted/20",
         // Faint gold wash so the leader reads as the top pick at a glance.
         rank === 1 && showRank && "bg-gradient-to-r from-gold/[0.06] via-transparent to-transparent",
@@ -106,50 +93,21 @@ export default function EnrichedItemCard({
       )}
 
       {/* Image thumbnail */}
-      <div
-        className={cn(
-          "relative flex-shrink-0 rounded-xl overflow-hidden ring-1 ring-border/50 shadow-[0_1px_3px_rgba(0,0,0,0.25)]",
-          compact ? "w-10 h-10" : "w-12 h-12",
-          hasImageCandidates && "cursor-pointer"
-        )}
-        onClick={hasImageCandidates ? (e) => { e.stopPropagation(); onImageClick?.(); } : undefined}
-      >
-        {hasImage ? (
-          <img
-            src={imageUrl!}
-            alt={label}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            decoding="async"
-            loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-              (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-            }}
-          />
-        ) : null}
-        {/* Fallback gradient placeholder */}
-        <div className={cn(
-          "absolute inset-0 flex items-center justify-center bg-gradient-to-br",
-          gradient,
-          hasImage && "hidden"
-        )}>
-          <span className="text-[15px] font-bold text-foreground/40">
-            {label.charAt(0).toUpperCase()}
-          </span>
-        </div>
-        {/* Swap icon overlay */}
-        {hasImageCandidates && (
-          <div className="absolute inset-0 bg-background/0 hover:bg-background/40 transition-colors flex items-center justify-center group/swap">
-            <RefreshCw className="w-3.5 h-3.5 text-foreground/0 group-hover/swap:text-foreground/80 transition-colors" />
-          </div>
-        )}
-        {/* Low confidence indicator */}
-        {isLowConfidence && (
-          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-warning ring-2 ring-card flex items-center justify-center">
-            <span className="text-[7px] font-extrabold text-background leading-none">?</span>
-          </div>
-        )}
-      </div>
+      {hasImageCandidates ? (
+        <button
+          type="button"
+          className={cn('da-pick-art-button relative min-h-11 min-w-11 flex-shrink-0 overflow-hidden rounded-xl ring-1 ring-border/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary', compact ? 'h-11 w-11' : 'h-12 w-12')}
+          aria-label={`Choose artwork for ${label}`}
+          onClick={(event) => { event.stopPropagation(); onImageClick?.(); }}
+        >
+          <DraftPickArtwork artwork={enrichment} label={label} />
+          <span className="absolute bottom-0 right-0 rounded-tl-md bg-background/85 p-1"><RefreshCw className="h-2.5 w-2.5 text-foreground/80" aria-hidden="true" /></span>
+        </button>
+      ) : (
+        <span className={cn('relative flex-shrink-0 overflow-hidden rounded-xl ring-1 ring-border/50', compact ? 'h-11 w-11' : 'h-12 w-12')}>
+          <DraftPickArtwork artwork={enrichment} label={label} />
+        </span>
+      )}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -160,6 +118,7 @@ export default function EnrichedItemCard({
           {label}
         </span>
         <MetadataSubtitle enrichment={enrichment} />
+        {isLowConfidence && <span className="text-[9px] font-semibold text-muted-foreground">Artwork match unconfirmed</span>}
       </div>
 
       {/* Actions slot */}

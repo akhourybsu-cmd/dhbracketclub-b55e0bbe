@@ -1,8 +1,10 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { MotionConfig, useReducedMotion } from 'framer-motion';
 import { DraftArenaHUD } from './DraftArenaHUD';
 import { DraftArenaBoot } from './DraftArenaBoot';
 import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
+import './draftArena.css';
 
 /**
  * Full-screen standalone shell for the Draft Arena. Applies the `.da-mode`
@@ -15,28 +17,57 @@ import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
  */
 export function DraftArenaLayout({ children }: { children: ReactNode }) {
   const { palette } = useDraftArenaPalette();
+  const reducedMotion = useReducedMotion();
+  const shell = useRef<HTMLDivElement>(null);
+  const [hidden, setHidden] = useState(() => document.hidden);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    const rootStyle = document.documentElement.style;
+    const previousHeight = rootStyle.getPropertyValue('--da-viewport-height');
+    const previousPriority = rootStyle.getPropertyPriority('--da-viewport-height');
+    const previousShortViewport = document.documentElement.getAttribute('data-da-short-viewport');
+    const resize = () => {
+      const visibleHeight = viewport?.height ?? window.innerHeight;
+      const height = `${visibleHeight}px`;
+      shell.current?.style.setProperty('--da-viewport-height', height);
+      // Portaled composers and artwork drawers share the visible keyboard bounds.
+      rootStyle.setProperty('--da-viewport-height', height);
+      document.documentElement.dataset.daShortViewport = String(visibleHeight < 340);
+    };
+    const visibility = () => setHidden(document.hidden);
+    resize();
+    viewport?.addEventListener('resize', resize);
+    window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', visibility);
+    return () => {
+      viewport?.removeEventListener('resize', resize);
+      window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', visibility);
+      if (previousHeight) rootStyle.setProperty('--da-viewport-height', previousHeight, previousPriority);
+      else rootStyle.removeProperty('--da-viewport-height');
+      if (previousShortViewport === null) document.documentElement.removeAttribute('data-da-short-viewport');
+      else document.documentElement.setAttribute('data-da-short-viewport', previousShortViewport);
+    };
+  }, []);
 
   return (
-    <div className="da-mode da-lounge da-shell relative min-h-[100dvh]" data-da-palette={palette}>
+    <MotionConfig reducedMotion="user">
+    <div ref={shell} className="da-mode da-lounge da-shell da-arena-shell" data-da-palette={palette}
+      data-da-motion={reducedMotion ? 'reduced' : 'full'} data-da-hidden={hidden}>
+      <div className="da-arena-architecture" aria-hidden="true"><i /><i /><i /></div>
       <DraftArenaHUD />
 
-      {/* Shell width: mobile-first 640px cap (the original calm phone
-          column) widens to 1100px on lg+ so dense surfaces like the war
-          room and Stats Hub can adopt a 2-column desktop layout. Pages
-          inside that don't want the extra room — long-form report
-          content, etc. — re-apply a narrower max-width on their inner
-          wrapper (e.g. `lg:max-w-[760px] lg:mx-auto`). Mobile/tablet
-          (<lg) is unchanged. */}
-      <main
-        className="max-w-[640px] lg:max-w-[1100px] mx-auto px-3 sm:px-5 pt-3"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
-      >
+      {/* Dense workspaces own one bounded pane. Older report and archive
+          screens retain the main viewport scroller so every action stays reachable. */}
+      <main className="da-arena-main" id="draft-arena-main" tabIndex={-1}>
         {children}
       </main>
 
       <DraftArenaBoot />
       <DraftSeasonWelcomeController />
     </div>
+    </MotionConfig>
   );
 }
 

@@ -14,9 +14,9 @@
     "assets": 25,
     "assetBytes": 7299829,
     "imageAssets": 20,
-    "sourceFilesInspected": 911,
-    "reachableFiles": 783,
-    "localReferences": 3476,
+    "sourceFilesInspected": 914,
+    "reachableFiles": 786,
+    "localReferences": 3491,
     "missingReferences": 0,
     "unreferencedReviewCandidates": [],
     "duplicateGroups": 2,
@@ -924,13 +924,13 @@
       "references": [
         {
           "source": "src/components/drafts/DraftArenaBoot.tsx",
-          "line": 3,
+          "line": 4,
           "target": "src/assets/draft-emblem.png",
           "kind": "import"
         },
         {
           "source": "src/components/drafts/DraftArenaBoot.tsx",
-          "line": 3,
+          "line": 4,
           "target": "src/assets/draft-emblem.png",
           "kind": "visual"
         },
@@ -1015,6 +1015,18 @@
         {
           "source": "src/pages/CompetePage.tsx",
           "line": 22,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "visual"
+        },
+        {
+          "source": "src/pages/DraftsListPage.tsx",
+          "line": 17,
+          "target": "src/assets/draft-emblem.png",
+          "kind": "import"
+        },
+        {
+          "source": "src/pages/DraftsListPage.tsx",
+          "line": 17,
           "target": "src/assets/draft-emblem.png",
           "kind": "visual"
         }

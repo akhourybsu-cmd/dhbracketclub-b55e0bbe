@@ -11,6 +11,7 @@ export type DraftArenaPalette = (typeof DRAFT_ARENA_PALETTES)[number]['id'];
 
 const STORAGE_KEY = 'dh_draft_arena_palette_v1';
 const CHANGE_EVENT = 'dh-draft-arena-palette-change';
+let paletteOwners = 0;
 
 function isPalette(value: string | null): value is DraftArenaPalette {
   return DRAFT_ARENA_PALETTES.some((palette) => palette.id === value);
@@ -30,12 +31,15 @@ export function useDraftArenaPalette() {
   const [palette, setPaletteState] = useState<DraftArenaPalette>(readPalette);
 
   useEffect(() => {
-    document.documentElement.dataset.daPalette = palette;
+    paletteOwners++;
     return () => {
-      if (document.documentElement.dataset.daPalette === palette) {
-        delete document.documentElement.dataset.daPalette;
-      }
+      paletteOwners--;
+      if (paletteOwners === 0) delete document.documentElement.dataset.daPalette;
     };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.daPalette = palette;
   }, [palette]);
 
   useEffect(() => {

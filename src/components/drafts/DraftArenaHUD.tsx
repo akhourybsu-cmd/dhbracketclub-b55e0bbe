@@ -25,11 +25,12 @@ export function DraftArenaHUD() {
 
   // Contextual subtitle per route
   const subtitle = (() => {
-    if (path === '/drafts') return 'War Room · All Drafts';
-    if (path === '/drafts/create') return 'New Draft · Setup';
-    if (path === '/drafts/seasons') return 'Seasons · Archive';
-    if (path.startsWith('/drafts/seasons/')) return 'Season · Recap';
-    if (path.startsWith('/drafts/')) return 'Draft Room · In Progress';
+    if (path === '/drafts') return 'The league lobby';
+    if (path === '/drafts/create') return 'Create a draft';
+    if (path === '/drafts/seasons') return 'Season archives';
+    if (path.startsWith('/drafts/seasons/')) return 'Season recap';
+    if (path.endsWith('/magazine')) return 'The draft magazine';
+    if (path.startsWith('/drafts/')) return 'The draft room';
     return 'Draft Arena';
   })();
 
@@ -47,10 +48,10 @@ export function DraftArenaHUD() {
   return (
     <>
       <header
-        className="da-hud sticky top-0 z-40 w-full border-b backdrop-blur-xl"
+        className="da-hud da-arena-hud z-40 w-full border-b"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
-        <div className="flex items-center gap-2 h-12 px-2 max-w-[640px] lg:max-w-[1100px] mx-auto">
+        <div className="da-arena-hud-inner">
           <Button
             type="button"
             variant="ghost"
@@ -62,21 +63,21 @@ export function DraftArenaHUD() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
 
-          <Link to="/drafts" className="flex-1 min-w-0 flex items-center gap-2.5 btn-press">
-            <span className="da-hud-emblem relative w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
+          <Link to="/drafts" className="da-arena-brand" aria-label="Draft Arena lobby">
+            <span className="da-hud-emblem da-arena-emblem">
               <img
                 src={draftEmblem}
                 alt=""
-                width={20}
-                height={20}
-                className="da-hud-emblem-img w-5 h-5 object-contain"
+                width={28}
+                height={28}
+                className="da-hud-emblem-img"
               />
             </span>
-            <div className="flex-1 min-w-0 leading-tight">
-              <p className="da-hud-title text-[12px] font-black uppercase tracking-[0.18em] truncate">
+            <div className="da-arena-brand-copy">
+              <p className="da-hud-title">
                 Draft Arena
               </p>
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground truncate">
+              <p className="da-arena-brand-subtitle">
                 {subtitle}
               </p>
             </div>
@@ -87,7 +88,7 @@ export function DraftArenaHUD() {
               type="button"
               onClick={openSeasonWelcome}
               aria-label={`Season info — ${seasonChip}`}
-              className="da-hud-chip h-9 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-black tabular-nums uppercase btn-press"
+              className="da-hud-chip da-arena-season-chip"
             >
               <Info className="w-3.5 h-3.5 opacity-80" />
               {seasonChip}
@@ -99,7 +100,7 @@ export function DraftArenaHUD() {
               type="button"
               onClick={openSeasonWelcome}
               aria-label="Season info"
-              className="da-hud-action w-9 h-9 rounded-lg flex items-center justify-center btn-press"
+              className="da-hud-action w-11 h-11 rounded-xl flex items-center justify-center btn-press"
             >
               <Info className="w-4 h-4" />
             </button>

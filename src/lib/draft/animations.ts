@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { Transition } from 'framer-motion';
 
 /** Shared spring used across draft list rows + pick input feedback. */
@@ -13,61 +13,93 @@ export const pulseGlow = {
   },
 };
 
+function subscribeMotion(listener: () => void) {
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+  query.addEventListener('change', listener);
+  document.addEventListener('visibilitychange', listener);
+  return () => {
+    query.removeEventListener('change', listener);
+    document.removeEventListener('visibilitychange', listener);
+  };
+}
+const motionEnabled = () => !document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const serverMotion = () => false;
+function useDraftMotionEnabled() {
+  return useSyncExternalStore(subscribeMotion, motionEnabled, serverMotion);
+}
+
 /**
  * Animate a numeric value from 0 → target on first mount, and tween on
  * subsequent changes. Pure rAF, no deps.
  */
 export function useCountUp(value: number, durationMs = 700): number {
-  const [display, setDisplay] = useState(0);
-  const fromRef = useRef(0);
-  const startRef = useRef<number | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const enabled = useDraftMotionEnabled();
+  const [display, setDisplay] = useState(() => enabled ? 0 : value);
+  const displayRef = useRef(display);
 
   useEffect(() => {
-    fromRef.current = display;
-    startRef.current = null;
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
+    let frame: number | undefined;
+    let start: number | null = null;
+    const from = displayRef.current;
+    if (!enabled || durationMs <= 0 || !Number.isFinite(value) || from === value) {
+      displayRef.current = value;
+      setDisplay(value);
+      return;
+    }
     const step = (t: number) => {
-      if (startRef.current == null) startRef.current = t;
-      const elapsed = t - startRef.current;
+      if (start == null) start = t;
+      const elapsed = t - start;
       const p = Math.min(1, elapsed / durationMs);
-      // ease-out cubic
       const eased = 1 - Math.pow(1 - p, 3);
-      const next = fromRef.current + (value - fromRef.current) * eased;
+      const next = from + (value - from) * eased;
+      displayRef.current = next;
       setDisplay(next);
-      if (p < 1) rafRef.current = requestAnimationFrame(step);
+      if (p < 1) frame = requestAnimationFrame(step);
     };
-    rafRef.current = requestAnimationFrame(step);
+    frame = requestAnimationFrame(step);
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (frame !== undefined) cancelAnimationFrame(frame);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, durationMs]);
+  }, [value, durationMs, enabled]);
 
-  return display;
+  return enabled ? display : value;
 }
 
 /**
  * Returns the set of IDs newly added since the previous render. The very
  * first render returns an empty set so we never highlight on initial mount.
  */
-export function useFirstSeen<T extends string | number>(ids: T[]): Set<T> {
-  const seenRef = useRef<Set<T> | null>(null);
+export function useFirstSeen<T extends string | number>(
+  ids: T[],
+  { ready = true, scope = '' }: { ready?: boolean; scope?: string } = {},
+): Set<T> {
+  const enabled = useDraftMotionEnabled();
+  const seenRef = useRef<{ scope: string; ids: Set<T> } | null>(null);
   const [fresh, setFresh] = useState<Set<T>>(new Set());
+  const identity = JSON.stringify(ids);
 
   useEffect(() => {
-    if (seenRef.current == null) {
-      seenRef.current = new Set(ids);
+    const currentIds = JSON.parse(identity) as T[];
+    if (!ready) {
+      seenRef.current = null;
+      setFresh(new Set());
+      return;
+    }
+    if (!seenRef.current || seenRef.current.scope !== scope || !enabled) {
+      seenRef.current = { scope, ids: new Set(currentIds) };
+      setFresh(new Set());
       return;
     }
     const next = new Set<T>();
-    for (const id of ids) {
-      if (!seenRef.current.has(id)) next.add(id);
-      seenRef.current.add(id);
+    for (const id of currentIds) {
+      if (!seenRef.current.ids.has(id)) next.add(id);
+      seenRef.current.ids.add(id);
     }
-    if (next.size > 0) setFresh(next);
-  }, [ids]);
+    setFresh(next);
+    if (!next.size) return;
+    const timer = window.setTimeout(() => setFresh(new Set()), 900);
+    return () => window.clearTimeout(timer);
+  }, [identity, ready, scope, enabled]);
 
-  return fresh;
+  return enabled && ready ? fresh : new Set();
 }

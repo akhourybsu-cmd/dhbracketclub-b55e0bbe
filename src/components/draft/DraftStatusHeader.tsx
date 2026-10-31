@@ -64,7 +64,7 @@ export function DraftStatusHeader({
   const SnakeIcon = currentRound % 2 === 1 ? MoveRight : MoveLeft;
 
   return (
-    <div className="dl-status dl-card mb-3 sticky top-2 z-20 overflow-hidden backdrop-blur-md">
+    <div className="dl-status dl-card da-room-turn mb-3 overflow-hidden" data-your-turn={isMyTurn}>
       <div className="h-[3px] bg-muted/60" aria-hidden>
         <div className="h-full bg-[hsl(var(--da-gold))] transition-[width] duration-700 ease-out"
           style={{ width: `${totalPicks > 0 ? Math.min(100, ((currentPickNumber - 1) / totalPicks) * 100) : 0}%` }} />
@@ -73,7 +73,7 @@ export function DraftStatusHeader({
         {/* Round / pick position */}
         <div className="shrink-0">
           <p className="dl-eyebrow">
-            Round {currentRound} <SnakeIcon className="inline w-3 h-3 -mt-0.5" aria-hidden />
+            Round {currentRound}/{numRounds} <SnakeIcon className="inline w-3 h-3 -mt-0.5" aria-hidden />
           </p>
           <p className="dl-display text-xl font-bold leading-tight text-foreground">
             {currentPickNumber}<span className="text-muted-foreground/55 font-medium">/{totalPicks}</span>
@@ -94,9 +94,10 @@ export function DraftStatusHeader({
           </div>
           <div className="min-w-0">
             <p className={cn('dl-display text-[15px] font-bold truncate', isMyTurn ? 'text-primary' : 'text-foreground')}>
-              {isMyTurn ? 'Your Pick' : `${pickerName} is choosing`}
+              {isMyTurn ? 'You are on the clock' : pickerName}
             </p>
             <p className="text-[10px] text-muted-foreground font-medium truncate">
+              {!isMyTurn && <span>Choosing now{elapsed ? ' · ' : ''}</span>}
               {elapsed && <span>{elapsed}</span>}
               {!isMyTurn && picksUntilYou !== null && picksUntilYou > 0 && (
                 <span className="text-muted-foreground/85">
@@ -119,7 +120,7 @@ export function DraftStatusHeader({
       {/* Primary action — your turn only */}
       {isMyTurn && onMakePick && (
         <div className="px-4 pb-3.5">
-          <button type="button" onClick={onMakePick} className="dl-cta w-full">
+          <button type="button" onClick={onMakePick} aria-label="Make selection" className="dl-cta w-full">
             Make Selection
             <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
           </button>

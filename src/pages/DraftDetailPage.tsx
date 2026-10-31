@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark, Users, Play, Send, Trophy, RefreshCw, Sparkles, MoreVertical, Pencil, Trash2, X, Star, ChevronDown, ChevronUp, Award, AlertTriangle, Check, Flame, Flag, Loader2, Crown, BookOpen } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Bookmark, Users, Play, Send, Trophy, RefreshCw, Sparkles, MoreVertical, Pencil, Trash2, X, Star, ChevronDown, ChevronUp, Award, AlertTriangle, Check, Flame, Flag, Loader2, Crown, BookOpen, LayoutGrid, List, SlidersHorizontal, BriefcaseBusiness } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +83,8 @@ import { PersonalDraftDesk } from '@/components/draft/PersonalDraftDesk';
 import { PreDraftCeremony } from '@/components/draft/PreDraftCeremony';
 import { DraftBroadcastFeed } from '@/components/draft/DraftBroadcastFeed';
 
+type RoomView = 'board' | 'log' | 'desk' | 'host' | 'results' | 'teams' | 'briefing';
+
 interface Participant {
   id: string;
   user_id: string;
@@ -109,7 +111,11 @@ export default function DraftDetailPage() {
   const { draftId } = useParams<{ draftId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const reducedMotion = useReducedMotion();
+  const [roomSelection, setRoomSelection] = useState<{ draftId: string | undefined; view: RoomView } | null>(null);
+  const roomPanelRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<any>(null);
+  useEffect(() => { if (roomPanelRef.current) roomPanelRef.current.scrollTop = 0; }, [roomSelection, draftId, draft?.status]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +139,7 @@ export default function DraftDetailPage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const confettiShown = useRef(false);
   const pickInputRef = useRef<HTMLInputElement>(null);
-  const [announcement, setAnnouncement] = useState<{ displayName: string; pickText: string; round: number; pickNumber: number } | null>(null);
+  const [announcement, setAnnouncement] = useState<{ id: string; displayName: string; pickText: string; round: number; pickNumber: number } | null>(null);
   const [seasonActionBusy, setSeasonActionBusy] = useState(false);
   const [seasonRosterLocked, setSeasonRosterLocked] = useState(false);
   const [seasonJoinEligible, setSeasonJoinEligible] = useState(true);
@@ -175,7 +181,7 @@ export default function DraftDetailPage() {
   const [rejectingDispute, setRejectingDispute] = useState(false);
   const [expandedRationales, setExpandedRationales] = useState<Set<string>>(new Set());
   const pickIds = picks.map(p => p.id);
-  const freshPickIds = useFirstSeen(pickIds);
+  const freshPickIds = useFirstSeen(pickIds, { ready: !loading, scope: draftId });
   const { enrichments, loading: enrichmentsLoading, fetchEnrichments } = useItemEnrichments(pickIds, 'draft_pick');
   const { enriching, enrichDraftPicks } = useEnrichDraftPicks();
 
@@ -213,22 +219,27 @@ export default function DraftDetailPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { if (picks.length) fetchEnrichments(); }, [picks.length, fetchEnrichments]);
 
-  // Detect new picks for announcement banner
-  const prevPickCountRef = useRef(0);
+  // A fetched historical board establishes a baseline. Only later confirmed
+  // rows create a visual receipt; opening another room never replays its picks.
+  const previousAnnouncement = useRef<{ scope: string; ids: Set<string> } | null>(null);
   useEffect(() => {
-    if (picks.length > prevPickCountRef.current && prevPickCountRef.current > 0) {
-      const latestPick = picks[picks.length - 1]; // picks are ordered by pick_number
-      if (latestPick && latestPick.user_id !== user?.id) {
-        setAnnouncement({
-          displayName: latestPick.profiles?.display_name || 'Someone',
-          pickText: latestPick.pick_text,
-          round: latestPick.round,
-          pickNumber: latestPick.pick_number,
-        });
-      }
+    if (loading || !draftId || draft?.id !== draftId) return;
+    const nextIds = new Set(picks.map((pick) => pick.id));
+    const previous = previousAnnouncement.current;
+    previousAnnouncement.current = { scope: draftId, ids: nextIds };
+    if (!previous || previous.scope !== draftId) { setAnnouncement(null); return; }
+    const arrivals = picks.filter((pick) => !previous.ids.has(pick.id));
+    const latestPick = arrivals[arrivals.length - 1];
+    if (latestPick && latestPick.user_id !== user?.id) {
+      setAnnouncement({
+        id: latestPick.id,
+        displayName: latestPick.profiles?.display_name || 'Someone',
+        pickText: latestPick.pick_text,
+        round: latestPick.round,
+        pickNumber: latestPick.pick_number,
+      });
     }
-    prevPickCountRef.current = picks.length;
-  }, [picks.length, user?.id]);
+  }, [picks, loading, draftId, draft?.id, user?.id]);
 
   // Realtime: auto-refresh on picks, participants, or draft status changes
   const { status: realtimeStatus } = useDraftUpdates(draftId, fetchData);
@@ -307,15 +318,27 @@ export default function DraftDetailPage() {
     if (generationError && !resultsGenerating) setAutoTriggered(false);
   }, [generationError, resultsGenerating]);
 
-  // Confetti on first results load
+  const resultPresentation = useRef<{ scope: string; ready: boolean; historical: boolean }>({ scope: '', ready: false, historical: false });
   useEffect(() => {
-    if (hasResults && !confettiShown.current) {
+    if (loading || !draftId || draft?.id !== draftId) return;
+    if (resultPresentation.current.scope !== draftId) {
+      resultPresentation.current = { scope: draftId, ready: true, historical: draft.status === 'complete' };
+      confettiShown.current = false;
+      setShowConfetti(false);
+    }
+    if (hasResults && !resultPresentation.current.historical && !confettiShown.current) {
       confettiShown.current = true;
+      if (document.hidden || reducedMotion) return;
       setShowConfetti(true);
       const timer = setTimeout(() => setShowConfetti(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [hasResults]);
+  }, [hasResults, loading, draftId, draft?.id, draft?.status, reducedMotion]);
+  useEffect(() => {
+    const clear = () => { if (document.hidden) setShowConfetti(false); };
+    document.addEventListener('visibilitychange', clear);
+    return () => document.removeEventListener('visibilitychange', clear);
+  }, []);
 
   // Fetch playoff match info for this draft (if it's a playoff draft)
   useEffect(() => {
@@ -1114,12 +1137,47 @@ export default function DraftDetailPage() {
             </div>
   ) : null;
 
+  // Presentation navigation only. Every original draft action stays in its
+  // existing permission branch; changing a room view never changes game state.
+  const roomTabs: { id: RoomView; label: string; icon: typeof LayoutGrid }[] = isDraftComplete
+    ? [{ id: 'results', label: 'Results', icon: Trophy }, { id: 'teams', label: 'Teams', icon: Users }]
+    : [
+        { id: 'board', label: isSetup ? 'Lobby' : 'Board', icon: LayoutGrid },
+        ...(!isSetup ? [{ id: 'log' as const, label: 'Pick log', icon: List }] : []),
+        ...(isParticipant ? [{ id: 'desk' as const, label: 'My desk', icon: BriefcaseBusiness }] : []),
+        ...(isLiveDraft && canManage && !isSetup ? [{ id: 'host' as const, label: 'Host controls', icon: SlidersHorizontal }] : []),
+      ];
+  roomTabs.push({ id: 'briefing', label: 'Briefing', icon: BookOpen });
+  const selectedView = roomSelection?.draftId === draftId ? roomSelection.view : undefined;
+  const roomView = roomTabs.some((tab) => tab.id === selectedView)
+    ? selectedView!
+    : isDraftComplete ? 'results' : 'board';
+
   return (
     // Live-draft view fills the desktop shell (up to 1100px from
     // DraftArenaLayout). The completion-report block further below
     // re-caps itself at 760px so long-form content stays readable.
-    <div className="max-w-md mx-auto lg:max-w-none lg:mx-0 da-ledger-page">
-      <Confetti active={showConfetti} />
+    <div className="da-room da-ledger-page" data-draft-status={isSetup ? 'setup' : isDraftComplete ? 'complete' : 'in_progress'}>
+      <header className="da-room-topbar">
+        <div className="da-room-identity">
+          <p><span className={cn('da-room-state', isSetup ? 'is-setup' : isDraftComplete ? 'is-complete' : 'is-live')}><i aria-hidden="true" />{isSetup ? 'Draft lobby' : isDraftComplete ? 'Final report' : isLiveDraft ? 'Live draft' : 'Draft in play'}</span>{isPlayoffDraft && <span className="da-room-playoff">Playoff</span>}</p>
+          <h1>{draft.topic}</h1>
+        </div>
+        <div className="da-room-position"><b>{isSetup ? participants.length : isDraftComplete ? picks.length : currentRound}</b><span>{isSetup ? 'players' : isDraftComplete ? 'picks' : `of ${draft.num_rounds} rounds`}</span></div>
+        {isMyTurn && isInProgress && !isDraftComplete && !isPlayoffDraft && <button type="button" className="da-room-pick-shortcut da-cta" aria-label="Make selection" onClick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}><Send size={16} aria-hidden="true" /><span>Pick</span></button>}
+      </header>
+      <nav className="da-room-tabs" role="tablist" aria-label="Draft room views" onKeyDown={(event) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const controls = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+        const index = controls.indexOf(document.activeElement as HTMLButtonElement);
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? controls.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + controls.length) % controls.length;
+        event.preventDefault(); controls[next]?.focus(); controls[next]?.click();
+      }}>
+        {roomTabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} id={`draft-room-tab-${tab.id}`} type="button" role="tab" aria-selected={roomView === tab.id} aria-controls="draft-room-panel" tabIndex={roomView === tab.id ? 0 : -1} onClick={() => setRoomSelection({ draftId, view: tab.id })}><Icon size={16} aria-hidden="true" /><span>{tab.label}</span>{tab.id === 'log' && picks.length > 0 && <small>{picks.length}</small>}</button>; })}
+      </nav>
+      <div ref={roomPanelRef} className="da-room-panel" id="draft-room-panel" role="tabpanel" aria-labelledby={`draft-room-tab-${roomView}`} data-room-view={roomView} tabIndex={0}>
+      <Confetti active={showConfetti && !reducedMotion} />
+      <div className="da-room-briefing" hidden={roomView !== 'briefing'}>
       {/* Header — playoff drafts get a premium matchup hero */}
       {isPlayoffDraft && playoffMatch ? (
         (() => {
@@ -1408,22 +1466,24 @@ export default function DraftDetailPage() {
         </div>
       )}
 
+      </div>
+
       {/* Enrichment loading state */}
       {enriching && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl"
+          className="da-room-enrichment mb-4 flex items-center gap-2 px-4 py-3 rounded-xl"
           style={{ background: 'hsl(45 95% 55% / 0.10)', border: '1px solid hsl(45 95% 55% / 0.22)' }}
         >
           <Sparkles className="w-4 h-4 animate-pulse" style={{ color: 'hsl(var(--gold))' }} />
-          <span className="text-[11px] font-semibold" style={{ color: 'hsl(45 95% 70%)' }}>Enriching picks with AI…</span>
+          <span className="text-[11px] font-semibold" style={{ color: 'hsl(45 95% 70%)' }}>Updating pick artwork…</span>
         </motion.div>
       )}
 
       {/* ═══ Setup Phase ═══ */}
       {isSetup && (
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div className="da-room-stage" hidden={roomView !== 'board'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
           {(draft as any).ceremony_status === 'revealing' && (draft as any).ceremony_enabled ? (
             <PreDraftCeremony topic={draft.topic} participants={participants} revealIndex={Number((draft as any).ceremony_reveal_index || 0)} canManage={canManage} busy={ceremonyBusy} onRevealNext={() => void handleCeremonyReveal()} onBegin={() => void handleCeremonyBegin()} />
           ) : <>
@@ -1508,13 +1568,12 @@ export default function DraftDetailPage() {
             </button>
           )}
           </>}
-          {isParticipant && <div className="mt-4"><PersonalDraftDesk draftId={draftId} userId={user?.id} taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))} /></div>}
         </motion.div>
       )}
 
       {/* ═══ Live Draft ═══ */}
       {isInProgress && !isDraftComplete && (
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+        <motion.div className="da-room-stage" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
           {/* Pick announcement — spans full width on lg, sits above the
               2-col grid so a fresh pick still reads as a broadcast moment
               instead of being trapped in one column. */}
@@ -1524,7 +1583,7 @@ export default function DraftDetailPage() {
           {!isPlayoffDraft && (
             <div className={cn('da-lounge', isLiveDraft && 'da-live-command')}>
               {isLiveDraft && (
-                <div className="da-live-command-masthead">
+                <div className="da-live-command-masthead" hidden={roomView !== 'host'}>
                   <div>
                     <p className="dl-eyebrow">Live operations</p>
                     <h2 className="dl-display text-lg font-black">Draft Command Center</h2>
@@ -1538,9 +1597,9 @@ export default function DraftDetailPage() {
                 </div>
               )}
 
-              <div className={cn(isLiveDraft && 'da-live-command-grid')}>
+              <div className={cn('da-room-board-layout', isLiveDraft && 'da-live-command-grid')}>
                 {isLiveDraft && (
-                  <aside className="da-live-command-rail" aria-label={canManage ? 'Host controls' : 'Live clock'}>
+                  <aside className="da-live-command-rail" hidden={roomView !== (canManage ? 'host' : 'board')} aria-label={canManage ? 'Host controls' : 'Live clock'}>
                     <div className="da-live-zone-label"><span>01</span> Clock &amp; control</div>
                     {canManage ? (
                       <LiveHostPanel
@@ -1583,7 +1642,7 @@ export default function DraftDetailPage() {
                   </aside>
                 )}
 
-                <section className={cn(isLiveDraft && 'da-live-command-board')} aria-label="Draft board and status">
+                <section className={cn(isLiveDraft && 'da-live-command-board')} hidden={roomView !== 'board'} aria-label="Draft board and status">
                   {isLiveDraft && <div className="da-live-zone-label"><span>02</span> Board state</div>}
                   <DraftStatusHeader
                     currentRound={currentRound}
@@ -1596,7 +1655,6 @@ export default function DraftDetailPage() {
                     picksUntilYou={picksUntilYou}
                     clockStartedAt={picks.length > 0 ? ((picks[picks.length - 1] as any)?.picked_at ?? null) : (draft?.updated_at ?? null)}
                     newPickCount={newPickIds.size}
-                    onMakePick={isMyTurn ? () => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); } : undefined}
                   />
                   <div className="mb-4">
                     <DraftBoard
@@ -1610,20 +1668,20 @@ export default function DraftDetailPage() {
                       skippedSlots={isLiveDraft ? skippedSlots : undefined}
                     />
                   </div>
-                  {liveHost.settings.broadcast && <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} />}
                 </section>
               </div>
 
-              <section className={cn(isLiveDraft && 'da-live-command-history')} aria-label="Pick history">
+              <section className={cn('da-room-log', isLiveDraft && 'da-live-command-history')} hidden={roomView !== 'log'} aria-label="Pick history">
                 {isLiveDraft && <div className="da-live-zone-label"><span>03</span> Selection log</div>}
-                {pickHistoryCard}
+                {liveHost.settings.broadcast && <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} />}
+                {pickHistoryCard || <div className="da-room-empty"><List size={28} aria-hidden="true" /><h2>No selections yet</h2><p>Each confirmed selection will appear here.</p></div>}
               </section>
             </div>
           )}
 
           {/* Playoff drafts keep the 2-column war-room layout. */}
           {isPlayoffDraft && (
-          <div className="lg:grid lg:grid-cols-[420px_1fr] lg:gap-5 lg:items-start">
+          <div hidden={roomView !== 'board'} className="da-room-playoff-board lg:grid lg:grid-cols-[420px_1fr] lg:gap-5 lg:items-start">
           <div className="lg:sticky lg:top-3">
 
           {/* Current turn banner */}
@@ -1800,11 +1858,11 @@ export default function DraftDetailPage() {
 
           </div>{/* /lg sticky left column */}
 
-          <div className="lg:min-w-0">
-          {pickHistoryCard}
-          </div>{/* /lg right column */}
+          <div className="lg:min-w-0"><DraftBoard participants={participants} picks={picks} currentPickNumber={currentPickNumber} numRounds={draft.num_rounds} currentUserId={user?.id} newPickIds={newPickIds} enrichments={enrichments} /></div>{/* /lg right column */}
           </div>
           )}
+
+          {isPlayoffDraft && <section hidden={roomView !== 'log'} className="da-room-log" aria-label="Pick history">{pickHistoryCard || <p className="da-room-empty">No selections yet.</p>}</section>}
 
           {/* Bottom-sheet pick composer — regular drafts only (playoffs keep
               the inline composer in the war-room column). */}
@@ -1904,8 +1962,7 @@ export default function DraftDetailPage() {
             />
           )}
           {isParticipant && (
-            <div className="mt-4">
-              <DaDetails title="My draft desk" defaultOpen={isMyTurn}>
+            <div hidden={roomView !== 'desk'} className="da-room-desk">
               <PersonalDraftDesk
                 compact
                 draftId={draftId}
@@ -1913,11 +1970,11 @@ export default function DraftDetailPage() {
                 taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
                 onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); if (!isPlayoffDraft) setShowPickSheet(true); } : undefined}
               />
-              </DaDetails>
             </div>
           )}
         </motion.div>
       )}
+      {isSetup && isParticipant && <section hidden={roomView !== 'desk'} className="da-room-desk"><PersonalDraftDesk draftId={draftId} userId={user?.id} taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))} /></section>}
 
       {/* ═══ Complete — Results ═══ */}
       {/* Long-form report: cap at 760px on desktop. Without this, the
@@ -1928,8 +1985,10 @@ export default function DraftDetailPage() {
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:max-w-[760px] lg:mx-auto"
+          className="da-room-complete lg:max-w-[760px] lg:mx-auto"
+          hidden={roomView !== 'results' && roomView !== 'teams'}
         >
+          <div hidden={roomView !== 'results'} className="da-room-results">
           <div className="mb-4 flex justify-end"><Button asChild variant="outline" className="gap-2"><Link to={`/drafts/${draftId}/magazine`}><BookOpen className="h-4 w-4" /> Open Draft Magazine</Link></Button></div>
           {/* ─── Playoff completion banners ─── */}
           {isPlayoffDraft && playoffMatch?.winner_user_id && (() => {
@@ -2417,8 +2476,9 @@ export default function DraftDetailPage() {
             </div>
           )}
 
+          </div>
           {/* Original pick lists by participant */}
-          <div className="space-y-3">
+          <div hidden={roomView !== 'teams'} className="da-room-rosters space-y-3">
             {[...participants].sort((a, b) => a.pick_order - b.pick_order).map((p, idx) => {
               const userPicks = picksByUser.get(p.user_id) || [];
               return (
@@ -2501,6 +2561,8 @@ export default function DraftDetailPage() {
           </div>
         </motion.div>
       )}
+
+      </div>{/* /active room panel */}
 
       {/* Delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

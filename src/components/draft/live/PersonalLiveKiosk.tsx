@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Maximize2, Minimize2, MonitorPlay, MonitorSmartphone, Sparkles, X } from 'lucide-react';
 import { LiveClockDial } from './LiveClockDial';
@@ -51,6 +51,16 @@ type WakeLockHandle = { release: () => Promise<void> };
 export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
   const [open, setOpen] = useState(true);
   const [isFs, setIsFs] = useState(false);
+  const [view, setView] = useState('board');
+  const panelId = useId();
+  const activeView = view === 'host' && !props.hostControls ? 'board' : view;
+  const views = [
+    { id: 'board', label: 'Board' },
+    { id: 'team', label: 'My team' },
+    { id: 'desk', label: 'Draft desk' },
+    { id: 'feed', label: 'Live feed' },
+    ...(props.hostControls ? [{ id: 'host', label: 'Host' }] : []),
+  ];
   const rootRef = useRef<HTMLDivElement>(null);
   const wakeRef = useRef<WakeLockHandle | null>(null);
 
@@ -179,10 +189,10 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
         </div>
       </header>
 
-      <div className="da-pk-body">
+      <div className="da-pk-body da-pk-workspace">
         <aside className="da-pk-rail">
           <section className="dl-card da-pk-clock">
-            <LiveClockDial clock={clock} size={120} />
+            <LiveClockDial clock={clock} size={96} />
             <div className="min-w-0 flex-1">
               <p className="dl-eyebrow">Round {props.currentRound} of {props.numRounds} · Pick {Math.min(props.currentPickNumber, props.totalPicks)}/{props.totalPicks}</p>
               <p className="dl-display text-xl font-black leading-tight">{status}</p>
@@ -199,9 +209,35 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
             </div>
           </section>
 
-          {props.hostControls}
+        </aside>
 
-          <section className="dl-card p-4">
+        <main className="da-pk-main">
+          <nav className="da-pk-view-tabs" role="tablist" aria-label="My live draft workspace">
+            {views.map((item, index) => (
+              <button
+                type="button"
+                role="tab"
+                id={`${panelId}-${item.id}-tab`}
+                aria-controls={`${panelId}-${item.id}-panel`}
+                aria-selected={activeView === item.id}
+                tabIndex={activeView === item.id ? 0 : -1}
+                key={item.id}
+                onClick={() => setView(item.id)}
+                onKeyDown={(event) => {
+                  const next = event.key === 'ArrowRight' ? (index + 1) % views.length
+                    : event.key === 'ArrowLeft' ? (index - 1 + views.length) % views.length
+                      : event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : null;
+                  if (next === null) return;
+                  event.preventDefault();
+                  setView(views[next].id);
+                  document.getElementById(`${panelId}-${views[next].id}-tab`)?.focus();
+                }}
+              >{item.label}</button>
+            ))}
+          </nav>
+          <div className="da-pk-view-panels">
+          <section className="da-pk-board" role="tabpanel" id={`${panelId}-board-panel`} aria-labelledby={`${panelId}-board-tab`} hidden={activeView !== 'board'}>{props.board}</section>
+          <section className="dl-card p-4" role="tabpanel" id={`${panelId}-team-panel`} aria-labelledby={`${panelId}-team-tab`} hidden={activeView !== 'team'}>
             <p className="dl-eyebrow">My team · {props.myPicks.length} of {props.numRounds}</p>
             {props.myPicks.length === 0 ? (
               <p className="text-sm text-muted-foreground mt-2">Your picks will land here.</p>
@@ -218,12 +254,9 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
             )}
           </section>
 
-          {props.desk}
-        </aside>
-
-        <main className="da-pk-main">
-          <div className="da-pk-board">{props.board}</div>
-          <div className="da-pk-feed-grid">
+          <section role="tabpanel" id={`${panelId}-desk-panel`} aria-labelledby={`${panelId}-desk-tab`} hidden={activeView !== 'desk'}>{props.desk}</section>
+          {props.hostControls && <section role="tabpanel" id={`${panelId}-host-panel`} aria-labelledby={`${panelId}-host-tab`} hidden={activeView !== 'host'}>{props.hostControls}</section>}
+          <section className="da-pk-feed-grid" role="tabpanel" id={`${panelId}-feed-panel`} aria-labelledby={`${panelId}-feed-tab`} hidden={activeView !== 'feed'}>
             {props.broadcast}
             <section className="dl-card p-4">
               <p className="dl-eyebrow">Latest picks</p>
@@ -241,6 +274,7 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
                 </ul>
               )}
             </section>
+          </section>
           </div>
         </main>
       </div>

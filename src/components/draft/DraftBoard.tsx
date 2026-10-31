@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MoveLeft, MoveRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useReducedMotion } from 'framer-motion';
+import { DraftPickArtwork } from './DraftPickArtwork';
 
 export interface BoardParticipant {
   user_id: string;
@@ -65,6 +67,8 @@ export function DraftBoard({
 
   const currentRound = Math.min(numRounds, Math.ceil(currentPickNumber / Math.max(1, n)));
   const trackRef = useRef<HTMLDivElement>(null);
+  const [viewedRound, setViewedRound] = useState(currentRound);
+  const reducedMotion = useReducedMotion();
 
   // Center the current round on mount (mobile swipe track).
   useEffect(() => {
@@ -103,7 +107,6 @@ export function DraftBoard({
     const isYou = p.user_id === currentUserId;
     const isNew = pick ? newPickIds.has(pick.id) : false;
     const enrichment = pick ? enrichments.get(pick.id) : undefined;
-    const img = enrichment?.thumbnail_url || enrichment?.image_url;
 
     if (!pick && skipped) {
       return (
@@ -121,11 +124,7 @@ export function DraftBoard({
           title={`${pick.pick_text} — ${p.profiles?.display_name || 'Unknown'}`}
         >
           {isNew && <span className="dl-new-dot" aria-label="New since your last visit" />}
-          {img ? (
-            <img src={img} alt="" loading="lazy" decoding="async" className="dl-cell-img" />
-          ) : (
-            <span className="dl-cell-num dl-display">{pick.pick_number}</span>
-          )}
+          <DraftPickArtwork artwork={enrichment} label={pick.pick_text} className="dl-cell-img" />
           <span className="dl-cell-text">{pick.pick_text}</span>
         </div>
       );
@@ -149,7 +148,7 @@ export function DraftBoard({
   const rounds = Array.from({ length: numRounds }, (_, i) => i + 1);
 
   return (
-    <div className="da-lounge">
+    <div className="da-lounge da-room-board">
       {/* ── Mobile: swipeable round panels ── */}
       <div className="md:hidden">
         {/* Round quick-nav chips */}
@@ -159,22 +158,29 @@ export function DraftBoard({
               key={r}
               type="button"
               role="tab"
-              aria-selected={r === currentRound}
+              aria-selected={r === viewedRound}
               onClick={() => {
                 const track = trackRef.current;
                 const panel = track?.querySelector<HTMLElement>(`[data-round="${r}"]`);
                 if (track && panel) {
-                  track.scrollTo({ left: panel.offsetLeft - (track.clientWidth - panel.clientWidth) / 2, behavior: 'smooth' });
+                  track.scrollTo({ left: panel.offsetLeft - (track.clientWidth - panel.clientWidth) / 2, behavior: reducedMotion ? 'auto' : 'smooth' });
                 }
               }}
-              className={cn('dl-round-chip dl-display', r === currentRound && 'dl-round-chip-active')}
+              className={cn('dl-round-chip dl-display', r === viewedRound && 'dl-round-chip-active')}
+              aria-label={`View round ${r}${r === currentRound ? ', current round' : ''}`}
+              title={r === currentRound ? 'Current round' : undefined}
             >
               R{r}
             </button>
           ))}
         </div>
 
-        <div ref={trackRef} className="dl-rounds-track dl-no-scrollbar">
+        <div ref={trackRef} className="dl-rounds-track dl-no-scrollbar" onScroll={(event) => {
+          const track = event.currentTarget;
+          const middle = track.scrollLeft + track.clientWidth / 2;
+          const nearest = [...track.querySelectorAll<HTMLElement>('[data-round]')].sort((a, b) => Math.abs(a.offsetLeft + a.clientWidth / 2 - middle) - Math.abs(b.offsetLeft + b.clientWidth / 2 - middle))[0];
+          if (nearest) setViewedRound(Number(nearest.dataset.round));
+        }}>
           {rounds.map((round) => {
             const order = roundOrder(round);
             const made = order.filter((p) => pickByCell.has(`${round}:${p.user_id}`)).length;
@@ -215,7 +221,8 @@ export function DraftBoard({
       </div>
 
       {/* ── Desktop/tablet: full board grid ── */}
-      <div className="hidden md:block dl-card overflow-hidden">
+      <div className="hidden md:block dl-card da-room-board-wide">
+        <div className="da-room-board-scroll" tabIndex={0} role="region" aria-label="Full draft board">
         <div
           className="grid"
           style={{ gridTemplateColumns: `3rem repeat(${n}, minmax(7rem, 1fr))` }}
@@ -254,6 +261,7 @@ export function DraftBoard({
               )),
             ];
           })}
+        </div>
         </div>
         <div className="px-3 py-2 border-t border-border/60 flex items-center justify-between">
           <span className="text-[10px] text-muted-foreground font-medium">
