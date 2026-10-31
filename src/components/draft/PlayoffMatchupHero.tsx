@@ -48,7 +48,7 @@ interface PlayoffMatchupHeroProps {
 function Initials({ name }: { name: string | null }) {
   const initials = (name || '?')
     .split(/\s+/)
-    .map(p => p[0])
+    .map(p => Array.from(p)[0])
     .filter(Boolean)
     .slice(0, 2)
     .join('')
@@ -169,9 +169,9 @@ export function PlayoffMatchupHero({
       </div>
 
       {/* ── Row 1: round chip + status + actions ───────────────────────── */}
-      <div className="relative flex items-center gap-2 px-3.5 pt-3">
+      <div className="relative flex flex-wrap items-center gap-2 px-3.5 pt-3">
         <span
-          className="inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md font-extrabold uppercase tracking-[0.18em] text-[9px] da-round-chip"
+          className="shrink-0 inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md font-extrabold uppercase tracking-[0.18em] text-[9px] da-round-chip"
           style={{
             background: `linear-gradient(135deg, hsl(${GOLD} / 0.95), hsl(38 92% 50% / 0.85))`,
             color: 'hsl(160 10% 5%)',
@@ -182,17 +182,17 @@ export function PlayoffMatchupHero({
           {getPlayoffRoundShort(round)}
         </span>
         {round === 'final' && matchNumber ? (
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: `hsl(${GOLD})` }}>
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider" style={{ color: `hsl(${GOLD})` }}>
             Game {matchNumber}
           </span>
         ) : null}
         {seasonName && (
-          <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 truncate">
+          <span title={seasonName} className="min-w-0 flex-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70 truncate">
             · {seasonName}
           </span>
         )}
 
-        <span className="ml-auto inline-flex items-center gap-1.5">
+        <span className="ml-auto shrink-0 inline-flex items-center gap-1.5">
           <span
             className={cn(
               'inline-flex items-center gap-1 px-1.5 py-[3px] rounded-full text-[9px] font-extrabold uppercase tracking-wider',
@@ -222,7 +222,7 @@ export function PlayoffMatchupHero({
 
       {/* ── Row 2: head-to-head ──────────────────────────────────────── */}
       <div className="relative px-3.5 pt-3 pb-2">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
           {/* Player A */}
           <PlayerCell side="left" player={playerA} isActive={aIsActive} ringHsl={stage.ringHsl} />
 
@@ -256,13 +256,13 @@ export function PlayoffMatchupHero({
       {/* ── Row 3: topic ─────────────────────────────────────────────── */}
       <div className="relative px-3.5 pt-1 pb-2">
         <div className="flex items-start gap-1.5">
-          <p className="text-[15px] font-extrabold tracking-tight leading-tight text-foreground/95 break-words flex-1 min-w-0">
+          <p className="text-[15px] font-extrabold tracking-tight leading-tight text-foreground/95 [overflow-wrap:anywhere] flex-1 min-w-0">
             {topic}
           </p>
           {canEditTopic && onEditTopic && (
             <button
               onClick={onEditTopic}
-              className="p-2 -mr-1 -mt-1 rounded-md text-muted-foreground/50 hover:text-foreground transition-colors flex-shrink-0 min-h-[40px] min-w-[40px] inline-flex items-center justify-center"
+              className="p-2 -mr-1 -mt-1 rounded-md text-muted-foreground/50 hover:text-foreground transition-colors flex-shrink-0 min-h-11 min-w-11 inline-flex items-center justify-center"
               aria-label="Edit topic"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -374,7 +374,7 @@ function PlayerCell({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1" style={{ flexDirection: side === 'right' ? 'row-reverse' : undefined }}>
+        <div className="flex flex-wrap items-center gap-1" style={{ flexDirection: side === 'right' ? 'row-reverse' : undefined }}>
           {player.seed != null && (
             <span
               className="font-mono text-[9px] font-extrabold tabular-nums px-1 py-px rounded"
@@ -392,7 +392,7 @@ function PlayerCell({
             </span>
           )}
         </div>
-        <div className="text-[12px] font-extrabold leading-tight truncate">
+        <div title={player.name || undefined} className="text-[12px] font-extrabold leading-tight truncate">
           {player.name || 'TBD'}
         </div>
         <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">

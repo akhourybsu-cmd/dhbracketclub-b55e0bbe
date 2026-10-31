@@ -1,6 +1,24 @@
 /* eslint-disable react-refresh/only-export-components -- Standalone browser fixture entry point. */
 // Production screens with browser-local auth and transport. No live writes.
 // Match production: shared styles load before lazy Draft Arena presentation.
+import "@fontsource/sora/600.css";
+import "@fontsource/sora/700.css";
+import "@fontsource/sora/800.css";
+import "@fontsource/manrope/400.css";
+import "@fontsource/manrope/500.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/manrope/700.css";
+import "@fontsource/space-grotesk/400.css";
+import "@fontsource/space-grotesk/500.css";
+import "@fontsource/space-grotesk/700.css";
+import "@fontsource/dm-sans/400.css";
+import "@fontsource/dm-sans/500.css";
+import "@fontsource/dm-sans/700.css";
+import "@fontsource/instrument-serif/400.css";
+import "@fontsource/work-sans/400.css";
+import "@fontsource/work-sans/500.css";
+import "@fontsource/work-sans/600.css";
+import "@fontsource/work-sans/700.css";
 import "../../src/index.css";
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -21,9 +39,6 @@ import { DraftBoard } from "../../src/components/draft/DraftBoard";
 import { PersonalDraftDesk } from "../../src/components/draft/PersonalDraftDesk";
 import { DraftBroadcastFeed } from "../../src/components/draft/DraftBroadcastFeed";
 import { draftArenaFixture } from "./draft-arena-backend";
-import "@fontsource/dm-sans/400.css";
-import "@fontsource/dm-sans/500.css";
-import "@fontsource/dm-sans/700.css";
 
 const params = new URLSearchParams(location.search);
 const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -62,24 +77,27 @@ function LiveWorkspaceFixture() {
       topic="Greatest movie night" draftId="active" userId={userId} />
   </>;
 }
+// Match App.tsx: the shell belongs inside each matched route, so its HUD/menu
+// receive that route's draftId/seasonId through useParams.
+function arena(screen: React.ReactNode) {
+  return <DraftArenaLayout>{screen}</DraftArenaLayout>;
+}
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider attribute="class" forcedTheme={params.get("theme") || "dark"}>
+    <ThemeProvider attribute="class" defaultTheme={params.get("theme") || "dark"} enableSystem={false} storageKey="da-qa-theme">
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[params.get("route") || "/drafts"]}>
-          <DraftArenaLayout>
-            <CurrentRoute />
-            <Routes>
-              <Route path="/drafts" element={<DraftsListPage />} />
-              <Route path="/drafts/create" element={<CreateDraftPage />} />
-              <Route path="/drafts/__qa/live" element={<LiveWorkspaceFixture />} />
-              <Route path="/drafts/seasons" element={<SeasonsArchivePage />} />
-              <Route path="/drafts/seasons/:seasonId" element={<SeasonArchiveDetailPage />} />
-              <Route path="/drafts/:draftId" element={<DraftDetailPage />} />
-              <Route path="/drafts/:draftId/magazine" element={<DraftMagazinePage />} />
-              <Route path="*" element={<h1>App destination reached</h1>} />
-            </Routes>
-          </DraftArenaLayout>
+          <CurrentRoute />
+          <Routes>
+            <Route path="/drafts" element={arena(<DraftsListPage />)} />
+            <Route path="/drafts/create" element={arena(<CreateDraftPage />)} />
+            <Route path="/drafts/:draftId/__qa/live" element={arena(<LiveWorkspaceFixture />)} />
+            <Route path="/drafts/seasons" element={arena(<SeasonsArchivePage />)} />
+            <Route path="/drafts/seasons/:seasonId" element={arena(<SeasonArchiveDetailPage />)} />
+            <Route path="/drafts/:draftId" element={arena(<DraftDetailPage />)} />
+            <Route path="/drafts/:draftId/magazine" element={arena(<DraftMagazinePage />)} />
+            <Route path="*" element={<h1>App destination reached</h1>} />
+          </Routes>
           <Toaster />
         </MemoryRouter>
       </QueryClientProvider>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { draftInitials } from '@/lib/draft/presentation';
 
 export interface DraftOrderParticipant {
   id: string;
@@ -21,15 +22,7 @@ interface DraftOrderStripProps {
 }
 
 function initialsOf(name: string) {
-  return (
-    name
-      .split(' ')
-      .map((s) => s[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || '?'
-  );
+  return draftInitials(name);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Info } from 'lucide-react';
-import draftEmblem from '@/assets/draft-emblem.png';
+import draftEmblem from '@/assets/draft-emblem.webp';
 import { useCurrentSeason, formatSeasonChip } from '@/hooks/useDraftSeasons';
 import { DraftArenaExitDialog } from './DraftArenaExitDialog';
 import { openSeasonWelcome } from './seasonWelcomeBus';

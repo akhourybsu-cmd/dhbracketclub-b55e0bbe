@@ -15,7 +15,7 @@ import {
   ChevronLeft, ChevronRight, X, Sparkles, Star, Bookmark,
 } from 'lucide-react';
 import dhMonogram from '@/assets/dh-monogram.png';
-import draftEmblem from '@/assets/draft-emblem.png';
+import draftEmblem from '@/assets/draft-emblem.webp';
 import runedelveEmblem from '@/assets/runedelve-emblem.png';
 import nexusEmblem from '@/assets/nexus-emblem.png';
 import pickemEmblem from '@/assets/pickem-emblem.png';

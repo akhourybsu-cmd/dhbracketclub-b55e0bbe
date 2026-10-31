@@ -1,4 +1,5 @@
 import { DaStatChip, DaSectionHeader } from '@/components/draft/ui/DraftKit';
+import { draftInitials } from '@/lib/draft/presentation';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { withTimeout, QUERY_TIMEOUT_MS, HYDRATE_TIMEOUT_MS } from '@/lib/asyncGuards';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -14,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getDerivedDraftTurn } from '@/lib/draftTurn';
-import draftEmblem from '@/assets/draft-emblem.png';
+import draftEmblem from '@/assets/draft-emblem.webp';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useDraftListUpdates } from '@/hooks/useRealtimeSubscription';
 import {
@@ -286,7 +287,7 @@ function StandingsCard({ standings, userId }: { standings: SeasonStanding[]; use
             // Medal color tracks visible rank so the tint matches the number shown.
             const medalVar = rank === 1 ? 'var(--gold)' : rank === 2 ? 'var(--silver)' : rank === 3 ? 'var(--bronze)' : null;
             const name = (s.profiles as any)?.display_name || 'Unknown';
-            const initials = name.split(' ').map((x: string) => x[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+            const initials = draftInitials(name);
 
             return (
               <div key={s.id} style={isLeader ? { background: 'linear-gradient(90deg, hsl(var(--gold) / 0.10), transparent 70%)' } : undefined}>
@@ -1475,7 +1476,7 @@ export default function DraftsListPage() {
             <div className="da-room-card-players" aria-label={`${count} participants`}>
               {roomParticipants.slice(0, 4).map((participant) => {
                 const name = participant.profiles?.display_name || 'Player';
-                return <span key={participant.user_id} title={name} aria-hidden="true">{name.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase()}</span>;
+                return <span key={participant.user_id} title={name} aria-hidden="true">{draftInitials(name)}</span>;
               })}
               {count > 4 && <small>+{count - 4}</small>}
             </div>
@@ -1628,8 +1629,8 @@ export default function DraftsListPage() {
             return (
               <>
                 <nav className="da-room-groups" aria-label="Room seasons">
-                  <button type="button" aria-pressed={!selected} onClick={() => setRoomGroup('all')}>All rooms <span>{visibleDrafts.length}</span></button>
-                  {orderedGroups.map(group => <button type="button" key={group.id} aria-pressed={selected?.id === group.id} onClick={() => setRoomGroup(group.id)}>{group.name}<span>{group.drafts.length}</span></button>)}
+                  <button type="button" aria-pressed={!selected} onClick={() => setRoomGroup('all')}><span className="da-room-group-label">All rooms</span><span>{visibleDrafts.length}</span></button>
+                  {orderedGroups.map(group => <button type="button" key={group.id} title={group.name} aria-pressed={selected?.id === group.id} onClick={() => setRoomGroup(group.id)}><span className="da-room-group-label">{group.name}</span><span>{group.drafts.length}</span></button>)}
                 </nav>
                 {shown.length ? (
                   <motion.div className="da-room-card-grid" initial="hidden" animate="show" key={`${selected?.id ?? 'all'}:${draftFilter}:${draftQuery}`}>

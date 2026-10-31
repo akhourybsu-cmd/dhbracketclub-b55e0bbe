@@ -58,6 +58,12 @@ async function setup(width = 390, height = 844, theme = "dark", motion = "no-pre
   await stub("src/contexts/ClubContext.tsx", "const club={id:'club',name:'Dry My Horse',slug:'dh'};export const useClub=()=>({club,loading:false,isClubAdmin:false,isPrivateSession:false});");
   await page.route("**/images/qa-draft-poster.svg*", (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"><defs><linearGradient id="a" x2="1" y2="1"><stop stop-color="#1f4053"/><stop offset="1" stop-color="#11151d"/></linearGradient></defs><path fill="url(#a)" d="M0 0h400v600H0z"/><circle fill="none" stroke="#d7b674" stroke-width="4" cx="200" cy="265" r="106"/><path fill="#d7b674" d="m180 216 70 49-70 49z"/><text fill="#ece4cf" x="200" y="460" font-family="serif" font-size="24" text-anchor="middle">CINEMA COLLECTION</text></svg>' }));
   await page.route("**/images/qa-draft-missing.jpg*", (route) => route.fulfill({ status: 404, body: "Expected missing fixture image" }));
+  await page.route("**/images/qa-draft-art/*.svg*", async (route) => {
+    const kind = new URL(route.request().url()).pathname.split("/").pop().split(".")[0];
+    if (kind === "slow") await delay(550);
+    const [width, height] = kind === "portrait" ? [300, 600] : kind === "wide" ? [720, 280] : [360, 360];
+    await route.fulfill({ contentType: "image/svg+xml", body: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${kind === "wide" ? "#234541" : kind === "square" ? "#392952" : "#173b55"}"/><circle cx="${width/2}" cy="${height/2}" r="${Math.min(width,height)/3}" fill="none" stroke="#d7b674" stroke-width="5"/><text x="50%" y="55%" fill="#f7efdd" text-anchor="middle" font-family="serif" font-size="24">${kind.toUpperCase()} ART</text></svg>` }).catch(() => {});
+  });
   await page.addInitScript(() => {
     sessionStorage.setItem("da_boot_played_v1", "1");
     localStorage.setItem("dh-club-sound-enabled", "false");
@@ -65,8 +71,8 @@ async function setup(width = 390, height = 844, theme = "dark", motion = "no-pre
   return { page, context, theme };
 }
 
-async function go(page, route, { theme = "dark", user = "u1", role = "member" } = {}) {
-  const params = new URLSearchParams({ route, theme, user, role });
+async function go(page, route, { theme = "dark", user = "u1", role = "member", stress = "", art = "" } = {}) {
+  const params = new URLSearchParams({ route, theme, user, role, stress, art });
   await page.goto(`${base}/scripts/fixtures/draft-arena.html?${params}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.daQa?.ready && window.daQueryClient);
   await expect(page.locator(".da-shell main")).toBeVisible();
@@ -129,6 +135,64 @@ async function fullyVisibleControl(control, label) {
   });
   report.checks.push({ label, ok: issues.length === 0, issues });
   assert.deepEqual(issues, [], label);
+}
+
+async function interactiveAudit(page, label, selector = ".da-shell") {
+  await settle(page);
+  const audit = await page.locator(selector).evaluate((root) => {
+    const issues = [];
+    let examined = 0, offscreen = 0;
+    for (const node of root.querySelectorAll('a[href],button,input,textarea,select,[role="tab"],[role="radio"]')) {
+      if (!(node instanceof HTMLElement) || node.closest('[hidden],[aria-hidden="true"],[inert]') || node.matches(':disabled,[aria-disabled="true"]')) continue;
+      const style = getComputedStyle(node), box = node.getBoundingClientRect();
+      if (style.visibility === "hidden" || style.display === "none" || Number(style.opacity) === 0 || box.width < 8 || box.height < 8) continue;
+      let left = 0, top = 0, right = innerWidth, bottom = innerHeight;
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const clipping = getComputedStyle(parent), bounds = parent.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/.test(clipping.overflowX)) { left = Math.max(left, bounds.left); right = Math.min(right, bounds.right); }
+        if (/(auto|scroll|hidden|clip)/.test(clipping.overflowY)) { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom); }
+      }
+      const complete = box.left >= left - 1 && box.right <= right + 1 && box.top >= top - 1 && box.bottom <= bottom + 1;
+      const anchored = node.closest('.da-hud,.da-room-topbar,.da-room-tabs,.da-lobby-nav [role="tablist"],.da-pk-top,.da-pk-clock,.da-create-actions,.da-create-steps');
+      const intersects = box.right > left + 1 && box.left < right - 1 && box.bottom > top + 1 && box.top < bottom - 1;
+      const name = node.getAttribute('aria-label') || node.textContent?.trim().slice(0, 60) || node.tagName;
+      if (!complete) {
+        offscreen++;
+        // Scrolling lists deliberately contain more items than are visible.
+        // Only anchored commands are required to fit without scrolling.
+        if (anchored && intersects && !node.closest('.da-room-tabs,.da-pk-view-tabs')) issues.push(`Anchored control clipped: ${name}`);
+        continue;
+      }
+      examined++;
+      const above = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      if (above !== node && !node.contains(above)) issues.push(`Control center covered: ${name} by ${above?.className || above?.tagName}`);
+    }
+    return { issues: [...new Set(issues)], examined, legitimateOffscreen: offscreen };
+  });
+  report.checks.push({ label, ok: audit.issues.length === 0, ...audit });
+  assert.deepEqual(audit.issues, [], label);
+}
+
+async function visibleAssets(page, label, selector = ".da-shell") {
+  await expect.poll(() => page.locator(selector).evaluate((root) => [...root.querySelectorAll('img')].filter((image) => {
+    const box = image.getBoundingClientRect();
+    return box.width > 0 && box.height > 0 && box.top < innerHeight && box.bottom > 0 && box.left < innerWidth && box.right > 0 && getComputedStyle(image).visibility !== 'hidden';
+  }).filter((image) => !image.complete).length), { timeout: 5000 }).toBe(0);
+  const result = await page.locator(selector).evaluate(async (root) => {
+    const failures = [], images = [...root.querySelectorAll('img')].filter((image) => {
+      const box = image.getBoundingClientRect();
+      return box.width > 0 && box.height > 0 && box.top < innerHeight && box.bottom > 0 && box.left < innerWidth && box.right > 0 && getComputedStyle(image).visibility !== 'hidden' && !image.closest('[hidden],[aria-hidden="true"]');
+    });
+    for (const image of images) {
+      try { await image.decode(); } catch { failures.push(`Undecodable visible asset: ${image.alt || image.currentSrc}`); }
+      if (image.naturalWidth === 0) failures.push(`Broken visible asset: ${image.alt || image.currentSrc}`);
+    }
+    for (const decoration of root.querySelectorAll('.da-arena-architecture,.da-arena-boot-grid,.da-room-watermark'))
+      if (getComputedStyle(decoration).pointerEvents !== 'none') failures.push(`Decorative layer intercepts input: ${decoration.className}`);
+    return { images: images.length, issues: failures };
+  });
+  report.checks.push({ label, ok: result.issues.length === 0, ...result });
+  assert.deepEqual(result.issues, [], label);
 }
 
 async function createWizard(page, label) {
@@ -280,6 +344,10 @@ async function artworkSelection() {
     const picker = page.getByRole("dialog", { name: "Arrival", exact: true });
     await expect(picker).toBeVisible();
     await fit(page, "artwork-picker", '[role="dialog"]');
+    await picker.getByRole("button", { name: /Unavailable poster/i }).click();
+    await expect(picker.locator('.da-image-preview [data-art-state]')).toHaveAttribute("data-art-state", "unavailable");
+    await expect(picker.getByRole("button", { name: "Use selected artwork", exact: true })).toBeDisabled();
+    assert.equal(await page.evaluate(() => window.daQa.operations.filter((operation) => operation.table === "item_enrichments").length), 0, "A failed preview cannot save artwork");
     const alternative = picker.getByRole("button", { name: /Alternative poster/i });
     await alternative.click();
     await expect(alternative).toHaveAttribute("aria-pressed", "true");
@@ -304,7 +372,7 @@ async function liveWorkspace(width, height, motion = "no-preference") {
   const { page, context } = await setup(width, height, "dark", motion);
   const label = `live-${width}x${height}-${motion}`;
   try {
-    await go(page, "/drafts/__qa/live");
+    await go(page, "/drafts/active/__qa/live");
     const kiosk = page.getByRole("dialog", { name: "My live draft kiosk", exact: true });
     await expect(kiosk).toBeVisible();
     await expect(kiosk).toContainText("Clock paused");
@@ -343,12 +411,263 @@ async function liveWorkspace(width, height, motion = "no-preference") {
   finally { await context.close(); }
 }
 
+async function scrollGesture(page, pane, horizontal = false, direction = 1, distance = 850) {
+  const box = await pane.boundingBox();
+  assert.ok(box, "The intended scrolling pane exists");
+  const x = Math.max(15, Math.min(page.viewportSize().width - 15, box.x + box.width / 2));
+  const visibleTop = Math.max(70, box.y), visibleBottom = Math.min(page.viewportSize().height - 12, box.y + box.height);
+  const y = direction > 0 ? visibleBottom - 12 : visibleTop + 12;
+  if (page.viewportSize().width < 768 && !horizontal && distance > 80) {
+    const session = await page.context().newCDPSession(page);
+    try {
+      await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y, id: 1 }] });
+      const travel = Math.max(12, Math.min(distance, 280, visibleBottom - visibleTop - 30));
+      for (let step = 1; step <= 5; step++) {
+        await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y - direction * travel * step / 5, id: 1 }] });
+        await delay(18);
+      }
+      // A user can hold at the end of a drag to avoid inertial overshoot.
+      await delay(100);
+      await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    } finally { await session.detach(); }
+  } else {
+    await page.mouse.move(x, Math.max(visibleTop + 4, Math.min(visibleBottom - 4, (visibleTop + visibleBottom) / 2)));
+    await page.mouse.wheel(horizontal ? direction * distance : 0, horizontal ? 0 : direction * distance);
+  }
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function reachByScrolling(page, target, pane, label, horizontal = false) {
+  const attempts = [];
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const geometry = await target.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      let left = 0, top = 0, right = innerWidth, bottom = innerHeight;
+      const ancestors = [];
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent), bounds = parent.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom); }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) { left = Math.max(left, bounds.left); right = Math.min(right, bounds.right); }
+        if (/(auto|scroll|hidden|clip)/.test(`${style.overflowX} ${style.overflowY}`)) ancestors.push({ tag: parent.tagName, className: parent.className, rect: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }, scrollTop: parent.scrollTop, scrollLeft: parent.scrollLeft, scrollHeight: parent.scrollHeight, scrollWidth: parent.scrollWidth, clientHeight: parent.clientHeight, clientWidth: parent.clientWidth, overflowX: style.overflowX, overflowY: style.overflowY });
+      }
+      return { visible: box.width > 0 && box.height > 0 && box.top >= top - 1 && box.bottom <= bottom + 1 && box.left >= left - 1 && box.right <= right + 1, target: { x: box.x, y: box.y, width: box.width, height: box.height }, clip: { left, top, right, bottom }, xDelta: box.left < left - 1 ? box.left - left : box.right > right + 1 ? box.right - right : 0, yDelta: box.top < top - 1 ? box.top - top : box.bottom > bottom + 1 ? box.bottom - bottom : 0, ancestors };
+    });
+    attempts.push({ attempt, ...geometry });
+    if (geometry.visible) break;
+    const useHorizontal = geometry.xDelta !== 0 && (horizontal || geometry.yDelta === 0);
+    const delta = useHorizontal ? geometry.xDelta : geometry.yDelta;
+    const available = useHorizontal ? geometry.clip.right - geometry.clip.left - geometry.target.width : geometry.clip.bottom - geometry.clip.top - geometry.target.height;
+    const distance = Math.max(1, Math.min(useHorizontal ? 2000 : 850, Math.abs(delta) + (available > 4 ? 2 : 0)));
+    await scrollGesture(page, pane, useHorizontal, delta < 0 ? -1 : 1, distance);
+    if (attempt === 1 && !useHorizontal && delta > 0 && await pane.getAttribute('tabindex') !== null) {
+      await pane.focus();
+      await page.keyboard.press('End');
+    }
+  }
+  const final = await target.evaluate((node) => {
+    const box = node.getBoundingClientRect();
+    const ancestors = [];
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      const style = getComputedStyle(parent), rect = parent.getBoundingClientRect();
+      if (/(auto|scroll|hidden|clip)/.test(`${style.overflowX} ${style.overflowY}`)) ancestors.push({ className: parent.className, rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }, scrollTop: parent.scrollTop, scrollLeft: parent.scrollLeft, scrollHeight: parent.scrollHeight, scrollWidth: parent.scrollWidth, clientHeight: parent.clientHeight, clientWidth: parent.clientWidth });
+    }
+    return { target: { x: box.x, y: box.y, width: box.width, height: box.height }, ancestors };
+  });
+  await writeFile(join(output, `${label}-scroll-geometry.json`), JSON.stringify({ attempts, final }, null, 2));
+  await fullyVisibleControl(target, label);
+}
+
+async function largeBoardStress(width, height, theme) {
+  const { page, context } = await setup(width, height, theme);
+  const label = `stress-${width}x${height}-${theme}`;
+  try {
+    await go(page, "/drafts/stress", { theme, stress: "large" });
+    await expect(page.locator('.da-room')).toContainText("200");
+    await fit(page, `${label}-large-board`);
+    await interactiveAudit(page, `${label}-board-commands`);
+    await visibleAssets(page, `${label}-initial-artwork`);
+    if (width === 1440) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await settle(page);
+      const current = page.getByRole('tab', { name: 'View round 7, current round', exact: true });
+      await expect(current).toHaveAttribute('aria-selected', 'true');
+      await fullyVisibleControl(current, 'rotation-desktop-to-phone-current-round-visible');
+      await current.focus(); await page.keyboard.press('End');
+      const lastRound = page.getByRole('tab', { name: 'View round 10', exact: true });
+      await expect(lastRound).toHaveAttribute('aria-selected', 'true');
+      await fullyVisibleControl(lastRound, 'rotation-phone-keyboard-end-round-visible');
+      await page.setViewportSize({ width: 844, height: 390 });
+      await expect(page.getByRole('region', { name: 'Full draft board', exact: true })).toBeVisible();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await settle(page);
+      await expect(lastRound).toHaveAttribute('aria-selected', 'true');
+      await fullyVisibleControl(lastRound, 'rotation-landscape-to-phone-retains-chosen-round');
+      await shot(page, 'rotation-round-ten-retained');
+      await page.setViewportSize({ width, height }); await settle(page);
+      report.checks.push({ label: 'desktop-phone-landscape-phone-round-selection-and-keyboard', ok: true });
+    }
+    await shot(page, `${label}-large-board`);
+    const pane = page.locator('.da-room-panel');
+    if (width < 768) {
+      const round = page.getByRole('tab', { name: 'View round 10', exact: true });
+      await round.click();
+      await expect(round).toHaveAttribute('aria-selected', 'true');
+      await reachByScrolling(page, page.locator('[data-round="10"] .dl-cell').last(), pane, `${label}-last-round-last-player`);
+    } else {
+      const board = page.getByRole('region', { name: 'Full draft board', exact: true });
+      await reachByScrolling(page, board.locator('.dl-board-cell').last(), board, `${label}-last-round-last-player`, true);
+    }
+    const pick = page.getByRole('button', { name: 'Make selection', exact: true });
+    await fullyVisibleControl(pick, `${label}-pick-still-reachable`);
+    await pick.click();
+    await expect(page.locator('.da-pick-dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await tab(page, 'Pick log');
+    const lastArt = page.getByRole('button', { name: /^Choose artwork for 120·/ });
+    await reachByScrolling(page, lastArt, pane, `${label}-last-pick-log-artwork`);
+    await interactiveAudit(page, `${label}-scrolled-log-controls`);
+    await fit(page, `${label}-scrolled-log`);
+    await shot(page, `${label}-last-log-pick`);
+    assert.equal(await page.evaluate(() => window.daQa.operations.filter((row) => row.table === 'draft_picks' && row.mode === 'insert').length), 0);
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function artworkStress(width = 390, height = 844, theme = 'light') {
+  const { page, context } = await setup(width, height, theme);
+  const label = `stress-artwork-${width}x${height}-${theme}`;
+  try {
+    await go(page, '/drafts/active', { theme, art: 'varied' });
+    await tab(page, 'Pick log');
+    await page.getByRole('button', { name: 'Choose artwork for Arrival', exact: true }).click();
+    const picker = page.getByRole('dialog', { name: 'Arrival', exact: true });
+    await expect(picker).toBeVisible();
+    const preview = picker.locator('.da-image-preview');
+    await expect(preview.locator('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+    await settle(page);
+    const geometry = await preview.boundingBox();
+    const measurements = [];
+    for (const candidate of [2, 3, 4]) {
+      await picker.getByRole('button', { name: new RegExp(`^Catalog alternative ${candidate},`) }).click();
+      if (candidate === 4) {
+        await expect(preview.locator('[data-art-state]')).toHaveAttribute('data-art-state', 'loading');
+        await expect(picker.getByRole('button', { name: 'Use selected artwork', exact: true })).toBeDisabled();
+      }
+      await expect(preview.locator('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+      const after = await preview.boundingBox();
+      measurements.push({ candidate, baseline: geometry, after });
+      await writeFile(join(output, `${label}-geometry.json`), JSON.stringify(measurements, null, 2));
+      for (const key of ['width','height']) assert.ok(Math.abs(after[key] - geometry[key]) <= 0.5, `Artwork ${candidate} reserves its preview ${key}: ${JSON.stringify({ baseline: geometry, after })}`);
+      await visibleAssets(page, `${label}-candidate-${candidate}`, '.da-image-dialog');
+    }
+    await picker.getByRole('button', { name: 'Next artwork page', exact: true }).click();
+    const last = picker.getByRole('button', { name: /^Catalog alternative 9,/ });
+    await expect(last).toBeVisible(); await last.click();
+    await expect(preview.locator('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+    await fit(page, `${label}-last-page`, '[role=dialog]');
+    await fullyVisibleControl(picker.getByRole('button', { name: 'Use selected artwork', exact: true }), `${label}-confirm-always-visible`);
+    await fullyVisibleControl(picker.getByRole('button', { name: 'Previous artwork page', exact: true }), `${label}-pager-always-visible`);
+    await interactiveAudit(page, `${label}-last-page-controls`, '.da-image-dialog');
+    await shot(page, label);
+    await picker.getByRole('button', { name: 'Use selected artwork', exact: true }).click();
+    await expect(picker).toHaveCount(0);
+    const saved = await page.evaluate(() => window.daQa.tables.item_enrichments.find((row) => row.item_id === 'active-pick-1'));
+    assert.ok(saved.image_url.endsWith('candidate=9'));
+    const missing = page.getByRole('button', { name: 'Choose artwork for The Matrix', exact: true });
+    await missing.scrollIntoViewIfNeeded();
+    await expect(missing.getByRole('img', { name: 'Artwork unavailable for The Matrix', exact: true })).toBeVisible();
+    report.checks.push({ label: `${label}-slow-reserved-paging-and-missing`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function palettesAndAccessibility() {
+  const { page, context } = await setup(390, 844);
+  const label = 'stress-palettes-theme-text-short';
+  try {
+    await go(page, '/drafts');
+    const menu = await drawer(page);
+    await menu.getByRole('tab', { name: 'Display', exact: true }).click();
+    for (const [name, id] of [['Heritage Bronze','heritage'],['Broadcast Blue','broadcast'],['Club Emerald','club'],['Signal Red','signal']]) {
+      const radio = menu.getByRole('radio', { name, exact: true });
+      await radio.click(); await expect(radio).toHaveAttribute('aria-checked','true');
+      await expect(page.locator('.da-shell')).toHaveAttribute('data-da-palette', id);
+      await interactiveAudit(page, `palette-${id}-drawer`, '.da-arena-drawer');
+    }
+    await menu.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    await expect(page.locator('html')).toHaveClass(/light/);
+    await fit(page, 'palette-signal-light', '[role=dialog]');
+    await menu.getByRole('button', { name: 'Toggle theme', exact: true }).click();
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    await fit(page, 'root-text-scale-200-lobby');
+    await interactiveAudit(page, 'root-text-scale-200-lobby-controls');
+    const setupCard = page.locator('.da-room-card[data-room-status="setup"]').first();
+    await reachByScrolling(page, setupCard, page.locator('.da-lobby-scroll:visible').first(), 'root-text-scale-200-setup-card-reachable');
+    await interactiveAudit(page, 'root-text-scale-200-scrolled-list-card-centers');
+    await shot(page, 'root-text-scale-200-lobby');
+    await go(page, '/drafts/create');
+    await page.setViewportSize({ width: 390, height: 320 });
+    await page.getByPlaceholder('e.g. Best Fast Food Items').focus();
+    await page.getByPlaceholder('e.g. Best Fast Food Items').scrollIntoViewIfNeeded();
+    await fullyVisibleControl(page.getByPlaceholder('e.g. Best Fast Food Items'), 'keyboard-short-topic-reachable');
+    await fit(page, 'keyboard-short-create');
+    await shot(page, 'keyboard-short-create');
+    report.checks.push({ label, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function secondaryJourney(width, height, theme) {
+  const { page, context } = await setup(width, height, theme);
+  const label = `secondary-${width}x${height}-${theme}`;
+  try {
+    await go(page, '/drafts/seasons', { theme, stress: 'secondary' });
+    await expect(page.locator('main')).toContainText('Season 3');
+    await fit(page, `${label}-archive`); await interactiveAudit(page, `${label}-archive-controls`);
+    await page.locator('a[href="/drafts/seasons/season-3"]').click();
+    await expect(page.locator('main')).toContainText('Season 3');
+    await expect(page.locator('.da-season-recap')).toBeVisible();
+    await fit(page, `${label}-season-recap`); await visibleAssets(page, `${label}-podium-fallback`);
+    await shot(page, `${label}-recap`);
+    const archived = page.locator('a[href="/drafts/archived"]').first();
+    await reachByScrolling(page, archived, page.locator('.da-arena-main'), `${label}-archived-draft-link`);
+    await archived.click();
+    await expect(page.locator('.da-room')).toContainText('The champions’ collection');
+    const menu = await drawer(page);
+    await menu.getByRole('link', { name: 'Magazine', exact: true }).click();
+    await expect(page.locator('.da-magazine')).toBeVisible();
+    await fit(page, `${label}-magazine`); await visibleAssets(page, `${label}-magazine-art`);
+    await reachByScrolling(page, page.locator('.da-magazine-timeline article').last(), page.locator('.da-arena-main'), `${label}-last-timeline-entry`);
+    await interactiveAudit(page, `${label}-magazine-bottom-controls`);
+    await shot(page, `${label}-magazine-last-entry`);
+    await go(page, '/drafts?tab=stats', { theme, stress: 'secondary' });
+    await expect(page.locator('.da-career-stats')).toBeVisible();
+    await fit(page, `${label}-career`); await interactiveAudit(page, `${label}-career-controls`);
+    const ids = await page.locator('[data-testid="draft-career-pulse"] [id]').evaluateAll((nodes) => nodes.map((node) => node.id));
+    assert.equal(new Set(ids).size, ids.length, 'Chart paint-server IDs are unique');
+    await shot(page, `${label}-career`);
+    assert.equal(await page.evaluate(() => window.daQa.calls.some((call) => call.function === 'rate-draft')), false, 'Secondary views use saved results');
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
+  // Exercise newly added stress cases first; retain the complete core matrix.
+  for (const args of [[320,568,'dark'],[844,390,'light'],[1440,900,'dark']]) await secondaryJourney(...args);
+  for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark'],[1440,900,'light']]) await artworkStress(...args);
+  await palettesAndAccessibility();
+  for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark'],[1440,900,'dark']]) await largeBoardStress(...args);
   await submitPick();
   await artworkSelection();
   for (const args of [[320,568,"no-preference"],[390,844,"reduce"],[844,390,"no-preference"]]) await liveWorkspace(...args);
-  for (const args of [[320,568,"dark","no-preference"],[390,844,"light","no-preference"],[390,844,"dark","reduce"],[844,390,"dark","no-preference"],[1440,900,"light","no-preference"]]) await viewportJourney(...args);
+  for (const args of [[320,568,"dark","no-preference"],[360,740,"light","no-preference"],[390,844,"light","no-preference"],[390,844,"dark","reduce"],[430,932,"dark","no-preference"],[768,1024,"light","no-preference"],[844,390,"dark","no-preference"],[1440,900,"light","no-preference"],[1920,1080,"dark","no-preference"]]) await viewportJourney(...args);
   assert.deepEqual(report.runtimeErrors, [], "No unhandled browser errors");
   console.log(`PASS Draft Arena: ${report.checks.length} checks`);
 } catch (error) {

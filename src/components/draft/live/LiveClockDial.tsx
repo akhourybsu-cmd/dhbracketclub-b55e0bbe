@@ -25,12 +25,12 @@ export function LiveClockDial({ clock, size = 120, stroke = 8, label, className 
 
   return (
     <div
-      className={cn('relative inline-flex items-center justify-center', urgent && 'da-urgent-pulse', className)}
+      className={cn('relative inline-flex shrink-0 items-center justify-center', urgent && 'da-urgent-pulse', className)}
       style={{ width: size, height: size }}
       role="timer"
       aria-label={`${formatClock(clock.remainingMs)} left on the clock`}
     >
-      <svg width={size} height={size} className="absolute inset-0 -rotate-90">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 -rotate-90 overflow-visible" aria-hidden="true" focusable="false">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`hsl(${color} / 0.16)`} strokeWidth={stroke} />
         <circle
           cx={size / 2}

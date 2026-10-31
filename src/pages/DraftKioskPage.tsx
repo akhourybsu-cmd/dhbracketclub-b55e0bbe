@@ -16,6 +16,7 @@ import { KioskDraftReport } from '@/components/draft/live/KioskDraftReport';
 import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
 import { usePickReveals } from '@/components/draft/live/usePickReveals';
 import { PickRevealOverlay } from '@/components/draft/live/PickRevealOverlay';
+import { draftInitials } from '@/lib/draft/presentation';
 
 interface KioskParticipant {
   user_id: string;
@@ -43,15 +44,7 @@ interface KioskDraftResult {
 
 
 function initials(name?: string | null) {
-  return (
-    (name || '?')
-      .split(' ')
-      .map(s => s[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('')
-      .toUpperCase() || '?'
-  );
+  return draftInitials(name);
 }
 
 /**

@@ -32,13 +32,25 @@ function pending<T>() {
   const promise = new Promise<T>((done) => { resolve = done; });
   return { promise, resolve };
 }
+function loadArtwork(image: HTMLElement) {
+  Object.defineProperties(image, {
+    naturalWidth: { configurable: true, value: 640 },
+    naturalHeight: { configurable: true, value: 480 },
+  });
+  fireEvent.load(image);
+}
+function readyPreview() {
+  const image = document.querySelector('.da-image-preview img');
+  if (!(image instanceof HTMLImageElement)) throw new Error('The selected image must have a preview');
+  loadArtwork(image);
+}
 beforeEach(() => {
   backend.userId = 'alice';
   vi.clearAllMocks();
   backend.select.mockResolvedValue({ data: [], error: null });
   backend.save.mockResolvedValue({ error: null });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('Draft artwork sources', () => {
   it('validates metadata, removes duplicate choices, and retains the selected provider facts', () => {
@@ -55,7 +67,8 @@ describe('Draft artwork sources', () => {
   });
 
   it('uses detailed versions only on established CDNs and preserves signed/custom sources', () => {
-    expect(detailedArtworkUrl('https://image.tmdb.org/t/p/w200/poster.jpg')).toContain('/w500/');
+    expect(detailedArtworkUrl('https://image.tmdb.org/t/p/w200/poster.jpg')).toContain('/w780/');
+    expect(detailedArtworkUrl('https://image.tmdb.org/t/p/w1280/poster.jpg')).toContain('/w1280/');
     expect(detailedArtworkUrl('https://is1-ssl.mzstatic.com/image/100x100bb.jpg')).toContain('/600x600bb.jpg');
     expect(detailedArtworkUrl('https://covers.openlibrary.org/b/id/42-M.jpg')).toContain('42-L.jpg');
     expect(detailedArtworkUrl('https://images.igdb.com/igdb/image/upload/t_thumb/cover.jpg')).toContain('/t_cover_big/');
@@ -66,10 +79,10 @@ describe('Draft artwork sources', () => {
   it('falls back from the selected thumbnail to its full artwork, then a neutral identity without choosing another search hit', () => {
     const item = enrichment();
     render(<DraftPickArtwork artwork={item} label="Arrival" />);
-    const first = screen.getByRole('img', { name: 'Arrival' });
+    const first = screen.getByAltText('Arrival');
     expect(first).toHaveAttribute('src', item.thumbnail_url);
     fireEvent.error(first);
-    const full = screen.getByRole('img', { name: 'Arrival' });
+    const full = screen.getByAltText('Arrival');
     expect(full).toHaveAttribute('src', item.image_url);
     fireEvent.error(full);
     expect(screen.getByRole('img', { name: 'Artwork unavailable for Arrival' })).toBeVisible();
@@ -78,15 +91,91 @@ describe('Draft artwork sources', () => {
 
   it('resets a failed source when a different pick replaces the artwork', () => {
     const view = render(<DraftPickArtwork artwork={{ image_url: 'https://art.example/one.jpg' }} label="Arrival" />);
-    fireEvent.error(screen.getByRole('img', { name: 'Arrival' }));
+    fireEvent.error(screen.getByAltText('Arrival'));
     view.rerender(<DraftPickArtwork artwork={{ image_url: 'https://art.example/one.jpg' }} label="Dune" />);
-    const image = screen.getByRole('img', { name: 'Dune' });
-    fireEvent.load(image);
+    const image = screen.getByAltText('Dune');
+    loadArtwork(image);
     expect(image.closest('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+  });
+
+  it('removes the placeholder atomically for contained artwork instead of leaving initials behind transparent or letterboxed pixels', () => {
+    render(<DraftPickArtwork artwork={enrichment()} label="Arrival" contain />);
+    const image = screen.getByAltText('Arrival');
+    expect(image.closest('[data-art-state]')).toHaveAttribute('data-art-state', 'loading');
+    expect(document.querySelector('.da-art-fallback')).not.toBeNull();
+    loadArtwork(image);
+    expect(image.closest('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+    expect(image.closest('[data-art-fit]')).toHaveAttribute('data-art-fit', 'contain');
+    expect(image).toHaveStyle({ visibility: 'visible' });
+    expect(document.querySelector('.da-art-fallback')).toBeNull();
+  });
+
+  it('recognizes cached loaded artwork before paint without requiring another load event', () => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(800);
+    vi.spyOn(HTMLImageElement.prototype, 'naturalHeight', 'get').mockReturnValue(1200);
+    render(<DraftPickArtwork artwork={enrichment()} label="Arrival" />);
+    expect(screen.getByAltText('Arrival').closest('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+    expect(document.querySelector('.da-art-fallback')).toBeNull();
+  });
+
+  it('exhausts cached failed sources without waiting forever for an error event already missed', () => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(0);
+    vi.spyOn(HTMLImageElement.prototype, 'naturalHeight', 'get').mockReturnValue(0);
+    render(<DraftPickArtwork artwork={enrichment()} label="Arrival" />);
+    expect(screen.getByRole('img', { name: 'Artwork unavailable for Arrival' }).closest('[data-art-state]')).toHaveAttribute('data-art-state', 'unavailable');
+    expect(document.querySelector('img')).toBeNull();
+  });
+
+  it('does not mark a fallback ready when an earlier source delivers a late load or error', () => {
+    render(<DraftPickArtwork artwork={enrichment()} label="Arrival" />);
+    const thumbnail = screen.getByAltText('Arrival');
+    fireEvent.error(thumbnail);
+    const full = screen.getByAltText('Arrival');
+    expect(full).not.toBe(thumbnail);
+    loadArtwork(thumbnail);
+    fireEvent.error(thumbnail);
+    expect(full.closest('[data-art-state]')).toHaveAttribute('data-art-state', 'loading');
+    loadArtwork(full);
+    expect(full.closest('[data-art-state]')).toHaveAttribute('data-art-state', 'ready');
+    expect(document.querySelector('.da-art-fallback')).toBeNull();
+  });
+
+  it('uses a valid current thumbnail when the full URL is malformed and retains bounded candidate pages', () => {
+    const item = enrichment('huge', 250);
+    item.image_url = 'javascript:bad';
+    const options = draftArtworkCandidates(item, 'Arrival');
+    expect(options[0].url).toBe(item.thumbnail_url);
+    expect(options).toHaveLength(121);
+    render(<ImagePickerDialog open pickName="Arrival" enrichment={item} onImageSelected={vi.fn()} onOpenChange={vi.fn()} />);
+    const choices = screen.getByRole('group', { name: 'Artwork choices' });
+    expect(choices.querySelectorAll('button')).toHaveLength(6);
+    for (let i = 0; i < 20; i++) fireEvent.click(screen.getByRole('button', { name: 'Next artwork page' }));
+    expect(choices.querySelectorAll('button')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Next artwork page' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Previous artwork page' })).toBeEnabled();
   });
 });
 
 describe('Draft image selection', () => {
+  it('cannot persist artwork until its full preview or same-image fallback actually loads', () => {
+    render(<ImagePickerDialog open pickName="Arrival" enrichment={enrichment()} onImageSelected={vi.fn()} onOpenChange={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Alternative 0, TMDB' }));
+    const confirm = screen.getByRole('button', { name: 'Use selected artwork' });
+    expect(confirm).toBeDisabled();
+    const previewImage = () => document.querySelector('.da-image-preview img') as HTMLImageElement;
+    fireEvent.error(previewImage());
+    fireEvent.error(previewImage());
+    expect(document.querySelector('.da-image-preview [data-art-state]')).toHaveAttribute('data-art-state', 'unavailable');
+    expect(confirm).toBeDisabled();
+    fireEvent.click(confirm);
+    expect(backend.update).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Alternative 1, TMDB' }));
+    expect(confirm).toBeDisabled();
+    readyPreview();
+    expect(confirm).toBeEnabled();
+  });
   it('pages choices, previews an alternative and writes only the existing image contract', async () => {
     const item = enrichment('pick-a', 13);
     const selected = vi.fn(), closed = vi.fn();
@@ -94,6 +183,7 @@ describe('Draft image selection', () => {
     expect(screen.getByRole('group', { name: 'Artwork choices' }).querySelectorAll('button')).toHaveLength(6);
     fireEvent.click(screen.getByRole('button', { name: 'Next artwork page' }));
     fireEvent.click(screen.getByRole('button', { name: 'Alternative 5, TMDB' }));
+    readyPreview();
     fireEvent.click(screen.getByRole('button', { name: 'Use selected artwork' }));
     await waitFor(() => expect(selected).toHaveBeenCalledOnce());
     expect(backend.update).toHaveBeenCalledWith({ image_url: 'https://art.example/pick-a/alt-5.jpg', thumbnail_url: 'https://art.example/pick-a/alt-5-thumb.jpg', source_provider: 'tmdb' });
@@ -107,6 +197,7 @@ describe('Draft image selection', () => {
     const item = { ...enrichment(), image_url: null, thumbnail_url: null };
     const selected = vi.fn();
     render(<ImagePickerDialog open pickName="Arrival" enrichment={item} onImageSelected={selected} onOpenChange={vi.fn()} />);
+    readyPreview();
     fireEvent.click(screen.getByRole('button', { name: 'Use selected artwork' }));
     await waitFor(() => expect(selected).toHaveBeenCalledWith('https://art.example/pick-a/alt-0.jpg', 'https://art.example/pick-a/alt-0-thumb.jpg'));
   });
@@ -117,6 +208,7 @@ describe('Draft image selection', () => {
     const firstSelected = vi.fn(), nextSelected = vi.fn(), closed = vi.fn();
     const view = render(<ImagePickerDialog open pickName="Arrival" enrichment={enrichment()} onImageSelected={firstSelected} onOpenChange={closed} />);
     fireEvent.click(screen.getByRole('button', { name: 'Alternative 0, TMDB' }));
+    readyPreview();
     fireEvent.click(screen.getByRole('button', { name: 'Use selected artwork' }));
     view.rerender(<ImagePickerDialog open pickName="Dune" enrichment={enrichment('pick-b')} onImageSelected={nextSelected} onOpenChange={closed} />);
     await act(async () => save.resolve({ error: null }));
@@ -131,6 +223,7 @@ describe('Draft image selection', () => {
     backend.save.mockReturnValueOnce(save.promise);
     render(<ImagePickerDialog open pickName="Arrival" enrichment={enrichment()} onImageSelected={vi.fn()} onOpenChange={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Alternative 0, TMDB' }));
+    readyPreview();
     const confirm = screen.getByRole('button', { name: 'Use selected artwork' });
     fireEvent.click(confirm);
     fireEvent.click(confirm);
@@ -147,6 +240,7 @@ describe('Draft image selection', () => {
     const item = enrichment();
     const view = render(<ImagePickerDialog open pickName="Arrival" enrichment={item} onImageSelected={selected} onOpenChange={closed} />);
     fireEvent.click(screen.getByRole('button', { name: 'Alternative 0, TMDB' }));
+    readyPreview();
     fireEvent.click(screen.getByRole('button', { name: 'Use selected artwork' }));
     backend.userId = 'blair';
     view.rerender(<ImagePickerDialog open pickName="Arrival" enrichment={item} onImageSelected={selected} onOpenChange={closed} />);

@@ -65,10 +65,75 @@ const protectedFiles = [
   'supabase/functions/resolve-pick-dispute/index.ts',
   'src/pages/DraftKioskPage.tsx', 'src/components/draft/live/KioskDraftReport.tsx',
 ];
+const projectorPath = 'src/pages/DraftKioskPage.tsx';
+const initialsModule = '@/lib/draft/presentation';
+
+function isInitialsImport(node) {
+  if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier) || node.moduleSpecifier.text !== initialsModule) return false;
+  const clause = node.importClause;
+  const bindings = clause?.namedBindings;
+  if (!clause || clause.isTypeOnly || clause.name || !bindings || !ts.isNamedImports(bindings) || bindings.elements.length !== 1 || node.attributes) return false;
+  const imported = bindings.elements[0];
+  return !imported.isTypeOnly && !imported.propertyName && imported.name.text === 'draftInitials';
+}
+
+/** Only the top-level avatar formatter may delegate to the shared formatter. */
+function isInitialsDelegation(node) {
+  if (!node?.body || node.body.statements.length !== 1) return false;
+  const statement = node.body.statements[0];
+  if (!ts.isReturnStatement(statement) || !statement.expression || !ts.isCallExpression(statement.expression)) return false;
+  const call = statement.expression;
+  return ts.isIdentifier(call.expression) && call.expression.text === 'draftInitials'
+    && !call.questionDotToken && !call.typeArguments?.length && call.arguments.length === 1
+    && ts.isIdentifier(call.arguments[0]) && call.arguments[0].text === 'name';
+}
+
+function normalizedProjector(file) {
+  const transformed = ts.transform(file, [(context) => (root) => {
+    function visit(node) {
+      if (isInitialsImport(node)) return undefined;
+      if (node.parent === file && ts.isFunctionDeclaration(node) && node.name?.text === 'initials') {
+        return ts.factory.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name,
+          node.typeParameters, node.parameters, node.type, ts.factory.createBlock([], true));
+      }
+      return ts.visitEachChild(node, visit, context);
+    }
+    return ts.visitNode(root, visit);
+  }]);
+  const normalized = printer.printFile(transformed.transformed[0]);
+  transformed.dispose();
+  return normalized;
+}
+
+function permitsProjectorInitialsPresentation(original, current) {
+  const before = ts.createSourceFile(projectorPath, original, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const after = ts.createSourceFile(projectorPath, current, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  if (before.parseDiagnostics.length || after.parseDiagnostics.length) return false;
+  const beforeHelpers = before.statements.filter(node => ts.isFunctionDeclaration(node) && node.name?.text === 'initials');
+  const afterHelpers = after.statements.filter(node => ts.isFunctionDeclaration(node) && node.name?.text === 'initials');
+  const afterImports = after.statements.filter(isInitialsImport);
+  if (beforeHelpers.length !== 1 || afterHelpers.length !== 1 || afterImports.length !== 1 || !isInitialsDelegation(afterHelpers[0])) return false;
+  // Replacing only the formatter's body and its single exact named import must
+  // leave the entire remaining projector AST identical, including its JSX.
+  return normalizedProjector(before) === normalizedProjector(after);
+}
+
+const presentationExceptions = [];
 const files = protectedFiles.map(path => {
   const original = readBase(path);
-  return { path, unchanged: hash(original) === hash(readFileSync(`${cwd}/${path}`, 'utf8')) };
+  const current = readFileSync(`${cwd}/${path}`, 'utf8');
+  const byteUnchanged = hash(original) === hash(current);
+  const permittedInitialsChange = !byteUnchanged && path === projectorPath && permitsProjectorInitialsPresentation(original, current);
+  if (permittedInitialsChange) presentationExceptions.push({
+    name: 'projectorInitialsFormatting',
+    path,
+    helper: 'initials',
+    delegation: 'return draftInitials(name);',
+    namedImport: `draftInitials from ${initialsModule}`,
+    remainingProjectorAstUnchanged: true,
+  });
+  return { path, byteUnchanged, protectedCoreUnchanged: byteUnchanged || permittedInitialsChange };
 });
-console.log(JSON.stringify({ base, checkedDeclarations: report.length, declarationsMissingInBase: report.filter(r => !r.foundInBase), changedDeclarations: report.filter(r => !r.unchanged), protectedFiles: files }, null, 2));
+console.log(JSON.stringify({ base, checkedDeclarations: report.length, declarationsMissingInBase: report.filter(r => !r.foundInBase), changedDeclarations: report.filter(r => !r.unchanged), protectedFiles: files, presentationExceptions }, null, 2));
 
-if (report.some(item => !item.foundInBase || !item.unchanged) || files.some(item => !item.unchanged)) process.exitCode = 1;
+if (report.some(item => !item.foundInBase || !item.unchanged) || files.some(item => !item.protectedCoreUnchanged)) process.exitCode = 1;

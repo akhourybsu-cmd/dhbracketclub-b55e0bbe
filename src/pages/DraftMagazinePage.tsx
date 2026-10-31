@@ -52,7 +52,7 @@ export default function DraftMagazinePage() {
     return { timings: computePickTimings(data.picks), mvp: findMvpPick(results), steal: findBiggestSteal(results, data.picks) };
   }, [data]);
   if (loading) return <div className="loading-spinner"><div className="loading-spinner-ring" /><p className="loading-spinner-text">Opening the magazine…</p></div>;
-  if (error || !data?.draft) return <div className="da-magazine-empty"><p>{error || 'Draft not found.'}</p><Button onClick={() => void load()}>Retry</Button></div>;
+  if (error || !data?.draft) return <div className="da-magazine-empty"><p className="[overflow-wrap:anywhere]">{error || 'Draft not found.'}</p><Button className="min-h-11" onClick={() => void load()}>Retry</Button></div>;
   const { draft, participants, picks, results } = data;
   const winner = participants.find((participant: any) => participant.user_id === results[0]?.user_id);
   const share = async () => {
@@ -62,11 +62,11 @@ export default function DraftMagazinePage() {
   const enrichmentMap = new Map<string, { image_url?: string | null; thumbnail_url?: string | null }>(
     (data.enrichments ?? []).map((enrichment: any) => [enrichment.item_id, enrichment]),
   );
-  return <div className="da-magazine">
-    <div className="da-magazine-toolbar"><Link to={`/drafts/${draftId}`} className="da-back"><ArrowLeft className="h-4 w-4" /></Link><div className="flex-1" /><Button variant="outline" size="sm" onClick={() => void share()}><Share2 className="h-4 w-4" /> Share</Button></div>
+  return <div className="da-magazine min-w-0">
+    <div className="da-magazine-toolbar"><Link to={`/drafts/${draftId}`} className="da-back" aria-label="Back to draft"><ArrowLeft className="h-4 w-4" /></Link><div className="flex-1" /><Button variant="outline" size="sm" className="h-11 min-w-11" onClick={() => void share()}><Share2 className="h-4 w-4" /> Share</Button></div>
     <header className="da-magazine-cover">
       <div className="da-magazine-issue"><span>Draft Arena</span><span>Final Edition</span></div>
-      <h1 className="dl-display">{draft.topic}</h1>
+      <h1 className="dl-display [overflow-wrap:anywhere]">{draft.topic}</h1>
       <div className="da-magazine-deck">{draft.is_live && <span>Live edition</span>}<span>{participants.length} players</span><span>{picks.length} selections</span><span>{draft.num_rounds} rounds</span></div>
       {winner && <div className="da-magazine-winner"><Crown /><div><small>Draft champion</small><strong>{winner.profiles?.display_name}</strong></div></div>}
     </header>

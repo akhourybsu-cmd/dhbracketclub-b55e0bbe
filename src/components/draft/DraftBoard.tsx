@@ -3,6 +3,7 @@ import { MoveLeft, MoveRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useReducedMotion } from 'framer-motion';
 import { DraftPickArtwork } from './DraftPickArtwork';
+import { draftInitials } from '@/lib/draft/presentation';
 
 export interface BoardParticipant {
   user_id: string;
@@ -34,7 +35,12 @@ interface DraftBoardProps {
 }
 
 function initials(name?: string) {
-  return (name || '?').split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+  return draftInitials(name);
+}
+
+function centerInTrack(track: HTMLElement, panel: HTMLElement, behavior: ScrollBehavior = 'auto') {
+  const left = panel.getBoundingClientRect().left - track.getBoundingClientRect().left + track.scrollLeft;
+  track.scrollTo({ left: Math.max(0, left - (track.clientWidth - panel.clientWidth) / 2), behavior });
 }
 
 /**
@@ -67,19 +73,57 @@ export function DraftBoard({
 
   const currentRound = Math.min(numRounds, Math.ceil(currentPickNumber / Math.max(1, n)));
   const trackRef = useRef<HTMLDivElement>(null);
+  const roundsRef = useRef<HTMLDivElement>(null);
   const [viewedRound, setViewedRound] = useState(currentRound);
+  const viewedRoundRef = useRef(viewedRound);
+  viewedRoundRef.current = viewedRound;
+  const hadParticipants = useRef(n > 0);
+  const repositioning = useRef(false);
   const reducedMotion = useReducedMotion();
 
-  // Center the current round on mount (mobile swipe track).
+  // Keep the explored round centered when crossing the desktop/mobile breakpoint.
+  // Width changes alone recenter the track; normal swiping remains under player control.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
-    const panel = track.querySelector<HTMLElement>(`[data-round="${currentRound}"]`);
-    if (panel) {
-      track.scrollTo({ left: panel.offsetLeft - (track.clientWidth - panel.clientWidth) / 2 });
+    if (!hadParticipants.current && n > 0) {
+      viewedRoundRef.current = currentRound;
+      setViewedRound(currentRound);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    hadParticipants.current = n > 0;
+    let lastWidth = -1;
+    let frame: number | undefined;
+    const resize = () => {
+      const width = track.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      repositioning.current = true;
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      if (!width) return;
+      const round = Math.max(1, Math.min(numRounds, viewedRoundRef.current));
+      const panel = track.querySelector<HTMLElement>(`[data-round="${round}"]`);
+      if (panel) centerInTrack(track, panel);
+      const nav = roundsRef.current;
+      const chip = nav?.querySelector<HTMLElement>(`[data-round-tab="${round}"]`);
+      if (nav && chip) centerInTrack(nav, chip);
+      frame = requestAnimationFrame(() => { repositioning.current = false; });
+    };
+    resize();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
+    observer?.observe(track);
+    window.addEventListener('resize', resize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', resize);
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, [n, numRounds, currentRound]);
+
+  useEffect(() => {
+    const nav = roundsRef.current;
+    const chip = nav?.querySelector<HTMLElement>(`[data-round-tab="${viewedRound}"]`);
+    if (nav && chip && nav.clientWidth) centerInTrack(nav, chip);
+  }, [viewedRound]);
 
   if (n === 0) return null;
 
@@ -146,25 +190,37 @@ export function DraftBoard({
   };
 
   const rounds = Array.from({ length: numRounds }, (_, i) => i + 1);
+  const chooseRound = (round: number, behavior: ScrollBehavior = reducedMotion ? 'auto' : 'smooth') => {
+    viewedRoundRef.current = round;
+    setViewedRound(round);
+    const track = trackRef.current;
+    const panel = track?.querySelector<HTMLElement>(`[data-round="${round}"]`);
+    if (track && panel) centerInTrack(track, panel, behavior);
+  };
 
   return (
     <div className="da-lounge da-room-board">
       {/* ── Mobile: swipeable round panels ── */}
       <div className="md:hidden">
         {/* Round quick-nav chips */}
-        <div className="flex gap-1.5 overflow-x-auto dl-no-scrollbar pb-2 px-0.5" role="tablist" aria-label="Rounds">
+        <div ref={roundsRef} className="flex gap-1.5 overflow-x-auto dl-no-scrollbar pb-2 px-0.5" role="tablist" aria-label="Rounds">
           {rounds.map((r) => (
             <button
               key={r}
               type="button"
               role="tab"
+              data-round-tab={r}
+              tabIndex={r === viewedRound ? 0 : -1}
               aria-selected={r === viewedRound}
-              onClick={() => {
-                const track = trackRef.current;
-                const panel = track?.querySelector<HTMLElement>(`[data-round="${r}"]`);
-                if (track && panel) {
-                  track.scrollTo({ left: panel.offsetLeft - (track.clientWidth - panel.clientWidth) / 2, behavior: reducedMotion ? 'auto' : 'smooth' });
-                }
+              onClick={() => chooseRound(r)}
+              onKeyDown={(event) => {
+                const next = event.key === 'ArrowRight' ? Math.min(numRounds, r + 1)
+                  : event.key === 'ArrowLeft' ? Math.max(1, r - 1)
+                    : event.key === 'Home' ? 1 : event.key === 'End' ? numRounds : null;
+                if (next === null) return;
+                event.preventDefault();
+                chooseRound(next, 'auto');
+                roundsRef.current?.querySelector<HTMLButtonElement>(`[data-round-tab="${next}"]`)?.focus({ preventScroll: true });
               }}
               className={cn('dl-round-chip dl-display', r === viewedRound && 'dl-round-chip-active')}
               aria-label={`View round ${r}${r === currentRound ? ', current round' : ''}`}
@@ -177,6 +233,7 @@ export function DraftBoard({
 
         <div ref={trackRef} className="dl-rounds-track dl-no-scrollbar" onScroll={(event) => {
           const track = event.currentTarget;
+          if (!track.clientWidth || repositioning.current) return;
           const middle = track.scrollLeft + track.clientWidth / 2;
           const nearest = [...track.querySelectorAll<HTMLElement>('[data-round]')].sort((a, b) => Math.abs(a.offsetLeft + a.clientWidth / 2 - middle) - Math.abs(b.offsetLeft + b.clientWidth / 2 - middle))[0];
           if (nearest) setViewedRound(Number(nearest.dataset.round));

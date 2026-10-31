@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import draftEmblem from '@/assets/draft-emblem.png';
+import draftEmblem from '@/assets/draft-emblem.webp';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 
 const BOOT_FLAG = 'da_boot_played_v1';

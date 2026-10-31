@@ -79,12 +79,12 @@ export function CountdownRing({
 
   return (
     <div
-      className={cn('relative inline-flex items-center justify-center', isUrgent && 'da-urgent-pulse')}
+      className={cn('relative inline-flex shrink-0 items-center justify-center', isUrgent && 'da-urgent-pulse')}
       style={{ width: size, height: size }}
       role="timer"
       aria-label={`${min} minutes ${sec} seconds elapsed`}
     >
-      <svg width={size} height={size} className="absolute inset-0 -rotate-90">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 -rotate-90 overflow-visible" aria-hidden="true" focusable="false">
         {/* track */}
         <circle
           cx={size / 2}

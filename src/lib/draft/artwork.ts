@@ -31,7 +31,7 @@ export function artworkUrl(value: unknown): string | null {
 export function detailedArtworkUrl(value: string): string {
   try {
     const url = new URL(value);
-    if (url.hostname === 'image.tmdb.org') url.pathname = url.pathname.replace(/\/t\/p\/w\d+\//, '/t/p/w500/');
+    if (url.hostname === 'image.tmdb.org') url.pathname = url.pathname.replace(/\/t\/p\/(?:original|w(\d+))\//, (path, width) => !width || Number(width) < 780 ? '/t/p/w780/' : path);
     if (url.hostname.endsWith('.mzstatic.com')) url.pathname = url.pathname.replace(/\/(?:60|100|200)x(?:60|100|200)(bb[^/]*)$/, '/600x600$1');
     if (url.hostname === 'covers.openlibrary.org') url.pathname = url.pathname.replace(/-[SM](\.(?:jpg|png))$/, '-L$1');
     if (url.hostname === 'images.igdb.com') url.pathname = url.pathname.replace(/\/t_thumb\//, '/t_cover_big/');
@@ -68,9 +68,10 @@ export function draftArtworkCandidates(
       label: typeof candidate.label === 'string' && candidate.label.trim() ? candidate.label.trim().slice(0, 240) : label,
     });
   };
-  if (enrichment.image_url || enrichment.thumbnail_url) append({
-    url: enrichment.image_url || enrichment.thumbnail_url,
-    thumbnail: enrichment.thumbnail_url || enrichment.image_url,
+  const current = artworkUrl(enrichment.image_url) ?? artworkUrl(enrichment.thumbnail_url);
+  if (current) append({
+    url: current,
+    thumbnail: artworkUrl(enrichment.thumbnail_url) ?? current,
     source: enrichment.source_provider || 'Current',
     label,
   });

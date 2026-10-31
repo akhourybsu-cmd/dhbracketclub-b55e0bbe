@@ -46,7 +46,7 @@ export default function SeasonArchiveDetailPage() {
     return (
       <div className="pb-6 text-center py-12">
         <p className="text-sm text-muted-foreground">Season not found.</p>
-        <Link to="/drafts/seasons" className="text-primary text-sm font-bold mt-3 inline-block">
+        <Link to="/drafts/seasons" className="text-primary text-sm font-bold mt-3 inline-flex min-h-11 items-center justify-center">
           Back to seasons
         </Link>
       </div>
@@ -69,7 +69,7 @@ export default function SeasonArchiveDetailPage() {
   const playoffMatches = matches.filter(m => m.status === 'complete');
 
   return (
-    <div className="pb-6 da-ledger-page">
+    <div className="pb-6 da-ledger-page da-season-recap min-w-0">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <Link to="/drafts/seasons" className="da-back" aria-label="Back to Seasons">
@@ -77,10 +77,10 @@ export default function SeasonArchiveDetailPage() {
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-             <h1 className="dl-display font-extrabold text-lg leading-snug break-words">{formatSeasonTitle(season)}</h1>
+             <h1 className="min-w-0 flex-1 dl-display font-extrabold text-lg leading-snug [overflow-wrap:anywhere]">{formatSeasonTitle(season)}</h1>
             {isComplete && (
               <span
-                className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                className="shrink-0 text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded"
                 style={{ background: 'hsl(var(--gold) / 0.12)', color: 'hsl(var(--gold))' }}
               >
                 Archived
@@ -88,7 +88,7 @@ export default function SeasonArchiveDetailPage() {
             )}
           </div>
           {season.subtitle && (
-            <p className="text-[11px] font-semibold text-muted-foreground/85 leading-snug break-words mb-0.5">{season.subtitle}</p>
+            <p className="text-[11px] font-semibold text-muted-foreground/85 leading-snug [overflow-wrap:anywhere] mb-0.5">{season.subtitle}</p>
           )}
           <p className="text-[10px] text-muted-foreground/70 font-medium flex items-center gap-1">
             <Calendar className="w-2.5 h-2.5" />
@@ -149,16 +149,14 @@ export default function SeasonArchiveDetailPage() {
             style={{ background: 'linear-gradient(135deg, hsl(var(--gold) / 0.06), transparent 60%), hsl(var(--card))' }}
           >
             <Sparkles className="w-5 h-5 flex-shrink-0" style={{ color: 'hsl(var(--gold))' }} />
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-[12px] font-bold">Season in progress</p>
               <p className="text-[10px] text-muted-foreground/70 mt-0.5">
                 Final podium will appear here once playoffs conclude.
               </p>
             </div>
-            <Link to="/compete">
-              <button className="da-cta" style={{ height: '2rem', fontSize: '10px' }}>
-                View Season
-              </button>
+            <Link to="/compete" className="da-cta min-h-11 shrink-0" style={{ fontSize: '10px' }}>
+              View Season
             </Link>
           </div>
         )}
@@ -177,10 +175,10 @@ export default function SeasonArchiveDetailPage() {
             <Stat label="Players" value={`${standings.length}`} />
           </div>
           {regChamp && (
-            <div className="mt-3 pt-3 border-t border-gold/15 flex items-center gap-2">
-              <Crown className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} />
+            <div className="mt-3 pt-3 border-t border-gold/15 flex flex-wrap items-center gap-2">
+              <Crown className="w-3.5 h-3.5 shrink-0" style={{ color: 'hsl(var(--gold))' }} />
               <span className="text-[10px] text-muted-foreground/70 font-medium">Regular Season Champion</span>
-              <span className="text-[11px] font-extrabold ml-auto" style={{ color: 'hsl(var(--gold))' }}>
+              <span title={regChamp.display_name} className="min-w-0 max-w-full truncate text-[11px] font-extrabold ml-auto" style={{ color: 'hsl(var(--gold))' }}>
                 {regChamp.display_name}
               </span>
             </div>
@@ -210,20 +208,20 @@ export default function SeasonArchiveDetailPage() {
                     )}
                   >
                     <span
-                      className="text-[10px] font-extrabold w-5 text-center"
+                      className="shrink-0 text-[10px] font-extrabold w-5 text-center"
                       style={{ color: isTop3 ? 'hsl(var(--gold))' : 'hsl(var(--muted-foreground))' }}
                     >
                       #{rank}
                     </span>
-                    <span className="flex-1 text-[12px] font-bold truncate">
+                    <span title={p?.display_name} className="min-w-0 flex-1 text-[12px] font-bold truncate">
                       {p?.display_name || '—'}
                     </span>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70 font-medium">
+                    <div className="shrink-0 flex items-center gap-2 text-[10px] text-muted-foreground/70 font-medium">
                       <span>{s.wins}W</span>
                       <span>{s.podiums}🏆</span>
                     </div>
                     <span
-                      className="text-[12px] font-extrabold tabular-nums w-8 text-right"
+                      className="shrink-0 text-[12px] font-extrabold tabular-nums min-w-8 text-right"
                       style={{ color: isTop3 ? 'hsl(var(--gold))' : undefined }}
                     >
                       {s.season_points}
@@ -271,7 +269,8 @@ export default function SeasonArchiveDetailPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2 text-[11px]">
                       <span
-                        className={cn('font-bold truncate flex-1', winnerIsA && 'text-foreground')}
+                        title={a?.display_name}
+                        className={cn('min-w-0 font-bold truncate flex-1', winnerIsA && 'text-foreground')}
                         style={winnerIsA ? { color: 'hsl(var(--gold))' } : { color: 'hsl(var(--muted-foreground))' }}
                       >
                         #{m.seed_a} {a?.display_name || '—'}
@@ -279,7 +278,8 @@ export default function SeasonArchiveDetailPage() {
                       </span>
                       <span className="text-muted-foreground/40 text-[9px]">vs</span>
                       <span
-                        className={cn('font-bold truncate flex-1 text-right')}
+                        title={b?.display_name}
+                        className={cn('min-w-0 font-bold truncate flex-1 text-right')}
                         style={winnerIsB ? { color: 'hsl(var(--gold))' } : { color: 'hsl(var(--muted-foreground))' }}
                       >
                         {b?.display_name || '—'} #{m.seed_b}
@@ -287,10 +287,8 @@ export default function SeasonArchiveDetailPage() {
                       </span>
                     </div>
                     {m.draft_id && (
-                      <Link to={`/drafts/${m.draft_id}`}>
-                        <div className="mt-2 flex items-center justify-end gap-1 text-[9px] font-bold text-muted-foreground/60 hover:text-foreground">
+                      <Link to={`/drafts/${m.draft_id}`} className="mt-2 min-h-11 flex items-center justify-end gap-1 text-[10px] font-bold text-muted-foreground/80 hover:text-foreground">
                           View draft <ChevronRight className="w-2.5 h-2.5" />
-                        </div>
                       </Link>
                     )}
                   </div>
@@ -312,14 +310,14 @@ export default function SeasonArchiveDetailPage() {
             <div className="space-y-1">
               {allDrafts.map(e => (
                 <Link to={`/drafts/${e.draft_id}`} key={e.id} className="block">
-                  <div className="flex items-center gap-2 px-2.5 py-2 da-subcard hover:bg-gold/10 transition-colors">
-                    <span className="text-[10px] font-extrabold text-muted-foreground/60 w-6">
+                  <div className="flex min-h-11 items-center gap-2 px-2.5 py-2 da-subcard hover:bg-gold/10 transition-colors">
+                    <span className="shrink-0 text-[10px] font-extrabold text-muted-foreground/60 w-6">
                       #{e.week_number}
                     </span>
-                    <span className="flex-1 text-[12px] font-bold truncate">
+                    <span title={e.drafts?.topic} className="min-w-0 flex-1 text-[12px] font-bold truncate">
                       {e.drafts?.topic || 'Draft'}
                     </span>
-                    <ChevronRight className="w-3 h-3 text-muted-foreground/50" />
+                    <ChevronRight className="shrink-0 w-3 h-3 text-muted-foreground/50" />
                   </div>
                 </Link>
               ))}

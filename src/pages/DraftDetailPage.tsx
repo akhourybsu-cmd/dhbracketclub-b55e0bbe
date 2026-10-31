@@ -1,5 +1,6 @@
 import { DaDetails } from '@/components/draft/ui/DraftKit';
 import { serverNow } from '@/lib/serverClock';
+import { draftInitials } from '@/lib/draft/presentation';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -1650,7 +1651,7 @@ export default function DraftDetailPage() {
                     currentPickNumber={currentPickNumber}
                     totalPicks={participants.length * draft.num_rounds}
                     pickerName={currentPicker?.profiles?.display_name || 'Unknown'}
-                    pickerInitials={(currentPicker?.profiles?.display_name || '?').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?'}
+                    pickerInitials={draftInitials(currentPicker?.profiles?.display_name)}
                     isMyTurn={isMyTurn}
                     picksUntilYou={picksUntilYou}
                     clockStartedAt={picks.length > 0 ? ((picks[picks.length - 1] as any)?.picked_at ?? null) : (draft?.updated_at ?? null)}
@@ -2115,7 +2116,7 @@ export default function DraftDetailPage() {
                       const isWinner = rIdx === 0;
                       const p = participants.find(pp => pp.user_id === r.user_id);
                       const name = p?.profiles?.display_name || 'Unknown';
-                      const initials = name.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
+                      const initials = draftInitials(name);
                       return (
                         <motion.div
                           key={r.user_id}
@@ -2493,8 +2494,8 @@ export default function DraftDetailPage() {
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-extrabold bg-muted/50 text-muted-foreground">
                       {p.pick_order}
                     </div>
-                    <span className="text-[13px] font-bold">{p.profiles?.display_name || 'Unknown'}</span>
-                    <span className="text-[10px] text-muted-foreground/60 ml-auto font-mono">{userPicks.length} picks</span>
+                    <span className="min-w-0 flex-1 break-words text-[13px] font-bold">{p.profiles?.display_name || 'Unknown'}</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground/60 ml-auto font-mono">{userPicks.length} picks</span>
                   </div>
                   <div className="divide-y divide-border/15 relative z-10">
                     {userPicks.sort((a, b) => a.round - b.round).map(pick => {

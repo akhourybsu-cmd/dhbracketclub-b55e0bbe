@@ -503,7 +503,7 @@
 .da-lobby-status-filters button { min-height: 44px; flex: 0 0 auto; padding: 0 11px; border-radius: 10px; font-size: 10px; }
 .da-lobby-room-scroll .da-room-groups { position: sticky; top: -2px; z-index: 2; margin-bottom: 12px; padding: 0 0 8px; background: hsl(var(--background)); }
 .da-room-groups > button { background: hsl(var(--card)); border-color: hsl(var(--border)); }
-.da-room-groups > button > span { display: inline-grid; place-items: center; min-width: 19px; min-height: 19px; padding: 2px 4px; border-radius: 5px; background: hsl(var(--primary) / .1); color: hsl(var(--primary)); font-size: 9px; }
+.da-room-groups > button > span:not(.da-room-group-label) { display: inline-grid; place-items: center; min-width: 19px; min-height: 19px; padding: 2px 4px; border-radius: 5px; background: hsl(var(--primary) / .1); color: hsl(var(--primary)); font-size: 9px; }
 .da-room-card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 2px 2px 12px; }
 .da-room-card-wrapper { min-width: 0; height: 100%; }
 .da-arena-shell .da-room-card.da-glass { position: relative; display: flex; flex-direction: column; gap: 12px; min-height: 238px; height: 100%; padding: 18px; border-radius: 17px !important; border-color: hsl(var(--border)) !important; background: linear-gradient(130deg, hsl(var(--primary) / .045), transparent 65%), hsl(var(--card)) !important; transition: border-color 180ms ease, box-shadow 180ms ease; }
@@ -657,3 +657,75 @@ html[data-da-short-viewport="true"] .da-arena-main:has(> .da-create-page) { over
 html[data-da-short-viewport="true"] .da-create-page { height: auto; min-height: 100%; padding-bottom: 8px; }
 html[data-da-short-viewport="true"] .da-create-form { flex: 0 0 auto; }
 html[data-da-short-viewport="true"] .da-create-stage { flex: 0 0 auto; height: auto; max-height: none; overflow: visible; padding: 12px; }
+
+/* Intrinsic sizes must yield to the viewport, including long imported names. */
+.da-arena-main,
+.da-arena-drawer,
+.da-arena-dialog,
+.da-pk { overflow-wrap: anywhere; }
+.da-arena-main,
+.da-arena-hud-inner,
+.da-lobby-panel,
+.da-room-topbar,
+.da-room-panel,
+.da-create-stage { min-width: 0; }
+.da-arena-brand-copy .da-hud-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-arena-season-chip { flex: 0 0 auto; max-width: 112px; overflow: hidden; white-space: nowrap; }
+.da-arena-season-chip > svg,
+.da-arena-shell .da-hud-action > svg,
+.da-arena-drawer .da-hud-action > svg { flex: 0 0 auto; }
+.da-lobby-hero-copy > .da-lobby-eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-lobby-career { overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.da-lobby-career > span,
+.da-lobby-career > a { flex: 0 0 auto; white-space: nowrap; }
+.da-room-groups > button { max-width: min(280px, 75vw); }
+.da-room-group-label { display: block; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-room-groups > button > span:not(.da-room-group-label) { flex: 0 0 auto; }
+.da-room-card-meta { min-width: 0; }
+.da-room-card-meta > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-room-card-meta > span:last-child { flex: 0 0 auto; }
+.da-room-card-detail > span { min-width: 0; }
+.da-room-card-detail > .da-room-card-winner { display: block; }
+.da-room-card-winner > svg { display: inline-block; margin-right: 4px; vertical-align: -2px; }
+.da-pick-dialog-heading { min-width: 0; }
+.da-pick-dialog-heading > div { flex: 1 1 auto; min-width: 0; }
+.da-pick-dialog-heading > button { flex: 0 0 44px; min-width: 44px; min-height: 44px; }
+.da-pick-dialog-heading :is(h2, p:last-child) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.da-pick-compose input { min-width: 0; }
+.da-arena-drawer-link { min-width: 0; }
+.da-arena-display-mode > span { flex: 1 1 auto; min-width: 0; }
+.da-arena-display-mode > button { flex: 0 0 44px; }
+.da-image-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.da-image-source { max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-image-choice-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-pk-top > div:first-child { flex: 1 1 0; min-width: 0; }
+.da-pk-top > div:last-child { flex: 0 0 auto; }
+.da-pk .da-pk-icon { flex: 0 0 44px; min-width: 44px; min-height: 44px; }
+.da-pk-clock .dl-display { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.da-lobby-career > a:focus-visible,
+:is(.da-room-tabs, .da-room-groups, .da-season-nav, .da-pk-view-tabs) > button:focus-visible,
+.da-lobby-nav > [role="tablist"] > button:focus-visible { outline-offset: -3px; }
+.da-magazine-stats > article { min-width: 0; }
+.da-magazine :is(strong, h1, h2, h3) { overflow-wrap: anywhere; }
+.da-magazine :is(.da-magazine-podium, .da-magazine-timeline) article > div { min-width: 0; }
+
+/* Draft-desk management stays available at touch sizes inside narrow panes. */
+.da-desk .da-desk-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px; }
+.da-desk .da-desk-star { display: grid; place-items: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; border: 1px solid hsl(var(--border) / .6); border-radius: 9px; padding: 0; }
+.da-desk .da-desk-star > svg { width: 17px; height: 17px; }
+.da-desk .da-desk-item > button:not(.da-desk-star) { min-width: 68px; min-height: 44px; height: auto; padding: 7px 10px; font-size: 11px; }
+.da-desk .da-desk-item > div:not(.da-desk-actions) { min-width: 0; }
+.da-desk .da-desk-actions { display: flex; grid-column: 1 / -1; justify-content: flex-end; gap: 4px; padding-top: 6px; border-top: 1px solid hsl(var(--border) / .45); }
+.da-desk .da-desk-actions > button { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; border: 1px solid hsl(var(--border) / .5); border-radius: 9px; }
+.da-desk .da-desk-actions > button:disabled { opacity: .35; }
+.da-desk .da-desk-actions svg { width: 16px; height: 16px; }
+.da-room :is(button[title="Edit pick"], button[title="Remove pick"], button[aria-label="Dispute this rating"]) { display: grid; place-items: center; flex: 0 0 44px; min-width: 44px; min-height: 44px; margin: 0; padding: 0; }
+.da-room .da-pick-card { flex-wrap: wrap; }
+.da-room .da-pick-card-copy { flex: 1 1 min(180px, 50%); }
+.da-room .da-pick-card-actions { min-width: 0; max-width: 100%; }
+.da-room .da-pick-card-actions > div { min-width: 0; width: 100%; }
+.da-room .da-pick-card-actions > div > span { flex: 1 1 auto; min-width: 0; }
+.da-room .da-pick-card-actions div:has(> button[title]) { flex: 0 0 auto; }
+@media (max-width: 640px) {
+  .da-room .da-pick-card-actions { flex: 0 0 100%; width: 100%; padding-top: 7px; border-top: 1px solid hsl(var(--border) / .45); }
+}

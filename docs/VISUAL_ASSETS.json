@@ -12,11 +12,11 @@
   ],
   "summary": {
     "assets": 25,
-    "assetBytes": 7299829,
+    "assetBytes": 6231750,
     "imageAssets": 20,
-    "sourceFilesInspected": 914,
-    "reachableFiles": 786,
-    "localReferences": 3491,
+    "sourceFilesInspected": 915,
+    "reachableFiles": 787,
+    "localReferences": 3498,
     "missingReferences": 0,
     "unreferencedReviewCandidates": [],
     "duplicateGroups": 2,
@@ -915,119 +915,119 @@
       ]
     },
     {
-      "path": "src/assets/draft-emblem.png",
-      "bytes": 1124477,
-      "sha256": "079db4ed7980960aea98c01512e162f0e53070a1852b7c7978c1678ce9fe9c73",
-      "width": 1024,
-      "height": 1024,
+      "path": "src/assets/draft-emblem.webp",
+      "bytes": 56398,
+      "sha256": "ae9816703d87d95c5b57b68e3598decfba17b6417fe58a056e5fbfddad0698f6",
+      "width": 512,
+      "height": 512,
       "status": "current",
       "references": [
         {
           "source": "src/components/drafts/DraftArenaBoot.tsx",
           "line": 4,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/drafts/DraftArenaBoot.tsx",
           "line": 4,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/components/drafts/DraftArenaHUD.tsx",
           "line": 4,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/drafts/DraftArenaHUD.tsx",
           "line": 4,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/components/home/AppDock.tsx",
           "line": 24,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/home/AppDock.tsx",
           "line": 24,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/components/home/AssetLauncher.tsx",
           "line": 27,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/home/AssetLauncher.tsx",
           "line": 27,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/components/home/QuickBar.tsx",
           "line": 21,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/home/QuickBar.tsx",
           "line": 21,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/components/home/QuickBarSheet.tsx",
           "line": 22,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/home/QuickBarSheet.tsx",
           "line": 22,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
           "line": 18,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/components/onboarding/ClubOnboardingFlow.tsx",
           "line": 18,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/pages/CompetePage.tsx",
           "line": 22,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/pages/CompetePage.tsx",
           "line": 22,
-          "target": "src/assets/draft-emblem.png",
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         },
         {
           "source": "src/pages/DraftsListPage.tsx",
-          "line": 17,
-          "target": "src/assets/draft-emblem.png",
+          "line": 18,
+          "target": "src/assets/draft-emblem.webp",
           "kind": "import"
         },
         {
           "source": "src/pages/DraftsListPage.tsx",
-          "line": 17,
-          "target": "src/assets/draft-emblem.png",
+          "line": 18,
+          "target": "src/assets/draft-emblem.webp",
           "kind": "visual"
         }
       ]

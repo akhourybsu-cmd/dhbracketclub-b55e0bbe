@@ -34,7 +34,7 @@ function Row({ a }: { a: Achievement }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p
-              className="text-[11.5px] font-extrabold leading-tight"
+              className="min-w-0 text-[11.5px] font-extrabold leading-tight [overflow-wrap:anywhere]"
               style={{ color: a.unlocked ? style.color : 'hsl(var(--foreground) / 0.75)' }}
             >
               {current ? current.label : a.title}
@@ -81,7 +81,7 @@ function Row({ a }: { a: Achievement }) {
             </div>
           )}
           {!a.maxed && next && (
-            <p className="text-[9px] mt-0.5 font-semibold" style={{ color: nextStyle.color }}>
+            <p className="text-[9px] mt-0.5 font-semibold [overflow-wrap:anywhere]" style={{ color: nextStyle.color }}>
               Next: {next.label} · {nextStyle.label}
             </p>
           )}
@@ -114,8 +114,10 @@ export default function AchievementsPanel({ achievements }: { achievements: Achi
         {visible.map(a => <Row key={a.key} a={a} />)}
         {achievements.length > 6 && (
           <button
+            type="button"
+            aria-expanded={expanded}
             onClick={() => setExpanded(v => !v)}
-            className="w-full h-8 rounded-lg bg-muted/30 text-[10.5px] font-bold text-foreground/70 hover:bg-muted/50 btn-press flex items-center justify-center gap-1"
+            className="w-full min-h-11 rounded-lg bg-muted/30 text-[10.5px] font-bold text-foreground/70 hover:bg-muted/50 btn-press flex items-center justify-center gap-1"
           >
             {expanded ? 'Show less' : `Show all ${achievements.length}`}
             <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', expanded && 'rotate-180')} />

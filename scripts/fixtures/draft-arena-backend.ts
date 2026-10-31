@@ -54,6 +54,44 @@ const operations: Row[] = [];
 const calls: Row[] = [];
 let serial = 100;
 const clone = <T,>(value: T): T => structuredClone(value);
+const imageURL = (name: string) => new URL(`/images/qa-draft-art/${name}.svg`, location.origin).href;
+if (params.get("stress") === "large") {
+  profiles[0].display_name = "ÆTHER⚡無限🚀".repeat(8);
+  for (let index = 4; index <= 20; index++) profiles.push({ id: `u${index}`, display_name: index === 20 ? "終章の挑戦者⚡".repeat(9) : `Player ${index} · 星際`, avatar_url: null });
+  const topic = Array.from("不滅のアリーナ🚀".repeat(12)).slice(0, 100).join("");
+  const large = draft("stress", topic, "in_progress", 10);
+  large.current_pick_number = 121; large.current_round = 7;
+  tables.drafts.push(large);
+  tables.competitions.push({ id: large.competition_id, title: topic, status: "active", type: "draft", created_by: "u1" });
+  for (const [index, profile] of profiles.entries()) tables.draft_participants.push({ id: `stress-part-${profile.id}`, draft_id: "stress", user_id: profile.id, pick_order: index + 1, joined_at: date });
+  for (let index = 0; index < 120; index++) {
+    const roundIndex = Math.floor(index / 20), position = index % 20;
+    const owner = profiles[roundIndex % 2 === 0 ? position : 19 - position];
+    const pick = { id: `stress-pick-${index + 1}`, draft_id: "stress", user_id: owner.id, pick_text: `${index + 1}·${Array.from("星際の物語🚀".repeat(15)).slice(0, 90).join("")}`, pick_number: index + 1, round: roundIndex + 1, picked_at: date };
+    tables.draft_picks.push(pick);
+    tables.item_enrichments.push({ ...clone(tables.item_enrichments[0]), id: `image-${pick.id}`, item_id: pick.id, matched_name: pick.pick_text, image_url: imageURL(["portrait", "wide", "square", "slow"][index % 4]), thumbnail_url: imageURL(["portrait", "wide", "square", "slow"][index % 4]) });
+  }
+}
+if (params.get("stress") === "secondary") {
+  profiles[0].avatar_url = new URL("/images/qa-draft-missing.jpg", location.origin).href;
+  const archivedSeason = { ...season, id: "season-3", name: "Season 3", season_number: 3, season_label: "S3", status: "complete", starts_at: "2026-07-01T00:00:00Z", ends_at: "2026-09-30T00:00:00Z", regular_season_drafts: 1, regular_season_weeks: 1, champion_user_id: "u1", runner_up_user_id: "u2", third_place_user_id: "u3", archived_at: date };
+  tables.draft_seasons.push(archivedSeason);
+  tables.draft_season_standings.push(...tables.draft_season_standings.map((row) => ({ ...clone(row), id: `past-${row.id}`, season_id: "season-3" })));
+  tables.draft_season_entries.push({ id: "entry-archived", season_id: "season-3", draft_id: "archived", week_number: 1, is_playoff: false, season_points_awarded: { u1: 10, u2: 7, u3: 4 } });
+  tables.drafts.push({ ...clone(tables.drafts.find((row) => row.id === "complete")), id: "archived", competition_id: "competition-archived", topic: "The champions’ collection · 映画の伝説" });
+  tables.competitions.push({ id: "competition-archived", title: "The champions’ collection", status: "complete", type: "draft", created_by: "u1" });
+  tables.draft_participants.push(...tables.draft_participants.filter((row) => row.draft_id === "complete").map((row) => ({ ...clone(row), id: `past-${row.id}`, draft_id: "archived" })));
+  tables.draft_picks.push(...tables.draft_picks.filter((row) => row.draft_id === "complete").map((row) => ({ ...clone(row), id: row.id.replace("complete", "archived"), draft_id: "archived" })));
+  tables.draft_results.push(...tables.draft_results.filter((row) => row.draft_id === "complete").map((row) => ({ ...clone(row), id: `past-${row.id}`, draft_id: "archived", pick_ratings: row.pick_ratings.map((rating: Row) => ({ ...clone(rating), pick_id: rating.pick_id.replace("complete", "archived") })) })));
+  tables.item_enrichments.push(...tables.item_enrichments.filter((row) => row.item_id.startsWith("complete-")).map((row) => ({ ...clone(row), id: `past-${row.id}`, item_id: row.item_id.replace("complete", "archived") })));
+}
+if (params.get("art") === "varied") {
+  for (const [index, image] of tables.item_enrichments.entries()) {
+    const source = index === 5 ? new URL("/images/qa-draft-missing.jpg", location.origin).href : imageURL(["portrait", "wide", "square", "slow"][index % 4]);
+    image.image_url = source; image.thumbnail_url = source;
+  }
+  tables.item_enrichments[0].metadata.image_candidates = Array.from({ length: 9 }, (_, index) => ({ url: `${imageURL(["portrait", "wide", "square", "slow"][index % 4])}?detail=1&candidate=${index + 1}`, thumbnail: `${imageURL(["portrait", "wide", "square", "slow"][index % 4])}?thumb=1&candidate=${index + 1}`, source: "tmdb", label: `Catalog alternative ${index + 1}` }));
+}
 function hydrate(table: string, row: Row) {
   const value = clone(row);
   if (row.user_id) value.profiles = profiles.find((p) => p.id === row.user_id) || null;

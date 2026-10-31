@@ -21,7 +21,7 @@ import {
 import type { InstalledAsset } from '@/types/assets';
 import { useAssetStatuses, type AssetStatus, type AssetStatusTone } from './useAssetStatuses';
 import { SectionLabel } from './SectionLabel';
-import draftEmblem from '@/assets/draft-emblem.png';
+import draftEmblem from '@/assets/draft-emblem.webp';
 import runedelveEmblem from '@/assets/runedelve-emblem.png';
 import nexusEmblem from '@/assets/nexus-emblem.png';
 import pickemEmblem from '@/assets/pickem-emblem.png';

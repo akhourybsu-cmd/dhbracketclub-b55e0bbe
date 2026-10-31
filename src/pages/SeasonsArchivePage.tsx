@@ -23,17 +23,17 @@ export default function SeasonsArchivePage() {
   const archived = seasons.filter(s => s.status === 'complete');
 
   return (
-    <div className="pb-6 da-ledger-page">
+    <div className="pb-6 da-ledger-page da-seasons-archive">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <Link to="/drafts" className="da-back" aria-label="Back to Drafts">
           <ArrowLeft className="w-4 h-4" />
         </Link>
-        <div className="page-header mb-0 flex-1">
+        <div className="page-header mb-0 flex-1 min-w-0">
           <div className="da-page-icon">
             <Archive className="w-5 h-5" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="page-header-title dl-display">Seasons</h1>
             <p className="page-header-subtitle">Current campaign and past records</p>
           </div>
@@ -130,10 +130,10 @@ function SeasonCard({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                 <h3 className="dl-display font-extrabold text-[14px] leading-snug break-words">{formatSeasonTitle(season)}</h3>
+                 <h3 className="min-w-0 flex-1 dl-display font-extrabold text-[14px] leading-snug [overflow-wrap:anywhere]">{formatSeasonTitle(season)}</h3>
               </div>
               {season.subtitle && (
-                <p className="text-[11px] font-semibold text-muted-foreground/80 leading-snug break-words mb-1">{season.subtitle}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground/80 leading-snug [overflow-wrap:anywhere] mb-1">{season.subtitle}</p>
               )}
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70 font-medium">
                 <Calendar className="w-2.5 h-2.5" />
@@ -144,11 +144,11 @@ function SeasonCard({
               </div>
               {champion && archived && (
                 <div className="flex items-center gap-1 mt-1.5">
-                  <Trophy className="w-3 h-3" style={{ color: 'hsl(var(--gold))' }} />
-                  <span className="text-[11px] font-bold" style={{ color: 'hsl(var(--gold))' }}>
+                  <Trophy className="w-3 h-3 shrink-0" style={{ color: 'hsl(var(--gold))' }} />
+                  <span title={champion.display_name} className="min-w-0 truncate text-[11px] font-bold" style={{ color: 'hsl(var(--gold))' }}>
                     {champion.display_name}
                   </span>
-                  <span className="text-[9px] text-muted-foreground/60 font-medium">champion</span>
+                  <span className="shrink-0 text-[9px] text-muted-foreground/60 font-medium">champion</span>
                 </div>
               )}
             </div>

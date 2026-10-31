@@ -56,7 +56,7 @@ export default function EnrichedItemCard({
   const reduce = useReducedMotion();
   const isLowConfidence = enrichment?.status === 'low_confidence';
   const options = enrichment ? draftArtworkCandidates(enrichment, label) : [];
-  const currentUrl = artworkUrl(enrichment?.image_url || enrichment?.thumbnail_url);
+  const currentUrl = artworkUrl(enrichment?.image_url) ?? artworkUrl(enrichment?.thumbnail_url);
   const hasImageCandidates = !!onImageClick && options.length > (currentUrl ? 1 : 0);
 
   return (
@@ -110,7 +110,7 @@ export default function EnrichedItemCard({
       )}
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="da-pick-card-copy flex-1 min-w-0">
         <span className={cn(
           "text-[13px] font-semibold block break-words",
           rank === 1 && showRank && "text-gold"
@@ -123,7 +123,7 @@ export default function EnrichedItemCard({
 
       {/* Actions slot */}
       {actions && (
-        <div className="flex-shrink-0">
+        <div className="da-pick-card-actions flex-shrink-0">
           {actions}
         </div>
       )}

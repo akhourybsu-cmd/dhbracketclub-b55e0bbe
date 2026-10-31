@@ -1,8 +1,22 @@
 import { motion } from 'framer-motion';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type Profile = { display_name: string; avatar_url: string | null };
+
+function PodiumAvatar({ p, size }: { p?: Profile | null; size: number }) {
+  const initial = Array.from(p?.display_name?.trim() || '?')[0].toUpperCase();
+  return (
+    <Avatar
+      className="shrink-0 rounded-full font-extrabold"
+      style={{ width: size, height: size, border: '1.5px solid hsl(var(--gold) / 0.35)', fontSize: size * 0.42, color: 'hsl(var(--gold))' }}
+    >
+      {p?.avatar_url && <AvatarImage src={p.avatar_url} alt={p.display_name} className="object-cover" />}
+      <AvatarFallback className="bg-gold/10" aria-label={p?.display_name || 'Unassigned podium place'}>{initial}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 interface Props {
   champion?: Profile | null;
@@ -15,29 +29,6 @@ interface Props {
 /** Mobile-first commemorative podium for a finalized Draft Season. */
 export function SeasonPodium({ champion, runnerUp, thirdPlace, seasonName, compact = false }: Props) {
   if (!champion && !runnerUp && !thirdPlace) return null;
-
-  const Avatar = ({ p, size }: { p?: Profile | null; size: number }) => {
-    const initial = (p?.display_name || '?').charAt(0).toUpperCase();
-    return (
-      <div
-        className="rounded-full flex items-center justify-center font-extrabold overflow-hidden"
-        style={{
-          width: size,
-          height: size,
-          background: 'linear-gradient(135deg, hsl(var(--gold) / 0.25), hsl(var(--gold) / 0.05))',
-          border: '1.5px solid hsl(var(--gold) / 0.35)',
-          fontSize: size * 0.42,
-          color: 'hsl(var(--gold))',
-        }}
-      >
-        {p?.avatar_url ? (
-          <img src={p.avatar_url} alt={p.display_name} className="w-full h-full object-cover" />
-        ) : (
-          initial
-        )}
-      </div>
-    );
-  };
 
   return (
     <motion.div
@@ -58,13 +49,13 @@ export function SeasonPodium({ champion, runnerUp, thirdPlace, seasonName, compa
         className="relative da-glass border-gold/15 p-5"
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div className="flex min-w-0 items-center gap-2">
             <Trophy className="w-4 h-4" style={{ color: 'hsl(var(--gold))' }} />
             <h3 className="font-extrabold text-[13px] tracking-tight">Season Podium</h3>
           </div>
           {seasonName && (
-            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            <span title={seasonName} className="min-w-0 max-w-full truncate text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70">
               {seasonName}
             </span>
           )}
@@ -80,7 +71,7 @@ export function SeasonPodium({ champion, runnerUp, thirdPlace, seasonName, compa
             iconColor="hsl(0 0% 75%)"
             label="Runner-up"
             avatarSize={compact ? 44 : 52}
-            Avatar={Avatar}
+            Avatar={PodiumAvatar}
           />
           {/* Champion (center, tallest) */}
           <PodiumColumn
@@ -90,7 +81,7 @@ export function SeasonPodium({ champion, runnerUp, thirdPlace, seasonName, compa
             iconColor="hsl(var(--gold))"
             label="Champion"
             avatarSize={compact ? 56 : 68}
-            Avatar={Avatar}
+            Avatar={PodiumAvatar}
             highlight
           />
           {/* Third place (right, shortest) */}
@@ -101,7 +92,7 @@ export function SeasonPodium({ champion, runnerUp, thirdPlace, seasonName, compa
             iconColor="hsl(28 65% 55%)"
             label="3rd Place"
             avatarSize={compact ? 40 : 48}
-            Avatar={Avatar}
+            Avatar={PodiumAvatar}
           />
         </div>
       </div>
@@ -132,7 +123,7 @@ function PodiumColumn({
   return (
     <div className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
       <Avatar p={profile} size={avatarSize} />
-      <p className="text-[11px] font-extrabold truncate max-w-full text-center" style={{ color: highlight ? 'hsl(var(--gold))' : undefined }}>
+      <p title={profile?.display_name || undefined} className="text-[11px] font-extrabold truncate max-w-full text-center" style={{ color: highlight ? 'hsl(var(--gold))' : undefined }}>
         {profile?.display_name || '—'}
       </p>
       <div

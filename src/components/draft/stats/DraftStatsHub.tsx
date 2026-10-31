@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -42,7 +42,7 @@ function UserAvatar({ name, url, size = 28 }: { name: string; url: string | null
   return (
     <Avatar style={{ width: size, height: size }}>
       {url && <AvatarImage src={url} alt={name} />}
-      <AvatarFallback className="text-[10px] font-bold">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+      <AvatarFallback className="text-[10px] font-bold">{Array.from(name.trim()).slice(0, 2).join('').toUpperCase()}</AvatarFallback>
     </Avatar>
   );
 }
@@ -75,15 +75,15 @@ function ScopeBar({ scope, onScope, seasons, composition }: {
         <div className="flex items-center gap-1.5 min-w-max pb-1">
           <button
             onClick={() => onScope('all')}
-            className={cn('px-3 h-8 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors btn-press border',
+            className={cn('px-3 h-11 min-w-11 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors btn-press border',
               scope === 'all'
                 ? 'bg-gold/20 text-gold border-gold/40'
                 : 'bg-muted/30 text-muted-foreground border-border/30')}>
             All-Time
           </button>
           {seasons.map(s => (
-            <button key={s.id} onClick={() => onScope(s.id)}
-              className={cn('px-3 h-8 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors btn-press border',
+            <button key={s.id} onClick={() => onScope(s.id)} title={s.name}
+              className={cn('px-3 h-11 min-w-11 max-w-52 truncate rounded-full text-[11px] font-bold whitespace-nowrap transition-colors btn-press border',
                 scope === s.id
                   ? 'bg-gold/20 text-gold border-gold/40'
                   : 'bg-muted/30 text-muted-foreground border-border/30')}>
@@ -97,7 +97,7 @@ function ScopeBar({ scope, onScope, seasons, composition }: {
           {hasMisc && (
             <button
               onClick={() => onScope('misc')}
-              className={cn('px-3 h-8 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors btn-press border inline-flex items-center gap-1.5',
+              className={cn('px-3 h-11 min-w-11 rounded-full text-[11px] font-bold whitespace-nowrap transition-colors btn-press border inline-flex items-center gap-1.5',
                 scope === 'misc'
                   ? 'bg-foreground/12 text-foreground border-foreground/30'
                   : 'bg-muted/30 text-muted-foreground border-border/30')}>
@@ -205,6 +205,7 @@ function TrophyCase({ agg, longestStreak, mvpPicks }: {
 
 /* ─── Career pulse sparkline ─── */
 function CareerPulse({ points }: { points: ReturnType<typeof computeCareerPulse> }) {
+  const gradientId = `draft-career-pulse-${useId().replace(/:/g, '')}`;
   // 1-draft users: show a teaser card instead of silently hiding the
   // whole Career Pulse section. The graph needs two points to draw a
   // line — but signalling "one more draft unlocks this" is way more
@@ -263,15 +264,15 @@ function CareerPulse({ points }: { points: ReturnType<typeof computeCareerPulse>
             </p>
           </div>
         </div>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-20" preserveAspectRatio="none">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-20" preserveAspectRatio="none" role="img" aria-label="Draft scores over time" data-testid="draft-career-pulse">
           <defs>
-            <linearGradient id="pulseFill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="hsl(var(--gold))" stopOpacity="0.35" />
               <stop offset="100%" stopColor="hsl(var(--gold))" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <path d={area} fill="url(#pulseFill)" />
-          <path d={path} fill="none" stroke="hsl(var(--gold))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <path d={area} fill={`url(#${gradientId})`} />
+          <path d={path} fill="none" stroke="hsl(var(--gold))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
           {xy.map(([x, y], i) => (
             <circle key={i} cx={x} cy={y} r={points[i].rank === 1 ? 3 : 1.8}
               fill={points[i].rank === 1 ? 'hsl(var(--gold))' : 'hsl(var(--gold) / 0.6)'} />
@@ -423,9 +424,10 @@ function Leaderboards({ dataset, userId }: { dataset: any; userId?: string }) {
                   if (n.has(lb.key)) n.delete(lb.key); else n.add(lb.key);
                   return n;
                 })}
-                className="w-full px-3.5 py-2.5 flex items-center gap-2 text-left">
+                aria-expanded={isOpen}
+                className="w-full min-h-11 px-3.5 py-2.5 flex items-center gap-2 text-left">
                 <lb.icon className="w-3.5 h-3.5" style={{ color: 'hsl(var(--gold))' }} />
-                <span className="text-[12px] font-bold flex-1">{lb.label}</span>
+                <span className="min-w-0 text-[12px] font-bold flex-1 [overflow-wrap:anywhere]">{lb.label}</span>
                 {!isOpen && rows[0] && (
                   <span className="text-[10px] text-muted-foreground/70 truncate max-w-[80px]">
                     {rows[0].name}
@@ -442,10 +444,10 @@ function Leaderboards({ dataset, userId }: { dataset: any; userId?: string }) {
                         <span className={cn('w-5 text-center text-[11px] font-extrabold tabular-nums',
                           i === 0 ? 'text-gold' : 'text-muted-foreground/70')}>{i + 1}</span>
                         <UserAvatar name={r.name} url={r.avatar} size={22} />
-                        <span className={cn('text-[12px] font-bold flex-1 truncate', isMe && 'text-gold')}>
+                        <span title={r.name} className={cn('min-w-0 text-[12px] font-bold flex-1 truncate', isMe && 'text-gold')}>
                           {r.name}{isMe && <span className="ml-1 text-[9.5px] opacity-70">YOU</span>}
                         </span>
-                        <span className="text-[12px] font-extrabold tabular-nums" style={{ color: i === 0 ? 'hsl(var(--gold))' : undefined }}>
+                        <span className="shrink-0 text-[12px] font-extrabold tabular-nums" style={{ color: i === 0 ? 'hsl(var(--gold))' : undefined }}>
                           {r.display}
                         </span>
                       </div>
@@ -657,7 +659,7 @@ export default function DraftStatsHub() {
     <div className="da-glass p-5 text-center">
       <p className="text-[12px] font-bold mb-2">Couldn't load stats</p>
       <p className="text-[10px] text-muted-foreground mb-3">{error}</p>
-      <button onClick={refresh} className="px-3 h-9 rounded-lg text-[11px] font-bold btn-press inline-flex items-center gap-1.5 bg-gold/15 text-gold">
+      <button onClick={refresh} className="px-3 h-11 min-w-11 rounded-lg text-[11px] font-bold btn-press inline-flex items-center gap-1.5 bg-gold/15 text-gold">
         <RefreshCw className="w-3.5 h-3.5" /> Retry
       </button>
     </div>
@@ -683,7 +685,7 @@ export default function DraftStatsHub() {
   const scopeEmpty = scoped.results.length === 0;
 
   return (
-    <div className="space-y-3 pb-4">
+    <div className="space-y-3 pb-4 da-career-stats min-w-0">
       {/* Scope chips stay full-width above the dashboard grid so they
           read as a global filter for everything below. */}
       <ScopeBar scope={scope} onScope={setScope} seasons={seasonChips} composition={composition} />
@@ -731,7 +733,7 @@ export default function DraftStatsHub() {
           </p>
           <button
             onClick={() => setScope('all')}
-            className="mt-3 px-3 h-8 rounded-lg text-[11px] font-bold btn-press bg-gold/15 text-gold"
+            className="mt-3 px-3 h-11 min-w-11 rounded-lg text-[11px] font-bold btn-press bg-gold/15 text-gold"
           >
             View all-time
           </button>
@@ -775,7 +777,7 @@ export default function DraftStatsHub() {
       )}
 
       <button onClick={refresh}
-        className="w-full h-9 rounded-lg bg-muted/40 text-[11px] font-bold text-foreground/70 hover:bg-muted/60 btn-press flex items-center justify-center gap-1.5">
+        className="w-full h-11 rounded-lg bg-muted/40 text-[11px] font-bold text-foreground/70 hover:bg-muted/60 btn-press flex items-center justify-center gap-1.5">
         <RefreshCw className="w-3.5 h-3.5" /> Refresh stats
       </button>
     </div>

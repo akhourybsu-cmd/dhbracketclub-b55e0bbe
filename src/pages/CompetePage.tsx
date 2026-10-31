@@ -19,7 +19,7 @@ import { CompeteCTAButton } from '@/components/compete/CompeteCTAButton';
 import runedelveEmblem from '@/assets/runedelve-emblem.png';
 import nexusEmblem from '@/assets/nexus-emblem.png';
 import pickemEmblem from '@/assets/pickem-emblem.png';
-import draftEmblem from '@/assets/draft-emblem.png';
+import draftEmblem from '@/assets/draft-emblem.webp';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 
 /* ── FORGE card ── */
