@@ -48,7 +48,12 @@ async function start() {
 
 async function setup(width = 390, height = 844, theme = "dark", motion = "no-preference") {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion });
-  const page = await context.newPage(); currentPage = page;
+  const page = await context.newPage();
+  await installFixturePage(page);
+  return { page, context, theme };
+}
+async function installFixturePage(page) {
+  currentPage = page;
   page.setDefaultTimeout(12_000);
   page.on("pageerror", (error) => report.runtimeErrors.push(error.message));
   await page.route("**/*", (route) => new URL(route.request().url()).hostname === "127.0.0.1" ? route.continue() : route.abort());
@@ -67,12 +72,15 @@ async function setup(width = 390, height = 844, theme = "dark", motion = "no-pre
   await page.addInitScript(() => {
     sessionStorage.setItem("da_boot_played_v1", "1");
     localStorage.setItem("dh-club-sound-enabled", "false");
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      writeText: async (text) => { window.daClipboard = String(text); },
+      readText: async () => window.daClipboard || '',
+    } });
   });
-  return { page, context, theme };
 }
 
-async function go(page, route, { theme = "dark", user = "u1", role = "member", stress = "", art = "" } = {}) {
-  const params = new URLSearchParams({ route, theme, user, role, stress, art });
+async function go(page, route, { theme = "dark", user = "u1", role = "member", stress = "", art = "", shared = "" } = {}) {
+  const params = new URLSearchParams({ route, theme, user, role, stress, art, shared });
   const projector = route.endsWith('/kiosk');
   await page.goto(`${base}/scripts/fixtures/draft-arena${projector ? '-projector' : ''}.html?${params}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.daQa?.ready && window.daQueryClient);
@@ -82,7 +90,19 @@ async function go(page, route, { theme = "dark", user = "u1", role = "member", s
 async function settle(page) {
   await page.waitForFunction(() => window.daQueryClient?.isFetching() === 0 && window.daQueryClient?.isMutating() === 0);
   await page.evaluate(async () => { await document.fonts.ready; await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
-  await page.waitForFunction(() => [...document.querySelectorAll(".da-shell,.da-kiosk,[role=dialog]")].every((root) => root.getAnimations({ subtree: true }).every((animation) => animation.playState !== "running" || animation.effect?.getTiming().iterations === Infinity)), undefined, { timeout: 5000 });
+  await page.waitForFunction(() => [...document.querySelectorAll(".da-shell,.da-kiosk,[role=dialog]")].every((root) => root.getAnimations({ subtree: true }).every((animation) => {
+    if (animation.playState !== 'running' || animation.effect?.getTiming().iterations === Infinity) return true;
+    // A running canonical countdown continuously advances its decorative ring.
+    // Layout, dialog and feedback transitions must still finish normally.
+    return animation instanceof CSSTransition && animation.transitionProperty === 'stroke-dasharray'
+      && animation.effect?.target instanceof Element && animation.effect.target.matches('[role="timer"] circle');
+  })), undefined, { timeout: 5000 }).catch(async (error) => {
+    const animations = await page.evaluate(() => document.getAnimations().filter((animation) => animation.playState === 'running').map((animation) => ({
+      type: animation.constructor.name, property: animation instanceof CSSTransition ? animation.transitionProperty : null,
+      iterations: animation.effect?.getTiming().iterations, target: animation.effect?.target?.outerHTML?.slice(0, 500),
+    })));
+    throw new Error(`${error.message}\nRunning animation diagnostics: ${JSON.stringify(animations)}`, { cause: error });
+  });
 }
 async function shot(page, label) { await page.screenshot({ path: join(output, `${label}.png`) }); }
 async function captureFailure(page, label) {
@@ -374,8 +394,13 @@ async function liveWorkspace(width, height, motion = "no-preference") {
   const label = `live-${width}x${height}-${motion}`;
   try {
     await go(page, "/drafts/active/__qa/live");
-    const kiosk = page.getByRole("dialog", { name: "My live draft kiosk", exact: true });
+    const enter = page.getByRole('button', { name: 'Enter live draft', exact: true });
+    const kiosk = page.getByRole("dialog", { name: "Draft Arena player screen", exact: true });
+    await expect(kiosk).toHaveCount(0);
+    await enter.click();
     await expect(kiosk).toBeVisible();
+    await expect(kiosk.getByRole('button', { name: 'Player sound', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    assert.equal(await page.evaluate(() => document.fullscreenElement === null), true, 'Entering the player screen does not request native fullscreen');
     await expect(kiosk).toContainText("Clock paused");
     await fit(page, `${label}-board`, ".da-pk");
     for (const name of ["My team", "Draft desk", "Live feed", "Host", "Board"]) {
@@ -401,9 +426,10 @@ async function liveWorkspace(width, height, motion = "no-preference") {
     await page.keyboard.press("Escape");
     await expect(composer).toHaveCount(0);
     await expect(kiosk).toBeVisible();
-    await kiosk.getByRole("button", { name: "Close my kiosk", exact: true }).click();
+    await kiosk.getByRole("button", { name: "Back to event", exact: true }).click();
     await expect(kiosk).toHaveCount(0);
-    await page.getByRole("button", { name: "Open my live kiosk", exact: true }).click();
+    await expect(enter).toBeFocused();
+    await enter.click();
     await expect(kiosk).toBeVisible();
     assert.equal(await page.locator(".da-kiosk-reveal").count(), 0, "Saved picks do not replay a cinematic on kiosk mount");
     report.checks.push({ label: `${label}-clock-tabs-composer-layer-and-reopen`, ok: true });
@@ -742,10 +768,8 @@ async function hostSettingsDialog() {
   const label = 'actual-live-host-settings-focus-and-cancel';
   try {
     await go(page, '/drafts/active', { stress: 'live-host', role: 'commissioner' });
-    const kiosk = page.getByRole('dialog', { name: 'My live draft kiosk', exact: true });
-    await expect(kiosk).toBeVisible();
-    await kiosk.getByRole('button', { name: 'Close my kiosk', exact: true }).click();
-    await expect(kiosk).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Enter live draft', exact: true })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Draft Arena player screen', exact: true })).toHaveCount(0);
     await tab(page, 'Host controls');
     const original = await page.evaluate(() => structuredClone(window.daQa.tables.drafts.find((draft) => draft.id === 'active').live_settings));
     const trigger = page.getByRole('button', { name: 'Live draft settings', exact: true });
@@ -768,9 +792,216 @@ async function hostSettingsDialog() {
   finally { await context.close(); }
 }
 
+const livePresentationLabels = ['Announce each pick on the big screen', 'Ticker tape of recent picks', 'Projector sound effects', 'Pre-draft order ceremony', 'Broadcast moments and milestones'];
+async function prepareLiveEvent(page, label) {
+  const topic = page.getByRole('textbox', { name: 'Topic', exact: true });
+  await expect(topic).toBeVisible();
+  await fullyVisibleControl(topic, `${label}-topic-visible`);
+  await topic.fill('Friday night cinema');
+  const description = page.getByRole('textbox', { name: 'Description (optional)', exact: true });
+  await description.scrollIntoViewIfNeeded();
+  await description.fill('A live cinema draft for the club.');
+  const next = page.getByRole('button', { name: 'Next', exact: true });
+  const stage = page.locator('.da-create-stage');
+  await next.click(); await expect(stage).toHaveAttribute('aria-label', 'Rules setup');
+  await expect(page.getByRole('group', { name: 'Rounds', exact: true }).getByRole('button', { name: '5', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('group', { name: 'Rounds', exact: true }).getByRole('button', { name: '3', exact: true }).click();
+  const context = page.getByRole('textbox', { name: 'AI Judging Context', exact: true });
+  await context.scrollIntoViewIfNeeded(); await context.fill('Evaluate films from every country and decade.');
+  await fit(page, `${label}-rules`);
+  await next.click(); await expect(stage).toHaveAttribute('aria-label', 'Stage setup');
+  const clock = page.getByRole('tab', { name: 'Clock', exact: true });
+  const presentation = page.getByRole('tab', { name: 'Presentation', exact: true });
+  await expect(clock).toHaveAttribute('aria-selected', 'true');
+  await expect(stage.getByRole('button', { name: '90s', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await stage.getByRole('button', { name: '2m', exact: true }).click();
+  await expect(stage.getByRole('button', { name: 'Alert only', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await fit(page, `${label}-clock`); await interactiveAudit(page, `${label}-clock-controls`);
+  await shot(page, `${label}-clock`);
+  await presentation.click();
+  for (const name of livePresentationLabels) {
+    const toggle = stage.getByRole('button', { name, exact: true });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await toggle.scrollIntoViewIfNeeded();
+    await fullyVisibleControl(toggle, `${label}-${name.toLowerCase().replaceAll(' ', '-')}`);
+  }
+  await fit(page, `${label}-presentation`); await shot(page, `${label}-presentation`);
+  await next.click(); await expect(stage).toHaveAttribute('aria-label', 'Review setup');
+  await expect(stage).toContainText('Friday night cinema');
+  await expect(stage).toContainText('3 picks each');
+  await expect(page.getByRole('button', { name: 'Create live event', exact: true })).toBeEnabled();
+  await fit(page, `${label}-review`); await shot(page, `${label}-review`);
+  assert.equal(await page.evaluate(() => window.daQa.operations.filter((operation) => operation.table === 'drafts' && operation.mode === 'insert').length), 0, 'LIVE wizard review does not create or start an event');
+}
+
+async function liveCreationLayout(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, 'reduce');
+  const label = `live-create-${width}x${height}-${theme}`;
+  try {
+    await go(page, '/drafts/live/waiting', { stress: 'live-flow', theme });
+    await expect(page.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/waiting');
+    await expect(page.locator('.da-live-arena')).toHaveCount(0);
+    report.checks.push({ label: `${label}-normal-room-uses-normal-route`, ok: true });
+    await go(page, '/drafts/live/create', { stress: 'live-flow', theme });
+    await prepareLiveEvent(page, label);
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(page.getByRole('tab', { name: 'Presentation', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await page.getByRole('tab', { name: 'Clock', exact: true }).click();
+    await expect(page.getByRole('button', { name: '2m', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    report.checks.push({ label: `${label}-back-retains-live-settings`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function liveEventLifecycle() {
+  const { page: host, context } = await setup(390, 844);
+  const label = 'live-event-two-player-lifecycle';
+  const shared = `live-${Date.now()}`;
+  let player;
+  try {
+    await go(host, '/drafts/live', { stress: 'live-flow', role: 'commissioner', shared });
+    await expect(host.getByRole('link', { name: 'Host live event', exact: true })).toBeVisible();
+    await fit(host, 'live-hub-empty'); await shot(host, 'live-hub-entrance'); await interactiveAudit(host, 'live-hub-empty-controls');
+    await host.getByRole('link', { name: 'Host live event', exact: true }).click();
+    await expect(host.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', '/drafts/live/create');
+    await prepareLiveEvent(host, label);
+    await host.getByRole('button', { name: 'Create live event', exact: true }).click();
+    await expect(host.locator('.da-greenroom')).toBeVisible();
+    const created = await host.evaluate(() => {
+      const writes = window.daQa.operations.filter((operation) => operation.table === 'drafts' && operation.mode === 'insert');
+      const draft = writes[0]?.rows[0];
+      return { draft, writes, participants: window.daQa.tables.draft_participants.filter((row) => row.draft_id === draft?.id), seasons: window.daQa.tables.draft_season_entries.filter((row) => row.draft_id === draft?.id) };
+    });
+    assert.equal(created.writes.length, 1); assert.equal(created.draft.status, 'setup'); assert.equal(created.draft.is_live, true);
+    assert.equal(created.draft.club_id, 'club'); assert.equal(created.draft.topic, 'Friday night cinema');
+    assert.equal(created.draft.num_rounds, 3); assert.equal(created.draft.timer_seconds, 120);
+    assert.equal(created.draft.ai_context, 'Evaluate films from every country and decade.');
+    assert.deepEqual(created.draft.live_settings, { pickSeconds: 120, timeoutBehavior: 'alert', sound: true, ticker: true, autoStartClock: true, announce: true, ceremony: true, broadcast: true, reportBroadcast: true });
+    assert.match(created.draft.kiosk_code, /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/);
+    assert.deepEqual(created.participants.map(({ user_id, pick_order }) => ({ user_id, pick_order })), [{ user_id: 'u1', pick_order: 1 }]);
+    assert.equal(created.seasons.length, 0, 'LIVE events do not enter a season ledger');
+    const id = created.draft.id;
+    await expect(host.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', `/drafts/live/${id}`);
+    const start = host.getByRole('button', { name: 'Start order reveal', exact: true });
+    await expect(start).toBeDisabled();
+    await expect(host.getByRole('region', { name: 'Players in the room', exact: true })).toContainText('Alex');
+    await fit(host, 'live-greenroom-host-alone'); await shot(host, 'live-greenroom-host-alone');
+    const greenBody = host.locator('.da-greenroom-body');
+    for (const [name, path] of [['Copy player invite', `/drafts/live/${id}`], ['Copy projector link', `/drafts/${id}/kiosk`]]) {
+      const button = host.getByRole('button', { name, exact: true });
+      await reachByScrolling(host, button, greenBody, `live-${name.toLowerCase().replaceAll(' ', '-')}-reachable`);
+      await button.click();
+      assert.equal(new URL(await host.evaluate(() => window.daClipboard)).pathname, path);
+    }
+    await expect(host.getByRole('link', { name: 'Open projector', exact: true })).toHaveAttribute('href', `/drafts/${id}/kiosk`);
+    await host.getByRole('button', { name: 'Configure live draft', exact: true }).click();
+    const settings = host.getByRole('dialog', { name: 'Room Settings', exact: true });
+    await expect(settings).toBeVisible();
+    await settings.getByRole('button', { name: '3m', exact: true }).click();
+    const ceremonyToggle = settings.getByRole('switch', { name: 'Dramatic pick-order reveal on projector', exact: true });
+    await expect(ceremonyToggle).toHaveAttribute('aria-checked', 'true');
+    await ceremonyToggle.scrollIntoViewIfNeeded(); await ceremonyToggle.click();
+    await settings.getByRole('button', { name: 'Save Settings', exact: true }).click();
+    await expect(settings).toHaveCount(0);
+    await expect.poll(() => host.evaluate((draftId) => window.daQa.tables.drafts.find((row) => row.id === draftId).live_settings.pickSeconds, id)).toBe(180);
+    assert.equal(await host.evaluate((draftId) => window.daQa.tables.drafts.find((row) => row.id === draftId).status, id), 'setup');
+    await expect.poll(() => host.evaluate((draftId) => {
+      const draft = window.daQa.tables.drafts.find((row) => row.id === draftId);
+      return [draft.live_settings.ceremony, draft.ceremony_enabled];
+    }, id)).toEqual([false, false]);
+    await expect(host.getByRole('button', { name: 'Begin live draft', exact: true })).toBeDisabled();
+    await host.getByRole('button', { name: 'Configure live draft', exact: true }).click();
+    await expect(ceremonyToggle).toHaveAttribute('aria-checked', 'false');
+    await ceremonyToggle.scrollIntoViewIfNeeded(); await ceremonyToggle.click();
+    await settings.getByRole('button', { name: 'Save Settings', exact: true }).click();
+    await expect(settings).toHaveCount(0);
+    await expect.poll(() => host.evaluate((draftId) => {
+      const draft = window.daQa.tables.drafts.find((row) => row.id === draftId);
+      return [draft.live_settings.ceremony, draft.ceremony_enabled];
+    }, id)).toEqual([true, true]);
+    await expect(start).toBeDisabled();
+    report.checks.push({ label: 'live-lobby-ceremony-toggle-saves-both-fields-and-start-label', ok: true });
+    await host.evaluate(() => window.daQa.setConnection('CHANNEL_ERROR'));
+    await expect(host.locator('.da-greenroom-connection')).toHaveAttribute('data-connection', 'error');
+    await host.evaluate(() => window.daQa.setConnection('SUBSCRIBED'));
+    await expect(host.locator('.da-greenroom-connection')).toHaveAttribute('data-connection', 'connected');
+    report.checks.push({ label: 'live-create-payload-invites-settings-and-actual-connection', ok: true });
+
+    player = await context.newPage(); await player.setViewportSize({ width: 320, height: 568 }); await installFixturePage(player);
+    await go(player, '/drafts/live', { stress: 'live-flow', shared, user: 'u2' });
+    const code = player.getByRole('textbox', { name: 'Room code', exact: true });
+    await code.fill(created.draft.kiosk_code.toLowerCase());
+    await player.getByRole('button', { name: 'Find live room', exact: true }).click();
+    await expect(player.locator('[data-qa-route]')).toHaveAttribute('data-qa-route', `/drafts/live/${id}`);
+    await expect(player.locator('.da-greenroom')).toBeVisible();
+    assert.equal(await player.evaluate((draftId) => window.daQa.tables.draft_participants.filter((row) => row.draft_id === draftId).length, id), 1, 'Resolving a code does not join a player');
+    await expect(player.getByRole('button', { name: 'Configure live draft', exact: true })).toHaveCount(0);
+    await expect(player.getByRole('button', { name: 'Start order reveal', exact: true })).toHaveCount(0);
+    const join = player.getByRole('button', { name: 'Join Draft', exact: true });
+    await fullyVisibleControl(join, 'live-small-phone-join-visible');
+    await fit(player, 'live-greenroom-player-before-join'); await shot(player, 'live-greenroom-player-before-join');
+    await join.click();
+    await expect(host.getByRole('region', { name: 'Players in the room', exact: true })).toContainText('Blair');
+    await expect(start).toBeEnabled(); await fullyVisibleControl(start, 'live-host-start-visible');
+    await start.click();
+    await expect(host.getByRole('region', { name: 'Draft order ceremony', exact: true })).toBeVisible();
+    await expect(player.getByRole('region', { name: 'Draft order ceremony', exact: true })).toBeVisible();
+    await expect(player.getByRole('button', { name: 'Reveal pick 1', exact: true })).toHaveCount(0);
+    await host.getByRole('button', { name: 'Reveal pick 1', exact: true }).click();
+    await host.getByRole('button', { name: 'Reveal pick 2', exact: true }).click();
+    assert.equal(await host.evaluate((draftId) => window.daQa.tables.draft_picks.filter((row) => row.draft_id === draftId).length, id), 0, 'Order reveal never submits a selection');
+    await shot(host, 'live-order-ceremony');
+    await host.getByRole('button', { name: 'Begin Draft', exact: true }).click();
+    for (const page of [host, player]) {
+      await expect(page.getByRole('button', { name: 'Enter live draft', exact: true })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Draft Arena player screen', exact: true })).toHaveCount(0);
+    }
+    const started = await host.evaluate((draftId) => ({ draft: window.daQa.tables.drafts.find((row) => row.id === draftId), participants: window.daQa.tables.draft_participants.filter((row) => row.draft_id === draftId).sort((a, b) => a.pick_order - b.pick_order) }), id);
+    assert.equal(started.draft.status, 'in_progress'); assert.equal(started.draft.current_pick_number, 1); assert.equal(started.draft.current_round, 1);
+    assert.equal(started.draft.current_pick_user_id, started.participants[0].user_id);
+    assert.ok(started.draft.clock_started_at && started.draft.pick_deadline_at);
+    assert.equal(Math.round((Date.parse(started.draft.pick_deadline_at) - Date.parse(started.draft.clock_started_at)) / 1000), 180);
+    for (const [page, role] of [[host, 'host'], [player, 'player']]) {
+      await page.getByRole('button', { name: 'Enter live draft', exact: true }).click();
+      const screen = page.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
+      await expect(screen).toBeVisible();
+      await expect(screen.getByRole('button', { name: 'Player sound', exact: true })).toHaveAttribute('aria-pressed', 'false');
+      if (role === 'host') await expect(screen.getByRole('tab', { name: 'Host', exact: true })).toHaveAttribute('aria-selected', 'true');
+      else { await expect(screen.getByRole('tab', { name: 'Board', exact: true })).toHaveAttribute('aria-selected', 'true'); await expect(screen.getByRole('tab', { name: 'Host', exact: true })).toHaveCount(0); }
+      assert.equal(await page.evaluate(() => document.fullscreenElement === null), true, 'Player entry alone does not request native fullscreen');
+      await fit(page, `live-${role}-explicit-player-screen`, '.da-pk'); await shot(page, `live-${role}-explicit-player-screen`);
+    }
+    const picker = started.draft.current_pick_user_id === 'u1' ? host : player;
+    const observer = picker === host ? player : host;
+    await picker.getByRole('dialog', { name: 'Draft Arena player screen', exact: true }).getByRole('button', { name: 'Make my pick', exact: true }).click();
+    const composer = picker.locator('.da-pick-dialog[role="dialog"]');
+    await expect(composer).toContainText('Round 1 · Pick #1');
+    const input = composer.getByRole('textbox', { name: 'Your draft pick', exact: true });
+    await expect(input).toBeFocused(); await input.fill('Interstellar'); await input.press('Enter');
+    await expect(composer).toHaveCount(0);
+    await expect.poll(() => observer.evaluate((draftId) => window.daQa.tables.draft_picks.filter((row) => row.draft_id === draftId).length, id)).toBe(1);
+    await expect.poll(() => host.evaluate((draftId) => window.daQa.tables.drafts.find((row) => row.id === draftId).current_pick_number, id)).toBe(2);
+    const state = await host.evaluate((draftId) => ({ draft: window.daQa.tables.drafts.find((row) => row.id === draftId), picks: window.daQa.tables.draft_picks.filter((row) => row.draft_id === draftId) }), id);
+    assert.deepEqual(state.picks.map(({ pick_text, user_id, round, pick_number }) => ({ pick_text, user_id, round, pick_number })), [{ pick_text: 'Interstellar', user_id: started.participants[0].user_id, round: 1, pick_number: 1 }]);
+    assert.equal(state.draft.current_pick_number, 2); assert.equal(state.draft.current_pick_user_id, started.participants[1].user_id);
+    const writes = await Promise.all([host, player].map((page) => page.evaluate((draftId) => window.daQa.operations.filter((operation) => operation.table === 'draft_picks' && operation.mode === 'insert' && operation.rows.some((row) => row.draft_id === draftId)).length, id)));
+    assert.equal(writes.reduce((sum, count) => sum + count, 0), 1, 'Both actors observe one canonical pick without a duplicate write');
+    const observerScreen = observer.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
+    await observerScreen.getByRole('tab', { name: 'Live feed', exact: true }).click();
+    await expect(observerScreen.getByRole('tabpanel')).toContainText('Interstellar');
+    await shot(observer, 'live-other-player-receives-first-pick');
+    report.checks.push({ label: 'live-code-explicit-join-two-actor-ceremony-and-canonical-pick', ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(host, `${label}-host`); if (player) await captureFailure(player, `${label}-player`); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
   // Exercise newly added stress cases first; retain the complete core matrix.
+  await liveEventLifecycle();
+  for (const args of [[320,568,'dark'],[844,390,'light']]) await liveCreationLayout(...args);
   for (const args of [[320,568],[844,390],[1440,900]]) await projectorSmoke(...args);
   await recoveryStates();
   await hostSettingsDialog();

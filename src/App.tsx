@@ -48,6 +48,7 @@ const PollsListPage = lazyWithRetry(() => import("./pages/PollsListPage"));
 const CreatePollPage = lazyWithRetry(() => import("./pages/CreatePollPage"));
 const PollDetailPage = lazyWithRetry(() => import("./pages/PollDetailPage"));
 const DraftsListPage = lazyWithRetry(() => import("./pages/DraftsListPage"));
+const LiveDraftsPage = lazyWithRetry(() => import("./pages/LiveDraftsPage"));
 const DraftKioskPage = lazyWithRetry(() => import("./pages/DraftKioskPage"));
 const CreateDraftPage = lazyWithRetry(() => import("./pages/CreateDraftPage"));
 const DraftDetailPage = lazyWithRetry(() => import("./pages/DraftDetailPage"));
@@ -271,6 +272,9 @@ function AnimatedRoutes() {
 
         {/* Drafts module — standalone Draft Arena shell (own boot, HUD, no DH chrome) */}
         <Route path="/drafts" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftsListPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/live" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><LiveDraftsPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/live/create" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><CreateDraftPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/live/:draftId" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftDetailPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/seasons" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><SeasonsArchivePage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/seasons/:seasonId" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><SeasonArchiveDetailPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/create" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><CreateDraftPage /></DraftArenaLayout></ProtectedPage>} />

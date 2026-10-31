@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, Crown, Share2, Sparkles, Star, Trophy, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,8 @@ import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 
 export default function DraftMagazinePage() {
   const { draftId } = useParams<{ draftId: string }>();
+  const [searchParams] = useSearchParams();
+  const backPath = searchParams.get('live') === '1' ? `/drafts/live/${draftId}` : `/drafts/${draftId}`;
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function DraftMagazinePage() {
     (data.enrichments ?? []).map((enrichment: any) => [enrichment.item_id, enrichment]),
   );
   return <div className="da-magazine min-w-0">
-    <div className="da-magazine-toolbar"><Link to={`/drafts/${draftId}`} className="da-back" aria-label="Back to draft"><ArrowLeft className="h-4 w-4" /></Link><div className="flex-1" /><Button variant="outline" size="sm" className="h-11 min-w-11" onClick={() => void share()}><Share2 className="h-4 w-4" /> Share</Button></div>
+    <div className="da-magazine-toolbar"><Link to={backPath} className="da-back" aria-label="Back to draft"><ArrowLeft className="h-4 w-4" /></Link><div className="flex-1" /><Button variant="outline" size="sm" className="h-11 min-w-11" onClick={() => void share()}><Share2 className="h-4 w-4" /> Share</Button></div>
     <header className="da-magazine-cover">
       <div className="da-magazine-issue"><span>Draft Arena</span><span>Final Edition</span></div>
       <h1 className="dl-display [overflow-wrap:anywhere]">{draft.topic}</h1>

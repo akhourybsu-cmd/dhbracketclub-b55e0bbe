@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Info, Radio } from 'lucide-react';
 import draftEmblem from '@/assets/draft-emblem.webp';
 import { useCurrentSeason, formatSeasonChip } from '@/hooks/useDraftSeasons';
 import { DraftArenaExitDialog } from './DraftArenaExitDialog';
@@ -17,15 +17,23 @@ import { DraftArenaMenu } from './DraftArenaMenu';
 export function DraftArenaHUD() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { draftId } = useParams<{ draftId?: string }>();
   const { season } = useCurrentSeason();
   const [exitOpen, setExitOpen] = useState(false);
   useEffect(() => setExitOpen(false), [location.key]);
 
   const path = location.pathname;
   const isHub = path === '/drafts';
+  const isLiveHub = path === '/drafts/live';
+  const isLiveMagazine = path.endsWith('/magazine') && new URLSearchParams(location.search).get('live') === '1';
+  const isLive = isLiveHub || path.startsWith('/drafts/live/') || isLiveMagazine;
 
   // Contextual subtitle per route
   const subtitle = (() => {
+    if (isLiveHub) return 'The live arena';
+    if (path === '/drafts/live/create') return 'Host a live event';
+    if (isLiveMagazine) return 'The event magazine';
+    if (isLive) return 'Live event room';
     if (path === '/drafts') return 'The league lobby';
     if (path === '/drafts/create') return 'Create a draft';
     if (path === '/drafts/seasons') return 'Season archives';
@@ -39,7 +47,11 @@ export function DraftArenaHUD() {
   const seasonChip = formatSeasonChip(season);
 
   const handleBack = () => {
-    if (isHub) {
+    if (isLiveMagazine && draftId) {
+      navigate(`/drafts/live/${encodeURIComponent(draftId)}`);
+    } else if (isLive && !isLiveHub) {
+      navigate('/drafts/live');
+    } else if (isHub) {
       setExitOpen(true);
     } else {
       navigate('/drafts');
@@ -49,7 +61,8 @@ export function DraftArenaHUD() {
   return (
     <>
       <header
-        className="da-hud da-arena-hud z-40 w-full border-b"
+        className={`da-hud da-arena-hud z-40 w-full border-b${isLive ? ' da-live-hud' : ''}`}
+        data-da-live={isLive || undefined}
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
         <div className="da-arena-hud-inner">
@@ -58,13 +71,13 @@ export function DraftArenaHUD() {
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            aria-label={isHub ? 'Exit Draft Arena' : 'Back to Draft Arena'}
+            aria-label={isLiveMagazine ? 'Back to live room' : isLive && !isLiveHub ? 'Back to LIVE arena' : isHub ? 'Exit Draft Arena' : 'Back to Draft Arena'}
             className="da-hud-action w-11 h-11 shrink-0 btn-press"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
 
-          <Link to="/drafts" className="da-arena-brand" aria-label="Draft Arena lobby">
+          <Link to={isLive ? '/drafts/live' : '/drafts'} className="da-arena-brand" aria-label={isLive ? 'Draft Arena LIVE lobby' : 'Draft Arena lobby'}>
             <span className="da-hud-emblem da-arena-emblem">
               <img
                 src={draftEmblem}
@@ -85,7 +98,9 @@ export function DraftArenaHUD() {
             </div>
           </Link>
 
-          {seasonChip && (
+          {isLive && <Link to="/drafts/live" className="da-hud-chip da-live-hud-badge shrink-0" aria-label="LIVE arena"><Radio className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span>LIVE</span></Link>}
+
+          {!isLive && seasonChip && (
             <button
               type="button"
               onClick={openSeasonWelcome}
@@ -98,7 +113,7 @@ export function DraftArenaHUD() {
             </button>
           )}
 
-          {!seasonChip && season && (
+          {!isLive && !seasonChip && season && (
             <button
               type="button"
               onClick={openSeasonWelcome}

@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { MotionConfig, useReducedMotion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { DraftArenaHUD } from './DraftArenaHUD';
 import { DraftArenaBoot } from './DraftArenaBoot';
 import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
@@ -17,6 +18,8 @@ import './draftArena.css';
  */
 export function DraftArenaLayout({ children }: { children: ReactNode }) {
   const { palette } = useDraftArenaPalette();
+  const location = useLocation();
+  const isLive = location.pathname === '/drafts/live' || location.pathname.startsWith('/drafts/live/') || (location.pathname.endsWith('/magazine') && new URLSearchParams(location.search).get('live') === '1');
   const reducedMotion = useReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(() => document.hidden);
@@ -53,7 +56,7 @@ export function DraftArenaLayout({ children }: { children: ReactNode }) {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div ref={shell} className="da-mode da-lounge da-shell da-arena-shell" data-da-palette={palette}
+    <div ref={shell} className={`da-mode da-lounge da-shell da-arena-shell${isLive ? ' da-live-arena' : ''}`} data-da-palette={palette} data-da-live={isLive || undefined}
       data-da-motion={reducedMotion ? 'reduced' : 'full'} data-da-hidden={hidden}>
       <div className="da-arena-architecture" aria-hidden="true"><i /><i /><i /></div>
       <DraftArenaHUD />
@@ -65,7 +68,7 @@ export function DraftArenaLayout({ children }: { children: ReactNode }) {
       </main>
 
       <DraftArenaBoot />
-      <DraftSeasonWelcomeController />
+      {!isLive && <DraftSeasonWelcomeController />}
     </div>
     </MotionConfig>
   );

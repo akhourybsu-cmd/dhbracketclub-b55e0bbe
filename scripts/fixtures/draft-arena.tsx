@@ -28,6 +28,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { DraftArenaLayout } from "../../src/components/drafts/DraftArenaLayout";
 import DraftsListPage from "../../src/pages/DraftsListPage";
+import LiveDraftsPage from "../../src/pages/LiveDraftsPage";
 import DraftDetailPage from "../../src/pages/DraftDetailPage";
 import CreateDraftPage from "../../src/pages/CreateDraftPage";
 import SeasonsArchivePage from "../../src/pages/SeasonsArchivePage";
@@ -95,6 +96,9 @@ createRoot(document.getElementById("root")!).render(
           <CurrentRoute />
           <Routes>
             <Route path="/drafts" element={arena(<DraftsListPage />)} />
+            <Route path="/drafts/live" element={arena(<LiveDraftsPage />)} />
+            <Route path="/drafts/live/create" element={arena(<CreateDraftPage />)} />
+            <Route path="/drafts/live/:draftId" element={arena(<DraftDetailPage />)} />
             <Route path="/drafts/create" element={arena(<CreateDraftPage />)} />
             <Route path="/drafts/:draftId/__qa/live" element={arena(<LiveWorkspaceFixture />)} />
             <Route path="/drafts/seasons" element={arena(<SeasonsArchivePage />)} />

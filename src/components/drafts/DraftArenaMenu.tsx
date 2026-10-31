@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Archive, ArrowUpRight, BarChart3, BookOpen, Bookmark, Home, LogOut,
-  Menu, MonitorPlay, Palette, Plus, Swords, Trophy,
+  Menu, MonitorPlay, Palette, Plus, Radio, Swords, Trophy,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { useFeatureFlag } from '@/hooks/useFeatureFlags';
 import { DraftArenaPaletteList } from './DraftArenaAppearance';
 
 const primaryLinks = [
+  { to: '/drafts/live', label: 'LIVE arena', description: 'Host, join or resume an event', icon: Radio, pathPrefix: '/drafts/live' },
   { to: '/drafts', label: 'Draft rooms', description: 'Find your next pick', icon: Bookmark, tab: 'drafts' },
   { to: '/drafts?tab=season', label: 'The season', description: 'Standings & playoff picture', icon: Trophy, tab: 'season' },
   { to: '/drafts?tab=stats', label: 'Career stats', description: 'Your league record', icon: BarChart3, tab: 'stats' },
@@ -27,10 +29,13 @@ export function DraftArenaMenu() {
   const search = new URLSearchParams(location.search);
   const requestedTab = search.get('tab') ?? 'drafts';
   const activeTab = ['drafts', 'season', 'stats', 'commissioner'].includes(requestedTab) ? requestedTab : 'drafts';
+  const isLiveMagazine = location.pathname.endsWith('/magazine') && search.get('live') === '1';
+  const isLive = location.pathname === '/drafts/live' || location.pathname.startsWith('/drafts/live/') || isLiveMagazine;
   const inDraftRoom = Boolean(params.draftId) && !location.pathname.startsWith('/drafts/seasons');
   useEffect(() => setOpen(false), [location.key]);
 
   const isActive = (link: (typeof primaryLinks)[number]) => {
+    if (link.to === '/drafts/live' && isLiveMagazine) return true;
     if ('pathPrefix' in link && link.pathPrefix) return location.pathname.startsWith(link.pathPrefix);
     if (location.pathname !== '/drafts' || !('tab' in link)) return false;
     return activeTab === link.tab || (link.tab === 'drafts' && activeTab === 'misc');
@@ -48,7 +53,7 @@ export function DraftArenaMenu() {
         <SheetHeader className="da-arena-drawer-header">
           <span className="da-arena-drawer-mark" aria-hidden="true"><Swords /></span>
           <div>
-            <p className="da-arena-eyebrow">DH · DRAFT LEAGUE</p>
+            <p className="da-arena-eyebrow">{isLive ? 'DH · LIVE EVENTS' : 'DH · DRAFT LEAGUE'}</p>
             <SheetTitle>Draft Arena menu</SheetTitle>
             <SheetDescription>Your league. Your next move.</SheetDescription>
           </div>
@@ -78,14 +83,15 @@ export function DraftArenaMenu() {
               <div className="da-arena-room-shortcuts">
                 <p className="da-arena-eyebrow">THIS DRAFT</p>
                 <div>
-                  <Link to={`/drafts/${params.draftId}/magazine`} onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true" />Magazine</Link>
-                  <Link to={`/drafts/${params.draftId}/kiosk`} onClick={() => setOpen(false)}><MonitorPlay size={17} aria-hidden="true" />Kiosk</Link>
+                  {isLive && <Link to={`/drafts/live/${encodeURIComponent(params.draftId)}`} onClick={() => setOpen(false)}><Swords size={17} aria-hidden="true" />Player room</Link>}
+                  <Link to={`/drafts/${encodeURIComponent(params.draftId)}/magazine${isLive ? '?live=1' : ''}`} onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true" />Magazine</Link>
+                  <Link to={`/drafts/${encodeURIComponent(params.draftId)}/kiosk`} target={isLive ? '_blank' : undefined} rel={isLive ? 'noreferrer' : undefined} onClick={() => setOpen(false)}><MonitorPlay size={17} aria-hidden="true" />Projector{isLive && <ArrowUpRight size={14} aria-hidden="true" />}</Link>
                 </div>
               </div>
             )}
-            <Link to="/drafts/create" onClick={() => setOpen(false)} className="da-arena-drawer-create da-cta">
+            {isLive ? <LiveHostShortcut onNavigate={() => setOpen(false)} /> : <Link to="/drafts/create" onClick={() => setOpen(false)} className="da-arena-drawer-create da-cta">
               <Plus size={18} aria-hidden="true" />Create draft<ArrowUpRight size={17} aria-hidden="true" />
-            </Link>
+            </Link>}
           </TabsContent>
           <TabsContent value="display" className="da-arena-drawer-body" tabIndex={0}>
             <div className="da-arena-display-mode">
@@ -107,4 +113,10 @@ export function DraftArenaMenu() {
       </SheetContent>
     </Sheet>
   );
+}
+
+function LiveHostShortcut({ onNavigate }: { onNavigate: () => void }) {
+  const { enabled } = useFeatureFlag('live-draft');
+  if (!enabled) return null;
+  return <Link to="/drafts/live/create" onClick={onNavigate} className="da-arena-drawer-create da-cta"><Plus size={18} aria-hidden="true" />Host live event<ArrowUpRight size={17} aria-hidden="true" /></Link>;
 }

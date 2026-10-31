@@ -2,7 +2,7 @@ import { DaDetails } from '@/components/draft/ui/DraftKit';
 import { serverNow } from '@/lib/serverClock';
 import { draftInitials } from '@/lib/draft/presentation';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -77,6 +77,9 @@ import { useDraftSkips, useLiveClock, useLiveDraftHost } from '@/hooks/useLiveDr
 import { LiveHostPanel } from '@/components/draft/live/LiveHostPanel';
 import { LiveClockStrip } from '@/components/draft/live/LiveClockStrip';
 import { PersonalLiveKiosk } from '@/components/draft/live/PersonalLiveKiosk';
+import { LiveGreenRoom } from '@/components/draft/live/LiveGreenRoom';
+import { saveLiveLobbySettings } from '@/lib/draft/liveRooms';
+import type { LiveDraftSettings } from '@/lib/draft/liveDraft';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import { MakePickSheet } from '@/components/draft/MakePickSheet';
 import { useDraftLastVisit } from '@/hooks/useDraftLastVisit';
@@ -118,6 +121,7 @@ export default function DraftDetailPage() {
 // the previous room can only settle into its unmounted session.
 function DraftDetailSession() {
   const { draftId } = useParams<{ draftId: string }>();
+  const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion();
@@ -282,6 +286,13 @@ function DraftDetailSession() {
     onChange: () => { void refetchSkips(); },
   });
   const liveClock = useLiveClock(isLiveDraft ? draft : null, liveHost.settings.pickSeconds);
+  const saveLobbySettings = async (patch: Partial<LiveDraftSettings>) => {
+    if (!canManage || !draftId || !draft?.club_id || draft.status !== 'setup') {
+      throw new Error('The live lobby is no longer available for setup.');
+    }
+    await saveLiveLobbySettings(draftId, draft.club_id, { ...liveHost.settings, ...patch });
+    await fetchData();
+  };
   const skippedSlots = useMemo(
     () => new Set(skips.map(s => `${s.round}:${s.user_id}`)),
     [skips],
@@ -992,8 +1003,16 @@ function DraftDetailSession() {
       <p className="da-arena-eyebrow">DRAFT ARENA</p>
       <h1>Draft unavailable.</h1>
       <p>Return to the lobby to choose a draft.</p>
-      <Link to="/drafts" className="da-cta btn-press">Back to rooms</Link>
+      <Link to={location.pathname.startsWith('/drafts/live/') ? '/drafts/live' : '/drafts'} className="da-cta btn-press">{location.pathname.startsWith('/drafts/live/') ? 'Back to live events' : 'Back to rooms'}</Link>
     </section>;
+  }
+
+  // Existing invitations keep working while live events have a dedicated home.
+  if (isLiveDraft && !location.pathname.startsWith('/drafts/live/')) {
+    return <Navigate to={`/drafts/live/${draftId}${location.search}`} replace />;
+  }
+  if (!isLiveDraft && location.pathname.startsWith('/drafts/live/')) {
+    return <Navigate to={`/drafts/${draftId}${location.search}`} replace />;
   }
 
   // Group picks by user for results
@@ -1155,12 +1174,47 @@ function DraftDetailSession() {
             </div>
   ) : null;
 
+  const setupJoinControls = <>
+          {!isParticipant && user && !isPlayoffDraft && seasonJoinEligible && (
+            <Button
+              onClick={async () => {
+                try {
+                  const nextOrder = participants.length + 1;
+                  const { error } = await supabase.from('draft_participants').insert({
+                    draft_id: draftId!,
+                    user_id: user.id,
+                    pick_order: nextOrder,
+                  });
+                  if (error) throw error;
+                  toast.success('Joined the draft!');
+                  fetchData();
+                } catch (err: any) {
+                  toast.error(err.message || 'Failed to join');
+                }
+              }}
+              className="w-full h-12 rounded-xl font-bold btn-press gap-2 text-[13px] mb-3"
+              variant="outline"
+            >
+              <Users className="w-4 h-4" />
+              Join Draft
+            </Button>
+          )}
+
+          {!isParticipant && user && seasonRosterLocked && !seasonJoinEligible && (
+            <div className="mb-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-center">
+              <p className="text-[12px] font-bold text-foreground">Season roster locked</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Only players already participating in this season can join this draft.</p>
+            </div>
+          )}
+
+  </>;
+
   // Presentation navigation only. Every original draft action stays in its
   // existing permission branch; changing a room view never changes game state.
   const roomTabs: { id: RoomView; label: string; icon: typeof LayoutGrid }[] = isDraftComplete
     ? [{ id: 'results', label: 'Results', icon: Trophy }, { id: 'teams', label: 'Teams', icon: Users }]
     : [
-        { id: 'board', label: isSetup ? 'Lobby' : 'Board', icon: LayoutGrid },
+        { id: 'board', label: isSetup ? (isLiveDraft ? 'Green Room' : 'Lobby') : 'Board', icon: LayoutGrid },
         ...(!isSetup ? [{ id: 'log' as const, label: 'Pick log', icon: List }] : []),
         ...(isParticipant ? [{ id: 'desk' as const, label: 'My desk', icon: BriefcaseBusiness }] : []),
         ...(isLiveDraft && canManage && !isSetup ? [{ id: 'host' as const, label: 'Host controls', icon: SlidersHorizontal }] : []),
@@ -1169,16 +1223,16 @@ function DraftDetailSession() {
   const selectedView = roomSelection?.draftId === draftId ? roomSelection.view : undefined;
   const roomView = roomTabs.some((tab) => tab.id === selectedView)
     ? selectedView!
-    : isDraftComplete ? 'results' : 'board';
+    : isDraftComplete ? 'results' : isLiveDraft && canManage && !isSetup ? 'host' : 'board';
 
   return (
     // Live-draft view fills the desktop shell (up to 1100px from
     // DraftArenaLayout). The completion-report block further below
     // re-caps itself at 760px so long-form content stays readable.
-    <div className="da-room da-ledger-page" data-draft-status={isSetup ? 'setup' : isDraftComplete ? 'complete' : 'in_progress'}>
+    <div className={cn('da-room da-ledger-page', isLiveDraft && 'da-live-event-room')} data-draft-status={isSetup ? 'setup' : isDraftComplete ? 'complete' : 'in_progress'}>
       <header className="da-room-topbar">
         <div className="da-room-identity">
-          <p><span className={cn('da-room-state', isSetup ? 'is-setup' : isDraftComplete ? 'is-complete' : 'is-live')}><i aria-hidden="true" />{isSetup ? 'Draft lobby' : isDraftComplete ? 'Final report' : isLiveDraft ? 'Live draft' : 'Draft in play'}</span>{isPlayoffDraft && <span className="da-room-playoff">Playoff</span>}</p>
+          <p><span className={cn('da-room-state', isSetup ? 'is-setup' : isDraftComplete ? 'is-complete' : 'is-live')}><i aria-hidden="true" />{isSetup ? (isLiveDraft ? 'Green Room' : 'Draft lobby') : isDraftComplete ? 'Final report' : isLiveDraft ? 'Live draft' : 'Draft in play'}</span>{isPlayoffDraft && <span className="da-room-playoff">Playoff</span>}</p>
           <h1>{draft.topic}</h1>
         </div>
         <div className="da-room-position"><b>{isSetup ? participants.length : isDraftComplete ? picks.length : currentRound}</b><span>{isSetup ? 'players' : isDraftComplete ? 'picks' : `of ${draft.num_rounds} rounds`}</span></div>
@@ -1195,6 +1249,13 @@ function DraftDetailSession() {
       </nav>
       <div ref={roomPanelRef} className="da-room-panel" id="draft-room-panel" role="tabpanel" aria-labelledby={`draft-room-tab-${roomView}`} data-room-view={roomView} tabIndex={0}>
       <Confetti active={showConfetti && !reducedMotion} />
+      {isLiveDraft && isDraftComplete && roomView === 'results' && <section className="da-live-finale" aria-label="Live event finale">
+        <span className="da-live-finale-mark" aria-hidden="true"><Crown /></span>
+        <div><p className="da-arena-eyebrow">DRAFT ARENA LIVE · FINAL BROADCAST</p>
+          <h2 className="dl-display">{hasResults ? 'The results are in.' : generationError ? 'The final report needs another try.' : 'The picks are locked.'}</h2>
+          <p>{hasResults ? 'Your event. Your final standings.' : generationError ? 'Use the report controls below to retry.' : 'The final report will appear here when it is ready.'}</p>
+        </div>
+      </section>}
       <div className="da-room-briefing" hidden={roomView !== 'briefing'}>
       {/* Header — playoff drafts get a premium matchup hero */}
       {isPlayoffDraft && playoffMatch ? (
@@ -1504,6 +1565,15 @@ function DraftDetailSession() {
         <motion.div className="da-room-stage" hidden={roomView !== 'board'} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
           {(draft as any).ceremony_status === 'revealing' && (draft as any).ceremony_enabled ? (
             <PreDraftCeremony topic={draft.topic} participants={participants} revealIndex={Number((draft as any).ceremony_reveal_index || 0)} canManage={canManage} busy={ceremonyBusy} onRevealNext={() => void handleCeremonyReveal()} onBegin={() => void handleCeremonyBegin()} />
+          ) : isLiveDraft ? (
+            <LiveGreenRoom draftId={draftId!} topic={draft.topic} participants={participants}
+              settings={liveHost.settings} canManage={canManage} busy={starting || liveHost.busy}
+              canStart={participants.length >= 2 && !starting}
+              ceremonyEnabled={Boolean((draft as any).ceremony_enabled && liveHost.settings.ceremony)}
+              onStart={handleStartDraft} onSaveSettings={saveLobbySettings}
+              kioskCode={(draft as any).kiosk_code} connectionStatus={realtimeStatus}>
+              {setupJoinControls}
+            </LiveGreenRoom>
           ) : <>
           <div className="glass-card p-5 mb-5">
             <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-3">Participants</p>
@@ -1528,37 +1598,7 @@ function DraftDetailSession() {
             <p className="text-[10px] text-muted-foreground/60 mt-3">Share this draft link to invite others. Order will be randomized when the draft starts.</p>
           </div>
 
-          {!isParticipant && user && !isPlayoffDraft && seasonJoinEligible && (
-            <Button
-              onClick={async () => {
-                try {
-                  const nextOrder = participants.length + 1;
-                  const { error } = await supabase.from('draft_participants').insert({
-                    draft_id: draftId!,
-                    user_id: user.id,
-                    pick_order: nextOrder,
-                  });
-                  if (error) throw error;
-                  toast.success('Joined the draft!');
-                  fetchData();
-                } catch (err: any) {
-                  toast.error(err.message || 'Failed to join');
-                }
-              }}
-              className="w-full h-12 rounded-xl font-bold btn-press gap-2 text-[13px] mb-3"
-              variant="outline"
-            >
-              <Users className="w-4 h-4" />
-              Join Draft
-            </Button>
-          )}
-
-          {!isParticipant && user && seasonRosterLocked && !seasonJoinEligible && (
-            <div className="mb-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 text-center">
-              <p className="text-[12px] font-bold text-foreground">Season roster locked</p>
-              <p className="mt-1 text-[10px] text-muted-foreground">Only players already participating in this season can join this draft.</p>
-            </div>
-          )}
+          {setupJoinControls}
 
           {canManage && (
             <button
@@ -1597,6 +1637,83 @@ function DraftDetailSession() {
               instead of being trapped in one column. */}
           <PickAnnouncement pick={announcement} onHide={() => setAnnouncement(null)} />
 
+          {isLiveDraft && isParticipant && !isPlayoffDraft && (
+            <PersonalLiveKiosk
+              key={`${user?.id}:${draftId}`} draftId={draftId}
+              draftTitle={draft.title || draft.topic || 'Live draft'}
+              palette={daPalette}
+              projectorPath={canManage ? `/drafts/${draftId}/kiosk` : undefined}
+              clock={liveClock}
+              pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+              isMyTurn={isMyTurn}
+              picksUntilYou={typeof picksUntilYou === 'number' ? picksUntilYou : null}
+              currentRound={currentRound}
+              numRounds={draft.num_rounds}
+              currentPickNumber={currentPickNumber}
+              totalPicks={participants.length * draft.num_rounds}
+              myPicks={picks.filter(p => p.user_id === user?.id) as any}
+              recentPicks={[...picks].slice(-6).reverse().map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
+              allPicks={picks.map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
+              announce={liveHost.settings.announce}
+              sound={liveHost.settings.sound}
+              onMakePick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}
+              board={
+                <DraftBoard
+                  participants={participants}
+                  picks={picks}
+                  currentPickNumber={currentPickNumber}
+                  numRounds={draft.num_rounds}
+                  currentUserId={user?.id}
+                  newPickIds={newPickIds}
+                  enrichments={enrichments}
+                  skippedSlots={skippedSlots}
+                />
+              }
+              broadcast={liveHost.settings.broadcast ? <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} /> : undefined}
+              hostControls={canManage ? (
+                <LiveHostPanel
+                  draftId={draftId!}
+                  clock={liveClock}
+                  settings={liveHost.settings}
+                  busy={liveHost.busy}
+                  pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
+                  onDeckName={
+                    participants.length > 0
+                      ? [...participants].sort((a, b) => a.pick_order - b.pick_order)[
+                          (() => {
+                            const participantCount = participants.length;
+                            const slot = consumedSlots + 1;
+                            const round = Math.floor(slot / participantCount);
+                            const position = slot % participantCount;
+                            return round % 2 === 0 ? position : participantCount - 1 - position;
+                          })()
+                        ]?.profiles?.display_name || undefined
+                      : undefined
+                  }
+                  kioskCode={(draft as any)?.kiosk_code ?? null}
+                  slotsLeft={Math.max(0, participants.length * draft.num_rounds - consumedSlots)}
+                  onStartClock={liveHost.startClock}
+                  onStopClock={liveHost.stopClock}
+                  onPause={liveHost.pause}
+                  onResume={liveHost.resume}
+                  onAddTime={liveHost.addTime}
+                  onSkip={liveHost.skipCurrentPick}
+                  onSaveSettings={liveHost.saveSettings}
+                  onEnsureKioskCode={liveHost.ensureKioskCode}
+                />
+              ) : undefined}
+              desk={
+                <PersonalDraftDesk
+                  compact
+                  draftId={draftId}
+                  userId={user?.id}
+                  taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
+                  onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); setShowPickSheet(true); } : undefined}
+                />
+              }
+            />
+          )}
+
           {/* ── Lounge layout: compact on phones, command center for live hosts on desktop ── */}
           {!isPlayoffDraft && (
             <div className={cn('da-lounge', isLiveDraft && 'da-live-command')}>
@@ -1607,7 +1724,7 @@ function DraftDetailSession() {
                     <h2 className="dl-display text-lg font-black">Draft Command Center</h2>
                   </div>
                   <div className="da-live-command-signals" aria-label="Live draft status">
-                    <span className="da-live-signal"><i aria-hidden /> Connected</span>
+                    <span className="da-live-signal" data-connection={realtimeStatus}><i aria-hidden />{realtimeStatus === 'connected' ? 'Connected' : realtimeStatus === 'connecting' ? 'Connecting…' : 'Reconnecting…'}</span>
                     <span>{participants.length} players</span>
                     <span>{Math.max(0, participants.length * draft.num_rounds - consumedSlots)} picks remaining</span>
                     {canManage && <span className="da-live-role">Host control</span>}
@@ -1904,81 +2021,6 @@ function DraftDetailSession() {
               topic={draft.topic}
             />
           )}
-          {isLiveDraft && isParticipant && !isPlayoffDraft && (
-            <PersonalLiveKiosk
-              draftTitle={draft.title || draft.topic || 'Live draft'}
-              palette={daPalette}
-              projectorPath={canManage ? `/drafts/${draftId}/kiosk` : undefined}
-              clock={liveClock}
-              pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
-              isMyTurn={isMyTurn}
-              picksUntilYou={typeof picksUntilYou === 'number' ? picksUntilYou : null}
-              currentRound={currentRound}
-              numRounds={draft.num_rounds}
-              currentPickNumber={currentPickNumber}
-              totalPicks={participants.length * draft.num_rounds}
-              myPicks={picks.filter(p => p.user_id === user?.id) as any}
-              recentPicks={[...picks].slice(-6).reverse().map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
-              allPicks={picks.map(p => ({ ...(p as any), name: (p as any).profiles?.display_name || participants.find(x => x.user_id === p.user_id)?.profiles?.display_name || 'Player' }))}
-              announce={liveHost.settings.announce}
-              sound={liveHost.settings.sound}
-              onMakePick={() => { pickCountWhenSheetOpened.current = picks.length; setShowPickSheet(true); }}
-              board={
-                <DraftBoard
-                  participants={participants}
-                  picks={picks}
-                  currentPickNumber={currentPickNumber}
-                  numRounds={draft.num_rounds}
-                  currentUserId={user?.id}
-                  newPickIds={newPickIds}
-                  enrichments={enrichments}
-                  skippedSlots={skippedSlots}
-                />
-              }
-              broadcast={liveHost.settings.broadcast ? <DraftBroadcastFeed picks={picks} totalPicks={participants.length * draft.num_rounds} limit={3} /> : undefined}
-              hostControls={canManage ? (
-                <LiveHostPanel
-                  draftId={draftId!}
-                  clock={liveClock}
-                  settings={liveHost.settings}
-                  busy={liveHost.busy}
-                  pickerName={currentPicker?.profiles?.display_name || 'Waiting…'}
-                  onDeckName={
-                    participants.length > 0
-                      ? [...participants].sort((a, b) => a.pick_order - b.pick_order)[
-                          (() => {
-                            const participantCount = participants.length;
-                            const slot = consumedSlots + 1;
-                            const round = Math.floor(slot / participantCount);
-                            const position = slot % participantCount;
-                            return round % 2 === 0 ? position : participantCount - 1 - position;
-                          })()
-                        ]?.profiles?.display_name || undefined
-                      : undefined
-                  }
-                  kioskCode={(draft as any)?.kiosk_code ?? null}
-                  slotsLeft={Math.max(0, participants.length * draft.num_rounds - consumedSlots)}
-                  onStartClock={liveHost.startClock}
-                  onStopClock={liveHost.stopClock}
-                  onPause={liveHost.pause}
-                  onResume={liveHost.resume}
-                  onAddTime={liveHost.addTime}
-                  onSkip={liveHost.skipCurrentPick}
-                  onSaveSettings={liveHost.saveSettings}
-                  onEnsureKioskCode={liveHost.ensureKioskCode}
-                />
-              ) : undefined}
-              desk={
-                <PersonalDraftDesk
-                  compact
-                  draftId={draftId}
-                  userId={user?.id}
-                  taken={new Set(picks.map(p => p.pick_text.trim().toLowerCase()))}
-                  onChoose={isMyTurn ? (value) => { setPickText(value); setText(value); setShowPickSheet(true); } : undefined}
-                />
-              }
-            />
-          )}
           {isParticipant && (
             <div hidden={roomView !== 'desk'} className="da-room-desk">
               <PersonalDraftDesk
@@ -2007,7 +2049,7 @@ function DraftDetailSession() {
           hidden={roomView !== 'results' && roomView !== 'teams'}
         >
           <div hidden={roomView !== 'results'} className="da-room-results">
-          <div className="mb-4 flex justify-end"><Button asChild variant="outline" className="gap-2"><Link to={`/drafts/${draftId}/magazine`}><BookOpen className="h-4 w-4" /> Open Draft Magazine</Link></Button></div>
+          <div className="mb-4 flex justify-end"><Button asChild variant="outline" className="gap-2"><Link to={`/drafts/${draftId}/magazine${isLiveDraft ? '?live=1' : ''}`}><BookOpen className="h-4 w-4" /> Open Draft Magazine</Link></Button></div>
           {/* ─── Playoff completion banners ─── */}
           {isPlayoffDraft && playoffMatch?.winner_user_id && (() => {
             const winnerId = playoffMatch.winner_user_id;

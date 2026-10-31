@@ -60,7 +60,17 @@ export function LiveHostPanel({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmSkip, setConfirmSkip] = useState(false);
 
-  const copyLink = async () => {
+  const copyPlayerInvite = async () => {
+    try {
+      const playerUrl = new URL(`/drafts/live/${encodeURIComponent(draftId)}`, kioskUrl(draftId)).href;
+      await navigator.clipboard.writeText(playerUrl);
+      toast.success('Player invite copied');
+    } catch {
+      toast.error('Could not copy the player invite');
+    }
+  };
+
+  const copyProjectorLink = async () => {
     try {
       const code = await onEnsureKioskCode();
       await navigator.clipboard.writeText(kioskUrl(draftId));
@@ -159,11 +169,14 @@ export function LiveHostPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
+        <button type="button" onClick={copyPlayerInvite} className="dl-host-btn mt-2 col-span-2">
+          <Link2 className="w-4 h-4" /> Copy player invite
+        </button>
         <Link to={kioskPath(draftId)} target="_blank" rel="noreferrer" className="dl-host-btn mt-2">
           <MonitorPlay className="w-4 h-4" /> Open projector
         </Link>
-        <button type="button" onClick={copyLink} className="dl-host-btn mt-2">
-          <Link2 className="w-4 h-4" /> Copy link
+        <button type="button" onClick={copyProjectorLink} className="dl-host-btn mt-2">
+          <Link2 className="w-4 h-4" /> Copy projector link
         </button>
         {kioskCode && (
           <p className="col-span-2 text-center text-[11px] text-muted-foreground">

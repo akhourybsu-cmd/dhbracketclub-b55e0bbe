@@ -3,6 +3,7 @@
 type Row = Record<string, any>;
 const params = new URLSearchParams(location.search);
 const userId = params.get("user") || "u1";
+const sharedKey = params.get("shared") ? `da-qa-shared:${params.get("shared")}` : null;
 const date = "2026-10-30T12:00:00.000Z";
 const profiles = [
   { id: "u1", display_name: "Alex", avatar_url: null },
@@ -16,7 +17,7 @@ const season = {
   best_of: 3, commissioner_user_id: params.get("role") === "commissioner" ? userId : "u2",
 };
 function draft(id: string, topic: string, status: string, rounds = 4) {
-  return { id, topic, status, num_rounds: rounds, category: null, created_by: "u1", created_at: date,
+  return { id, topic, status, club_id: "club", num_rounds: rounds, category: null, created_by: "u1", created_at: date,
     competition_id: `competition-${id}`, description: "Build the strongest roster, one selection at a time.",
     current_pick_user_id: "u1", current_pick_number: status === "in_progress" ? 7 : 1,
     current_round: status === "in_progress" ? 3 : 1, is_live: false, ai_context: null,
@@ -48,7 +49,7 @@ const tables: Record<string, Row[]> = {
   draft_season_intros: [{ id: "intro", season_id: season.id, club_id: "club", is_active: false }],
   draft_season_acknowledgements: [{ id: "ack", season_id: season.id, user_id: userId }],
   draft_playoff_matches: [], draft_pick_disputes: [], draft_skips: [], channels: [], messages: [], activity_feed: [],
-  feature_flags: [{ key: "live-draft", enabled: false }], app_feature_flags: [],
+  feature_flags: [{ key: "live-draft", enabled: false }], app_feature_flags: params.get("stress") === "live-flow" ? [{ key: "live-draft", enabled: true, rollout: {} }] : [],
 };
 const operations: Row[] = [];
 const calls: Row[] = [];
@@ -111,6 +112,48 @@ if (params.get("art") === "varied") {
   }
   tables.item_enrichments[0].metadata.image_candidates = Array.from({ length: 9 }, (_, index) => ({ url: `${imageURL(["portrait", "wide", "square", "slow"][index % 4])}?detail=1&candidate=${index + 1}`, thumbnail: `${imageURL(["portrait", "wide", "square", "slow"][index % 4])}?thumb=1&candidate=${index + 1}`, source: "tmdb", label: `Catalog alternative ${index + 1}` }));
 }
+if (sharedKey) {
+  const saved = localStorage.getItem(sharedKey);
+  if (saved) {
+    const snapshot = JSON.parse(saved);
+    for (const [table, rows] of Object.entries(snapshot.tables)) tables[table] = clone(rows) as Row[];
+    serial = snapshot.serial;
+  } else localStorage.setItem(sharedKey, JSON.stringify({ tables, serial }));
+}
+
+interface FixtureSubscription { type: string; config: Row; callback: (payload: Row) => void }
+const channels = new Set<FixtureChannel>();
+class FixtureChannel {
+  subscriptions: FixtureSubscription[] = [];
+  status?: (state: string) => void;
+  on(type: string, config: Row, callback: (payload: Row) => void) { this.subscriptions.push({ type, config, callback }); return this; }
+  subscribe(callback?: (state: string) => void) { this.status = callback; channels.add(this); queueMicrotask(() => callback?.("SUBSCRIBED")); return this; }
+  unsubscribe() { channels.delete(this); return Promise.resolve(); }
+  send() { return Promise.resolve({}); }
+  track() { return Promise.resolve({}); }
+  presenceState() { return {}; }
+}
+function emitChange(event: Row) {
+  for (const channel of channels) for (const subscription of channel.subscriptions) {
+    if (subscription.type !== "postgres_changes" || subscription.config.table !== event.table || (subscription.config.event !== "*" && subscription.config.event !== event.eventType)) continue;
+    const [key, value] = (subscription.config.filter || "").split("=eq.");
+    if (key && String((event.new || event.old)?.[key]) !== value) continue;
+    queueMicrotask(() => subscription.callback(event));
+  }
+}
+function publish(table: string, mode: string, rows: Row[]) {
+  if (!sharedKey) return;
+  const events = rows.map((row) => ({ schema: "public", table, eventType: mode === "delete" ? "DELETE" : mode === "update" ? "UPDATE" : "INSERT", new: mode === "delete" ? {} : clone(row), old: mode === "delete" ? clone(row) : {} }));
+  localStorage.setItem(sharedKey, JSON.stringify({ tables, serial, events, revision: crypto.randomUUID() }));
+  for (const event of events) emitChange(event);
+}
+if (sharedKey) window.addEventListener("storage", (event) => {
+  if (event.key !== sharedKey || !event.newValue) return;
+  const snapshot = JSON.parse(event.newValue);
+  for (const [table, rows] of Object.entries(snapshot.tables)) tables[table] = clone(rows) as Row[];
+  serial = Math.max(serial, snapshot.serial);
+  for (const change of snapshot.events || []) emitChange(change);
+});
 function hydrate(table: string, row: Row) {
   const value = clone(row);
   if (row.user_id) value.profiles = profiles.find((p) => p.id === row.user_id) || null;
@@ -159,7 +202,7 @@ class Query implements PromiseLike<any> {
     let rows = source.filter((row) => this.filters.every((filter) => filter(row)));
     if (holdActiveReads && this.mode === "select" && this.table === "drafts" && this.singular && rows.some((row) => row.id === "active")) await new Promise<void>((resolve) => heldReads.add(resolve));
     if (this.mode === "insert" || this.mode === "upsert") {
-      rows = (Array.isArray(this.payload) ? this.payload : [this.payload]).map((value) => ({ id: `qa-${++serial}`, created_at: new Date().toISOString(), picked_at: new Date().toISOString(), ...clone(value) }));
+      rows = (Array.isArray(this.payload) ? this.payload : [this.payload]).map((value) => ({ id: `qa-${++serial}`, club_id: "club", created_at: new Date().toISOString(), picked_at: new Date().toISOString(), ...clone(value) }));
       if (this.table === "draft_picks") {
         for (const pick of rows) {
           if (pick.user_id !== userId) return { data: null, error: { message: "Fixture: wrong account" } };
@@ -172,14 +215,14 @@ class Query implements PromiseLike<any> {
     } else if (this.mode === "delete") {
       tables[this.table] = source.filter((row) => !rows.includes(row));
     }
-    if (this.mode !== "select") operations.push({ table: this.table, mode: this.mode, rows: clone(rows) });
+    if (this.mode !== "select") { operations.push({ table: this.table, mode: this.mode, rows: clone(rows) }); publish(this.table, this.mode, rows); }
     for (const { key, ascending } of [...this.orders].reverse()) rows.sort((a, b) => (a[key] < b[key] ? -1 : a[key] > b[key] ? 1 : 0) * (ascending ? 1 : -1));
     rows = rows.slice(this.start, this.end === Infinity ? undefined : this.end + 1).map((row) => hydrate(this.table, row));
     return { data: this.singular ? rows[0] ?? null : rows, error: null, count: rows.length };
   }
   then(resolve: any, reject: any) { return this.run().then(resolve, reject); }
 }
-const channel = () => ({ on() { return this; }, subscribe(callback?: (state: string) => void) { queueMicrotask(() => callback?.("SUBSCRIBED")); return this; }, unsubscribe() {}, send: async () => ({}), track: async () => ({}), presenceState: () => ({}) });
+const channel = () => new FixtureChannel();
 export const supabase = {
   from: (table: string) => new Query(table),
   rpc: async (name: string) => {
@@ -187,9 +230,9 @@ export const supabase = {
     return { data: name === "is_app_admin" ? false : name === "current_user_club_id" ? "club" : name === "server_now" ? new Date().toISOString() : null, error: null };
   },
   functions: { invoke: async (name: string, args?: any) => { calls.push({ function: name, args: clone(args || {}) }); return { data: { success: true, enriched: 0 }, error: null }; } },
-  channel, removeChannel: async () => {}, removeAllChannels: async () => {},
+  channel, removeChannel: async (item: FixtureChannel) => { await item.unsubscribe(); }, removeAllChannels: async () => { channels.clear(); },
   auth: { getSession: async () => ({ data: { session: { access_token: "fixture-only", user: { id: userId } } }, error: null }), getUser: async () => ({ data: { user: { id: userId } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
   storage: { from: () => ({ getPublicUrl: (path: string) => ({ data: { publicUrl: path } }) }) },
 };
-Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads } });
+Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads, setConnection: (status: string) => { for (const item of channels) item.status?.(status); } } });
 export const draftArenaFixture = { tables, userId };

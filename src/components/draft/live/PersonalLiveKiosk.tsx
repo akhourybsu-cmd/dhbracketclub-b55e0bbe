@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { Maximize2, Minimize2, MonitorPlay, MonitorSmartphone, Sparkles, X } from 'lucide-react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { ArrowLeft, Maximize2, Minimize2, MonitorPlay, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { LiveClockDial } from './LiveClockDial';
 import { formatClock, type LiveClockState } from '@/lib/draft/liveDraft';
 import { DraftArenaAppearance } from '@/components/drafts/DraftArenaAppearance';
 import { usePickReveals } from './usePickReveals';
 import { PickRevealOverlay } from './PickRevealOverlay';
+import { kioskSound } from '@/lib/draft/kioskSound';
 
 interface KioskPick {
   id: string;
@@ -16,6 +17,8 @@ interface KioskPick {
 }
 
 interface PersonalLiveKioskProps {
+  /** Presentation scope only; never a source for turn or timer calculations. */
+  draftId?: string;
   draftTitle: string;
   clock: LiveClockState;
   pickerName: string;
@@ -44,14 +47,18 @@ interface PersonalLiveKioskProps {
 type WakeLockHandle = { release: () => Promise<void> };
 
 /**
- * A player's own live-draft kiosk. Opens full screen when they join a live
- * room, keeps the screen awake, and holds everything they need privately:
- * clock, their team, their desk, the board and the live feed.
+ * An explicit entrance to the private player screen. Native full screen and
+ * device sound both require deliberate actions; the room's rules stay shared.
  */
 export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
-  const [open, setOpen] = useState(true);
-  const [isFs, setIsFs] = useState(false);
-  const [view, setView] = useState('board');
+  return <PlayerScreenSession key={props.draftId ?? props.draftTitle} {...props} />;
+}
+
+function PlayerScreenSession(props: PersonalLiveKioskProps) {
+  const [open, setOpen] = useState(false);
+  const [isFs, setIsFs] = useState(() => Boolean(document.fullscreenElement));
+  const [view, setView] = useState(props.hostControls ? 'host' : 'board');
+  const [audioOn, setAudioOn] = useState(false);
   const panelId = useId();
   const activeView = view === 'host' && !props.hostControls ? 'board' : view;
   const views = [
@@ -62,13 +69,24 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
     ...(props.hostControls ? [{ id: 'host', label: 'Host' }] : []),
   ];
   const rootRef = useRef<HTMLDivElement>(null);
+  const entryRef = useRef<HTMLButtonElement>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
   const wakeRef = useRef<WakeLockHandle | null>(null);
+  const wakePending = useRef(false);
+  const ownsFullscreen = useRef(false);
 
   const requestWake = useCallback(async () => {
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<WakeLockHandle> } };
+    const wakeLock = nav.wakeLock;
+    if (!wakeLock || wakeRef.current || wakePending.current || !openRef.current || document.hidden) return;
+    wakePending.current = true;
     try {
-      const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<WakeLockHandle> } };
-      if (nav.wakeLock && !wakeRef.current) wakeRef.current = await nav.wakeLock.request('screen');
+      const handle = await wakeLock.request('screen');
+      if (!openRef.current || document.hidden) await handle.release();
+      else wakeRef.current = handle;
     } catch { /* unsupported or denied */ }
+    finally { wakePending.current = false; }
   }, []);
 
   const releaseWake = useCallback(() => {
@@ -76,17 +94,23 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
     wakeRef.current = null;
   }, []);
 
-  // Keep the screen awake while the kiosk is open; re-acquire on tab return.
+  // The explicit player screen owns wake lock only while it is visible.
   useEffect(() => {
     if (!open) { releaseWake(); return; }
     void requestWake();
-    const onVis = () => { if (document.visibilityState === 'visible') { wakeRef.current = null; void requestWake(); } };
+    const onVis = () => {
+      if (document.hidden) releaseWake();
+      else void requestWake();
+    };
     document.addEventListener('visibilitychange', onVis);
     return () => { document.removeEventListener('visibilitychange', onVis); releaseWake(); };
   }, [open, releaseWake, requestWake]);
 
   useEffect(() => {
-    const onFs = () => setIsFs(Boolean(document.fullscreenElement));
+    const onFs = () => {
+      setIsFs(Boolean(document.fullscreenElement));
+      if (document.fullscreenElement !== document.documentElement) ownsFullscreen.current = false;
+    };
     document.addEventListener('fullscreenchange', onFs);
     return () => document.removeEventListener('fullscreenchange', onFs);
   }, []);
@@ -100,44 +124,37 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
   }, [open]);
 
   const enterFullscreen = async () => {
-    try { await document.documentElement.requestFullscreen?.(); } catch { /* stays in-app full screen */ }
-    void requestWake();
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+        if (document.fullscreenElement === document.documentElement) {
+          if (openRef.current) ownsFullscreen.current = true;
+          else await document.exitFullscreen();
+        }
+      }
+    } catch { /* The in-app player screen remains fully usable. */ }
   };
-  const exitFullscreen = async () => {
+  const exitFullscreen = useCallback(async () => {
     try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* noop */ }
-  };
-
-  // Browsers only allow real full screen after a tap — take the first one.
+    ownsFullscreen.current = false;
+  }, []);
   useEffect(() => {
-    if (!open || isFs) return;
-    const once = () => { void enterFullscreen(); };
-    window.addEventListener('pointerdown', once, { once: true });
-    return () => window.removeEventListener('pointerdown', once);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    return () => {
+      openRef.current = false;
+      if (ownsFullscreen.current) void exitFullscreen();
+    };
+  }, [exitFullscreen]);
 
-  const close = async () => { await exitFullscreen(); setOpen(false); };
-
-  // Cinematic pick reveal — the same suspense sequence the projector shows.
-  const allPicks = props.allPicks ?? [];
-  const nameByPick = new Map(allPicks.map(p => [p.user_id, p.name]));
-  const { reveal, reduceMotion } = usePickReveals({
-    picks: allPicks,
-    loading: false,
-    announce: props.announce ?? true,
-    sound: props.sound ?? true,
-    muted: false,
-    nameFor: userId => (userId ? nameByPick.get(userId) : undefined) ?? 'Player',
-  });
-
-  if (!open) {
-    return createPortal(
-      <button type="button" onClick={() => setOpen(true)} className="da-pk-reopen btn-press" aria-label="Open my live kiosk">
-        <MonitorSmartphone className="w-4 h-4" /> My kiosk
-      </button>,
-      document.body,
-    );
-  }
+  const enter = () => {
+    setView(props.hostControls ? 'host' : 'board');
+    setOpen(true);
+  };
+  const close = () => {
+    openRef.current = false;
+    setOpen(false);
+    if (ownsFullscreen.current) void exitFullscreen();
+  };
+  const soundEnabled = audioOn && (props.sound ?? true);
 
   const { clock, isMyTurn } = props;
   const status = isMyTurn
@@ -146,20 +163,43 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
       ? `You pick in ${props.picksUntilYou}`
       : `${props.pickerName} is picking`;
 
-  return createPortal(
-    <div
+  return <>
+    <section className="da-live-event-entry" aria-label="Live event entrance" data-draft-id={props.draftId}>
+      <span className="da-live-event-entry-mark" aria-hidden="true"><MonitorPlay /></span>
+      <div className="da-live-event-entry-copy">
+        <p className="dl-eyebrow">Live event · Your player screen</p>
+        <h2 className="dl-display">{props.draftTitle}</h2>
+        <p className="da-live-event-entry-meta">Round {props.currentRound}/{props.numRounds} · Pick {Math.min(props.currentPickNumber, props.totalPicks)}/{props.totalPicks}</p>
+        <p role="status">{status}</p>
+      </div>
+      <div className="da-live-event-entry-actions">
+        <button ref={entryRef} type="button" onClick={enter} className="da-cta btn-press"><MonitorPlay aria-hidden="true" /> Enter live draft</button>
+        <span>Private screen · {soundEnabled ? 'Sound on' : 'Sound off'}</span>
+      </div>
+    </section>
+    <DialogPrimitive.Root open={open} onOpenChange={(next) => { if (next) enter(); else close(); }}>
+    <DialogPrimitive.Portal>
+    <DialogPrimitive.Content
       ref={rootRef}
       className="da-mode da-lounge da-pk"
       data-da-palette={props.palette}
       data-my-turn={isMyTurn ? 'true' : undefined}
-      role="dialog"
-      aria-modal="true"
-      aria-label="My live draft kiosk"
+      aria-label="Draft Arena player screen"
+      aria-labelledby={undefined}
+      onOpenAutoFocus={(event) => {
+        event.preventDefault();
+        rootRef.current?.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="true"]')?.focus();
+      }}
+      onCloseAutoFocus={(event) => {
+        event.preventDefault();
+        entryRef.current?.focus({ preventScroll: true });
+      }}
     >
+      <DialogPrimitive.Description className="sr-only">A private player screen for {props.draftTitle}. {status}.</DialogPrimitive.Description>
       <header className="da-pk-top">
         <div className="min-w-0">
-          <p className="dl-eyebrow flex items-center gap-1.5"><span className="da-pk-dot" aria-hidden /> My live kiosk · Private</p>
-          <h2 className="dl-display text-base font-black truncate">{props.draftTitle}</h2>
+          <p className="dl-eyebrow flex items-center gap-1.5"><span className="da-pk-dot" aria-hidden /> Live event · Player screen</p>
+          <DialogPrimitive.Title className="dl-display text-base font-black truncate">{props.draftTitle}</DialogPrimitive.Title>
         </div>
         <div className="flex items-center gap-1.5">
           {props.projectorPath && (
@@ -178,13 +218,27 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
           <button
             type="button"
             className="da-pk-icon btn-press"
+            aria-label="Player sound"
+            aria-pressed={soundEnabled}
+            disabled={props.sound === false}
+            title={props.sound === false ? 'Room sound is disabled' : soundEnabled ? 'Mute sound on this device' : 'Enable sound on this device'}
+            onClick={() => {
+              if (!audioOn) kioskSound.unlock();
+              setAudioOn((current) => !current);
+            }}
+          >
+            {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </button>
+          <button
+            type="button"
+            className="da-pk-icon btn-press"
             onClick={() => (isFs ? void exitFullscreen() : void enterFullscreen())}
-            aria-label={isFs ? 'Exit full screen' : 'Go full screen'}
+            aria-label={isFs ? 'Exit full screen' : 'Enter full screen'}
           >
             {isFs ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
-          <button type="button" className="da-pk-icon btn-press" onClick={() => void close()} aria-label="Close my kiosk">
-            <X className="w-5 h-5" />
+          <button type="button" className="da-pk-icon btn-press" onClick={close} aria-label="Back to event">
+            <ArrowLeft className="w-5 h-5" />
           </button>
         </div>
       </header>
@@ -195,7 +249,7 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
             <LiveClockDial clock={clock} size={96} />
             <div className="min-w-0 flex-1">
               <p className="dl-eyebrow">Round {props.currentRound} of {props.numRounds} · Pick {Math.min(props.currentPickNumber, props.totalPicks)}/{props.totalPicks}</p>
-              <p className="dl-display text-xl font-black leading-tight">{status}</p>
+              <p className="dl-display text-xl font-black leading-tight" role="status">{status}</p>
               {clock.running && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {clock.paused ? 'Clock paused' : clock.expired ? 'Clock expired' : `${formatClock(clock.remainingMs)} left`}
@@ -212,7 +266,7 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
         </aside>
 
         <main className="da-pk-main">
-          <nav className="da-pk-view-tabs" role="tablist" aria-label="My live draft workspace">
+          <nav className="da-pk-view-tabs" role="tablist" aria-label="Player screen workspace">
             {views.map((item, index) => (
               <button
                 type="button"
@@ -279,9 +333,28 @@ export function PersonalLiveKiosk(props: PersonalLiveKioskProps) {
         </main>
       </div>
 
-      {/* Cinematic pick announcement — mirrors the projector */}
-      <PickRevealOverlay reveal={reveal} reduceMotion={reduceMotion} />
-    </div>,
-    document.body,
-  );
+      <PlayerPickReveals picks={props.allPicks ?? []} announce={props.announce ?? true} sound={props.sound ?? true} muted={!audioOn} />
+    </DialogPrimitive.Content>
+    </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  </>;
+}
+
+/** Mounted only after entry, so returning never replays events from a closed screen. */
+function PlayerPickReveals({ picks, announce, sound, muted }: {
+  picks: (KioskPick & { name: string })[];
+  announce: boolean;
+  sound: boolean;
+  muted: boolean;
+}) {
+  const nameByPick = new Map(picks.map((pick) => [pick.user_id, pick.name]));
+  const { reveal, reduceMotion } = usePickReveals({
+    picks,
+    loading: false,
+    announce,
+    sound,
+    muted,
+    nameFor: (userId) => (userId ? nameByPick.get(userId) : undefined) ?? 'Player',
+  });
+  return <div className="da-player-reveal" aria-hidden="true" style={{ pointerEvents: 'none' }}><PickRevealOverlay reveal={reveal} reduceMotion={reduceMotion} /></div>;
 }

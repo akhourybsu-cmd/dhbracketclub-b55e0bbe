@@ -756,3 +756,242 @@ html[data-da-short-viewport="true"] .da-create-stage { flex: 0 0 auto; height: a
 @media (prefers-reduced-motion: reduce) {
   .da-state-skeleton > i { animation: none; }
 }
+
+/* LIVE is an event stage inside the Arena, with its own entrance and rhythm. */
+.da-live-arena.da-arena-shell.da-shell {
+  background: radial-gradient(ellipse at 18% -15%, hsl(202 85% 52% / .14), transparent 52%), radial-gradient(ellipse at 100% 65%, hsl(var(--primary) / .09), transparent 45%), hsl(var(--background)) !important;
+}
+.da-live-arena .da-arena-architecture::before { background-size: 110px 110px; opacity: .55; }
+.da-live-arena .da-arena-architecture > i { border-color: hsl(202 75% 60% / .12); border-radius: 0; transform: rotate(31deg); }
+.da-live-hud { background: hsl(var(--background) / .85); }
+.da-live-badge { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; min-height: 28px; padding: 4px 9px; border: 1px solid hsl(0 72% 57% / .45); border-radius: 7px; background: hsl(0 72% 57% / .09); color: hsl(0 72% 68%); font-size: 9px; font-weight: 900; letter-spacing: .12em; }
+.light .da-live-badge { color: hsl(0 70% 40%); }
+.da-arena-main:has(> .da-live-hub) { overflow: hidden; }
+.da-live-hub { display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; min-width: 0; }
+.da-live-hub-command { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 18px; flex: 0 0 auto; padding: 24px; overflow: hidden; isolation: isolate; border: 1px solid hsl(var(--primary) / .3); border-radius: 20px; background: linear-gradient(115deg, hsl(202 75% 50% / .1), transparent 65%), hsl(var(--card)); }
+.da-live-hub-command::after { content: ""; position: absolute; z-index: -1; top: -80px; right: 12%; width: 120px; height: 400px; transform: rotate(32deg); background: linear-gradient(90deg, transparent, hsl(200 90% 70% / .1), transparent); pointer-events: none; }
+.da-live-hub-command h1 { margin: 7px 0; font: 800 clamp(28px, 4vw, 44px)/1 'Space Grotesk', sans-serif; letter-spacing: -.055em; }
+.da-live-hub-command > div { min-width: 0; }
+.da-live-hub-command p { color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
+.da-live-join { display: flex; align-items: end; gap: 9px; flex: 0 0 auto; min-width: 0; padding: 13px; border: 1px solid hsl(var(--border)); border-radius: 14px; background: hsl(var(--card) / .75); }
+.da-live-join label { display: block; margin-bottom: 6px; font-size: 10px; font-weight: 800; }
+.da-live-join > div { flex: 1 1 0; min-width: 0; }
+.da-live-join input { min-width: 0; min-height: 44px; width: 100%; border-radius: 10px; font-size: 15px; font-weight: 800; letter-spacing: .14em; }
+.da-live-join button { flex: 0 0 auto; min-height: 44px; padding-inline: 17px; border-radius: 10px; font-size: 11px; font-weight: 800; }
+.da-live-room-scroll { flex: 1 1 0; min-height: 0; min-width: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: hsl(var(--primary) / .35) transparent; padding: 2px 2px 14px; }
+.da-live-room-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+.da-live-room-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; min-height: 190px; padding: 17px; border: 1px solid hsl(var(--border)); border-radius: 16px; background: linear-gradient(130deg, hsl(200 85% 55% / .045), transparent), hsl(var(--card)); }
+.da-live-room-card h2, .da-live-room-card h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font: 800 21px/1.15 'Space Grotesk', sans-serif; letter-spacing: -.035em; }
+.da-live-room-card p { color: hsl(var(--muted-foreground)); font-size: 11px; }
+.da-live-create .da-create-stage { background: linear-gradient(135deg, hsl(202 85% 52% / .045), transparent 60%), hsl(var(--card)) !important; }
+.da-live-create-brand { align-items: center; gap: 10px; }
+.da-live-create-brand > div { min-width: 0; }
+.da-live-create .da-create-header h1 { font-size: clamp(22px, 4vw, 31px); }
+.da-live-create .da-live-badge { margin-left: auto; }
+.da-live-stage-tabs { margin-bottom: 14px; }
+.da-live-stage-tabs > button { color: hsl(var(--muted-foreground)); background: hsl(var(--secondary) / .5); }
+.da-live-stage-tabs > button[aria-selected="true"] { color: hsl(var(--foreground)); background: hsl(var(--primary) / .1); border-color: hsl(var(--primary) / .55); box-shadow: inset 0 -2px 0 hsl(var(--primary)); }
+.da-live-review-show { margin: 14px 0; }
+.da-live-review-show > span { padding: 5px 7px; border: 1px solid hsl(var(--primary) / .25); border-radius: 6px; background: hsl(var(--primary) / .06); font-size: 9px; }
+.da-live-create-note { padding-top: 12px; border-top: 1px solid hsl(var(--border)); }
+.da-live-event-room:has(.da-room-panel[data-room-view="board"] .da-greenroom) > .da-room-topbar { display: none; }
+.da-room-stage:has(> .da-greenroom) { height: 100%; min-height: 0; }
+.da-greenroom { display: flex; flex-direction: column; gap: 16px; height: 100%; min-height: 0; padding: 2px; }
+.da-greenroom > :is(header,.da-greenroom-readiness,footer) { flex: 0 0 auto; }
+.da-greenroom-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: hsl(var(--primary) / .35) transparent; padding: 2px 2px 8px; }
+.da-greenroom-hero { position: relative; overflow: hidden; padding: 23px; border: 1px solid hsl(var(--primary) / .3); border-radius: 18px; background: radial-gradient(ellipse at 100% 0%, hsl(202 85% 52% / .12), transparent 65%), hsl(var(--card)); }
+.da-greenroom-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: hsl(var(--primary)); font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+.da-greenroom-eyebrow > span { margin-left: auto; color: hsl(var(--muted-foreground)); letter-spacing: .09em; }
+.da-greenroom-hero h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 27ch; margin: 11px 0 8px; font-size: clamp(26px, 4vw, 40px); font-weight: 800; line-height: 1.07; letter-spacing: -.05em; overflow-wrap: anywhere; }
+.da-greenroom-hero > p:last-child { max-width: 54ch; color: hsl(var(--muted-foreground)); font-size: 12px; line-height: 1.5; }
+.da-greenroom-readiness { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0 4px; }
+.da-greenroom-readiness > span { display: flex; align-items: center; gap: 6px; min-width: 0; color: hsl(var(--muted-foreground)); font-size: 11px; }
+.da-greenroom-readiness .is-ready { color: hsl(var(--success)); }
+.da-greenroom-connection > i { flex: 0 0 5px; height: 5px; border-radius: 50%; background: hsl(var(--muted-foreground)); }
+.da-greenroom-connection[data-connected="true"] > i { background: hsl(var(--success)); }
+.da-greenroom-main { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; }
+.da-greenroom :is(.da-greenroom-roster,.da-greenroom-rules,.da-greenroom-player-invite,.da-greenroom-projector) { min-width: 0; padding: 16px; border: 1px solid hsl(var(--border)); border-radius: 15px; background: hsl(var(--card) / .8); }
+.da-greenroom-roster > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.da-greenroom h3 { font-size: 14px; font-weight: 800; }
+.da-greenroom-roster header > span { font-size: 10px; color: hsl(var(--muted-foreground)); }
+.da-greenroom-roster ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.da-greenroom-roster li { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 44px; padding: 6px; border: 1px solid hsl(var(--border) / .5); border-radius: 10px; }
+.da-greenroom-roster li > span:last-child { min-width: 0; overflow-wrap: anywhere; font-size: 11px; font-weight: 700; }
+.da-greenroom-avatar { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border: 1px solid hsl(var(--primary) / .25); border-radius: 50%; background: hsl(var(--primary) / .09); color: hsl(var(--primary)); font-size: 10px; font-weight: 800; }
+.da-greenroom-rules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.da-greenroom-rules article { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0; }
+.da-greenroom-rules article > svg { width: 18px; height: 18px; color: hsl(var(--primary)); }
+.da-greenroom-rules article > span { color: hsl(var(--muted-foreground)); font-size: 9px; }
+.da-greenroom-rules article > strong { font: 700 13px/1.4 'Space Grotesk', sans-serif; overflow-wrap: anywhere; }
+.da-greenroom-rules > p { grid-column: 1/-1; padding-top: 11px; border-top: 1px solid hsl(var(--border) / .6); color: hsl(var(--muted-foreground)); font-size: 10px; line-height: 1.5; }
+.da-greenroom-membership:empty { display: none; }
+.da-greenroom-actions > .da-greenroom-membership { flex: 0 0 100%; }
+.da-greenroom-membership > button { min-height: 48px; margin: 0; }
+.da-greenroom-share-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; }
+.da-greenroom-share-grid section > header { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+.da-greenroom-share-grid header > svg { flex: 0 0 22px; width: 22px; height: 22px; color: hsl(var(--primary)); }
+.da-greenroom-share-grid header > div { min-width: 0; }
+.da-greenroom-share-grid header p { margin-top: 4px; color: hsl(var(--muted-foreground)); font-size: 10px; line-height: 1.5; }
+.da-greenroom-share-grid h3 > span { margin-left: 7px; color: hsl(var(--muted-foreground)); font-size: 9px; font-weight: 600; }
+.da-greenroom-invite-url { display: block; min-height: 44px; padding: 12px; margin-bottom: 8px; border: 1px solid hsl(var(--border)); border-radius: 10px; background: hsl(var(--secondary) / .5); overflow-wrap: anywhere; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-greenroom-share-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.da-greenroom-share-actions > :is(a,button) { flex: 1 1 130px; min-height: 44px; padding: 8px 10px; text-align: center; line-height: 1.4; }
+.da-greenroom-code { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 11px; padding-top: 10px; border-top: 1px solid hsl(var(--border)); }
+.da-greenroom-code > span { color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-greenroom-code > code { color: hsl(var(--primary)); font: 800 17px/1 'Space Grotesk', sans-serif; letter-spacing: .14em; }
+.da-greenroom-code > a { display: flex; align-items: center; min-height: 44px; margin-left: auto; font-size: 10px; font-weight: 700; }
+.da-greenroom-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 11px 0 2px; border-top: 1px solid hsl(var(--border)); background: hsl(var(--background) / .97); }
+.da-greenroom-actions > button { flex: 1 1 180px; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 15px; border-radius: 11px; font-size: 11px; font-weight: 800; }
+.da-greenroom-actions > p { flex: 0 0 100%; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-live-event-entry { display: flex; align-items: center; gap: 18px; margin-bottom: 16px; padding: 23px; border: 1px solid hsl(var(--primary) / .35); border-radius: 18px; background: radial-gradient(ellipse at 0% 0%, hsl(200 90% 60% / .13), transparent 65%), hsl(var(--card)); animation: da-live-stage-arrive 500ms ease-out both; }
+.da-live-event-entry-mark { display: grid; place-items: center; flex: 0 0 56px; width: 56px; height: 64px; border: 1px solid hsl(var(--primary) / .3); border-radius: 16px; color: hsl(var(--primary)); background: hsl(var(--primary) / .07); }
+.da-live-event-entry-mark svg { width: 25px; height: 25px; }
+.da-live-event-entry-copy { flex: 1; min-width: 0; }
+.da-live-event-entry-copy h2 { margin: 7px 0; font: 800 clamp(21px, 3vw, 29px)/1.1 'Space Grotesk', sans-serif; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.da-live-event-entry-copy p { color: hsl(var(--muted-foreground)); font-size: 11px; line-height: 1.5; }
+.da-live-event-entry-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; margin-top: 10px; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-live-event-entry-actions { display: flex; flex-direction: column; gap: 7px; flex: 0 0 auto; }
+.da-live-event-entry-actions button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 11px 17px; border-radius: 11px; font-size: 11px; font-weight: 800; }
+.da-live-finale { display: flex; align-items: center; gap: 18px; padding: 22px; margin-bottom: 18px; border: 1px solid hsl(var(--primary) / .4); border-radius: 18px; background: radial-gradient(ellipse at 0% 0%, hsl(var(--primary) / .13), transparent 65%), hsl(var(--card)); }
+.da-live-finale-mark { display: grid; place-items: center; flex: 0 0 52px; width: 52px; height: 60px; color: hsl(var(--primary)); border: 1px solid hsl(var(--primary) / .4); border-radius: 14px; }
+.da-live-finale h2 { margin: 6px 0; font-size: clamp(22px, 4vw, 32px); line-height: 1.1; font-weight: 800; letter-spacing: -.04em; }
+.da-live-finale p:last-child { color: hsl(var(--muted-foreground)); font-size: 11px; }
+.da-live-command-signals [data-connection]:not([data-connection="connected"]) { color: hsl(var(--muted-foreground)); }
+.da-live-command-signals [data-connection]:not([data-connection="connected"]) > i { background: currentColor; animation: none; }
+@keyframes da-live-stage-arrive { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1023px) {
+  .da-live-room-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .da-greenroom-main, .da-greenroom-share-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .da-live-hub { gap: 8px; }
+  .da-live-hub-command { padding: 16px; gap: 12px; border-radius: 16px; }
+  .da-live-hub-command h1 { font-size: 29px; }
+  .da-live-hub-command > a { min-height: 44px; padding: 10px 12px; font-size: 10px; }
+  .da-live-hub-command p { font-size: 10px; }
+  .da-live-join { padding: 10px; }
+  .da-live-room-grid { grid-template-columns: 1fr; }
+  .da-live-room-card { min-height: 175px; padding: 14px; }
+  .da-greenroom { gap: 12px; }
+  .da-greenroom-hero { padding: 17px; }
+  .da-greenroom-main, .da-greenroom-share-grid { gap: 12px; }
+  .da-greenroom :is(.da-greenroom-roster,.da-greenroom-rules,.da-greenroom-player-invite,.da-greenroom-projector) { padding: 13px; }
+  .da-greenroom-readiness { gap: 7px 12px; }
+  .da-greenroom-readiness > span { font-size: 10px; }
+  .da-greenroom-roster ul { grid-template-columns: 1fr; }
+  .da-greenroom-actions > button { flex-basis: 125px; }
+  .da-live-event-entry { flex-wrap: wrap; gap: 12px; padding: 16px; }
+  .da-live-event-entry-mark { flex-basis: 42px; width: 42px; height: 50px; border-radius: 12px; }
+  .da-live-event-entry-actions { flex: 0 0 100%; }
+  .da-live-event-entry-actions button { width: 100%; }
+  .da-live-finale { padding: 16px; gap: 12px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .da-live-hub { gap: 6px; }
+  .da-live-hub-command { padding: 10px 16px; }
+  .da-live-hub-command h1 { font-size: 25px; margin: 3px 0; }
+  .da-live-hub-command p { font-size: 10px; }
+  .da-live-join { padding: 7px 10px; }
+  .da-live-join label { margin-bottom: 3px; }
+  .da-live-event-entry { padding: 14px; margin-bottom: 10px; }
+  .da-live-create .da-create-stage { padding: 10px 12px; }
+  .da-greenroom { gap: 8px; }
+  .da-greenroom-hero { padding: 11px 14px; }
+  .da-greenroom-hero h2 { margin: 5px 0; font-size: 23px; -webkit-line-clamp: 1; }
+  .da-greenroom-hero > p:last-child { display: none; }
+}
+
+.da-live-hud-badge { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 11px; border: 1px solid hsl(0 72% 57% / .45); border-radius: 11px; background: hsl(0 72% 57% / .075); color: hsl(var(--foreground)); font-size: 10px; font-weight: 900; letter-spacing: .09em; }
+.da-live-hud-badge > svg { color: hsl(0 72% 57%); }
+.da-live-hub-command { align-items: stretch; }
+.da-live-hub-hero { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 13px; isolation: isolate; }
+.da-live-hub-copy { min-width: 0; }
+.da-live-hub-copy .da-arena-eyebrow { display: flex; align-items: center; gap: 7px; color: hsl(var(--primary)); font-size: 9px; }
+.da-live-dot { display: inline-block; flex: 0 0 5px; width: 5px; height: 5px; border-radius: 50%; background: hsl(0 75% 59%); box-shadow: 0 0 8px hsl(0 75% 59% / .3); }
+.da-live-club { display: block; max-width: 34ch; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-live-hub-stage { position: absolute; z-index: -1; top: 50%; right: 9%; transform: translateY(-50%); display: grid; place-items: center; width: 120px; height: 120px; color: hsl(202 80% 60% / .1); }
+.da-live-hub-stage > svg { width: 75px; height: 75px; }
+.da-live-hub-stage > i { position: absolute; inset: 0; border: 1px solid hsl(202 80% 60% / .12); border-radius: 50%; }
+.da-live-hub-stage > i:last-child { inset: 13px; }
+.da-live-host-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 15px; border-radius: 11px; font-size: 11px; font-weight: 800; }
+.da-live-host-action svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.da-live-join { display: block; flex: 0 1 350px; align-self: center; min-width: 0; }
+.da-live-join-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; }
+.da-live-join-heading > svg { width: 15px; height: 15px; color: hsl(var(--primary)); }
+.da-live-join-heading > label { margin: 0; }
+.da-live-join-heading > span { margin-left: auto; color: hsl(var(--muted-foreground)); font-size: 9px; }
+.da-live-join-fields { display: flex; align-items: stretch; gap: 7px; }
+.da-live-code-input { position: relative; display: block; flex: 1 1 0; min-width: 0; }
+.da-live-code-input > svg { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); width: 14px; height: 14px; color: hsl(var(--muted-foreground)); pointer-events: none; }
+.da-live-code-input input { padding-inline: 30px 8px; }
+.da-live-find-action { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; }
+.da-live-find-action > svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.da-live-join-help, .da-live-join-error { margin-top: 8px; font-size: 10px !important; line-height: 1.4 !important; }
+.da-live-join-error { color: hsl(var(--destructive)) !important; }
+.da-live-hub-workspace { display: flex; flex-direction: column; gap: 8px; flex: 1 1 0; min-height: 0; min-width: 0; }
+.da-live-rooms-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; min-height: 44px; }
+.da-live-rooms-heading > h2 { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; }
+.da-live-rooms-heading > h2 > span { color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-live-refresh > svg { width: 16px; height: 16px; }
+.da-live-status-tabs { display: flex; flex: 0 0 auto; gap: 4px; width: 100%; min-height: 48px; padding: 3px; border: 1px solid hsl(var(--border)); border-radius: 12px; background: hsl(var(--card) / .8); scrollbar-width: none; }
+.da-live-status-tabs > button { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 9px; font-size: 11px; font-weight: 800; }
+.da-live-status-tabs > button > span { color: hsl(var(--muted-foreground)); font-size: 9px; }
+.da-live-status-tabs > button[data-state="active"] { background: hsl(var(--primary) / .14); border-color: hsl(var(--primary) / .45); box-shadow: inset 0 -2px 0 hsl(var(--primary)); }
+.da-live-room-panel { margin: 0; min-width: 0; }
+.da-live-room-card { color: hsl(var(--foreground)); transition: border-color 150ms; }
+.da-live-room-card:hover { border-color: hsl(var(--primary) / .6); }
+.da-live-room-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.da-live-room-status { display: flex; align-items: center; gap: 5px; color: hsl(var(--primary)); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.da-live-room-status > svg { width: 12px; height: 12px; }
+.da-live-owned { padding: 4px 6px; border-radius: 5px; background: hsl(var(--primary) / .09); color: hsl(var(--primary)); font-size: 8px; font-weight: 700; }
+.da-live-room-meta { display: flex; align-items: center; justify-content: space-between; gap: 9px; color: hsl(var(--muted-foreground)); font-size: 10px; }
+.da-live-room-meta > code { font: 700 11px/1 'Space Grotesk', sans-serif; letter-spacing: .12em; }
+.da-live-room-card > footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 39px; padding-top: 10px; margin-top: auto; border-top: 1px solid hsl(var(--border) / .6); color: hsl(var(--primary)); font-size: 11px; font-weight: 800; }
+.da-live-room-card > footer > svg { width: 16px; height: 16px; }
+.da-live-room-state, .da-live-hub-pending, .da-live-hub-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 180px; padding: 22px; text-align: center; }
+.da-live-room-state > svg, .da-live-hub-pending > svg, .da-live-hub-empty > svg { width: 25px; height: 25px; color: hsl(var(--primary)); }
+.da-live-room-state h3 { font: 800 21px/1.2 'Space Grotesk', sans-serif; }
+.da-live-room-state p { max-width: 35ch; font-size: 11px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.da-live-event-entry-actions > span { max-width: 24ch; color: hsl(var(--muted-foreground)); font-size: 9px; line-height: 1.5; text-align: center; }
+.da-player-reveal .da-kiosk-reveal { inset: auto 16px 20px auto; width: min(420px, calc(100vw - 32px)); height: auto; min-height: 94px; max-height: 28dvh; padding: 14px; overflow: hidden; border: 1px solid hsl(var(--primary) / .45); border-radius: 16px; background: hsl(var(--popover) / .96); box-shadow: 0 12px 40px hsl(0 0% 0% / .25); }
+.da-player-reveal .da-kiosk-reveal-status { font-size: clamp(15px, 3vw, 22px); }
+.da-player-reveal .da-kiosk-reveal-in { font-size: clamp(18px, 4vw, 25px); }
+.da-player-reveal .da-kiosk-reveal-card { width: 100%; padding: 10px; border-radius: 10px; }
+.da-player-reveal .da-kiosk-reveal-pick { font-size: clamp(17px, 4vw, 26px); line-height: 1.15; }
+.da-player-reveal .da-kiosk-reveal-name { font-size: 11px; }
+.da-player-reveal .da-kiosk-reveal-kicker { font-size: 8px; }
+@media (max-width: 640px) {
+  .da-live-hub-command { display: block; padding: 14px; }
+  .da-live-hub-hero { flex-direction: row; align-items: center; gap: 10px; }
+  .da-live-hub-copy { flex: 1 1 0; }
+  .da-live-hub-command h1 { font-size: 26px; }
+  .da-live-hub-stage { display: none; }
+  .da-live-club { max-width: 25ch; }
+  .da-live-host-action { flex: 0 0 auto; gap: 5px; max-width: 106px; padding: 9px; line-height: 1.3; font-size: 10px; }
+  .da-live-host-action > svg:last-child { display: none; }
+  .da-live-join { margin-top: 13px; padding: 10px; }
+  .da-live-find-action { padding-inline: 11px !important; }
+  .da-live-status-tabs > button { padding-inline: 9px; font-size: 10px; }
+  .da-pk .da-pk-top { flex-wrap: wrap; gap: 7px; }
+  .da-pk-top > div:first-child { flex: 1 1 100%; }
+  .da-pk-top > div:last-child { margin-left: auto; }
+}
+@media (max-height: 740px) and (max-width: 640px) {
+  .da-live-hub-command h1 { font-size: 23px; margin: 4px 0; }
+  .da-live-hub-copy > p:last-of-type, .da-live-club { display: none; }
+  .da-live-join { margin-top: 10px; padding: 8px; }
+  .da-live-join-help { font-size: 9px !important; margin-top: 5px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .da-live-hub-command { padding: 10px 14px; gap: 18px; }
+  .da-live-hub-hero { gap: 6px; }
+  .da-live-hub-copy > p:last-of-type, .da-live-club { display: none; }
+  .da-live-hub-command h1 { font-size: 23px; }
+  .da-live-join { flex-basis: 340px; padding: 8px; }
+  .da-live-hub-workspace { position: relative; }
+  .da-live-rooms-heading { position: absolute; top: 0; right: 0; z-index: 2; }
+  .da-live-rooms-heading > h2 { display: none; }
+  .da-live-status-tabs { padding-right: 48px; }
+}
+html[data-da-short-viewport="true"] .da-live-hub-hero { display: none; }
+html[data-da-short-viewport="true"] .da-live-join { margin-top: 0; }

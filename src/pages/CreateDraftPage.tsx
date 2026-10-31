@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { DaInfoRow } from '@/components/draft/ui/DraftKit';
 
 const STEPS = ['Basics', 'Judging', 'Format', 'Review'] as const;
+const LIVE_STEPS = ['Topic', 'Rules', 'Stage', 'Review'] as const;
 import { Bookmark, ArrowLeft, Sparkles, Radio, MonitorPlay } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useFeatureFlag } from '@/hooks/useFeatureFlags';
@@ -25,7 +26,10 @@ import {
 export default function CreateDraftPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { enabled: liveEnabled } = useFeatureFlag('live-draft');
+  const location = useLocation();
+  const dedicatedLive = location.pathname.replace(/\/+$/, '') === '/drafts/live/create';
+  const { enabled: liveEnabled, loading: liveFlagLoading } = useFeatureFlag('live-draft');
+  const reduce = useReducedMotion();
   const [step, setStep] = useState(0);
   const [topic, setTopic] = useState('');
   const [description, setDescription] = useState('');
@@ -40,11 +44,44 @@ export default function CreateDraftPage() {
   const [kioskSoundOn, setKioskSoundOn] = useState(true);
   const [ceremony, setCeremony] = useState(true);
   const [broadcast, setBroadcast] = useState(true);
+  const [stagePanel, setStagePanel] = useState<'clock' | 'presentation'>('clock');
+  const creating = useRef(false);
+  const steps = dedicatedLive ? LIVE_STEPS : STEPS;
+  const wantsLive = dedicatedLive || isLive;
+  const liveUnavailable = liveFlagLoading || !liveEnabled;
+  const submitDisabled = loading || !topic.trim() || (step === steps.length - 1 && wantsLive && liveUnavailable);
+  const presentationChoices: [string, boolean, (value: boolean) => void][] = [
+    ['Announce each pick on the big screen', announce, setAnnounce],
+    ['Ticker tape of recent picks', ticker, setTicker],
+    ['Projector sound effects', kioskSoundOn, setKioskSoundOn],
+    ['Pre-draft order ceremony', ceremony, setCeremony],
+    ['Broadcast moments and milestones', broadcast, setBroadcast],
+  ];
+  const roundsControl = (
+    <div className={dedicatedLive ? 'da-live-rules-rounds' : undefined}>
+      <p className="form-label flex items-baseline justify-between">
+        <span>Rounds</span>
+        <span className="text-[10px] font-semibold normal-case tracking-normal text-muted-foreground/70">{numRounds} picks each</span>
+      </p>
+      <div className="flex gap-2" role="group" aria-label="Rounds">
+        {[3, 5, 7, 10].map(n => (
+          <button key={n} type="button" onClick={() => setNumRounds(n)} aria-pressed={numRounds === n}
+            className={`flex-1 min-h-11 py-2.5 rounded-lg text-xs font-bold transition-all btn-press ${numRounds === n ? 'shadow-md' : 'text-muted-foreground'}`}
+            style={numRounds === n
+              ? { background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', boxShadow: 'inset 0 1px 0 hsl(var(--foreground) / 0.12)' }
+              : { background: 'hsl(var(--muted) / 0.6)', border: '1px solid hsl(var(--gold) / 0.18)' }}>
+            {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !topic.trim() || creating.current || (wantsLive && liveUnavailable)) return;
 
+    creating.current = true;
     setLoading(true);
     try {
       // Create competition
@@ -71,7 +108,7 @@ export default function CreateDraftPage() {
           num_rounds: numRounds,
           status: 'setup',
           ai_context: trimmedCtx ? trimmedCtx : null,
-          ...(liveEnabled && isLive
+          ...(liveEnabled && wantsLive
             ? {
                 is_live: true,
                 kiosk_code: newKioskCode(),
@@ -89,7 +126,7 @@ export default function CreateDraftPage() {
                 ceremony_enabled: ceremony,
               }
             : {}),
-        } as any)
+        })
         .select()
         .single();
       if (draftErr) throw draftErr;
@@ -111,39 +148,41 @@ export default function CreateDraftPage() {
         metadata: { topic: topic.trim() },
       });
 
-      toast.success('Draft created!');
-      navigate(`/drafts/${draft.id}`);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to create draft');
+      toast.success(dedicatedLive ? 'Live event created!' : 'Draft created!');
+      navigate(dedicatedLive ? `/drafts/live/${draft.id}` : `/drafts/${draft.id}`);
+    } catch (err: unknown) {
+      toast.error(err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' ? err.message : 'Failed to create draft');
     } finally {
+      creating.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto pb-6 da-ledger-page da-create-page" data-create-step={step + 1}>
+    <div className={`max-w-xl mx-auto pb-6 da-ledger-page da-create-page${dedicatedLive ? ' da-live-create' : ''}`} data-create-step={step + 1} data-create-mode={dedicatedLive ? 'live' : 'standard'}>
       <div className="flex items-center gap-2 mb-4 da-create-header">
-        <Link to="/drafts" className="da-back" aria-label="Back to Drafts">
+        <Link to={dedicatedLive ? '/drafts/live' : '/drafts'} className="da-back" aria-label={dedicatedLive ? 'Back to LIVE Arena' : 'Back to Drafts'}>
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
+          initial={reduce ? false : { opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="page-header mb-0 flex-1"
+          className={`page-header mb-0 flex-1${dedicatedLive ? ' da-live-create-brand' : ''}`}
         >
           <div className="da-page-icon">
-            <Bookmark className="w-5 h-5" />
+            {dedicatedLive ? <Radio className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
           </div>
           <div>
-            <h1 className="page-header-title dl-display">Create Draft</h1>
-            <p className="page-header-subtitle">Set up a snake draft for the crew</p>
+            <h1 className="page-header-title dl-display">{dedicatedLive ? 'Draft Arena LIVE' : 'Create Draft'}</h1>
+            <p className="page-header-subtitle">{dedicatedLive ? 'Host a live event' : 'Set up a snake draft for the crew'}</p>
           </div>
+          {dedicatedLive && <span className="da-live-badge" aria-label="LIVE event"><Radio className="h-3 w-3" aria-hidden="true" />LIVE</span>}
         </motion.div>
       </div>
 
-      <motion.form onSubmit={(e) => { if (step < STEPS.length - 1) { e.preventDefault(); if (topic.trim()) setStep(step + 1); return; } handleCreate(e); }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="space-y-5 da-create-form">
+      <motion.form aria-label={dedicatedLive ? 'Create live event' : 'Create draft'} onSubmit={(e) => { if (step < steps.length - 1) { e.preventDefault(); if (topic.trim()) setStep(step + 1); return; } void handleCreate(e); }} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: reduce ? 0 : 0.05 }} className="space-y-5 da-create-form">
         <ol className="flex items-center gap-1.5 da-create-steps" aria-label="Steps">
-          {STEPS.map((label, i) => (
+          {steps.map((label, i) => (
             <li key={label} className="flex-1">
               <button type="button" disabled={i > 0 && !topic.trim()} onClick={() => setStep(i)}
                 className="w-full text-left min-h-[44px] disabled:opacity-50" aria-current={i === step ? 'step' : undefined}>
@@ -156,12 +195,13 @@ export default function CreateDraftPage() {
           ))}
         </ol>
         <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={step} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2 }}
-          className="da-glass da-ledger-section p-5 space-y-5 da-create-stage" aria-label={`${STEPS[step]} setup`}>
+        <motion.div key={step} initial={reduce ? false : { opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={reduce ? undefined : { opacity: 0, x: -12 }} transition={{ duration: reduce ? 0 : 0.2 }}
+          className="da-glass da-ledger-section p-5 space-y-5 da-create-stage" aria-label={`${steps[step]} setup`}>
           {step === 0 && (<>
           <div>
-            <label className="form-label">Topic</label>
+            <label className="form-label" htmlFor="draft-topic">Topic</label>
             <Input
+              id="draft-topic"
               required
               value={topic}
               onChange={e => setTopic(e.target.value)}
@@ -171,8 +211,9 @@ export default function CreateDraftPage() {
             />
           </div>
           <div>
-            <label className="form-label">Description <span className="normal-case font-normal tracking-normal">(optional)</span></label>
+            <label className="form-label" htmlFor="draft-description">Description <span className="normal-case font-normal tracking-normal">(optional)</span></label>
             <Input
+              id="draft-description"
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="What are we drafting?"
@@ -182,6 +223,7 @@ export default function CreateDraftPage() {
           </div>
           </>)}
           {step === 1 && (<>
+          {dedicatedLive && roundsControl}
           {/* AI Judging Context — elevated into a gold "smart-assist" panel so
               it reads as the field that steers how the AI report judges picks,
               distinct from the plain topic/description inputs. */}
@@ -193,10 +235,11 @@ export default function CreateDraftPage() {
               <span className="inline-flex items-center justify-center w-5 h-5 rounded-md" style={{ background: 'hsl(var(--gold) / 0.16)' }}>
                 <Sparkles className="w-3 h-3" style={{ color: 'hsl(var(--gold))' }} />
               </span>
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: 'hsl(var(--gold))' }}>AI Judging Context</span>
+              <label htmlFor="draft-judging-context" className="text-[11px] font-extrabold uppercase tracking-[0.12em]" style={{ color: 'hsl(var(--gold))' }}>AI Judging Context</label>
               <span className="text-[10px] font-medium text-muted-foreground/60 normal-case tracking-normal">optional</span>
             </div>
             <Textarea
+              id="draft-judging-context"
               value={aiContext}
               onChange={e => setAiContext(e.target.value)}
               placeholder={'e.g. "Best Villains of All Time — include movies, TV, video games, comics, anime, books, and mythology. Don\u2019t limit to movie villains."'}
@@ -210,9 +253,55 @@ export default function CreateDraftPage() {
           </div>
 
           </>)}
-          {step === 2 && (<>
+          {step === 2 && dedicatedLive && (<div className="da-live-stage-settings">
+            <div className="da-live-stage-tabs grid grid-cols-2 gap-2" role="tablist" aria-label="LIVE stage settings">
+              {(['clock', 'presentation'] as const).map((panel) => <button
+                key={panel} type="button" role="tab" id={`live-stage-${panel}`} aria-selected={stagePanel === panel}
+                aria-controls="live-stage-panel" tabIndex={stagePanel === panel ? 0 : -1}
+                className="min-h-11 rounded-xl border border-border px-3 text-xs font-extrabold"
+                onClick={() => setStagePanel(panel)}
+                onKeyDown={(event) => {
+                  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                  event.preventDefault();
+                  const next = event.key === 'Home' ? 'clock' : event.key === 'End' ? 'presentation' : stagePanel === 'clock' ? 'presentation' : 'clock';
+                  setStagePanel(next);
+                  document.getElementById(`live-stage-${next}`)?.focus();
+                }}
+              >{panel === 'clock' ? 'Clock' : 'Presentation'}</button>)}
+            </div>
+            <div id="live-stage-panel" role="tabpanel" aria-labelledby={`live-stage-${stagePanel}`} className="da-live-stage-panel">
+              {stagePanel === 'clock' ? <div className="da-live-clock-settings space-y-3">
+                <div>
+                  <p className="form-label">Time per pick</p>
+                  <div className="da-live-clock-options grid grid-cols-4 gap-1.5" role="group" aria-label="Time per pick">
+                    {PICK_SECONDS_OPTIONS.map((seconds) => <button key={seconds} type="button" aria-pressed={pickSeconds === seconds}
+                      onClick={() => setPickSeconds(seconds)} className={`min-h-11 rounded-lg border px-2 text-xs font-bold ${pickSeconds === seconds ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}>
+                      {seconds >= 60 && seconds % 60 === 0 ? `${seconds / 60}m` : `${seconds}s`}
+                    </button>)}
+                  </div>
+                </div>
+                <div>
+                  <p className="form-label">When the clock hits zero</p>
+                  <div className="da-live-timeout-options grid grid-cols-3 gap-1.5" role="group" aria-label="Clock expiry">
+                    {(['alert', 'auto_skip', 'none'] as PickTimeoutBehavior[]).map((behavior) => <button key={behavior} type="button" aria-pressed={timeoutBehavior === behavior}
+                      onClick={() => setTimeoutBehavior(behavior)} className={`min-h-11 rounded-lg border p-2 text-[11px] font-bold leading-tight ${timeoutBehavior === behavior ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}>
+                      {TIMEOUT_BEHAVIOR_LABELS[behavior]}
+                    </button>)}
+                  </div>
+                  <p className="da-live-timeout-hint mt-2 text-[10px] leading-snug text-muted-foreground" role="status">{TIMEOUT_BEHAVIOR_HINTS[timeoutBehavior]}</p>
+                </div>
+              </div> : <div className="da-live-presentation-options space-y-2">
+                {presentationChoices.map(([label, value, set]) => <button key={label} type="button" aria-pressed={value} onClick={() => set(!value)}
+                  className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-border p-2.5 text-left">
+                  <span className="text-[11px] font-semibold leading-snug">{label}</span>
+                  <span className={`relative h-[22px] w-10 shrink-0 rounded-full ${value ? 'bg-primary' : 'bg-muted'}`} aria-hidden="true"><span className="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-background" style={{ left: value ? 20 : 2 }} /></span>
+                </button>)}
+              </div>}
+            </div>
+          </div>)}
+          {step === 2 && !dedicatedLive && (<>
           {/* Live draft hosting — host the room in person, project the board. */}
-          {liveEnabled && (
+          {(liveEnabled || isLive) && (
             <div
               className="rounded-xl p-3.5"
               style={{
@@ -309,44 +398,24 @@ export default function CreateDraftPage() {
             </div>
           )}
 
-          <div>
-            <label className="form-label flex items-baseline justify-between">
-              <span>Rounds</span>
-              <span className="text-[10px] font-semibold normal-case tracking-normal text-muted-foreground/70">{numRounds} picks each</span>
-            </label>
-            <div className="flex gap-2">
-              {[3, 5, 7, 10].map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => setNumRounds(n)}
-                  className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all btn-press ${
-                    numRounds === n ? 'shadow-md' : 'text-muted-foreground'
-                  }`}
-                  style={
-                    numRounds === n
-                      ? {
-                          background: 'hsl(var(--primary))',
-                          color: 'hsl(var(--primary-foreground))',
-                          boxShadow: 'inset 0 1px 0 hsl(var(--foreground) / 0.12)',
-                        }
-                      : { background: 'hsl(var(--muted) / 0.6)', border: '1px solid hsl(var(--gold) / 0.18)' }
-                  }
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
+          {roundsControl}
           </>)}
           {step === 3 && (
-            <div>
+            <div className={dedicatedLive ? 'da-live-review' : undefined}>
               <p className="form-label">Review</p>
               <DaInfoRow icon={Bookmark} label="Topic" value={topic.trim() || '—'} />
               {description.trim() && <DaInfoRow icon={Bookmark} label="Description" value={description.trim()} />}
               <DaInfoRow icon={Sparkles} label="AI judging context" value={aiContext.trim() ? 'Added' : 'None'} />
               <DaInfoRow icon={Bookmark} label="Rounds" value={`${numRounds} picks each`} />
-              {liveEnabled && <DaInfoRow icon={Radio} label="Live draft" value={isLive ? `On · ${pickSeconds >= 60 ? `${pickSeconds / 60}m` : `${pickSeconds}s`} per pick` : 'Off'} />}
+              {(liveEnabled || wantsLive) && <DaInfoRow icon={Radio} label={dedicatedLive ? 'Pick clock' : 'Live draft'} value={wantsLive ? `${dedicatedLive ? '' : 'On · '}${pickSeconds}s per pick` : 'Off'} />}
+              {dedicatedLive && <>
+                <DaInfoRow icon={Radio} label="Clock expiry" value={TIMEOUT_BEHAVIOR_LABELS[timeoutBehavior]} />
+                <div className="da-live-review-show flex flex-wrap gap-1.5" aria-label="Presentation settings">
+                  {presentationChoices.map(([label, value]) => <span key={label} className="rounded-md border border-border px-2 py-1 text-[9px] text-muted-foreground" title={label}>{label.startsWith('Announce') ? 'Reveals' : label.startsWith('Ticker') ? 'Ticker' : label.startsWith('Projector') ? 'Sound' : label.startsWith('Pre-draft') ? 'Ceremony' : 'Broadcast'} · {value ? 'On' : 'Off'}</span>)}
+                </div>
+                <p className="da-live-create-note text-[11px] leading-snug text-muted-foreground">Create the room, invite your crew, then start when everyone is ready.</p>
+              </>}
+              {wantsLive && liveUnavailable && <p className="da-live-create-status text-[11px] text-muted-foreground" role="status">{liveFlagLoading ? 'Checking LIVE access…' : 'Live hosting is not available for this account.'}</p>}
             </div>
           )}
         </motion.div>
@@ -358,23 +427,23 @@ export default function CreateDraftPage() {
         )}
         <button
           type="submit"
-          disabled={loading || !topic.trim()}
+          disabled={submitDisabled}
           className="flex-1 h-12 rounded-lg font-black uppercase tracking-[0.14em] text-[13px] btn-press transition-all disabled:cursor-not-allowed"
           style={{
-             color: loading || !topic.trim() ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
-            background: loading || !topic.trim()
+             color: submitDisabled ? 'hsl(var(--muted-foreground))' : 'hsl(var(--primary-foreground))',
+            background: submitDisabled
               ? 'hsl(var(--muted) / 0.6)'
                : 'hsl(var(--primary))',
-            border: loading || !topic.trim()
+            border: submitDisabled
               ? '1px solid hsl(var(--border))'
                : '1px solid hsl(var(--primary) / 0.65)',
-            boxShadow: loading || !topic.trim()
+            boxShadow: submitDisabled
               ? 'none'
                : '0 6px 18px hsl(var(--background) / 0.55), inset 0 1px 0 hsl(var(--foreground) / 0.12)',
-            opacity: loading || !topic.trim() ? 0.9 : 1,
+            opacity: submitDisabled ? 0.9 : 1,
           }}
         >
-          {loading ? 'Creating…' : step < STEPS.length - 1 ? 'Next' : 'Create Draft'}
+          {loading ? 'Creating…' : step < steps.length - 1 ? 'Next' : dedicatedLive ? 'Create live event' : 'Create Draft'}
         </button>
         </div>
       </motion.form>

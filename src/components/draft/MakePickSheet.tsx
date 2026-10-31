@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { useRef } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AlertTriangle, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -153,6 +154,8 @@ export function MakePickSheet({
   ...fields
 }: MakePickSheetProps) {
   const { palette } = useDraftArenaPalette();
+  const localInput = useRef<HTMLInputElement>(null);
+  const input = fields.inputRef ?? localInput;
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogPortal>
@@ -161,6 +164,11 @@ export function MakePickSheet({
         className="da-appearance-panel da-arena-dialog da-pick-dialog da-lounge fixed left-1/2 top-1/2 z-[90] w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border p-5 shadow-2xl"
         data-da-palette={palette}
         aria-label="Make your pick"
+        onOpenAutoFocus={(event) => {
+          if (!input.current) return;
+          event.preventDefault();
+          input.current.focus({ preventScroll: true });
+        }}
       >
             <div className="da-pick-dialog-heading flex items-start justify-between gap-3">
               <div>
@@ -179,7 +187,7 @@ export function MakePickSheet({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <PickComposerFields {...fields} autoFocus />
+            <PickComposerFields {...fields} inputRef={input} autoFocus />
             <div className="da-pick-dialog-desk">
               <PersonalDraftDesk
                 compact
