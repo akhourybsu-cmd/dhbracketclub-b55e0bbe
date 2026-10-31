@@ -73,15 +73,16 @@ async function setup(width = 390, height = 844, theme = "dark", motion = "no-pre
 
 async function go(page, route, { theme = "dark", user = "u1", role = "member", stress = "", art = "" } = {}) {
   const params = new URLSearchParams({ route, theme, user, role, stress, art });
-  await page.goto(`${base}/scripts/fixtures/draft-arena.html?${params}`, { waitUntil: "domcontentloaded" });
+  const projector = route.endsWith('/kiosk');
+  await page.goto(`${base}/scripts/fixtures/draft-arena${projector ? '-projector' : ''}.html?${params}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.daQa?.ready && window.daQueryClient);
-  await expect(page.locator(".da-shell main")).toBeVisible();
+  await expect(page.locator(projector ? '.da-kiosk' : '.da-shell main')).toBeVisible();
   await settle(page);
 }
 async function settle(page) {
   await page.waitForFunction(() => window.daQueryClient?.isFetching() === 0 && window.daQueryClient?.isMutating() === 0);
   await page.evaluate(async () => { await document.fonts.ready; await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
-  await page.waitForFunction(() => [...document.querySelectorAll(".da-shell,[role=dialog]")].every((root) => root.getAnimations({ subtree: true }).every((animation) => animation.playState !== "running" || animation.effect?.getTiming().iterations === Infinity)), undefined, { timeout: 5000 });
+  await page.waitForFunction(() => [...document.querySelectorAll(".da-shell,.da-kiosk,[role=dialog]")].every((root) => root.getAnimations({ subtree: true }).every((animation) => animation.playState !== "running" || animation.effect?.getTiming().iterations === Infinity)), undefined, { timeout: 5000 });
 }
 async function shot(page, label) { await page.screenshot({ path: join(output, `${label}.png`) }); }
 async function captureFailure(page, label) {
@@ -97,15 +98,15 @@ async function captureFailure(page, label) {
   })).catch((error) => ({ captureError: String(error) }));
   await writeFile(join(output, `${label}-diagnostics.json`), JSON.stringify(state, null, 2));
 }
-async function fit(page, label, selector = ".da-shell") {
+async function fit(page, label, selector = ".da-shell", { allowDocumentScroll = false } = {}) {
   await settle(page);
-  const issues = await page.locator(selector).evaluate((root) => {
+  const issues = await page.locator(selector).evaluate((root, options) => {
     const failures = [];
     if (document.documentElement.scrollWidth > innerWidth + 2) failures.push("Document overflows horizontally");
-    if (document.documentElement.scrollHeight > innerHeight + 2) failures.push("Document scrolls instead of arena content");
+    if (!options.allowDocumentScroll && document.documentElement.scrollHeight > innerHeight + 2) failures.push("Document scrolls instead of arena content");
     const rect = root.getBoundingClientRect();
     if (rect.left < -2 || rect.right > innerWidth + 2) failures.push("Arena escapes viewport width");
-    const controls = root.querySelectorAll(".da-hud-action,.da-hud-chip,.da-room-tabs [role=tab],.da-cta,.dl-cta,.da-room-command");
+    const controls = root.querySelectorAll(".da-hud-action,.da-hud-chip,.da-room-tabs [role=tab],.da-cta,.dl-cta,.da-room-command,.da-kiosk-btn");
     for (const node of controls) {
       if (!(node instanceof HTMLElement) || node.closest('[aria-hidden="true"],[hidden]')) continue;
       const style = getComputedStyle(node), bounds = node.getBoundingClientRect();
@@ -113,7 +114,7 @@ async function fit(page, label, selector = ".da-shell") {
       if (bounds.height < 43.5 || bounds.width < 43.5) failures.push(`Small main target: ${node.getAttribute("aria-label") || node.textContent?.trim().slice(0, 40)} ${bounds.width.toFixed(1)}×${bounds.height.toFixed(1)}`);
     }
     return [...new Set(failures)];
-  });
+  }, { allowDocumentScroll });
   report.checks.push({ label, ok: issues.length === 0, issues });
   assert.deepEqual(issues, [], label);
 }
@@ -153,7 +154,7 @@ async function interactiveAudit(page, label, selector = ".da-shell") {
         if (/(auto|scroll|hidden|clip)/.test(clipping.overflowY)) { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom); }
       }
       const complete = box.left >= left - 1 && box.right <= right + 1 && box.top >= top - 1 && box.bottom <= bottom + 1;
-      const anchored = node.closest('.da-hud,.da-room-topbar,.da-room-tabs,.da-lobby-nav [role="tablist"],.da-pk-top,.da-pk-clock,.da-create-actions,.da-create-steps');
+      const anchored = node.closest('.da-hud,.da-kiosk-bar,.da-room-topbar,.da-room-tabs,.da-lobby-nav [role="tablist"],.da-pk-top,.da-pk-clock,.da-create-actions,.da-create-steps');
       const intersects = box.right > left + 1 && box.left < right - 1 && box.bottom > top + 1 && box.top < bottom - 1;
       const name = node.getAttribute('aria-label') || node.textContent?.trim().slice(0, 60) || node.tagName;
       if (!complete) {
@@ -657,9 +658,122 @@ async function secondaryJourney(width, height, theme) {
   finally { await context.close(); }
 }
 
+async function projectorSmoke(width, height) {
+  const { page, context } = await setup(width, height, 'dark');
+  const label = `projector-${width}x${height}`;
+  try {
+    await go(page, '/drafts/active/kiosk', { stress: 'projector' });
+    await expect(page.locator('.da-kiosk-title')).toHaveText('Greatest movie night');
+    await expect(page.locator('.da-kiosk-bar')).toContainText('DH5ZX');
+    await fit(page, `${label}-live`, '.da-kiosk', { allowDocumentScroll: true });
+    await interactiveAudit(page, `${label}-header-controls`, '.da-kiosk');
+    await visibleAssets(page, `${label}-live-assets`, '.da-kiosk');
+    assert.equal(await page.locator('.da-kiosk-reveal').count(), 0, 'A projector establishes a quiet baseline from saved picks');
+    await shot(page, `${label}-live`);
+    await go(page, '/drafts/complete/kiosk', { stress: 'projector' });
+    await expect(page.getByRole('region', { name: 'Final draft report', exact: true })).toBeVisible();
+    await expect(page.locator('.da-kiosk-report')).toContainText('All-time movie icons');
+    await fit(page, `${label}-saved-report`, '.da-kiosk', { allowDocumentScroll: true });
+    await interactiveAudit(page, `${label}-report-controls`, '.da-kiosk');
+    await shot(page, `${label}-saved-report`);
+    assert.equal(await page.evaluate(() => window.daQa.calls.some((call) => call.function === 'rate-draft')), false, 'The projector reads persisted results instead of generating scores');
+    assert.equal(await page.evaluate(() => window.daQa.operations.length), 0, 'Projector smoke checks make no source writes');
+    report.checks.push({ label: `${label}-actual-standalone-live-and-complete`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function recoveryStates() {
+  const { page, context } = await setup(320, 568);
+  const label = 'loading-empty-search-missing-route-isolation';
+  try {
+    await go(page, '/drafts', { stress: 'empty' });
+    await expect(page.locator('main')).toContainText('No drafts yet');
+    await fit(page, 'empty-lobby'); await interactiveAudit(page, 'empty-lobby-actions');
+    await shot(page, 'empty-lobby');
+    await go(page, '/drafts');
+    const search = page.getByRole('textbox', { name: 'Search drafts', exact: true });
+    await search.fill('No matching rooms 🚀');
+    await expect(page.locator('main')).toContainText('No rooms match.');
+    await fit(page, 'empty-search-results'); await shot(page, 'empty-search-results');
+    await search.fill('');
+    await expect(page.locator('.da-room-card[href="/drafts/active"]')).toBeVisible();
+    await go(page, '/drafts/active', { stress: 'delayed-room' });
+    await expect(page.locator('.da-arena-loading')).toBeVisible();
+    await fit(page, 'room-loading'); await shot(page, 'room-loading');
+    // Route changes are fixture navigation; the held transport response remains real asynchronous I/O.
+    await page.evaluate(() => window.daNavigate('/drafts/missing'));
+    const back = page.getByRole('link', { name: 'Back to rooms', exact: true });
+    await expect(back).toBeVisible();
+    await page.evaluate(() => window.daQa.releaseActiveReads());
+    await settle(page);
+    await expect(back).toBeVisible();
+    await expect(page.locator('main')).not.toContainText('Greatest movie night');
+    await expect(page.locator('.da-pick-dialog')).toHaveCount(0);
+    await fit(page, 'missing-room-late-response'); await shot(page, 'missing-room');
+    await back.click();
+    await page.locator('.da-room-card[href="/drafts/active"]').click();
+    await expect(page.getByRole('button', { name: 'Make selection', exact: true })).toBeVisible();
+    const turn = page.locator('.da-turn-copy > p').first();
+    await expect(turn).toHaveText('Your turn');
+    assert.equal(await turn.evaluate((node) => node.scrollWidth <= node.clientWidth + 1), true, 'The concise turn label fits 320px without ellipsis');
+    await fullyVisibleControl(turn, 'small-phone-turn-label');
+    await page.getByRole('button', { name: 'Make selection', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Your draft pick', exact: true }).fill('Keep this only in draft A');
+    await page.evaluate(() => window.daNavigate('/drafts/missing'));
+    await expect(back).toBeVisible();
+    await expect(page.locator('.da-pick-dialog')).toHaveCount(0);
+    await back.click();
+    await page.locator('.da-room-card[href="/drafts/active"]').click();
+    await expect(page.getByRole('button', { name: 'Make selection', exact: true })).toBeVisible();
+    await expect(page.locator('.da-pick-dialog')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Make selection', exact: true }).click();
+    await expect(page.getByRole('textbox', { name: 'Your draft pick', exact: true })).toHaveValue('');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => window.daQa.operations.filter((operation) => operation.table === 'draft_picks').length), 0, 'Draft navigation discards a composer without submitting a pick');
+    report.checks.push({ label, ok: true }); console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
+async function hostSettingsDialog() {
+  const { page, context } = await setup(390, 844);
+  const label = 'actual-live-host-settings-focus-and-cancel';
+  try {
+    await go(page, '/drafts/active', { stress: 'live-host', role: 'commissioner' });
+    const kiosk = page.getByRole('dialog', { name: 'My live draft kiosk', exact: true });
+    await expect(kiosk).toBeVisible();
+    await kiosk.getByRole('button', { name: 'Close my kiosk', exact: true }).click();
+    await expect(kiosk).toHaveCount(0);
+    await tab(page, 'Host controls');
+    const original = await page.evaluate(() => structuredClone(window.daQa.tables.drafts.find((draft) => draft.id === 'active').live_settings));
+    const trigger = page.getByRole('button', { name: 'Live draft settings', exact: true });
+    await trigger.click();
+    const settings = page.getByRole('dialog', { name: 'Room Settings', exact: true });
+    await expect(settings).toBeVisible(); await settle(page);
+    await fit(page, 'host-settings-dialog', '.da-live-settings-dialog');
+    const controls = settings.locator('button:not([disabled]),input:not([disabled])');
+    await controls.last().focus(); await page.keyboard.press('Tab');
+    assert.equal(await settings.evaluate((node) => node.contains(document.activeElement)), true, 'Tab wraps inside settings');
+    await controls.first().focus(); await page.keyboard.press('Shift+Tab');
+    assert.equal(await settings.evaluate((node) => node.contains(document.activeElement)), true, 'Shift+Tab wraps inside settings');
+    await settings.getByRole('button', { name: '3m', exact: true }).click();
+    await shot(page, 'host-settings-dialog');
+    await page.keyboard.press('Escape');
+    await expect(settings).toHaveCount(0); await expect(trigger).toBeFocused();
+    assert.deepEqual(await page.evaluate(() => window.daQa.tables.drafts.find((draft) => draft.id === 'active').live_settings), original, 'Cancel leaves persisted live settings unchanged');
+    report.checks.push({ label, ok: true }); console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
   // Exercise newly added stress cases first; retain the complete core matrix.
+  for (const args of [[320,568],[844,390],[1440,900]]) await projectorSmoke(...args);
+  await recoveryStates();
+  await hostSettingsDialog();
   for (const args of [[320,568,'dark'],[844,390,'light'],[1440,900,'dark']]) await secondaryJourney(...args);
   for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark'],[1440,900,'light']]) await artworkStress(...args);
   await palettesAndAccessibility();

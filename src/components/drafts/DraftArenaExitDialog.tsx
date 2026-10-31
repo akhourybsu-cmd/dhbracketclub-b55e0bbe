@@ -16,7 +16,8 @@ export function DraftArenaExitDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="da-exit-dialog border-gold/30">
+      <AlertDialogContent className="da-arena-dialog da-exit-dialog !overflow-y-auto border-gold/30"
+        style={{ top: 'calc(var(--da-viewport-height, 100dvh) / 2)' }}>
         <AlertDialogHeader>
           <AlertDialogTitle className="da-exit-title text-lg font-black tracking-tight">
             Leave the Draft Arena?
@@ -25,13 +26,13 @@ export function DraftArenaExitDialog({
             You'll head back to the league hub. Drafts in progress keep running — come back anytime to make your pick.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="da-exit-cancel">
+        <AlertDialogFooter className="gap-2 sm:space-x-0">
+          <AlertDialogCancel className="da-exit-cancel mt-0 h-auto min-h-11 whitespace-normal">
             Stay in the Arena
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="da-exit-action font-extrabold"
+            className="da-exit-action h-auto min-h-11 whitespace-normal font-extrabold"
           >
             Exit
           </AlertDialogAction>

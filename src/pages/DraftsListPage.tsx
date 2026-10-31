@@ -216,11 +216,9 @@ function NextDraftCard({ entries, totalDrafts }: { entries: any[]; totalDrafts: 
           ) : (
             <div className="text-center py-4">
               <p className="text-[11px] text-muted-foreground/70 mb-3">No draft assigned yet</p>
-              <Link to="/drafts/create">
-                <button className="w-full h-10 rounded-lg text-[12px] font-bold transition-colors flex items-center justify-center gap-2 btn-press"
+              <Link to="/drafts/create" className="w-full min-h-11 rounded-lg text-[12px] font-bold transition-colors flex items-center justify-center gap-2 btn-press"
                   style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))', border: '1px solid hsl(var(--gold) / 0.15)' }}>
                   <Plus className="w-4 h-4" /> Create Draft {nextDraftNumber}
-                </button>
               </Link>
             </div>
           )
@@ -234,11 +232,9 @@ function NextDraftCard({ entries, totalDrafts }: { entries: any[]; totalDrafts: 
         ) : (
           <div className="text-center py-4">
             <p className="text-[11px] text-muted-foreground/70 mb-3">No draft assigned yet</p>
-            <Link to="/drafts/create">
-              <button className="w-full h-10 rounded-lg text-[12px] font-bold transition-colors flex items-center justify-center gap-2 btn-press"
+            <Link to="/drafts/create" className="w-full min-h-11 rounded-lg text-[12px] font-bold transition-colors flex items-center justify-center gap-2 btn-press"
                 style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))', border: '1px solid hsl(var(--gold) / 0.15)' }}>
                 <Plus className="w-4 h-4" /> Create Draft {nextDraftNumber}
-              </button>
             </Link>
           </div>
         )}
@@ -904,10 +900,8 @@ function PlayoffControlCenter({ season, matches, standings, userId, onUpdate }: 
                     </button>
                   )}
                   {(m.status === 'in_progress' || m.status === 'pending') && m.draft_id && (
-                    <Link to={`/drafts/${m.draft_id}`} className="block">
-                      <button className="w-full h-9 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 btn-press transition-colors" style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>
+                    <Link to={`/drafts/${m.draft_id}`} className="w-full min-h-11 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 btn-press transition-colors" style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>
                         Open Draft <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
                     </Link>
                   )}
                 </div>
@@ -1137,11 +1131,9 @@ function NoSeasonState() {
         <p className="text-[11px] text-muted-foreground leading-relaxed relative z-10 mb-4">
           No season is active yet. A commissioner can start a season to track standings, playoffs, and championships.
         </p>
-        <Link to="/drafts">
-          <button className="flex items-center gap-2 font-bold rounded-xl px-4 py-2.5 text-[12px] btn-press mx-auto" style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>
+        <Link to="/drafts" className="flex min-h-11 w-fit items-center gap-2 font-bold rounded-xl px-4 py-2.5 text-[12px] btn-press mx-auto" style={{ background: 'hsl(var(--gold) / 0.15)', color: 'hsl(var(--gold))' }}>
             <Bookmark className="w-4 h-4" /> View Drafts
             {activeDrafts > 0 && <span className="text-[9px] opacity-70">({activeDrafts} active)</span>}
-          </button>
         </Link>
       </div>
     </div>
@@ -1576,11 +1568,14 @@ export default function DraftsListPage() {
 
           <div className="da-lobby-scroll da-lobby-room-scroll" aria-label="Draft rooms">
           {loading ? (
-            <div className="space-y-2.5">
+            <div className="da-lobby-loading da-room-card-grid" role="status">
+              <span className="sr-only">Loading draft rooms…</span>
               {[1, 2].map(i => (
-                <div key={i} className="da-glass p-5">
-                  <div className="h-4 rounded-lg w-1/3 mb-2.5 da-shimmer" />
+                <div key={i} className="da-room-card da-glass" aria-hidden="true">
+                  <div className="da-room-card-mark da-shimmer" />
+                  <div className="h-5 rounded-lg w-3/4 da-shimmer" />
                   <div className="h-3 rounded-lg w-1/2 da-shimmer" />
+                  <div className="h-1 rounded-lg w-full mt-auto da-shimmer" />
                 </div>
               ))}
             </div>
@@ -1593,9 +1588,7 @@ export default function DraftsListPage() {
               </div>
               <p className="empty-state-title">No drafts yet</p>
               <p className="empty-state-desc mb-6">Run a snake draft on any topic with your crew.</p>
-              <Link to="/drafts/create">
-                <Button className="font-bold rounded-xl gap-2 btn-press da-cta"><Plus className="w-4 h-4" /> Create Draft</Button>
-              </Link>
+              <Button asChild className="min-h-11 font-bold rounded-xl gap-2 btn-press da-cta"><Link to="/drafts/create"><Plus className="w-4 h-4" /> Create Draft</Link></Button>
             </motion.div>
           ) : (() => {
             // ── Group drafts by season ──
@@ -1789,11 +1782,11 @@ export default function DraftsListPage() {
                 <Shield className="w-8 h-8 mx-auto mb-3 text-muted-foreground/40" />
                 <p className="text-sm font-bold mb-1">No active season</p>
                 <p className="text-[11px] text-muted-foreground/70">Create a season first to manage it here.</p>
-                <Link to="/drafts/seasons" className="mt-4 inline-block">
-                  <Button size="sm" variant="outline" className="gap-1.5 rounded-lg font-bold btn-press border-gold/30 text-gold hover:bg-gold/10">
+                <Button asChild size="sm" variant="outline" className="mt-4 min-h-11 gap-1.5 rounded-lg font-bold btn-press border-gold/30 text-gold hover:bg-gold/10">
+                  <Link to="/drafts/seasons">
                     <Archive className="w-3.5 h-3.5" /> Seasons
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             )}
           </div></TabsContent>

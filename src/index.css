@@ -6248,6 +6248,14 @@ html.light[data-da-palette='signal'] .da-exit-dialog {
   background: hsl(var(--muted) / 0.5); color: hsl(var(--muted-foreground));
 }
 .da-kiosk-btn:hover { color: hsl(var(--foreground)); }
+.da-kiosk-bar > div:first-child { flex: 1 1 auto; min-width: 0; }
+.da-kiosk-bar > div:last-child { flex-wrap: wrap; max-width: 100%; }
+.da-kiosk-btn { flex: 0 0 44px; }
+@media (max-width: 640px) {
+  .da-kiosk-bar { flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .da-kiosk-bar > div:first-child { flex-basis: 100%; }
+  .da-kiosk-bar > div:last-child { width: 100%; gap: 8px; justify-content: space-between; }
+}
 .da-kiosk-card {
   border-radius: 1rem;
   border: 1px solid hsl(var(--border));

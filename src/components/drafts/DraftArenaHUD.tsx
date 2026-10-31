@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Info } from 'lucide-react';
 import draftEmblem from '@/assets/draft-emblem.webp';
@@ -19,6 +19,7 @@ export function DraftArenaHUD() {
   const navigate = useNavigate();
   const { season } = useCurrentSeason();
   const [exitOpen, setExitOpen] = useState(false);
+  useEffect(() => setExitOpen(false), [location.key]);
 
   const path = location.pathname;
   const isHub = path === '/drafts';
@@ -70,6 +71,7 @@ export function DraftArenaHUD() {
                 alt=""
                 width={28}
                 height={28}
+                draggable={false}
                 className="da-hud-emblem-img"
               />
             </span>
@@ -88,10 +90,11 @@ export function DraftArenaHUD() {
               type="button"
               onClick={openSeasonWelcome}
               aria-label={`Season info — ${seasonChip}`}
-              className="da-hud-chip da-arena-season-chip"
+              title={`Season info — ${seasonChip}`}
+              className="da-hud-chip da-arena-season-chip max-w-[min(23vw,9rem)] shrink-0"
             >
-              <Info className="w-3.5 h-3.5 opacity-80" />
-              {seasonChip}
+              <Info className="w-3.5 h-3.5 shrink-0 opacity-80" aria-hidden="true" />
+              <span className="min-w-0 truncate">{seasonChip}</span>
             </button>
           )}
 

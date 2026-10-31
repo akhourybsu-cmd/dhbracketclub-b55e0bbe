@@ -23,3 +23,5 @@ This pass preserves draft rules, scoring, permissions, saved picks and reports. 
 - Preservation checks retain 40 critical declarations, 12 byte-identical core files, and the projector's full AST apart from its explicitly allowed initials helper and import. Five negative probes reject unrelated projector changes.
 
 Browser identity, images and network transport are local fixtures. These checks do not write to live player accounts or prove behavior on every physical device or third-party image service.
+
+The [subsequent refinement pass](DRAFT_ARENA_REFINEMENT.md) extends this coverage to the real standalone projector, room transitions, recovery states and accessible host settings.

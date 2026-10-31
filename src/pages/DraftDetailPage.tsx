@@ -111,6 +111,14 @@ function PickCount({ value }: { value: number }) {
 export default function DraftDetailPage() {
   const { draftId } = useParams<{ draftId: string }>();
   const { user } = useAuth();
+  return <DraftDetailSession key={`${user?.id ?? 'guest'}:${draftId ?? ''}`} />;
+}
+
+// A route/account change starts a fresh room presentation. Pending reads from
+// the previous room can only settle into its unmounted session.
+function DraftDetailSession() {
+  const { draftId } = useParams<{ draftId: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const reducedMotion = useReducedMotion();
   const [roomSelection, setRoomSelection] = useState<{ draftId: string | undefined; view: RoomView } | null>(null);
@@ -968,15 +976,24 @@ export default function DraftDetailPage() {
 
   if (loading) {
     return (
-      <div className="loading-spinner">
-        <div className="loading-spinner-ring" />
-        <p className="loading-spinner-text">Loading draft…</p>
+      <div className="da-arena-state da-arena-loading" role="status">
+        <span className="da-state-mark" aria-hidden="true"><LayoutGrid /></span>
+        <p className="da-arena-eyebrow">DRAFT ARENA</p>
+        <h1>Opening the room</h1>
+        <p>Loading draft…</p>
+        <div className="da-state-skeleton" aria-hidden="true"><i /><i /><i /></div>
       </div>
     );
   }
 
   if (!draft) {
-    return <div className="text-center py-16 text-muted-foreground font-medium text-sm">Draft not found.</div>;
+    return <section className="da-arena-state" role="status">
+      <span className="da-state-mark" aria-hidden="true"><Bookmark /></span>
+      <p className="da-arena-eyebrow">DRAFT ARENA</p>
+      <h1>Draft unavailable.</h1>
+      <p>Return to the lobby to choose a draft.</p>
+      <Link to="/drafts" className="da-cta btn-press">Back to rooms</Link>
+    </section>;
   }
 
   // Group picks by user for results

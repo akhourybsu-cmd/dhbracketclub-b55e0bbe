@@ -52,9 +52,28 @@ const tables: Record<string, Row[]> = {
 };
 const operations: Row[] = [];
 const calls: Row[] = [];
+const heldReads = new Set<() => void>();
+let holdActiveReads = params.get("stress") === "delayed-room";
+function releaseActiveReads() {
+  holdActiveReads = false;
+  for (const release of heldReads) release();
+  heldReads.clear();
+}
 let serial = 100;
 const clone = <T,>(value: T): T => structuredClone(value);
 const imageURL = (name: string) => new URL(`/images/qa-draft-art/${name}.svg`, location.origin).href;
+if (params.get("stress") === "projector" || params.get("stress") === "live-host") {
+  const clockStart = new Date().toISOString();
+  const deadline = new Date(Date.now() + 90_000).toISOString();
+  for (const item of tables.drafts.filter((row) => row.id === "active" || row.id === "complete")) Object.assign(item, {
+    is_live: true, kiosk_code: item.id === "active" ? "DH5ZX" : "END4X",
+    clock_started_at: clockStart, clock_paused_at: clockStart, pick_deadline_at: deadline,
+    live_settings: { pickSeconds: 90, timeoutBehavior: "alert", autoStartClock: false, announce: true, ticker: true, sound: false, ceremony: false, broadcast: true, reportBroadcast: true },
+  });
+}
+if (params.get("stress") === "empty") {
+  for (const table of ["drafts", "competitions", "draft_participants", "draft_picks", "draft_results", "draft_season_entries", "draft_season_standings", "draft_seasons", "item_enrichments", "draft_desk_items"]) tables[table] = [];
+}
 if (params.get("stress") === "large") {
   profiles[0].display_name = "ÆTHER⚡無限🚀".repeat(8);
   for (let index = 4; index <= 20; index++) profiles.push({ id: `u${index}`, display_name: index === 20 ? "終章の挑戦者⚡".repeat(9) : `Player ${index} · 星際`, avatar_url: null });
@@ -138,6 +157,7 @@ class Query implements PromiseLike<any> {
     calls.push({ table: this.table, mode: this.mode });
     const source = tables[this.table] ||= [];
     let rows = source.filter((row) => this.filters.every((filter) => filter(row)));
+    if (holdActiveReads && this.mode === "select" && this.table === "drafts" && this.singular && rows.some((row) => row.id === "active")) await new Promise<void>((resolve) => heldReads.add(resolve));
     if (this.mode === "insert" || this.mode === "upsert") {
       rows = (Array.isArray(this.payload) ? this.payload : [this.payload]).map((value) => ({ id: `qa-${++serial}`, created_at: new Date().toISOString(), picked_at: new Date().toISOString(), ...clone(value) }));
       if (this.table === "draft_picks") {
@@ -171,5 +191,5 @@ export const supabase = {
   auth: { getSession: async () => ({ data: { session: { access_token: "fixture-only", user: { id: userId } } }, error: null }), getUser: async () => ({ data: { user: { id: userId } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
   storage: { from: () => ({ getPublicUrl: (path: string) => ({ data: { publicUrl: path } }) }) },
 };
-Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true } });
+Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads } });
 export const draftArenaFixture = { tables, userId };

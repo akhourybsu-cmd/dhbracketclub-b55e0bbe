@@ -159,6 +159,26 @@ describe('Draft artwork sources', () => {
 });
 
 describe('Draft image selection', () => {
+  it('moves back immediately when refreshed candidates shorten the visible page range', () => {
+    const selected = vi.fn(), closed = vi.fn();
+    const view = render(<ImagePickerDialog open pickName="Arrival" enrichment={enrichment('pick-a', 30)} onImageSelected={selected} onOpenChange={closed} />);
+    const next = screen.getByRole('button', { name: 'Next artwork page' });
+    for (let index = 0; index < 5; index++) fireEvent.click(next);
+    expect(screen.getByText('31 images · 6/6')).toBeVisible();
+
+    // A provider refresh replaces the candidate list while the same pick stays open.
+    view.rerender(<ImagePickerDialog open pickName="Arrival" enrichment={enrichment('pick-a', 13)} onImageSelected={selected} onOpenChange={closed} />);
+    expect(screen.getByText('14 images · 3/3')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Previous artwork page' }));
+    expect(screen.getByText('14 images · 2/3')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Alternative 5, TMDB' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Previous artwork page' }));
+    expect(screen.getByText('14 images · 1/3')).toBeVisible();
+    fireEvent.click(next);
+    expect(screen.getByText('14 images · 2/3')).toBeVisible();
+    expect(backend.update).not.toHaveBeenCalled();
+  });
+
   it('cannot persist artwork until its full preview or same-image fallback actually loads', () => {
     render(<ImagePickerDialog open pickName="Arrival" enrichment={enrichment()} onImageSelected={vi.fn()} onOpenChange={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Alternative 0, TMDB' }));

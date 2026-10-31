@@ -69,9 +69,9 @@ export function DraftStatusHeader({
         <div className="h-full bg-[hsl(var(--da-gold))] transition-[width] duration-700 ease-out"
           style={{ width: `${totalPicks > 0 ? Math.min(100, ((currentPickNumber - 1) / totalPicks) * 100) : 0}%` }} />
       </div>
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="da-turn-summary flex items-center gap-3 px-4 py-3">
         {/* Round / pick position */}
-        <div className="shrink-0">
+        <div className="da-turn-position shrink-0">
           <p className="dl-eyebrow">
             Round {currentRound}/{numRounds} <SnakeIcon className="inline w-3 h-3 -mt-0.5" aria-hidden />
           </p>
@@ -80,21 +80,21 @@ export function DraftStatusHeader({
           </p>
         </div>
 
-        <div className="w-px self-stretch bg-border/60" aria-hidden />
+        <div className="da-turn-divider w-px self-stretch bg-border/60" aria-hidden />
 
         {/* Who's choosing */}
-        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <div className="da-turn-picker flex items-center gap-2.5 min-w-0 flex-1">
           <div
             className={cn(
-              'dl-display w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0',
+              'da-turn-avatar dl-display w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0',
               isMyTurn ? 'dl-avatar-gold' : 'dl-avatar-muted',
             )}
           >
             {isMyTurn ? 'YOU' : pickerInitials}
           </div>
-          <div className="min-w-0">
+          <div className="da-turn-copy min-w-0">
             <p className={cn('dl-display text-[15px] font-bold truncate', isMyTurn ? 'text-primary' : 'text-foreground')}>
-              {isMyTurn ? 'You are on the clock' : pickerName}
+              {isMyTurn ? 'Your turn' : pickerName}
             </p>
             <p className="text-[10px] text-muted-foreground font-medium truncate">
               {!isMyTurn && <span>Choosing now{elapsed ? ' · ' : ''}</span>}

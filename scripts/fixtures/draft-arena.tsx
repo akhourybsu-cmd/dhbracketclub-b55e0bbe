@@ -20,9 +20,9 @@ import "@fontsource/work-sans/500.css";
 import "@fontsource/work-sans/600.css";
 import "@fontsource/work-sans/700.css";
 import "../../src/index.css";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter, Routes, Route, useLocation } from "react-router-dom";
+import { MemoryRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
@@ -45,6 +45,11 @@ const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mu
 Object.assign(window, { daQueryClient: client });
 function CurrentRoute() {
   const route = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    Object.assign(window, { daNavigate: navigate });
+    return () => { Reflect.deleteProperty(window, "daNavigate"); };
+  }, [navigate]);
   return <span hidden data-qa-route={route.pathname + route.search} />;
 }
 /** Presentation-only live clock, with production kiosk, board, desk and composer. */

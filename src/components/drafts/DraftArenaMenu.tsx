@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Archive, ArrowUpRight, BarChart3, BookOpen, Bookmark, Home, LogOut,
@@ -25,8 +25,10 @@ export function DraftArenaMenu() {
   const navigate = useNavigate();
   const params = useParams<{ draftId?: string; seasonId?: string }>();
   const search = new URLSearchParams(location.search);
-  const activeTab = search.get('tab') ?? 'drafts';
+  const requestedTab = search.get('tab') ?? 'drafts';
+  const activeTab = ['drafts', 'season', 'stats', 'commissioner'].includes(requestedTab) ? requestedTab : 'drafts';
   const inDraftRoom = Boolean(params.draftId) && !location.pathname.startsWith('/drafts/seasons');
+  useEffect(() => setOpen(false), [location.key]);
 
   const isActive = (link: (typeof primaryLinks)[number]) => {
     if ('pathPrefix' in link && link.pathPrefix) return location.pathname.startsWith(link.pathPrefix);
@@ -76,8 +78,8 @@ export function DraftArenaMenu() {
               <div className="da-arena-room-shortcuts">
                 <p className="da-arena-eyebrow">THIS DRAFT</p>
                 <div>
-                  <Link to={`/drafts/${params.draftId}/magazine`} onClick={() => setOpen(false)}><BookOpen size={17} />Magazine</Link>
-                  <Link to={`/drafts/${params.draftId}/kiosk`} onClick={() => setOpen(false)}><MonitorPlay size={17} />Kiosk</Link>
+                  <Link to={`/drafts/${params.draftId}/magazine`} onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true" />Magazine</Link>
+                  <Link to={`/drafts/${params.draftId}/kiosk`} onClick={() => setOpen(false)}><MonitorPlay size={17} aria-hidden="true" />Kiosk</Link>
                 </div>
               </div>
             )}

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowDown, ArrowUp, Check, ListPlus, Star, Trash2 } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, Check, ListPlus, Loader2, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,19 +7,48 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useDraftDesk } from '@/hooks/useDraftDesk';
 
-export function PersonalDraftDesk({ draftId, userId, taken, onChoose, compact = false }: {
+interface PersonalDraftDeskProps {
   draftId?: string; userId?: string; taken: Set<string>; onChoose?: (title: string) => void; compact?: boolean;
-}) {
+}
+
+export function PersonalDraftDesk(props: PersonalDraftDeskProps) {
+  return <DraftDeskSession key={JSON.stringify([props.userId ?? null, props.draftId ?? null])} {...props} />;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  const message = error && typeof error === 'object' && 'message' in error ? error.message : null;
+  return typeof message === 'string' && message ? message : fallback;
+}
+
+/** Private form and query state belongs to one account and one draft. */
+function DraftDeskSession({ draftId, userId, taken, onChoose, compact = false }: PersonalDraftDeskProps) {
   const desk = useDraftDesk(draftId, userId);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [expanded, setExpanded] = useState(!compact);
+  const [saving, setSaving] = useState(false);
+  const savePending = useRef(false);
+  const active = useRef(true);
+  useLayoutEffect(() => {
+    active.current = true;
+    return () => { active.current = false; };
+  }, []);
   const save = async () => {
-    if (!title.trim()) return;
-    try { await desk.add(title, notes); setTitle(''); setNotes(''); toast.success('Added to your desk'); }
-    catch (err: any) { toast.error(err?.message || 'Could not save that idea'); }
+    if (!title.trim() || savePending.current) return;
+    savePending.current = true;
+    setSaving(true);
+    try {
+      await desk.add(title, notes);
+      if (!active.current) return;
+      setTitle(''); setNotes(''); toast.success('Added to your desk');
+    }
+    catch (err: unknown) { if (active.current) toast.error(errorMessage(err, 'Could not save that idea')); }
+    finally {
+      savePending.current = false;
+      if (active.current) setSaving(false);
+    }
   };
-  const act = async (work: Promise<void>) => { try { await work; } catch (err: any) { toast.error(err?.message || 'Your desk could not be updated'); } };
+  const act = async (work: Promise<void>) => { try { await work; } catch (err: unknown) { if (active.current) toast.error(errorMessage(err, 'Your desk could not be updated')); } };
   const normalizedTaken = (value: string) => taken.has(value.trim().toLowerCase());
   const available = desk.items.filter(item => !normalizedTaken(item.title));
   const visible = expanded ? desk.items : available.slice(0, 3);
@@ -32,9 +61,9 @@ export function PersonalDraftDesk({ draftId, userId, taken, onChoose, compact = 
     </button>
     {expanded && <div className="da-desk-body">
       <div className="grid gap-2 sm:grid-cols-[1fr_1.25fr_auto]">
-        <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="Save an idea…" maxLength={100} onKeyDown={event => { if (event.key === 'Enter') void save(); }} />
-        <Textarea value={notes} onChange={event => setNotes(event.target.value)} placeholder="Private note (optional)" maxLength={500} className="min-h-11 h-11 resize-none" />
-        <Button type="button" onClick={() => void save()} disabled={!title.trim()} className="h-11"><ListPlus className="h-4 w-4" /><span className="sr-only">Add idea</span></Button>
+        <Input value={title} disabled={saving} onChange={event => setTitle(event.target.value)} placeholder="Save an idea…" maxLength={100} onKeyDown={event => { if (event.key === 'Enter') void save(); }} />
+        <Textarea value={notes} disabled={saving} onChange={event => setNotes(event.target.value)} placeholder="Private note (optional)" maxLength={500} className="min-h-11 h-11 resize-none" />
+        <Button type="button" onClick={() => void save()} disabled={!title.trim() || saving} aria-busy={saving} className="h-11">{saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ListPlus className="h-4 w-4" />}<span className="sr-only">Add idea</span></Button>
       </div>
       {desk.error && <div className="da-desk-error"><span>{desk.error}</span><Button variant="ghost" size="sm" onClick={() => void desk.refresh()}>Retry</Button></div>}
       <div className="da-desk-list">

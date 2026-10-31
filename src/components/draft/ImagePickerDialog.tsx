@@ -107,9 +107,9 @@ function ImagePickerSession({ open, onOpenChange, pickName, enrichment, onImageS
           })}
         </div> : <p className="text-center text-xs text-muted-foreground">Artwork appears here when a source finds a match.</p>}
         <div className="da-image-page-controls flex items-center justify-between gap-2" aria-label="Artwork pages">
-          <Button type="button" variant="ghost" className="h-11 w-11 p-0" aria-label="Previous artwork page" disabled={visiblePage === 0 || saving} onClick={() => setPage((value) => Math.max(0, value - 1))}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" className="h-11 w-11 p-0" aria-label="Previous artwork page" disabled={visiblePage === 0 || saving} onClick={() => setPage(Math.max(0, visiblePage - 1))}><ChevronLeft className="h-4 w-4" /></Button>
           <span className="text-[10px] font-bold tabular-nums text-muted-foreground">{options.length} {options.length === 1 ? 'image' : 'images'} · {visiblePage + 1}/{pageCount}</span>
-          <Button type="button" variant="ghost" className="h-11 w-11 p-0" aria-label="Next artwork page" disabled={visiblePage + 1 >= pageCount || saving} onClick={() => setPage((value) => value + 1)}><ChevronRight className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" className="h-11 w-11 p-0" aria-label="Next artwork page" disabled={visiblePage + 1 >= pageCount || saving} onClick={() => setPage(Math.min(pageCount - 1, visiblePage + 1))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
         {saveError && <p className="text-xs text-destructive" role="alert">{saveError}</p>}
         <Button type="button" className="da-image-confirm min-h-11 w-full rounded-xl font-extrabold" disabled={!canSave || !canEdit || saving} onClick={() => void confirm()}>
