@@ -40,7 +40,7 @@ export function equipmentRepairQuote(definition: DeepClaimEquipmentDefinition, d
   const cash_cost = Math.ceil((definition.max_durability-durability)*rate/100);
   return { cash_cost, materials:{...definition.repair_materials}, repaired_durability:definition.max_durability };
 }
-export function equipmentAfterCompletedJob(item: Pick<DeepClaimEquipment,'durability'>, energy: number, configVersion: 1 | 2): number {
+export function equipmentAfterCompletedJob(item: Pick<DeepClaimEquipment,'durability'>, energy: number, configVersion: 1 | 2 | 3): number {
   integer(item.durability); integer(energy,1,3);
   return configVersion === 1 ? item.durability : Math.max(0,item.durability-EQUIPMENT_WEAR_PER_ENERGY*energy);
 }

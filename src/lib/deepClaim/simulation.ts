@@ -2,6 +2,7 @@
  * Explanatory/headless v1 arithmetic. SQL independently authorizes and freezes
  * every job; these pure helpers never generate geography or grant live rewards.
  */
+import { railStageSeconds } from './field';
 import { BUILDING_UPGRADE_COSTS, RESOURCE_BY_ID, STARTER_WORKERS, resourceSaleValue, resourceTotal } from './catalog';
 import {
   DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_STAT_IDS, DEEP_CLAIM_TIME_ZONE, type DeepClaimBuildingId,
@@ -48,6 +49,8 @@ export interface DeepClaimCrewPlanInput {
   material?: DeepClaimMineralId;
   remaining?: number;
   tutorial?: boolean;
+  /** Already authorized strongest installed route coverage; config1/2 callers leave zero. */
+  transport_bonus_percent?: number;
 }
 export interface DeepClaimCrewPlan {
   averages: DeepClaimStats;
@@ -69,7 +72,7 @@ export interface DeepClaimCrewPlan {
 export function calculateCrewPlan(input: DeepClaimCrewPlanInput): DeepClaimCrewPlan {
   const crew = input.workers, n = crew.length;
   whole(n, 1, 3); whole(input.path_edges); whole(input.target_depth); whole(input.tool_level, 1, 3);
-  if (new Set(crew.map(worker => worker.id)).size !== n || !['explore','extract'].includes(input.mode)) throw new Error('Invalid crew selection.');
+  if (new Set(crew.map(worker => worker.id)).size !== n || !['explore','extract','survey','infrastructure'].includes(input.mode)) throw new Error('Invalid crew selection.');
   const presetEnergy = energyCost(input.duration_minutes), energy = input.tutorial ? 1 : presetEnergy;
   const total = input.tutorial ? 30 : input.duration_minutes * 60;
   const averages = Object.fromEntries(DEEP_CLAIM_STAT_IDS.map(id => [id, Math.floor(crew.reduce((sum, worker) => sum + whole(worker.stats[id], 1, 100), 0) / n)])) as DeepClaimStats;
@@ -90,6 +93,9 @@ export function calculateCrewPlan(input: DeepClaimCrewPlanInput): DeepClaimCrewP
     const baseout = ratio([input.path_edges, 6, 100, 100 * n + 10 * heavy], [60 + averages.logistics, 100 * n], true);
     travel = Math.max(20, baseout);
     back = Math.max(20, ratio([baseout, 100 * n + 10 * short], [100 * n], true));
+    if(input.transport_bonus_percent !== undefined) {
+      travel=railStageSeconds(travel,input.transport_bonus_percent); back=railStageSeconds(back,input.transport_bonus_percent);
+    }
     setup = Math.max(20, ratio([total, 6], [70 + averages.engineering], true));
     haul = Math.max(20, ratio([total, 4], [70 + averages.logistics], true));
     work = total - travel - setup - haul - back;
@@ -102,7 +108,8 @@ export function calculateCrewPlan(input: DeepClaimCrewPlanInput): DeepClaimCrewP
     const raw = input.mode === 'explore'
       ? wages + 2 * n + Math.floor(averages.mining / 20) + Math.floor(averages.geology / 30) + Math.floor(averages.endurance / 30)
       : Math.max(1, mining_capacity);
-    quantity = Math.min(capacity, raw, input.remaining === undefined ? Number.MAX_SAFE_INTEGER : whole(input.remaining));
+    quantity = ['survey','infrastructure'].includes(input.mode) ? 0 : Math.min(capacity, raw, input.remaining === undefined ? Number.MAX_SAFE_INTEGER : whole(input.remaining));
+    if(['survey','infrastructure'].includes(input.mode)) mining_capacity=0;
   }
   const risk = Math.floor(input.target_depth / 10) + Math.floor((100 - averages.safety) / 10);
   return { averages, max_leadership, wages, energy_per_worker: energy, duration_seconds: total, capacity,
@@ -142,7 +149,7 @@ export function retainsOperatingCapital(cash: number, wages: number, inventory: 
 }
 export function canUpgrade(cash: number, building: DeepClaimBuildingId, currentLevel: number): boolean {
   const added = ['workers_quarters','smeltery','gem_workshop'].includes(building);
-  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 4 : 3);
+  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 5 : 3);
   const price = BUILDING_UPGRADE_COSTS[building]?.[added ? currentLevel : currentLevel - 1];
   return price !== undefined && cash - price >= 2;
 }

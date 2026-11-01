@@ -64,6 +64,26 @@ export function createDeepClaimMiddleware(token) {
           await state.database.advanceProduction(input.user, options.job_id, options.seconds);
           return reply(response, { data: true });
         }
+        if (input.command === 'cavern_survey_site') {
+          // This owner-only local test oracle selects an existing public
+          // shaft worksite whose genuine timed survey will reveal a chamber.
+          // It never changes seed, stock, money, terrain or production rules.
+          const snapshot = await state.database.rpc(input.user, 'dc_get', {});
+          const worker = snapshot.workers.find(value => value.name === 'Ivo Vale');
+          if (!snapshot.company || !worker) throw new Error('Found and upgrade a real isolated company first');
+          for (let y = 32; y <= 56; y++) {
+            if (!snapshot.world.tiles.some(value => value.x === 48 && value.y === y)) continue;
+            const quote = (await state.database.db.query("select public.dc_preview_operation_v3($1,$2::uuid[],'survey',48,$3,180,false,null,clock_timestamp()) quote", [snapshot.company.id, [worker.id], y])).rows[0].quote;
+            if (!quote.allowed) continue;
+            const expected = [];
+            for (const point of quote._survey_reveals) {
+              const cell = (await state.database.db.query('select public.dc_cell_v1($1,$2,$3) cell', [snapshot.company.id, point.x, point.y])).rows[0].cell;
+              if (cell.formation) expected.push({ ...point, formation: cell.formation });
+            }
+            if (expected.length) return reply(response, { data: { site: { x: 48, y }, expected } });
+          }
+          return reply(response, { data: null });
+        }
         if (input.command === 'fail_next') {
           state.failures.set(options.name, { count: options.count ?? 1, after_commit: options.after_commit ?? false });
           return reply(response, { data: true });

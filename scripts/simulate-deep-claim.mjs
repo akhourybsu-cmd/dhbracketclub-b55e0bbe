@@ -1,7 +1,7 @@
 // Deterministic, offline v1 economy guardrails. No production accounts, writes or hidden geography.
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
+const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
 const engine = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString('base64')}`);
 const { STARTER_WORKERS, RESOURCE_CATALOG, DEEP_CLAIM_MINERAL_IDS, RECIPE_CATALOG, EQUIPMENT_CATALOG, productionQuote, recipeValueAdded, availableEquipmentCapacity, calculateCrewPlan, withdrawFinite, collectCargo, sellResource, retainsOperatingCapital, canUpgrade, BUILDING_UPGRADE_COSTS } = engine;
 const workers = STARTER_WORKERS.map((worker,index) => ({ ...worker, id: `benchmark-${index}`, traits: [...worker.traits], stats: { ...worker.stats }, xp: 0, level: 1, energy: 6, assigned_job_id: null }));
@@ -25,7 +25,8 @@ assert.equal(Object.values(starterInventory).reduce((sum,quantity)=>sum+quantity
 assert.equal(cash,229);
 assert(canUpgrade(cash,'tool_station',1)); assert(canUpgrade(cash,'mine_office',1));
 const allUpgradeCost = ['mine_office','mine_shaft','warehouse','tool_station'].flatMap(key=>BUILDING_UPGRADE_COSTS[key].slice(0,2)).reduce((sum,cost)=>sum+cost,0);
-const phase2UpgradeCost=Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost)=>sum+cost,0);
+const phase3UpgradeCost=Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost)=>sum+cost,0);
+const phase2UpgradeCost=phase3UpgradeCost-12000;
 const starterAssay = {stone:12,clay:16,coal:10,copper_ore:18,tin_ore:12,iron_ore:15,quartz:8,silver_ore:3};
 const assayValue = engine.resourceSaleValue(starterAssay);
 assert.equal(allUpgradeCost,6080); assert.equal(assayValue,744);
@@ -57,6 +58,27 @@ let craftingCash=180-3-90-3, craftingStock={coal:10,stone:12,copper_ore:18};
 for(const key of ['smelt_copper','craft_copper_pickaxe']){const q=productionQuote(engine.RECIPE_BY_KEY[key],1,1);craftingCash-=q.cash_cost;for(const[id,count]of Object.entries(q.inputs)){assert((craftingStock[id]??0)>=count);craftingStock[id]=(craftingStock[id]??0)-count;}for(const[id,count]of Object.entries(q.outputs))craftingStock[id]=(craftingStock[id]??0)+count;}
 assert.equal(craftingCash,56);assert.equal(craftingStock.copper_bar,1);assert.equal(availableEquipmentCapacity(48,0),0);assert.equal(availableEquipmentCapacity(47,0),1);
 assert.equal(EQUIPMENT_CATALOG.length,10);assert.equal(RECIPE_CATALOG.length,16);
-console.log(JSON.stringify({ rulesVersion:2,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,productionRecipes:RECIPE_CATALOG.length,equipmentDefinitions:EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,
+// Phase3 field choices have real costs and bounded, route-specific utility.
+const {FIELD_CATALOG,infrastructureQuote,fieldConditions,surveyPlan,routeTransportBonus,discoverySpecimen,salvageFits}=engine;
+const operationCrew=workers.map(worker=>({...worker,wage:worker.base_wage}));
+const fieldSite={x:48,y:100}, knownRoute=Array.from({length:101},(_,y)=>({x:48,y}));
+const structures=FIELD_CATALOG.infrastructure.map(definition=>({...infrastructureQuote(definition.key,60,70).installation,id:definition.key,...fieldSite,status:'installed',job_id:'benchmark-job',installed_at:'2026-11-01T00:00:00Z'}));
+const bareConditions=fieldConditions({depth:100,safety:40,energy:2,target:fieldSite,route:knownRoute,infrastructure:[]});
+const protectedConditions=fieldConditions({depth:100,safety:40,energy:2,target:fieldSite,route:knownRoute,infrastructure:structures});
+assert(protectedConditions.incident_chance_percent<bareConditions.incident_chance_percent);
+assert.equal(protectedConditions.incident_chance_percent,0);
+const entranceRail={...structures.find(item=>item.key==='rail'),y:1};
+const entranceBonus=routeTransportBonus(knownRoute,[entranceRail]);
+assert(entranceBonus<entranceRail.strength/4,'One short entrance track cannot discount a full deep route.');
+const surveyCrewComparison=operationCrew.map(worker=>({worker:worker.name,...surveyPlan(20,worker.stats.geology,worker.traits.filter(trait=>trait==='ore_eye').length)}));
+assert(surveyCrewComparison[1].tile_limit>surveyCrewComparison[0].tile_limit,'Geology provides an actual survey role.');
+for(const mode of ['survey','infrastructure']) {const plan=calculateCrewPlan({workers:[operationCrew[0]],mode,duration_minutes:20,path_edges:10,target_depth:10,tool_level:1});assert.equal(plan.quantity,0);assert.equal(plan.wages,3);assert.equal(plan.energy_per_worker,1);}
+for(const definition of FIELD_CATALOG.infrastructure){const quote=infrastructureQuote(definition.key,180,70);assert.equal(quote.cash_cost,definition.cash_cost*3);for(const[id,quantity]of Object.entries(quote.materials))assert.equal(quantity,definition.materials[id]*3);}
+let specimens=0;
+for(const definition of FIELD_CATALOG.discoveries)for(const quality of FIELD_CATALOG.qualities){const find=discoverySpecimen(definition.key,quality.key);assert(find.sale_value>=15&&find.sale_value<=500);assert(engine.resourceSaleValue(find.salvage)<=find.sale_value);specimens++;}
+assert.equal(salvageFits({stone:119},{quartz:2},120),false);
+assert.equal(salvageFits({stone:118},{quartz:2},120),true);
+const phase3FieldProof={surveyCrewComparison,baseIncidentChance:bareConditions.incident_chance_percent,protectedIncidentChance:protectedConditions.incident_chance_percent,entranceRailWeightedBonus:entranceBonus,entranceRailStrength:entranceRail.strength,auxiliaryOperationsMintNoCargo:true,finiteSpecimenVariants:specimens,salvageNoArbitrage:true,salvageAtomicCapacity:true,shaftMaximumDepth:engine.buildingBenefits('mine_shaft',5).max_depth};
+console.log(JSON.stringify({ rulesVersion:3,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,productionRecipes:RECIPE_CATALOG.length,equipmentDefinitions:EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,
   starterAssaySaleValue:assayValue,starterAssayCannotMaxCompanyWithin24h:true,finiteDepositConservation:true,partialCollectionConservation:true,bankruptcyCounterexampleBlocked:true,
   controlledRichSeamBenchmark:benchmarks,note:'Starter assay is permanently finite and cannot fund all upgrades. Later funds require genuine exploration; no claim of a universal24-hour minimum across all generated worlds.' },null,2));

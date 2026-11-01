@@ -1,7 +1,8 @@
+import phase3Catalog from '../../../supabase/seed/deep-claim-phase3-catalog.json';
 import phase2Catalog from '../../../supabase/seed/deep-claim-phase2-catalog.json';
 import {
   DEEP_CLAIM_RESOURCE_IDS, type DeepClaimBuildingId, type DeepClaimDuration, type DeepClaimResourceId,
-  type DeepClaimResources, type DeepClaimSpecialty, type DeepClaimStatId, type DeepClaimEquipmentDefinition, type DeepClaimRecipe,
+  type DeepClaimResources, type DeepClaimSpecialty, type DeepClaimStatId, type DeepClaimEquipmentDefinition, type DeepClaimRecipe, type DeepClaimFieldCatalog, type DeepClaimInfrastructureKey, type DeepClaimDiscoveryKind,
 } from './types';
 
 /** Public market/catalog data. Deposits, geography and future yields stay server-private. */
@@ -87,14 +88,14 @@ export const STARTER_WORKERS = [
     stats: { mining: 48, geology: 45, engineering: 58, logistics: 83, safety: 56, endurance: 76, leadership: 51 } },
 ] as const;
 export const BUILDING_UPGRADE_COSTS: Record<DeepClaimBuildingId, readonly number[]> = {
-  mine_office: [90,1200], mine_shaft: [80,2000,5000], warehouse: [60,1000], tool_station: [50,1600],
+  mine_office: [90,1200], mine_shaft: [80,2000,5000,12000], warehouse: [60,1000], tool_station: [50,1600],
   workers_quarters: [90,450,1200], smeltery: [90,350,900], gem_workshop: [120,450,1100],
 };
 export function buildingBenefits(key: DeepClaimBuildingId, level: number): { crew_slots?: number; max_depth?: number; shaft_depth?: number; warehouse_capacity?: number; yield_bonus_percent?: number; worker_capacity?: number; processing_speed_percent?: number } {
   const added = ['workers_quarters','smeltery','gem_workshop'].includes(key);
-  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 4 : 3)) throw new Error('Invalid Deep Claim building level.');
+  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 5 : 3)) throw new Error('Invalid Deep Claim building level.');
   if (key === 'mine_office') return { crew_slots: level };
-  if (key === 'mine_shaft') return { max_depth: [49,99,149,299][level - 1], shaft_depth: [6,56,106,256][level - 1] };
+  if (key === 'mine_shaft') return { max_depth: [49,99,149,299,599][level - 1], shaft_depth: [6,56,106,256,556][level - 1] };
   if (key === 'warehouse') return { warehouse_capacity: 120 * 2 ** (level - 1) };
   if (key === 'tool_station') return { yield_bonus_percent: 25 * (level - 1), processing_speed_percent:[100,85,70][level-1] };
   if (key === 'workers_quarters') return { worker_capacity: 3 + level * 3 };
@@ -123,3 +124,9 @@ export const TRAINING_GAIN = phase2Catalog.training.stat_gain;
 export const EQUIPMENT_WEAR_PER_ENERGY = phase2Catalog.wear_per_energy;
 
 export const EQUIPMENT_CAPACITY = phase2Catalog.equipment_capacity;
+
+/** Frozen public field definitions; geography, incident rolls and unrecovered finds stay private. */
+export const FIELD_CATALOG = phase3Catalog as DeepClaimFieldCatalog;
+export const INFRASTRUCTURE_BY_KEY = Object.fromEntries(FIELD_CATALOG.infrastructure.map(item => [item.key,item])) as Record<DeepClaimInfrastructureKey, DeepClaimFieldCatalog['infrastructure'][number]>;
+export const DISCOVERY_BY_KEY = Object.fromEntries(FIELD_CATALOG.discoveries.map(item => [item.key,item])) as Record<DeepClaimDiscoveryKind, DeepClaimFieldCatalog['discoveries'][number]>;
+export const DISCOVERY_QUALITY_BY_KEY = Object.fromEntries(FIELD_CATALOG.qualities.map(item => [item.key,item])) as Record<import('./types').DeepClaimDiscoveryQuality, DeepClaimFieldCatalog['qualities'][number]>;

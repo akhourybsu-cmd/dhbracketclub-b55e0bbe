@@ -1,6 +1,6 @@
 # Deep Claim technical protocol
 
-Phase 0 architecture, Phase 1 mining, and Phase 2 workforce/production protocol. The implementation ledger records actual verification and deployment; this protocol describes the implemented contracts rather than asserting that a migration is already live.
+Phase 0 architecture, Phase 1 mining, Phase 2 workforce/production, and Phase 3 underground operations protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
 
 ## Ownership and authority
 
@@ -10,13 +10,17 @@ PostgreSQL is authoritative for money, energy, assignments, terrain mutations, f
 
 ## World and version boundaries
 
-The logical mine is 96 tiles wide, with 32×32 chunk addressing. Surface is y=0; positive y is underground. Generation expands only into needed chunks; the representation has no fixed bottom. Shaft levels support 49/99/149/299m. Phase 2 adds amethyst/gold-bearing deep seams; complete later-region hazards, caverns and infrastructure remain future content.
+The logical mine is 96 tiles wide, with 32×32 chunk addressing. Surface is y=0; positive y is underground. Generation expands only into needed chunks; the representation has no fixed bottom. Shaft levels support 49/99/149/299/599m. Phase 2 adds amethyst/gold-bearing deep seams. Phase 3 adds natural chambers, wet/crystal chambers, ruins and actual field infrastructure; the full six-region roadmap remains future content.
 
 The company seed, unrevealed terrain, reward plans and future discoveries remain private. Global 4×3 mineral clusters cross chunk boundaries; coal follows horizontal bands and deeper geology favors iron and silver. Eight small hand-authored starter assay seams are explicitly separate from ordinary generated geology. A versioned immutable procedural base is distinct from sparse reveal, excavation and remaining-deposit mutations. Existing chunks retain their generation version. Completed expeditions and their receipts are never rerolled by a balance update.
 
 The client receives explicitly revealed terrain only. A renderer must not reconstruct unknown tiles from a public seed or generate plausible-but-uncommitted tunnels. Fog represents missing information; it is not a second world generator.
 
 World-generation versions and expedition rules are independent. The company world/seed and every existing chunk remain unchanged. A new chunk at chunk-y five or deeper uses generation version two; an existing version-one chunk continues to generate its unseen cells with the original algorithm. Only new dispatches use expedition configuration two. An in-flight version-one expedition keeps its original milestones, cargo, and equipment-free settlement.
+
+For Phase 3, existing chunk metadata always wins. Previously absent chunks from chunk-row one/depth 32 may use generation three; chunk-row zero keeps the original geology. The new generator overlays coherent rooms on the established shallow/deep mineral distributions without changing any stored chunk or cell. Public `formation` describes an actually revealed cell, never an inferred hidden chamber. A natural empty cell becomes walkable only when revealed and connected to known excavated access. Damp chambers introduce working conditions, not an invisible impassable-water rule.
+
+Cutover must preserve old jobs whose private plans reference chunks not yet created. The migration first obtains company/expedition write barriers in application lock order, then pins missing chunk metadata for all unapplied configuration-one/two extraction **and reveal** coordinates using the original version selector. It does not reveal those cells or edit old plans. Existing company revisions advance once to invalidate pre-migration quotes without changing their economic state. Already-committed request receipts replay before revision checks. A latest-configuration insert guard rejects cached old dispatch code with a retryable conflict after the barrier. New configuration-three dispatches pin every planned chunk before committing, preserving their geology during later expansions as well.
 
 ## Expedition transaction and reconciliation
 
@@ -28,6 +32,24 @@ World-generation versions and expedition rules are independent. The company worl
 6. Collection transfers actual settled cargo in registry order exactly once per request. Partial collection leaves the remainder ready and blocks every new dispatch until resolved. Already-dispatched crews can still return, so staging is bounded by crew slots. A new partial transfer after making room is a new intentional request; retrying the previous receipt never transfers twice.
 
 The visual system may interpolate a worker along a disclosed route or animate a pickaxe. It cannot create resource balances or excavate new cells. Closing the browser, changing local time, or returning on another device does not change the outcome.
+
+## Phase 3 surveys, infrastructure and field events
+
+Surveying and infrastructure use the same worker assignments, energy, wages, crew slots, private plans and elapsed milestones as mining. Both require a known, depleted, shaft-connected worksite; central-shaft cells are valid. A survey reveals only selected unknown cells within a bounded Manhattan diamond. It never withdraws ore or excavates a wall. Empty scans are rejected. Reveals occur at due work milestones. Survey and construction jobs finish directly as collected with empty cargo and a persistent field report, avoiding a meaningless empty-haul claim.
+
+Supports, ventilation, pumps and rail consume quoted materials, construction credits, wages and energy atomically at dispatch. Duration presets correspond to project grades one/two/three. Engineering affects the frozen radius and strength. The project is visible as construction, but supplies no benefit until the crew returns. One project per cell and 128 total projects bound storage. The strongest eligible support/ventilation/pump at the target reduces its corresponding incident risk. Each real route point independently chooses its strongest covering rail; averaging those strengths across the route produces the transport bonus. Separate track sections extend coverage, while overlapping sections never stack on one point. This prevents one entrance track from improving an entire deep route. Rail reduces travel and return, freeing productive time. Building an installation never changes an existing expedition's frozen plan.
+
+Configuration-three jobs may encounter rockfall, gas or water delays. Tutorial work and sites above eight meters have zero chance. Exact depth-based conditions, safety reduction and applicable installed mitigation are quoted before dispatch. A private server-generated roll freezes one bounded setup delay, shifting work checkpoints and return together; it never destroys cargo, closes tunnels, kills workers or consumes energy twice. Extra wear is not added beyond the existing two-per-energy rule. Configurations one/two retain their original clocks and outcomes.
+
+Quotes show base timing plus the possible delay range. Active job clocks show the true frozen schedule. A player may infer a delay from that schedule; hiding timing inference is not a security promise. Private seed/roll values are never returned. Incident type and narrative publish only at their due setup boundary. Other field reports publish only after the corresponding survey/project/find has actually occurred. Applied event receipts prevent repeat effects and duplicate report creation; rendering contributes no events.
+
+## Recovered discoveries and permanent choices
+
+Only new configuration-three mining can recover a find, from a privately planned extraction cell that is fully depleted when the crew returns. Surveying a distant chamber does not retrieve an object through solid rock. Each company/cell can yield at most one discovery permanently. Definition, quality, detail, sale value and salvage bundle are frozen server data; reloading or repeating a request cannot reroll them. Existing depleted ground receives no retroactive find awards.
+
+The player may keep a specimen in the company collection, sell it for its frozen value, or salvage its displayed materials. Each choice is permanent and idempotent under the company lock and request fingerprint. Salvage requires room for the complete bundle and rolls back without loss when full. Keeping supplies a real permanent collection record, not an invented DH Score or unfinished research reward. Choices have no expiration.
+
+Twenty-four pending finds block further dispatches; already-working crews can return safely. Pending staging is bounded to 48 records. The public snapshot contains all pending finds, the latest 24 kept and latest 12 other resolved finds, plus total status counts. All history remains in the database. A full museum and paged lifetime collection remain later extensions. Public maps display recovered records only; private future finds stay inaccessible.
 
 ## Workforce and owned equipment
 
@@ -59,9 +81,9 @@ React Query keys include account and club. Responses carry a company revision; a
 
 ## Database and public API
 
-Phase 1 has fourteen private tables: `dc_rules`, `dc_companies`, `dc_worlds`, `dc_chunks`, `dc_tiles`, `dc_workers`, `dc_expeditions`, `dc_expedition_workers`, `dc_plans`, `dc_milestones`, `dc_reservations`, `dc_inventory`, `dc_requests` and `dc_logs`. Phase 2 adds `dc_equipment_catalog`, `dc_recipes`, `dc_candidates`, `dc_equipment`, `dc_training`, `dc_production_jobs` and `dc_job_equipment`. All 21 tables use RLS and deny anonymous/member direct CRUD. `dc_tiles` contains only revealed/mutated cells, not millions of untouched blocks. Versioned chunk seeds, original plans, definitions and argument receipts are immutable. Reservations protect every finite cell affected by an expedition.
+Phase 1 has fourteen private tables: `dc_rules`, `dc_companies`, `dc_worlds`, `dc_chunks`, `dc_tiles`, `dc_workers`, `dc_expeditions`, `dc_expedition_workers`, `dc_plans`, `dc_milestones`, `dc_reservations`, `dc_inventory`, `dc_requests` and `dc_logs`. Phase 2 adds `dc_equipment_catalog`, `dc_recipes`, `dc_candidates`, `dc_equipment`, `dc_training`, `dc_production_jobs` and `dc_job_equipment`. Phase 3 adds `dc_infrastructure`, `dc_discoveries` and `dc_field_events`. All 24 tables use RLS and deny anonymous/member direct CRUD. `dc_tiles` contains only revealed/mutated cells, not millions of untouched blocks. Versioned chunk seeds, original plans, definitions and argument receipts are immutable. Reservations protect every finite cell affected by an expedition.
 
-Fifteen RPCs are executable by authenticated members. The original eight retain their names and authorization boundaries:
+Eighteen RPCs are executable by authenticated members. The original eight retain their names and authorization boundaries:
 
 | RPC | Inputs / behavior |
 |---|---|
@@ -80,16 +102,21 @@ Fifteen RPCs are executable by authenticated members. The original eight retain 
 | `dc_retire_equipment(p_item_id,p_expected_revision,p_request_id)` | Permanently retire unassigned gear without a refund. |
 | `dc_start_production(p_recipe_key,p_batches,p_expected_revision,p_request_id)` | Spend inputs and queue a frozen server-timed recipe. |
 | `dc_collect_production(p_job_id,p_request_id)` | Collect actual ready materials/equipment without duplication. |
+| `dc_preview_operation(...preview inputs,p_infrastructure_key)` | Verify current survey/construction/mining choices and public conditions. |
+| `dc_dispatch_operation(...preview inputs,p_infrastructure_key,p_expected_revision,p_request_id)` | Freeze and atomically dispatch a configuration-three field operation. |
+| `dc_resolve_discovery(p_discovery_id,p_choice,p_expected_revision,p_request_id)` | Keep, sell or salvage one owned pending find exactly once. |
 
 Public snapshots contain schema/server time/revision, company, stock, workers, revealed world, expeditions, building levels and recent logs. Schema two adds daily candidates, owned equipment, production jobs and public recipe/equipment catalogs. The new client also reads schema one for safe rollout; version-two payloads require complete version-two collections. Active expedition cargo remains null. Ready cargo is what remains staged; collected expedition history retains the original haul and must never be interpreted as pending stock. Recent collected jobs and visible logs are bounded; full underlying history remains persisted. Cursor history remains a future extension.
 
+Schema three retains both prior contracts and adds infrastructure, recovered discoveries, discovery counts, applied field reports and the canonical public field catalog. New snapshots carry these collections even for an unstarted company, with empty owned arrays and zero counts. Workforce/production remain enabled for every schema at least two. The original dispatch endpoint delegates current rules while preserving its historical receipt fingerprint, so a pre-migration committed request with a lost response can still be retried exactly. The new operation endpoint uses its own request identity/payload, including the selected infrastructure type. Neither endpoint permits a client to choose a legacy rule version.
+
 Fresh receipt writes, including no-op company creation requests, are limited to 120 per member per minute. Authorization is checked before retry lookup. Argument fingerprints include scope and optimistic revision; exact retries are checked before changing eligibility. Reused UUIDs with changed arguments are rejected. The client stores only unfinished action identity/arguments in `dh:deep-claim:pending:v1:<user>:<club>` and clears that namespace on sign-out. A definitive SQL rule rejection clears the intent; an uncertain response retains it for explicit confirmation.
 
-Economic investments preserve two operating credits. Dispatch also requires cash after wages plus liquid stock plus guaranteed finite cargo to preserve that recoverable minimum, preventing a depleted one-stone seam from bankrupting an otherwise empty company. No bailout currency is minted. Risk remains a transparent operational-efficiency category; random injuries, cave-ins and permanent loss are not implemented.
+Economic investments preserve two operating credits. Dispatch requires sufficient cash for wages and project fees upfront, then checks remaining cash plus liquid collected stock plus guaranteed finite cargo against that recoverable minimum. Project input value is subtracted before assessing remaining stock. This prevents a depleted one-stone seam or a construction purchase from bankrupting an otherwise empty company. Surveys have no guaranteed cargo; pending finds, equipment, staged cargo and unfinished processing are not liquid reserve. No bailout currency is minted. Legacy risk labels describe operational efficiency; configuration-three conditions add explicit bounded delay chance. Injuries, destroyed passages and permanent loss remain unimplemented.
 
 ## Deferred extension points
 
-Surveying, infrastructure and recovery objectives; full regional hazards; contracts, research, DH Feats, club projects and notifications remain phase extensions. They must reuse the same ownership, version, transaction and inventory boundaries. No parallel DH Score or global currency is introduced.
+Dedicated recovery expeditions, persistent blockages/injuries, full later-region hazards, contracts, research, DH Feats, club projects and notifications remain phase extensions. They must reuse the same ownership, version, transaction and inventory boundaries. No parallel DH Score or global currency is introduced.
 
 ## Deployment
 

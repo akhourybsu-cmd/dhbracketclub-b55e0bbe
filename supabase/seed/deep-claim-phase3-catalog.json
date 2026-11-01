@@ -1,0 +1,221 @@
+{
+  "version": 3,
+  "infrastructure": [
+    {
+      "key": "supports",
+      "name": "Timber Supports",
+      "description": "Reduces instability incident chance at covered sites.",
+      "cash_cost": 12,
+      "materials": {
+        "stone": 8,
+        "clay": 2
+      }
+    },
+    {
+      "key": "ventilation",
+      "name": "Ventilation",
+      "description": "Reduces gas incident chance at covered sites.",
+      "cash_cost": 18,
+      "materials": {
+        "copper_bar": 1,
+        "coal": 2
+      }
+    },
+    {
+      "key": "pump",
+      "name": "Drainage Pump",
+      "description": "Reduces water incident chance at covered sites.",
+      "cash_cost": 22,
+      "materials": {
+        "iron_bar": 1,
+        "stone": 4
+      }
+    },
+    {
+      "key": "rail",
+      "name": "Haul Rail",
+      "description": "Shortens travel and return along a covered known route.",
+      "cash_cost": 16,
+      "materials": {
+        "iron_bar": 1,
+        "stone": 2
+      }
+    }
+  ],
+  "discoveries": [
+    {
+      "key": "banded_geode",
+      "name": "Banded Geode",
+      "description": "Pale quartz bands curl around a sealed crystal pocket.",
+      "min_depth": 0,
+      "base_value": 30,
+      "base_mass_grams": 320,
+      "salvage": {
+        "quartz": 2,
+        "stone": 3
+      }
+    },
+    {
+      "key": "fern_fossil",
+      "name": "Fern Fossil",
+      "description": "A branching fern impression rests in a dark sediment plate.",
+      "min_depth": 32,
+      "base_value": 45,
+      "base_mass_grams": 480,
+      "salvage": {
+        "coal": 3,
+        "clay": 2
+      }
+    },
+    {
+      "key": "survey_journal",
+      "name": "Survey Journal",
+      "description": "A copper-bound field book preserves a long-abandoned survey.",
+      "min_depth": 32,
+      "base_value": 60,
+      "base_mass_grams": 180,
+      "salvage": {
+        "copper_bar": 1,
+        "stone": 2
+      }
+    },
+    {
+      "key": "rail_relic",
+      "name": "Rail Relic",
+      "description": "A stamped iron gauge marks an earlier underground railway.",
+      "min_depth": 50,
+      "base_value": 80,
+      "base_mass_grams": 1700,
+      "salvage": {
+        "iron_bar": 1,
+        "stone": 4
+      }
+    },
+    {
+      "key": "crystal_cluster",
+      "name": "Crystal Cluster",
+      "description": "Interlocking violet points grew undisturbed in the deep rock.",
+      "min_depth": 160,
+      "base_value": 150,
+      "base_mass_grams": 760,
+      "salvage": {
+        "amethyst": 2,
+        "quartz": 2
+      }
+    },
+    {
+      "key": "meteorite_fragment",
+      "name": "Meteorite Fragment",
+      "description": "A dense silver-flecked fragment carries an ancient impact crust.",
+      "min_depth": 320,
+      "base_value": 180,
+      "base_mass_grams": 2100,
+      "salvage": {
+        "iron_bar": 1,
+        "silver_ore": 2,
+        "stone": 4
+      }
+    }
+  ],
+  "qualities": [
+    {
+      "key": "common",
+      "name": "Common",
+      "weight": 60,
+      "value_percent": 100,
+      "mass_percent": 100,
+      "salvage_multiplier": 1
+    },
+    {
+      "key": "fine",
+      "name": "Fine",
+      "weight": 25,
+      "value_percent": 150,
+      "mass_percent": 115,
+      "salvage_multiplier": 1
+    },
+    {
+      "key": "exceptional",
+      "name": "Exceptional",
+      "weight": 12,
+      "value_percent": 220,
+      "mass_percent": 135,
+      "salvage_multiplier": 2
+    },
+    {
+      "key": "flawless",
+      "name": "Flawless",
+      "weight": 3,
+      "value_percent": 300,
+      "mass_percent": 160,
+      "salvage_multiplier": 3
+    }
+  ],
+  "caps": {
+    "infrastructure": 128,
+    "pending_dispatch": 24,
+    "pending_max": 48,
+    "finds_per_job": 8,
+    "kept_visible": 24,
+    "resolved_visible": 12,
+    "reports_visible": 24
+  },
+  "survey": {
+    "radius_cap": 4,
+    "tile_limit_cap": 41
+  },
+  "hazards": {
+    "chance_cap": 25,
+    "delay_cap_seconds": 300,
+    "safe_depth": 8,
+    "kind_order": [
+      "rockfall",
+      "gas",
+      "water"
+    ]
+  },
+  "shaft": {
+    "max_level": 5,
+    "upgrade_cost": 12000,
+    "max_depth": 599,
+    "corridor_depth": 556
+  },
+  "regions": [
+    {
+      "key": "surface",
+      "name": "Surface",
+      "min_depth": 0,
+      "max_depth": 49
+    },
+    {
+      "key": "ironworks",
+      "name": "Ironworks",
+      "min_depth": 50,
+      "max_depth": 159
+    },
+    {
+      "key": "glittering",
+      "name": "Glittering",
+      "min_depth": 160,
+      "max_depth": 319
+    },
+    {
+      "key": "forgotten",
+      "name": "Forgotten",
+      "min_depth": 320,
+      "max_depth": 599
+    }
+  ],
+  "generation": {
+    "version": 3,
+    "min_chunk_y": 1,
+    "macro_size": 24,
+    "activation_percent": 55,
+    "center_offset_min": 4,
+    "center_offset_range": 17,
+    "radius_x_min": 3,
+    "radius_x_range": 6,
+    "radius_y_min": 2,
+    "radius_y_range": 4
+  }
+}

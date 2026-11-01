@@ -1,6 +1,52 @@
 # Deep Claim implementation ledger
 
-## Current release — Phase 2 workforce and production
+## Current release — Phase 3 underground operations
+
+Phase 3 is implemented on baseline main `ed02c36da1ddb8624eecc78fed7737998164d790`. Existing ownership, terrain, earned inventory and configuration-one/two jobs remain intact. The final release SHA and verified GitHub/Lovable synchronization are reported after publishing this commit; this document does not invent its own future SHA.
+
+### Working vertical slice
+
+- Survey operations reveal a bounded area at actual elapsed work checkpoints without mining its ore. Surveys require a known, connected, depleted worksite, respect crew energy/wages/slots, and finish with a persistent report rather than an empty cargo claim.
+- Supports, ventilation, pumps and rail are paid, timed construction projects with three grades. Inputs, wages and fees are spent atomically; benefits begin only after return. Engineering changes their real coverage/strength. The strongest covering mitigation applies; rail is weighted across the actual route, so an entrance track cannot accelerate an entire deep trip.
+- New configuration-three expeditions can encounter bounded rockfall, gas and water delays. Quotes show risk and possible extra time. Incidents publish only when due and never kill workers, destroy cargo, consume additional energy or rewrite old jobs. The tutorial remains thirty seconds and has no incident chance.
+- Newly generated chunks below 32m can contain coherent natural, wet and crystal chambers and ruins. Existing chunks retain their original generation, including unseen cells. Natural air is usable only after actual revelation and connection. The new level-five shaft opens genuine access through 556m with a supported operating depth of 599m.
+- Six finite specimen definitions have frozen quality, details, sale value and salvage. Recovery requires actual depletion by mining, not a remote survey. Players permanently keep, sell or salvage a find; whole-bundle capacity checks prevent loss. A company/cell never awards the same discovery twice. Pending finds have no timer and are bounded; a full pending queue pauses new dispatches without losing existing returns.
+- The existing mobile shell adds accessible field reports, installation planning and a collection decision panel. Canvas shows committed formations, projects and recovered finds, with focus controls and reduced graphics/motion support. Worksite browsing is bounded to 64 options plus a selected target, with search/paging for larger mines.
+- Existing workforce, equipment, processing, sale, offline and durable retry flows remain functional. Preview errors are distinguished from uncertain writes; exact pre-migration request receipts remain recoverable after the rollout.
+
+### Changed files and boundaries
+
+Production extends `src/lib/deepClaim/{types,catalog,world,simulation,production,service,field}.ts`, `src/hooks/useDeepClaim.ts`, `src/pages/DeepClaimPage.tsx`, the existing dispatch/settings/styles and isolated Canvas renderer. New UI modules are `DeepClaimField.tsx`, `fieldLabels.ts` and renderer `fieldAtlas.ts`, `fieldSprites.ts`, `fieldVisuals.ts`. The public, answer-free canonical catalog is `supabase/seed/deep-claim-phase3-catalog.json`.
+
+Tests extend `src/test/deepClaim*`, add the Phase 3 fixture/component/logic suites, and extend SQL, headless and browser scripts with `deep-claim-phase3-{extra,preservation,world}.mjs`. All five Deep Claim documents and the CLAUDE feature index agree with the release. No dependency, unrelated game, authentication, club, installation or global currency system was replaced.
+
+### SQL deployment — applied and verified
+
+`20261102040000_deep_claim_underground_operations.sql` was applied transactionally, with its exact original source recorded in Supabase migration history. SHA256: `f5cd959948231619d1396bed64592f1623a6e5939bbde8842c83a56733b85063`.
+
+The additive migration introduces `dc_infrastructure`, `dc_discoveries`, `dc_field_events`, secured operation preview/dispatch and discovery resolution, generation/configuration-three helpers and immutable guards. It preserves the fifteen earlier RPC signatures. Cutover takes company/expedition barriers in application lock order, pins all missing old-plan extraction and reveal chunks using the old generation selector, and invalidates stale quotes without changing earned balances or old job outcomes. New jobs pin their planned chunks too. The first three migration files remain unchanged.
+
+Production postflight verified **73/73 function bodies**, exactly **18 member RPC grants**, service access, anonymous denial and **24/24 private tables under RLS with no member/anonymous direct CRUD**. Both installed catalogs and the recorded migration source match the tested originals. Private tables are absent from Realtime publication. Existing installation count remains 52 and its full fingerprint remains `a57ebe1314691ab1449c666997ad8faf`. Deep Claim has zero installations at verification: club admins install it through the existing Asset Library. No live company or test account was created.
+
+### Verification evidence
+
+- Actual application typecheck, `npx tsc --noEmit -p tsconfig.app.json`, passed. Scoped ESLint passed for modified Deep Claim modules, tests and scripts.
+- Full unit/component suite: **186 files, 1,725 tests passed**, run without competing heavy jobs.
+- Actual-migration PostgreSQL suite: **85 groups passed**, preserving all 55 baseline groups. Coverage includes configuration-one/two whole and partly elapsed jobs, absent extraction/reveal chunk borders, independent cavern geometry, finite resources, delayed incidents, weighted rail, operating reserves, every discovery decision, immutable receipts, tenant/asset access and private-data denial.
+- The exact release transaction was separately exercised against an existing isolated pre-migration company and active job. Original-source migration history, lost-acknowledgement legacy dispatch recovery, old-state preservation and repeat-apply rejection passed. Production preflight matched all 47 prior function bodies before applying 0400.
+- Headless balance passed **210 mining scenarios**, field arithmetic, all **24 specimen/quality combinations**, finite conservation and no salvage arbitrage. A route-coverage case reduces an entrance rail's nominal 28 strength to a real 3% transport benefit. Existing first-smelter/pickaxe progression remains attainable with 56 cash left in its tested route.
+- Final browser run: **152 checks passed, zero errors and zero runtime errors** across 320px/390px phones, landscape, desktop, light/dark themes and reduced motion. It covers the actual SQL-backed mining/reload/offline/two-device journey, workforce/production, paid surveying and infrastructure, finite discovery keep/sell/salvage with interrupted-response recovery, reports and map focus. The cavern case earned tutorial cargo, sold it, bought shaft two and completed a deep survey to reveal an actual natural room; no fake production records or frontend currency overrides were used.
+- Final production build passed with `npm run build` in **13.95 seconds**. The game remains lazy loaded, with no new game-engine dependency.
+
+### Remaining work and decisions
+
+Phase 4 is next: dependency-based research, persistent contracts, advanced industry/logistics and company milestones. Phase 5 club projects/standings/source-backed DH Feats/notifications and Phase 6 finished authored atlas/music/presentation remain separate work. Initial procedural art and synthesized audio are original working presentation, not a claimed finished commercial asset pack or soundtrack.
+
+The full six-region content roadmap, surveying-specific future discoveries, pumps that drain actual blocked water routes, advanced rail networks and a paged lifetime museum are not claimed. Current hazards cause delay only, while pumps mitigate the corresponding risk. Field history is bounded in public snapshots while all records persist. Offline progression reconciles on authorized reads/mutations; no unattended cron/notification delivery is claimed. Company credits remain isolated from DH Score. PGlite serializes transactions, so native multi-connection deadlock stress remains unverified. Production schema/security/source checks do not impersonate a live member. Preview synchronization and public publishing are separate deployment facts.
+
+## Phase 2 historical release record
+
+The following records describe the earlier Phase 2 release and verification at that time. Current Phase 3 behavior and verification above supersede forward-looking references below.
 
 Phase 2 is implemented on baseline main `4baca192378d68d11ddd25a553dc2874ec75ac3a`. Phase 0/1 integration, ownership, terrain and economic records remain intact. The final release SHA and verified GitHub/Lovable synchronization are reported after publishing this commit; this document does not invent its own future SHA.
 

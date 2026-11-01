@@ -1,9 +1,10 @@
 import {
-  DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
+  DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
   DEEP_CLAIM_STAT_IDS, type DeepClaimExpedition, type DeepClaimPoint, type DeepClaimPreview, type DeepClaimResources,
   type DeepClaimSnapshot, type DeepClaimTile, type DeepClaimWorkerPosition, type DeepClaimWorld,
 } from './types';
-import { EQUIPMENT_BY_KEY, RECIPE_BY_KEY, resourceTotal } from './catalog';
+import { EQUIPMENT_BY_KEY, FIELD_CATALOG, RECIPE_BY_KEY, resourceTotal } from './catalog';
+import { discoverySpecimen } from './field';
 import { equipmentRepairQuote, workerStatsWithEquipment } from './production';
 
 export class DeepClaimValidationError extends Error {
@@ -29,9 +30,10 @@ export function validateDeepClaimWorld(value: unknown): asserts value is DeepCla
     || !integer(value.max_depth, 1, 1_000_000) || !integer(value.revision) || !Array.isArray(value.tiles)) fail('Invalid revealed mine world.');
   const seen = new Set<string>();
   for (const tile of value.tiles) {
-    if (!object(tile) || !keys(tile, ['x','y','terrain','material','remaining','initial_amount'])
+    if (!object(tile) || !keys(tile, ['x','y','terrain','material','remaining','initial_amount','formation'])
       || !integer(tile.x, 0, 95) || !integer(tile.y, 0, 1_000_000) || !memberOf(tile.terrain, ['soil','stone','excavated'])
       || tile.material !== null && !memberOf(tile.material, DEEP_CLAIM_MINERAL_IDS)
+      || tile.formation !== undefined && tile.formation !== null && !memberOf(tile.formation, DEEP_CLAIM_FORMATIONS)
       || !integer(tile.remaining) || !integer(tile.initial_amount) || tile.remaining > tile.initial_amount
       || tile.material === null && tile.remaining !== 0
       || tile.terrain === 'excavated' && tile.remaining !== 0 || seen.has(`${tile.x}:${tile.y}`)) fail('Invalid revealed terrain or deposit.');
@@ -40,13 +42,14 @@ export function validateDeepClaimWorld(value: unknown): asserts value is DeepCla
 }
 function validateJob(value: unknown): asserts value is DeepClaimExpedition {
   const fields = ['id','mode','status','worker_ids','target','path','stages','stage','started_at','completes_at','duration_minutes','duration_seconds','tutorial','wages','energy_per_worker','config_version','cargo'];
-  if (!object(value) || !keys(value, fields) || !text(value.id) || !memberOf(value.mode, ['explore','extract'])
+  if (!object(value) || !keys(value, fields) || !text(value.id) || !memberOf(value.mode, ['explore','extract','survey','infrastructure'])
     || !memberOf(value.status, ['active','ready','collected']) || !Array.isArray(value.worker_ids) || value.worker_ids.length < 1 || value.worker_ids.length > 3
     || value.worker_ids.some(id => !text(id)) || new Set(value.worker_ids).size !== value.worker_ids.length || !point(value.target, false)
     || !Array.isArray(value.path) || value.path.length < 1 || !value.path.every(entry => point(entry)) || !Array.isArray(value.stages) || value.stages.length !== 5
-    || !timestamp(value.started_at) || !timestamp(value.completes_at) || ![20,60,180].includes(Number(value.duration_minutes))
+    || !timestamp(value.started_at) || !timestamp(value.completes_at) || ![20,60,180].includes(value.duration_minutes as number)
     || !integer(value.duration_seconds, 1) || Date.parse(value.completes_at) - Date.parse(value.started_at) !== value.duration_seconds * 1000
-    || typeof value.tutorial !== 'boolean' || !integer(value.wages) || !integer(value.energy_per_worker, 1, 3) || ![1,2].includes(Number(value.config_version))) fail('Invalid expedition.');
+    || typeof value.tutorial !== 'boolean' || !integer(value.wages) || !integer(value.energy_per_worker, 1, 3) || ![1,2,3].includes(value.config_version as number)) fail('Invalid expedition.');
+  if (['survey','infrastructure'].includes(String(value.mode)) && value.config_version !== 3) fail('Field operations require version-three rules.');
   let cursor = Date.parse(value.started_at);
   for (let i = 0; i < value.stages.length; i++) {
     const stage = value.stages[i];
@@ -60,18 +63,22 @@ function validateJob(value: unknown): asserts value is DeepClaimExpedition {
   } else {
     if (value.stage !== value.status) fail('Invalid settled expedition stage.');
     validateDeepClaimResources(value.cargo);
+    if (['survey','infrastructure'].includes(String(value.mode)) && (value.status !== 'collected' || resourceTotal(value.cargo)>0)) fail('Field operations settle without staged cargo.');
   }
 }
 export function validateDeepClaimSnapshot(value: unknown, identity?: { userId: string; clubId: string }): asserts value is DeepClaimSnapshot {
-  if (!object(value) || !keys(value, ['schema_version','server_now','revision','company','resources','workers','world','expeditions','buildings','log','candidates','equipment','production_jobs','recipes','equipment_catalog'])
-    || ![1,2].includes(Number(value.schema_version)) || !timestamp(value.server_now) || !integer(value.revision)
+  if (!object(value) || !keys(value, ['schema_version','server_now','revision','company','resources','workers','world','expeditions','buildings','log','candidates','equipment','production_jobs','recipes','equipment_catalog','infrastructure','discoveries','discovery_summary','field_reports','field_catalog'])
+    || ![1,2,3].includes(value.schema_version as number) || !timestamp(value.server_now) || !integer(value.revision)
     || !Array.isArray(value.workers) || !Array.isArray(value.expeditions) || !Array.isArray(value.buildings) || !Array.isArray(value.log)) fail('Invalid Deep Claim save.');
   validateDeepClaimResources(value.resources);
-  const v2 = value.schema_version === 2;
+  const v2 = Number(value.schema_version) >= 2, v3=value.schema_version===3;
+  if(v3) validatePhaseThreeCollections(value);
+  else if(['infrastructure','discoveries','discovery_summary','field_reports','field_catalog'].some(key=>value[key]!==undefined)) fail('Field records require a version-three save.');
   if (v2) validatePhaseTwoCollections(value);
   else if (['candidates','equipment','production_jobs','recipes','equipment_catalog'].some(key => value[key] !== undefined)) fail('Phase-two records require a version-two save.');
   if (value.company === null) {
     if (value.world !== null || value.revision !== 0 || value.workers.length || value.expeditions.length || value.buildings.length || value.log.length || resourceTotal(value.resources)
+      || v3 && ((value.infrastructure as unknown[]).length || (value.discoveries as unknown[]).length || (value.field_reports as unknown[]).length || Object.values(value.discovery_summary as Record<string,number>).some(Boolean))
       || v2 && ['candidates','equipment','production_jobs'].some(key => (value[key] as unknown[]).length > 0)) fail('Invalid company setup state.');
     return;
   }
@@ -112,14 +119,14 @@ export function validateDeepClaimSnapshot(value: unknown, identity?: { userId: s
   if (new Set(value.buildings.map(building => object(building) ? building.key : null)).size !== (v2 ? 7 : 4) || value.buildings.length !== (v2 ? 7 : 4)) fail('Invalid company buildings.');
   for (const building of value.buildings) if (!object(building) || !keys(building, ['key','level','max_level','upgrade_cost','effect'])
     || !memberOf(building.key, v2 ? DEEP_CLAIM_BUILDING_IDS : DEEP_CLAIM_BUILDING_IDS.slice(0,4))
-    || !integer(building.level, v2 && ['workers_quarters','smeltery','gem_workshop'].includes(String(building.key)) ? 0 : 1, v2 && building.key === 'mine_shaft' ? 4 : 3)
-    || building.max_level !== (v2 && building.key === 'mine_shaft' ? 4 : 3)
+    || !integer(building.level, v2 && ['workers_quarters','smeltery','gem_workshop'].includes(String(building.key)) ? 0 : 1, v2 && building.key === 'mine_shaft' ? (v3 ? 5 : 4) : 3)
+    || building.max_level !== (v2 && building.key === 'mine_shaft' ? (v3 ? 5 : 4) : 3)
     || building.upgrade_cost !== null && !integer(building.upgrade_cost, 1) || !text(building.effect, 240)) fail('Invalid building upgrade.');
   if (v2) validatePhaseTwoAssignments(value as unknown as DeepClaimSnapshot);
   for (const entry of value.log) if (!object(entry) || !keys(entry, ['id','kind','title','created_at']) || !text(entry.id) || !text(entry.kind, 60) || !text(entry.title, 240) || !timestamp(entry.created_at)) fail('Invalid company log.');
 }
 export function validateDeepClaimPreview(value: unknown): asserts value is DeepClaimPreview {
-  const fields = ['allowed','reasons','company_revision','server_now','wages','energy_per_worker','duration_seconds','estimated_yield','route','stages','cargo_capacity','risk_level','accessible_depth','expected_resources','projected_completion_at'];
+  const fields = ['allowed','reasons','company_revision','server_now','wages','energy_per_worker','duration_seconds','estimated_yield','route','stages','cargo_capacity','risk_level','accessible_depth','expected_resources','projected_completion_at','operation_version','operation_cost','materials_cost','conditions','survey','installation'];
   if (!object(value) || !keys(value, fields) || typeof value.allowed !== 'boolean' || !Array.isArray(value.reasons) || value.reasons.some(reason => !text(reason, 300))
     || !integer(value.company_revision) || !timestamp(value.server_now) || !integer(value.wages) || !integer(value.energy_per_worker, 0, 3) || !integer(value.duration_seconds)
     || !object(value.estimated_yield) || !keys(value.estimated_yield, ['min','max']) || !integer(value.estimated_yield.min) || !integer(value.estimated_yield.max)
@@ -127,6 +134,8 @@ export function validateDeepClaimPreview(value: unknown): asserts value is DeepC
     || !integer(value.cargo_capacity) || !memberOf(value.risk_level, ['low','moderate','high']) || !integer(value.accessible_depth)
     || !Array.isArray(value.expected_resources) || value.expected_resources.some(id => !memberOf(id, DEEP_CLAIM_MINERAL_IDS)) || !timestamp(value.projected_completion_at)
     || !Array.isArray(value.stages) || value.stages.some(stage => !object(stage) || !keys(stage, ['key','duration_seconds']) || !memberOf(stage.key, stageKeys) || !integer(stage.duration_seconds))) fail('Invalid expedition preview.');
+  if(value.operation_version!==undefined) validatePhaseThreePreview(value);
+  else if(['operation_cost','materials_cost','conditions','survey','installation'].some(key=>value[key]!==undefined)) fail('Field quotes require version-three rules.');
   if (value.allowed && value.reasons.length || !value.allowed && !value.reasons.length) fail('Invalid expedition preview availability.');
 }
 
@@ -237,7 +246,7 @@ function validatePhaseTwoAssignments(snapshot: DeepClaimSnapshot) {
   const warehouse = snapshot.buildings.find(building => building.key === 'warehouse')!.level;
   const shaft = snapshot.buildings.find(building => building.key === 'mine_shaft')!.level;
   if (snapshot.company!.worker_capacity !== 3+3*quarters || snapshot.company!.crew_slots !== office
-    || snapshot.company!.warehouse_capacity !== 120*2**(warehouse-1) || snapshot.world!.max_depth !== [49,99,149,299][shaft-1]) fail('Company capacity must match its actual buildings.');
+    || snapshot.company!.warehouse_capacity !== 120*2**(warehouse-1) || snapshot.world!.max_depth !== [49,99,149,299,599][shaft-1]) fail('Company capacity must match its actual buildings.');
   const usedSlots = new Set<string>();
   for (const item of equipment) if (item.worker_id !== null) {
     const worker = snapshot.workers.find(worker => worker.id === item.worker_id), slot = EQUIPMENT_BY_KEY[item.definition_key].slot;
@@ -255,4 +264,70 @@ function validatePhaseTwoAssignments(snapshot: DeepClaimSnapshot) {
     const effective = Math.ceil(recipe.duration_seconds * [100,85,70][level-1] / 100);
     if (recipe.effective_duration_seconds !== effective) fail('Recipe timing does not match its operating station.');
   }
+}
+
+/** Canonical JSON comparison ignores transport object-key order while preserving array order. */
+function semanticJSON(value:unknown):string {
+  if(Array.isArray(value)) return `[${value.map(semanticJSON).join(',')}]`;
+  if(object(value)) return `{${Object.keys(value).sort().map(key=>`${JSON.stringify(key)}:${semanticJSON(value[key])}`).join(',')}}`;
+  return JSON.stringify(value);
+}
+function validatePhaseThreeCollections(value:Record<string,unknown>) {
+  if(!Array.isArray(value.infrastructure) || value.infrastructure.length>128 || !Array.isArray(value.discoveries)
+    || value.discoveries.length>84 || !Array.isArray(value.field_reports) || value.field_reports.length>24
+    || semanticJSON(value.field_catalog)!==semanticJSON(FIELD_CATALOG)) fail('Unsupported underground operations catalog or collections.');
+  const summary=value.discovery_summary;
+  if(!object(summary) || !keys(summary,['pending','kept','sold','salvaged']) || !integer(summary.pending,0,48) || !integer(summary.kept) || !integer(summary.sold) || !integer(summary.salvaged)) fail('Invalid discovery summary.');
+  const infrastructureIds=new Set<string>(), cells=new Set<string>(), discoveries=new Set<string>(), discoveryCells=new Set<string>(), reports=new Set<string>();
+  const counts={pending:0,kept:0,sold:0,salvaged:0};
+  for(const item of value.infrastructure) {
+    if(!object(item) || !keys(item,['id','key','x','y','grade','radius','strength','status','job_id','installed_at']) || !text(item.id) || infrastructureIds.has(item.id)
+      || !memberOf(item.key,DEEP_CLAIM_INFRASTRUCTURE_KEYS) || !integer(item.x,0,95) || !integer(item.y,1,599) || cells.has(`${item.x}:${item.y}`)
+      || !integer(item.grade,1,3) || !integer(item.radius,6,12) || !integer(item.strength,5,40)
+      || !memberOf(item.status,['building','installed']) || !text(item.job_id) || (item.status==='building' ? item.installed_at!==null : !timestamp(item.installed_at) || Date.parse(String(item.installed_at))>Date.parse(String(value.server_now)))) fail('Invalid installed infrastructure.');
+    // Engineering was frozen when built, so it may differ from the current crew.
+    const engineeringRadius=item.radius-(6+2*(item.grade-1));
+    if(![0,1,2].includes(engineeringRadius) || item.key!=='rail' && (item.strength<3+2*item.grade || item.strength>7+2*item.grade)
+      || item.key==='rail' && (item.strength<5+10*item.grade || item.strength>Math.min(40,10+10*item.grade))) fail('Invalid frozen infrastructure strength.');
+    infrastructureIds.add(item.id);cells.add(`${item.x}:${item.y}`);
+  }
+  for(const item of value.discoveries) {
+    if(!object(item) || !keys(item,['id','x','y','job_id','kind','name','quality','detail','sale_value','salvage','status','discovered_at','resolved_at'])
+      || !text(item.id) || discoveries.has(item.id) || !integer(item.x,0,95) || !integer(item.y,1,599) || discoveryCells.has(`${item.x}:${item.y}`)
+      || !text(item.job_id) || !memberOf(item.kind,DEEP_CLAIM_DISCOVERY_KINDS) || !memberOf(item.quality,DEEP_CLAIM_DISCOVERY_QUALITIES)
+      || !text(item.name,100) || !text(item.detail,600) || !integer(item.sale_value,15,500) || !memberOf(item.status,['pending','kept','sold','salvaged'])
+      || !timestamp(item.discovered_at) || Date.parse(item.discovered_at)>Date.parse(String(value.server_now))
+      || (item.status==='pending' ? item.resolved_at!==null : !timestamp(item.resolved_at) || Date.parse(String(item.resolved_at))<Date.parse(item.discovered_at) || Date.parse(String(item.resolved_at))>Date.parse(String(value.server_now)))) fail('Invalid recovered discovery.');
+    validateDeepClaimResources(item.salvage);
+    const canonical=discoverySpecimen(item.kind as import('./types').DeepClaimDiscoveryKind,item.quality as import('./types').DeepClaimDiscoveryQuality);
+    if(item.name!==canonical.name || item.detail!==canonical.detail || item.sale_value!==canonical.sale_value || !sameAmounts(item.salvage,canonical.salvage)) fail('Unsupported frozen discovery definition.');
+    counts[item.status as keyof typeof counts]++;discoveries.add(item.id);discoveryCells.add(`${item.x}:${item.y}`);
+  }
+  if(counts.pending!==summary.pending || counts.kept!==Math.min(24,summary.kept) || counts.sold+counts.salvaged!==Math.min(12,summary.sold+summary.salvaged)
+    || counts.sold>summary.sold || counts.salvaged>summary.salvaged) fail('Discovery history does not match its bounded summary.');
+  for(const report of value.field_reports) {
+    if(!object(report) || !keys(report,['id','job_id','kind','title','description','point','occurred_at','delay_seconds','tiles_revealed','infrastructure_id','discovery_id'])
+      || !text(report.id) || reports.has(report.id) || !text(report.job_id) || !memberOf(report.kind,['incident','survey','infrastructure','discovery'])
+      || !text(report.title,160) || !text(report.description,800) || !point(report.point,false) || !timestamp(report.occurred_at)
+      || Date.parse(report.occurred_at)>Date.parse(String(value.server_now)) || !integer(report.delay_seconds,0,300) || !integer(report.tiles_revealed,0,41)
+      || report.infrastructure_id!==null && !text(report.infrastructure_id) || report.discovery_id!==null && !text(report.discovery_id)) fail('Invalid committed field report.');
+    reports.add(report.id);
+  }
+}
+function validatePhaseThreePreview(value:Record<string,unknown>) {
+  if(value.operation_version!==3 || !integer(value.operation_cost)) fail('Invalid operation quote version or cost.');
+  validateDeepClaimResources(value.materials_cost);
+  const conditions=value.conditions;
+  if(!object(conditions) || !keys(conditions,['instability','gas','water','incident_chance_percent','max_delay_seconds','transport_bonus_percent','infrastructure_ids'])
+    || !integer(conditions.instability,0,3) || !integer(conditions.gas,0,3) || !integer(conditions.water,0,3) || !integer(conditions.incident_chance_percent,0,25)
+    || !integer(conditions.max_delay_seconds,0,300) || conditions.incident_chance_percent===0 && conditions.max_delay_seconds!==0
+    || !integer(conditions.transport_bonus_percent,0,40) || !Array.isArray(conditions.infrastructure_ids) || conditions.infrastructure_ids.length>128
+    || conditions.infrastructure_ids.some(id=>!text(id)) || new Set(conditions.infrastructure_ids).size!==conditions.infrastructure_ids.length) fail('Invalid public site conditions.');
+  if(value.survey!==null && (!object(value.survey) || !keys(value.survey,['radius','tile_limit']) || !integer(value.survey.radius,1,4) || !integer(value.survey.tile_limit,1,41))) fail('Invalid survey quote.');
+  if(value.installation!==null) {
+    const installation=value.installation;
+    if(!object(installation) || !keys(installation,['key','grade','radius','strength']) || !memberOf(installation.key,DEEP_CLAIM_INFRASTRUCTURE_KEYS)
+      || !integer(installation.grade,1,3) || !integer(installation.radius,6,12) || !integer(installation.strength,5,40)) fail('Invalid infrastructure quote.');
+  }
+  if(value.survey!==null && value.installation!==null) fail('A quote cannot combine field operations.');
 }

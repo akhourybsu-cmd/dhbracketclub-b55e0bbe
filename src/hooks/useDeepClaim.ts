@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
-import { DEEP_CLAIM_MUTATIONS, DeepClaimError, deepClaimDispatchArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot, type DeepClaimMutation } from '@/lib/deepClaim/service';
+import { DEEP_CLAIM_MUTATIONS, DeepClaimError, deepClaimDispatchArgs, deepClaimOperationArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot, type DeepClaimMutation } from '@/lib/deepClaim/service';
 import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimSellInput, DeepClaimSnapshot, DeepClaimStatId } from '@/lib/deepClaim/types';
 
 type Pending = { operation: DeepClaimMutation; args: Record<string, unknown>; fingerprint: string; label: string };
@@ -98,8 +98,8 @@ export function useDeepClaim() {
     serverNow: () => clock.current.server + Math.max(0, performance.now() - clock.current.received),
     refresh: async () => { await refetch(); },
     bootstrap: (name: string) => perform('dc_bootstrap', { p_name: name.trim() }, 'Create company'),
-    preview: (input: DeepClaimDispatchInput) => previewDeepClaim(input),
-    dispatch: (input: DeepClaimDispatchInput, expectedRevision = revision) => perform('dc_dispatch', { ...deepClaimDispatchArgs(input), p_expected_revision: expectedRevision }, 'Dispatch crew'),
+    preview: (input: DeepClaimDispatchInput) => previewDeepClaim(input, data?.schema_version ?? 1),
+    dispatch: (input: DeepClaimDispatchInput, expectedRevision = revision) => perform((data?.schema_version ?? 1) >= 3 ? 'dc_dispatch_operation' : 'dc_dispatch', { ...((data?.schema_version ?? 1) >= 3 ? deepClaimOperationArgs(input) : deepClaimDispatchArgs(input)), p_expected_revision: expectedRevision }, 'Dispatch crew'),
     collect: (id: string) => perform('dc_collect', { p_job_id: id }, 'Collect haul'),
     sell: (input: DeepClaimSellInput) => perform('dc_sell', { p_resource_key: input.resource_key, p_quantity: input.quantity, p_expected_revision: revision }, 'Sell materials'),
     upgrade: (building: DeepClaimBuildingId) => perform('dc_upgrade', { p_building_key: building, p_expected_revision: revision }, 'Upgrade building'),
@@ -110,6 +110,7 @@ export function useDeepClaim() {
     retireEquipment: (itemId: string) => perform('dc_retire_equipment', { p_item_id: itemId, p_expected_revision: revision }, 'Retire equipment'),
     startProduction: (recipeKey: string, batches: number) => perform('dc_start_production', { p_recipe_key: recipeKey, p_batches: batches, p_expected_revision: revision }, 'Start production'),
     collectProduction: (jobId: string) => perform('dc_collect_production', { p_job_id: jobId }, 'Collect production'),
+    resolveDiscovery: (discoveryId: string, choice: 'keep' | 'sell' | 'salvage', expectedRevision = revision) => perform('dc_resolve_discovery', { p_discovery_id: discoveryId, p_choice: choice, p_expected_revision: expectedRevision }, 'Review discovery'),
     retryPending: () => pendingRef.current ? perform(pendingRef.current.operation, {}, pendingRef.current.label, true) : Promise.resolve(data),
   };
 }

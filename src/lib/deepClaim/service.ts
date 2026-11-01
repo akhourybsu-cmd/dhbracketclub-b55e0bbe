@@ -9,7 +9,7 @@ export class DeepClaimError extends Error {
   }
 }
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
-export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production'] as const;
+export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production','dc_dispatch_operation','dc_resolve_discovery'] as const;
 export type DeepClaimMutation = typeof DEEP_CLAIM_MUTATIONS[number];
 export function parseDeepClaimSnapshot(value: unknown): DeepClaimSnapshot {
   try { validateDeepClaimSnapshot(value); return value; }
@@ -33,20 +33,31 @@ export function deepClaimFailure(error: unknown): DeepClaimError {
   return new DeepClaimError('Deep Claim could not sync. Your action is kept for a safe retry. Check your connection.');
 }
 export async function deepClaimRpc(name: string, args: Record<string, unknown> = {}): Promise<unknown> {
-  if (!['dc_get','dc_reconcile','dc_preview',...DEEP_CLAIM_MUTATIONS].includes(name)) throw new DeepClaimError('Unknown company operation.', 'rule');
+  if (!['dc_get','dc_reconcile','dc_preview','dc_preview_operation',...DEEP_CLAIM_MUTATIONS].includes(name)) throw new DeepClaimError('Unknown company operation.', 'rule');
   try {
     const { data, error } = await withTimeout(supabase.rpc(name as never, args as never), QUERY_TIMEOUT_MS, 'Deep Claim');
     if (error) throw error;
     return data;
-  } catch (error) { throw deepClaimFailure(error); }
+  } catch (error) {
+    const failure = deepClaimFailure(error);
+    if (failure.code === 'network' && !DEEP_CLAIM_MUTATIONS.some(operation => operation === name)) {
+      throw new DeepClaimError(name.startsWith('dc_preview')
+        ? 'The expedition quote could not sync. Check your connection and review the operation again.'
+        : 'Your company could not sync. Check your connection and refresh. Dispatched crews continue working.');
+    }
+    throw failure;
+  }
 }
 export async function fetchDeepClaim(): Promise<DeepClaimSnapshot> { return parseDeepClaimSnapshot(await deepClaimRpc('dc_get')); }
 export function deepClaimDispatchArgs(input: DeepClaimDispatchInput): Record<string, unknown> {
   return { p_worker_ids: [...input.worker_ids], p_mode: input.mode, p_target_x: input.target_x, p_target_y: input.target_y,
     p_duration_minutes: input.duration_minutes, p_tutorial: input.tutorial ?? false };
 }
-export async function previewDeepClaim(input: DeepClaimDispatchInput): Promise<DeepClaimPreview> {
-  return parseDeepClaimPreview(await deepClaimRpc('dc_preview', deepClaimDispatchArgs(input)));
+export function deepClaimOperationArgs(input: DeepClaimDispatchInput): Record<string, unknown> {
+  return { ...deepClaimDispatchArgs(input), p_infrastructure_key: input.infrastructure_key ?? null };
+}
+export async function previewDeepClaim(input: DeepClaimDispatchInput, schemaVersion = 2): Promise<DeepClaimPreview> {
+  return parseDeepClaimPreview(await deepClaimRpc(schemaVersion >= 3 ? 'dc_preview_operation' : 'dc_preview', schemaVersion >= 3 ? deepClaimOperationArgs(input) : deepClaimDispatchArgs(input)));
 }
 export async function mutateDeepClaim(operation: string, args: Record<string, unknown>): Promise<DeepClaimSnapshot> {
   return parseDeepClaimSnapshot(await deepClaimRpc(operation, args));

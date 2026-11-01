@@ -2,7 +2,7 @@
 
 Deep Claim is a persistent, personal mining company inside DH Club. The player makes business and crew decisions, then returns to see the consequences in a mine that changes permanently. The company belongs to one member within one club; it is not a shared club treasury or a live multiplayer mine.
 
-This document records the design and integration contracts for the Phase 1 company foundation and Phase 2 workforce/production expansion. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
+This document records the design and integration contracts for the company foundation, workforce/production expansion and Phase 3 underground operations. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
 
 ## Player promise and first session
 
@@ -57,11 +57,49 @@ Finished production follows the cargo principle: output remains staged until col
 
 The interface reuses the company shell: hiring, staff profiles, training and gear belong with Crew; production and crafting use functional Stores/workshop views. Surface building targets open those same operations. Do not fit another row of tiny tabs into a small phone or advertise a station that cannot perform its action.
 
+## Phase 3 underground operations
+
+Phase 3 adds geological rooms, paid surveying, installed infrastructure, bounded delays and decisions about recovered finds. It extends the same company, crew, world, inventory, production and request ledger. The four modes are **explore, extract, survey and infrastructure**; the first two retain their mining purpose, while the latter two are timed fieldwork rather than disguised ore rewards.
+
+| System | Phase 3 contract |
+|---|---|
+| Caverns | Coherent empty chambers, wet/crystal variants and ruins in eligible new generation-three chunks. Only revealed terrain is projected or walkable. |
+| Survey | A crew works from a revealed, excavated, connected site; three elapsed milestones reveal a bounded unknown-cell diamond without excavating or withdrawing ore. Geology and the expedition preset affect coverage. |
+| Infrastructure | Supports, ventilation, pumps and rail are real paid crew projects on known, depleted, connected ground. Grade, Engineering, radius and strength affect new job quotes. |
+| Conditions | Public depth-based instability, gas and water severity; Safety and installed protection reduce the quoted incident chance. An incident delays setup only. |
+| Discoveries | Six recovered-find definitions with frozen quality, detail, sale value and salvage choices; only actual mining and crew return can publish a find. |
+| Depth | A fifth shaft level supports 599 meters, with constructed central access through 556 meters. Earlier levels, buildings and upgrade benefits remain intact. |
+| Navigation | Mine field operations and Log/Discoveries extend the existing six-tab shell. No separate research, museum game, currency or club competition is introduced. |
+
+Surveying consumes normal crew energy and wages and must leave the operating reserve intact even though its cargo is empty. Unknown cells are selected in stable distance/x/y order within the public coverage bound, then frozen privately. They appear only when due work milestones commit. A finished survey goes directly to collected state with a field report; the player does not have to collect an empty haul.
+
+Infrastructure likewise consumes its full displayed project fee, materials, wages and energy atomically at dispatch. The 20/60/180-minute presets select grades one/two/three. Supports reduce instability risk, ventilation reduces gas risk, pumps reduce water risk, and rail reduces both travel and return time along covered known route points. One project occupies a cell, with at most 128 building/installed records per company. There is no demolition, resale or automatic upkeep loop.
+
+A project remains building until the crew returns; only installed infrastructure supplies benefits. Coverage uses Manhattan distance and the strongest applicable protection of each type. Rail uses the strongest installed track at each actual route point, then averages those strengths over the full known route, with a 40% cap. Overlapping tracks do not stack, and a short entrance track cannot supply its full bonus to an entire deep route. Engineering improves coverage/strength, while the resulting rail savings can become productive work. Existing expeditions retain their frozen effects and quantities when a new structure is installed.
+
+### Delay-only incidents
+
+Rockfall, gas and water incidents are bounded operational delays. There are no employee deaths or injuries, destroyed tunnels, stolen ore or random cargo losses in Phase 3. Tutorial work and depths below eight meters have zero incident chance. Other sites display the authoritative chance, protection and maximum delay before confirmation; chance is capped at 25%, and the maximum delay is capped at 300 seconds.
+
+The server chooses and freezes the outcome using a private seed, independently of the client request UUID. An incident adds its delay to setup, shifting work milestones and the return time equally. Actual mining quantities and routes remain unchanged, and equipment wear remains two durability per spent energy. The real job clock includes the delay while the selected preset stays 20/60/180 minutes. An uncertain response or reload cannot reroll it.
+
+Incident details become public only when the setup stage ends. Before that, the interface may explain the quoted risk and delay range, not reveal a future event or imply that a local animation has resolved it.
+
+### Recovered finds
+
+The six original find identities are banded geode, fern fossil, survey journal, rail relic, crystal cluster and meteorite fragment. Quality is common, fine, exceptional or flawless, with a bounded frozen sale value and material salvage. A special first geode can come from fully mining the original quartz assay at `(47, 3)` under the new rules; already-depleted older cells do not receive retroactive rewards.
+
+Other eligible finds use a deterministic private per-cell decision. A find must come from a cell actually fully depleted by a configuration-three mining job, and becomes public only after the crew returns. Remote survey reveals and inaccessible cavities cannot mint finds. Each company can recover at most one find per coordinate forever, with at most eight per mining job.
+
+The player chooses **keep, sell or salvage**. Keep records a permanent cabinet entry without invented research or DH points. Sell pays the frozen server value once. Salvage grants the displayed frozen materials only if the entire salvage fits storage; insufficient space rejects the complete decision without consuming the find. This all-or-nothing choice differs deliberately from partial ore/production collection. Decisions do not expire, and retries cannot duplicate a payment or material grant.
+
+New dispatches pause at 24 pending decisions; already-active crews can still return their finds, yielding a bounded maximum of 48 pending entries. The public snapshot includes all pending finds, recent kept/resolved history and complete summary counts while preserving full server history. A complete museum and cursor-based collection history remain future work.
+
 ## Crew decisions
 
 The specialty framework supports Miner, Geologist, Hauler, Engineer, Surveyor, Demolitionist and Safety Officer. Phase 1 starts with mining, geology and hauling specialists; Phase 2’s daily candidate system makes the broader workforce available without replacing those starters.
 
-Each attribute has a visible reason to matter. Mining affects extraction work; Geology affects finding and understanding resources; Engineering affects setup and infrastructure work; Logistics affects hauling; Safety improves reliable work efficiency (random hazard incidents are deferred); Endurance supports sustained work; Leadership affects crew coordination. Exact coefficients, caps, trait modifiers and displayed preview contributions belong to the balance contract. A stat that does not participate in a current calculation must not be advertised as a functional Phase 1 feature.
+Each attribute has a visible reason to matter. Mining affects extraction work; Geology affects exploration and survey coverage; Engineering affects setup and infrastructure strength/radius; Logistics affects hauling; Safety improves reliable work efficiency and reduces Phase 3 incident chance; Endurance supports sustained work; Leadership affects crew coordination. Exact coefficients, caps, trait modifiers and displayed preview contributions belong to the balance contract. A stat that does not participate in a current calculation must not be advertised as functional.
 
 Workers cannot overlap expeditions. Energy and wages are checked and consumed atomically at dispatch; wages are paid upfront, with no unbounded wage debt accumulating while the player is away. An initially limited simultaneous-crew capacity makes assignment a decision. Any additional slot must come from a functional upgrade, not a decorative lock.
 
@@ -75,7 +113,11 @@ Only needed chunks are generated and projected to the client. Preserve immutable
 
 Phase 1 introduced surface seams through 49 meters and an ironworks band through 149 meters. Those original bands and their committed geology remain intact. Every extraction site needs a plausible route from accessible infrastructure; locked deposits and active jobs cannot be mined twice by overlapping expeditions. Finite ore stays depleted after reload, a new tab or a different device.
 
-Phase 2 extends the supported depth to 299 meters through shaft level four. The new generation helper applies only to eligible new deep chunks, beginning around chunk row five/depth 160. A chunk’s recorded generation version remains authoritative: existing version-one chunks, including their still-unrevealed cells, keep version-one geology. Never edit the applied Phase 1 migration, reseed an existing world or retroactively insert a new mineral into an old saved deposit. Expanded hazards and large cavern systems remain later-phase work.
+Phase 2 extended the supported depth to 299 meters through shaft level four. Its generation helper applied only to eligible new deep chunks, beginning around chunk row five/depth 160. A chunk’s recorded generation version remains authoritative: existing version-one chunks, including their still-unrevealed cells, keep version-one geology. Never edit an applied migration, reseed an existing world or retroactively insert a new mineral into an old saved deposit.
+
+Phase 3 adds generation-three geometry only to previously absent chunks at chunk row one or deeper, so new chambers can appear soon after the second shaft upgrade. Chunk row zero remains the original surface geology. Existing version-one/two chunks retain every seed, committed mutation and still-unrevealed cell. Known natural empty rooms are walkable only after they have actually been revealed and connected through known depleted cells; hidden chambers cannot create secret walking routes. Wet caverns are damp working spaces, not impassable lakes.
+
+Before changing generation, the migration blocks expedition writers, waits for in-flight transactions and pins missing private chunk metadata for every future extraction/reveal coordinate of unapplied configuration-one/two work. It changes neither public terrain nor frozen plans. New configuration-three dispatches also pin their private planned-coordinate chunks before returning, protecting them from a later cutover. A latest-configuration insert guard rejects stale pre-cutover code trying to create an old ticket after migration; existing tickets can still settle normally.
 
 ## Time, cargo and trust
 
@@ -91,6 +133,8 @@ When offline or hydration fails, show a clearly stale/read-only state and an exp
 
 The additive Phase 2 migration upgrades the public snapshot to schema two while keeping schema-one state readable by the current client. In-flight configuration-one expeditions retain their original plans, rewards and rules and incur no retroactive equipment wear. New dispatches must use the current rules even when requested through an older public endpoint; an old client cannot bypass gear wear, crew/housing limits or production safeguards. New hire/train/equip/repair/production operations reuse the same company lock, revision checks and request receipts.
 
+Phase 3 adds schema three and current operation preview/dispatch endpoints plus discovery resolution. Old preview/dispatch names delegate to the current rules, so they cannot bypass hazards, wear or the latest ticket version. The client continues to read schema-one/two state during rollout, while every new economic action retains the existing company lock, revision and fingerprinted receipt. Existing configuration-one/two jobs keep their original timings, cargo and wear behavior.
+
 ## Application integration
 
 `AuthContext` and `ClubContext` remain the identity and active-club sources. `/deep-claim` uses the existing lazy route and `ProtectedPage`/`AssetGuard`, within the existing `ProtectedRoute` and `ClubGate`. The frontend guard is navigation protection; the backend independently checks current membership, company ownership and the installed/enabled/visible asset.
@@ -103,16 +147,18 @@ The mine has an immersive shell and a clear return to DH. Primary mobile operati
 
 ## Future phase boundaries
 
-The Phase 2 boundary includes daily hiring, paid training, owned equipment, repairs, basic production/crafting and the new deep region described above. Broader resource-quality/specimen systems, expanded hazards, large caverns and later industry remain future work. Do not reserve visible inactive tabs as substitutes for those systems.
+The Phase 3 boundary includes new-chunk cavern geometry, surveying, four infrastructure projects, delay-only incidents and keep/sell/salvage decisions. Expanded hazards with destructive consequences, broader collection/museum history, research, contracts and later industry remain future work. Do not reserve visible inactive tabs as substitutes for those systems.
 
-**Phase 5 social and DH Feats integration is deferred.** Phases 1–2 have no club competition, global ranking, DH Score rewards or DH Score spending. Business cash and worker energy remain isolated company resources. Later engagement awards must extend the existing permanent DH Feats ledger and privacy conventions, rather than introducing a second score system.
+**Phase 5 social and DH Feats integration is deferred.** Phases 1–3 have no club competition, global ranking, DH Score rewards or DH Score spending. Business cash and worker energy remain isolated company resources. Later engagement awards must extend the existing permanent DH Feats ledger and privacy conventions, rather than introducing a second score system.
 
-**Phase 6 finished presentation is deferred.** Phases 1–2 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
+**Phase 6 finished presentation is deferred.** Phases 1–3 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
 
 ## Verification gates
 
 Before release, verify member/install/visibility/cross-club authorization; private seed and future-plan redaction; request replay and multi-device revision handling; correct daily energy across midnight and DST; overlapping-worker rejection; persistent terrain/deposit depletion; upfront wages; capacity-safe collection; once-only settlement; and rollback on failed mutations. UI checks must cover mobile and desktop, both app themes, reduced motion, keyboard alternatives, and recovery after reload or a failed request.
 
 Phase 2 additionally verifies candidate-day stability and hire caps; daily/idle/capped training; item ownership, slot exclusivity, frozen job bonuses and once-only wear; repair inputs; finite recipe inputs and batch/queue limits; staging/collection retries; old-endpoint wear enforcement; schema-one reads; and version-one jobs/chunks surviving the migration unchanged. Economy checks must cover initial smelting/crafting access and the absence of instant buy/sell or recursive recipe arbitrage. Timed production may add sale value to finite paid inputs; that intended margin is distinct from a repeatable free-resource loop.
+
+Phase 3 verifies wholly pending and partially applied legacy plans across absent chunk boundaries; stale-ticket rejection; known-only cavern routing; elapsed survey reveals without ore; project fees/materials/grade/uniqueness and delayed installation; strongest-only mitigation and real rail travel savings; private incident outcomes and delayed publication; once-only finds from actual depleted mining; all discovery choices and salvage rollback; pending bounds; and new rules through the oldest public endpoints. The isolated database harness serializes transactions, so native concurrent-lock behavior must not be claimed as empirically stress-tested there.
 
 Installation, migration, commit, push and deployment status must be recorded from actual evidence in the implementation ledger. This design document does not assert that a live deployment or live database migration has occurred.

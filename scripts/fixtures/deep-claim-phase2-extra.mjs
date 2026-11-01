@@ -95,7 +95,7 @@ export async function runPhase2ExtraTests(h) {
     assert.equal(snapshot.workers.filter(person => person.equipment_ids.includes(assigned.id)).length, 1);
   });
 
-  await check('Phase2 equipment: bonuses affect new quotes, old public dispatch seals config2, busy gear cannot move', async () => {
+  await check('Phase2 equipment: bonuses affect new quotes, old public dispatch uses latest config, busy gear cannot move', async () => {
     let snapshot = await craft(await fund(await bootstrap()));
     const worker = snapshot.workers.find(person => person.specialty === 'miner'), item = snapshot.equipment[0];
     await db.query('insert into public.dc_tiles(company_id,x,y,material,initial_amount,remaining) values($1,47,5,\'coal\',500,500) on conflict(company_id,x,y) do update set material=excluded.material,initial_amount=excluded.initial_amount,remaining=excluded.remaining', [snapshot.company.id]);
@@ -105,7 +105,7 @@ export async function runPhase2ExtraTests(h) {
     assert.ok(snapshot.workers.find(person => person.id === worker.id).stats.mining > worker.stats.mining);
     assert.ok(geared.estimated_yield.max > plain.estimated_yield.max);
     snapshot = await dispatch(A, snapshot, { mode: 'extract', x: 47, y: 5, workers: [worker.id] });
-    const job = snapshot.expeditions.find(job => job.status === 'active'); assert.equal(job.config_version, 2);
+    const job = snapshot.expeditions.find(job => job.status === 'active'); assert.equal(job.config_version, 3);
     const frozen = await one('select content from public.dc_plans where job_id=$1', [job.id]);
     const frozenBefore = JSON.stringify(frozen.content);
     await assert.rejects(assign(A, snapshot, item.id, null), /busy|away|expedition|idle|return/i);

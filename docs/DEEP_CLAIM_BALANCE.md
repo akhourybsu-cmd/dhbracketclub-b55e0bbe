@@ -1,6 +1,6 @@
 # Deep Claim balance reference
 
-Version-one mining values plus version-two workforce/production. SQL is authoritative; the public arithmetic model exists for explanations and headless verification, never client rewards. The canonical public Phase 2 catalog is `supabase/seed/deep-claim-phase2-catalog.json`; SQL embeds the same versioned values.
+Version-one mining, version-two workforce/production, and version-three underground operations. SQL is authoritative; public arithmetic exists for explanations and headless verification, never client rewards. Canonical public catalogs are `supabase/seed/deep-claim-phase2-catalog.json` and `supabase/seed/deep-claim-phase3-catalog.json`; SQL embeds the same versioned values.
 
 ## Session rhythm
 
@@ -23,7 +23,7 @@ Eight launch material IDs are stone, clay, coal, copper_ore, tin_ore, iron_ore, 
 
 Upgrade branches compete for the same isolated company money: office capacity, shaft depth/travel, warehouse capacity and tool efficiency. They must retain a viable operating reserve or another bounded recovery path so buying an upgrade cannot permanently strand a new company.
 
-Coal is both a commodity and processing fuel. Stone/clay feed crafting and repairs. Quality specimens, fluctuating markets, research and contracts remain future systems.
+Coal is both a commodity and processing fuel. Stone/clay feed crafting, repairs and infrastructure. Phase 3 introduces finite quality specimens with permanent keep/sell/salvage choices. Fluctuating markets, research and contracts remain future systems.
 
 ## Measurement requirements
 
@@ -91,3 +91,53 @@ The added value rewards industry but always consumes finite mined inputs, operat
 Smeltery build/upgrade costs are 90/350/900; gem workshop costs are 120/450/1,100. The existing tool station crafts equipment, with tier-two recipes requiring level two. A first copper pickaxe costs one copper bar, four stone, twenty credits and four processing minutes after smelting. Keeping some starter coal/copper/stone instead of selling every material therefore creates a real early investment choice. Every new economic action preserves the existing operating-reserve rule.
 
 Shaft level four costs 5,000 and supports 299m, extending the shaft corridor to 256m. Deep generation adds amethyst and gold-bearing clusters in newly generated version-two chunks from 160m; previously frozen version-one chunks and unseen cells inside them retain their original geology. This is a depth expansion, not completion of the full six-region/hazard roadmap.
+
+## Phase 3 field operations
+
+Shaft level five costs 12,000, supports 599m and extends the main corridor to 556m. No other original building price, inventory sale price or worker/production cap changes. Generation-three rooms can appear only in previously absent chunks from row one/depth 32. Existing generation-one/two chunks and frozen plans retain their geology. New companies can encounter rooms earlier; an older company's already-defined chunks remain intact.
+
+Survey and infrastructure presets use grade one/two/three for Quick/Standard/Deep. Each participating employee pays the original one/two/three energy and their wage. Surveys return no cargo and cannot fund their own wages; they require sufficient operating cash or liquid stock. They provide safe information and open choices for subsequent extraction, rather than free materials.
+
+Cash must cover the complete wage and project fee upfront. Recoverable reserve is `cash − wages − project fee + collected stock sale value − consumed project material sale value + actual guaranteed cargo value`, and must remain at least two. Survey/construction cargo is zero. Pending finds, owned gear and unfinished processing are excluded. Recompute the quote after rail improves the known extraction estimate, and enforce the final check against the actual frozen haul. Consuming construction inputs cannot be counted twice or left in the reserve calculation.
+
+Survey radius is `min(4, grade + floor(average geology / 50))`. The unknown-tile limit is `min(41, 8 × grade + floor(average geology / 10) + 2 × Ore Eye workers)`. Cells use a stable distance/x/y order within the Manhattan diamond and current supported depth. No-new-ground scans are rejected. Revealing a deposit never removes its rock or makes a disconnected chamber reachable.
+
+| Project | Grade-one fee | Grade-one material inputs | Benefit |
+|---|---:|---|---|
+| Supports | 12 | 8 stone + 2 clay | Reduce rockfall chance at covered sites |
+| Ventilation | 18 | 1 copper bar + 2 coal | Reduce gas chance at covered sites |
+| Pump | 22 | 1 iron bar + 4 stone | Reduce water-delay chance at covered sites |
+| Rail | 16 | 1 iron bar + 2 stone | Improve the covered portion of actual transport routes |
+
+Multiply each construction fee/input by grade; wages are additional. Construction reserves real employees and a site until return. Radius is `6 + 2 × (grade − 1) + floor(average engineering / 50)`, spanning six through twelve logical tiles. Safety-project strength is `3 + 2 × grade + floor(average engineering / 25)` percentage points. Rail strength is `min(40, 5 + 10 × grade + floor(average engineering / 20))` percent. Engineering is frozen at dispatch, and benefits activate only after completion.
+
+Use the strongest applicable installed safety project of each type at the target. For rail, select the strongest covering track independently at each route point; effective route bonus is `floor(sum(point strengths) / route point count)`. Overlap never stacks, while separate track sections extend coverage. Reduce travel and return by that effective percentage, rounded up with the original twenty-second minimum. Saved travel increases productive work inside the chosen base shift; it does not award materials beyond finite deposits or carrying capacity. A small entrance track therefore cannot improve an entire deep route at full strength.
+
+At most 128 construction/installed records may exist per company, with one project per cell. Place different project types on adjacent connected cells when their coverage should overlap. There is no resale, demolition refund or automatic recurring construction. This initial limit and absence of maintenance are explicit balance boundaries; later deep networks can expand the versioned rules without editing existing assets.
+
+## Phase 3 risk and bounded delays
+
+New configuration-three operations expose three depth-based severities:
+
+- Instability: `min(3, 1 + floor(depth / 100))`.
+- Gas: zero above 50m; otherwise `min(3, 1 + floor(depth / 150))`.
+- Water: zero above 100m; otherwise `min(3, 1 + floor((depth − 100) / 150))`.
+
+Base chance is `min(25, 4 + floor(depth / 25) + 2 × instability + gas + water)`. Subtract `floor(average safety / 10)` and the strongest corresponding installed protection for each active condition, with a minimum of zero. Tutorial jobs and depth below eight meters always have zero chance. Public quotes explain the actual mitigations; future private rolls are not client inputs.
+
+A triggered incident adds `min(300, 60 × energy + floor(depth / 10))` seconds to setup, shifting work and return consistently. Zero chance has zero possible delay. The server freezes the roll and schedule once. The preset minutes remain 20/60/180, while actual job seconds include the delay. Neither cargo nor extra employee energy is lost; equipment still wears only two per energy. Safety has a real risk benefit without turning an unattended company into a punitive loss timer. Original configuration-one/two jobs retain their exact rules.
+
+## Phase 3 specimens
+
+Six original recoverable finds are Banded Geode, Fern Fossil, Survey Journal, Rail Relic, Crystal Cluster and Meteorite Fragment. Catalog base sale values are 30/45/60/80/150/180, subject to each definition's depth eligibility. Normal eligible fully depleted mining cells have a one-in-thirteen find chance, with at most one lifetime find per company/cell and eight per job. The original finite quartz assay at x47/y3 supplies a first geode only when newly cleared by configuration-three work; old depleted saves receive no retroactive bonus.
+
+| Quality | Weight | Sale-value percentage | Mass percentage | Salvage multiplier |
+|---|---:|---:|---:|---:|
+| Common | 60 | 100 | 100 | 1 |
+| Fine | 25 | 150 | 115 | 1 |
+| Exceptional | 12 | 220 | 135 | 2 |
+| Flawless | 3 | 300 | 160 | 3 |
+
+Frozen sale value is `clamp(floor(base value × percentage / 100), 15, 500)`. Salvage uses only the actual displayed bundle of existing inventory IDs, with the quality multiplier. Keeping a specimen preserves its collection entry; selling or salvaging consumes the same find permanently. Salvage requires complete warehouse space and cannot partially consume a specimen. No choice grants DH Score or resets employee energy.
+
+Twenty-four pending discoveries stop new dispatches until a decision is made. Existing crews may still return safely, keeping staging bounded to 48. The current snapshot displays all pending finds, the latest 24 kept, latest 12 other resolved and latest 24 field reports; older records persist. Longer collection browsing and a full museum remain future work.

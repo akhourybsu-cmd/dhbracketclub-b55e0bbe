@@ -1,11 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DeepClaimError, deepClaimFailure, deepClaimDispatchArgs, deepClaimRpc, parseDeepClaimPreview, parseDeepClaimSnapshot, shareDeepClaimSnapshot } from '@/lib/deepClaim/service';
+import { DeepClaimError, deepClaimFailure, deepClaimDispatchArgs, deepClaimOperationArgs, deepClaimRpc, parseDeepClaimPreview, parseDeepClaimSnapshot, shareDeepClaimSnapshot } from '@/lib/deepClaim/service';
 import { companySnapshot } from './fixtures/deepClaim';
-vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
+const wire = vi.hoisted(() => ({ rpc: vi.fn() }));
+vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: wire.rpc } }));
 
 describe('Deep Claim private/public transport boundary', () => {
+  it('distinguishes a failed read-only quote from an uncertain saved economic action', async () => {
+    wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
+    await expect(deepClaimRpc('dc_preview_operation')).rejects.toThrow('review the operation again');
+    wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
+    await expect(deepClaimRpc('dc_get')).rejects.toThrow('refresh');
+    wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
+    await expect(deepClaimRpc('dc_resolve_discovery')).rejects.toThrow('action is kept for a safe retry');
+  });
   it('does not allow the transport to call private generation or reconciliation helpers', async () => {
-    for (const name of ['dc_cell_v1', 'dc_cell_v2', 'dc_snapshot_v1', 'dc_freeze_equipment_v2']) {
+    for (const name of ['dc_cell_v1', 'dc_cell_v2', 'dc_cell_v3', 'dc_snapshot_v1', 'dc_freeze_equipment_v2', 'dc_chunk_version_v3']) {
       await expect(deepClaimRpc(name)).rejects.toMatchObject({ code: 'rule', message: 'Unknown company operation.' });
     }
   });
@@ -47,6 +56,13 @@ describe('Deep Claim private/public transport boundary', () => {
     expect(deepClaimDispatchArgs({ worker_ids: ['worker-a'], mode: 'explore', target_x: 48, target_y: 5, duration_minutes: 20, tutorial: true })).toEqual({
       p_worker_ids: ['worker-a'], p_mode: 'explore', p_target_x: 48, p_target_y: 5, p_duration_minutes: 20, p_tutorial: true,
     });
+  });
+  it('keeps project selection separate from the original dispatch signature and sends no client project price', () => {
+    const input = { worker_ids: ['worker-a'], mode: 'infrastructure', target_x: 48, target_y: 5, duration_minutes: 60, infrastructure_key: 'pump' } as const;
+    const choices = { ...input, worker_ids: [...input.worker_ids] };
+    expect(deepClaimOperationArgs(choices)).toEqual({ p_worker_ids: ['worker-a'], p_mode: 'infrastructure', p_target_x: 48, p_target_y: 5, p_duration_minutes: 60, p_tutorial: false, p_infrastructure_key: 'pump' });
+    expect(deepClaimDispatchArgs(choices)).not.toHaveProperty('p_infrastructure_key');
+    expect(deepClaimOperationArgs({ ...choices, mode: 'survey', infrastructure_key: undefined }).p_infrastructure_key).toBeNull();
   });
   it('rejects corrupt quote ranges and private preview data', () => {
     const quote = { allowed: true, reasons: [], company_revision: 1, server_now: '2026-11-01T12:00:00Z', wages: 3, energy_per_worker: 1,

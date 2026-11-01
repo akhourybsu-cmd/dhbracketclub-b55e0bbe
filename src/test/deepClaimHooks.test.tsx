@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDeepClaim } from '@/hooks/useDeepClaim';
 import { companySnapshot } from './fixtures/deepClaim';
 import { phaseTwoSnapshot } from './fixtures/deepClaimPhase2';
+import { phaseThreeSnapshot } from './fixtures/deepClaimPhase3';
+import { discoverySpecimen } from '@/lib/deepClaim/field';
 import type { DeepClaimSnapshot } from '@/lib/deepClaim/types';
 const wire = vi.hoisted(() => ({ rpc: vi.fn(), user: 'user-a', club: 'club-a', installed: true }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: wire.rpc } }));
@@ -20,6 +22,64 @@ beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.user = 'user-a
   onlineManager.setOnline(true); Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); wire.rpc.mockResolvedValue({ data: companySnapshot(), error: null }); });
 afterEach(() => { cleanup(); localStorage.clear(); });
 describe('Deep Claim company query and transaction recovery', () => {
+  it('uses the field-operation endpoint for a current-schema survey and preserves the reviewed revision', async () => {
+    wire.rpc.mockResolvedValue({ data: phaseThreeSnapshot(), error: null });
+    const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data?.schema_version).toBe(3));
+    await act(async () => { await result.current.dispatch({ worker_ids: ['worker-a'], mode: 'survey', target_x: 48, target_y: 4, duration_minutes: 20 }, 2); });
+    const call = wire.rpc.mock.calls.find(([name]) => name === 'dc_dispatch_operation');
+    expect(call?.[1]).toMatchObject({ p_mode: 'survey', p_infrastructure_key: null, p_expected_revision: 2 });
+    expect(wire.rpc.mock.calls.some(([name]) => name === 'dc_dispatch')).toBe(false);
+  });
+  it('retains the legacy dispatch signature for a version-two backend during rollout', async () => {
+    wire.rpc.mockResolvedValue({ data: phaseTwoSnapshot(), error: null });
+    const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data?.schema_version).toBe(2));
+    await act(async () => { await result.current.dispatch({ worker_ids: ['worker-a'], mode: 'extract', target_x: 47, target_y: 1, duration_minutes: 20 }); });
+    expect(wire.rpc.mock.calls.find(([name]) => name === 'dc_dispatch')?.[1]).not.toHaveProperty('p_infrastructure_key');
+    expect(wire.rpc.mock.calls.some(([name]) => name === 'dc_dispatch_operation')).toBe(false);
+  });
+  it('retries a pre-migration dispatch acknowledgement through its original endpoint after a schema upgrade', async () => {
+    const args = { p_worker_ids: ['worker-a'], p_mode: 'explore', p_target_x: 47, p_target_y: 4, p_duration_minutes: 20, p_tutorial: false, p_expected_revision: 2 };
+    const request = { ...args, p_request_id: '00000000-0000-4000-8000-000000000091' };
+    localStorage.setItem('dh:deep-claim:pending:v1:user-a:club-a', JSON.stringify({ operation: 'dc_dispatch', args: request, label: 'Dispatch crew', fingerprint: JSON.stringify(['dc_dispatch', args]) }));
+    wire.rpc.mockResolvedValue({ data: phaseThreeSnapshot(8), error: null });
+    const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data?.schema_version).toBe(3));
+    await act(async () => { await result.current.retryPending(); });
+    expect(wire.rpc).toHaveBeenCalledWith('dc_dispatch', request);
+    expect(wire.rpc.mock.calls.some(([name]) => name === 'dc_dispatch_operation')).toBe(false);
+    expect(result.current.pendingAction).toBeNull();
+  });
+  it('recovers an acknowledged-lost discovery sale after reload using the same permanent choice and request', async () => {
+    let server = phaseThreeSnapshot();
+    const specimen = discoverySpecimen('banded_geode', 'common');
+    server.discoveries = [{ id: 'find-a', job_id: 'old-mining-job', x: 47, y: 3, kind: 'banded_geode', name: specimen.name, quality: 'common', detail: specimen.detail, sale_value: specimen.sale_value, salvage: specimen.salvage, status: 'pending', discovered_at: server.server_now, resolved_at: null }];
+    server.discovery_summary = { pending: 1, kept: 0, sold: 0, salvaged: 0 };
+    let lost = true;
+    wire.rpc.mockImplementation(async (name: string) => {
+      if (name === 'dc_resolve_discovery' && lost) {
+        lost = false; server = structuredClone(server); server.revision++;
+        server.company!.cash += specimen.sale_value; server.discoveries![0].status = 'sold'; server.discoveries![0].resolved_at = server.server_now;
+        server.discovery_summary = { pending: 0, kept: 0, sold: 1, salvaged: 0 };
+        return { data: null, error: { code: 'NETWORK' } };
+      }
+      return { data: server, error: null };
+    });
+    const first = harness(), hook = renderHook(() => useDeepClaim(), { wrapper: first.Wrapper });
+    await waitFor(() => expect(hook.result.current.data?.discovery_summary?.pending).toBe(1));
+    const initialCash = hook.result.current.data!.company!.cash;
+    await act(async () => { await expect(hook.result.current.resolveDiscovery('find-a', 'sell')).rejects.toThrow('safe retry'); });
+    hook.unmount(); first.client.clear();
+    const next = harness(), resumed = renderHook(() => useDeepClaim(), { wrapper: next.Wrapper });
+    await waitFor(() => expect(resumed.result.current.data?.discovery_summary?.sold).toBe(1));
+    expect(resumed.result.current.readOnly).toBe(true);
+    await act(async () => { await resumed.result.current.retryPending(); });
+    const attempts = wire.rpc.mock.calls.filter(([name]) => name === 'dc_resolve_discovery');
+    expect(attempts).toHaveLength(2); expect(attempts[1]).toEqual(attempts[0]);
+    expect(resumed.result.current.data?.company?.cash).toBe(initialCash + specimen.sale_value);
+    expect(resumed.result.current.pendingAction).toBeNull();
+  });
   it.each([
     ['dc_start_production', { p_recipe_key: 'smelt_copper', p_batches: 2, p_expected_revision: 1 }, 'Start production'],
     ['dc_hire', { p_candidate_id: 'candidate-a', p_expected_revision: 1 }, 'Hire employee'],
@@ -28,6 +88,8 @@ describe('Deep Claim company query and transaction recovery', () => {
     ['dc_repair_equipment', { p_item_id: 'item-a', p_expected_revision: 1 }, 'Repair equipment'],
     ['dc_retire_equipment', { p_item_id: 'item-a', p_expected_revision: 1 }, 'Retire equipment'],
     ['dc_collect_production', { p_job_id: 'production-a' }, 'Collect production'],
+    ['dc_dispatch_operation', { p_worker_ids: ['worker-a'], p_mode: 'infrastructure', p_target_x: 48, p_target_y: 5, p_duration_minutes: 20, p_tutorial: false, p_infrastructure_key: 'supports', p_expected_revision: 1 }, 'Dispatch crew'],
+    ['dc_resolve_discovery', { p_discovery_id: 'discovery-a', p_choice: 'keep', p_expected_revision: 1 }, 'Review discovery'],
   ] as const)('recovers a persisted %s request with its exact identity after a reload', async (operation, args, label) => {
     const request = { ...args, p_request_id: '00000000-0000-4000-8000-000000000090' };
     localStorage.setItem('dh:deep-claim:pending:v1:user-a:club-a', JSON.stringify({ operation, args: request, label, fingerprint: JSON.stringify([operation, args]) }));

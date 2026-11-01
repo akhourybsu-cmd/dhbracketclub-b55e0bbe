@@ -11,7 +11,7 @@ export const DEEP_CLAIM_ACTORS = {
   club: fixtureId(1001), otherClub: fixtureId(1002), privateClub: fixtureId(1003),
 };
 
-export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}) {
+export async function createDeepClaimDatabase({ install = true, phase = 3 } = {}) {
   const db = new PGlite();
   const sources = new Map();
   async function source(path) {
@@ -30,8 +30,10 @@ export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}
     // Use the application's actual asset schema, RLS policies and catalog.
     await source('supabase/migrations/20260509210000_platform-assets.sql');
     const migrations = (await readdir('supabase/migrations')).filter(path => /^20261102\d+_deep_claim.*\.sql$/.test(path)).sort();
+    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_' };
+    assert.ok(phaseCeilings[phase], `Unsupported Deep Claim fixture phase ${phase}`);
     assert.ok(migrations.length, 'Deep Claim migrations must exist before running this fixture');
-    for (const path of migrations.filter(path => phase >= 2 || path < '20261102030000_')) await source(`supabase/migrations/${path}`);
+    for (const path of migrations.filter(path => path < phaseCeilings[phase])) await source(`supabase/migrations/${path}`);
     const initialInstallations = (await db.query("select count(*)::int n from public.club_installed_assets i join public.platform_assets a on a.id=i.asset_id where a.slug='deep-claim'")).rows[0].n;
     if (install) await db.exec(`
       insert into public.club_installed_assets(club_id,asset_id,enabled,visible_to_members)
@@ -39,6 +41,7 @@ export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}
       where a.slug='deep-claim' on conflict(club_id,asset_id) do update set enabled=true,visible_to_members=true;
     `);
     const functions = new Map();
+    let installedBodies = [];
     async function refreshFunctions() {
       functions.clear();
       const rows = (await db.query(`
@@ -53,10 +56,12 @@ export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}
         assert.ok(!functions.has(row.name), `RPC overload requires explicit fixture handling: ${row.name}`);
         functions.set(row.name, row);
       }
+      installedBodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'dc_%' order by signature")).rows;
     }
     await refreshFunctions();
-    async function applyPendingMigrations() {
-      for (const path of migrations) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
+    async function applyPendingMigrations({ phase: targetPhase = 3 } = {}) {
+      assert.ok(phaseCeilings[targetPhase], `Unsupported Deep Claim fixture phase ${targetPhase}`);
+      for (const path of migrations.filter(path => path < phaseCeilings[targetPhase])) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
       await refreshFunctions();
     }
     async function actorQuery(user, sql, values = [], role = 'authenticated') {
@@ -80,6 +85,8 @@ export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}
     }
     async function assertSourcesUnchanged() {
       for (const [path, contents] of sources) assert.equal(await readFile(path, 'utf8'), contents, `${path} changed during verification`);
+      const current = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'dc_%' order by signature")).rows;
+      assert.deepEqual(current, installedBodies, 'Temporary fixture entropy/functions must be restored before release proof');
     }
     /** Move an existing immutable job's clocks only in this isolated owner fixture. */
     async function advanceJob(user, jobId, seconds) {
@@ -87,7 +94,9 @@ export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}
       await db.transaction(async transaction => {
         const found = (await transaction.query('select e.id from public.dc_expeditions e join public.dc_companies c on c.id=e.company_id where e.id=$1 and c.user_id=$2', [jobId, user])).rows[0];
         assert.ok(found, 'The isolated clock command requires an existing owned job');
+        const fieldEvents = (await transaction.query("select to_regclass('public.dc_field_events') found")).rows[0].found;
         await transaction.exec('alter table public.dc_expeditions disable trigger dc_job_guard;alter table public.dc_milestones disable trigger dc_milestone_guard');
+        if (fieldEvents) await transaction.exec('alter table public.dc_field_events disable trigger dc_field_event_guard');
         await transaction.query(`
           update public.dc_expeditions set started_at=started_at-$2*interval '1 second',completes_at=completes_at-$2*interval '1 second',
             stages=(select jsonb_agg(value||jsonb_build_object('starts_at',(value->>'starts_at')::timestamptz-$2*interval '1 second','ends_at',(value->>'ends_at')::timestamptz-$2*interval '1 second') order by ordinality)
@@ -95,6 +104,10 @@ export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}
           where id=$1
         `, [jobId, seconds]);
         await transaction.query("update public.dc_milestones set due_at=due_at-$2*interval '1 second' where job_id=$1", [jobId, seconds]);
+        if (fieldEvents) {
+          await transaction.query("update public.dc_field_events set due_at=due_at-$2*interval '1 second' where job_id=$1", [jobId, seconds]);
+          await transaction.exec('alter table public.dc_field_events enable trigger dc_field_event_guard');
+        }
         await transaction.exec('alter table public.dc_expeditions enable trigger dc_job_guard;alter table public.dc_milestones enable trigger dc_milestone_guard');
       });
     }

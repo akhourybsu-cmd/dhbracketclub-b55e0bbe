@@ -26,8 +26,13 @@ export function claimTargets(snapshot: DeepClaimSnapshot, mode: DeepClaimMode): 
       const tile = revealed.get(key);
       if (tile?.remaining === 0 && !connected.has(key)) { connected.add(key); queue.push({ x, y }); }
       if (x === 48 || y < 1 || y > world.max_depth) continue;
-      if (mode === 'explore' ? !tile : !!tile?.material && tile.remaining > 0) points.set(key, { x, y });
+      if (mode === 'explore' ? !tile : mode === 'extract' && !!tile?.material && tile.remaining > 0) points.set(key, { x, y });
     }
+  }
+  if (mode === 'survey' || mode === 'infrastructure') {
+    return queue.filter(point => point.y >= 1 && point.y <= world.max_depth && revealed.has(`${point.x}:${point.y}`))
+      .filter(point => mode !== 'infrastructure' || !snapshot.infrastructure?.some(item => item.x === point.x && item.y === point.y))
+      .sort((a, b) => a.y - b.y || Math.abs(a.x - 48) - Math.abs(b.x - 48) || a.x - b.x);
   }
   return [...points.values()].sort((a, b) => a.y - b.y || Math.abs(a.x - 48) - Math.abs(b.x - 48) || a.x - b.x);
 }

@@ -1,5 +1,6 @@
-import type { DeepClaimResourceId, DeepClaimSpecialty } from '@/lib/deepClaim/types';
+import type { DeepClaimDiscoveryKind, DeepClaimDiscoveryQuality, DeepClaimInfrastructureKey, DeepClaimResourceId, DeepClaimSpecialty } from '@/lib/deepClaim/types';
 import { RESOURCE_ART, SPECIALTY_ART, equipmentArtwork, workerAppearanceVariant } from './artManifest';
+import { DISCOVERY_ART, QUALITY_ART, infrastructureSprite } from './fieldSprites';
 
 export function DeepClaimResourceIcon({ resourceId, className = '', decorative = false }: { resourceId: DeepClaimResourceId; className?: string; decorative?: boolean }) {
   const art = RESOURCE_ART[resourceId];
@@ -33,4 +34,15 @@ export function DeepClaimEquipmentIcon({ archetype, tier, durability, label, cla
   else if (kind === 'survey') shape = <><path d="M5 6H22V27H5Z" fill="#746744" /><path d="M7 5H23V25H7Z" fill="#d1c394" /><path d="M10 9H18V11H10ZM10 14H15V16H10ZM12 18H18V20H12Z" fill="#758268" /><path d="M19 13H28V16H31V25H28V28H19V25H16V16H19Z" fill={edge} /><path d="M20 16H27V25H20V23H18V18H20Z" fill={metal} /><path d="M22 16H25V20H27V22H24V25H22V22H19V20H22Z" fill={light} /><path d="M22 17H24V21H22Z" fill={grade === 2 ? '#a78bc0' : '#a6674b'} /></>;
   else shape = <><path d="M9 7V4H22V7H25V27H6V10H9Z" fill={edge} /><path d="M10 8H22V25H9V11H10Z" fill="#8a8053" /><path d="M7 12H25V16H7ZM10 20H22V25H10Z" fill="#ad9a61" /><path d="M11 8H13V27H11ZM19 8H21V27H19Z" fill={metal} /><path d="M11 16H14V19H11ZM19 16H22V19H19Z" fill={light} />{grade === 2 && <path d="M5 6H8V29H5ZM25 6H28V29H25ZM5 27H28V29H5Z" fill={metal} />}</>;
   return <svg viewBox="0 0 32 32" className={`dc-equipment-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : `${broken ? 'Broken ' : ''}${label ?? art?.label ?? 'Equipment'}`} aria-hidden={decorative || undefined} data-dc-equipment-art={kind} data-dc-equipment-tier={grade} data-dc-equipment-broken={broken ? 'true' : undefined} focusable="false"><path d="M6 27H27V30H6Z" fill="#17191b" opacity=".25" />{shape}{broken && <path d="M17 3H20V9H17V13H14V18H17V23H14V29H11V22H14V18H11V12H14V8H17Z" fill="#a65e3c" />}</svg>;
+}
+
+export interface DeepClaimInfrastructureIconProps { infrastructureKey: DeepClaimInfrastructureKey; grade?: number; status?: 'building' | 'installed'; className?: string; decorative?: boolean }
+export function DeepClaimInfrastructureIcon({ infrastructureKey, grade = 1, status = 'installed', className = '', decorative = false }: DeepClaimInfrastructureIconProps) {
+  const sprite = infrastructureSprite(infrastructureKey, grade, status === 'installed');
+  return <svg viewBox="0 0 16 16" className={`dc-infrastructure-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : `${sprite.label}, grade ${grade}${status === 'building' ? ', under construction' : ''}`} aria-hidden={decorative || undefined} focusable="false">{sprite.blocks.map(([color, x, y, width, height], index) => <rect key={index} x={x} y={y} width={width} height={height} fill={color} />)}</svg>;
+}
+export interface DeepClaimDiscoveryIconProps { kind: DeepClaimDiscoveryKind; quality?: DeepClaimDiscoveryQuality; className?: string; decorative?: boolean }
+export function DeepClaimDiscoveryIcon({ kind, quality = 'common', className = '', decorative = false }: DeepClaimDiscoveryIconProps) {
+  const sprite = DISCOVERY_ART[kind], frame = QUALITY_ART[quality];
+  return <svg viewBox="0 0 18 18" className={`dc-discovery-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : `${frame.label} ${sprite.label.toLowerCase()}`} aria-hidden={decorative || undefined} focusable="false"><path d="M0 2H2V0H16V2H18V16H16V18H2V16H0Z" fill="#27332f" /><path d="M2 1H16V2H2ZM1 2H2V16H1ZM16 2H17V16H16ZM2 16H16V17H2Z" fill={frame.color} /><g transform="translate(1 1)">{sprite.blocks.map(([color, x, y, width, height], index) => <rect key={index} x={x} y={y} width={width} height={height} fill={color} />)}</g>{Array.from({ length: frame.marks }, (_, index) => <rect key={index} x={4 + index * 3} y={16} width={2} height={1} fill={frame.color} />)}</svg>;
 }

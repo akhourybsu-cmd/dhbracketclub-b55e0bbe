@@ -1,8 +1,8 @@
-import type { DeepClaimBuildingId, DeepClaimMineralId, DeepClaimSpecialty } from '@/lib/deepClaim/types';
-import { BUILDING_ART, FRONTIER_PALETTE as P, RESOURCE_ART, SPECIALTY_ART } from './artManifest';
+import type { DeepClaimBuildingId, DeepClaimFormation, DeepClaimMineralId, DeepClaimSpecialty } from '@/lib/deepClaim/types';
+import { BUILDING_ART, FORMATION_ART, FRONTIER_PALETTE as P, RESOURCE_ART, SPECIALTY_ART } from './artManifest';
 import type { BuildingActivity, WorkerEquipmentPaint } from './productionVisuals';
 
-export type WorkerPose = 'idle' | 'walk' | 'mine' | 'haul' | 'setup';
+export type WorkerPose = 'idle' | 'walk' | 'mine' | 'haul' | 'setup' | 'survey' | 'build';
 const rect = (c: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) => { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); };
 /** Cosmetic grain only. This pattern never chooses terrain or resource contents. */
 export function cosmeticGrain(x: number, y: number, variant = 0) { return ((Math.imul(x + 71, 1103515245) ^ Math.imul(y + 19, 12345) ^ variant * 7919) >>> 0) % 16; }
@@ -13,11 +13,19 @@ export function paintFog(c: CanvasRenderingContext2D, x: number, y: number) {
   if (cosmeticGrain(x, y) < 7) rect(c, '#202122', x + 4, y + 7, 5, 2);
 }
 
-export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, resource: DeepClaimMineralId | null, dug = false, variant = 0, detailed = true, soilBase = false) {
+export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, resource: DeepClaimMineralId | null, dug = false, variant = 0, detailed = true, soilBase = false, formation: DeepClaimFormation | null = null, neighbors = 0) {
   if (dug) {
-    rect(c, '#242528', x, y, 16, 16); rect(c, '#2c2b2a', x + 1, y + 2, 14, 12);
-    rect(c, '#39312b', x, y + 14, 16, 2);
-    if (detailed && variant % 4 === 0) { rect(c, '#534332', x + 1, y, 2, 15); rect(c, '#68513a', x + 1, y + 1, 14, 2); rect(c, '#302923', x + 14, y + 3, 2, 12); }
+    const room = formation ? FORMATION_ART[formation] : null;
+    rect(c, room?.dark ?? '#242528', x, y, 16, 16);
+    if (!room) { rect(c, '#2c2b2a', x + 1, y + 2, 14, 12); rect(c, '#39312b', x, y + 14, 16, 2); return; }
+    // Only connect faces whose neighboring public cells are already known.
+    if (!(neighbors & 1)) { rect(c, room.wall, x, y, 16, 3); if (detailed) rect(c, room.detail, x + 3 + variant, y + 3, 2, 3); }
+    if (!(neighbors & 2)) rect(c, room.wall, x + 14, y, 2, 16);
+    if (!(neighbors & 4)) { rect(c, room.wall, x, y + 13, 16, 3); if (detailed) rect(c, room.detail, x + 3, y + 12, 5, 1); }
+    if (!(neighbors & 8)) rect(c, room.wall, x, y, 2, 16);
+    if (formation === 'wet_cavern' && !(neighbors & 4)) { rect(c, '#3d7477', x + 2, y + 11, 12, 3); if (detailed) rect(c, '#83a9a0', x + 4, y + 11, 6, 1); }
+    else if (formation === 'crystal_cavern' && detailed && !(neighbors & 1)) { rect(c, '#6d617e', x + 9, y + 2, 3, 5); rect(c, '#9a8fa8', x + 10, y + 3, 1, 3); }
+    else if (formation === 'ruins' && detailed) { if (!(neighbors & 8)) rect(c, '#8a8b6a', x + 1, y + 5, 2, 5); if (!(neighbors & 4)) rect(c, '#696c52', x + 8, y + 11, 5, 2); }
     return;
   }
   const soil = soilBase || resource === 'clay';
@@ -29,6 +37,7 @@ export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, 
     rect(c, soil ? '#3c2f29' : '#33373b', x + 8, y + 9 + grain % 3, 5, 3);
     rect(c, '#25282a', x + 1, y + 10, 3, 1);
   }
+  if (formation && detailed) { const room = FORMATION_ART[formation]; rect(c, room.wall, x + 2, y + 8, 3, 2); rect(c, room.detail, x + 11, y + 5, 2, 1); }
   if (!resource) return;
   const art = RESOURCE_ART[resource];
   rect(c, art.dark, x + 4, y + 5, 8, 7);
@@ -81,7 +90,7 @@ export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuilding
     if (selected) { c.strokeStyle = '#cbb77f'; c.lineWidth = 2; c.strokeRect(x, -30, w, 32); }
     return;
   }
-  const tier = Math.max(1, Math.min(id === 'mine_shaft' ? 4 : 3, Math.floor(level))), roof = tier >= 3 ? '#69756f' : '#664c3d';
+  const tier = Math.max(1, Math.min(id === 'mine_shaft' ? 5 : 3, Math.floor(level))), roof = tier >= 3 ? '#69756f' : '#664c3d';
   if (selected) { c.strokeStyle = '#ead09a'; c.lineWidth = 2; c.strokeRect(x - 4, y - 5, w + 8, h + 7); }
   rect(c, '#20232366', x - 5, -1, w + 10, 5); rect(c, '#302922', x + 1, -5, w - 2, 6);
   if (id === 'workers_quarters') {
@@ -123,6 +132,7 @@ export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuilding
     if (tier >= 2) { rect(c, '#8a9590', x + 26, y + 44, 5, h - 48); rect(c, '#a5ada0', x + w - 32, y + 44, 5, h - 48); }
     if (tier >= 3) { rect(c, '#e2bd6c', x + 11, y + 49, 8, 10); rect(c, '#e2bd6c', x + w - 18, y + 49, 8, 10); }
     if (tier >= 4) { rect(c, '#adbbb0', x + 9, y + 11, 4, h - 15); rect(c, '#adbbb0', x + w - 13, y + 11, 4, h - 15); rect(c, '#b8c4b3', x + 19, y + 47, w - 38, 4); rect(c, '#4c6560', x + 72, -35, 22, 33); rect(c, '#b5c1b0', x + 73, -34, 20, 4); rect(c, '#cbb376', x + 80, y + 32, 2, h - 50); }
+    if (tier >= 5) { rect(c, '#d2d9bf', x + 16, y + 15, 3, h - 20); rect(c, '#d2d9bf', x + w - 19, y + 15, 3, h - 20); rect(c, '#93a9a0', x + 20, -39, 18, 37); rect(c, '#d2d9bf', x + 21, -38, 16, 4); rect(c, '#b6c3ae', x + 21, -18, 16, 2); rect(c, '#d7bd7e', x + 23, y + 9, 7, 7); rect(c, '#5d7971', x + 25, y + 11, 3, 3); }
   } else {
     rect(c, '#5e4635', x + 4, y + 16, w - 8, h - 20);
     for (let row = 0; row < h - 21; row += 8) { rect(c, '#8c6542', x + 5, y + 17 + row, w - 10, 2); rect(c, '#43352b', x + 5, y + 23 + row, w - 10, 1); }
@@ -165,7 +175,13 @@ export function paintWorker(c: CanvasRenderingContext2D, x: number, y: number, s
   if (gear.headBroken) rect(c, '#a65e3c', -1, -21 + bob, 1, 5);
   rect(c, '#34413c', 4, -18 + bob, 3, 3); rect(c, '#f0da8e', 5, -18 + bob, 2, 2);
   rect(c, skin, 3, -10 + bob, 3, 4);
-  if (pose === 'mine') {
+  if (pose === 'survey') {
+    rect(c, '#ccbc8b', 4, -12 + bob, 8, 7); rect(c, '#75886c', 5, -10 + bob, 5, 1); rect(c, '#75886c', 7, -11 + bob, 1, 5);
+    rect(c, '#7b8e83', -7, -8, 3, 8); rect(c, '#c5cbaa', -9, -10, 7, 3); if (animate && frame % 2) rect(c, '#d4c797', -7, -11, 3, 1);
+  } else if (pose === 'build') {
+    const lift = animate && frame % 2 ? 3 : 0;
+    rect(c, '#a58754', 5, -9 - lift, 2, 9); rect(c, '#aebcac', 3, -11 - lift, 7, 3); rect(c, '#89724a', 7, -4, 5, 4);
+  } else if (pose === 'mine') {
     const swing = frame < 2 ? -1 : 1;
     rect(c, '#9f7b4d', 5, -13 - swing * 3, 2, 12); rect(c, gear.toolBroken ? '#8c5a40' : gear.toolTier === 2 ? '#bfccc0' : gear.toolTier === 1 ? '#c19361' : '#a4b0a2', 2, -15 - swing * 3, gear.toolBroken ? 6 : 11, 3); rect(c, '#d1cfaa', 9, -16 - swing * 3, gear.toolBroken ? 1 : 4, 2);
     if (gear.toolTier === 2 && !gear.toolBroken) rect(c, '#607d77', 3, -13 - swing * 3, 5, 2);

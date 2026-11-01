@@ -16,7 +16,7 @@ const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns').split(','));
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
 const endpoint = createDeepClaimMiddleware(token);
@@ -104,6 +104,13 @@ async function fit(page, label) {
       const box = node.getBoundingClientRect(), style = getComputedStyle(node);
       if (!box.width || !box.height || style.display === 'none' || style.visibility === 'hidden') continue;
       if (box.top >= -1 && box.bottom <= innerHeight + 1 && (box.width < 43.5 || box.height < 43.5)) problems.push(`Small command: ${node.getAttribute('aria-label') || node.textContent?.trim().slice(0, 40)}`);
+      if (node.closest('[role="dialog"] .dcl-dialog-actions')) {
+        if (box.left < -1 || box.top < -1 || box.right > innerWidth + 1 || box.bottom > innerHeight + 1) problems.push(`Confirmation outside viewport: ${node.textContent?.trim()}`);
+        else {
+          const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+          if (hit && hit !== node && !node.contains(hit)) problems.push(`Occluded confirmation: ${node.textContent?.trim()}`);
+        }
+      }
     }
     return problems;
   });
@@ -162,13 +169,24 @@ async function presentation() {
         await expect(page.getByTestId('deep-claim-map')).toHaveAttribute('data-dc-view', 'mine');
         await canvasIsDrawn(page, `${label}-mine`);
         const canvas = page.getByTestId('deep-claim-canvas'); await canvas.focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Equal'); await page.keyboard.press('Home');
-        await page.getByRole('button', { name: 'Choose a worksite from list', exact: true }).click();
-        const explore = page.getByRole('dialog', { name: 'Survey new ground' });
+        const explore = await operationPlan(page, 'Exploration', { review: false });
         await explore.getByRole('button', { name: 'Review dispatch', exact: true }).click();
         await expect(explore.getByRole('button', { name: 'Dispatch crew', exact: true })).toBeEnabled();
         await expect(explore.getByText('20 min', { exact: true }).last()).toBeVisible();
         await fit(page, `${label}-exploration-menu`); await shot(page, `${label}-exploration-menu`);
-        await explore.getByRole('button', { name: 'Back', exact: true }).click();
+        await page.keyboard.press('Escape');
+        for (const mode of ['Survey', 'Infrastructure']) {
+          const operation = await operationPlan(page, mode, { x: 48, y: 4, review: false });
+          await expect(operation.getByRole('group', { name: 'Expedition type' }).getByRole('button')).toHaveCount(4);
+          await fit(page, `${label}-${mode.toLowerCase()}-plan`); await shot(page, `${label}-${mode.toLowerCase()}-plan`);
+          await operation.getByRole('button', { name: 'Review dispatch', exact: true }).click();
+          await expect(operation.getByRole('region', { name: 'Verified dispatch estimate' })).toBeVisible();
+          // Surveys are affordable immediately; infrastructure honestly shows
+          // required materials until they have actually been mined.
+          if (mode === 'Survey') await expect(operation.getByRole('button', { name: 'Dispatch crew', exact: true })).toBeEnabled();
+          else await expect(operation.getByRole('button', { name: 'Dispatch crew', exact: true })).toHaveCount(0);
+          await fit(page, `${label}-${mode.toLowerCase()}-review`); await page.keyboard.press('Escape');
+        }
       }
       if (name === 'Settings') {
         await expect(page.getByRole('switch', { name: 'Enable sound', exact: true })).toHaveAttribute('aria-checked', 'false');
@@ -194,7 +212,7 @@ async function presentation() {
       await shot(page, `${label}-${name.toLowerCase()}`);
     }
     await intro(page, { confirm: false }); await fit(page, `${label}-intro-confirmation`); await shot(page, `${label}-intro-confirmation`);
-    await page.getByRole('dialog').getByRole('button', { name: 'Back', exact: true }).click();
+    await page.keyboard.press('Escape');
     const after = await rpc(page, 'dc_get');
     checked(`review-never-spends-resources-${label}`, initial.company.cash === after.company.cash && after.workers.every(worker => worker.energy === 6) && after.expeditions.length === 0);
     await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
@@ -233,10 +251,9 @@ async function journey() {
   await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Warehouse upgraded.', exact: true })).toBeVisible(); await closeReward(page);
   saved = await rpc(page, 'dc_get'); checked('real-upgrade-doubles-storage-and-spends-once', saved.company.cash === 133 && saved.company.warehouse_capacity === 240);
-  await page.getByRole('button', { name: 'Explore', exact: true }).click();
-  let dialog = page.getByRole('dialog', { name: 'Survey new ground' });
+  let dialog = await operationPlan(page, 'Exploration', { review: false });
   await dialog.getByRole('combobox', { name: 'Expedition worksite' }).selectOption('47:4');
-  await dialog.getByRole('checkbox', { name: 'Send Ivo Vale', exact: true }).uncheck(); await dialog.getByRole('checkbox', { name: 'Send Tessa Pike', exact: true }).uncheck();
+  await selectCrew(dialog, ['Mara Flint']);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click(); await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   saved = await rpc(page, 'dc_get'); job = saved.expeditions.find(value => value.status === 'active');
   checked('normal-exploration-hides-future-ground', job.duration_seconds === 1200 && job.cargo === null && !saved.world.tiles.some(tile => tile.x === 47 && tile.y === 4));
@@ -248,10 +265,10 @@ async function journey() {
 async function reliability() {
   const run = 'reliability', { context, page } = await setup();
   await found(page, { run }); await intro(page, { confirm: false });
-  await command(page, 'fail_next', { name: 'dc_dispatch', after_commit: true });
+  await command(page, 'fail_next', { name: 'dc_dispatch_operation', after_commit: true });
   await page.getByRole('dialog', { name: 'Work a seam' }).getByRole('button', { name: 'Dispatch crew', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
-  await page.getByRole('dialog').getByRole('button', { name: 'Back', exact: true }).click();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
   let saved = await rpc(page, 'dc_get'); const job = saved.expeditions[0];
   checked('lost-ack-commits-one-dispatch', saved.expeditions.length === 1 && saved.company.cash === 173);
@@ -259,7 +276,7 @@ async function reliability() {
   await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
   saved = await rpc(page, 'dc_get'); checked('reload-retries-the-original-receipt-once', saved.expeditions.length === 1 && saved.expeditions[0].id === job.id && saved.company.cash === 173);
-  const dispatchCalls = (await command(page, 'calls')).filter(value => value.name === 'dc_dispatch');
+  const dispatchCalls = (await command(page, 'calls')).filter(value => value.name === 'dc_dispatch_operation');
   checked('lost-ack-retry-keeps-request-identity', dispatchCalls.length === 2 && dispatchCalls[0].args.p_request_id === dispatchCalls[1].args.p_request_id);
   await context.setOffline(true); await expect(page.getByText('Saved camp · read-only until reconnected', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Dispatch another crew', exact: true })).toBeDisabled();
@@ -293,15 +310,52 @@ async function workshop(page, station) {
   await page.getByRole('group', { name: 'Stores view', exact: true }).getByRole('button', { name: /^Workshop/ }).click();
   await page.getByRole('group', { name: 'Production station', exact: true }).getByRole('button', { name: station, exact: true }).click();
 }
+async function selectCrew(dialog, names) {
+  await dialog.getByRole('button', { name: 'Change crew', exact: true }).click();
+  const previous = dialog.getByRole('button', { name: 'Previous crew page', exact: true });
+  const next = dialog.getByRole('button', { name: 'Next crew page', exact: true });
+  // Clear unwanted selected workers before filling other slots. The real UI
+  // enforces the three-person crew cap while switching a saved crew.
+  for (const checking of [false, true]) {
+    for (let index = 0; index < 3 && await previous.isVisible() && await previous.isEnabled(); index++) await previous.click();
+    for (let index = 0; index < 3; index++) {
+      for (const choice of await dialog.getByRole('checkbox', { name: /^Send / }).all()) {
+        const wanted = names.includes((await choice.getAttribute('aria-label')).slice(5));
+        if (!checking && !wanted && await choice.isChecked()) await choice.uncheck();
+        if (checking && wanted) await choice.check();
+      }
+      if (!await next.isVisible() || !await next.isEnabled()) break;
+      await next.click();
+    }
+  }
+  await dialog.getByRole('button', { name: 'Done', exact: true }).click();
+}
+async function operationPlan(page, mode, { x, y, infrastructure = 'supports', review = true, workers } = {}) {
+  await clearDialogs(page); await tab(page, 'Mine');
+  await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Underground operations', exact: true }).getByRole('group', { name: 'Mine operations', exact: true }).getByRole('button', { name: new RegExp(`^${mode}(?:\\s|$)`) }).click();
+  const title = mode === 'Survey' ? 'Survey the mine' : mode === 'Infrastructure' ? 'Improve the mine' : mode === 'Extraction' ? 'Work a seam' : 'Explore the frontier';
+  const dialog = page.getByRole('dialog', { name: title, exact: true });
+  const worksite = dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true });
+  assert.ok(await worksite.locator('option').count() <= 65, 'Native worksite controls must stay bounded, including a selected map target');
+  if (x !== undefined) {
+    if (!await worksite.locator(`option[value="${x}:${y}"]`).count()) await dialog.getByRole('searchbox', { name: 'Depth or material', exact: true }).fill(`${x}:${y}`);
+    await worksite.selectOption(`${x}:${y}`);
+  }
+  if (mode === 'Infrastructure') await dialog.getByRole('combobox', { name: 'Infrastructure project', exact: true }).selectOption(infrastructure);
+  if (workers) await selectCrew(dialog, workers);
+  if (review) {
+    await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
+    await expect(dialog.getByRole('region', { name: 'Verified dispatch estimate' })).toBeVisible();
+  }
+  return dialog;
+}
 async function harvest(page, x, y, { workers } = {}) {
   await clearDialogs(page); await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Extract', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Work a seam', exact: true });
   await dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true }).selectOption(`${x}:${y}`);
-  if (workers) for (const choice of await dialog.getByRole('checkbox', { name: /^Send / }).all()) {
-    const name = (await choice.getAttribute('aria-label')).slice(5);
-    if (workers.includes(name)) await choice.check(); else if (await choice.isChecked()) await choice.uncheck();
-  }
+  if (workers) await selectCrew(dialog, workers);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   let snapshot = await rpc(page, 'dc_get'), job = snapshot.expeditions.find(value => value.status === 'active');
@@ -410,14 +464,161 @@ async function industry() {
   await fit(page, 'industry-complete-staff'); await shot(page, 'industry-complete-staff');
   await context.close(); console.log('PASS Deep Claim workforce and production industry');
 }
+async function field() {
+  const run = 'field', { context, page } = await setup();
+  await found(page, { run }); await intro(page);
+  let snapshot = await rpc(page, 'dc_get'), job = snapshot.expeditions[0];
+  await command(page, 'advance_job', { job_id: job.id, seconds: 31 });
+  await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
+  await page.getByRole('button', { name: 'Open haul', exact: true }).click();
+  await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
+  snapshot = await harvest(page, 46, 1);
+  checked('field-inputs-come-from-real-finite-mining', snapshot.resources.stone === 12 && snapshot.resources.clay === 16 && snapshot.company.cash === 166);
+  const beforeBuild = snapshot;
+  let dialog = await operationPlan(page, 'Infrastructure', { x: 48, y: 1 });
+  await expect(dialog.getByText('Timber Supports · grade 1', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Cash committed now: 19 cr. Project materials, if listed, are also consumed. Keep 2 cr operating reserve.', { exact: true })).toBeVisible();
+  await fit(page, 'field-installation-verified-review'); await shot(page, 'field-installation-verified-review');
+  await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  snapshot = await rpc(page, 'dc_get'); job = snapshot.expeditions.find(value => value.status === 'active');
+  const structure = snapshot.infrastructure[0];
+  checked('installation-charges-inputs-before-real-timed-work', job.mode === 'infrastructure' && job.config_version === 3 && structure.status === 'building'
+    && structure.installed_at === null && snapshot.company.cash === beforeBuild.company.cash - 19 && snapshot.resources.stone === 4 && snapshot.resources.clay === 14
+    && snapshot.workers.every(value => value.energy === 3) && !snapshot.field_reports.some(value => value.job_id === job.id));
+  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  snapshot = await rpc(page, 'dc_get'); checked('installation-reload-never-completes-server-work-early', snapshot.infrastructure[0].id === structure.id && snapshot.infrastructure[0].status === 'building');
+  await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
+  await page.getByRole('button', { name: 'Refresh company', exact: true }).click(); snapshot = await rpc(page, 'dc_get');
+  checked('installation-return-installs-once-without-empty-haul', snapshot.infrastructure[0].status === 'installed' && snapshot.infrastructure[0].installed_at !== null
+    && snapshot.expeditions.find(value => value.id === job.id).status === 'collected' && snapshot.field_reports.filter(value => value.kind === 'infrastructure' && value.job_id === job.id).length === 1);
+  const beforeSurvey = snapshot;
+  dialog = await operationPlan(page, 'Survey', { x: 48, y: 4 });
+  await expect(dialog.getByText('Survey radius', { exact: true })).toBeVisible(); await expect(dialog.getByText('Estimated haul', { exact: true })).toHaveCount(0);
+  await fit(page, 'field-survey-verified-review'); await shot(page, 'field-survey-verified-review');
+  await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  snapshot = await rpc(page, 'dc_get'); job = snapshot.expeditions.find(value => value.status === 'active');
+  checked('survey-dispatch-does-not-reveal-unknown-ground', JSON.stringify(snapshot.world.tiles) === JSON.stringify(beforeSurvey.world.tiles)
+    && snapshot.company.cash === beforeSurvey.company.cash - 7 && JSON.stringify(snapshot.resources) === JSON.stringify(beforeSurvey.resources));
+  await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
+  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  snapshot = await rpc(page, 'dc_get');
+  checked('survey-offline-return-reveals-without-excavation-or-resources', snapshot.expeditions.find(value => value.id === job.id).status === 'collected'
+    && snapshot.world.tiles.length > beforeSurvey.world.tiles.length && JSON.stringify(snapshot.resources) === JSON.stringify(beforeSurvey.resources)
+    && beforeSurvey.world.tiles.every(point => snapshot.world.tiles.some(value => value.x === point.x && value.y === point.y && value.remaining === point.remaining))
+    && snapshot.field_reports.some(value => value.kind === 'survey' && value.job_id === job.id && value.tiles_revealed > 0)
+    && JSON.stringify(snapshot.discovery_summary) === JSON.stringify(beforeSurvey.discovery_summary));
+  // The authored quartz seam is genuinely finite. Recover its specimen only
+  // after the real server operation returns, then reconcile a lost sale ACK.
+  await tab(page, 'Surface'); await page.getByRole('button', { name: 'Extract', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Work a seam', exact: true });
+  await dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true }).selectOption('47:3');
+  await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
+  snapshot = await rpc(page, 'dc_get'); job = snapshot.expeditions.find(value => value.status === 'active');
+  const pendingBeforeQuartz = snapshot.discovery_summary.pending;
+  checked('unrecovered-finds-and-reports-remain-private', !snapshot.discoveries.some(value => value.job_id === job.id) && !snapshot.field_reports.some(value => value.job_id === job.id));
+  await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
+  await page.getByRole('button', { name: 'Refresh company', exact: true }).click(); snapshot = await rpc(page, 'dc_get');
+  const find = snapshot.discoveries.find(value => value.x === 47 && value.y === 3 && value.job_id === job.id); assert.ok(find);
+  checked('returned-mining-recovers-a-single-real-specimen', find.kind === 'banded_geode' && find.status === 'pending' && snapshot.discovery_summary.pending === pendingBeforeQuartz + 1
+    && snapshot.world.tiles.find(value => value.x === 47 && value.y === 3).remaining === 0);
+  await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
+  await tab(page, 'Surface'); await page.getByRole('button', { name: /^Review finds · \d+$/ }).click();
+  await page.getByRole('button', { name: `Inspect ${find.name}`, exact: true }).filter({ hasText: 'x47 · 3m' }).click();
+  dialog = page.getByRole('dialog', { name: find.name, exact: true });
+  await expect(dialog.getByRole('group', { name: 'Find decision' }).getByRole('button')).toHaveCount(3);
+  await dialog.getByRole('group', { name: 'Find decision' }).getByRole('button', { name: /^Sell specimen/ }).click();
+  await fit(page, 'field-specimen-decision'); await shot(page, 'field-specimen-decision');
+  const beforeSale = await rpc(page, 'dc_get');
+  await command(page, 'fail_next', { name: 'dc_resolve_discovery', after_commit: true });
+  await dialog.getByRole('button', { name: 'Confirm sale', exact: true }).click(); await expect(dialog.getByRole('alert')).toBeVisible();
+  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
+  snapshot = await rpc(page, 'dc_get');
+  const calls = (await command(page, 'calls')).filter(value => value.name === 'dc_resolve_discovery');
+  checked('specimen-lost-ack-replays-the-same-decision-once', calls.length === 2 && calls[0].args.p_request_id === calls[1].args.p_request_id
+    && snapshot.company.cash === beforeSale.company.cash + find.sale_value && snapshot.discovery_summary.pending === beforeSale.discovery_summary.pending - 1
+    && snapshot.discovery_summary.sold === beforeSale.discovery_summary.sold + 1);
+  await tab(page, 'Log');
+  await page.getByRole('group', { name: 'Field log views', exact: true }).getByRole('button', { name: /^Finds/ }).click();
+  await page.getByRole('group', { name: 'Find collection', exact: true }).getByRole('button', { name: 'Resolved', exact: true }).click();
+  await page.getByRole('button', { name: `Inspect ${find.name}`, exact: true }).click();
+  dialog = page.getByRole('dialog', { name: find.name, exact: true });
+  await expect(dialog.getByRole('group', { name: 'Find decision' })).toHaveCount(0); await page.keyboard.press('Escape');
+  await page.getByRole('group', { name: 'Field log views', exact: true }).getByRole('button', { name: 'Reports', exact: true }).click();
+  checked('field-history-keeps-survey-installation-and-recovery-reports', snapshot.field_reports.some(value => value.kind === 'survey') && snapshot.field_reports.some(value => value.kind === 'infrastructure') && snapshot.field_reports.some(value => value.kind === 'discovery'));
+  await fit(page, 'field-complete-reports'); await shot(page, 'field-complete-reports');
+  await page.getByRole('button', { name: /^Read report: / }).first().click();
+  await page.getByRole('button', { name: 'Locate report site', exact: true }).click();
+  await expect(page.getByTestId('deep-claim-map')).toHaveAttribute('data-dc-view', 'mine');
+  await fit(page, 'field-report-map-location'); await shot(page, 'field-report-map-location');
+  checked('report-location-opens-the-real-persistent-mine', true);
+  await context.close(); console.log('PASS Deep Claim underground operations and finite discoveries');
+}
+async function caverns() {
+  // Independent private worlds can place their natural rooms away from the
+  // first shaft. Try bounded real companies; never reseed one or mint funds.
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const run = `caverns-${attempt}`, { context, page } = await setup();
+    await found(page, { run }); await intro(page);
+    let snapshot = await rpc(page, 'dc_get'); const tutorial = snapshot.expeditions[0];
+    await command(page, 'advance_job', { job_id: tutorial.id, seconds: 31 });
+    await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
+    await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
+    await sale(page, 'Coal'); await sale(page, 'Stone');
+    snapshot = await rpc(page, 'dc_get'); assert.equal(snapshot.company.cash, 225);
+    await tab(page, 'Surface'); await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
+    await page.getByRole('dialog', { name: 'The surface camp', exact: true }).getByRole('button', { name: /Mine Shaft/ }).click();
+    await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).click(); await closeReward(page);
+    snapshot = await rpc(page, 'dc_get'); assert.equal(snapshot.company.cash, 145); assert.equal(snapshot.world.max_depth, 99);
+    const candidate = await command(page, 'cavern_survey_site');
+    if (!candidate) { await context.close(); continue; }
+    const before = snapshot, dialog = await operationPlan(page, 'Survey', { ...candidate.site, workers: ['Ivo Vale'], review: false });
+    await dialog.getByRole('group', { name: 'Shift duration', exact: true }).getByRole('button', { name: /^Deep/ }).click();
+    await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
+    snapshot = await rpc(page, 'dc_get'); const job = snapshot.expeditions.find(value => value.status === 'active'); assert.ok(job);
+    checked('cavern-survey-uses-earned-upgrade-cash-and-real-worker-energy', snapshot.company.cash < 145
+      && snapshot.workers.find(value => value.name === 'Ivo Vale').energy === 2 && snapshot.workers.filter(value => value.name !== 'Ivo Vale').every(value => value.energy === 5)
+      && !snapshot.world.tiles.some(value => candidate.expected.some(point => point.x === value.x && point.y === value.y)));
+    await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
+    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+    snapshot = await rpc(page, 'dc_get');
+    checked('actual-paid-survey-reveals-genuine-generation-three-natural-air', candidate.expected.every(point => snapshot.world.tiles.some(value => value.x === point.x && value.y === point.y && value.formation === point.formation && value.material === null && value.initial_amount === 0 && value.remaining === 0))
+      && JSON.stringify(snapshot.resources) === JSON.stringify(before.resources) && snapshot.expeditions.find(value => value.id === job.id).status === 'collected');
+    await tab(page, 'Log'); await page.getByRole('group', { name: 'Field log views', exact: true }).getByRole('button', { name: 'Reports', exact: true }).click();
+    await page.getByRole('button', { name: /^Read report: / }).first().click(); await page.getByRole('button', { name: 'Locate report site', exact: true }).click();
+    await expect(page.getByTestId('deep-claim-map')).toHaveAttribute('data-dc-view', 'mine');
+    await fit(page, 'caverns-earned-survey-focused-mine'); await canvasIsDrawn(page, 'caverns-earned-survey-focused-mine'); await shot(page, 'caverns-earned-survey-focused-mine');
+    await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
+    await fit(page, 'caverns-deep-site-operations'); await shot(page, 'caverns-deep-site-operations'); await page.keyboard.press('Escape');
+    const followup = await operationPlan(page, 'Survey', { review: false });
+    const siteCount = await followup.getByRole('combobox', { name: 'Expedition worksite', exact: true }).locator('option').count();
+    checked('cavern-survey-site-selector-remains-bounded', siteCount <= 65, { siteCount });
+    const search = followup.getByRole('searchbox', { name: 'Depth or material', exact: true });
+    if (await search.isVisible()) {
+      await search.fill(`48:${candidate.site.y}`);
+      await expect(followup.getByRole('combobox', { name: 'Expedition worksite', exact: true }).locator(`option[value="48:${candidate.site.y}"]`)).toHaveCount(1);
+      await expect(followup.getByRole('group', { name: 'Worksite pages', exact: true })).toBeVisible();
+      await fit(page, 'caverns-worksite-search'); await shot(page, 'caverns-worksite-search');
+    }
+    await page.keyboard.press('Escape');
+    checked('survey-report-focuses-the-newly-revealed-natural-chamber', true, { site: candidate.site, formations: candidate.expected.map(point => point.formation) });
+    await context.close(); console.log('PASS Deep Claim actual earned cavern survey'); return;
+  }
+  assert.fail('QA sampling gap: 24 valid independent worlds had no chamber within the first-shaft survey band; no world or award was fabricated');
+}
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
   if (sections.has('industry')) await industry();
+  if (sections.has('field')) await field();
+  if (sections.has('caverns')) await caverns();
 }
 
 try {

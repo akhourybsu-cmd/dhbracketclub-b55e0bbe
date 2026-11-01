@@ -1,5 +1,5 @@
 /** Deep Claim public v1 identities. World seeds and unrevealed plans are server-private. */
-export const DEEP_CLAIM_RULES_VERSION = 2;
+export const DEEP_CLAIM_RULES_VERSION = 3;
 export const DEEP_CLAIM_WORLD_WIDTH = 96;
 export const DEEP_CLAIM_CHUNK_SIZE = 32;
 export const DEEP_CLAIM_DAILY_ENERGY = 6;
@@ -19,7 +19,7 @@ export const DEEP_CLAIM_BUILDING_IDS = ['mine_office','mine_shaft','warehouse','
 export type DeepClaimBuildingId = typeof DEEP_CLAIM_BUILDING_IDS[number];
 export type DeepClaimBuildings = Record<DeepClaimBuildingId, number>;
 export type DeepClaimDuration = 20 | 60 | 180;
-export type DeepClaimMode = 'explore' | 'extract';
+export type DeepClaimMode = 'explore' | 'extract' | 'survey' | 'infrastructure';
 export interface DeepClaimPoint { x: number; y: number }
 export interface DeepClaimCompany {
   id: string;
@@ -54,12 +54,15 @@ export interface DeepClaimWorker {
   training_gain?: number;
   equipment_ids?: string[];
 }
+export const DEEP_CLAIM_FORMATIONS = ['cavern','wet_cavern','crystal_cavern','ruins'] as const;
+export type DeepClaimFormation = typeof DEEP_CLAIM_FORMATIONS[number];
 export type DeepClaimTerrain = 'soil' | 'stone' | 'excavated';
 export interface DeepClaimTile extends DeepClaimPoint {
   terrain: DeepClaimTerrain;
   material: DeepClaimMineralId | null;
   remaining: number;
   initial_amount: number;
+  formation?: DeepClaimFormation | null;
 }
 /** Only revealed, committed tiles; no hidden seed, undiscovered deposits or future work plans. */
 export interface DeepClaimWorld {
@@ -87,7 +90,7 @@ export interface DeepClaimExpedition {
   tutorial: boolean;
   wages: number;
   energy_per_worker: number;
-  config_version: 1 | 2;
+  config_version: 1 | 2 | 3;
   cargo: DeepClaimResources | null;
 }
 export interface DeepClaimBuilding {
@@ -99,7 +102,7 @@ export interface DeepClaimBuilding {
 }
 export interface DeepClaimLogEntry { id: string; kind: string; title: string; created_at: string }
 export interface DeepClaimSnapshot {
-  schema_version: 1 | 2;
+  schema_version: 1 | 2 | 3;
   server_now: string;
   revision: number;
   company: DeepClaimCompany | null;
@@ -114,6 +117,11 @@ export interface DeepClaimSnapshot {
   production_jobs?: DeepClaimProductionJob[];
   recipes?: DeepClaimRecipe[];
   equipment_catalog?: DeepClaimEquipmentDefinition[];
+  infrastructure?: DeepClaimInfrastructure[];
+  discoveries?: DeepClaimDiscovery[];
+  discovery_summary?: DeepClaimDiscoverySummary;
+  field_reports?: DeepClaimFieldReport[];
+  field_catalog?: DeepClaimFieldCatalog;
 }
 export interface DeepClaimPreview {
   allowed: boolean;
@@ -131,6 +139,12 @@ export interface DeepClaimPreview {
   expected_resources: DeepClaimMineralId[];
   projected_completion_at: string;
   stages: { key: DeepClaimStageKey; duration_seconds: number }[];
+  operation_version?: 3;
+  operation_cost?: number;
+  materials_cost?: DeepClaimResources;
+  conditions?: DeepClaimConditions;
+  survey?: DeepClaimSurvey | null;
+  installation?: DeepClaimInstallation | null;
 }
 export interface DeepClaimDispatchInput {
   worker_ids: string[];
@@ -139,6 +153,7 @@ export interface DeepClaimDispatchInput {
   target_y: number;
   duration_minutes: DeepClaimDuration;
   tutorial?: boolean;
+  infrastructure_key?: DeepClaimInfrastructureKey | null;
 }
 export interface DeepClaimSellInput { resource_key: DeepClaimResourceId; quantity: number }
 export interface DeepClaimUpgradeInput { building_key: DeepClaimBuildingId }
@@ -184,3 +199,51 @@ export interface DeepClaimRepairEquipmentInput { item_id: string }
 export interface DeepClaimStartProductionInput { recipe_key: string; batches: number }
 
 export interface DeepClaimRetireEquipmentInput { item_id: string }
+
+/** Phase3 field data contains committed public state only, never hidden generation or event seeds. */
+export const DEEP_CLAIM_INFRASTRUCTURE_KEYS = ['supports','ventilation','pump','rail'] as const;
+export type DeepClaimInfrastructureKey = typeof DEEP_CLAIM_INFRASTRUCTURE_KEYS[number];
+export const DEEP_CLAIM_DISCOVERY_KINDS = ['banded_geode','fern_fossil','survey_journal','rail_relic','crystal_cluster','meteorite_fragment'] as const;
+export type DeepClaimDiscoveryKind = typeof DEEP_CLAIM_DISCOVERY_KINDS[number];
+export const DEEP_CLAIM_DISCOVERY_QUALITIES = ['common','fine','exceptional','flawless'] as const;
+export type DeepClaimDiscoveryQuality = typeof DEEP_CLAIM_DISCOVERY_QUALITIES[number];
+export type DeepClaimDiscoveryChoice = 'keep' | 'sell' | 'salvage';
+export interface DeepClaimSurvey { radius: number; tile_limit: number }
+export interface DeepClaimInstallation { key: DeepClaimInfrastructureKey; grade: number; radius: number; strength: number }
+export interface DeepClaimConditions {
+  instability: number; gas: number; water: number; incident_chance_percent: number; max_delay_seconds: number;
+  transport_bonus_percent: number; infrastructure_ids: string[];
+}
+export interface DeepClaimInfrastructure extends DeepClaimInstallation, DeepClaimPoint {
+  id: string; status: 'building' | 'installed'; job_id: string; installed_at: string | null;
+}
+export interface DeepClaimDiscovery extends DeepClaimPoint {
+  id: string; job_id: string; kind: DeepClaimDiscoveryKind; name: string; quality: DeepClaimDiscoveryQuality;
+  detail: string; sale_value: number; salvage: DeepClaimResources;
+  status: 'pending' | 'kept' | 'sold' | 'salvaged'; discovered_at: string; resolved_at: string | null;
+}
+export interface DeepClaimDiscoverySummary { pending: number; kept: number; sold: number; salvaged: number }
+export interface DeepClaimFieldReport {
+  id: string; job_id: string; kind: 'incident' | 'survey' | 'infrastructure' | 'discovery'; title: string;
+  description: string; point: DeepClaimPoint; occurred_at: string; delay_seconds: number; tiles_revealed: number;
+  infrastructure_id: string | null; discovery_id: string | null;
+}
+export interface DeepClaimInfrastructureDefinition {
+  key: DeepClaimInfrastructureKey; name: string; description: string; cash_cost: number; materials: DeepClaimResources;
+}
+export interface DeepClaimDiscoveryDefinition {
+  key: DeepClaimDiscoveryKind; name: string; description: string; min_depth: number;
+  base_value: number; base_mass_grams: number; salvage: DeepClaimResources;
+}
+export interface DeepClaimQualityDefinition {
+  key: DeepClaimDiscoveryQuality; name: string; weight: number; value_percent: number; mass_percent: number; salvage_multiplier: number;
+}
+export interface DeepClaimFieldCatalog {
+  version: 3; infrastructure: DeepClaimInfrastructureDefinition[]; discoveries: DeepClaimDiscoveryDefinition[];
+  qualities: DeepClaimQualityDefinition[]; caps: { infrastructure: number; pending_dispatch: number; pending_max: number; finds_per_job: number; kept_visible: number; resolved_visible: number; reports_visible: number };
+  survey: { radius_cap: number; tile_limit_cap: number }; hazards: { chance_cap: number; delay_cap_seconds: number; safe_depth: number; kind_order: string[] };
+  shaft: { max_level: 5; upgrade_cost: number; max_depth: number; corridor_depth: number };
+  regions: { key: string; name: string; min_depth: number; max_depth: number }[];
+  generation: { version: 3; min_chunk_y: number; macro_size: number; activation_percent: number; center_offset_min: number; center_offset_range: number; radius_x_min: number; radius_x_range: number; radius_y_min: number; radius_y_range: number };
+}
+export interface DeepClaimResolveDiscoveryInput { discovery_id: string; choice: DeepClaimDiscoveryChoice }

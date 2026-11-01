@@ -2,7 +2,7 @@
 
 Deep Claim uses an original industrial-frontier identity: a working company and an inhabited mine, with restrained pixel geometry, warm metal, worn earth and readable equipment. The game should feel physical and useful, with ore and the active crew carrying the brightest accents.
 
-This is the Phase 0 art direction and the Phase 1–2 asset contract. The implementation ledger records which renderer/audio features have been verified. **The original procedural artwork is not a finished commercial sprite atlas; the complete atlas, expanded animations and full soundtrack remain Phase 6 work.**
+This is the Phase 0 art direction and the Phase 1–3 asset contract. The implementation ledger records which renderer/audio features have been verified. **The original procedural artwork is not a finished commercial sprite atlas; the complete atlas, expanded animations and full soundtrack remain Phase 6 work.**
 
 ## Palette and geometry
 
@@ -31,9 +31,26 @@ The game can retain its own dark mine identity within either application theme. 
 | `src/components/deepClaim/renderer/pixelArt.ts` | Original Canvas terrain, worker and building painters. |
 | `src/components/deepClaim/renderer/DeepClaimIcons.tsx` | Matching local pixel SVG icons for resources, buildings and equipment in management views. |
 | `src/components/deepClaim/renderer/productionVisuals.ts` | Public job-clock and owned-equipment presentation; it never grants output or invents a private job stage. |
+| `src/components/deepClaim/renderer/fieldSprites.ts` | Original support/ventilation/pump/rail sprites and the six recovered-specimen illustrations. |
+| `src/components/deepClaim/renderer/fieldAtlas.ts` | Bounded field-art caching, infrastructure states and selected Manhattan coverage. |
+| `src/components/deepClaim/renderer/fieldVisuals.ts` | Known/depleted formation indexing and public recovered-find/time filtering. |
 | `src/lib/deepClaim/audio.ts` | Original synthesized mining/company cues and an initial musical motif; user-gesture activation only. |
 
-Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock image, runtime image-generation or external audio-service dependencies in the Phase 1–2 art plan.
+Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock image, runtime image-generation or external audio-service dependencies in the Phase 1–3 art plan.
+
+## Phase 3 underground presentation
+
+Known formations add cavern, wet cavern, crystal cavern and ruins treatments to the existing mine. Paint only formations present on revealed public tiles; the renderer must not reproduce the private generation algorithm or preview an undiscovered room. Keep the four regional styles—Surface, Ironworks, Glittering and Forgotten—coherent with coal/earth/brass rather than introducing unrelated visual themes at each chunk edge. This expansion keeps ten raw minerals and sixteen inventory identities; a decorative crystal is not a new resource ID.
+
+Supports, ventilation, pump and rail markers represent actual infrastructure records. Building state should look like a crew project; installed state should clearly match the functional type and coverage information available in the operation UI. Remove decorative tunnel shoring that could be mistaken for installed protection. A visible timber cannot promise a mitigation bonus without the corresponding server record.
+
+Find artwork covers banded geode, fern fossil, survey journal, rail relic, crystal cluster and meteorite fragment. Use distinct silhouettes and readable details, with quality accents that preserve the industrial-frontier palette. Map/cabinet imagery appears only for public recovered finds, not a future private roll. Keep/sell/salvage confirmations must identify the actual item and server value/materials rather than implying research, DH points or a complete museum system.
+
+The mine shaft receives a real fifth-level appearance, while all seven company buildings remain in the initial camp overview. Map interactions retain named keyboard/list alternatives. Deep known-site focus may move the camera on request, but reduced motion must avoid long camera travel and no marker may reveal a hidden location.
+
+Incident presentation explains a bounded setup delay. Do not draw a destroyed tunnel, injury, missing cargo or active gas event before the server publishes it. Optional local motion is communication only; it cannot choose a roll, resolve a project or reveal new terrain. Survey and infrastructure completion show field reports rather than decorative empty-haul collection buttons.
+
+The Phase 3 procedural coverage includes four infrastructure types at three grades with construction/installed states, six specimens with four quality frames, and shaft level five. Formation joins follow known open neighbors only. Survey and construction use clipboard/scope or hammer poses without mining debris or mining audio; generic cosmetic underground shoring is removed. Explicit Locate requests focus a known point rather than selecting an unseen future room.
 
 ## Terrain and resources
 
@@ -83,6 +100,6 @@ Audio settings use `dh:deep-claim:audio:v1:<encoded-user-id>`. Graphics/motion p
 
 ## Attribution and future replacement
 
-Phase 1–2 inline SVG and procedural shapes are original project artwork; synthesized notes and effects require no third-party sample attribution. Any later external font, image, texture, animation or recorded audio must be listed with its source and license before shipping. Do not claim that an untracked downloaded asset is original.
+Phase 1–3 inline SVG and procedural shapes are original project artwork; synthesized notes and effects require no third-party sample attribution. Any later external font, image, texture, animation or recorded audio must be listed with its source and license before shipping. Do not claim that an untracked downloaded asset is original.
 
 A later atlas should preserve stable asset IDs, logical dimensions, worker-state semantics and building-level references so art upgrades do not invalidate saved companies. Phase 6 can replace procedural pieces incrementally after visual and accessibility review; game mechanics remain independent of the painter.
