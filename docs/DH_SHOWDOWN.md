@@ -2,9 +2,11 @@
 
 ## Member experience
 
-Showdown includes **Prism Break** and **Afterimage**. The shared workflow is described here; [Afterimage](AFTERIMAGE.md) documents its observation timer, illustrations, reconstruction rules and additional migrations.
+Showdown includes **Prism Break**, **Afterimage**, and **CIPHER DUEL**. The shared workflow is described here; [Afterimage](AFTERIMAGE.md) documents visual memory, and [Cipher Duel](CIPHER_DUEL.md) documents private player-created codes, two-stage deadlines and roundless attempts.
 
 Open **Compete → DH Showdown**. Choose an enabled game and another member of your current club. The creator can play immediately: **Play my boards now** is selected by default, and can be unchecked to stay in the lobby after sending. The recipient opens the notification or incoming card and begins playing directly; there is no acceptance lobby or simultaneous-online requirement.
+
+That immediate-play flow applies to Prism Break and Afterimage. Cipher Duel creates its invitation only after the challenger confirms a code, and its recipient accepts by locking a second code. Both guessing boards then open independently; opening a Cipher invitation alone never accepts it.
 
 The discovery migration installs Showdown automatically for existing clubs with Draft Arena enabled and visible to members. Other clubs, including new clubs with an empty feature library, need a club administrator to install and enable **DH Showdown** in the existing **Asset Library** at `/club/assets`. Existing Showdown installation settings are preserved.
 
@@ -18,9 +20,9 @@ An unfinished opponent's score and actions remain sealed. After both attempts fi
 
 - React/TypeScript, React Router, React Query, existing AuthContext/ClubContext, and Supabase remain the application stack. No parallel account, membership, or notification system is introduced.
 - `/showdown` and `/showdown/:challengeId` use the existing protected route and installed-asset guard. The existing shared shell recognizes Showdown as immersive. Discovery belongs in Compete and the games navigation, without a new homepage promotion.
-- `src/lib/showdown/registry.ts` registers `prism_break` rules version 1, its identity, gameplay, result/board presentation, initialization, replay validation, scoring, and comparison helpers. Old rules are selected from the challenge's frozen version rather than the current release version.
+- `src/lib/showdown/registry.ts` registers `prism_break`, `afterimage`, and `cipher_duel` rules version 1 with game-specific setup, gameplay, results and validation/comparison helpers. Old rules are selected from the challenge's frozen version rather than the current release version.
 - `src/lib/showdown/service.ts` supplies the common RPC transport. `useShowdownLobby` and `useShowdownMatch` supply account/club-scoped fetching, history pagination, mutations, refreshes, and recovery. `ShowdownRoundSession` serializes writes and retains retry request IDs. A delayed response cannot reopen a retired round or discard a newer round's local moves.
-- `showdown_games`/`showdown_rules` register backend games and versioned scoring adapters: `prism_v1` (three rounds, maximum 1,500) and `afterimage_v1` (three scenes, maximum 375). New games add a versioned initialization/validation/scoring adapter and registry entry while retaining the shared invitation, membership, notification, persistence, completion, rivalry, and history workflow. Rules changes use a new version; existing puzzles and challenges are never rewritten.
+- `showdown_games`/`showdown_rules` register backend adapters: `prism_v1` (three rounds, maximum 1,500), `afterimage_v1` (three scenes, maximum 375), and `cipher_v1` (one codebreaking attempt per player, no game points or fabricated puzzle rounds). New games retain the shared invitation, membership, notification, persistence, completion, rivalry, and history workflow. Rules changes use a new version; existing puzzles and challenges are never rewritten.
 
 ## Database and authority
 

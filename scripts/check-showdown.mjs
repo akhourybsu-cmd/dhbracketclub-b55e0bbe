@@ -427,6 +427,8 @@ async function reliability() {
   await go(recipient, '/showdown', { run, theme: 'light', user: users.blair });
   await recipient.getByRole('button', { name: 'Decline', exact: true }).click();
   await recipient.getByRole('dialog', { name: 'Decline challenge?' }).getByRole('button', { name: 'Decline challenge', exact: true }).click();
+  await recipient.waitForFunction(id => window.showdownQa.state.challenges.find(row => row.id === id)?.status === 'declined', declinedId);
+  await expect(recipient.getByText('Challenge declined. Your record is unchanged.', { exact: true })).toBeVisible();
   const declined = await recipient.evaluate(id => window.showdownQa.state.challenges.find(row => row.id === id), declinedId);
   checked('recipient-can-decline-before-starting-without-a-record', declined.status === 'declined' && declined.players[1].started_at === null);
   await context.close();

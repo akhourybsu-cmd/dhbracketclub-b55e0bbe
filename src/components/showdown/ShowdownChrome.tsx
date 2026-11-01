@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import './showdown.css';
 import './afterimage/afterimageResults.css';
+import './cipher/cipherHub.css';
 import { AfterimageMark } from './AfterimageMark';
+import { CipherMark } from './cipher/CipherMark';
 
 export function PrismMark({ className = '', label }: { className?: string; label?: string }) {
   return <svg viewBox="0 0 160 160" className={`sd-prism-mark ${className}`} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
@@ -20,13 +22,13 @@ export function PrismMark({ className = '', label }: { className?: string; label
 }
 
 export function ShowdownGameMark({ gameKey, ...props }: { gameKey?: string; className?: string; label?: string }) {
-  return gameKey === 'afterimage' ? <AfterimageMark {...props} /> : <PrismMark {...props} />;
+  return gameKey === 'cipher_duel' ? <CipherMark {...props} /> : gameKey === 'afterimage' ? <AfterimageMark {...props} /> : <PrismMark {...props} />;
 }
 
 export function ShowdownFrame({ children, title = 'DH Showdown', subtitle, backTo = '/compete', action, className = '', gameKey }: {
   children: ReactNode; title?: string; subtitle?: string; backTo?: string; action?: ReactNode; className?: string; gameKey?: string;
 }) {
-  return <main className={`sd-shell ${gameKey === 'afterimage' ? 'sd-afterimage' : ''} ${className}`} data-game={gameKey} data-testid="showdown-shell">
+  return <main className={`sd-shell ${gameKey === 'afterimage' ? 'sd-afterimage' : gameKey === 'cipher_duel' ? 'sd-cipher' : ''} ${className}`} data-game={gameKey} data-testid="showdown-shell">
     <header className="sd-header">
       <Link to={backTo} className="sd-icon-button" aria-label={backTo.split('?')[0] === '/showdown' ? 'Back to Showdown' : 'Back to Compete'}><ArrowLeft size={19} aria-hidden="true" /></Link>
       <div className="sd-header-brand"><ShowdownGameMark gameKey={gameKey} /><div><span>{title}</span>{subtitle && <small>{subtitle}</small>}</div></div>

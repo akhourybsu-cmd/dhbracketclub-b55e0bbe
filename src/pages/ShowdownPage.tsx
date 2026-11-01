@@ -8,8 +8,8 @@ import { getShowdownGame } from '@/lib/showdown/registry';
 import type { ShowdownChallenge, ShowdownMember } from '@/lib/showdown/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { showdownDate, showdownTimeLeft } from '@/components/showdown/showdownPresentation';
-import { AfterimageMark } from '@/components/showdown/AfterimageMark';
-import { PrismMark, ShowdownAvatar, ShowdownDataState, ShowdownFrame } from '@/components/showdown/ShowdownChrome';
+import { ShowdownGameMark, ShowdownAvatar, ShowdownDataState, ShowdownFrame } from '@/components/showdown/ShowdownChrome';
+import { CipherStatistics } from '@/components/showdown/cipher/CipherStatistics';
 
 const SECTIONS = [
   { id: 'inbox', label: 'Inbox', icon: Inbox }, { id: 'play', label: 'Play', icon: Zap },
@@ -20,9 +20,19 @@ type Section = typeof SECTIONS[number]['id'];
 type Decision = { challenge: ShowdownChallenge; action: 'decline' | 'cancel' };
 
 function isOpen(challenge: ShowdownChallenge) { return challenge.status === 'pending' || challenge.status === 'active'; }
+function cipherWaiting(challenge: ShowdownChallenge) {
+  const state = challenge.cipher;
+  return !!state && (state.own_code_locked && !state.opponent_code_locked || ['solved', 'exhausted', 'surrendered'].includes(state.own_status));
+}
 function challengeLabel(challenge: ShowdownChallenge, viewerId: string) {
   if (challenge.status === 'completed') return challenge.outcome === 'draw' ? 'Draw' : challenge.winner_id === viewerId ? 'Victory' : 'Defeat';
   if (!isOpen(challenge)) return challenge.status[0].toUpperCase() + challenge.status.slice(1);
+  if (challenge.game_key === 'cipher_duel' && challenge.cipher) {
+    if (!challenge.cipher.own_code_locked) return 'Set your code';
+    if (!challenge.cipher.opponent_code_locked) return 'Waiting for code';
+    if (cipherWaiting(challenge)) return 'Attempt sealed';
+    return 'Crack their code';
+  }
   const me = challenge.players.find(player => player.user_id === viewerId);
   return me?.finished_at ? 'Waiting for rival' : me?.started_at ? 'Your run' : 'New challenge';
 }
@@ -73,11 +83,12 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
   const roundNoun = currentRegistration?.roundNoun ?? 'rounds';
   const gameName = currentGame?.name ?? currentRegistration?.name ?? 'Showdown';
   const afterimage = gameKey === 'afterimage';
-  const Mark = afterimage ? AfterimageMark : PrismMark;
+  const cipher = gameKey === 'cipher_duel';
+  const selectingCipher = chosenGame === 'cipher_duel';
   const active = data?.challenges.filter(isOpen) ?? [];
-  const incoming = active.filter(challenge => challenge.recipient_id === viewerId && !challenge.players.find(player => player.user_id === viewerId)?.started_at);
-  const playable = active.filter(challenge => !challenge.players.find(player => player.user_id === viewerId)?.finished_at);
-  const waiting = active.filter(challenge => Boolean(challenge.players.find(player => player.user_id === viewerId)?.finished_at));
+  const incoming = active.filter(challenge => challenge.recipient_id === viewerId && (challenge.game_key === 'cipher_duel' ? !challenge.cipher?.own_code_locked : !challenge.players.find(player => player.user_id === viewerId)?.started_at));
+  const playable = active.filter(challenge => challenge.game_key === 'cipher_duel' ? !cipherWaiting(challenge) : !challenge.players.find(player => player.user_id === viewerId)?.finished_at);
+  const waiting = active.filter(challenge => challenge.game_key === 'cipher_duel' ? cipherWaiting(challenge) : Boolean(challenge.players.find(player => player.user_id === viewerId)?.finished_at));
   const historical = data?.challenges.filter(challenge => !isOpen(challenge)) ?? [];
   const requested = params.get('tab');
   const section: Section = SECTIONS.some(tab => tab.id === requested) ? requested as Section : incoming.length ? 'inbox' : 'play';
@@ -91,6 +102,10 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
 
   async function createChallenge() {
     if (mutation.current || !selectedMember || !selectedGame) return;
+    if (selectedGame.game_key === 'cipher_duel') {
+      const next = new URLSearchParams({ recipient_id: selectedMember.user_id });
+      closeChooser(); navigate(`/showdown/cipher/new?${next}`); return;
+    }
     const account = viewerId;
     const fingerprint = `${selectedGame.game_key}:${selectedMember.user_id}`;
     if (intent.current?.fingerprint !== fingerprint) intent.current = { fingerprint, requestId: crypto.randomUUID() };
@@ -119,8 +134,8 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
   return <ShowdownFrame gameKey={gameKey} subtitle={clubName} action={<button type="button" className="sd-icon-button" aria-label="Refresh challenges" disabled={lobby.loading || lobby.refreshing || creating || deciding} onClick={() => void lobby.refresh()}><RefreshCw size={17} className={lobby.refreshing ? 'sd-loading' : ''} aria-hidden="true" /></button>}>
     {!data ? <ShowdownDataState error={lobby.error} retry={() => void lobby.refresh()} /> : <div className="sd-content" data-testid="showdown-lobby">
       <section className="sd-hero">
-        <div className="sd-hero-copy"><p className="sd-eyebrow"><Swords size={12} aria-hidden="true" />{gameName} · SHOWDOWN</p><h1>{afterimage ? <>Hold the moment.<br />Make it yours.</> : <>Your move.<br />Their moment.</>}</h1><p>{afterimage ? 'Remember the scene. Restore the details.' : 'Same puzzles. Separate schedules.'}<br />Three rounds decide it.</p></div>
-        <Mark className="sd-hero-art" />
+        <div className="sd-hero-copy"><p className="sd-eyebrow"><Swords size={12} aria-hidden="true" />{gameName} · SHOWDOWN</p><h1>{cipher ? <>Set a secret.<br />Read their mind.</> : afterimage ? <>Hold the moment.<br />Make it yours.</> : <>Your move.<br />Their moment.</>}</h1><p>{cipher ? <>Four pegs. Six colors. Ten guesses.<br />Lock your code. Crack theirs.</> : <>{afterimage ? 'Remember the scene. Restore the details.' : 'Same puzzles. Separate schedules.'}<br />Three rounds decide it.</>}</p></div>
+        <ShowdownGameMark gameKey={gameKey} className="sd-hero-art" />
       </section>
       <button type="button" className="sd-button sd-primary sd-full" onClick={openChooser} disabled={!members.length || !availableGames.length}><Plus size={17} aria-hidden="true" />Challenge a member</button>
       {!members.length && <p className="sd-lobby-note">Another club member is needed for a showdown.</p>}
@@ -138,34 +153,35 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
         {notice && <p className="sd-notice" role="status">{notice}</p>}
         {lobby.error && <div className="sd-error" role="alert"><p>{lobby.error} Your last loaded challenges are still shown.</p><button type="button" className="sd-button" onClick={() => void lobby.refresh()}>Retry refresh</button></div>}
         {section === 'standings' ? <>
+          {cipher && data.cipher_statistics && <CipherStatistics statistics={data.cipher_statistics} />}
           <div className="sd-section-title"><div><h2>{gameName} standings</h2><p>3 points per win · 1 per draw. Completed matches only.</p></div><Trophy size={22} aria-hidden="true" /></div>
-          {data.standings.length ? <div className="sd-standings" aria-label="Game standings">{data.standings.map((player, index) => <article className="sd-standing" key={player.user_id}><span>{index + 1}</span><ShowdownAvatar name={player.display_name} url={player.avatar_url} /><div><strong>{player.display_name}{player.user_id === viewerId ? ' · you' : ''}</strong><small>{player.wins}W · {player.losses}L · {player.draws}D</small></div><b>{player.points}<small>points</small></b></article>)}</div> : <EmptyState section="standings" onChallenge={openChooser} disabled={!members.length} />}
+          {data.standings.length ? <div className="sd-standings" aria-label="Game standings">{data.standings.map((player, index) => <article className="sd-standing" key={player.user_id}><span>{index + 1}</span><ShowdownAvatar name={player.display_name} url={player.avatar_url} /><div><strong>{player.display_name}{player.user_id === viewerId ? ' · you' : ''}</strong><small>{player.wins}W · {player.losses}L · {player.draws}D</small></div><b>{player.points}<small>points</small></b></article>)}</div> : <EmptyState section="standings" cipher={cipher} onChallenge={openChooser} disabled={!members.length} />}
           <div className="sd-section-title"><div><h2>Your rivalries</h2><p>Career head-to-head records for this game.</p></div><Users size={21} aria-hidden="true" /></div>
           {data.rivalries.length ? data.rivalries.map(rival => <article className="sd-rivalry" key={rival.opponent_id}><div><ShowdownAvatar name={rival.display_name} url={rival.avatar_url} /><div><strong>{rival.display_name}</strong><p>{rival.played} completed {rival.played === 1 ? 'match' : 'matches'}</p></div></div><b>{rival.wins}–{rival.losses}–{rival.draws}</b></article>) : <p className="sd-lobby-note">Your first completed match starts a rivalry.</p>}
           <p className="sd-lobby-note">Standings never compare raw scores from different mini-games. Rivalry records read wins–losses–draws from your perspective.</p>
         </> : <>
-          <div className="sd-section-title"><div><h2>{section === 'inbox' ? 'The invitation is yours.' : section === 'play' ? 'Make your mark.' : section === 'waiting' ? 'Your rival’s turn.' : 'The match archive.'}</h2><p>{section === 'inbox' ? 'Open an invitation to play. No acceptance step.' : section === 'play' ? 'Jump in or pick up exactly where you left off.' : section === 'waiting' ? `Your ${roundNoun} are locked. We’ll notify you when the result is ready.` : 'Completed and closed challenges stay here.'}</p></div>{section === 'history' ? <History size={22} aria-hidden="true" /> : <Swords size={22} aria-hidden="true" />}</div>
-          {visible.length ? <div className="sd-card-list">{visible.map(challenge => <ChallengeCard key={challenge.id} challenge={challenge} viewerId={viewerId} gameName={data.games.find(game => game.game_key === challenge.game_key)?.name ?? getShowdownGame(challenge.game_key)?.name ?? 'Showdown'} disabled={creating || deciding} decide={action => { setDecision({ challenge, action }); setDecisionError(''); }} />)}</div> : <EmptyState section={section} onChallenge={openChooser} disabled={!members.length} />}
+          <div className="sd-section-title"><div><h2>{section === 'inbox' ? 'The invitation is yours.' : section === 'play' ? 'Make your mark.' : section === 'waiting' ? 'Your rival’s turn.' : 'The match archive.'}</h2><p>{section === 'inbox' ? cipher ? 'Set and lock your code to join the duel.' : 'Open an invitation to play. No acceptance step.' : section === 'play' ? 'Jump in or pick up exactly where you left off.' : section === 'waiting' ? cipher ? 'Your code or attempt is locked. Your rival can continue on their schedule.' : `Your ${roundNoun} are locked. We’ll notify you when the result is ready.` : 'Completed and closed challenges stay here.'}</p></div>{section === 'history' ? <History size={22} aria-hidden="true" /> : <Swords size={22} aria-hidden="true" />}</div>
+          {visible.length ? <div className="sd-card-list">{visible.map(challenge => <ChallengeCard key={challenge.id} challenge={challenge} viewerId={viewerId} gameName={data.games.find(game => game.game_key === challenge.game_key)?.name ?? getShowdownGame(challenge.game_key)?.name ?? 'Showdown'} disabled={creating || deciding} decide={action => { setDecision({ challenge, action }); setDecisionError(''); }} />)}</div> : <EmptyState section={section} cipher={cipher} onChallenge={openChooser} disabled={!members.length} />}
           {section === 'history' && lobby.hasMore && <button type="button" className="sd-button sd-full" disabled={lobby.loadingMore} onClick={() => void lobby.loadMore()}>{lobby.loadingMore ? <Loader2 size={16} className="sd-loading" aria-hidden="true" /> : <History size={16} aria-hidden="true" />}{lobby.loadingMore ? 'Loading matches…' : 'Load older matches'}</button>}
         </>}
       </div>
     </div>}
     <Dialog open={choosing} onOpenChange={open => { if (!creating && !mutation.current) { if (open) setChoosing(true); else closeChooser(); } }}>
-      <DialogContent className={`sd-dialog ${chosenGame === 'afterimage' ? 'sd-afterimage' : ''}`} onEscapeKeyDown={event => { if (creating) event.preventDefault(); }} onPointerDownOutside={event => { if (creating) event.preventDefault(); }}>
-        <DialogHeader><DialogTitle>New showdown</DialogTitle><DialogDescription>Choose a game and a club rival. They have 72 hours to finish the same three rounds.</DialogDescription></DialogHeader>
-        <div aria-label="Choose a game">{availableGames.map(game => <button type="button" className="sd-game-choice" key={game.game_key} aria-pressed={chosenGame === game.game_key} disabled={creating} onClick={() => { setChosenGame(game.game_key); setCreateError(''); }}>{game.game_key === 'afterimage' ? <AfterimageMark /> : <PrismMark />}<span><strong>{game.name}</strong><small>{game.description}</small></span>{chosenGame === game.game_key && <Check size={17} aria-hidden="true" />}</button>)}</div>
+      <DialogContent className={`sd-dialog ${chosenGame === 'afterimage' ? 'sd-afterimage' : selectingCipher ? 'sd-cipher' : ''}`} onEscapeKeyDown={event => { if (creating) event.preventDefault(); }} onPointerDownOutside={event => { if (creating) event.preventDefault(); }}>
+        <DialogHeader><DialogTitle>New showdown</DialogTitle><DialogDescription>{selectingCipher ? 'Choose a club rival, then create your secret code. The invitation is sent only after you lock it.' : 'Choose a game and a club rival. They have 72 hours to finish the same three rounds.'}</DialogDescription></DialogHeader>
+        <div aria-label="Choose a game">{availableGames.map(game => <button type="button" className="sd-game-choice" key={game.game_key} aria-pressed={chosenGame === game.game_key} disabled={creating} onClick={() => { setChosenGame(game.game_key); setCreateError(''); }}><ShowdownGameMark gameKey={game.game_key} /><span><strong>{game.name}</strong><small>{game.description}</small></span>{chosenGame === game.game_key && <Check size={17} aria-hidden="true" />}</button>)}</div>
         <label htmlFor={`${formId}-member`}>Club member<select id={`${formId}-member`} value={recipientId} disabled={creating} onChange={event => { setRecipientId(event.target.value); setCreateError(''); }}><option value="">Choose your rival</option>{members.map(member => <option value={member.user_id} key={member.user_id}>{member.display_name}</option>)}</select></label>
-        {selectedMember && <MemberSummary member={selectedMember} />}
-        <label className="sd-play-now"><input type="checkbox" checked={playNow} disabled={creating} onChange={event => setPlayNow(event.target.checked)} />Play my {selectedRegistration?.roundNoun ?? 'rounds'} now</label>
-        <p>About 1–2 minutes. You can leave between rounds and return later. Your rival’s score stays hidden until you both finish.</p>
+        {selectedMember && <MemberSummary member={selectedMember} cipher={selectingCipher} />}
+        {!selectingCipher && <label className="sd-play-now"><input type="checkbox" checked={playNow} disabled={creating} onChange={event => setPlayNow(event.target.checked)} />Play my {selectedRegistration?.roundNoun ?? 'rounds'} now</label>}
+        <p>{selectingCipher ? 'About 3–8 minutes of play. Your rival has 72 hours to lock their code, then you both have 72 hours to finish. Secrets and guess histories stay hidden until both attempts end.' : 'About 1–2 minutes. You can leave between rounds and return later. Your rival’s score stays hidden until you both finish.'}</p>
         {selectedRegistration?.rulesSummary && <details className="sd-scoring-details"><summary>{selectedRegistration.name} rules</summary><p>{selectedRegistration.rulesSummary}</p></details>}
         {createError && <p className="sd-error" role="alert">{createError}</p>}
-        <div className="sd-dialog-actions"><button type="button" className="sd-button" disabled={creating} onClick={closeChooser}>Cancel</button><button type="button" className="sd-button sd-primary" disabled={creating || !selectedMember || !selectedGame} onClick={() => void createChallenge()}>{creating ? <Loader2 size={16} className="sd-loading" aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}{creating ? 'Sending…' : 'Send challenge'}</button></div>
+        <div className="sd-dialog-actions"><button type="button" className="sd-button" disabled={creating} onClick={closeChooser}>Cancel</button><button type="button" className="sd-button sd-primary" disabled={creating || !selectedMember || !selectedGame} onClick={() => void createChallenge()}>{creating ? <Loader2 size={16} className="sd-loading" aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}{creating ? 'Sending…' : selectingCipher ? 'Create your code' : 'Send challenge'}</button></div>
       </DialogContent>
     </Dialog>
     <Dialog open={Boolean(decision)} onOpenChange={open => { if (!open && !deciding) setDecision(null); }}>
-      <DialogContent className={`sd-dialog ${gameKey === 'afterimage' ? 'sd-afterimage' : ''}`} onEscapeKeyDown={event => { if (deciding) event.preventDefault(); }} onPointerDownOutside={event => { if (deciding) event.preventDefault(); }}>
-        <DialogHeader><DialogTitle>{decision?.action === 'decline' ? 'Decline challenge?' : 'Cancel challenge?'}</DialogTitle><DialogDescription>This ends the invitation without recording a win or loss. A challenge already started by the recipient cannot be withdrawn.</DialogDescription></DialogHeader>
+      <DialogContent className={`sd-dialog ${gameKey === 'afterimage' ? 'sd-afterimage' : cipher ? 'sd-cipher' : ''}`} onEscapeKeyDown={event => { if (deciding) event.preventDefault(); }} onPointerDownOutside={event => { if (deciding) event.preventDefault(); }}>
+        <DialogHeader><DialogTitle>{decision?.action === 'decline' ? 'Decline challenge?' : 'Cancel challenge?'}</DialogTitle><DialogDescription>{cipher ? 'This closes the invitation without a win or loss. A duel cannot be withdrawn after both codes lock.' : 'This ends the invitation without recording a win or loss. A challenge already started by the recipient cannot be withdrawn.'}</DialogDescription></DialogHeader>
         {decisionError && <p className="sd-error" role="alert">{decisionError}</p>}
         <div className="sd-dialog-actions"><button type="button" className="sd-button" disabled={deciding} onClick={() => setDecision(null)}>Keep challenge</button><button type="button" className="sd-button sd-danger" disabled={deciding} onClick={() => void decide()}>{deciding ? 'Updating…' : decision?.action === 'decline' ? 'Decline challenge' : 'Cancel challenge'}</button></div>
       </DialogContent>
@@ -173,10 +189,11 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
   </ShowdownFrame>;
 }
 
-function MemberSummary({ member }: { member: ShowdownMember }) {
-  return <div className="sd-choose-summary"><ShowdownAvatar name={member.display_name} url={member.avatar_url} /><div><strong>{member.display_name}</strong><span>Same club · same rounds · your own schedule</span></div></div>;
+function MemberSummary({ member, cipher }: { member: ShowdownMember; cipher?: boolean }) {
+  return <div className="sd-choose-summary"><ShowdownAvatar name={member.display_name} url={member.avatar_url} /><div><strong>{member.display_name}</strong><span>{cipher ? 'Same club · secret codes · your own schedule' : 'Same club · same rounds · your own schedule'}</span></div></div>;
 }
 function ChallengeCard({ challenge, viewerId, gameName, disabled, decide }: { challenge: ShowdownChallenge; viewerId: string; gameName: string; disabled: boolean; decide: (action: 'decline' | 'cancel') => void }) {
+  if (challenge.game_key === 'cipher_duel') return <CipherChallengeCard challenge={challenge} viewerId={viewerId} gameName={gameName} disabled={disabled} decide={decide} />;
   const me = challenge.players.find(player => player.user_id === viewerId);
   const opponent = challenge.players.find(player => player.user_id !== viewerId);
   const open = isOpen(challenge);
@@ -191,7 +208,25 @@ function ChallengeCard({ challenge, viewerId, gameName, disabled, decide }: { ch
     <footer><Link className={`sd-button ${open && !waiting ? 'sd-primary' : ''}`} to={`/showdown/${challenge.id}`}>{primary}<ArrowRight size={14} aria-hidden="true" /></Link>{open && challenge.recipient_id === viewerId && !me?.started_at && <button type="button" className="sd-button sd-subtle" disabled={disabled} onClick={() => decide('decline')}>Decline</button>}{open && challenge.challenger_id === viewerId && !opponent?.started_at && <button type="button" className="sd-button sd-subtle" disabled={disabled} onClick={() => decide('cancel')}>Cancel invite</button>}</footer>
   </article>;
 }
-function EmptyState({ section, onChallenge, disabled }: { section: Section; onChallenge: () => void; disabled: boolean }) {
+function CipherChallengeCard({ challenge, viewerId, gameName, disabled, decide }: { challenge: ShowdownChallenge; viewerId: string; gameName: string; disabled: boolean; decide: (action: 'decline' | 'cancel') => void }) {
+  const state = challenge.cipher;
+  const opponent = challenge.players.find(player => player.user_id !== viewerId);
+  const open = isOpen(challenge);
+  const waiting = cipherWaiting(challenge);
+  const started = !!state?.gameplay_started_at;
+  const terminal = !!state && ['solved', 'exhausted', 'surrendered'].includes(state.own_status);
+  const primary = challenge.status === 'completed' ? 'Open result' : !open ? 'View challenge' : !state?.own_code_locked ? 'Create your code' : !state.opponent_code_locked ? 'Waiting for code' : terminal ? 'View sealed attempt' : 'Crack their code';
+  const guidance = !state?.own_code_locked ? 'Lock your secret code to join. No separate acceptance step.' : !state.opponent_code_locked ? 'Your code is locked. Waiting for your rival to set theirs.' : terminal ? 'Your attempt is sealed. Your rival is still playing.' : 'Your rival’s code is ready. You have ten guesses.';
+  const finishedCopy = state?.own_status === 'solved' ? `Code cracked in ${state.own_guesses_used} ${state.own_guesses_used === 1 ? 'guess' : 'guesses'}.` : state?.own_status === 'surrendered' ? 'Attempt surrendered.' : 'Your rival’s code stayed unbroken.';
+  return <article className="sd-match-card" data-testid="showdown-challenge-card">
+    <header><div className="sd-match-player"><ShowdownAvatar name={opponent?.display_name ?? 'Club rival'} url={opponent?.avatar_url} /><div><strong>{opponent?.display_name ?? 'Club rival'}</strong><small>{gameName}{challenge.rematch_of ? ' · Rematch' : ''}</small></div></div><span className="sd-badge" data-tone={challenge.status === 'completed' ? 'gold' : !open ? 'muted' : undefined}>{challengeLabel(challenge, viewerId)}</span></header>
+    <p>{open ? `${started ? 'Duel' : 'Invitation'} · ${showdownTimeLeft(challenge.expires_at)} · ${guidance}` : `${showdownDate(challenge.completed_at ?? challenge.created_at)} · ${challenge.status === 'completed' ? finishedCopy : 'No win or loss recorded.'}`}</p>
+    {open && <div className="cd-match-meta">{started ? <><span>Your attempt</span><span>{state?.own_guesses_used ?? 0} / 10 guesses{terminal ? ' · sealed' : ''}</span></> : <><span>Your code: {state?.own_code_locked ? 'locked' : 'not set'}</span><span>Rival code: {state?.opponent_code_locked ? 'locked' : 'not set'}</span></>}</div>}
+    <footer><Link className={`sd-button ${open && !waiting ? 'sd-primary' : ''}`} to={`/showdown/${challenge.id}`}>{primary}<ArrowRight size={14} aria-hidden="true" /></Link>{open && challenge.recipient_id === viewerId && !state?.own_code_locked && <button type="button" className="sd-button sd-subtle" disabled={disabled} onClick={() => decide('decline')}>Decline</button>}{open && challenge.challenger_id === viewerId && !state?.opponent_code_locked && <button type="button" className="sd-button sd-subtle" disabled={disabled} onClick={() => decide('cancel')}>Cancel invite</button>}</footer>
+  </article>;
+}
+function EmptyState({ section, onChallenge, disabled, cipher = false }: { section: Section; onChallenge: () => void; disabled: boolean; cipher?: boolean }) {
   const messages: Record<Section, [string, string]> = { inbox: ['No incoming challenges.', 'Your next rival can challenge you whenever they’re ready.'], play: ['A clean slate.', 'Challenge a club member and make the opening move.'], waiting: ['Nothing on hold.', 'Finish your three rounds and we’ll hold your score for the reveal.'], history: ['Your story starts here.', 'Completed, declined, cancelled and expired challenges will stay in your history.'], standings: ['The first rivalry is open.', 'Finish a showdown to establish the club standings.'] };
+  if (cipher) messages.waiting = ['Nothing on hold.', 'Lock a code or finish your attempt. Your rival can pick up the duel later.'];
   return <div className="sd-empty"><Swords aria-hidden="true" /><h2>{messages[section][0]}</h2><p>{messages[section][1]}</p>{section !== 'inbox' && section !== 'waiting' && <button type="button" className="sd-button" disabled={disabled} onClick={onChallenge}>Start a showdown</button>}</div>;
 }

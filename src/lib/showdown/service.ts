@@ -2,7 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { validatePuzzleShape } from './prism/engine';
 import { validateSceneView, validatePlacements } from './afterimage/engine';
-import type { ShowdownCreateInput, ShowdownCursor, ShowdownLobbyData, ShowdownMatchDetail, ShowdownRoundInput, ShowdownReconstructionInput } from './types';
+import { validateCode, validateCipherView, validateCipherStatistics } from './cipher/engine';
+import type { ShowdownCreateInput, ShowdownCursor, ShowdownLobbyData, ShowdownMatchDetail, ShowdownRoundInput, ShowdownReconstructionInput, CipherCodeInput, CipherGuessInput, CipherSurrenderInput } from './types';
 
 export class ShowdownError extends Error {
   constructor(message: string, public readonly code: string = 'network') { super(message); this.name = 'ShowdownError'; }
@@ -26,6 +27,11 @@ const SAFE_MESSAGES = new Set([
   'Start the study phase before reconstructing', 'The study phase is still active',
   'This challenge uses different game controls', 'Each tray object and slot may be used once',
   'Invalid reconstruction placements',
+  'Both codes must be locked before guessing', 'Your code is locked and cannot be changed',
+  'Your attempt is already finished', 'Enter exactly four permitted colors',
+  'Lock your four-color code before sending this invitation.',
+  'Choose four colors from the six-color palette', 'Your secret code is already locked',
+  'Your attempt is already sealed', 'Both players must lock a code first',
 ]);
 function failure(error: unknown): ShowdownError {
   const code = object(error) && typeof error.code === 'string' ? error.code : '';
@@ -44,9 +50,16 @@ async function rpc(name: string, args: Record<string, unknown>): Promise<unknown
 }
 export function parseShowdownMatch(value: unknown, requestElapsedMs = 0): ShowdownMatchDetail {
   if (!object(value) || !object(value.challenge) || typeof value.challenge.id !== 'string' || !Array.isArray(value.challenge.players)
-    || value.challenge.players.length !== 2 || !Array.isArray(value.rounds) || value.rounds.length !== 3) throw new ShowdownError('The saved match could not be verified. Refresh and try again.', 'data');
+    || value.challenge.players.length !== 2 || !Array.isArray(value.rounds) || value.rounds.length !== (value.challenge.game_key === 'cipher_duel' ? 0 : 3)) throw new ShowdownError('The saved match could not be verified. Refresh and try again.', 'data');
   const completed = value.challenge.status === 'completed';
   const closed = ['cancelled', 'declined', 'expired'].includes(String(value.challenge.status));
+  if (value.challenge.game_key === 'cipher_duel') {
+    validateCipherView(value.cipher, { completed, participantIds: [String(value.challenge.challenger_id), String(value.challenge.recipient_id)] });
+    validateCipherStatistics(value.cipher_statistics);
+    if (value.current_round !== null || closed !== (value.cipher.phase === 'closed')
+      || !completed && (value.challenge.winner_id !== null || value.challenge.outcome !== null || value.challenge.completed_at !== null)) throw new ShowdownError('The saved duel could not be verified. Refresh and try again.', 'data');
+    return value as unknown as ShowdownMatchDetail;
+  }
   for (let i = 0; i < value.rounds.length; i++) {
     const round = value.rounds[i];
     if (!object(round) || round.round_number !== i + 1 || !object(round.me) || !Array.isArray(round.me.actions)
@@ -81,9 +94,15 @@ async function matchRpc(name: string, args: Record<string, unknown>): Promise<Sh
 export async function fetchShowdownLobby(gameKey = 'prism_break', cursor: ShowdownCursor | null = null): Promise<ShowdownLobbyData> {
   const value = await rpc('showdown_lobby', { p_game_key: gameKey, p_cursor: cursor, p_limit: 30 });
   if (!object(value) || !['games','members','challenges','rivalries','standings'].every(key => Array.isArray(value[key])) || !object(value.record)) throw new ShowdownError('The Showdown lobby could not be verified. Retry loading it.', 'data');
+  if (gameKey === 'cipher_duel') validateCipherStatistics(value.cipher_statistics);
   return value as unknown as ShowdownLobbyData;
 }
 export async function createShowdown(input: ShowdownCreateInput): Promise<ShowdownMatchDetail> {
+  if (input.gameKey === 'cipher_duel') {
+    if (!input.secretCode) throw new ShowdownError('Lock your four-color code before sending this invitation.', 'rule');
+    validateCode(input.secretCode);
+    return matchRpc('showdown_create_cipher', { p_recipient_id: input.recipientId, p_code: input.secretCode, p_request_id: input.requestId ?? crypto.randomUUID(), p_rematch_of: input.rematchOf ?? null });
+  }
   return matchRpc('showdown_create', { p_recipient_id: input.recipientId, p_game_key: input.gameKey, p_request_id: input.requestId ?? crypto.randomUUID(), p_rematch_of: input.rematchOf ?? null });
 }
 export async function fetchShowdownMatch(challengeId: string, start = true): Promise<ShowdownMatchDetail> {
@@ -108,4 +127,15 @@ export async function saveAfterimageReconstruction(input: ShowdownReconstruction
 }
 export async function submitAfterimageReconstruction(input: ShowdownReconstructionInput): Promise<ShowdownMatchDetail> {
   return matchRpc('showdown_submit_reconstruction', reconstructionArgs(input));
+}
+export async function lockCipherCode(input: CipherCodeInput): Promise<ShowdownMatchDetail> {
+  validateCode(input.code);
+  return matchRpc('showdown_lock_cipher_code', { p_challenge_id: input.challengeId, p_code: input.code, p_request_id: input.requestId });
+}
+export async function submitCipherGuess(input: CipherGuessInput): Promise<ShowdownMatchDetail> {
+  validateCode(input.guess);
+  return matchRpc('showdown_submit_cipher_guess', { p_challenge_id: input.challengeId, p_guess: input.guess, p_expected_guess_count: input.expectedGuessCount, p_request_id: input.requestId });
+}
+export async function surrenderCipher(input: CipherSurrenderInput): Promise<ShowdownMatchDetail> {
+  return matchRpc('showdown_surrender_cipher', { p_challenge_id: input.challengeId, p_expected_guess_count: input.expectedGuessCount, p_request_id: input.requestId });
 }

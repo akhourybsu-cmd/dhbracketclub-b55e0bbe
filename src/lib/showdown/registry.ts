@@ -3,6 +3,8 @@ import { initialOrientations, replayActions, scoreRound, compareMatch } from './
 import { PRISM_RULES_VERSION, type PrismAction, type PrismPuzzle } from './prism/types';
 import { validatePlacements, scoreScene, compareMatch as compareMemoryMatch } from './afterimage/engine';
 import { AFTERIMAGE_RULES_VERSION, type AfterimagePlacement, type AfterimageSceneView } from './afterimage/types';
+import { validateCode, calculateFeedback, compareAttempts } from './cipher/engine';
+import { CIPHER_RULES_VERSION, type CipherCode } from './cipher/types';
 
 /** Versioned adapters share the challenge lifecycle; published versions remain playable. */
 const prismBreak = {
@@ -33,10 +35,24 @@ const afterimage = {
   scoreRound: scoreScene, compareResults: compareMemoryMatch,
 } as const;
 
-export const showdownGames = [prismBreak, afterimage] as const;
+const cipherDuel = {
+  key: 'cipher_duel', name: 'CIPHER DUEL', description: 'Set a secret. Crack theirs. Fewer guesses wins.',
+  category: 'Deduction', icon: 'Fingerprint', cover: 'cipher-pegboard', rulesVersion: CIPHER_RULES_VERSION, enabled: true,
+  matchMaxScore: null, roundNoun: 'duels', setupMode: 'secret_code', typicalDuration: '3–8 minutes',
+  rulesSummary: 'Set four pegs from six colors. Repeats are allowed. Both players lock a code, then independently crack the other in up to ten guesses. Fewer successful guesses wins; equal attempts or two failed attempts draw.',
+  Gameplay: lazy(() => import('@/components/showdown/cipher/CipherGame').then(module => ({ default: module.CipherGame }))),
+  Board: lazy(() => import('@/components/showdown/cipher/CipherGame').then(module => ({ default: module.CipherGuessHistory }))),
+  Results: lazy(() => import('@/components/showdown/cipher/CipherResults').then(module => ({ default: module.CipherResults }))),
+  initializePuzzle: () => ({ draft: [null, null, null, null] }),
+  validateSubmission: (code: CipherCode) => { validateCode(code); return { valid: true }; },
+  calculateFeedback, compareResults: compareAttempts,
+} as const;
+
+export const showdownGames = [prismBreak, afterimage, cipherDuel] as const;
 export type ShowdownGameRegistration = typeof showdownGames[number];
 export function getShowdownGame(key: 'prism_break', rulesVersion?: number): typeof prismBreak | undefined;
 export function getShowdownGame(key: 'afterimage', rulesVersion?: number): typeof afterimage | undefined;
+export function getShowdownGame(key: 'cipher_duel', rulesVersion?: number): typeof cipherDuel | undefined;
 export function getShowdownGame(key: string, rulesVersion?: number): ShowdownGameRegistration | undefined;
 export function getShowdownGame(key: string, rulesVersion?: number): ShowdownGameRegistration | undefined {
   return showdownGames.find(game => game.key === key && (rulesVersion === undefined || game.rulesVersion === rulesVersion));

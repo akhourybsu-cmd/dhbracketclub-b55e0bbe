@@ -4,6 +4,8 @@ import { solvePuzzle } from '../../src/lib/showdown/prism/solver';
 import type { PrismAction, PrismDifficulty, PrismPuzzle } from '../../src/lib/showdown/prism/types';
 import { compareMatch as compareAfterimage, sanitizeScene, scoreScene, validatePlacements } from '../../src/lib/showdown/afterimage/engine';
 import type { AfterimagePlacement, AfterimageSceneDefinition } from '../../src/lib/showdown/afterimage/types';
+import { calculateFeedback, compareAttempts, validateCode } from '../../src/lib/showdown/cipher/engine';
+import type { CipherAttempt, CipherAttemptStatus, CipherCode, CipherGuess } from '../../src/lib/showdown/cipher/types';
 
 type Row = Record<string, unknown>;
 interface CatalogEntry { puzzle: PrismPuzzle; title: string; minimum_rotations: number }
@@ -20,6 +22,8 @@ interface Challenge {
   challenger_id: string; recipient_id: string; created_at: string; expires_at: string;
   completed_at: string | null; winner_id: string | null; outcome: 'winner' | 'draw' | null;
   rematch_of: string | null; puzzle_keys: string[]; players: Player[];
+  invitation_expires_at?: string; gameplay_started_at?: string | null; gameplay_expires_at?: string | null;
+  cipher_data?: { codes: Record<string, { code: CipherCode; locked_at: string }>; states: Record<string, { status: CipherAttemptStatus; guesses: CipherGuess[] }> };
 }
 interface State {
   challenges: Challenge[]; notifications: Row[]; receipts: Record<string, { signature: string; response: unknown }>;
@@ -48,6 +52,7 @@ const same = (first: unknown, second: unknown) => JSON.stringify(jsonb(first)) =
 const initial = (): State => ({ challenges: [], notifications: [], receipts: {}, members: SHOWDOWN_QA_MEMBERS.map(member => member.user_id), serial: 0 });
 let catalog: CatalogEntry[] = [];
 let afterimageCatalog: AfterimageSceneDefinition[] = [];
+let cipherEnabled = false;
 let state: State = initial();
 const calls: Row[] = [];
 const failures = new Map<string, { count: number; afterCommit: boolean }>();
@@ -84,15 +89,20 @@ function totals(player: Player) {
     perfect_count: player.attempts.filter(round => round.submitted && round.perfect).length };
 }
 function challengeView(challenge: Challenge) {
-  return { ...Object.fromEntries(Object.entries(challenge).filter(([name]) => !['puzzle_keys', 'players'].includes(name))),
+  return { ...Object.fromEntries(Object.entries(challenge).filter(([name]) => !['puzzle_keys', 'players', 'cipher_data', 'invitation_expires_at', 'gameplay_started_at', 'gameplay_expires_at'].includes(name))),
     players: challenge.players.map(player => {
       const visible = player.user_id === userId || challenge.status === 'completed';
       return { ...profile(player.user_id), started_at: player.started_at, finished_at: player.finished_at,
         rounds_completed: player.attempts.filter(round => round.submitted).length,
-        ...(visible ? totals(player) : { total_score: null, solved_count: null, rotations: null, perfect_count: null }) };
-    }) };
+        ...(visible ? challenge.cipher_data ? { total_score: 0, solved_count: Number(challenge.cipher_data.states[player.user_id].status === 'solved'), rotations: 0 } : totals(player)
+          : { total_score: null, solved_count: null, rotations: null, perfect_count: null }) };
+    }), ...(challenge.cipher_data ? { cipher: { own_code_locked: !!challenge.cipher_data.codes[userId],
+      opponent_code_locked: !!challenge.cipher_data.codes[challenge.players.find(player => player.user_id !== userId)!.user_id],
+      own_status: challenge.cipher_data.states[userId].status, own_guesses_used: challenge.cipher_data.states[userId].guesses.length,
+      opponent_finished: !!challenge.players.find(player => player.user_id !== userId)!.finished_at, gameplay_started_at: challenge.gameplay_started_at ?? null } } : {}) };
 }
 function detail(challenge: Challenge) {
+  if (challenge.game_key === 'cipher_duel') return cipherDetail(challenge);
   const own = challenge.players.find(player => player.user_id === userId)!;
   const other = challenge.players.find(player => player.user_id !== userId)!;
   const next = own.attempts.findIndex(round => !round.submitted);
@@ -123,6 +133,38 @@ function detail(challenge: Challenge) {
         me: clone(own.attempts[index]), opponent: challenge.status === 'completed' ? clone(other.attempts[index]) : null };
     }) };
 }
+function cipherAttempt(challenge: Challenge, user: string): CipherAttempt {
+  const state = challenge.cipher_data!.states[user];
+  return { status: state.status, guesses_used: state.guesses.length, solved: state.status === 'solved', finished_at: challenge.players.find(player => player.user_id === user)!.finished_at };
+}
+function cipherStatistics(user: string) {
+  const matches = state.challenges.filter(row => row.club_id === clubId && row.game_key === 'cipher_duel' && row.status === 'completed' && row.players.some(player => player.user_id === user))
+    .sort((a, b) => a.completed_at!.localeCompare(b.completed_at!) || a.id.localeCompare(b.id));
+  const solved = matches.map(row => cipherAttempt(row, user)).filter(attempt => attempt.solved);
+  const wins = matches.filter(row => row.winner_id === user).length, draws = matches.filter(row => row.outcome === 'draw').length;
+  let streak = 0, longest = 0;
+  for (const match of matches) { streak = match.winner_id === user ? streak + 1 : 0; longest = Math.max(longest, streak); }
+  const successful = solved.reduce((sum, attempt) => sum + attempt.guesses_used, 0);
+  return { played: matches.length, wins, draws, losses: matches.length - wins - draws, solved_count: solved.length, failed_count: matches.length - solved.length,
+    successful_guesses_total: successful, average_guesses_to_solve: solved.length ? Math.round(successful / solved.length * 100) / 100 : null,
+    best_guess_count: solved.length ? Math.min(...solved.map(attempt => attempt.guesses_used)) : null, first_guess_solves: solved.filter(attempt => attempt.guesses_used === 1).length,
+    current_win_streak: streak, longest_win_streak: longest };
+}
+function cipherDetail(challenge: Challenge) {
+  const own = challenge.players.find(player => player.user_id === userId)!, other = challenge.players.find(player => player.user_id !== userId)!;
+  const data = challenge.cipher_data!, mine = data.codes[userId], theirs = data.codes[other.user_id], attempt = cipherAttempt(challenge, userId);
+  const closed = ['declined', 'cancelled', 'expired'].includes(challenge.status), completed = challenge.status === 'completed';
+  const phase = closed ? 'closed' : completed ? 'completed' : !mine ? 'create_code' : !theirs ? 'waiting_code' : own.finished_at ? 'attempt_sealed' : 'codebreaking';
+  return { challenge: challengeView(challenge), rounds: [], current_round: null, can_play: phase === 'codebreaking',
+    can_decline: !closed && !completed && userId === challenge.recipient_id && !mine,
+    can_cancel: !closed && !completed && userId === challenge.challenger_id && !theirs,
+    readonly_reason: closed ? `Challenge ${challenge.status}.` : null, record: record(undefined, 'cipher_duel'), rivalry: { ...profile(other.user_id), opponent_id: other.user_id, ...record(other.user_id, 'cipher_duel') }, cipher_statistics: cipherStatistics(userId),
+    cipher: { phase, own_code: mine ? clone(mine.code) : null, own_code_locked_at: mine?.locked_at ?? null,
+      opponent_code_locked: !!theirs, opponent_finished: !!other.finished_at, invitation_expires_at: challenge.invitation_expires_at!,
+      gameplay_started_at: challenge.gameplay_started_at ?? null, gameplay_expires_at: challenge.gameplay_expires_at ?? null,
+      own_guesses: clone(data.states[userId].guesses), own_attempt: attempt,
+      results: completed ? challenge.players.map(player => ({ user_id: player.user_id, code: clone(data.codes[player.user_id].code), guesses: clone(data.states[player.user_id].guesses), attempt: cipherAttempt(challenge, player.user_id) })) : null } };
+}
 function record(opponent?: string, game = 'prism_break') {
   const rows = state.challenges.filter(challenge => challenge.club_id === clubId && challenge.game_key === game && challenge.status === 'completed'
     && [challenge.challenger_id, challenge.recipient_id].includes(userId)
@@ -140,11 +182,20 @@ function create(args: Row) {
   const recipient = String(args.p_recipient_id || '');
   if (recipient === userId || !state.members.includes(recipient)) fail(recipient === userId ? 'Cannot challenge yourself' : 'Choose a member of your club');
   const game = String(args.p_game_key);
-  if (!['prism_break', 'afterimage'].includes(game) || game === 'afterimage' && !afterimageCatalog.length || game === 'prism_break' && !catalog.length) fail('Game is not enabled');
+  if (!['prism_break', 'afterimage', 'cipher_duel'].includes(game) || game === 'afterimage' && !afterimageCatalog.length || game === 'prism_break' && !catalog.length || game === 'cipher_duel' && !cipherEnabled) fail('Game is not enabled');
   const rematch = args.p_rematch_of ? findChallenge(String(args.p_rematch_of)) : null;
   if (rematch && (rematch.status !== 'completed' || rematch.game_key !== game || ![rematch.challenger_id, rematch.recipient_id].includes(recipient))) fail('Rematch unavailable.');
-  if (state.challenges.filter(row => row.challenger_id === userId && Date.now() - Date.parse(row.created_at) < 300000).length >= 10) fail('Challenge rate limit reached. Try again later');
+  if (state.challenges.filter(row => row.challenger_id === userId && Date.now() - Date.parse(row.created_at) < (game === 'cipher_duel' ? 3600000 : 300000)).length >= (game === 'cipher_duel' ? 12 : 10)) fail('Challenge rate limit reached. Try again later');
   const now = new Date().toISOString();
+  if (game === 'cipher_duel') {
+    validateCode(args.p_code);
+    const expires = new Date(Date.parse(now) + 72 * 3600000).toISOString();
+    const challenge: Challenge = { id: crypto.randomUUID(), club_id: clubId, game_key: game, rules_version: 1, challenger_id: userId, recipient_id: recipient,
+      created_at: now, expires_at: expires, invitation_expires_at: expires, gameplay_started_at: null, gameplay_expires_at: null, status: 'pending', completed_at: null, winner_id: null,
+      outcome: null, rematch_of: rematch?.id ?? null, puzzle_keys: [], players: [{ user_id: userId, started_at: now, finished_at: null, attempts: [] }, { user_id: recipient, started_at: null, finished_at: null, attempts: [] }],
+      cipher_data: { codes: { [userId]: { code: clone(args.p_code), locked_at: now } }, states: { [userId]: { status: 'pending', guesses: [] }, [recipient]: { status: 'pending', guesses: [] } } } };
+    state.challenges.push(challenge); notify(recipient, rematch ? 'CIPHER DUEL rematch' : 'New CIPHER DUEL challenge', challenge.id, 'Your rival has locked a secret code. Lock yours within 72 hours to begin.'); return detail(challenge);
+  }
   const previous = state.challenges.filter(row => row.game_key === game && [row.challenger_id, row.recipient_id].includes(userId) && [row.challenger_id, row.recipient_id].includes(recipient)).slice(-2);
   const chosen = (['easy', 'medium', 'hard'] as PrismDifficulty[]).map(difficulty => {
     const options = (game === 'afterimage' ? afterimageCatalog.map(scene => ({ puzzle: scene })) : catalog).filter(row => row.puzzle.difficulty === difficulty);
@@ -242,6 +293,42 @@ function reconstructionMutation(name: string, args: Row) {
   }
   return detail(challenge);
 }
+function cipherMutation(name: string, args: Row) {
+  const challenge = findChallenge(String(args.p_challenge_id));
+  if (challenge.game_key !== 'cipher_duel') fail('This operation is only available for Cipher Duel');
+  if (['declined', 'cancelled', 'expired'].includes(challenge.status)) return detail(challenge);
+  const data = challenge.cipher_data!, own = challenge.players.find(player => player.user_id === userId)!, other = challenge.players.find(player => player.user_id !== userId)!;
+  if (name === 'showdown_lock_cipher_code') {
+    validateCode(args.p_code);
+    if (data.codes[userId]) { if (!same(data.codes[userId].code, args.p_code)) fail('Your secret code is already locked'); return detail(challenge); }
+    if (userId !== challenge.recipient_id || challenge.gameplay_started_at) fail('Your secret code is already locked');
+    const now = new Date().toISOString(); data.codes[userId] = { code: clone(args.p_code), locked_at: now };
+    challenge.gameplay_started_at = now; challenge.gameplay_expires_at = new Date(Date.parse(now) + 72 * 3600000).toISOString(); challenge.expires_at = challenge.gameplay_expires_at; challenge.status = 'active';
+    for (const player of challenge.players) { player.started_at = now; data.states[player.user_id].status = 'playing'; notify(player.user_id, 'CIPHER DUEL is ready', challenge.id, 'Both secret codes are locked. You each have 72 hours and ten guesses.'); }
+    return detail(challenge);
+  }
+  const state = data.states[userId];
+  if (!challenge.gameplay_started_at || !data.codes[other.user_id]) fail('Both secret codes must be locked before you can guess');
+  if (state.status !== 'playing') fail('Your Cipher attempt is already finished');
+  if (!Number.isInteger(args.p_expected_guess_count) || args.p_expected_guess_count !== state.guesses.length) fail('This Cipher attempt changed on another device', '40001');
+  if (name === 'showdown_surrender_cipher') state.status = 'surrendered';
+  else {
+    validateCode(args.p_guess); const feedback = calculateFeedback(data.codes[other.user_id].code, args.p_guess);
+    state.guesses.push({ sequence: state.guesses.length + 1, colors: clone(args.p_guess), ...feedback, submitted_at: new Date().toISOString() });
+    if (feedback.exact === 4) state.status = 'solved'; else if (state.guesses.length === 10) state.status = 'exhausted';
+  }
+  if (state.status !== 'playing') {
+    own.finished_at = new Date().toISOString();
+    if (!other.finished_at) notify(other.user_id, 'Your rival has finished', challenge.id, 'Their result stays sealed until you finish your CIPHER DUEL attempt.');
+    else {
+      const comparison = compareAttempts(cipherAttempt(challenge, challenge.players[0].user_id), cipherAttempt(challenge, challenge.players[1].user_id));
+      challenge.status = 'completed'; challenge.completed_at = new Date().toISOString(); challenge.outcome = comparison === 'draw' ? 'draw' : 'winner';
+      challenge.winner_id = comparison === 'draw' ? null : challenge.players[comparison === 'first' ? 0 : 1].user_id;
+      for (const player of challenge.players) notify(player.user_id, 'CIPHER DUEL result', challenge.id, comparison === 'draw' ? 'A true draw. Open the full codebreaking debrief.' : 'Open the full codebreaking debrief.');
+    }
+  }
+  return detail(challenge);
+}
 function execute(name: string, args: Row) {
   if (name === 'showdown_lobby') {
     actor();
@@ -256,20 +343,25 @@ function execute(name: string, args: Row) {
     return { games: [
       ...(catalog.length ? [{ game_key: 'prism_break', name: 'Prism Break', current_rules_version: 1, description: 'Three precision beam puzzles. Same boards. Your own time.', enabled: true }] : []),
       ...(afterimageCatalog.length ? [{ game_key: 'afterimage', name: 'Afterimage', current_rules_version: 1, description: 'Study a scene. Rebuild its missing details.', enabled: true }] : []),
+      ...(cipherEnabled ? [{ game_key: 'cipher_duel', name: 'Cipher Duel', current_rules_version: 1, description: 'Lock a code. Crack your rival’s in ten guesses.', enabled: true }] : []),
     ],
       members: SHOWDOWN_QA_MEMBERS.filter(member => state.members.includes(member.user_id) && member.user_id !== userId),
       challenges: rows.sort((a, b) => b.created_at.localeCompare(a.created_at)).map(challengeView), next_cursor: null,
-      record: record(undefined, game), rivalries: SHOWDOWN_QA_MEMBERS.filter(member => member.user_id !== userId).map(member => ({ ...member, opponent_id: member.user_id, ...record(member.user_id, game) })).filter(row => row.played > 0), standings: standings.filter(row => row.played > 0) };
+      record: record(undefined, game), rivalries: SHOWDOWN_QA_MEMBERS.filter(member => member.user_id !== userId).map(member => ({ ...member, opponent_id: member.user_id, ...record(member.user_id, game) })).filter(row => row.played > 0), standings: standings.filter(row => row.played > 0),
+      ...(game === 'cipher_duel' ? { cipher_statistics: cipherStatistics(userId) } : {}) };
   }
-  if (name === 'showdown_create') return create(args);
+  if (name === 'showdown_create') { if (args.p_game_key === 'cipher_duel') fail('Choose and confirm your secret code before challenging'); return create(args); }
+  if (name === 'showdown_create_cipher') return create({ ...args, p_game_key: 'cipher_duel' });
   if (name === 'showdown_get') {
     const challenge = findChallenge(String(args.p_challenge_id));
+    if (challenge.game_key === 'cipher_duel') return detail(challenge);
     const own = challenge.players.find(player => player.user_id === userId)!;
     if (args.p_start && ['pending', 'active'].includes(challenge.status) && !own.finished_at) { own.started_at ||= new Date().toISOString(); challenge.status = 'active'; }
     return detail(challenge);
   }
   if (name === 'showdown_save_round' || name === 'showdown_submit_round') return roundMutation(name, args);
   if (['showdown_start_study', 'showdown_save_reconstruction', 'showdown_submit_reconstruction'].includes(name)) return reconstructionMutation(name, args);
+  if (['showdown_lock_cipher_code', 'showdown_submit_cipher_guess', 'showdown_surrender_cipher'].includes(name)) return cipherMutation(name, args);
   if (name === 'showdown_act') {
     const challenge = findChallenge(String(args.p_challenge_id));
     const own = challenge.players.find(player => player.user_id === userId)!, other = challenge.players.find(player => player !== own)!;
@@ -288,15 +380,18 @@ async function executeRpc(name: string, args: Row = {}) {
   try {
     actor();
     const receiptKey = String(args.p_request_id || '');
-    const signature = JSON.stringify(jsonb([clubId, userId, name, args]));
+    const { p_code: secretCode, ...safeArgs } = args;
+    const signature = JSON.stringify(jsonb([clubId, userId, name, ['showdown_create_cipher', 'showdown_lock_cipher_code'].includes(name) ? safeArgs : args]));
     let response: unknown;
     if (args.p_request_id && state.receipts[receiptKey]) {
       if (state.receipts[receiptKey].signature !== signature) fail('Request identity already used.');
       const saved = state.receipts[receiptKey].response as { challenge: { id: string } };
-      response = detail(findChallenge(saved.challenge.id));
+      const challenge = findChallenge(saved.challenge.id);
+      if (secretCode && !same(challenge.cipher_data?.codes[userId]?.code, secretCode)) fail('Request identity already used.');
+      response = detail(challenge);
     } else {
       response = execute(name, args);
-      if (args.p_request_id) state.receipts[receiptKey] = { signature, response: clone(response) };
+      if (args.p_request_id) state.receipts[receiptKey] = { signature, response: { challenge: { id: (response as { challenge: { id: string } }).challenge.id } } };
     }
     if (JSON.stringify(state) !== JSON.stringify(before)) persist();
     calls.push({ response_for: name, data: jsonb(clone(response)), user_id: userId });
@@ -323,6 +418,7 @@ const fixture = {
   get state() { reload(); return clone(state); },
   installLibrary(entries: CatalogEntry[]) { catalog = entries; },
   installAfterimageLibrary(entries: AfterimageSceneDefinition[]) { afterimageCatalog = entries; },
+  installCipherGame() { cipherEnabled = true; },
   reset() { state = initial(); persist(); calls.length = 0; },
   selectionOffset(value: number) { reload(); state.serial = Math.max(0, Math.floor(value)); persist(); },
   failNext(name: string, afterCommit = false, count = 1) { failures.set(name, { count, afterCommit }); },

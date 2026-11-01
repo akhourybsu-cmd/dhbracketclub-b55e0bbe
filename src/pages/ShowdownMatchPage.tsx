@@ -41,10 +41,14 @@ function MatchSession({ challengeId, viewerId }: { challengeId: string; viewerId
   const opponent = challenge?.players.find(player => player.user_id !== viewerId);
   const current = data?.rounds.find(round => round.round_number === data.current_round);
   const memoryGame = challenge?.game_key === 'afterimage';
-  const lobbyUrl = memoryGame ? '/showdown?game=afterimage' : '/showdown';
+  const lobbyUrl = challenge?.game_key === 'cipher_duel' ? '/showdown?game=cipher_duel' : memoryGame ? '/showdown?game=afterimage' : '/showdown';
 
   async function rematch() {
     if (actionInFlight.current) return;
+    if (challenge?.game_key === 'cipher_duel' && opponent) {
+      navigate(`/showdown/cipher/new?${new URLSearchParams({ recipient_id: opponent.user_id, rematch_of: challenge.id })}`);
+      return;
+    }
     actionInFlight.current = true; setRematching(true); setRematchError('');
     try {
       const next = await match.rematch();
@@ -63,6 +67,27 @@ function MatchSession({ challengeId, viewerId }: { challengeId: string; viewerId
   if (!data) return <ShowdownFrame backTo="/showdown"><ShowdownDataState error={match.error} retry={() => void match.refresh()} title={match.error ? 'Challenge unavailable' : 'Opening your boards'} /></ShowdownFrame>;
   if (!game) return <ShowdownFrame backTo="/showdown"><div className="sd-data-state"><ShieldCheck aria-hidden="true" /><h1>Game update needed.</h1><p>This challenge uses a game version that cannot be opened on this device. Your saved attempt is safe.</p><Link className="sd-button" to="/showdown">Return to Showdown</Link></div></ShowdownFrame>;
 
+  if (game.key === 'cipher_duel') {
+    if (!data.cipher || !opponent) return <ShowdownFrame backTo={lobbyUrl} gameKey={game.key}><ShowdownDataState error="This duel could not be verified. Refresh to restore its saved state." retry={() => void match.refresh()} /></ShowdownFrame>;
+    if (challenge?.status === 'completed') {
+      const Results = game.Results;
+      return <ShowdownFrame backTo={lobbyUrl} subtitle={game.name} gameKey={game.key}><div className="sd-content"><div className="sd-scroll"><Suspense fallback={<ShowdownDataState title="Opening the final boards" />}>
+        <Results detail={data} viewerId={viewerId} rivalry={data.rivalry} onRematch={() => void rematch()} busy={match.busy} error={match.error} />
+      </Suspense></div></div></ShowdownFrame>;
+    }
+    const Gameplay = game.Gameplay;
+    return <Suspense fallback={<ShowdownFrame backTo={lobbyUrl} gameKey={game.key}><ShowdownDataState title="Opening your duel" /></ShowdownFrame>}>
+      <Gameplay attemptKey={`${challengeId}:${viewerId}`} view={data.cipher} opponent={{ displayName: opponent.display_name, avatarUrl: opponent.avatar_url }}
+        draft={match.cipherDraft} onDraftChange={match.onCipherDraftChange} pendingCode={match.cipherPendingCode}
+        onLockCode={match.lockCipherCode} onSubmitGuess={match.submitCipherGuess} onSurrender={match.surrenderCipher}
+        onDecline={data.can_decline ? async () => { await match.act('decline'); } : undefined}
+        onCancel={data.can_cancel ? async () => { await match.act('cancel'); } : undefined}
+        onLeave={() => { void match.checkpoint().catch(() => {}); navigate(lobbyUrl); }}
+        onRetry={match.retrySave} saveState={match.saveState} error={match.saveError ?? match.error} disabled={match.busy}
+        tutorialPreferenceKey={`dh:showdown:cipher:tutorial:v1:${viewerId}`} />
+    </Suspense>;
+  }
+
   if (game.key === 'afterimage' && data.can_play && current?.scene && !current.me.submitted && opponent) {
     const Gameplay = game.Gameplay;
     const bankedScore = data.rounds.reduce((sum, round) => sum + (round.me.submitted ? round.me.score ?? 0 : 0), 0);
@@ -70,7 +95,7 @@ function MatchSession({ challengeId, viewerId }: { challengeId: string; viewerId
       <Gameplay key={`${challengeId}:${current.round_number}`} attemptKey={`${challengeId}:${viewerId}`} scene={current.scene} roundNumber={current.round_number as 1 | 2 | 3}
         opponent={{ displayName: opponent.display_name, avatarUrl: opponent.avatar_url }} placements={match.placements} onPlacementsChange={match.onPlacementsChange}
         onStartStudy={match.startStudy} onStudyExpired={match.refreshStudy} onSubmit={match.submitReconstruction} saveState={match.saveState} error={match.saveError ?? match.error}
-        onRetrySave={() => void match.retrySave()} disabled={match.submitting || match.busy} bankedScore={bankedScore}
+        onRetrySave={() => { void match.retrySave().catch(() => {}); }} disabled={match.submitting || match.busy} bankedScore={bankedScore}
         onLeave={() => { void match.checkpoint().catch(() => {}); navigate(lobbyUrl); }} />
     </Suspense>;
   }
@@ -78,7 +103,7 @@ function MatchSession({ challengeId, viewerId }: { challengeId: string; viewerId
     const Gameplay = game.Gameplay;
     const bankedScore = data.rounds.reduce((sum, round) => sum + (round.me.submitted ? round.me.score ?? 0 : 0), 0);
     return <Suspense fallback={<ShowdownFrame backTo="/showdown"><ShowdownDataState title="Preparing the light" /></ShowdownFrame>}>
-      <Gameplay key={`${challengeId}:${current.round_number}`} attemptKey={`${challengeId}:${viewerId}`} puzzle={current.puzzle} roundNumber={current.round_number as 1 | 2 | 3} opponent={{ displayName: opponent.display_name, avatarUrl: opponent.avatar_url }} actions={match.actions} onActionsChange={match.onActionsChange} onSubmit={match.submit} saveState={match.saveState} error={match.saveError ?? match.error} onRetrySave={() => void match.retrySave()} disabled={match.submitting || match.busy} bankedScore={bankedScore} onLeave={() => { void match.checkpoint().catch(() => {}); navigate('/showdown'); }} />
+      <Gameplay key={`${challengeId}:${current.round_number}`} attemptKey={`${challengeId}:${viewerId}`} puzzle={current.puzzle} roundNumber={current.round_number as 1 | 2 | 3} opponent={{ displayName: opponent.display_name, avatarUrl: opponent.avatar_url }} actions={match.actions} onActionsChange={match.onActionsChange} onSubmit={match.submit} saveState={match.saveState} error={match.saveError ?? match.error} onRetrySave={() => { void match.retrySave().catch(() => {}); }} disabled={match.submitting || match.busy} bankedScore={bankedScore} onLeave={() => { void match.checkpoint().catch(() => {}); navigate('/showdown'); }} />
     </Suspense>;
   }
 

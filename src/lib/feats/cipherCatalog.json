@@ -1,0 +1,8 @@
+[
+  {"key":"showdown_cipher_first_break","category":"showdown","title":"FIRST BREAK","description":"Win a completed Cipher Duel after submitting at least one guess. Awarded once.","thresholds":[1],"points":[5],"kind":"mastery","unit":"count","sort_order":76},
+  {"key":"showdown_cipher_code_cracker","category":"showdown","title":"CODE CRACKER","description":"Solve a Cipher Duel code in four guesses or fewer. Both players must finish; awarded once.","thresholds":[1],"points":[10],"kind":"mastery","unit":"count","sort_order":77},
+  {"key":"showdown_cipher_master_decoder","category":"showdown","title":"MASTER DECODER","description":"Solve a Cipher Duel code in three guesses or fewer. Both players must finish; awarded once.","thresholds":[1],"points":[15],"kind":"mastery","unit":"count","sort_order":78},
+  {"key":"showdown_cipher_unbreakable","category":"showdown","title":"UNBREAKABLE","description":"Win a completed Cipher Duel while your opponent fails to solve your code. Submit at least one guess; awarded once.","thresholds":[1],"points":[15],"kind":"mastery","unit":"count","sort_order":79},
+  {"key":"showdown_cipher_rivalry","category":"showdown","title":"RIVALRY","description":"Complete ten Cipher Duels against the same member, submitting at least one guess in each. Awarded once.","thresholds":[10],"points":[10],"kind":"volume","unit":"count","sort_order":80},
+  {"key":"showdown_cipher_perfect_read","category":"showdown","title":"PERFECT READ","description":"Solve a Cipher Duel code on your first guess. Both players must finish; awarded once.","thresholds":[1],"points":[20],"kind":"mastery","unit":"count","sort_order":81}
+]

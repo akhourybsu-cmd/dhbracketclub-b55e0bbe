@@ -40,6 +40,8 @@ describe('Showdown production boundaries', () => {
     expect(graph.has(resolve(root, 'src/pages/ShowdownMatchPage.tsx'))).toBe(true);
     expect(graph.has(resolve(root, 'src/components/showdown/PrismBreakGame.tsx'))).toBe(true);
     expect(graph.has(resolve(root, 'src/components/showdown/afterimage/AfterimageGame.tsx'))).toBe(true);
+    expect(graph.has(resolve(root, 'src/components/showdown/cipher/CipherGame.tsx'))).toBe(true);
+    expect(graph.has(resolve(root, 'src/pages/CipherCreatePage.tsx'))).toBe(true);
     expect(graph.has(resolve(root, 'src/components/showdown/afterimage/AfterimageGame.tsx'))).toBe(true);
     expect(graph.has(resolve(root, 'src/components/showdown/afterimage/AfterimageScene.tsx'))).toBe(true);
     expect(graph.has(resolve(root, 'supabase/seed/prism-break-library.json'))).toBe(false);
@@ -47,6 +49,7 @@ describe('Showdown production boundaries', () => {
     expect(graph.has(resolve(root, 'scripts/fixtures/showdown-backend.ts'))).toBe(false);
     expect(graph.has(resolve(root, 'supabase/seed/afterimage-library.json'))).toBe(false);
     expect(graph.has(resolve(root, 'scripts/fixtures/afterimage.tsx'))).toBe(false);
+    expect(graph.has(resolve(root, 'scripts/fixtures/cipher.tsx'))).toBe(false);
     expect(graph.has(resolve(root, 'supabase/seed/afterimage-library.json'))).toBe(false);
     expect(graph.has(resolve(root, 'scripts/author-afterimage.mjs'))).toBe(false);
     expect(graph.has(resolve(root, 'scripts/fixtures/afterimage.tsx'))).toBe(false);
@@ -67,6 +70,8 @@ describe('Showdown production boundaries', () => {
     expect(getShowdownGame('prism_break', 999)).toBeUndefined();
     expect(getShowdownGame('afterimage', 1)?.key).toBe('afterimage');
     expect(getShowdownGame('afterimage', 999)).toBeUndefined();
+    expect(getShowdownGame('cipher_duel', 1)?.key).toBe('cipher_duel');
+    expect(getShowdownGame('cipher_duel', 999)).toBeUndefined();
     expect(getShowdownGame('afterimage', 1)?.key).toBe('afterimage');
     expect(getShowdownGame('afterimage', 999)).toBeUndefined();
     expect(getShowdownGame('unknown_game')).toBeUndefined();
@@ -76,6 +81,7 @@ describe('Showdown production boundaries', () => {
     const fonts = (file: string) => [...readFileSync(resolve(root, file), 'utf8').matchAll(/import\s+['"](@fontsource\/[^'"]+)['"]/g)].map(match => match[1]).sort();
     expect(fonts('scripts/fixtures/showdown.tsx')).toEqual(fonts('src/main.tsx'));
     expect(fonts('scripts/fixtures/afterimage.tsx')).toEqual(fonts('src/main.tsx'));
+    expect(fonts('scripts/fixtures/cipher.tsx')).toEqual(fonts('src/main.tsx'));
     expect(fonts('scripts/fixtures/afterimage.tsx')).toEqual(fonts('src/main.tsx'));
   });
 });

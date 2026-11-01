@@ -2,9 +2,10 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExtern
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
-import { actOnShowdown, createShowdown, fetchShowdownLobby, fetchShowdownMatch, saveShowdownRound, submitShowdownRound, startAfterimageStudy, saveAfterimageReconstruction, submitAfterimageReconstruction } from '@/lib/showdown/service';
+import { actOnShowdown, createShowdown, fetchShowdownLobby, fetchShowdownMatch, saveShowdownRound, submitShowdownRound, startAfterimageStudy, saveAfterimageReconstruction, submitAfterimageReconstruction, lockCipherCode as writeCipherCode, submitCipherGuess as writeCipherGuess, surrenderCipher as writeCipherSurrender } from '@/lib/showdown/service';
 import { ShowdownRoundSession } from '@/lib/showdown/roundSession';
 import { AfterimageSession } from '@/lib/showdown/afterimage/session';
+import { CipherSession } from '@/lib/showdown/cipher/session';
 import { showdownMatchStructuralSharing } from '@/lib/showdown/monotonic';
 import type { ShowdownCreateInput, ShowdownCursor, ShowdownLobbyData, ShowdownMatchDetail } from '@/lib/showdown/types';
 
@@ -80,6 +81,10 @@ export function useShowdownMatch(challengeId: string | undefined) {
     save: saveAfterimageReconstruction, submit: submitAfterimageReconstruction,
   }, detail => cache.setQueryData(key, detail)), [challengeId, scope, cache, key]);
   const memoryState = useSyncExternalStore(memory.subscribe, memory.getSnapshot, memory.getSnapshot);
+  const cipher = useMemo(() => new CipherSession(challengeId ?? '', `dh:showdown:cipher:match:v1:${scope}`, deviceStorage(), {
+    fetch: () => fetchShowdownMatch(challengeId!, false), lock: writeCipherCode, guess: writeCipherGuess, surrender: writeCipherSurrender,
+  }, detail => cache.setQueryData(key, detail)), [challengeId, scope, cache, key]);
+  const cipherState = useSyncExternalStore(cipher.subscribe, cipher.getSnapshot, cipher.getSnapshot);
   const activeScope = useRef(scope);
   activeScope.current = scope;
   const operations = useRef({ scope, generation: 0, busy: false, intents: new Map<string, string>() }).current;
@@ -87,17 +92,17 @@ export function useShowdownMatch(challengeId: string | undefined) {
   const subscribe = useCallback((listener: () => void) => { operationListeners.add(listener); return () => { operationListeners.delete(listener); }; }, [operationListeners]);
   const mutationBusy = useSyncExternalStore(subscribe, () => operations.scope === scope && operations.busy, () => false);
   useLayoutEffect(() => {
-    session.activate(); memory.activate(); operations.scope = scope; operations.generation++; operations.busy = false; operations.intents.clear();
-    return () => { session.dispose(); memory.dispose(); };
-  }, [session, memory, operations, scope]);
-  useLayoutEffect(() => { if (scope && query.data) { session.accept(query.data); memory.accept(query.data); } }, [scope, query.data, session, memory]);
+    session.activate(); memory.activate(); cipher.activate(); operations.scope = scope; operations.generation++; operations.busy = false; operations.intents.clear();
+    return () => { session.dispose(); memory.dispose(); cipher.dispose(); };
+  }, [session, memory, cipher, operations, scope]);
+  useLayoutEffect(() => { if (scope && query.data) { session.accept(query.data); memory.accept(query.data); cipher.accept(query.data); } }, [scope, query.data, session, memory, cipher]);
   const refetchMatch = query.refetch;
   useEffect(() => {
-    const sync = () => { if (document.visibilityState === 'visible') { void refetchMatch(); void session.retry().catch(() => {}); void memory.retry().catch(() => {}); } };
-    const online = () => { void session.retry().catch(() => {}); void memory.retry().catch(() => {}); void refetchMatch(); };
+    const sync = () => { if (document.visibilityState === 'visible') { void refetchMatch(); void session.retry().catch(() => {}); void memory.retry().catch(() => {}); void cipher.flush().catch(() => {}); } };
+    const online = () => { void session.retry().catch(() => {}); void memory.retry().catch(() => {}); void cipher.flush().catch(() => {}); void refetchMatch(); };
     document.addEventListener('visibilitychange', sync); window.addEventListener('online', online);
     return () => { document.removeEventListener('visibilitychange', sync); window.removeEventListener('online', online); };
-  }, [session, memory, refetchMatch]);
+  }, [session, memory, cipher, refetchMatch]);
   const completed = query.data?.challenge.status === 'completed';
   useEffect(() => {
     if (!completed || !userId || !clubId) return;
@@ -124,18 +129,22 @@ export function useShowdownMatch(challengeId: string | undefined) {
   const rematch = useCallback(() => {
     const challenge = query.data?.challenge;
     if (!challenge || challenge.status !== 'completed' || !userId) return Promise.reject(new Error('Complete this match before starting a rematch.'));
+    if (challenge.game_key === 'cipher_duel') return Promise.reject(new Error('Create a fresh secret code to begin this rematch.'));
     return mutation('rematch', requestId => createShowdown({ recipientId: challenge.challenger_id === userId ? challenge.recipient_id : challenge.challenger_id,
       gameKey: challenge.game_key, rematchOf: challenge.id, requestId }));
   }, [query.data?.challenge, userId, mutation]);
   const afterimage = query.data?.challenge.game_key === 'afterimage';
-  const progress = afterimage ? memoryState : state;
+  const cipherGame = query.data?.challenge.game_key === 'cipher_duel';
+  const progress = cipherGame ? cipherState : afterimage ? memoryState : state;
   return { data: scope ? query.data ?? null : null, loading: !!scope && query.isLoading,
     error: query.error ? errorMessage(query.error) : null, refreshing: query.isRefetching,
     refresh: async () => { await query.refetch(); }, actions: state.actions, onActionsChange: session.changeActions,
-    checkpoint: afterimage ? memory.flush : session.flush, submit: session.submit, retrySave: afterimage ? memory.retry : session.retry, saveState: progress.saveState, saveError: progress.error,
+    checkpoint: cipherGame ? cipher.flush : afterimage ? memory.flush : session.flush, submit: session.submit, retrySave: cipherGame ? cipher.retry : afterimage ? memory.retry : session.retry, saveState: progress.saveState, saveError: progress.error,
     placements: memoryState.placements, onPlacementsChange: memory.changePlacements,
     startStudy: memory.startStudy, refreshStudy: memory.refresh, submitReconstruction: memory.submit,
     startingStudy: memoryState.starting,
+    cipherDraft: cipherState.draft, onCipherDraftChange: cipher.changeDraft, cipherPendingCode: cipherState.pendingCode,
+    lockCipherCode: cipher.lockCode, submitCipherGuess: cipher.submitGuess, surrenderCipher: cipher.surrender,
     submitting: progress.submitting, busy: mutationBusy || progress.submitting || memoryState.starting || (progress.blocked && !!query.data?.can_play),
     act, rematch };
 }

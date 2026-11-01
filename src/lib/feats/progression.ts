@@ -115,6 +115,7 @@ export const FEAT_CATEGORIES: Record<
 export function featActionPath(
   feat: Pick<FeatDefinition, "key" | "category">,
 ): string {
+  if (feat.key.startsWith("showdown_cipher_")) return "/showdown?game=cipher_duel";
   if (
     feat.key.startsWith("rune_puzzle_") ||
     feat.key.startsWith("rune_adventure_")

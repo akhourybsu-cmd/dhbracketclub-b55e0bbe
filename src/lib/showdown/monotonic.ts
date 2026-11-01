@@ -1,4 +1,5 @@
 import type { ShowdownMatchDetail, ShowdownRoundState } from './types';
+import { sameJSONState } from './stateEquality';
 
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const terminal = new Set(['completed', 'declined', 'cancelled', 'expired']);
@@ -22,6 +23,14 @@ export function showdownMatchStructuralSharing(previous: unknown, incoming: unkn
   const before = previous.challenge, after = incoming.challenge;
   if (before.club_id !== after.club_id || before.game_key !== after.game_key || before.rules_version !== after.rules_version) return previous;
   if (terminal.has(before.status) && after.status !== before.status || before.status === 'active' && after.status === 'pending') return previous;
+  if (previous.cipher && incoming.cipher && !terminal.has(after.status)) {
+    const old = previous.cipher, next = incoming.cipher;
+    if (old.own_guesses.length > next.own_guesses.length || old.own_guesses.some((guess, index) => !sameJSONState(guess, next.own_guesses[index]))
+      || old.own_code && !sameJSONState(old.own_code, next.own_code)
+      || old.opponent_code_locked && !next.opponent_code_locked || old.opponent_finished && !next.opponent_finished
+      || old.gameplay_started_at && !next.gameplay_started_at
+      || ['solved', 'exhausted', 'surrendered'].includes(old.own_attempt.status) && !['solved', 'exhausted', 'surrendered'].includes(next.own_attempt.status)) return previous;
+  }
   for (const player of before.players) {
     const next = after.players.find(value => value.user_id === player.user_id);
     if (!next || next.rounds_completed < player.rounds_completed || player.started_at != null && next.started_at == null || player.finished_at != null && next.finished_at == null) return previous;
