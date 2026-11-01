@@ -1,6 +1,59 @@
 # Deep Claim implementation ledger
 
-## Current release — Phase 4 company development
+## Current release — Phase 5 club participation and DH integration
+
+Phase 5 is implemented on baseline main `807ab345f49d6e7a1ecc0c463b73c6a3253e4645`. Private company snapshots remain schema four, field rules three and business catalog four. Shared club records use a separate, bounded projection and catalog five. The final release SHA and GitHub/Lovable synchronization are reported after publishing this commit; this document does not invent its own future SHA.
+
+### Working vertical slice
+
+- Three optional standings compare recorded weekly mining value, deepest completed mining shift and best recovered-find value. Original cargo and fixed historical mineral prices prevent collection, sales or later market changes from rewriting weekly records. Club-local Monday boundaries handle IANA timezone and daylight-saving changes. Tied ranks and a unique caller row remain correct outside the first fifty places.
+- Six finite cooperative projects consume actual collected materials. Per-resource contribution limits prevent one company from filling an active club's goals alone; membership shrink can raise limits without deleting earlier work. Goals, prices and pools freeze when a project opens. Every donation is atomic, permanent and preserves the two-credit liquid operating reserve. A qualified contributor claims a proportional, server-computed share once, including after a lost acknowledgement.
+- Standings and company showcases have independent consent flags, both off by default. A showcase publishes only up to three explicitly selected kept specimens. Older selected finds remain editable after leaving the recent private cabinet list. Current membership, enabled installation and registry-backed public eligibility are checked on every shared path. Private economy, workers, coordinates, jobs, mine and company IDs are excluded.
+- Seven source-backed DH Feat families add thirty-two unlock tiers worth at most 590 DH points through the existing account ledger. Recorded qualifying history imports only the new families as historical; old definitions, awards and timestamps are preserved. Lifetime sources retain legitimate former-company history after club changes or app removal, while private workspaces remain excluded. Real post-cutover completions can contribute general engagement without historical monthly/reveal inflation.
+- Existing in-app notifications batch meaningful returns, production, research, major finds and completed projects with durable dedupe receipts, a fifteen-minute cooldown and four-summary daily limit. The existing global Deep Claim preference has timeout, retry, identity and rollback safeguards. Disabling/re-enabling suppresses pending/off-period history. Project notices queue only during each contributor's own later reconciliation, avoiding foreign-company FK lock cycles.
+- Club Projects, Standings and Showcase live inside a five-view Company Office; the six main tabs remain intact. Reviewed consent and contributions, public company details, DH Feat links and authorized notification deep links are functional. Static original project/crest/cabinet artwork accepts sanitized public data only. Portrait, landscape and reduced-motion layouts retain reachable controls and correct review scroll origins.
+
+### Changed files and boundaries
+
+New production modules are `src/lib/deepClaim/social.ts`, `src/hooks/useDeepClaimClub.ts`, `src/components/deepClaim/DeepClaimClub.tsx`, `clubLinks.ts`, public club art/sprite modules and `src/lib/feats/deepClaimCatalog.json`. Existing service/outbox, types/catalog, Page/Office/Settings, notification preferences/profile UI, notification metadata, Feat progression/art and isolated styles are extended. The canonical social catalog is `supabase/seed/deep-claim-phase5-catalog.json`.
+
+Verification extends the existing SQL/browser/headless harnesses, adds real Feats composition and social/preservation/browser fixtures, and adds engine, query/retry, UI, public-art, catalog and preference regressions. All five working Deep Claim documents, DH Feats documentation and the CLAUDE index reflect the implementation. No dependency, unrelated game, authentication, club installation, global score ledger or inbox system was replaced.
+
+### SQL deployment — applied and verified
+
+Both additive migrations were applied together in the exact tested transaction, with each complete original source recorded separately in Supabase migration history:
+
+| Migration | Purpose | SHA256 |
+|---|---|---|
+| `20261102060000_deep_claim_club_operations.sql` | Four private club tables, consent, bounded public projections, finite frozen projects, atomic contributions/claims and read indexes. | `a33881f242be6795c21f81e17d2840f8726f412c1cac68f214588808966032bf` |
+| `20261102061000_deep_claim_dh_integration.sql` | Existing Feats collector/catalog/dirty queue integration, historical new-family import, two private inbox receipt/state tables, shared preference and lazy summaries. | `ddd9dc22f3fb305cf94795784086ad4d02c1b77241c21e57018be240c2dac925` |
+
+The first five migration files are unchanged. Cutover preserves private company data, rules, active jobs and receipts. The release transaction checks ninety-three prior DC and five critical Feats/privacy function bodies plus all five recorded old sources; temporary snapshots also reject any change to an existing catalog definition or permanent award.
+
+Production postflight matched **133/133 tested DC/Feats/privacy function bodies**, exactly **25 member DC RPC grants**, service access, anonymous denial and **33/33 private DC tables under RLS with no member/anonymous direct CRUD**. All four canonical DC catalogs, the seven-family Feats extension and both recorded migration sources match. The total Feats catalog now has 89 families. The previous 216 awards retain identical fingerprint `650d220bf50558538dac293bcb7611dd`.
+
+Installation choices remain unchanged: 51 total, one Deep Claim, fingerprint `5bd2b10a7efc18b44b674516f5337998`. No private DC table is published through Realtime. No live company, test account, shared project, notification or invented player award was created by QA or deployment.
+
+### Verification evidence
+
+- Actual application typecheck and scoped lint passed, including final visual/test-harness changes. Final full unit/component suite: **194 files, 1,853 tests passed** after scroll restoration.
+- Main actual-migration PostgreSQL suite: **131 groups passed**, retaining all 110 prior groups and adding preservation, sharing, source ranking, DST, privacy, caps, last-unit contention, reserve rollback, immutable deliveries, claims and older showcase selection coverage.
+- Separate actual DH Feats/inbox integration: **15 groups passed**. It composes every released Rune/Showdown/Afterimage/Cipher extension, verifies all five production baseline hashes and eighty-two old families, then tests historical/new awards, dirty ownership, lifetime moves/removal, private restoration markers, preference suppression, dismissal-safe dedupe, batching and the project FK lock-order boundary.
+- Exact combined deployment transaction passed against a live-equivalent isolated legacy Feats ledger, a genuine saved post/earned old award, private company and running configuration-three job. Original plan/world/balance/receipt preservation, default-private sharing, no historical notifications, both original migration-history records and repeat-apply rejection passed.
+- Headless balance retained 210 mining scenarios and all industry proofs. Eighteen one/two/three-member project partitions complete within actual resource caps; individual integer shares never exceed their pool. Total goal value is 12,572, with finite credit pools totaling 3,771. No project grants resources or recurring rewards.
+- Browser QA: **279 unique passing checks across split runs**, covering all eight functional sections with zero runtime errors. The established mining/recovery/industry/field/cavern/business paths passed 209 checks. The final social journey covered five viewports, actual three-company earned materials, independent consent, sanitized kept-geode publication, unique standings, interrupted-response recovery, whole goal completion, once-only 36/36/18 credit shares, opt-out, offline state and matching/foreign-club links. Initial touch-target and scroll-origin findings were corrected; the final focused landscape check also requires the project heading to be fully visible. Original reports and resolved failure evidence remain in the QA artifacts.
+- Shared notification preferences completed actual own-RLS off/reload/on roundtrips in all five initial viewport cases. Standalone schema checks reject foreign reads/writes and preserve unrelated preference values.
+- Final production build passed in **14.13 seconds** after responsive refinements. Public art adds no animation loop, network asset service or game-engine dependency.
+
+### Remaining work and decisions
+
+Phase 6 is next: finished authored pixel assets, full soundscape/music, physical-device profiling, accessibility and long-term presentation/balance polish. Original procedural art, static public SVGs and synthesized audio are working presentation, not a claimed finished commercial asset pack or soundtrack.
+
+Device push, unattended scheduled reconciliation, trading, dynamic markets and an expanded lifetime museum remain extensions. In-app delivery occurs on authorized server synchronization and the existing inbox refresh. Historical import uses recorded completed sources; an older overdue but unrecorded job follows normal collector timing when first recorded, while its pre-cutover timestamp cannot produce a new general activity date or notification. Public snapshots remain bounded. Native multi-connection PostgreSQL deadlock stress and physical-device performance remain unverified; PGlite serializes transactions. Production security/source checks do not impersonate live members. Lovable preview synchronization and public-site publishing remain separate deployment facts.
+
+## Phase 4 historical release record
+
+The following records describe the earlier Phase 4 release and verification at that time. Current Phase 5 behavior and verification above supersede forward-looking references below.
 
 Phase 4 is implemented on baseline main `11ff248f24933bc1f13829ec11093358a08f0d41`. It extends the existing company, workforce, field operations and production architecture. The final release SHA and GitHub/Lovable synchronization are reported after publishing this commit; this document does not invent its own future SHA.
 

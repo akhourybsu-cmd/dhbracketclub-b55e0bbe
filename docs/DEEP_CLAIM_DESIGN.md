@@ -2,7 +2,7 @@
 
 Deep Claim is a persistent, personal mining company inside DH Club. The player makes business and crew decisions, then returns to see the consequences in a mine that changes permanently. The company belongs to one member within one club; it is not a shared club treasury or a live multiplayer mine.
 
-This document records the design and integration contracts for the company foundation, workforce/production expansion, underground operations and Phase 4 business development. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
+This document records the design and integration contracts through Phase 5 club operations and DH integration. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
 
 ## Player promise and first session
 
@@ -125,6 +125,36 @@ Records derive from durable source rows rather than the visible recent log: comp
 
 Snapshot schema four extends schema three with the business catalog, orders, milestone progress and source-backed records. Clients retain safe reads for earlier schemas. Expedition configuration stays three because the mining algorithm and world generation do not change; new production freezes its research modifier separately. The migration preserves every existing seed, chunk, revealed tile, active expedition, production order and request receipt.
 
+## Phase 5 club operations and DH integration
+
+Club operations add voluntary social goals around the same private company. The Office has a Club view for Projects, Standings and Showcase; the six main game tabs remain unchanged. Private snapshot schema four, business catalog four, expedition rules three, geology and existing company receipts retain their contracts. A separate, lazy social read returns a narrowly defined public projection rather than another member's save.
+
+### Deliberate sharing
+
+Standings and showcase publishing have separate consent switches, both initially off. A member may contribute to a club project without enabling either listing. Shared reads include only current public members of the same eligible club with an enabled, visible installation. Private testing identities have no shared listing, contribution or notification path, while their solo company remains available privately.
+
+Standings offer three named comparisons rather than a combined gamer rating: weekly original mining-haul value, deepest completed mining and best recovered-find value. Weekly boundaries use the authoritative club-local Monday week with UTC timestamps and correct daylight saving. Original frozen haul value cannot shrink after collection or increase after a sale. Only recorded returns count; another company's elapsed work appears after its own synchronization. Ties share a real rank, with stable identity ordering. The top fifty plus the caller's own row appear once each.
+
+A showcase publishes a company label and up to three explicitly selected owned, kept finds. Public specimen data is limited to kind, name, quality and descriptive detail. It excludes coordinates, job/company IDs, sale/salvage data, stock, workers, balances, terrain and private plans. Turning sharing off hides it immediately without deleting the owner's progress, earned awards or donations. An older featured find remains selected even when the private recent-history window no longer includes it; its owner can retain or unpublish it.
+
+### Finite shared construction
+
+Six authored projects form one permanent prerequisite chain. Each freezes its goals, unit values, reward pool and initial membership-based per-resource contribution cap. A contribution consumes exactly the reviewed whole quantities from collected company stock. Over-stock, over-goal or over-cap actions reject completely; there is no silent clipping, partial spend, cancellation, expiry, reset or refund.
+
+The cap begins at 100% for a one-member club, 60% for two and 40% for three or more. If the club shrinks, the effective cap can rise so remaining members can finish; new arrivals never reduce a previously frozen entitlement. Project history retains departed members' real donations. Shared views expose aggregate participation and the caller's own contribution, without publishing former or private donors' identities.
+
+A completed project offers a bounded company-credit pool. A member must have contributed at least five percent of frozen total goal value to qualify; their once-only credit claim is proportional to actual contributed value. Claiming requires current eligible membership. A returning member can recover an unclaimed legitimate entitlement. Source-backed DH Feats recognize qualified completed participation independently of the optional credit claim. These projects are finite material sinks, not a communal treasury or recurring money generator.
+
+### One existing DH Score and inbox
+
+Seven Deep Claim families extend the existing DH Feats catalog, collector, dirty queue and permanent receipts: returned mining shifts, completed depth, fully collected processed units, completed research, fulfilled deliveries, installed infrastructure and qualified completed club projects. Their thirty-two tier unlocks total 590 DH points. They do not grant spendable company cash or energy. Private company milestones remain a separate, explicitly named source of company-credit rewards.
+
+DH Score remains account-lifetime: legitimate owned company history continues to qualify after a club move or source-app removal. Registered or persistently marked private workspaces and private accounts are excluded independently of caller identity. Already-recorded completed Deep Claim history imports only the new families as historical receipts, preserving every old family and prior point snapshot and excluding imported awards from monthly standings and unlock celebrations. Migration does not settle another company's overdue private jobs; if first recorded later, they use normal dedicated-family collector timing, while their pre-cutover timestamps remain silent for notifications and general engagement. Only actual post-integration completion timestamps add Deep Claim to general active days and feature exploration.
+
+The shared notification preference controls batched in-app company updates. Actual crew returns, ready processing, completed research, major recovered finds and completed projects can produce one summary during the owner's synchronization, subject to a fifteen-minute cooldown and four notifications per club-local day. Durable event receipts survive inbox dismissal. Disabled preferences or ineligible/private ownership suppress events permanently instead of accumulating an opt-in flood. Migration history does not notify. Project completion queues each contributor's notification only on that contributor's own later sync, avoiding cross-company locks while a project is held. This uses the existing inbox, realtime/polling and settings; unattended delivery and device push are not claimed.
+
+Deep links carry the expected club and a whitelisted Office destination. A mismatched current club produces a clear notice rather than silently changing clubs or selecting another club's private state.
+
 ## Crew decisions
 
 The specialty framework supports Miner, Geologist, Hauler, Engineer, Surveyor, Demolitionist and Safety Officer. Phase 1 starts with mining, geology and hauling specialists; Phase 2’s daily candidate system makes the broader workforce available without replacing those starters.
@@ -179,9 +209,9 @@ The mine has an immersive shell and a clear return to DH. Primary mobile operati
 
 Phase 4 adds dependency-based research, finite delivery contracts, source-backed company milestones and alloy/advanced-equipment production to the Phase 3 underground systems. Expanded hazards with destructive consequences, broader collection/museum history and later industrial systems remain future work. Do not reserve visible inactive tabs as substitutes for those systems.
 
-**Phase 5 social and DH Feats integration is deferred.** Phases 1–4 have no club competition, global ranking, DH Score rewards or DH Score spending. Business cash and worker energy remain isolated company resources. Later engagement awards must extend the existing permanent DH Feats ledger and privacy conventions, rather than introducing a second score system.
+Phase 5 adds opt-in club standings/showcases, finite shared projects, existing-ledger DH Feats and batched in-app updates. Company credits and worker energy remain isolated resources; DH Score is never spendable, and there is no cross-game combined ranking or public mine save.
 
-**Phase 6 finished presentation is deferred.** Phases 1–4 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
+**Phase 6 finished presentation is deferred.** Phases 1–5 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
 
 ## Verification gates
 
@@ -192,5 +222,7 @@ Phase 2 additionally verifies candidate-day stability and hire caps; daily/idle/
 Phase 3 verifies wholly pending and partially applied legacy plans across absent chunk boundaries; stale-ticket rejection; known-only cavern routing; elapsed survey reveals without ore; project fees/materials/grade/uniqueness and delayed installation; strongest-only mitigation and real rail travel savings; private incident outcomes and delayed publication; once-only finds from actual depleted mining; all discovery choices and salvage rollback; pending bounds; and new rules through the oldest public endpoints. The isolated database harness serializes transactions, so native concurrent-lock behavior must not be claimed as empirically stress-tested there.
 
 Phase 4 verifies research prerequisites, one active order, exact costs, elapsed completion and frozen old effects; research-aware effective statistics and production clocks; persistent contract eligibility, whole-input delivery and once-only rewards; historical source-backed milestone progress and explicit claims; rollback after economic writes; collected-production statistics beyond bounded public history; and unchanged old receipt fingerprints, geology and active jobs. Canonical catalog parity, finite reward totals, recipe dependency reachability and the absence of circular resource conversions are required economy checks.
+
+Phase 5 additionally verifies opt-in/out, private-account and cross-club isolation; exact public-field allowlists and retained old featured finds; frozen weekly cargo, ties and calendar boundaries; whole-donation rollback, individual/global caps and once-only qualified claims; old metrics/receipts preserved by real Feats composition; historical import versus new monthly awards; lifetime history across club/install changes; notification preferences, cooldowns, daily limits, dismissal-safe dedupe and owner-only project notification queueing. Shared-project/account locks and foreign-key locks require explicit review; the isolated harness remains insufficient evidence of native parallel stress behavior.
 
 Installation, migration, commit, push and deployment status must be recorded from actual evidence in the implementation ledger. This design document does not assert that a live deployment or live database migration has occurred.

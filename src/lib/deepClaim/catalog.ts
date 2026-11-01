@@ -1,3 +1,4 @@
+import phase5Catalog from '../../../supabase/seed/deep-claim-phase5-catalog.json';
 import phase4Catalog from '../../../supabase/seed/deep-claim-phase4-catalog.json';
 import phase3Catalog from '../../../supabase/seed/deep-claim-phase3-catalog.json';
 import phase2Catalog from '../../../supabase/seed/deep-claim-phase2-catalog.json';
@@ -146,3 +147,7 @@ export const BUSINESS_CATALOG=phase4Catalog as DeepClaimBusinessCatalog;
 export const RESEARCH_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.research.map(node=>[node.key,node]));
 export const CONTRACT_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.contracts.map(contract=>[contract.key,contract]));
 export const MILESTONE_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.milestones.map(milestone=>[milestone.key,milestone]));
+
+/** Shared finite project definitions; membership/consent and authoritative progress remain server-owned. */
+export const SOCIAL_CATALOG=phase5Catalog as import('./types').DeepClaimSocialCatalog;
+export const CLUB_PROJECT_BY_KEY=Object.fromEntries(SOCIAL_CATALOG.projects.map(project=>[project.key,project]));

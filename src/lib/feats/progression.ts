@@ -44,6 +44,12 @@ export const FEAT_CATEGORIES: Record<
     path: "/showdown",
     icon: "Swords",
   },
+  deep_claim: {
+    name: "Deep Claim",
+    asset: "deep-claim",
+    path: "/deep-claim",
+    icon: "Pickaxe",
+  },
   nexus: {
     name: "Nexus Defense",
     asset: "nexus-defense",

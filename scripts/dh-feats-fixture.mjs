@@ -130,6 +130,8 @@ export async function createFeatsFixture() {
     );
   };
   return {
+    // Exposed only to compose other real-migration integration fixtures.
+    db,
     id,
     seed,
     rpc,
@@ -143,6 +145,15 @@ export async function createFeatsFixture() {
       run(async () => {
         await db.exec("reset role");
         return db.exec(sql);
+      }),
+    actorQuery: (user, sql, args = [], role = 'authenticated') =>
+      run(async () => {
+        if (!['authenticated', 'anon', 'service_role'].includes(role)) throw new Error('Invalid isolated role');
+        return db.transaction(async transaction => {
+          await transaction.exec(`set local role ${role}`);
+          await transaction.query("select set_config('test.user',$1,true),set_config('test.role',$2,true)", [user ?? '', role]);
+          return transaction.query(sql, args);
+        });
       }),
     close: () => run(() => db.close()),
   };

@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Building2, Check, Clock3, Coins, FileText, House, List, Package, Pickaxe, RefreshCw, Settings, ShieldCheck, Users, WifiOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
@@ -14,6 +14,8 @@ import { DeepClaimMark } from '@/components/deepClaim/DeepClaimMark';
 import { DeepClaimDispatch } from '@/components/deepClaim/DeepClaimDispatch';
 import { DeepClaimCrew, DeepClaimLog, DeepClaimStores } from '@/components/deepClaim/DeepClaimPanels';
 import { DeepClaimWorkforce } from '@/components/deepClaim/DeepClaimWorkforce';
+import { DeepClaimClubSession } from '@/components/deepClaim/DeepClaimClub';
+import { deepClaimLink, type ClaimClubView } from '@/components/deepClaim/clubLinks';
 import { DeepClaimBusiness, type ClaimBusinessView } from '@/components/deepClaim/DeepClaimBusiness';
 import { DeepClaimIndustry } from '@/components/deepClaim/DeepClaimIndustry';
 import { DeepClaimFieldLog, DeepClaimOperations, type ClaimFieldView } from '@/components/deepClaim/DeepClaimField';
@@ -37,10 +39,13 @@ export default function DeepClaimPage() {
   const assets = useClubAssets();
   if (authLoading || clubLoading || assets.loading) return <main className="deep-claim"><header className="dcl-topbar"><Link to="/compete" className="dcl-icon-button" aria-label="Return to DH"><ArrowLeft size={19} aria-hidden="true" /></Link><div className="dcl-brand"><small>DEEP CLAIM</small><h1>A Prospector’s Empire</h1></div></header><ClaimState title="Finding the frontier" onRetry={() => void assets.refresh()} refreshing={assets.loading} /></main>;
   if (!user || !club || !assets.isInstalled('deep-claim')) return <main className="deep-claim"><ClaimState title="This claim is outside your camp">Deep Claim needs an active club with the game installed.</ClaimState><Link className="dcl-button" to="/compete"><ArrowLeft size={16} aria-hidden="true" />Return to DH</Link></main>;
-  return <DeepClaimCompany key={`${user.id}:${club.id}`} userId={user.id} />;
+  return <DeepClaimCompany key={`${user.id}:${club.id}`} userId={user.id} clubId={club.id} />;
 }
 
-function DeepClaimCompany({ userId }: { userId: string }) {
+function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }) {
+  const [params, setParams] = useSearchParams();
+  const query = params.toString();
+  const requestedLink = useMemo(() => deepClaimLink(new URLSearchParams(query), clubId), [query, clubId]);
   const operation = useDeepClaim();
   const data = operation.data;
   const company = data?.company;
@@ -49,6 +54,9 @@ function DeepClaimCompany({ userId }: { userId: string }) {
   const [storesView, setStoresView] = useState<'stock' | 'workshop'>('stock');
   const [office, setOffice] = useState(false);
   const [officeView, setOfficeView] = useState<ClaimBusinessView>('company');
+  const [clubView, setClubView] = useState<ClaimClubView>('projects');
+  const [clubProject, setClubProject] = useState<string | null>(null);
+  const [linkMessage, setLinkMessage] = useState('');
   const [station, setStation] = useState<DeepClaimProductionStation>('smeltery');
   const [selectedTile, setSelectedTile] = useState<DeepClaimPoint | null>(null);
   const [fieldOperations, setFieldOperations] = useState<{ point: DeepClaimPoint | null } | null>(null);
@@ -68,6 +76,7 @@ function DeepClaimCompany({ userId }: { userId: string }) {
   const [visuals, setVisuals] = useState(() => preferences(userId));
   const [, tick] = useState(0);
   const active = useRef(true);
+  const notificationOpened = useRef(false);
   const id = useId();
   const audio = useMemo(() => createDeepClaimAudio(userId), [userId]);
   useEffect(() => { active.current = true; return () => { active.current = false; audio.dispose(); }; }, [audio]);
@@ -90,6 +99,13 @@ function DeepClaimCompany({ userId }: { userId: string }) {
   const sceneVisible = tab === 'surface' || tab === 'mine';
   const currentError = localError || operation.error;
   const freeCrewSlot = !!company && live.filter(job => job.status === 'active').length < company.crew_slots;
+  useEffect(() => {
+    if (requestedLink.mismatch) { notificationOpened.current = false; setOffice(false); setClubProject(null); setLinkMessage('This notification belongs to a different club. You are still viewing your current company.'); return; }
+    setLinkMessage('');
+    if (requestedLink.office && phase4) { notificationOpened.current = true; setOfficeView(requestedLink.office); setOffice(true); setClubView(requestedLink.view); setClubProject(requestedLink.project); }
+    else if (!requestedLink.office && notificationOpened.current) { notificationOpened.current = false; setOffice(false); setClubProject(null); }
+  }, [requestedLink, phase4]);
+  function clearNotificationLink() { const next = new URLSearchParams(params); ['club', 'office', 'view', 'project'].forEach(key => next.delete(key)); setParams(next, { replace: true }); setOffice(false); setClubProject(null); setLinkMessage(''); }
   const introAvailable = !!data && claimIntroAvailable(data);
   const firstHaulCollected = !!data?.expeditions.some(job => job.tutorial && job.status === 'collected');
   const coreBuildings = ['mine_office', 'mine_shaft', 'warehouse', 'tool_station'];
@@ -175,6 +191,7 @@ function DeepClaimCompany({ userId }: { userId: string }) {
 
   return <main className="deep-claim" data-testid="deep-claim-shell" data-reduced-motion={visuals.reducedMotion}>
     <header className="dcl-topbar"><Link to="/compete" className="dcl-icon-button" aria-label="Return to DH"><ArrowLeft size={19} aria-hidden="true" /></Link><div className="dcl-brand"><small>DEEP CLAIM</small><h1>{company?.name ?? 'A Prospector’s Empire'}</h1></div>{company && <div className="dcl-top-money"><strong aria-label={`${company.cash.toLocaleString()} company credits`}><Coins size={14} aria-hidden="true" />{company.cash.toLocaleString()}</strong><small>{company.warehouse_used}/{company.warehouse_capacity} stored</small></div>}<button type="button" className="dcl-icon-button" aria-label="Refresh company" disabled={operation.refreshing || operation.busy} onClick={() => void operation.refresh()}><RefreshCw size={17} className={operation.refreshing ? 'dcl-spin' : ''} aria-hidden="true" /></button></header>
+    {linkMessage && <div className="dcl-action-error" role="status"><span>{linkMessage}</span><button type="button" onClick={clearNotificationLink}>Return to current company</button></div>}
     {operation.pendingAction ? <div className="dcl-offline" role="status"><span><ShieldCheck size={14} aria-hidden="true" />Saved action: {operation.pendingAction}</span><button type="button" disabled={operation.busy} onClick={() => void retrySaved()}>{operation.busy ? 'Confirming…' : 'Confirm sync'}</button></div> : operation.readOnly && data ? <div className="dcl-offline" role="status"><span><WifiOff size={14} aria-hidden="true" />Saved camp · read-only until reconnected</span><button type="button" disabled={operation.refreshing} onClick={() => void operation.refresh()}>Reconnect</button></div> : null}
     {!data ? <ClaimState error={operation.error} onRetry={() => void operation.refresh()} refreshing={operation.refreshing} /> : !company ? <div className="dcl-state"><DeepClaimMark className="dcl-bootstrap-mark" decorative /><form className="dcl-bootstrap" onSubmit={event => { event.preventDefault(); void bootstrap(); }}><span className="dcl-eyebrow">A PROSPECTOR’S EMPIRE</span><h1>Stake your claim.</h1><p>Three workers. Uncharted ground. A company that keeps working when you leave.</p><label htmlFor={`${id}-name`}>Company name</label><input id={`${id}-name`} value={companyName} minLength={2} maxLength={40} disabled={!canWrite} autoComplete="organization" placeholder="Your frontier company" onChange={event => setCompanyName(event.target.value)} />{(localError || operation.error) && <p className="dcl-error" role="alert">{localError || operation.error}</p>}<ClaimButton type="submit" primary pending={operation.busy} disabled={operation.readOnly || companyName.trim().length < 2}>Found company<ArrowRight size={15} aria-hidden="true" /></ClaimButton><small>Your first introductory shift takes 30 seconds. Standard shifts use real expedition time.</small></form></div> : <>
       {currentError && currentError !== dismissedError && <div className="dcl-action-error" role="alert"><span>{currentError}</span><button type="button" aria-label="Dismiss company message" onClick={() => { setDismissedError(currentError); setLocalError(''); }}>OK</button></div>}
@@ -187,7 +204,7 @@ function DeepClaimCompany({ userId }: { userId: string }) {
         {!sceneVisible && <section className="dcl-pane" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} tabIndex={0}>{tab === 'crew' ? phase2 ? <DeepClaimWorkforce snapshot={data} initialView={crewView} actions={operation} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={managementConfirmed} onQuarters={() => setBuilding('workers_quarters')} /> : <DeepClaimCrew snapshot={data} /> : tab === 'stores' ? phase2 ? <DeepClaimIndustry snapshot={data} view={storesView} onView={setStoresView} station={station} onStation={setStation} busy={operation.busy} readOnly={operation.readOnly} now={now} onRefresh={() => void operation.refresh()} onBuild={setBuilding} onResearch={() => openOffice('research')} onSell={key => { setSale(key); setQuantity(resourceQuantity(data.resources, key)); setLocalError(''); }} onOpenHaul={id => { setHaul(id); setLocalError(''); }} startProduction={operation.startProduction} collectProduction={collectProduction} onConfirmed={managementConfirmed} /> : <DeepClaimStores snapshot={data} readyHauls={ready} onOpenHaul={id => { setHaul(id); setLocalError(''); }} busy={operation.busy} readOnly={operation.readOnly} onSell={key => { setSale(key); setQuantity(resourceQuantity(data.resources, key)); setLocalError(''); }} /> : tab === 'log' ? phase3 ? <DeepClaimFieldLog snapshot={data} view={fieldView} onView={setFieldView} selectedFindId={selectedFindId} onSelectFind={setSelectedFindId} onLocate={locateSite} resolveDiscovery={operation.resolveDiscovery} readOnly={operation.readOnly} busy={operation.busy} onConfirmed={managementConfirmed} /> : <DeepClaimLog snapshot={data} /> : <DeepClaimSettings audio={audio} visuals={visuals} onVisualsChange={changeVisuals} onRefresh={() => void operation.refresh()} refreshing={operation.refreshing} serverTime={data.server_now} industry={phase2} field={phase3} business={phase4} />}</section>}
       </div>
       <nav className="dcl-tabs" role="tablist" aria-label="Company views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = TABS.findIndex(item => item.key === tab); const next = event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length; setTab(TABS[next].key); document.getElementById(`${id}-${TABS[next].key}`)?.focus(); }}>{TABS.map(item => <button type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-panel`} aria-selected={tab === item.key} tabIndex={tab === item.key ? 0 : -1} onClick={() => setTab(item.key)} key={item.key}><item.icon size={18} aria-hidden="true" />{item.label}{item.key === 'stores' && ready.length + productionReady.length > 0 && <b aria-label={`${ready.length + productionReady.length} collections ready`}>{ready.length + productionReady.length}</b>}{item.key === 'log' && pendingFinds > 0 && <b aria-label={`${pendingFinds} finds pending`}>{pendingFinds}</b>}</button>)}</nav>
-      {phase4 && office && <DeepClaimBusiness snapshot={data} view={officeView} onView={setOfficeView} onClose={() => setOffice(false)} onBuild={key => { setOffice(false); setBuilding(key); }} onHire={() => { setOffice(false); setCrewView('hire'); setTab('crew'); }} onStores={() => { setOffice(false); setStoresView('stock'); setTab('stores'); }} actions={operation} now={now} onRefresh={() => void operation.refresh()} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={(title, description, updated) => { if (active.current) { setOffice(false); setReward({ title, description, cash: updated.company?.cash }); audio.play('complete'); } }} />}
+      {phase4 && office && <DeepClaimBusiness snapshot={data} view={officeView} onView={setOfficeView} onClose={() => setOffice(false)} onBuild={key => { setOffice(false); setBuilding(key); }} onHire={() => { setOffice(false); setCrewView('hire'); setTab('crew'); }} onStores={() => { setOffice(false); setStoresView('stock'); setTab('stores'); }} clubContent={<DeepClaimClubSession key={clubProject ?? 'club'} snapshot={data} view={clubView} onView={setClubView} onClose={() => setOffice(false)} projectKey={clubProject} onProjectHandled={() => setClubProject(null)} actions={operation} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={(title, description, updated, credits) => { if (active.current) { setOffice(false); setReward({ title, description, ...(credits ? { cash: updated.company?.cash } : {}) }); audio.play('complete'); } }} />} actions={operation} now={now} onRefresh={() => void operation.refresh()} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={(title, description, updated) => { if (active.current) { setOffice(false); setReward({ title, description, cash: updated.company?.cash }); audio.play('complete'); } }} />}
       {phase3 && fieldOperations && <DeepClaimOperations snapshot={data} point={fieldOperations.point} onClose={() => setFieldOperations(null)} onDispatch={(mode, point) => { setFieldOperations(null); const valid = point && claimTargets(data, mode).some(site => site.x === point.x && site.y === point.y); openDispatch(mode, valid ? point : null); }} onLocate={locateSite} onFinds={() => openFinds()} onReports={() => { setFieldOperations(null); setFieldView('reports'); setTab('log'); }} />}
       {dispatch && <DeepClaimDispatch key={`${dispatch.mode}:${dispatch.target?.x}:${dispatch.target?.y}`} snapshot={data} initialMode={dispatch.mode} initialTarget={dispatch.target} onClose={() => setDispatch(null)} readOnly={operation.readOnly} busy={operation.busy} preview={operation.preview} dispatch={async (input, revision) => { const updated = await operation.dispatch(input, revision); if (active.current) audio.play('dispatch'); return updated; }} />}
       <ClaimDialog open={buildings} onClose={() => setBuildings(false)} title="The surface camp" description="A working frontier camp. Every building changes your operation."><div className="dcl-building-list">{data.buildings.map(item => <button type="button" key={item.key} onClick={() => { setBuildings(false); setBuilding(item.key); setLocalError(''); }}><Building2 size={23} aria-hidden="true" /><span><strong>{BUILDING_INFO[item.key].name}</strong><small>{item.level === 0 ? 'Unbuilt plot' : `Level ${item.level}`} · {item.effect}</small></span><ArrowRight size={16} aria-hidden="true" /></button>)}</div></ClaimDialog>

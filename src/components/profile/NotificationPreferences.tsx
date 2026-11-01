@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   MessageCircle, BarChart3, CalendarDays, Bookmark, Bell, AtSign, Lock,
   TrendingUp, Trophy, ListOrdered, FileText, ScrollText, Cake, Drama,
-  Brackets, Shield, Swords, Megaphone,
+  Brackets, Shield, Swords, Megaphone, Pickaxe,
 } from 'lucide-react';
 import { useNotificationPreferences, NotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -54,6 +54,7 @@ const GROUPS: PrefGroup[] = [
       { key: 'lockbox', label: 'Lockbox', description: 'Lock created, cracked, and daily reminders', icon: Lock },
       { key: 'nexus', label: 'Nexus Defense', description: 'Operation phases and rewards', icon: Shield },
       { key: 'runedelve', label: 'Rune Delve', description: 'Daily challenge and mastery unlocks', icon: Swords },
+      { key: 'deep_claim', label: 'Deep Claim', description: 'Batched crew returns, completed work and club projects', icon: Pickaxe },
       { key: 'narrative', label: 'Narrative RPG', description: 'Invites, scenes, and approvals', icon: Drama },
     ],
   },
@@ -66,13 +67,11 @@ const GROUPS: PrefGroup[] = [
 ];
 
 export default function NotificationPreferencesSection() {
-  const { prefs, loading, update } = useNotificationPreferences();
+  const { prefs, loading, saving, error, update, refresh } = useNotificationPreferences();
   const { isSupported, isSubscribed, subscribe } = usePushNotifications();
   const { play } = useSoundEffect();
   const { user } = useAuth();
   const [testingSend, setTestingSend] = useState(false);
-
-  if (loading) return null;
 
   const handleTestPush = async () => {
     if (!user) return;
@@ -97,7 +96,7 @@ export default function NotificationPreferencesSection() {
       } else {
         toast.error('No test notification was delivered. Turn Push Notifications off and on, then try again.');
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Test push error:', err);
       toast.error('Failed to send test notification');
     }
@@ -109,6 +108,9 @@ export default function NotificationPreferencesSection() {
       <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
         Notification Preferences
       </h3>
+
+      {loading && <p className="text-sm text-muted-foreground" role="status">Loading notification preferences…</p>}
+      {error && <div role="alert" className="text-sm text-destructive">{error}<Button variant="outline" size="sm" onClick={() => void refresh()}>Retry preferences</Button></div>}
 
       {GROUPS.map((group) => (
         <div key={group.title} className="space-y-3">
@@ -126,10 +128,13 @@ export default function NotificationPreferencesSection() {
               </div>
               <Switch
                 checked={prefs[key]}
+                disabled={loading || saving}
                 onCheckedChange={async (checked) => {
-                  await update(key, checked);
-                  play('tap');
-                  toast.success(`${label} ${checked ? 'enabled' : 'disabled'}`);
+                  try {
+                    await update(key, checked);
+                    play('tap');
+                    toast.success(`${label} ${checked ? 'enabled' : 'disabled'}`);
+                  } catch (failure) { toast.error(failure instanceof Error ? failure.message : 'Notification preference could not save.'); }
                 }}
               />
             </div>

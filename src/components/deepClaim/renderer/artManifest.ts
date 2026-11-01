@@ -2,11 +2,11 @@ import type { DeepClaimBuildingId, DeepClaimFormation, DeepClaimResourceId, Deep
 import { DEEP_CLAIM_MINERAL_IDS } from '@/lib/deepClaim/types';
 import { BUILDING_INFO } from '@/lib/deepClaim/catalog';
 
-/** Phases 1–4: original procedural pixel art, not a finished commercial sprite atlas. */
+/** Phases 1–5: original procedural pixel art, not a finished commercial sprite atlas. */
 export const DEEP_CLAIM_ART_PROVENANCE = {
   author: 'Original DH Club / Deep Claim implementation',
   source: 'Authored pixel primitives and coordinate-only cosmetic texture patterns. No stock, emoji, external image requests, private world seeds or generated gameplay terrain.',
-  grade: 'Phase 1–4 original procedural art; expanded hand-painted animation and commercial atlas polish are future work.',
+  grade: 'Phase 1–5 original procedural art; expanded hand-painted animation and commercial atlas polish are future work.',
   logicalTilePixels: 16,
 } as const;
 export const FORMATION_ART: Record<DeepClaimFormation, { label: string; dark: string; wall: string; detail: string }> = {
@@ -76,6 +76,8 @@ export const DEEP_CLAIM_ART_MANIFEST = {
   inventory: Object.keys(RESOURCE_ART).map(id => `stock_${id}`), equipment: Object.keys(EQUIPMENT_ART),
   workers: Object.keys(SPECIALTY_ART).map(id => `crew_${id}`), buildings: Object.keys(BUILDING_ART).map(id => `${id}_levels_${id === 'research_office' ? '0_2' : ['workers_quarters','smeltery','gem_workshop','trading_post'].includes(id) ? '0_3' : id === 'mine_shaft' ? '1_5' : '1_3'}`),
   business: ['research', 'contract', 'milestone', 'office'],
+  club: ['club', 'project', 'standings', 'showcase', 'company_identity', 'empty_or_published_specimen_case'],
+  projects: ['camp_supply', 'haul_extension', 'clean_air', 'assay_observatory', 'deep_freight', 'geological_pavilion'],
   infrastructure: ['supports', 'ventilation', 'pump', 'rail'].map(id => `${id}_building_installed_grades_1_3`),
   discoveries: ['banded_geode', 'fern_fossil', 'survey_journal', 'rail_relic', 'crystal_cluster', 'meteorite_fragment'],
   props: ['ore_cart', 'rail_track', 'lantern', 'supply_crates', 'chimney_smoke', 'headgear_wheel', 'survey_flag'],

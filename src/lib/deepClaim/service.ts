@@ -1,7 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { validateDeepClaimPreview, validateDeepClaimSnapshot } from './world';
-import type { DeepClaimDispatchInput, DeepClaimPreview, DeepClaimSnapshot } from './types';
+import { validateDeepClaimClubView } from './social';
+import type { DeepClaimClubView, DeepClaimDispatchInput, DeepClaimPreview, DeepClaimSnapshot, DeepClaimStandingMetric } from './types';
 
 export class DeepClaimError extends Error {
   constructor(message: string, public readonly code: 'network' | 'access' | 'conflict' | 'rule' | 'data' = 'network') {
@@ -9,7 +10,7 @@ export class DeepClaimError extends Error {
   }
 }
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
-export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production','dc_dispatch_operation','dc_resolve_discovery','dc_start_research','dc_fulfill_contract','dc_claim_milestone'] as const;
+export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production','dc_dispatch_operation','dc_resolve_discovery','dc_start_research','dc_fulfill_contract','dc_claim_milestone','dc_set_social_preferences','dc_contribute_project','dc_claim_project'] as const;
 export type DeepClaimMutation = typeof DEEP_CLAIM_MUTATIONS[number];
 export function parseDeepClaimSnapshot(value: unknown): DeepClaimSnapshot {
   try { validateDeepClaimSnapshot(value); return value; }
@@ -18,6 +19,10 @@ export function parseDeepClaimSnapshot(value: unknown): DeepClaimSnapshot {
 export function parseDeepClaimPreview(value: unknown): DeepClaimPreview {
   try { validateDeepClaimPreview(value); return value; }
   catch { throw new DeepClaimError('The expedition quote could not be verified. Refresh and review your crew.', 'data'); }
+}
+export function parseDeepClaimClub(value: unknown): DeepClaimClubView {
+  try { validateDeepClaimClubView(value); return value; }
+  catch { throw new DeepClaimError('Club records could not be verified. Refresh the club view; your private company is safe.', 'data'); }
 }
 export function deepClaimFailure(error: unknown): DeepClaimError {
   if (error instanceof DeepClaimError) return error;
@@ -33,7 +38,7 @@ export function deepClaimFailure(error: unknown): DeepClaimError {
   return new DeepClaimError('Deep Claim could not sync. Your action is kept for a safe retry. Check your connection.');
 }
 export async function deepClaimRpc(name: string, args: Record<string, unknown> = {}): Promise<unknown> {
-  if (!['dc_get','dc_reconcile','dc_preview','dc_preview_operation',...DEEP_CLAIM_MUTATIONS].includes(name)) throw new DeepClaimError('Unknown company operation.', 'rule');
+  if (!['dc_get','dc_reconcile','dc_preview','dc_preview_operation','dc_get_club',...DEEP_CLAIM_MUTATIONS].includes(name)) throw new DeepClaimError('Unknown company operation.', 'rule');
   try {
     const { data, error } = await withTimeout(supabase.rpc(name as never, args as never), QUERY_TIMEOUT_MS, 'Deep Claim');
     if (error) throw error;
@@ -41,6 +46,7 @@ export async function deepClaimRpc(name: string, args: Record<string, unknown> =
   } catch (error) {
     const failure = deepClaimFailure(error);
     if (failure.code === 'network' && !DEEP_CLAIM_MUTATIONS.some(operation => operation === name)) {
+      if (name === 'dc_get_club') throw new DeepClaimError('Club records could not sync. Check your connection and refresh the club view.');
       throw new DeepClaimError(name.startsWith('dc_preview')
         ? 'The expedition quote could not sync. Check your connection and review the operation again.'
         : 'Your company could not sync. Check your connection and refresh. Dispatched crews continue working.');
@@ -49,6 +55,9 @@ export async function deepClaimRpc(name: string, args: Record<string, unknown> =
   }
 }
 export async function fetchDeepClaim(): Promise<DeepClaimSnapshot> { return parseDeepClaimSnapshot(await deepClaimRpc('dc_get')); }
+export async function fetchDeepClaimClub(metric: DeepClaimStandingMetric, page: number): Promise<DeepClaimClubView> {
+  return parseDeepClaimClub(await deepClaimRpc('dc_get_club', { p_metric: metric, p_page: page }));
+}
 export function deepClaimDispatchArgs(input: DeepClaimDispatchInput): Record<string, unknown> {
   return { p_worker_ids: [...input.worker_ids], p_mode: input.mode, p_target_x: input.target_x, p_target_y: input.target_y,
     p_duration_minutes: input.duration_minutes, p_tutorial: input.tutorial ?? false };
@@ -67,5 +76,11 @@ export function shareDeepClaimSnapshot(previous: unknown, incoming: unknown): De
   const next = incoming as DeepClaimSnapshot, before = previous as DeepClaimSnapshot | undefined;
   if (before?.company && !next.company || before && before.revision > next.revision) return before!;
   if (before && before.revision === next.revision && Date.parse(before.server_now) > Date.parse(next.server_now)) return before;
+  return next;
+}
+export function shareDeepClaimClubView(previous: unknown, incoming: unknown): DeepClaimClubView {
+  const next = incoming as DeepClaimClubView, before = previous as DeepClaimClubView | undefined;
+  if (before?.club_id === next.club_id && before.user_id === next.user_id && before.metric === next.metric && before.showcases.page === next.showcases.page
+    && (before.own_revision > next.own_revision || Date.parse(before.server_now) > Date.parse(next.server_now))) return before;
   return next;
 }

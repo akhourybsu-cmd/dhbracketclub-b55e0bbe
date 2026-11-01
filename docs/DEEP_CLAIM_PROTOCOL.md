@@ -1,6 +1,6 @@
 # Deep Claim technical protocol
 
-Phase 0 architecture, Phase 1 mining, Phase 2 workforce/production, Phase 3 underground operations and Phase 4 company development protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
+Phase 0 architecture through Phase 5 club participation protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
 
 ## Ownership and authority
 
@@ -85,6 +85,32 @@ Operational totals aggregate authoritative records across the company history, n
 
 Research Office and Trading Post upgrades have actual research/contract-tier functions. They reuse the existing building purchase, reserve and visual ownership model. The six-tab game shell remains; the company office provides compact Company, Research, Contracts and Records views instead of another global navigation system.
 
+## Optional club participation
+
+Private company snapshots remain schema four. A separate version-one club projection contains only current-club public records, the caller's sharing choices, finite project progress and sanitized showcase items. It never returns another company's wallet, inventory, employees, mine, coordinates, active jobs, plans or private company ID. Club reads are lazy, bounded and independently recoverable; their failure does not disable private mining. Account/club/metric/page query keys isolate cached views. `own_revision` prompts a private refresh after club reconciliation before another reviewed spend.
+
+Shared entry points reuse membership and installed-asset checks and additionally require the existing registry-backed `dh_public_member`. The self-visible private-account helper is insufficient for collective play. Every displayed company belongs to a current public member of the same eligible club. Standings and showcases have independent consent flags, both initially false. Opting out removes server projections without refunding contributions or erasing progress. Showcase selection validates up to three owned, permanently kept finds. Only kind, name, quality and detail are published. Own retained IDs and parallel sanitized details let an older selected find remain editable after it leaves the recent private cabinet list.
+
+Three distinct standings avoid a synthetic combined score. Weekly mining value prices original frozen cargo from recorded returned mining/exploration jobs; staged remainders and later sales cannot change it. The ten mineral prices shipped through field rules three are immutable valuation inputs. Depth is the greatest completed mining target. Best find is the highest recovered, frozen specimen value. Ties share a rank, identities remain unique, and a caller outside the top fifty receives one additional row. Club-local Monday boundaries use validated IANA timezones; calendar dates, including daylight-saving changes, define the week. Reading shared standings never reconciles or locks other companies. Returns appear after their company records them.
+
+Six authored projects form a finite prerequisite chain. Only an open project gets a frozen club row; its goals, unit prices, total value, credit pool and initial membership cap are preserved. One/two/three-or-more public club members freeze a per-resource cap of 100/60/40 percent. The effective cap can increase if membership shrinks, and never falls below its frozen floor. New members do not invalidate earlier donations. Contributions may be made without listing the company publicly.
+
+A contribution locks authorization/asset records, the caller's company and then the project. It validates every positive whole quantity against collected stock, global remaining goals and the caller's per-resource limit. The whole action rejects on any failure; quantities are never silently clipped. After debits, cash plus remaining collected saleable stock must retain two operating credits. Pending cargo, equipment, finds and unclaimed rewards cannot satisfy that reserve. Immutable contribution rows and the existing request fingerprint commit together with project progress. No other company is locked or credited while holding the shared project.
+
+Actual contribution value must reach five percent of the frozen total to qualify. When complete, the caller may claim `floor(reward_pool × own_value / total_value)` once. The six authored pools total 3,771 credits against 12,572 of contributed material value; integer shares cannot exceed a pool. Claim receipts remain separate from dismissible UI and survive retries, opt-out and club departure. A returning eligible member may recover an unclaimed legitimate share. Contributions themselves are permanent, with no refunds, player trading, recurring resets or resource rewards. Former or private member identities are omitted while committed material totals persist.
+
+The six main tabs remain. Club Projects, Standings and Showcase live inside the Company Office. Notification query links are whitelisted after authentication, membership and asset checks. A notice for another active club never switches identity or opens that club's private state.
+
+## DH Feats and shared inbox
+
+Seven Deep Claim families extend the existing DH Feats catalog, metric collector, dirty-account queue and permanent award receipts. Thirty-two tier unlocks total 590 DH points; company credits remain separate. Metrics count returned mining shifts, completed depth, fully collected processed units, completed research, delivered orders, installed infrastructure and qualified participation in completed club projects. Previewing, dispatching, pending stock, contribution clicks and reward-claim clicks do not add achievements.
+
+Eligible lifetime source history includes the account's legitimate past companies after club changes or source-app removal. Registry-hidden accounts/workspaces remain excluded. Sharing consent controls public company projections, not earned account achievements. Only the new families receive historical import; imported awards are excluded from monthly totals and reveals. Existing catalog entries, point snapshots, earned timestamps and account preferences are preserved. Real post-integration completions can contribute UTC activity dates and feature variety without retroactively inventing general engagement. Company-owned source triggers resolve the owner ID before marking that existing account dirty. Shared project completion skips busy account locks; the existing collector's reconciliation repairs missed invalidation.
+
+In-app notifications use the existing inbox and its `deep_claim` preference. Private event receipts deduplicate meaningful crew returns, ready production, research, major finds and completed projects independently of inbox dismissal. Reconciliation batches a summary with a fifteen-minute cooldown and at most four messages per local operating day. Preference changes suppress pending/off-period history rather than flooding on re-enable. Historical migration activity is suppressed without changing Feat history. Project notices are queued only during each contributor's later own reconciliation, avoiding foreign-company FK locks while the project is held.
+
+Notifications require current public membership and an enabled visible installation, even though lifetime Feats retain earlier legitimate activity. Loading and preference writes have timeout, identity and rollback protection; a failed preference save does not claim success or overwrite other preferences. Delivery uses lazy server reconciliation and the existing inbox refresh/subscription. Unattended scheduling and device push are not claimed.
+
 ## Energy and operating calendar
 
 Each worker starts with six energy per operating day. Quick/Standard/Deep shifts cost one/two/three energy for every assigned worker and last 20/60/180 minutes. The one-time induction run is accelerated on the server. The server validates `clubs.settings.timezone` against PostgreSQL IANA names, using America/New_York when absent or invalid. The company persists its next UTC reset boundary; zone changes are adopted at the next reset, rather than granting repeated energy immediately. Timestamps remain UTC and database timezone conversion handles 23/25-hour daylight-saving days. Offline days never accumulate more than six energy.
@@ -97,9 +123,9 @@ React Query keys include account and club. Responses carry a company revision; a
 
 ## Database and public API
 
-Phase 1 has fourteen private tables: `dc_rules`, `dc_companies`, `dc_worlds`, `dc_chunks`, `dc_tiles`, `dc_workers`, `dc_expeditions`, `dc_expedition_workers`, `dc_plans`, `dc_milestones`, `dc_reservations`, `dc_inventory`, `dc_requests` and `dc_logs`. Phase 2 adds `dc_equipment_catalog`, `dc_recipes`, `dc_candidates`, `dc_equipment`, `dc_training`, `dc_production_jobs` and `dc_job_equipment`. Phase 3 adds `dc_infrastructure`, `dc_discoveries` and `dc_field_events`. Phase 4 adds `dc_research_orders`, `dc_company_contracts` and `dc_milestone_receipts`. All 27 tables use RLS and deny anonymous/member direct CRUD. `dc_tiles` contains only revealed/mutated cells, not millions of untouched blocks. Versioned chunk seeds, original plans, definitions and argument receipts are immutable. Reservations protect every finite cell affected by an expedition.
+Phase 1 has fourteen private tables: `dc_rules`, `dc_companies`, `dc_worlds`, `dc_chunks`, `dc_tiles`, `dc_workers`, `dc_expeditions`, `dc_expedition_workers`, `dc_plans`, `dc_milestones`, `dc_reservations`, `dc_inventory`, `dc_requests` and `dc_logs`. Phase 2 adds `dc_equipment_catalog`, `dc_recipes`, `dc_candidates`, `dc_equipment`, `dc_training`, `dc_production_jobs` and `dc_job_equipment`. Phase 3 adds `dc_infrastructure`, `dc_discoveries` and `dc_field_events`. Phase 4 adds `dc_research_orders`, `dc_company_contracts` and `dc_milestone_receipts`. Phase 5 adds `dc_social_preferences`, `dc_club_projects`, `dc_club_contributions`, `dc_club_claims`, `dc_notification_state` and `dc_notification_events`. All 33 tables use RLS and deny anonymous/member direct CRUD. `dc_tiles` contains only revealed/mutated cells, not millions of untouched blocks. Versioned chunk seeds, original plans, definitions and argument receipts are immutable. Reservations protect every finite cell affected by an expedition.
 
-Twenty-one RPCs are executable by authenticated members. The original eight retain their names and authorization boundaries:
+Twenty-five RPCs are executable by authenticated members. The original eight retain their names and authorization boundaries:
 
 | RPC | Inputs / behavior |
 |---|---|
@@ -124,6 +150,10 @@ Twenty-one RPCs are executable by authenticated members. The original eight reta
 | `dc_start_research(p_research_key,p_expected_revision,p_request_id)` | Pay for one eligible, frozen server-timed research order. |
 | `dc_fulfill_contract(p_contract_key,p_expected_revision,p_request_id)` | Consume the whole collected order and award its frozen payout once. |
 | `dc_claim_milestone(p_milestone_key,p_expected_revision,p_request_id)` | Verify durable progress and claim a finite company-credit award once. |
+| `dc_get_club(p_metric,p_page)` | Independently authorized bounded public club projection; never another private snapshot. |
+| `dc_set_social_preferences(p_standings,p_showcase,p_featured_discovery_ids,p_expected_revision,p_request_id)` | Explicit independent sharing consent and validated kept-find curation. |
+| `dc_contribute_project(p_project_key,p_resources,p_expected_revision,p_request_id)` | Atomic permanent contribution within stock, reserve, shared remaining goals and personal caps. |
+| `dc_claim_project(p_project_key,p_expected_revision,p_request_id)` | Claim the server-computed qualified completed-project share once. |
 
 Public snapshots contain schema/server time/revision, company, stock, workers, revealed world, expeditions, building levels and recent logs. Schema two adds daily candidates, owned equipment, production jobs and public recipe/equipment catalogs. The new client also reads schema one for safe rollout; version-two payloads require complete version-two collections. Active expedition cargo remains null. Ready cargo is what remains staged; collected expedition history retains the original haul and must never be interpreted as pending stock. Recent collected jobs and visible logs are bounded; full underlying history remains persisted. Cursor history remains a future extension.
 
@@ -137,7 +167,7 @@ Economic investments preserve two operating credits. Dispatch requires sufficien
 
 ## Deferred extension points
 
-Dedicated recovery expeditions, persistent blockages/injuries, full later-region hazards, advanced industrial automation, DH Feats, club projects and notifications remain phase extensions. They must reuse the same ownership, version, transaction and inventory boundaries. No parallel DH Score or global currency is introduced.
+Dedicated recovery expeditions, persistent blockages/injuries, full later-region hazards, advanced industrial automation, player trading, scheduled delivery and device push remain extensions. They must reuse the same ownership, version, transaction and inventory boundaries. No parallel DH Score or global currency is introduced.
 
 ## Deployment
 

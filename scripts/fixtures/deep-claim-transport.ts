@@ -25,6 +25,15 @@ export const deepClaimFixture = {
 
 export const supabase = {
   rpc: deepClaimFixture.rpc,
+  from(table: string) {
+    let columns = '', column = '', value: unknown;
+    return {
+      select(selected: string) { columns = selected; return this; },
+      eq(selected: string, input: unknown) { column = selected; value = input; return this; },
+      maybeSingle: () => request('table', { table, method: 'select', columns, column, value }),
+      upsert: (payload: Record<string, unknown>) => request('table', { table, method: 'upsert', payload }),
+    };
+  },
   channel: () => ({ on() { return this; }, subscribe() { return this; }, unsubscribe: async () => ({ error: null }) }),
   removeChannel: async () => 'ok',
 };

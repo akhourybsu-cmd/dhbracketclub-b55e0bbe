@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
 import { DEEP_CLAIM_MUTATIONS, DeepClaimError, deepClaimDispatchArgs, deepClaimOperationArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot, type DeepClaimMutation } from '@/lib/deepClaim/service';
-import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimSellInput, DeepClaimSnapshot, DeepClaimStatId } from '@/lib/deepClaim/types';
+import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimResources, DeepClaimSellInput, DeepClaimSnapshot, DeepClaimSocialPreferencesInput, DeepClaimStatId } from '@/lib/deepClaim/types';
 
 type Pending = { operation: DeepClaimMutation; args: Record<string, unknown>; fingerprint: string; label: string };
 const online = () => typeof navigator === 'undefined' || navigator.onLine;
@@ -75,6 +75,7 @@ export function useDeepClaim() {
       if (updated.company && (updated.company.user_id !== user?.id || updated.company.club_id !== club?.id)) throw new DeepClaimError('The company does not belong to your active club.', 'access');
       pendingRef.current = null; setPending(null); savePending(receiptKey, null);
       cache.setQueryData(key, (before: DeepClaimSnapshot | undefined) => shareDeepClaimSnapshot(before, updated));
+      void cache.invalidateQueries({ queryKey: ['deep-claim-club', user?.id, club?.id] });
       return updated;
     } catch (error) {
       if (activeIdentity.current === identity && generation.current === attempt) {
@@ -82,6 +83,7 @@ export function useDeepClaim() {
         if (error instanceof DeepClaimError && ['access','rule','conflict'].includes(error.code)) {
           pendingRef.current = null; setPending(null); savePending(receiptKey, null);
           void refetch();
+          void cache.invalidateQueries({ queryKey: ['deep-claim-club', user?.id, club?.id] });
         }
         setActionError(error instanceof Error ? error.message : 'The action could not be confirmed. Retry sync.');
       }
@@ -114,6 +116,9 @@ export function useDeepClaim() {
     startResearch: (researchKey: string, expectedRevision = revision) => perform('dc_start_research', { p_research_key: researchKey, p_expected_revision: expectedRevision }, 'Start research'),
     fulfillContract: (contractKey: string, expectedRevision = revision) => perform('dc_fulfill_contract', { p_contract_key: contractKey, p_expected_revision: expectedRevision }, 'Deliver contract'),
     claimMilestone: (milestoneKey: string, expectedRevision = revision) => perform('dc_claim_milestone', { p_milestone_key: milestoneKey, p_expected_revision: expectedRevision }, 'Claim company milestone'),
+    setSocialPreferences: (input: DeepClaimSocialPreferencesInput, expectedRevision = revision) => perform('dc_set_social_preferences', { p_standings: input.standings_enabled, p_showcase: input.showcase_enabled, p_featured_discovery_ids: [...input.featured_discovery_ids], p_expected_revision: expectedRevision }, 'Update company sharing'),
+    contributeProject: (projectKey: string, resources: DeepClaimResources, expectedRevision = revision) => perform('dc_contribute_project', { p_project_key: projectKey, p_resources: { ...resources }, p_expected_revision: expectedRevision }, 'Contribute materials'),
+    claimProject: (projectKey: string, expectedRevision = revision) => perform('dc_claim_project', { p_project_key: projectKey, p_expected_revision: expectedRevision }, 'Claim club project'),
     retryPending: () => pendingRef.current ? perform(pendingRef.current.operation, {}, pendingRef.current.label, true) : Promise.resolve(data),
   };
 }

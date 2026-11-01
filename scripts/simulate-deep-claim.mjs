@@ -1,7 +1,7 @@
 // Deterministic, offline v1 economy guardrails. No production accounts, writes or hidden geography.
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts'; export * from './src/lib/deepClaim/business.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
+const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts'; export * from './src/lib/deepClaim/business.ts'; export * from './src/lib/deepClaim/social.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
 const engine = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString('base64')}`);
 const { STARTER_WORKERS, RESOURCE_CATALOG, DEEP_CLAIM_MINERAL_IDS, RECIPE_CATALOG, EQUIPMENT_CATALOG, productionQuote, recipeValueAdded, availableEquipmentCapacity, calculateCrewPlan, withdrawFinite, collectCargo, sellResource, retainsOperatingCapital, canUpgrade, BUILDING_UPGRADE_COSTS } = engine;
 const workers = STARTER_WORKERS.map((worker,index) => ({ ...worker, id: `benchmark-${index}`, traits: [...worker.traits], stats: { ...worker.stats }, xp: 0, level: 1, energy: 6, assigned_job_id: null }));
@@ -113,6 +113,30 @@ const fullGraph=new Map();for(const recipe of ALL_RECIPE_CATALOG)for(const input
 function fullAcyclic(node,path=new Set()){if(path.has(node))throw new Error('Industrial resource cycle');const next=new Set(path);next.add(node);for(const output of fullGraph.get(node)??[])fullAcyclic(output,next);}
 for(const node of fullGraph.keys())fullAcyclic(node);
 const businessProof={researchNodes:14,researchCashCost:BUSINESS_CATALOG.research.reduce((sum,node)=>sum+node.cash_cost,0),researchMaterialSaleValue:BUSINESS_CATALOG.research.reduce((sum,node)=>sum+engine.resourceSaleValue(node.inputs),0),finiteContracts:12,contractMarketValue,contractPayout,finiteContractPremium:finitePremium,milestoneBudget,totalFiniteCreditPremiumAndAwards:finitePremium+milestoneBudget,processingMargins:newMargins,productionDAGAcyclic:true,earnedStarterRoute:{miningJobs,operatingDays,spentEnergyLastDay:spentEnergy,researchSeconds:300,productionSeconds,bronzeBars:2,cashRemaining:earnedAlloyCash,liquidationAlternativeCash:earnedAlloyCash+alloyLiquidationValue,firstDeliveryShortfall},note:'The controlled route mines each real starter deposit once, pays every mining wage/building/recipe/research input, and counts explicit daily energy resets. Further deliveries require genuine finite exploration.'};
-console.log(JSON.stringify({ rulesVersion:3,businessCatalogVersion:4,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,phase4AllBuildingCashCost:phase4UpgradeCost,productionRecipes:ALL_RECIPE_CATALOG.length,equipmentDefinitions:ALL_EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,businessProof,
+// Phase5 finite shared investment proof. These are project resource partitions,
+// not fabricated live inventory, profile rankings or spendable reward claims.
+const {SOCIAL_CATALOG,validateSocialCatalog,projectCapPercent,effectiveProjectCap,projectReward,projectContributionReasons}=engine;
+validateSocialCatalog();
+const cooperative=[];
+for(const definition of SOCIAL_CATALOG.projects){
+ const totalValue=engine.resourceSaleValue(definition.goals);
+ for(const members of [1,2,3]){
+  const cap=projectCapPercent(members),remaining={...definition.goals},progress={},rewards=[];
+  for(let person=0;person<members;person++){
+   const contribution={};for(const[id,goal]of Object.entries(definition.goals)){const amount=Math.min(remaining[id],Math.floor(goal*cap/100));if(amount){contribution[id]=amount;remaining[id]-=amount;}}
+   assert.deepEqual(projectContributionReasons({project:definition,requested:contribution,stock:contribution,progress,own:{},cap_percent:cap,cash:2}),[]);
+   for(const[id,amount]of Object.entries(contribution))progress[id]=(progress[id]??0)+amount;
+   const value=engine.resourceSaleValue(contribution),reward=projectReward(definition.reward_pool,value,totalValue);assert(reward.qualified);rewards.push(reward.amount);
+  }
+  assert.equal(Object.values(remaining).reduce((sum,amount)=>sum+amount,0),0,'Published goals must be completable under real per-resource caps.');
+  const distributed=rewards.reduce((sum,amount)=>sum+amount,0);assert(distributed<=definition.reward_pool);
+  cooperative.push({project:definition.key,members,cap,goalValue:totalValue,rewardPool:definition.reward_pool,distributed,rewardPoolConserved:true});
+ }
+}
+assert.equal(effectiveProjectCap(40,1),100);assert.equal(effectiveProjectCap(100,3),100);
+const sharedGoalValue=SOCIAL_CATALOG.projects.reduce((sum,project)=>sum+engine.resourceSaleValue(project.goals),0),sharedRewardPool=SOCIAL_CATALOG.projects.reduce((sum,project)=>sum+project.reward_pool,0);
+assert.equal(sharedGoalValue,12572);assert.equal(sharedRewardPool,3771);assert(sharedRewardPool*100<=sharedGoalValue*40);
+const socialProof={catalogVersion:5,finiteProjects:6,sharedGoalValue,sharedRewardPool,maximumPoolSharePercent:40,actualPoolSharePercent:Number((sharedRewardPool*100/sharedGoalValue).toFixed(3)),cooperativePartitions:cooperative,qualifiedParticipantsMax:20,shrinkingClubMayRaiseCap:true,creditRewardPoolFinite:true,resourceRewardsGranted:false};
+console.log(JSON.stringify({ rulesVersion:3,businessCatalogVersion:4,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,phase4AllBuildingCashCost:phase4UpgradeCost,productionRecipes:ALL_RECIPE_CATALOG.length,equipmentDefinitions:ALL_EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,businessProof,socialProof,
   starterAssaySaleValue:assayValue,starterAssayCannotMaxCompanyWithin24h:true,finiteDepositConservation:true,partialCollectionConservation:true,bankruptcyCounterexampleBlocked:true,
   controlledRichSeamBenchmark:benchmarks,note:'Starter assay is permanently finite and cannot fund all upgrades. Later funds require genuine exploration; no claim of a universal24-hour minimum across all generated worlds.' },null,2));

@@ -11,12 +11,13 @@ import { createServer } from 'vite';
 import { chromium, expect } from '@playwright/test';
 import { createDeepClaimMiddleware } from './fixtures/deep-claim-server.mjs';
 import { DEEP_CLAIM_ACTORS } from './fixtures/deep-claim-db.mjs';
+import { runPhase5Browser } from './fixtures/deep-claim-phase5-browser.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social').split(','));
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
 const endpoint = createDeepClaimMiddleware(token);
@@ -65,9 +66,9 @@ async function setup(width = 390, height = 844, theme = 'dark', motion = 'no-pre
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion });
   return { context, page: await pageFor(context), theme };
 }
-async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex } = {}) {
+async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex, route = '/deep-claim' } = {}) {
   currentPage = page;
-  const params = new URLSearchParams({ run, theme, user, token, route: '/deep-claim' });
+  const params = new URLSearchParams({ run, theme, user, token, route });
   await page.goto(`${base}/scripts/fixtures/deep-claim.html?${params}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.deepClaimReady && window.deepClaimQa && window.deepClaimQueryClient);
   await settle(page);
@@ -193,6 +194,13 @@ async function presentation() {
         if (motion === 'reduce') await expect(page.getByRole('switch', { name: 'Reduced motion', exact: true })).toHaveAttribute('aria-checked', 'true');
         await page.getByRole('switch', { name: 'Reduced graphics', exact: true }).click();
         await expect(page.getByRole('switch', { name: 'Reduced graphics', exact: true })).toHaveAttribute('aria-checked', 'true');
+        const preference = page.getByRole('switch', { name: 'Deep Claim notifications', exact: true });
+        await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'true');
+        await preference.click(); await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'false');
+        await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible(); await tab(page, 'Settings');
+        await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'false');
+        await preference.click(); await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'true');
+        checked(`global-notification-preferences-save-and-reload-under-own-RLS-${label}`, true);
       }
       if (name === 'Crew') {
         await page.getByRole('group', { name: 'Crew view', exact: true }).getByRole('button', { name: 'Hire', exact: true }).click();
@@ -708,7 +716,7 @@ async function business() {
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
@@ -716,6 +724,7 @@ async function main() {
   if (sections.has('field')) await field();
   if (sections.has('caverns')) await caverns();
   if (sections.has('business')) await business();
+  if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
 }
 
 try {

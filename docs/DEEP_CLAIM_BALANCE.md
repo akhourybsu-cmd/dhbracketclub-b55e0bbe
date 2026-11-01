@@ -2,6 +2,8 @@
 
 Version-one mining, version-two workforce/production, version-three underground operations and version-four business development. SQL is authoritative; public arithmetic exists for explanations and headless verification, never client rewards. Canonical public catalogs are `supabase/seed/deep-claim-phase2-catalog.json`, `supabase/seed/deep-claim-phase3-catalog.json` and `supabase/seed/deep-claim-phase4-catalog.json`; SQL embeds the same versioned values.
 
+Phase 5's separate social catalog is `supabase/seed/deep-claim-phase5-catalog.json`. It changes neither the private snapshot schema nor existing mining/research/production formulas. DH Feat definitions live in `src/lib/feats/deepClaimCatalog.json` and extend the existing permanent score ledger.
+
 ## Session rhythm
 
 | Shift | Server duration | Energy per worker |
@@ -232,3 +234,40 @@ Eight company milestones pay 10–120 credits each, totaling at most 600 across 
 These eight rewards total exactly 400 credits. Combined with the 593-credit delivery premium, Phase 4 introduces 993 credits of finite business bonuses. Deliveries also return the ordinary value of consumed goods; research, buildings, wages, recipe fees and material consumption remain real sinks. This reward budget cannot independently buy the 5,000/12,000-credit deep shaft upgrades, and supplies no repeatable daily income.
 
 Milestone and company-record quantities come from durable server rows, including history beyond the bounded UI lists. Collected production units use frozen recipe outputs multiplied by batches, never the staged-output remainder. Partial collection and repeated requests cannot inflate production, delivery or milestone counts. Exact node costs, recipe definitions, contract inputs/payouts and milestone targets are versioned in the Phase 4 canonical catalog and must remain identical in SQL and the public arithmetic.
+
+## Phase 5 finite club projects
+
+Six permanent projects form the following chain. Each consumes real collected goods and freezes its goal values and pool when opened. The canonical pools are approximately thirty percent of required material sale value, always below the forty-percent ceiling.
+
+| Project | Whole club goal | Frozen goal value | Credit pool |
+|---|---|---:|---:|
+| Camp Supply | 80 stone, 40 coal, 30 clay | 300 | 90 |
+| Haul Extension | 12 iron bars, 40 coal, 100 stone | 1,100 | 330 |
+| Clean Air Works | 10 copper bars, 8 iron bars, 50 coal | 1,310 | 393 |
+| Assay Observatory | 24 polished quartz, 6 silver bars, 12 bronze bars | 2,502 | 750 |
+| Deep Freight Works | 16 steel bars, 12 bronze bars, 16 iron bars | 3,760 | 1,128 |
+| Geological Pavilion | 12 cut amethyst, 6 gold bars, 30 polished quartz | 3,600 | 1,080 |
+
+Together these projects consume goods worth 12,572 company credits and offer at most 3,771 credits across the entire club. This is a finite shared material sink; the pool is not paid to every contributor in full, and projects cannot repeat or refund their inputs.
+
+For each resource, the personal cap is `floor(goal × effective cap percent / 100)`. The frozen cap is 100%/60%/40% for one/two/three-or-more eligible public members at project creation. The effective cap is the greater of that frozen percentage and the current membership-based percentage, allowing smaller remaining groups to finish without retroactively penalizing earlier valid donations. A contribution beyond any personal/global remaining limit rejects completely.
+
+Qualification requires `own frozen contribution value ≥ ceil(total frozen goal value × 5 / 100)`. A qualifying member's one-time company-credit award is `floor(pool × own value / total goal value)`. At most twenty participants can meet the five-percent requirement. Total claims cannot exceed the frozen pool; integer rounding and unclaimed or subthreshold contributions leave the remainder undistributed. Membership and installation must be eligible when claiming, while real prior donations and unclaimed entitlement persist after leaving or opting out of public listings.
+
+## Phase 5 DH Score budget and comparison metrics
+
+Seven permanent Feat families provide thirty-two unlocks, worth at most 590 DH points for this versioned collection. Five-tier families award 5/10/15/25/40; four-tier families award 5/10/20/35. These account-wide points cannot buy company goods, research or worker energy.
+
+| Family | Source-backed thresholds |
+|---|---|
+| Returned mining/exploration shifts | 1 / 10 / 40 / 120 / 300 |
+| Deepest completed mining | 25 / 100 / 200 / 400 / 599m |
+| Fully collected processed material units | 10 / 50 / 250 / 1,000 / 5,000 |
+| Completed research nodes | 1 / 4 / 8 / 14 |
+| Fulfilled permanent contracts | 1 / 3 / 6 / 12 |
+| Installed infrastructure | 1 / 5 / 20 / 60 / 128 |
+| Qualified completed club projects | 1 / 2 / 4 / 6 |
+
+Project Feats require the actual five-percent contribution and completed project, regardless of whether its credit award has been claimed. Raw donated amounts, preview clicks, active jobs, uncollected production and repeated requests grant no additional progress. Historical source achievements import as historical awards. Only real post-integration completions contribute new general engagement dates; none of these changes rewrites an old award.
+
+Public comparisons are separate named records: original mining haul value in a club-local Monday week, maximum completed mining depth, or highest recovered-find frozen value. They are not added together. Weekly value uses recorded original cargo rather than staged remainder, so collection and selling cannot create or reduce ranked value. Other companies synchronize their own returns; a standings read never excavates their private worlds.

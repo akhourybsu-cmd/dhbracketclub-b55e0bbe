@@ -11,6 +11,8 @@ describe('Deep Claim private/public transport boundary', () => {
     wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
     await expect(deepClaimRpc('dc_get')).rejects.toThrow('refresh');
     wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
+    await expect(deepClaimRpc('dc_get_club')).rejects.toThrow('refresh the club view');
+    wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
     await expect(deepClaimRpc('dc_resolve_discovery')).rejects.toThrow('action is kept for a safe retry');
   });
   it('does not allow the transport to call private generation or reconciliation helpers', async () => {

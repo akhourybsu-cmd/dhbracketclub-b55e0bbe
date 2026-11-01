@@ -4,7 +4,33 @@ DH Score is an account's permanent achievement total. A club's board compares it
 
 The launch collection has **63 families, 314 tier unlocks and 18 areas**. Each family has up to five tiers: Bronze +10, Silver +20, Gold +40, Platinum +80 and Mythic +150. These are individual awards, so a full five-tier family contributes 300 DH. The four-weapon Nexus family stops at Platinum. All thresholds, copy and points are versioned in `src/lib/feats/catalog.json`; the app displays the deployed server catalog, including for older clients.
 
-Rune extensions bring the current collection to **70 families and 347 tier unlocks**. Three Expedition families and the original two puzzle families retain their deployed targets and point values. Two additional connected-adventure families, Beyond the Seal and Secrets of the Hollow, count distinct completed adventures 19–36 and their best mastery stars. Area visits and repeated clears do not add volume. Each of the original and expansion puzzle collections awards at most 135 DH; all existing award receipts remain unchanged. Extension catalogs live beside `catalog.json` and may use smaller point values appropriate to their targets.
+Rune extensions increased the collection to **70 families and 347 tier unlocks**. Three Expedition families and the original two puzzle families retain their deployed targets and point values. Two additional connected-adventure families, Beyond the Seal and Secrets of the Hollow, count distinct completed adventures 19–36 and their best mastery stars. Area visits and repeated clears do not add volume. Each of the original and expansion puzzle collections awards at most 135 DH; all existing award receipts remain unchanged. Extension catalogs live beside `catalog.json` and may use smaller point values appropriate to their targets.
+
+Showdown and Cipher additions bring that baseline to 82 families and 383 tier unlocks. Deep Claim's separate extension defines **seven families, 32 unlocks and 590 possible points**, making the versioned collection **89 families, 415 unlocks and 20 areas**. The deployed catalog remains authoritative; feature release status belongs in its implementation ledger.
+
+## Deep Claim source integration
+
+`20261102061000_deep_claim_dh_integration.sql` extends the existing metric collector, catalog, account dirty flags and permanent unlock receipts. Its definitions are mirrored in `src/lib/feats/deepClaimCatalog.json`; category `deep_claim` uses installed asset `deep-claim` and `/deep-claim`. Existing `/feats?goal=<key>` links, three tracked goals, collection views and score cards remain the same system.
+
+| Stable family | Requirements | Tier points |
+|---|---|---|
+| `deep_claim_shifts` | 1 / 10 / 40 / 120 / 300 returned mining/exploration shifts | 5 / 10 / 15 / 25 / 40 |
+| `deep_claim_depth` | 25 / 100 / 200 / 400 / 599m completed mining depth | 5 / 10 / 15 / 25 / 40 |
+| `deep_claim_processed` | 10 / 50 / 250 / 1,000 / 5,000 fully collected processed units | 5 / 10 / 15 / 25 / 40 |
+| `deep_claim_research` | 1 / 4 / 8 / 14 completed research nodes | 5 / 10 / 20 / 35 |
+| `deep_claim_deliveries` | 1 / 3 / 6 / 12 distinct fulfilled contracts | 5 / 10 / 20 / 35 |
+| `deep_claim_infrastructure` | 1 / 5 / 20 / 60 / 128 installed projects | 5 / 10 / 15 / 25 / 40 |
+| `deep_claim_club_projects` | 1 / 2 / 4 / 6 completed projects with at least 5% frozen-value participation | 5 / 10 / 20 / 35 |
+
+Statistics aggregate durable source history, including frozen recipe outputs multiplied by batches only after full collection. Neither partial collection nor repeated requests count twice. Project participation qualifies independently of its optional company-credit claim. Previews, dispatch/start clicks, resource transfers and public-listing consent do not grant points.
+
+Legitimate owned company history remains account-lifetime after membership changes or removal of the source installation. Private accounts and registered private testing workspaces are excluded independently of who calls the evaluator. Raw private source records are not returned to other members. Company credits, worker energy and DH Score remain separate.
+
+Only the seven new families import already-recorded completed Deep Claim history as historical receipts. This preserves every older catalog definition, point snapshot, earned timestamp and account setting. Imported awards appear as saved history, with no monthly score or new-unlock reveal. Migration never settles another company's unrecorded private work: an earlier overdue job first recorded later follows normal dedicated-family collector timing. Its pre-cutover completion timestamp remains excluded from notification and general engagement dates. Existing active-day and feature-explorer metrics count Deep Claim only from actual post-integration completion timestamps, using UTC activity dates.
+
+Source completion triggers resolve the owning user from the company before marking the existing account dirty. Shared project completion skips busy contributor account rows rather than waiting across a project lock; the existing five-minute account reconciliation repairs a missed invalidation. Notification events for another company are never inserted under that project lock, because their foreign keys would implicitly lock the other company.
+
+Deep Claim also uses the existing in-app notification inbox and global `deep_claim` preference. Owner synchronization batches real crew returns, ready production, completed research, major recovered finds and completed club projects with a fifteen-minute cooldown and four-per-club-local-day cap. Persistent event receipts survive notification dismissal. Disabled preferences and private/ineligible ownership consume or suppress events, avoiding later floods. Migration history is silent, and project updates queue only during the contributor's own later sync. This integration promises lazy in-app delivery through existing inbox polling/realtime; it does not add unattended cron delivery or device push.
 
 ## Member experience
 

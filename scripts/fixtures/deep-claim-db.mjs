@@ -11,7 +11,7 @@ export const DEEP_CLAIM_ACTORS = {
   club: fixtureId(1001), otherClub: fixtureId(1002), privateClub: fixtureId(1003),
 };
 
-export async function createDeepClaimDatabase({ install = true, phase = 4 } = {}) {
+export async function createDeepClaimDatabase({ install = true, phase = 5, notificationPreferences = false } = {}) {
   const db = new PGlite();
   const sources = new Map();
   async function source(path) {
@@ -27,10 +27,31 @@ export async function createDeepClaimDatabase({ install = true, phase = 4 } = {}
       create table public.user_roles(user_id uuid references public.profiles(id),role text);
       alter table public.clubs add column settings jsonb not null default '{}';
     `);
+    // Reuse the actual private-account visibility definitions for shared data.
+    // The rest of this migration manages unrelated application tables.
+    const privacyPath = 'supabase/migrations/20261029060000_private_sessions.sql';
+    const privacySource = await readFile(privacyPath, 'utf8'); sources.set(privacyPath, privacySource);
+    const privacyStart = privacySource.indexOf('create table if not exists public.dh_private_accounts');
+    const privacyEnd = privacySource.indexOf('-- Register an explicit identity once;');
+    assert.ok(privacyStart >= 0 && privacyEnd > privacyStart);
+    await db.exec(privacySource.slice(privacyStart, privacyEnd));
+    await db.query("insert into public.dh_private_accounts(user_id,workspace_id,profile_snapshot,membership_snapshot) values($1,$2,'{}','{}')", [DEEP_CLAIM_ACTORS.private, DEEP_CLAIM_ACTORS.privateClub]);
+    if (notificationPreferences) {
+      for (const path of ['20260329211250_7ff52ba8-3052-4ab3-8e33-477b2a2191a0.sql','20260330023039_e2bff897-a4e4-446e-8ffc-c1ef81144593.sql','20260331234750_52a764b4-5117-4c54-9e31-5382845a493a.sql','20260526032201_7b3c83c3-3d84-490f-8ae1-900bbcfaeb9b.sql']) {
+        const pathName = `supabase/migrations/${path}`, text = await readFile(pathName, 'utf8'); sources.set(pathName, text);
+        // The mentions migration also changes unrelated chat tables. Reuse its
+        // exact preference extension alone in this focused browser fixture.
+        if (path.startsWith('20260330023039')) { const preference = text.match(/ALTER TABLE public\.notification_preferences ADD COLUMN IF NOT EXISTS mentions[^;]+;/i)?.[0]; assert.ok(preference); await db.exec(preference); }
+        else await db.exec(text);
+      }
+      const path = 'supabase/migrations/20261102061000_deep_claim_dh_integration.sql', text = await readFile(path, 'utf8'); sources.set(path, text);
+      const preference = text.match(/alter table public\.notification_preferences add column deep_claim[^;]+;/i)?.[0]; assert.ok(preference); await db.exec(preference);
+      await db.exec('grant select,insert,update on public.notification_preferences to authenticated');
+    }
     // Use the application's actual asset schema, RLS policies and catalog.
     await source('supabase/migrations/20260509210000_platform-assets.sql');
     const migrations = (await readdir('supabase/migrations')).filter(path => /^20261102\d+_deep_claim.*\.sql$/.test(path)).sort();
-    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_', 4: '20261102060000_' };
+    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_', 4: '20261102060000_', 5: '20261102061000_' };
     assert.ok(phaseCeilings[phase], `Unsupported Deep Claim fixture phase ${phase}`);
     assert.ok(migrations.length, 'Deep Claim migrations must exist before running this fixture');
     for (const path of migrations.filter(path => path < phaseCeilings[phase])) await source(`supabase/migrations/${path}`);
@@ -59,7 +80,7 @@ export async function createDeepClaimDatabase({ install = true, phase = 4 } = {}
       installedBodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'dc_%' order by signature")).rows;
     }
     await refreshFunctions();
-    async function applyPendingMigrations({ phase: targetPhase = 4 } = {}) {
+    async function applyPendingMigrations({ phase: targetPhase = 5 } = {}) {
       assert.ok(phaseCeilings[targetPhase], `Unsupported Deep Claim fixture phase ${targetPhase}`);
       for (const path of migrations.filter(path => path < phaseCeilings[targetPhase])) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
       await refreshFunctions();

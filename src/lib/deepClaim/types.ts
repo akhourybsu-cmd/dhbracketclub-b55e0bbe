@@ -284,3 +284,33 @@ export interface DeepClaimBusiness {
 export interface DeepClaimStartResearchInput {research_key:string}
 export interface DeepClaimFulfillContractInput {contract_key:string}
 export interface DeepClaimClaimMilestoneInput {milestone_key:string}
+
+/** Optional shared club projection. It never contains another company's private state. */
+export const DEEP_CLAIM_STANDING_METRICS=['weekly_mining_value','operational_depth','best_find'] as const;
+export type DeepClaimStandingMetric=typeof DEEP_CLAIM_STANDING_METRICS[number];
+export interface DeepClaimPublicSpecimen {kind:DeepClaimDiscoveryKind;name:string;quality:DeepClaimDiscoveryQuality;detail:string}
+export interface DeepClaimPublicCompany {user_id:string;display_name:string;avatar_url:string|null;company_name:string;specimens:DeepClaimPublicSpecimen[]}
+export interface DeepClaimPublicStanding {user_id:string;display_name:string;avatar_url:string|null;company_name:string;value:number;rank:number;is_you:boolean}
+export const DEEP_CLAIM_CLUB_PROJECT_KEYS=['camp_supply','haul_extension','clean_air','assay_observatory','deep_freight','geological_pavilion'] as const;
+export type DeepClaimClubProjectKey=typeof DEEP_CLAIM_CLUB_PROJECT_KEYS[number];
+export interface DeepClaimClubProjectDefinition {key:DeepClaimClubProjectKey;name:string;description:string;requires:string[];goals:DeepClaimResources;reward_pool:number}
+export interface DeepClaimSocialCatalog {
+ version:5;projects:DeepClaimClubProjectDefinition[];
+ standings:{key:DeepClaimStandingMetric;name:string;description:string;unit:string}[];
+ caps:{standings_limit:50;showcase_page_size:24;showcase_max_page:19;featured_specimens:3;qualified_percent:5};
+}
+export interface DeepClaimClubProjectView {
+ key:string;status:'locked'|'open'|'completed';goals:DeepClaimResources;progress:DeepClaimResources;own_contribution:DeepClaimResources;
+ own_value:number;total_value:number;reward_pool:number;reward_amount:number;qualified:boolean;claimed_at:string|null;
+ effective_cap_percent:40|60|100;contributors:number;completed_at:string|null;
+}
+export interface DeepClaimClubView {
+ version:1;server_now:string;club_id:string;user_id:string;own_revision:number;catalog:DeepClaimSocialCatalog;
+ own:{standings_enabled:boolean;showcase_enabled:boolean;featured_discovery_ids:string[];featured_specimens:DeepClaimPublicSpecimen[]};
+ metric:DeepClaimStandingMetric;week:{starts_at:string;ends_at:string;timezone:string};
+ standings:DeepClaimPublicStanding[];projects:DeepClaimClubProjectView[];
+ showcases:{page:number;total:number;has_more:boolean;companies:DeepClaimPublicCompany[]};
+}
+export interface DeepClaimSocialPreferencesInput {standings_enabled:boolean;showcase_enabled:boolean;featured_discovery_ids:string[]}
+export interface DeepClaimProjectContributionInput {project_key:string;resources:DeepClaimResources}
+export interface DeepClaimProjectClaimInput {project_key:string}

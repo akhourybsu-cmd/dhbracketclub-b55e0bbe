@@ -121,6 +121,9 @@ describe('Deep Claim company query and transaction recovery', () => {
     ['dc_start_research', { p_research_key: 'excavation_1', p_expected_revision: 1 }, 'Start research'],
     ['dc_fulfill_contract', { p_contract_key: 'coal_supply', p_expected_revision: 1 }, 'Deliver contract'],
     ['dc_claim_milestone', { p_milestone_key: 'first_shift', p_expected_revision: 1 }, 'Claim company milestone'],
+    ['dc_set_social_preferences', { p_standings: false, p_showcase: false, p_featured_discovery_ids: [], p_expected_revision: 1 }, 'Update company sharing'],
+    ['dc_contribute_project', { p_project_key: 'camp_supply', p_resources: { stone: 3 }, p_expected_revision: 1 }, 'Contribute materials'],
+    ['dc_claim_project', { p_project_key: 'camp_supply', p_expected_revision: 1 }, 'Claim club project'],
   ] as const)('recovers a persisted %s request with its exact identity after a reload', async (operation, args, label) => {
     const request = { ...args, p_request_id: '00000000-0000-4000-8000-000000000090' };
     localStorage.setItem('dh:deep-claim:pending:v1:user-a:club-a', JSON.stringify({ operation, args: request, label, fingerprint: JSON.stringify([operation, args]) }));

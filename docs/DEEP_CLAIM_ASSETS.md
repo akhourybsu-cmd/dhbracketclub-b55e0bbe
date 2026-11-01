@@ -2,7 +2,7 @@
 
 Deep Claim uses an original industrial-frontier identity: a working company and an inhabited mine, with restrained pixel geometry, warm metal, worn earth and readable equipment. The game should feel physical and useful, with ore and the active crew carrying the brightest accents.
 
-This is the Phase 0 art direction and the Phase 1–4 asset contract. The implementation ledger records which renderer/audio features have been verified. **The original procedural artwork is not a finished commercial sprite atlas; the complete atlas, expanded animations and full soundtrack remain Phase 6 work.**
+This is the Phase 0 art direction and the Phase 1–5 asset contract. The implementation ledger records which renderer/audio features have been verified. **The original procedural artwork is not a finished commercial sprite atlas; the complete atlas, expanded animations and full soundtrack remain Phase 6 work.**
 
 ## Palette and geometry
 
@@ -77,6 +77,8 @@ Equipment illustrations need recognizable pickaxes, lanterns, helmets and haulin
 Small shoring details, crates, paths and fog overlays can reuse the procedural painter’s palette and geometry. Decorative objects must not look like clickable buttons or signal a reward that has not been earned.
 
 Phase 4 adds Research Office and Trading Post variants tied to their real unlocked tiers. All nine building identities need accessible operational alternatives even when the player pans the surface. New bronze, steel and gold bars use distinct physical markings and labels; steel tool and cargo equipment must remain identifiable beyond hue. The business office uses the same industrial typography, brass focus treatment and compact portaled panels. No scene illustration or animation may imply a research reward or contract delivery before server confirmation.
+
+Club presentation uses original static emblems, six project illustrations, company identity crests and kept-specimen display cases. Locked/open/completed artwork and progress derive from the authoritative public project state. Empty cabinets remain visibly empty. Public SVG components accept sanitized identities/specimens only; they never receive the private mine Canvas, employee roster, coordinates, jobs or full discovery records. The six established specimen silhouettes and quality frames remain consistent with the private cabinet. Shared presentation adds no animation loop or external art download.
 
 ## Camera, motion and performance
 

@@ -4,7 +4,7 @@ import { createDeepClaimDatabase } from './deep-claim-db.mjs';
 export function createDeepClaimMiddleware(token) {
   const runs = new Map();
   async function runState(key) {
-    if (!runs.has(key)) runs.set(key, createDeepClaimDatabase().then(database => ({ database, calls: [], failures: new Map(), holds: new Map() })));
+    if (!runs.has(key)) runs.set(key, createDeepClaimDatabase({ notificationPreferences: true }).then(database => ({ database, calls: [], failures: new Map(), holds: new Map() })));
     return runs.get(key);
   }
   function reply(response, body, status = 200) {
@@ -28,6 +28,24 @@ export function createDeepClaimMiddleware(token) {
       const input = await body(request);
       if (typeof input.run !== 'string' || input.run.length > 100 || typeof input.user !== 'string') throw new Error('Invalid isolated fixture identity');
       const state = await runState(input.run);
+      if (input.operation === 'table') {
+        if (input.table !== 'notification_preferences') throw new Error('Only the real own notification preference table is available to this fixture');
+        const fields = ['chat_messages','polls','events','drafts','mentions','lockbox','portfolio_wars','pickem','rankings','posts','lore','celebrations','narrative','brackets','nexus','runedelve','deep_claim','system'];
+        try {
+          if (input.method === 'select') {
+            if (input.column !== 'user_id' || !input.columns.split(',').every(field => fields.includes(field))) throw new Error('Unexpected preference read');
+            const result = await state.database.actorQuery(input.user, `select ${input.columns} from public.notification_preferences where user_id=$1`, [input.value]);
+            return reply(response, { data: result.rows[0] ?? null, error: null });
+          }
+          if (input.method === 'upsert') {
+            const columns = Object.keys(input.payload);
+            if (!columns.includes('user_id') || columns.some(field => !['user_id','updated_at',...fields].includes(field))) throw new Error('Unexpected preference field');
+            const result = await state.database.actorQuery(input.user, `insert into public.notification_preferences(${columns.join(',')}) values(${columns.map((_, index) => '$' + (index + 1)).join(',')}) on conflict(user_id) do update set ${columns.filter(field => field !== 'user_id').map(field => `${field}=excluded.${field}`).join(',')}`, columns.map(field => input.payload[field]));
+            return reply(response, { data: null, error: null, count: result.affectedRows });
+          }
+          throw new Error('Unexpected preference operation');
+        } catch (error) { return reply(response, { data: null, error: { message: error.message, code: error.code || 'P0001' } }); }
+      }
       if (input.operation === 'rpc') {
         const call = { name: input.name, user: input.user, args: input.args, received_at: new Date().toISOString(), status: 'pending' };
         state.calls.push(call);
@@ -85,6 +103,27 @@ export function createDeepClaimMiddleware(token) {
             if (quote.allowed && quote._quantity >= Math.max(0, 20 - (snapshot.resources.stone || 0))) return reply(response, { data: point });
           }
           return reply(response, { data: null });
+        }
+        if (input.command === 'resource_worksite') {
+          if (!['stone','coal'].includes(options.resource) || !Number.isSafeInteger(options.needed) || options.needed < 1) throw new Error('Invalid local source-selection request');
+          const snapshot = await state.database.rpc(input.user, 'dc_get', {}), company = snapshot.company?.id;
+          const workers = snapshot.workers.filter(worker => !worker.assigned_job_id && worker.energy > 0).slice(0, 3).map(worker => worker.id);
+          if (!company || !workers.length) return reply(response, { data: null });
+          const points = (await state.database.db.query(`select x,y,true known from public.dc_tiles where company_id=$1 and material=$3 and remaining>0
+            union select distinct t.x+v.dx,t.y+v.dy,false from public.dc_tiles t cross join(values(-1,0),(1,0),(0,-1),(0,1))v(dx,dy)
+            where t.company_id=$1 and t.remaining=0 and t.x+v.dx between 0 and 95 and t.x+v.dx<>48 and t.y+v.dy between 1 and $2
+            and not exists(select 1 from public.dc_tiles known where known.company_id=$1 and known.x=t.x+v.dx and known.y=t.y+v.dy)`, [company, snapshot.world.max_depth, options.resource])).rows;
+          const choices = [];
+          for (const point of points) {
+            const cell = point.known ? snapshot.world.tiles.find(tile => tile.x === point.x && tile.y === point.y) : (await state.database.db.query('select public.dc_cell_v1($1,$2,$3) cell', [company, point.x, point.y])).rows[0].cell;
+            if (cell.material !== options.resource) continue;
+            const mode = point.known ? 'extract' : 'explore';
+            const quote = (await state.database.db.query('select public.dc_preview_operation_v3($1,$2::uuid[],$3,$4,$5,20,false,null,clock_timestamp()) quote', [company, workers, mode, point.x, point.y])).rows[0].quote;
+            const amount = Math.min(quote._quantity, point.known ? cell.remaining : cell.initial_amount);
+            if (quote.allowed && amount > 0) choices.push({ point: { x: point.x, y: point.y }, mode, amount });
+          }
+          choices.sort((first, second) => second.amount - first.amount || first.point.y - second.point.y || first.point.x - second.point.x);
+          return reply(response, { data: choices[0] ? { point: choices[0].point, mode: choices[0].mode } : null });
         }
         if (input.command === 'cavern_survey_site') {
           // This owner-only local test oracle selects an existing public
