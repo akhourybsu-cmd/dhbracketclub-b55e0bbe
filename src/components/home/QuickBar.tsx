@@ -14,7 +14,7 @@ import { motion } from 'framer-motion';
 import {
   Bookmark, TrendingUp, Lock, Trophy,
   MessageSquareText, CalendarDays, ScrollText, Newspaper, MessageCircle,
-  BarChart3, FileText, Link2, BookMarked, BookOpen, Pencil,
+  BarChart3, FileText, Link2, BookMarked, BookOpen, Pencil, Gem,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { InstalledAsset } from '@/types/assets';
@@ -31,6 +31,7 @@ interface TileMeta {
 }
 
 const META: Record<string, TileMeta> = {
+  'deep-claim':     { to: '/deep-claim', icon: Gem, tint: '37 55% 58%' },
   'draft-arena':    { to: '/drafts',         emblem: draftEmblem,    tint: '45 95% 55%' },
   'rune-delve':     { to: '/rune-delve',     emblem: runedelveEmblem, tint: '152 70% 55%' },
   'nexus-defense':  { to: '/nexus',          emblem: nexusEmblem,    tint: '195 90% 60%' },

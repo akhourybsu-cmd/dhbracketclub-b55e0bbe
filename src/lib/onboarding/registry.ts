@@ -88,6 +88,25 @@ const REGISTRY: Record<string, FeatureOnboarding> = {
     primaryCta: { label: 'Open Draft Arena', route: '/drafts' },
   },
 
+  'deep-claim': {
+    featureKey: 'deep-claim',
+    displayName: 'Deep Claim',
+    shortDescription: 'Build a mining company, one expedition at a time.',
+    featureType: 'game',
+    importance: 'important',
+    version: 1,
+    iconKey: 'Gem',
+    tags: ['Mining', 'Management', 'Solo'],
+    onboardingTitle: 'Your company starts here',
+    onboardingSummary: 'Build a crew. Work the seams. Grow your claim.',
+    onboardingSteps: [
+      { title: 'Meet your first crew', body: 'Start a private company with three workers. Their skills and daily energy shape the jobs they can take on.', iconKey: 'Users' },
+      { title: 'Plan a descent', body: 'Choose exploration or extraction, assign your crew, and review time, energy and upfront wages before dispatch.', iconKey: 'Gem' },
+      { title: 'Return to a working mine', body: 'Expeditions continue while you are away. Collect cargo, sell resources and improve your buildings when you return.', iconKey: 'Check' },
+    ],
+    primaryCta: { label: 'Enter Deep Claim', route: '/deep-claim' },
+  },
+
   'rune-delve': {
     featureKey: 'rune-delve',
     displayName: 'Rune Delve',

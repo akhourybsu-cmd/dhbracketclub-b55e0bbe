@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
-  Check, ChevronRight, Crown, FlaskConical, Loader2,
+  Check, ChevronRight, Crown, FlaskConical, Gem, Loader2,
   Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
   MessageSquareText, CalendarDays, ScrollText, Newspaper,
   MessageCircle, BarChart3, FileText, Link2, Star,
@@ -18,7 +18,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
   MessageSquareText, CalendarDays, ScrollText, Newspaper,
   MessageCircle, BarChart3, FileText, Link2, Star,
-  Brackets, Settings, BookOpen, Dumbbell, VenetianMask,
+  Brackets, Settings, BookOpen, Dumbbell, VenetianMask, Gem,
 };
 
 const CATEGORY_BG: Record<string, string> = {

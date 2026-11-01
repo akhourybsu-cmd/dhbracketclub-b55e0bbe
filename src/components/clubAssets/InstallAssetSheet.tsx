@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
-  X, Check, ChevronRight, MapPin, Settings2, Crown,
+  X, Check, ChevronRight, MapPin, Settings2, Crown, Gem,
   Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
   MessageSquareText, CalendarDays, ScrollText, Newspaper,
   MessageCircle, BarChart3, FileText, Link2, Star, Brackets,
@@ -14,7 +14,7 @@ import { CATEGORY_META } from '@/types/assets';
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Bookmark, Sparkles, Shield, Trophy, TrendingUp, Lock,
   MessageSquareText, CalendarDays, ScrollText, Newspaper,
-  MessageCircle, BarChart3, FileText, Link2, Star, Brackets, BookOpen, Dumbbell, VenetianMask,
+  MessageCircle, BarChart3, FileText, Link2, Star, Brackets, BookOpen, Dumbbell, VenetianMask, Gem,
 };
 
 const PLACEMENT_LABELS: Record<string, string> = {

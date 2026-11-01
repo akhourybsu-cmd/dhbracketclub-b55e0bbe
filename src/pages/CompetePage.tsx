@@ -22,6 +22,7 @@ import pickemEmblem from '@/assets/pickem-emblem.png';
 import draftEmblem from '@/assets/draft-emblem.webp';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 import { ShowdownDiscoveryCard } from '@/components/showdown/ShowdownDiscoveryCard';
+import { DeepClaimDiscoveryCard } from '@/components/deepClaim/DeepClaimDiscoveryCard';
 
 /* ── FORGE card ── */
 function WorkoutArenaCompeteCard() {
@@ -643,6 +644,7 @@ export default function CompetePage() {
 
           {/* Other installed games */}
           {isInstalled('dh-showdown') && <ShowdownDiscoveryCard />}
+          {isInstalled('deep-claim') && <DeepClaimDiscoveryCard />}
           {isInstalled('rune-delve') && <RuneDelveCompeteCard />}
           {isInstalled('nexus-defense') && <NexusDefenseCompeteCard />}
           {isInstalled('nfl-pickem') && <PickemCompeteCard />}

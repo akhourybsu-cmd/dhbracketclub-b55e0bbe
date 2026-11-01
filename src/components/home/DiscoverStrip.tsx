@@ -10,13 +10,14 @@ import { motion } from 'framer-motion';
 import {
   Bookmark, Sparkles, TrendingUp, Lock, Trophy, MessageSquareText,
   CalendarDays, ScrollText, Newspaper, MessageCircle, BarChart3,
-  FileText, Link2, Plus,
+  FileText, Link2, Plus, Gem,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PlatformAsset, InstalledAsset } from '@/types/assets';
 import { SectionHeader } from './SectionHeader';
 
 const ICON_BY_SLUG: Record<string, LucideIcon> = {
+  'deep-claim':     Gem,
   'draft-arena':    Bookmark,
   'rune-delve':     Sparkles,
   'nexus-defense':  Sparkles,
@@ -35,6 +36,7 @@ const ICON_BY_SLUG: Record<string, LucideIcon> = {
 };
 
 const TINT_BY_SLUG: Record<string, string> = {
+  'deep-claim':     '37 55% 58%',
   'draft-arena':    '45 95% 55%',
   'rune-delve':     '152 70% 55%',
   'nexus-defense':  '195 90% 60%',
