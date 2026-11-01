@@ -1,0 +1,2905 @@
+[
+  {
+    "id": "prism-first-light",
+    "version": 1,
+    "difficulty": "easy",
+    "width": 5,
+    "height": 5,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "cyan"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      }
+    ],
+    "minimumRotations": 2,
+    "title": "First Light",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 10,
+      "stateBudget": 4096,
+      "rotatableMirrors": 4,
+      "receivers": 1,
+      "definitionSha256": "22f53d52c2eb76c5afafd050f77cec6f7b98e64c8ccd46a3f827c6a9b065c81d"
+    }
+  },
+  {
+    "id": "prism-corner-relay",
+    "version": 1,
+    "difficulty": "easy",
+    "width": 5,
+    "height": 5,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "W",
+        "color": "magenta"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      }
+    ],
+    "minimumRotations": 3,
+    "title": "Corner Relay",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 15,
+      "stateBudget": 4096,
+      "rotatableMirrors": 4,
+      "receivers": 1,
+      "definitionSha256": "82c6a5633c5c29746d8a5226d1adf2b4e7f50b0f1fe1a07e9a34be0578ab24e8"
+    }
+  },
+  {
+    "id": "prism-folded-sky",
+    "version": 1,
+    "difficulty": "easy",
+    "width": 5,
+    "height": 5,
+    "tiles": [
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": false
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "emitter",
+        "direction": "N",
+        "color": "gold"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      }
+    ],
+    "minimumRotations": 3,
+    "title": "Folded Sky",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 14,
+      "stateBudget": 4096,
+      "rotatableMirrors": 4,
+      "receivers": 1,
+      "definitionSha256": "01f3970f09f8e74dd1fc17d71d5f3bbb2e3a934adf1727bc0e9a6ad0eb9581d3"
+    }
+  },
+  {
+    "id": "prism-center-bend",
+    "version": 1,
+    "difficulty": "easy",
+    "width": 5,
+    "height": 5,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "W",
+        "color": "cyan"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      }
+    ],
+    "minimumRotations": 2,
+    "title": "Center Bend",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 10,
+      "stateBudget": 4096,
+      "rotatableMirrors": 4,
+      "receivers": 1,
+      "definitionSha256": "e959b81be115f59cb67a354ee8f5b3bacfe2db65cac20d33a2a0e43243011979"
+    }
+  },
+  {
+    "id": "prism-quiet-circuit",
+    "version": 1,
+    "difficulty": "easy",
+    "width": 5,
+    "height": 5,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "magenta"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      }
+    ],
+    "minimumRotations": 3,
+    "title": "Quiet Circuit",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 20,
+      "stateBudget": 4096,
+      "rotatableMirrors": 5,
+      "receivers": 1,
+      "definitionSha256": "fe15a8a2f801584d02fd42a2a40a77f09268a6a4f6e42a34cdcb2e8705473bf5"
+    }
+  },
+  {
+    "id": "prism-switchback",
+    "version": 1,
+    "difficulty": "easy",
+    "width": 5,
+    "height": 5,
+    "tiles": [
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "S",
+        "color": "gold"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "A"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": false
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      }
+    ],
+    "minimumRotations": 3,
+    "title": "Switchback",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 15,
+      "stateBudget": 4096,
+      "rotatableMirrors": 4,
+      "receivers": 1,
+      "definitionSha256": "75ebe6c80fded5d7182202f84850def0914d5417a5de44f4cd8429dd207f979f"
+    }
+  },
+  {
+    "id": "prism-azure-gate",
+    "version": 1,
+    "difficulty": "medium",
+    "width": 6,
+    "height": 6,
+    "tiles": [
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "white"
+        ],
+        "output": "cyan"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      }
+    ],
+    "minimumRotations": 4,
+    "title": "Azure Gate",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 44,
+      "stateBudget": 4096,
+      "rotatableMirrors": 6,
+      "receivers": 1,
+      "definitionSha256": "ef0dbcfaebf2284a5142ed6cb9f2662888cb13f73bee7a3ad5c4e8f7b5013a37"
+    }
+  },
+  {
+    "id": "prism-rose-window",
+    "version": 1,
+    "difficulty": "medium",
+    "width": 6,
+    "height": 6,
+    "tiles": [
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "S",
+        "color": "white"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": false
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "white"
+        ],
+        "output": "magenta"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      }
+    ],
+    "minimumRotations": 4,
+    "title": "Rose Window",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 53,
+      "stateBudget": 4096,
+      "rotatableMirrors": 6,
+      "receivers": 1,
+      "definitionSha256": "b772994741eee134ae4a46c7568090e63288bfa9bb98c4852af422e742a85d08"
+    }
+  },
+  {
+    "id": "prism-twin-lanterns",
+    "version": 1,
+    "difficulty": "medium",
+    "width": 6,
+    "height": 6,
+    "tiles": [
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "cyan"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "B"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "emitter",
+        "direction": "W",
+        "color": "magenta"
+      }
+    ],
+    "minimumRotations": 5,
+    "title": "Twin Lanterns",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 104,
+      "stateBudget": 4096,
+      "rotatableMirrors": 7,
+      "receivers": 2,
+      "definitionSha256": "e1ebe0fc35a37adcc8c9361ff1a07ef161dbc5d95d6e7882780bf2c87ae76e62"
+    }
+  },
+  {
+    "id": "prism-gold-standard",
+    "version": 1,
+    "difficulty": "medium",
+    "width": 6,
+    "height": 6,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "gold"
+        ]
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "white",
+          "gold"
+        ],
+        "output": "gold"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      }
+    ],
+    "minimumRotations": 4,
+    "title": "Gold Standard",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 47,
+      "stateBudget": 4096,
+      "rotatableMirrors": 6,
+      "receivers": 1,
+      "definitionSha256": "7bd2e31844dfe5e726758591ac575fcea8931921be2aa6e638228759b2fd51c2"
+    }
+  },
+  {
+    "id": "prism-narrow-passage",
+    "version": 1,
+    "difficulty": "medium",
+    "width": 6,
+    "height": 6,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "blue",
+        "label": "A"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "blue"
+        ]
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "blue"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "white"
+        ],
+        "output": "blue"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "emitter",
+        "direction": "N",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      }
+    ],
+    "minimumRotations": 5,
+    "title": "Narrow Passage",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 117,
+      "stateBudget": 4096,
+      "rotatableMirrors": 7,
+      "receivers": 1,
+      "definitionSha256": "6025e7627eacf676e5d4ebcc59a88460573219a4ca5c4fc05b33e84cfffca520"
+    }
+  },
+  {
+    "id": "prism-crystal-causeway",
+    "version": 1,
+    "difficulty": "medium",
+    "width": 6,
+    "height": 6,
+    "tiles": [
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": false
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "gold"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "red"
+        ],
+        "output": "gold"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "W",
+        "color": "red"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      }
+    ],
+    "minimumRotations": 5,
+    "title": "Crystal Causeway",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 60,
+      "stateBudget": 4096,
+      "rotatableMirrors": 6,
+      "receivers": 1,
+      "definitionSha256": "56af8daaeaedd3f4222e268be3edeb68eea707624cf409ee8127ed1a7e7cac9d"
+    }
+  },
+  {
+    "id": "prism-prism-crown",
+    "version": 1,
+    "difficulty": "hard",
+    "width": 7,
+    "height": 7,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "E",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "S",
+                "color": "cyan"
+              },
+              {
+                "direction": "E",
+                "color": "magenta"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "B"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      }
+    ],
+    "minimumRotations": 6,
+    "title": "Prism Crown",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 400,
+      "stateBudget": 4096,
+      "rotatableMirrors": 9,
+      "receivers": 2,
+      "definitionSha256": "87ce3bc2982e5b069453f3838d95f95075a0298e9285c29f035838c6465acd99"
+    }
+  },
+  {
+    "id": "prism-threefold-bloom",
+    "version": 1,
+    "difficulty": "hard",
+    "width": 7,
+    "height": 7,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "gold"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "N",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "E",
+                "color": "cyan"
+              },
+              {
+                "direction": "N",
+                "color": "gold"
+              },
+              {
+                "direction": "W",
+                "color": "magenta"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "C"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "B"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "N",
+        "color": "white"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      }
+    ],
+    "minimumRotations": 7,
+    "title": "Threefold Bloom",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 1615,
+      "stateBudget": 4096,
+      "rotatableMirrors": 11,
+      "receivers": 3,
+      "definitionSha256": "fbd7a71786cea3848ccd99c778691050512b0139fd58a2d81bf570c94e338448"
+    }
+  },
+  {
+    "id": "prism-polar-lattice",
+    "version": 1,
+    "difficulty": "hard",
+    "width": 7,
+    "height": 7,
+    "tiles": [
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "gold"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "S",
+        "color": "magenta"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "B"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "W",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "N",
+                "color": "cyan"
+              },
+              {
+                "direction": "W",
+                "color": "gold"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "C"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "white"
+        ]
+      },
+      {
+        "kind": "emitter",
+        "direction": "W",
+        "color": "white"
+      }
+    ],
+    "minimumRotations": 7,
+    "title": "Polar Lattice",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 925,
+      "stateBudget": 4096,
+      "rotatableMirrors": 10,
+      "receivers": 3,
+      "definitionSha256": "bc6f60bac4c77bae2eae46370243a5507228c6da1a26d58a9dd377786a0707c2"
+    }
+  },
+  {
+    "id": "prism-refraction-engine",
+    "version": 1,
+    "difficulty": "hard",
+    "width": 7,
+    "height": 7,
+    "tiles": [
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "B"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "W",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "S",
+                "color": "magenta"
+              },
+              {
+                "direction": "W",
+                "color": "cyan"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      }
+    ],
+    "minimumRotations": 6,
+    "title": "Refraction Engine",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 400,
+      "stateBudget": 4096,
+      "rotatableMirrors": 9,
+      "receivers": 2,
+      "definitionSha256": "6e6223361094e6bbe48f45b456bdeb7c7b6307a0f375479188fe4efdd49d5147"
+    }
+  },
+  {
+    "id": "prism-spectral-weave",
+    "version": 1,
+    "difficulty": "hard",
+    "width": 7,
+    "height": 7,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "emitter",
+        "direction": "S",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "E",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "N",
+                "color": "cyan"
+              },
+              {
+                "direction": "S",
+                "color": "magenta"
+              },
+              {
+                "direction": "E",
+                "color": "gold"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "B"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "C"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "gold"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      }
+    ],
+    "minimumRotations": 7,
+    "title": "Spectral Weave",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 922,
+      "stateBudget": 4096,
+      "rotatableMirrors": 10,
+      "receivers": 3,
+      "definitionSha256": "bebdc13bf0d63ed4cc4f69d61968b0533e59389f874cfb337480201599823057"
+    }
+  },
+  {
+    "id": "prism-chromatic-vault",
+    "version": 1,
+    "difficulty": "hard",
+    "width": 7,
+    "height": 7,
+    "tiles": [
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "cyan",
+        "label": "A"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "gold"
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "receiver",
+        "color": "gold",
+        "label": "B"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "cyan"
+        ]
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "N",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "W",
+                "color": "cyan"
+              },
+              {
+                "direction": "E",
+                "color": "white"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "splitter",
+        "rules": [
+          {
+            "incoming": "E",
+            "inputColor": "white",
+            "outputs": [
+              {
+                "direction": "N",
+                "color": "gold"
+              },
+              {
+                "direction": "S",
+                "color": "magenta"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "receiver",
+        "color": "magenta",
+        "label": "C"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "wall"
+      },
+      {
+        "kind": "emitter",
+        "direction": "E",
+        "color": "white"
+      },
+      {
+        "kind": "empty"
+      },
+      {
+        "kind": "mirror",
+        "orientation": "\\",
+        "rotatable": true
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "filter",
+        "accepts": [
+          "magenta"
+        ]
+      },
+      {
+        "kind": "mirror",
+        "orientation": "/",
+        "rotatable": true
+      },
+      {
+        "kind": "wall"
+      }
+    ],
+    "minimumRotations": 7,
+    "title": "Chromatic Vault",
+    "validation": {
+      "validator": "prism_break_bounded_bfs_v1",
+      "validated": true,
+      "solverStates": 879,
+      "stateBudget": 4096,
+      "rotatableMirrors": 10,
+      "receivers": 3,
+      "definitionSha256": "c1b7949b11a4c0eefb3f2e3b18e05af7411e8de20d8f6333342556e54ad866b4"
+    }
+  }
+]

@@ -70,6 +70,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
   {
     label: 'Games & stories',
     items: [
+      { path: '/showdown', label: 'DH Showdown', shortLabel: 'Showdown', icon: Swords },
       { path: '/drafts', label: 'Draft Arena', shortLabel: 'Drafts', icon: Bookmark },
       { path: '/rune-delve', label: 'Rune Delve', shortLabel: 'Delve', icon: Sparkles },
       { path: '/nexus', label: 'Nexus Defense', shortLabel: 'Nexus', icon: Shield },
@@ -125,6 +126,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/celebrations/, 'Celebrations'],
   [/^\/nfl/, 'NFL Game Center'],
   [/^\/pickem/, 'NFL Game Center'],
+  [/^\/showdown/, 'DH Showdown'],
   [/^\/drafts/, 'Draft Arena'],
   [/^\/rune-delve/, 'Rune Delve'],
   [/^\/nexus/, 'Nexus Defense'],
@@ -181,6 +183,7 @@ export const GAME_SHELL_PREFIXES = [
   '/nfl',
   '/pickem',
   '/drafts',
+  '/showdown',
   '/portfolio-wars',
   '/readshift',
   '/workouts',

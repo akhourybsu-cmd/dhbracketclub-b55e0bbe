@@ -1,0 +1,68 @@
+[
+  {
+    "key": "showdown_matches",
+    "category": "showdown",
+    "title": "Answer the Bell",
+    "description": "Finish Showdown matches with at least one solved round of your own. Both players must finish; all-skip attempts do not count.",
+    "thresholds": [1, 5, 20, 75, 200],
+    "points": [5, 10, 15, 25, 40],
+    "kind": "volume",
+    "unit": "count",
+    "sort_order": 70
+  },
+  {
+    "key": "showdown_wins",
+    "category": "showdown",
+    "title": "Rival Conqueror",
+    "description": "Win completed Showdown matches after solving at least one round yourself. Cancelled, declined and expired invitations are excluded.",
+    "thresholds": [1, 3, 10, 30, 75],
+    "points": [5, 10, 20, 30, 50],
+    "kind": "mastery",
+    "unit": "count",
+    "sort_order": 71
+  },
+  {
+    "key": "showdown_prism_solved",
+    "category": "showdown",
+    "title": "Light the Way",
+    "description": "Activate every receiver in Prism Break rounds from completed matches. Skips and rounds still waiting for an opponent do not count.",
+    "thresholds": [3, 15, 60, 180, 450],
+    "points": [5, 10, 15, 25, 40],
+    "kind": "volume",
+    "unit": "count",
+    "sort_order": 72
+  },
+  {
+    "key": "showdown_prism_optimal",
+    "category": "showdown",
+    "title": "Crystal Precision",
+    "description": "Solve Prism Break rounds in the verified minimum rotations. Only completed matches count; resets never refund used rotations.",
+    "thresholds": [1, 5, 20, 60, 150],
+    "points": [5, 10, 20, 30, 50],
+    "kind": "mastery",
+    "unit": "count",
+    "sort_order": 73
+  },
+  {
+    "key": "showdown_prism_best",
+    "category": "showdown",
+    "title": "Prismatic Peak",
+    "description": "Reach these three-round Prism Break totals in a completed match. This is your best single match, never a sum across games.",
+    "thresholds": [1000, 1200, 1350, 1450, 1500],
+    "points": [5, 10, 15, 25, 40],
+    "kind": "mastery",
+    "unit": "count",
+    "sort_order": 74
+  },
+  {
+    "key": "showdown_rivals",
+    "category": "showdown",
+    "title": "Club Circuit",
+    "description": "Finish Showdown matches against different club rivals, solving at least one round yourself. Repeat matches against one rival count once.",
+    "thresholds": [1, 2, 3, 5, 10],
+    "points": [5, 10, 15, 20, 30],
+    "kind": "variety",
+    "unit": "count",
+    "sort_order": 75
+  }
+]

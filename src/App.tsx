@@ -62,6 +62,8 @@ const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
 const EventsPage = lazyWithRetry(() => import("./pages/EventsPage"));
 const EventDetailPage = lazyWithRetry(() => import("./pages/EventDetailPage"));
 const CompetePage = lazyWithRetry(() => import("./pages/CompetePage"));
+const ShowdownPage = lazyWithRetry(() => import("./pages/ShowdownPage"));
+const ShowdownMatchPage = lazyWithRetry(() => import("./pages/ShowdownMatchPage"));
 const LockboxPage = lazyWithRetry(() => import("./pages/LockboxPage"));
 const LockboxCrackPage = lazyWithRetry(() => import("./pages/LockboxCrackPage"));
 const FeedPage = lazyWithRetry(() => import("./pages/FeedPage"));
@@ -269,6 +271,10 @@ function AnimatedRoutes() {
         <Route path="/polls" element={<ProtectedPage assetSlug="polls"><PollsListPage /></ProtectedPage>} />
         <Route path="/polls/create" element={<ProtectedPage assetSlug="polls"><CreatePollPage /></ProtectedPage>} />
         <Route path="/polls/:pollId" element={<ProtectedPage assetSlug="polls"><PollDetailPage /></ProtectedPage>} />
+
+        {/* Shared asynchronous head-to-head games — their own immersive shell. */}
+        <Route path="/showdown" element={<ProtectedPage assetSlug="dh-showdown"><ShowdownPage /></ProtectedPage>} />
+        <Route path="/showdown/:challengeId" element={<ProtectedPage assetSlug="dh-showdown"><ShowdownMatchPage /></ProtectedPage>} />
 
         {/* Drafts module — standalone Draft Arena shell (own boot, HUD, no DH chrome) */}
         <Route path="/drafts" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftsListPage /></DraftArenaLayout></ProtectedPage>} />

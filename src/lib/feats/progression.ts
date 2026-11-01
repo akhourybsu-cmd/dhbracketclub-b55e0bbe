@@ -38,6 +38,12 @@ export const FEAT_CATEGORIES: Record<
     path: "/drafts",
     icon: "Trophy",
   },
+  showdown: {
+    name: "DH Showdown",
+    asset: "dh-showdown",
+    path: "/showdown",
+    icon: "Swords",
+  },
   nexus: {
     name: "Nexus Defense",
     asset: "nexus-defense",

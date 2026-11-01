@@ -1,7 +1,7 @@
 import {
   Bell, AtSign, Reply, Heart, Bookmark, CalendarDays, MessageCircle, BarChart3,
   FileText, ScrollText, Cake, BookOpen, Trophy, TrendingUp, Lock, Shield,
-  Sparkles, VenetianMask, Brackets as BracketsIcon, Flame,
+  Sparkles, VenetianMask, Brackets as BracketsIcon, Flame, Gem,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -11,6 +11,7 @@ export const NOTIF_META: Record<string, { icon: LucideIcon; color: string }> = {
   reply: { icon: Reply, color: 'primary' },
   reaction: { icon: Heart, color: 'destructive' },
   draft: { icon: Bookmark, color: 'gold' },
+  showdown: { icon: Gem, color: 'primary' },
   poll: { icon: MessageCircle, color: 'warning' },
   event: { icon: CalendarDays, color: 'success' },
   posts: { icon: FileText, color: 'primary' },

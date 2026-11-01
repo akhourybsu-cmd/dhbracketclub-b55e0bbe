@@ -66,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'dh_onboarding_v1:',
           'dh_home_quickbar_v1:',
           'dh_chat_draft_v1:',
+          'dh:showdown:outbox:v1:',
         ];
         const singleKeys = ['last_chat_channel_id'];
         const toRemove: string[] = [];
