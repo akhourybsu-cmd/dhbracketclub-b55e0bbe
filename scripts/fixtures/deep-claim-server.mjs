@@ -60,6 +60,10 @@ export function createDeepClaimMiddleware(token) {
           await state.database.advanceJob(input.user, options.job_id, options.seconds);
           return reply(response, { data: true });
         }
+        if (input.command === 'advance_production') {
+          await state.database.advanceProduction(input.user, options.job_id, options.seconds);
+          return reply(response, { data: true });
+        }
         if (input.command === 'fail_next') {
           state.failures.set(options.name, { count: options.count ?? 1, after_commit: options.after_commit ?? false });
           return reply(response, { data: true });

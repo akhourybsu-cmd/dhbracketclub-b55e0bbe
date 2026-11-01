@@ -1,6 +1,7 @@
+import phase2Catalog from '../../../supabase/seed/deep-claim-phase2-catalog.json';
 import {
   DEEP_CLAIM_RESOURCE_IDS, type DeepClaimBuildingId, type DeepClaimDuration, type DeepClaimResourceId,
-  type DeepClaimResources, type DeepClaimSpecialty, type DeepClaimStatId,
+  type DeepClaimResources, type DeepClaimSpecialty, type DeepClaimStatId, type DeepClaimEquipmentDefinition, type DeepClaimRecipe,
 } from './types';
 
 /** Public market/catalog data. Deposits, geography and future yields stay server-private. */
@@ -20,6 +21,15 @@ export const RESOURCE_CATALOG: readonly DeepClaimResourceDefinition[] = [
   { id: 'iron_ore', name: 'Iron ore', sell_price: 14, color: '#bd7b64', description: 'Heavy industrial ore in the deeper Ironworks.' },
   { id: 'quartz', name: 'Quartz', sell_price: 12, color: '#d9c7e4', description: 'Clear crystalline material from narrow mineral seams.' },
   { id: 'silver_ore', name: 'Silver ore', sell_price: 30, color: '#bcd6e4', description: 'Scarce silver-bearing rock. This is raw ore, not refined silver.' },
+  { id: 'amethyst', name: 'Amethyst', sell_price: 50, color: '#b38cdb', description: 'Raw purple crystal from the new deep seams.' },
+  { id: 'gold_ore', name: 'Gold ore', sell_price: 45, color: '#d3b36a', description: 'Raw gold-bearing rock from the deep region.' },
+  { id: 'copper_bar', name: 'Copper bar', sell_price: 55, color: '#d3936c', description: 'Smelted copper, ready for equipment crafting.' },
+  { id: 'tin_bar', name: 'Tin bar', sell_price: 65, color: '#c4d8d3', description: 'A smelted tin ingot.' },
+  { id: 'iron_bar', name: 'Iron bar', sell_price: 70, color: '#a0a9b2', description: 'A structural iron ingot.' },
+  { id: 'silver_bar', name: 'Silver bar', sell_price: 145, color: '#d1e0ec', description: 'A smelted silver ingot.' },
+  { id: 'polished_quartz', name: 'Polished quartz', sell_price: 28, color: '#f0e6ed', description: 'Finished quartz used in precision equipment.' },
+  { id: 'cut_amethyst', name: 'Cut amethyst', sell_price: 125, color: '#cba6ed', description: 'A cut deep crystal for advanced instruments.' },
+
 ];
 export const RESOURCE_BY_ID = Object.fromEntries(RESOURCE_CATALOG.map(resource => [resource.id, resource])) as Record<DeepClaimResourceId, DeepClaimResourceDefinition>;
 export const STAT_INFO: Record<DeepClaimStatId, { name: string; description: string }> = {
@@ -44,7 +54,10 @@ export const BUILDING_INFO: Record<DeepClaimBuildingId, { name: string; descript
   mine_office: { name: 'Mine Office', description: 'Coordinates additional simultaneous crews.', x: 24 },
   mine_shaft: { name: 'Mine Shaft', description: 'Extends the company’s supported mining depth.', x: 48 },
   warehouse: { name: 'Warehouse', description: 'Stores collected resources before sale.', x: 66 },
-  tool_station: { name: 'Tool Station', description: 'Improves the crew’s extraction equipment.', x: 82 },
+  tool_station: { name: 'Tool Station', description: 'Improves extraction and crafts owned equipment.', x: 77 },
+  workers_quarters: { name: 'Workers’ Quarters', description: 'Houses additional hired workers.', x: 9 },
+  smeltery: { name: 'Smeltery', description: 'Consumes ore and coal to produce refined bars.', x: 38 },
+  gem_workshop: { name: 'Gem Workshop', description: 'Polishes quartz and cuts deep crystals.', x: 91 },
 };
 export const DURATION_OPTIONS: readonly { minutes: DeepClaimDuration; label: string; energy: number; description: string }[] = [
   { minutes: 20, label: 'Quick', energy: 1, description: 'A short trip. One energy per worker.' },
@@ -74,14 +87,18 @@ export const STARTER_WORKERS = [
     stats: { mining: 48, geology: 45, engineering: 58, logistics: 83, safety: 56, endurance: 76, leadership: 51 } },
 ] as const;
 export const BUILDING_UPGRADE_COSTS: Record<DeepClaimBuildingId, readonly number[]> = {
-  mine_office: [90,1200], mine_shaft: [80,2000], warehouse: [60,1000], tool_station: [50,1600],
+  mine_office: [90,1200], mine_shaft: [80,2000,5000], warehouse: [60,1000], tool_station: [50,1600],
+  workers_quarters: [90,450,1200], smeltery: [90,350,900], gem_workshop: [120,450,1100],
 };
-export function buildingBenefits(key: DeepClaimBuildingId, level: number): { crew_slots?: number; max_depth?: number; shaft_depth?: number; warehouse_capacity?: number; yield_bonus_percent?: number } {
-  if (!Number.isInteger(level) || level < 1 || level > 3) throw new Error('Invalid Deep Claim building level.');
+export function buildingBenefits(key: DeepClaimBuildingId, level: number): { crew_slots?: number; max_depth?: number; shaft_depth?: number; warehouse_capacity?: number; yield_bonus_percent?: number; worker_capacity?: number; processing_speed_percent?: number } {
+  const added = ['workers_quarters','smeltery','gem_workshop'].includes(key);
+  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 4 : 3)) throw new Error('Invalid Deep Claim building level.');
   if (key === 'mine_office') return { crew_slots: level };
-  if (key === 'mine_shaft') return { max_depth: [49,99,149][level - 1], shaft_depth: [6,56,106][level - 1] };
+  if (key === 'mine_shaft') return { max_depth: [49,99,149,299][level - 1], shaft_depth: [6,56,106,256][level - 1] };
   if (key === 'warehouse') return { warehouse_capacity: 120 * 2 ** (level - 1) };
-  if (key === 'tool_station') return { yield_bonus_percent: 25 * (level - 1) };
+  if (key === 'tool_station') return { yield_bonus_percent: 25 * (level - 1), processing_speed_percent:[100,85,70][level-1] };
+  if (key === 'workers_quarters') return { worker_capacity: 3 + level * 3 };
+  if (key === 'smeltery' || key === 'gem_workshop') return { processing_speed_percent: level === 0 ? 0 : [100,85,70][level - 1] };
   throw new Error('Unknown Deep Claim building.');
 }
 export function buildingEffect(key: DeepClaimBuildingId, level: number): string {
@@ -89,5 +106,20 @@ export function buildingEffect(key: DeepClaimBuildingId, level: number): string 
   if (key === 'mine_office') return `${benefit.crew_slots} simultaneous ${level === 1 ? 'crew' : 'crews'}`;
   if (key === 'mine_shaft') return `Access to ${benefit.max_depth} m · shaft corridor to ${benefit.shaft_depth} m`;
   if (key === 'warehouse') return `${benefit.warehouse_capacity} resource units of storage`;
-  return `${benefit.yield_bonus_percent}% extraction equipment bonus`;
+  if (key === 'tool_station') return `${benefit.yield_bonus_percent}% extraction bonus · ${100-benefit.processing_speed_percent!}% shorter crafting times`;
+  if (key === 'workers_quarters') return `${benefit.worker_capacity} worker capacity`;
+  return level === 0 ? 'Build to open this production lane' : `One production lane · ${100 - benefit.processing_speed_percent!}% shorter processing times`;
 }
+
+/** Canonical public production/workforce data; no world seeds or daily candidate rolls. */
+export const PHASE2_CATALOG = phase2Catalog;
+export const EQUIPMENT_CATALOG = phase2Catalog.equipment as DeepClaimEquipmentDefinition[];
+export const EQUIPMENT_BY_KEY = Object.fromEntries(EQUIPMENT_CATALOG.map(item => [item.key,item])) as Record<string, DeepClaimEquipmentDefinition>;
+export const RECIPE_CATALOG = phase2Catalog.recipes.map(recipe => ({ ...recipe, effective_duration_seconds: recipe.duration_seconds })) as DeepClaimRecipe[];
+export const RECIPE_BY_KEY = Object.fromEntries(RECIPE_CATALOG.map(recipe => [recipe.key,recipe])) as Record<string, DeepClaimRecipe>;
+export const CANDIDATE_PROFILES = phase2Catalog.candidate_profiles;
+export const TRAINING_COST = phase2Catalog.training.cash_cost;
+export const TRAINING_GAIN = phase2Catalog.training.stat_gain;
+export const EQUIPMENT_WEAR_PER_ENERGY = phase2Catalog.wear_per_energy;
+
+export const EQUIPMENT_CAPACITY = phase2Catalog.equipment_capacity;

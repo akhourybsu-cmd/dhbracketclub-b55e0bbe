@@ -4,8 +4,8 @@
  */
 import { BUILDING_UPGRADE_COSTS, RESOURCE_BY_ID, STARTER_WORKERS, resourceSaleValue, resourceTotal } from './catalog';
 import {
-  DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_STAT_IDS, DEEP_CLAIM_TIME_ZONE, type DeepClaimBuildingId,
-  type DeepClaimDuration, type DeepClaimMode, type DeepClaimPoint, type DeepClaimResourceId, type DeepClaimResources,
+  DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_STAT_IDS, DEEP_CLAIM_TIME_ZONE, type DeepClaimBuildingId,
+  type DeepClaimDuration, type DeepClaimMode, type DeepClaimPoint, type DeepClaimResourceId, type DeepClaimMineralId, type DeepClaimResources,
   type DeepClaimStageKey, type DeepClaimStats, type DeepClaimWorker,
 } from './types';
 
@@ -20,8 +20,8 @@ function ratio(numerators: number[], denominators: number[], up = false): number
   const result = Number(up ? (top + bottom - 1n) / bottom : top / bottom);
   return whole(result);
 }
-const hardnessTenths: Record<DeepClaimResourceId, number> = { stone: 10, clay: 7, coal: 10, copper_ore: 12, tin_ore: 12, iron_ore: 15, quartz: 13, silver_ore: 18 };
-export const DEEP_CLAIM_HARDNESS = Object.fromEntries(DEEP_CLAIM_RESOURCE_IDS.map(id => [id, hardnessTenths[id] / 10])) as Record<DeepClaimResourceId, number>;
+const hardnessTenths: Record<DeepClaimMineralId, number> = { stone: 10, clay: 7, coal: 10, copper_ore: 12, tin_ore: 12, iron_ore: 15, quartz: 13, silver_ore: 18, amethyst: 20, gold_ore: 22 };
+export const DEEP_CLAIM_HARDNESS = Object.fromEntries(DEEP_CLAIM_MINERAL_IDS.map(id => [id, hardnessTenths[id] / 10])) as Record<DeepClaimMineralId, number>;
 export function workerLevel(xp: number): number { return Math.min(10, 1 + Math.floor(whole(xp) / 60)); }
 export function effectiveWorkerStats(base: DeepClaimStats, xp: number): DeepClaimStats {
   const bonus = workerLevel(xp) - 1;
@@ -45,7 +45,7 @@ export interface DeepClaimCrewPlanInput {
   path_edges: number;
   target_depth: number;
   tool_level: number;
-  material?: DeepClaimResourceId;
+  material?: DeepClaimMineralId;
   remaining?: number;
   tutorial?: boolean;
 }
@@ -78,8 +78,9 @@ export function calculateCrewPlan(input: DeepClaimCrewPlanInput): DeepClaimCrewP
   const heavy = count('heavy_boots'), short = count('short_stride'), swing = count('sure_swing'), deliberate = count('deliberate');
   const wages = crew.reduce((sum, worker) => {
     const template = STARTER_WORKERS.find(template => template.name === worker.name && template.specialty === worker.specialty);
-    if (!template) throw new Error('This wage model supports the three version-one starter workers.');
-    return sum + template.base_wage * energy;
+    const wage = worker.wage ?? template?.base_wage;
+    if (wage === undefined) throw new Error('A worker wage must be provided by the server.');
+    return sum + whole(wage,1) * energy;
   }, 0);
   const capacity = crew.reduce((sum, worker) => sum + ratio([80 + worker.stats.logistics, worker.traits.includes('pack_mule') ? 6 : 5], [10]), 0);
   let travel: number, setup: number, work: number, haul: number, back: number, mining_capacity = 0, quantity: number;
@@ -140,7 +141,8 @@ export function retainsOperatingCapital(cash: number, wages: number, inventory: 
   return cash >= wages && cash - wages + resourceSaleValue(inventory) + resourceSaleValue(guaranteedCargo) >= 2;
 }
 export function canUpgrade(cash: number, building: DeepClaimBuildingId, currentLevel: number): boolean {
-  whole(cash); whole(currentLevel, 1, 3);
-  const price = BUILDING_UPGRADE_COSTS[building]?.[currentLevel - 1];
+  const added = ['workers_quarters','smeltery','gem_workshop'].includes(building);
+  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 4 : 3);
+  const price = BUILDING_UPGRADE_COSTS[building]?.[added ? currentLevel : currentLevel - 1];
   return price !== undefined && cash - price >= 2;
 }

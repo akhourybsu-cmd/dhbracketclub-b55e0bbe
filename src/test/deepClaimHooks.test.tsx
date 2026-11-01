@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDeepClaim } from '@/hooks/useDeepClaim';
 import { companySnapshot } from './fixtures/deepClaim';
+import { phaseTwoSnapshot } from './fixtures/deepClaimPhase2';
 import type { DeepClaimSnapshot } from '@/lib/deepClaim/types';
 const wire = vi.hoisted(() => ({ rpc: vi.fn(), user: 'user-a', club: 'club-a', installed: true }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: wire.rpc } }));
@@ -19,6 +20,52 @@ beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.user = 'user-a
   onlineManager.setOnline(true); Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); wire.rpc.mockResolvedValue({ data: companySnapshot(), error: null }); });
 afterEach(() => { cleanup(); localStorage.clear(); });
 describe('Deep Claim company query and transaction recovery', () => {
+  it.each([
+    ['dc_start_production', { p_recipe_key: 'smelt_copper', p_batches: 2, p_expected_revision: 1 }, 'Start production'],
+    ['dc_hire', { p_candidate_id: 'candidate-a', p_expected_revision: 1 }, 'Hire employee'],
+    ['dc_train', { p_worker_id: 'worker-a', p_stat: 'mining', p_expected_revision: 1 }, 'Train employee'],
+    ['dc_assign_equipment', { p_item_id: 'item-a', p_worker_id: null, p_expected_revision: 1 }, 'Assign equipment'],
+    ['dc_repair_equipment', { p_item_id: 'item-a', p_expected_revision: 1 }, 'Repair equipment'],
+    ['dc_retire_equipment', { p_item_id: 'item-a', p_expected_revision: 1 }, 'Retire equipment'],
+    ['dc_collect_production', { p_job_id: 'production-a' }, 'Collect production'],
+  ] as const)('recovers a persisted %s request with its exact identity after a reload', async (operation, args, label) => {
+    const request = { ...args, p_request_id: '00000000-0000-4000-8000-000000000090' };
+    localStorage.setItem('dh:deep-claim:pending:v1:user-a:club-a', JSON.stringify({ operation, args: request, label, fingerprint: JSON.stringify([operation, args]) }));
+    const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data?.revision).toBe(1));
+    expect(result.current.readOnly).toBe(true); expect(result.current.pendingAction).toBe(label);
+    await act(async () => { await result.current.retryPending(); });
+    expect(wire.rpc).toHaveBeenCalledWith(operation, request);
+    expect(result.current.pendingAction).toBeNull();
+    expect(localStorage.getItem('dh:deep-claim:pending:v1:user-a:club-a')).toBeNull();
+  });
+  it('keeps a confirmed crafting request recoverable when its version-two response is corrupted', async () => {
+    const snapshot = phaseTwoSnapshot();
+    wire.rpc.mockImplementation(async (name: string) => ({ data: name === 'dc_start_production'
+      ? { ...snapshot, equipment_catalog: [] } : snapshot, error: null }));
+    const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data?.schema_version).toBe(2));
+    await act(async () => { await expect(result.current.startProduction('smelt_copper', 1)).rejects.toThrow('could not be verified'); });
+    const first = wire.rpc.mock.calls.find(([name]) => name === 'dc_start_production');
+    expect(result.current.pendingAction).toBe('Start production'); expect(result.current.readOnly).toBe(true);
+    wire.rpc.mockResolvedValue({ data: phaseTwoSnapshot(3), error: null });
+    await act(async () => { await result.current.retryPending(); });
+    const attempts = wire.rpc.mock.calls.filter(([name]) => name === 'dc_start_production');
+    expect(attempts).toHaveLength(2); expect(attempts[1]).toEqual(first);
+    expect(result.current.pendingAction).toBeNull(); expect(result.current.data?.revision).toBe(3);
+  });
+  it('clears an explicitly rejected daily training attempt so the worker can be reviewed again', async () => {
+    const snapshot = phaseTwoSnapshot();
+    wire.rpc.mockImplementation(async (name: string) => name === 'dc_train'
+      ? { data: null, error: { code: 'P0001', message: 'This worker already trained today.' } }
+      : { data: snapshot, error: null });
+    const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
+    await waitFor(() => expect(result.current.data?.schema_version).toBe(2));
+    await act(async () => { await expect(result.current.train(snapshot.workers[0].id, 'mining')).rejects.toThrow('already trained'); });
+    expect(result.current.pendingAction).toBeNull();
+    expect(localStorage.getItem('dh:deep-claim:pending:v1:user-a:club-a')).toBeNull();
+    expect(result.current.error).toContain('already trained');
+  });
   it('shows an actionable connection state instead of perpetual loading when first opened offline', () => {
     onlineManager.setOnline(false); Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });

@@ -1,9 +1,10 @@
 import {
-  DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
+  DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
   DEEP_CLAIM_STAT_IDS, type DeepClaimExpedition, type DeepClaimPoint, type DeepClaimPreview, type DeepClaimResources,
   type DeepClaimSnapshot, type DeepClaimTile, type DeepClaimWorkerPosition, type DeepClaimWorld,
 } from './types';
-import { resourceTotal } from './catalog';
+import { EQUIPMENT_BY_KEY, RECIPE_BY_KEY, resourceTotal } from './catalog';
+import { equipmentRepairQuote, workerStatsWithEquipment } from './production';
 
 export class DeepClaimValidationError extends Error {
   constructor(message: string) { super(message); this.name = 'DeepClaimValidationError'; }
@@ -30,7 +31,7 @@ export function validateDeepClaimWorld(value: unknown): asserts value is DeepCla
   for (const tile of value.tiles) {
     if (!object(tile) || !keys(tile, ['x','y','terrain','material','remaining','initial_amount'])
       || !integer(tile.x, 0, 95) || !integer(tile.y, 0, 1_000_000) || !memberOf(tile.terrain, ['soil','stone','excavated'])
-      || tile.material !== null && !memberOf(tile.material, DEEP_CLAIM_RESOURCE_IDS)
+      || tile.material !== null && !memberOf(tile.material, DEEP_CLAIM_MINERAL_IDS)
       || !integer(tile.remaining) || !integer(tile.initial_amount) || tile.remaining > tile.initial_amount
       || tile.material === null && tile.remaining !== 0
       || tile.terrain === 'excavated' && tile.remaining !== 0 || seen.has(`${tile.x}:${tile.y}`)) fail('Invalid revealed terrain or deposit.');
@@ -45,7 +46,7 @@ function validateJob(value: unknown): asserts value is DeepClaimExpedition {
     || !Array.isArray(value.path) || value.path.length < 1 || !value.path.every(entry => point(entry)) || !Array.isArray(value.stages) || value.stages.length !== 5
     || !timestamp(value.started_at) || !timestamp(value.completes_at) || ![20,60,180].includes(Number(value.duration_minutes))
     || !integer(value.duration_seconds, 1) || Date.parse(value.completes_at) - Date.parse(value.started_at) !== value.duration_seconds * 1000
-    || typeof value.tutorial !== 'boolean' || !integer(value.wages) || !integer(value.energy_per_worker, 1, 3) || value.config_version !== 1) fail('Invalid expedition.');
+    || typeof value.tutorial !== 'boolean' || !integer(value.wages) || !integer(value.energy_per_worker, 1, 3) || ![1,2].includes(Number(value.config_version))) fail('Invalid expedition.');
   let cursor = Date.parse(value.started_at);
   for (let i = 0; i < value.stages.length; i++) {
     const stage = value.stages[i];
@@ -62,30 +63,38 @@ function validateJob(value: unknown): asserts value is DeepClaimExpedition {
   }
 }
 export function validateDeepClaimSnapshot(value: unknown, identity?: { userId: string; clubId: string }): asserts value is DeepClaimSnapshot {
-  if (!object(value) || !keys(value, ['schema_version','server_now','revision','company','resources','workers','world','expeditions','buildings','log'])
-    || value.schema_version !== 1 || !timestamp(value.server_now) || !integer(value.revision)
+  if (!object(value) || !keys(value, ['schema_version','server_now','revision','company','resources','workers','world','expeditions','buildings','log','candidates','equipment','production_jobs','recipes','equipment_catalog'])
+    || ![1,2].includes(Number(value.schema_version)) || !timestamp(value.server_now) || !integer(value.revision)
     || !Array.isArray(value.workers) || !Array.isArray(value.expeditions) || !Array.isArray(value.buildings) || !Array.isArray(value.log)) fail('Invalid Deep Claim save.');
   validateDeepClaimResources(value.resources);
+  const v2 = value.schema_version === 2;
+  if (v2) validatePhaseTwoCollections(value);
+  else if (['candidates','equipment','production_jobs','recipes','equipment_catalog'].some(key => value[key] !== undefined)) fail('Phase-two records require a version-two save.');
   if (value.company === null) {
-    if (value.world !== null || value.revision !== 0 || value.workers.length || value.expeditions.length || value.buildings.length || value.log.length || resourceTotal(value.resources)) fail('Invalid company setup state.');
+    if (value.world !== null || value.revision !== 0 || value.workers.length || value.expeditions.length || value.buildings.length || value.log.length || resourceTotal(value.resources)
+      || v2 && ['candidates','equipment','production_jobs'].some(key => (value[key] as unknown[]).length > 0)) fail('Invalid company setup state.');
     return;
   }
   const c = value.company;
-  if (!object(c) || !keys(c, ['id','club_id','user_id','name','cash','timezone','energy_day','tutorial_used','warehouse_capacity','warehouse_used','crew_slots'])
+  if (!object(c) || !keys(c, ['id','club_id','user_id','name','cash','timezone','energy_day','tutorial_used','warehouse_capacity','warehouse_used','crew_slots','worker_capacity','equipment_capacity'])
     || !text(c.id) || !text(c.club_id) || !text(c.user_id) || !text(c.name, 64) || !integer(c.cash) || !text(c.timezone, 80)
     || typeof c.energy_day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(c.energy_day) || typeof c.tutorial_used !== 'boolean'
     || !integer(c.warehouse_capacity, 1) || !integer(c.warehouse_used) || c.warehouse_used > c.warehouse_capacity
     || c.warehouse_used !== resourceTotal(value.resources) || !integer(c.crew_slots, 1, 3)
+    || v2 && (!integer(c.worker_capacity,3,12) || c.equipment_capacity !== 48)
     || identity && (c.user_id !== identity.userId || c.club_id !== identity.clubId)) fail('Invalid company identity or inventory.');
   validateDeepClaimWorld(value.world);
   const workerIds = new Set<string>();
-  if (value.workers.length !== 3) fail('Invalid starter workforce.');
+  if (value.workers.length < 3 || value.workers.length > (v2 ? Number(c.worker_capacity) : 3)) fail('Invalid company workforce.');
   for (const worker of value.workers) {
-    if (!object(worker) || !keys(worker, ['id','name','specialty','traits','stats','xp','level','energy','assigned_job_id'])
+    if (!object(worker) || !keys(worker, ['id','name','specialty','traits','stats','xp','level','energy','assigned_job_id','wage','base_stats','trained_day','training_cost','training_gain','equipment_ids'])
       || !text(worker.id) || workerIds.has(worker.id) || !text(worker.name, 80) || !memberOf(worker.specialty, DEEP_CLAIM_SPECIALTIES)
       || !Array.isArray(worker.traits) || worker.traits.some(trait => !text(trait, 80)) || !object(worker.stats) || !keys(worker.stats, DEEP_CLAIM_STAT_IDS)
       || DEEP_CLAIM_STAT_IDS.some(id => !integer(worker.stats[id], 1, 100)) || !integer(worker.xp) || !integer(worker.level, 1, 10)
       || !integer(worker.energy, 0, DEEP_CLAIM_DAILY_ENERGY) || worker.assigned_job_id !== null && !text(worker.assigned_job_id)) fail('Invalid worker record.');
+    if (v2 && (!integer(worker.wage,1) || !validStats(worker.base_stats) || worker.trained_day !== null && !day(worker.trained_day)
+      || worker.training_cost !== 30 || worker.training_gain !== 3 || !Array.isArray(worker.equipment_ids)
+      || worker.equipment_ids.length > 3 || worker.equipment_ids.some(id => !text(id)) || new Set(worker.equipment_ids).size !== worker.equipment_ids.length)) fail('Invalid worker training or equipment record.');
     workerIds.add(worker.id);
   }
   const jobs = new Set<string>(), activeWorkers = new Set<string>();
@@ -100,10 +109,13 @@ export function validateDeepClaimSnapshot(value: unknown, identity?: { userId: s
   }
   const expeditions = value.expeditions as DeepClaimExpedition[];
   if (value.workers.some(worker => worker.assigned_job_id !== null && !expeditions.some(job => job.id === worker.assigned_job_id && job.status === 'active' && job.worker_ids.includes(worker.id)))) fail('Invalid active worker assignment.');
-  if (new Set(value.buildings.map(building => object(building) ? building.key : null)).size !== 4 || value.buildings.length !== 4) fail('Invalid company buildings.');
+  if (new Set(value.buildings.map(building => object(building) ? building.key : null)).size !== (v2 ? 7 : 4) || value.buildings.length !== (v2 ? 7 : 4)) fail('Invalid company buildings.');
   for (const building of value.buildings) if (!object(building) || !keys(building, ['key','level','max_level','upgrade_cost','effect'])
-    || !memberOf(building.key, DEEP_CLAIM_BUILDING_IDS) || !integer(building.level, 1, 3) || building.max_level !== 3
+    || !memberOf(building.key, v2 ? DEEP_CLAIM_BUILDING_IDS : DEEP_CLAIM_BUILDING_IDS.slice(0,4))
+    || !integer(building.level, v2 && ['workers_quarters','smeltery','gem_workshop'].includes(String(building.key)) ? 0 : 1, v2 && building.key === 'mine_shaft' ? 4 : 3)
+    || building.max_level !== (v2 && building.key === 'mine_shaft' ? 4 : 3)
     || building.upgrade_cost !== null && !integer(building.upgrade_cost, 1) || !text(building.effect, 240)) fail('Invalid building upgrade.');
+  if (v2) validatePhaseTwoAssignments(value as unknown as DeepClaimSnapshot);
   for (const entry of value.log) if (!object(entry) || !keys(entry, ['id','kind','title','created_at']) || !text(entry.id) || !text(entry.kind, 60) || !text(entry.title, 240) || !timestamp(entry.created_at)) fail('Invalid company log.');
 }
 export function validateDeepClaimPreview(value: unknown): asserts value is DeepClaimPreview {
@@ -113,7 +125,7 @@ export function validateDeepClaimPreview(value: unknown): asserts value is DeepC
     || !object(value.estimated_yield) || !keys(value.estimated_yield, ['min','max']) || !integer(value.estimated_yield.min) || !integer(value.estimated_yield.max)
     || value.estimated_yield.min > value.estimated_yield.max || !Array.isArray(value.route) || !value.route.every(entry => point(entry))
     || !integer(value.cargo_capacity) || !memberOf(value.risk_level, ['low','moderate','high']) || !integer(value.accessible_depth)
-    || !Array.isArray(value.expected_resources) || value.expected_resources.some(id => !memberOf(id, DEEP_CLAIM_RESOURCE_IDS)) || !timestamp(value.projected_completion_at)
+    || !Array.isArray(value.expected_resources) || value.expected_resources.some(id => !memberOf(id, DEEP_CLAIM_MINERAL_IDS)) || !timestamp(value.projected_completion_at)
     || !Array.isArray(value.stages) || value.stages.some(stage => !object(stage) || !keys(stage, ['key','duration_seconds']) || !memberOf(stage.key, stageKeys) || !integer(stage.duration_seconds))) fail('Invalid expedition preview.');
   if (value.allowed && value.reasons.length || !value.allowed && !value.reasons.length) fail('Invalid expedition preview availability.');
 }
@@ -157,3 +169,90 @@ export function projectWorkers(snapshot: DeepClaimSnapshot, estimatedServerNowMs
   });
 }
 export const projectWorkerPositions = projectWorkers;
+
+const day = (value: unknown): value is string => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+function validStats(value: unknown) { return object(value) && keys(value,DEEP_CLAIM_STAT_IDS) && DEEP_CLAIM_STAT_IDS.every(key => integer(value[key],1,100)); }
+function sameAmounts(first: DeepClaimResources, second: DeepClaimResources) {
+  return DEEP_CLAIM_RESOURCE_IDS.every(id => (first[id] ?? 0) === (second[id] ?? 0));
+}
+function validatePhaseTwoCollections(value: Record<string,unknown>) {
+  for (const name of ['candidates','equipment','production_jobs','recipes','equipment_catalog']) if (!Array.isArray(value[name])) fail('A version-two save requires workforce and production catalogs.');
+  const equipmentCatalog = value.equipment_catalog as unknown[], recipes = value.recipes as unknown[], candidates = value.candidates as unknown[], equipment = value.equipment as unknown[], jobs = value.production_jobs as unknown[];
+  // A member without a company has no operational catalogs yet. Both may
+  // be empty only at the exact revision-zero bootstrap boundary.
+  if (value.company === null && value.revision === 0 && equipmentCatalog.length === 0 && recipes.length === 0
+    && candidates.length === 0 && equipment.length === 0 && jobs.length === 0) return;
+  if (equipmentCatalog.length !== Object.keys(EQUIPMENT_BY_KEY).length || recipes.length !== Object.keys(RECIPE_BY_KEY).length || candidates.length > 7) fail('Invalid workforce or recipe catalog.');
+  const definitionKeys = new Set<string>(), recipeKeys = new Set<string>(), candidateIds = new Set<string>(), equipmentIds = new Set<string>(), jobIds = new Set<string>();
+  for (const definition of equipmentCatalog) {
+    if (!object(definition) || !keys(definition,['key','name','slot','tier','max_durability','bonuses','repair_rate','repair_materials']) || !text(definition.key)) fail('Invalid equipment catalog.');
+    const canonical = EQUIPMENT_BY_KEY[definition.key];
+    if (!canonical || definitionKeys.has(definition.key) || definition.name !== canonical.name || definition.slot !== canonical.slot || definition.tier !== canonical.tier || definition.max_durability !== canonical.max_durability || definition.repair_rate !== canonical.repair_rate || !object(definition.bonuses) || !keys(definition.bonuses,DEEP_CLAIM_STAT_IDS) || DEEP_CLAIM_STAT_IDS.some(stat => (definition.bonuses as Record<string,unknown>)[stat] !== undefined && !integer((definition.bonuses as Record<string,unknown>)[stat],0,30)) || DEEP_CLAIM_STAT_IDS.some(stat => ((definition.bonuses as Record<string,unknown>)[stat] ?? 0) !== (canonical.bonuses[stat] ?? 0))) fail('Unsupported equipment rules.');
+    validateDeepClaimResources(definition.repair_materials);
+    if (!sameAmounts(definition.repair_materials,canonical.repair_materials)) fail('Unsupported equipment repair materials.');
+    definitionKeys.add(definition.key);
+  }
+  for (const recipe of recipes) {
+    if (!object(recipe) || !keys(recipe,['key','version','name','station','required_station_level','duration_seconds','effective_duration_seconds','cash_cost','inputs','outputs','equipment_output','max_batches']) || !text(recipe.key)) fail('Invalid recipe catalog.');
+    const canonical = RECIPE_BY_KEY[recipe.key];
+    if (!canonical || recipeKeys.has(recipe.key) || recipe.version !== canonical.version || recipe.name !== canonical.name || recipe.station !== canonical.station || recipe.required_station_level !== canonical.required_station_level || recipe.duration_seconds !== canonical.duration_seconds || recipe.cash_cost !== canonical.cash_cost || recipe.equipment_output !== canonical.equipment_output || recipe.max_batches !== 10 || !integer(recipe.effective_duration_seconds,1)) fail('Unsupported production recipe.');
+    validateDeepClaimResources(recipe.inputs); validateDeepClaimResources(recipe.outputs);
+    if (!sameAmounts(recipe.inputs,canonical.inputs) || !sameAmounts(recipe.outputs,canonical.outputs)) fail('Unsupported recipe quantities.');
+    recipeKeys.add(recipe.key);
+  }
+  for (const candidate of candidates) {
+    if (!object(candidate) || !keys(candidate,['id','name','specialty','traits','stats','wage','hire_cost','operating_day','hired']) || !text(candidate.id) || candidateIds.has(candidate.id) || !text(candidate.name,80) || !memberOf(candidate.specialty,DEEP_CLAIM_SPECIALTIES) || !Array.isArray(candidate.traits) || candidate.traits.some(trait => !text(trait,80)) || !validStats(candidate.stats) || !integer(candidate.wage,1) || !integer(candidate.hire_cost,1) || !day(candidate.operating_day) || typeof candidate.hired !== 'boolean') fail('Invalid daily hiring candidate.');
+    candidateIds.add(candidate.id);
+  }
+  for (const item of equipment) {
+    if (!object(item) || !keys(item,['id','definition_key','worker_id','durability','max_durability','repair_cost','repair_materials']) || !text(item.id) || equipmentIds.has(item.id) || !text(item.definition_key) || item.worker_id !== null && !text(item.worker_id) || !integer(item.durability) || !integer(item.max_durability,1) || item.durability > item.max_durability || !integer(item.repair_cost)) fail('Invalid owned equipment.');
+    const definition = EQUIPMENT_BY_KEY[item.definition_key];
+    if (!definition || item.max_durability !== definition.max_durability) fail('Unsupported equipment durability.');
+    validateDeepClaimResources(item.repair_materials);
+    const repair=equipmentRepairQuote(definition,item.durability);
+    if (item.repair_cost !== repair.cash_cost || !sameAmounts(item.repair_materials,repair.materials)) fail('Equipment repair quote does not match its condition.');
+    equipmentIds.add(item.id);
+  }
+  for (const job of jobs) {
+    if (!object(job) || !keys(job,['id','recipe_key','recipe_version','batches','station','status','started_at','completes_at','duration_seconds','cash_cost','inputs','outputs','equipment_outputs']) || !text(job.id) || jobIds.has(job.id) || !text(job.recipe_key) || !RECIPE_BY_KEY[job.recipe_key] || job.recipe_version !== 1 || !integer(job.batches,1,10) || job.station !== RECIPE_BY_KEY[job.recipe_key].station || !memberOf(job.status,['active','ready','collected']) || !timestamp(job.started_at) || !timestamp(job.completes_at) || !integer(job.duration_seconds,1) || Date.parse(job.completes_at)-Date.parse(job.started_at) !== job.duration_seconds*1000 || !integer(job.cash_cost) || !Array.isArray(job.equipment_outputs) || job.equipment_outputs.some(key => typeof key !== 'string' || !EQUIPMENT_BY_KEY[key]) || job.equipment_outputs.length > job.batches) fail('Invalid production job.');
+    validateDeepClaimResources(job.inputs); validateDeepClaimResources(job.outputs);
+    const recipe=RECIPE_BY_KEY[job.recipe_key];
+    if (job.cash_cost !== recipe.cash_cost*job.batches
+      || DEEP_CLAIM_RESOURCE_IDS.some(id=>(job.inputs as DeepClaimResources)[id] !== undefined && (job.inputs as DeepClaimResources)[id] !== (recipe.inputs[id]??0)*Number(job.batches))
+      || DEEP_CLAIM_RESOURCE_IDS.some(id=>((job.inputs as DeepClaimResources)[id]??0) !== (recipe.inputs[id]??0)*Number(job.batches))
+      || DEEP_CLAIM_RESOURCE_IDS.some(id=>((job.outputs as DeepClaimResources)[id]??0) > (recipe.outputs[id]??0)*Number(job.batches))
+      || (job.equipment_outputs as string[]).some(key=>key!==recipe.equipment_output)) fail('Production quantities do not match the frozen recipe.');
+    const possibleTimes=[1,2,3].filter(level=>level>=recipe.required_station_level).map(level=>Math.ceil(recipe.duration_seconds*[100,85,70][level-1]/100)*Number(job.batches));
+    if (!possibleTimes.includes(Number(job.duration_seconds))) fail('Production timing does not match a supported station level.');
+    if (job.status==='active' && (DEEP_CLAIM_RESOURCE_IDS.some(id=>((job.outputs as DeepClaimResources)[id]??0) !== (recipe.outputs[id]??0)*Number(job.batches)) || (job.equipment_outputs as string[]).length !== (recipe.equipment_output ? job.batches : 0))) fail('Active production must retain its complete uncollected outputs.');
+    jobIds.add(job.id);
+  }
+  const pending = jobs.filter(job => (job as {status:string}).status !== 'collected');
+  if (pending.length > 3 || equipment.length + pending.reduce<number>((sum,job) => sum + ((job as {equipment_outputs: unknown[]}).equipment_outputs.length),0) > 48) fail('Production queue or equipment capacity exceeded.');
+}
+function validatePhaseTwoAssignments(snapshot: DeepClaimSnapshot) {
+  const equipment = snapshot.equipment!, recipes = snapshot.recipes!;
+  const quarters = snapshot.buildings.find(building => building.key === 'workers_quarters')!.level;
+  const office = snapshot.buildings.find(building => building.key === 'mine_office')!.level;
+  const warehouse = snapshot.buildings.find(building => building.key === 'warehouse')!.level;
+  const shaft = snapshot.buildings.find(building => building.key === 'mine_shaft')!.level;
+  if (snapshot.company!.worker_capacity !== 3+3*quarters || snapshot.company!.crew_slots !== office
+    || snapshot.company!.warehouse_capacity !== 120*2**(warehouse-1) || snapshot.world!.max_depth !== [49,99,149,299][shaft-1]) fail('Company capacity must match its actual buildings.');
+  const usedSlots = new Set<string>();
+  for (const item of equipment) if (item.worker_id !== null) {
+    const worker = snapshot.workers.find(worker => worker.id === item.worker_id), slot = EQUIPMENT_BY_KEY[item.definition_key].slot;
+    const key = `${item.worker_id}:${slot}`;
+    if (!worker || !worker.equipment_ids!.includes(item.id) || usedSlots.has(key)) fail('Equipment must belong to exactly one worker slot.');
+    usedSlots.add(key);
+  }
+  for (const worker of snapshot.workers) if (worker.equipment_ids!.some(id => !equipment.some(item => item.id === id && item.worker_id === worker.id))) fail('Invalid worker equipment assignment.');
+  for (const worker of snapshot.workers) {
+    const expected=workerStatsWithEquipment(worker.base_stats!,worker.xp,equipment.filter(item=>item.worker_id===worker.id));
+    if (DEEP_CLAIM_STAT_IDS.some(stat=>worker.stats[stat]!==expected[stat])) fail('Worker effective stats must apply training, XP and usable gear once.');
+  }
+  for (const recipe of recipes) {
+    const level = Math.max(1,snapshot.buildings.find(building => building.key === recipe.station)?.level ?? 1);
+    const effective = Math.ceil(recipe.duration_seconds * [100,85,70][level-1] / 100);
+    if (recipe.effective_duration_seconds !== effective) fail('Recipe timing does not match its operating station.');
+  }
+}

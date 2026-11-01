@@ -11,7 +11,7 @@ export const DEEP_CLAIM_ACTORS = {
   club: fixtureId(1001), otherClub: fixtureId(1002), privateClub: fixtureId(1003),
 };
 
-export async function createDeepClaimDatabase({ install = true } = {}) {
+export async function createDeepClaimDatabase({ install = true, phase = 2 } = {}) {
   const db = new PGlite();
   const sources = new Map();
   async function source(path) {
@@ -31,7 +31,7 @@ export async function createDeepClaimDatabase({ install = true } = {}) {
     await source('supabase/migrations/20260509210000_platform-assets.sql');
     const migrations = (await readdir('supabase/migrations')).filter(path => /^20261102\d+_deep_claim.*\.sql$/.test(path)).sort();
     assert.ok(migrations.length, 'Deep Claim migrations must exist before running this fixture');
-    for (const path of migrations) await source(`supabase/migrations/${path}`);
+    for (const path of migrations.filter(path => phase >= 2 || path < '20261102030000_')) await source(`supabase/migrations/${path}`);
     const initialInstallations = (await db.query("select count(*)::int n from public.club_installed_assets i join public.platform_assets a on a.id=i.asset_id where a.slug='deep-claim'")).rows[0].n;
     if (install) await db.exec(`
       insert into public.club_installed_assets(club_id,asset_id,enabled,visible_to_members)
@@ -39,17 +39,25 @@ export async function createDeepClaimDatabase({ install = true } = {}) {
       where a.slug='deep-claim' on conflict(club_id,asset_id) do update set enabled=true,visible_to_members=true;
     `);
     const functions = new Map();
-    const rows = (await db.query(`
-      select p.proname name,p.proargnames names,
-        array(select format_type(t,null) from unnest(p.proargtypes::oid[]) t) types,
-        p.pronargs-p.pronargdefaults required
-      from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-      where n.nspname='public' and p.proname ~ '^(dc_|deep_claim_)'
-        and has_function_privilege('authenticated',p.oid,'EXECUTE')
-    `)).rows;
-    for (const row of rows) {
-      assert.ok(!functions.has(row.name), `RPC overload requires explicit fixture handling: ${row.name}`);
-      functions.set(row.name, row);
+    async function refreshFunctions() {
+      functions.clear();
+      const rows = (await db.query(`
+        select p.proname name,p.proargnames names,
+          array(select format_type(t,null) from unnest(p.proargtypes::oid[]) t) types,
+          p.pronargs-p.pronargdefaults required
+        from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+        where n.nspname='public' and p.proname ~ '^(dc_|deep_claim_)'
+          and has_function_privilege('authenticated',p.oid,'EXECUTE')
+      `)).rows;
+      for (const row of rows) {
+        assert.ok(!functions.has(row.name), `RPC overload requires explicit fixture handling: ${row.name}`);
+        functions.set(row.name, row);
+      }
+    }
+    await refreshFunctions();
+    async function applyPendingMigrations() {
+      for (const path of migrations) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
+      await refreshFunctions();
     }
     async function actorQuery(user, sql, values = [], role = 'authenticated') {
       assert.ok(['authenticated', 'anon', 'service_role'].includes(role));
@@ -93,7 +101,18 @@ export async function createDeepClaimDatabase({ install = true } = {}) {
     async function expireEnergyDay(user) {
       await db.query("update public.dc_companies set energy_day=(clock_timestamp() at time zone timezone)::date-1,energy_reset_at=clock_timestamp()-interval '1 second' where user_id=$1", [user]);
     }
-    return { db, sources, functions, initialInstallations, actorQuery, rpc, advanceJob, expireEnergyDay, assertSourcesUnchanged, close: () => db.close() };
+    /** Shift a company's unfinished production queue together, preserving lane order. */
+    async function advanceProduction(user, jobId, seconds) {
+      assert.ok(Number.isFinite(seconds) && seconds > 0 && seconds <= 86400);
+      await db.transaction(async transaction => {
+        const found = (await transaction.query('select p.company_id from public.dc_production_jobs p join public.dc_companies c on c.id=p.company_id where p.id=$1 and c.user_id=$2', [jobId, user])).rows[0];
+        assert.ok(found, 'The isolated production clock command requires an existing owned job');
+        await transaction.exec('alter table public.dc_production_jobs disable trigger dc_production_guard');
+        await transaction.query("update public.dc_production_jobs set started_at=started_at-$2*interval '1 second',completes_at=completes_at-$2*interval '1 second' where company_id=$1 and status<>'collected'", [found.company_id, seconds]);
+        await transaction.exec('alter table public.dc_production_jobs enable trigger dc_production_guard');
+      });
+    }
+    return { db, sources, functions, initialInstallations, actorQuery, rpc, applyPendingMigrations, advanceJob, advanceProduction, expireEnergyDay, assertSourcesUnchanged, close: () => db.close() };
   } catch (error) {
     await db.close();
     throw error;

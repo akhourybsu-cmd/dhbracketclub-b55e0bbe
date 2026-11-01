@@ -1,0 +1,659 @@
+{
+  "version": 2,
+  "training": {
+    "cash_cost": 30,
+    "stat_gain": 3
+  },
+  "wear_per_energy": 2,
+  "housing_capacities": [
+    3,
+    6,
+    9,
+    12
+  ],
+  "station_speed_percent": [
+    100,
+    85,
+    70
+  ],
+  "building_costs": {
+    "mine_office": [
+      90,
+      1200
+    ],
+    "mine_shaft": [
+      80,
+      2000,
+      5000
+    ],
+    "warehouse": [
+      60,
+      1000
+    ],
+    "tool_station": [
+      50,
+      1600
+    ],
+    "workers_quarters": [
+      90,
+      450,
+      1200
+    ],
+    "smeltery": [
+      90,
+      350,
+      900
+    ],
+    "gem_workshop": [
+      120,
+      450,
+      1100
+    ]
+  },
+  "candidate_profiles": [
+    {
+      "key": "miner",
+      "name": "Bram Holt",
+      "specialty": "miner",
+      "stats": {
+        "mining": 66,
+        "geology": 38,
+        "engineering": 45,
+        "logistics": 42,
+        "safety": 58,
+        "endurance": 70,
+        "leadership": 43
+      },
+      "traits": [
+        "sure_swing",
+        "heavy_boots"
+      ],
+      "wage": 3,
+      "hire_cost": 80
+    },
+    {
+      "key": "geologist",
+      "name": "Ada Rowan",
+      "specialty": "geologist",
+      "stats": {
+        "mining": 38,
+        "geology": 76,
+        "engineering": 43,
+        "logistics": 45,
+        "safety": 63,
+        "endurance": 52,
+        "leadership": 55
+      },
+      "traits": [
+        "ore_eye",
+        "deliberate"
+      ],
+      "wage": 2,
+      "hire_cost": 95
+    },
+    {
+      "key": "hauler",
+      "name": "Nell Mercer",
+      "specialty": "hauler",
+      "stats": {
+        "mining": 44,
+        "geology": 40,
+        "engineering": 50,
+        "logistics": 77,
+        "safety": 55,
+        "endurance": 70,
+        "leadership": 48
+      },
+      "traits": [
+        "pack_mule",
+        "short_stride"
+      ],
+      "wage": 2,
+      "hire_cost": 85
+    },
+    {
+      "key": "engineer",
+      "name": "Oren Wren",
+      "specialty": "engineer",
+      "stats": {
+        "mining": 48,
+        "geology": 46,
+        "engineering": 78,
+        "logistics": 50,
+        "safety": 62,
+        "endurance": 55,
+        "leadership": 52
+      },
+      "traits": [
+        "sure_swing",
+        "deliberate"
+      ],
+      "wage": 3,
+      "hire_cost": 110
+    },
+    {
+      "key": "surveyor",
+      "name": "Lena Vale",
+      "specialty": "surveyor",
+      "stats": {
+        "mining": 42,
+        "geology": 74,
+        "engineering": 52,
+        "logistics": 60,
+        "safety": 58,
+        "endurance": 66,
+        "leadership": 55
+      },
+      "traits": [
+        "ore_eye",
+        "short_stride"
+      ],
+      "wage": 3,
+      "hire_cost": 115
+    },
+    {
+      "key": "demolitionist",
+      "name": "Rafe Cinder",
+      "specialty": "demolitionist",
+      "stats": {
+        "mining": 78,
+        "geology": 40,
+        "engineering": 72,
+        "logistics": 40,
+        "safety": 43,
+        "endurance": 69,
+        "leadership": 48
+      },
+      "traits": [
+        "sure_swing",
+        "heavy_boots"
+      ],
+      "wage": 4,
+      "hire_cost": 125
+    },
+    {
+      "key": "safety_officer",
+      "name": "Mae Stone",
+      "specialty": "safety_officer",
+      "stats": {
+        "mining": 38,
+        "geology": 50,
+        "engineering": 58,
+        "logistics": 47,
+        "safety": 84,
+        "endurance": 63,
+        "leadership": 72
+      },
+      "traits": [
+        "pack_mule",
+        "deliberate"
+      ],
+      "wage": 3,
+      "hire_cost": 105
+    }
+  ],
+  "equipment": [
+    {
+      "key": "copper_pickaxe",
+      "name": "Copper Pickaxe",
+      "slot": "tool",
+      "tier": 1,
+      "max_durability": 100,
+      "bonuses": {
+        "mining": 10
+      },
+      "repair_rate": 0.2,
+      "repair_materials": {
+        "stone": 2
+      }
+    },
+    {
+      "key": "iron_pickaxe",
+      "name": "Iron Pickaxe",
+      "slot": "tool",
+      "tier": 2,
+      "max_durability": 140,
+      "bonuses": {
+        "mining": 18
+      },
+      "repair_rate": 0.3,
+      "repair_materials": {
+        "stone": 3,
+        "iron_bar": 1
+      }
+    },
+    {
+      "key": "miner_lantern",
+      "name": "Miner Lantern",
+      "slot": "utility",
+      "tier": 1,
+      "max_durability": 100,
+      "bonuses": {
+        "engineering": 8,
+        "mining": 4
+      },
+      "repair_rate": 0.2,
+      "repair_materials": {
+        "coal": 2
+      }
+    },
+    {
+      "key": "prism_lantern",
+      "name": "Prism Lantern",
+      "slot": "utility",
+      "tier": 2,
+      "max_durability": 140,
+      "bonuses": {
+        "engineering": 12,
+        "mining": 6
+      },
+      "repair_rate": 0.3,
+      "repair_materials": {
+        "coal": 3,
+        "polished_quartz": 1
+      }
+    },
+    {
+      "key": "copper_helmet",
+      "name": "Copper Helmet",
+      "slot": "head",
+      "tier": 1,
+      "max_durability": 100,
+      "bonuses": {
+        "safety": 8
+      },
+      "repair_rate": 0.2,
+      "repair_materials": {
+        "stone": 2
+      }
+    },
+    {
+      "key": "iron_helmet",
+      "name": "Iron Helmet",
+      "slot": "head",
+      "tier": 2,
+      "max_durability": 140,
+      "bonuses": {
+        "safety": 14
+      },
+      "repair_rate": 0.3,
+      "repair_materials": {
+        "stone": 3,
+        "iron_bar": 1
+      }
+    },
+    {
+      "key": "cargo_pack",
+      "name": "Cargo Pack",
+      "slot": "utility",
+      "tier": 1,
+      "max_durability": 100,
+      "bonuses": {
+        "logistics": 12
+      },
+      "repair_rate": 0.2,
+      "repair_materials": {
+        "clay": 2
+      }
+    },
+    {
+      "key": "hauler_frame",
+      "name": "Hauler Frame",
+      "slot": "utility",
+      "tier": 2,
+      "max_durability": 140,
+      "bonuses": {
+        "logistics": 20
+      },
+      "repair_rate": 0.3,
+      "repair_materials": {
+        "clay": 3,
+        "iron_bar": 1
+      }
+    },
+    {
+      "key": "survey_kit",
+      "name": "Survey Kit",
+      "slot": "utility",
+      "tier": 1,
+      "max_durability": 100,
+      "bonuses": {
+        "geology": 12
+      },
+      "repair_rate": 0.2,
+      "repair_materials": {
+        "quartz": 1
+      }
+    },
+    {
+      "key": "prism_survey_kit",
+      "name": "Prism Survey Kit",
+      "slot": "utility",
+      "tier": 2,
+      "max_durability": 140,
+      "bonuses": {
+        "geology": 20
+      },
+      "repair_rate": 0.3,
+      "repair_materials": {
+        "quartz": 2,
+        "cut_amethyst": 1
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "key": "smelt_copper",
+      "version": 1,
+      "name": "Smelt Copper",
+      "station": "smeltery",
+      "required_station_level": 1,
+      "duration_seconds": 180,
+      "cash_cost": 8,
+      "inputs": {
+        "copper_ore": 10,
+        "coal": 2
+      },
+      "outputs": {
+        "copper_bar": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10
+    },
+    {
+      "key": "smelt_tin",
+      "version": 1,
+      "name": "Smelt Tin",
+      "station": "smeltery",
+      "required_station_level": 1,
+      "duration_seconds": 240,
+      "cash_cost": 10,
+      "inputs": {
+        "tin_ore": 10,
+        "coal": 2
+      },
+      "outputs": {
+        "tin_bar": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10
+    },
+    {
+      "key": "smelt_iron",
+      "version": 1,
+      "name": "Smelt Iron",
+      "station": "smeltery",
+      "required_station_level": 1,
+      "duration_seconds": 300,
+      "cash_cost": 12,
+      "inputs": {
+        "iron_ore": 12,
+        "coal": 3
+      },
+      "outputs": {
+        "iron_bar": 3
+      },
+      "equipment_output": null,
+      "max_batches": 10
+    },
+    {
+      "key": "smelt_silver",
+      "version": 1,
+      "name": "Smelt Silver",
+      "station": "smeltery",
+      "required_station_level": 1,
+      "duration_seconds": 420,
+      "cash_cost": 16,
+      "inputs": {
+        "silver_ore": 8,
+        "coal": 3
+      },
+      "outputs": {
+        "silver_bar": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10
+    },
+    {
+      "key": "polish_quartz",
+      "version": 1,
+      "name": "Polish Quartz",
+      "station": "gem_workshop",
+      "required_station_level": 1,
+      "duration_seconds": 180,
+      "cash_cost": 6,
+      "inputs": {
+        "quartz": 6
+      },
+      "outputs": {
+        "polished_quartz": 3
+      },
+      "equipment_output": null,
+      "max_batches": 10
+    },
+    {
+      "key": "cut_amethyst",
+      "version": 1,
+      "name": "Cut Amethyst",
+      "station": "gem_workshop",
+      "required_station_level": 1,
+      "duration_seconds": 480,
+      "cash_cost": 16,
+      "inputs": {
+        "amethyst": 4
+      },
+      "outputs": {
+        "cut_amethyst": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10
+    },
+    {
+      "key": "craft_copper_pickaxe",
+      "version": 1,
+      "name": "Craft Copper Pickaxe",
+      "station": "tool_station",
+      "required_station_level": 1,
+      "duration_seconds": 240,
+      "cash_cost": 20,
+      "inputs": {
+        "copper_bar": 1,
+        "stone": 4
+      },
+      "outputs": {},
+      "equipment_output": "copper_pickaxe",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_iron_pickaxe",
+      "version": 1,
+      "name": "Craft Iron Pickaxe",
+      "station": "tool_station",
+      "required_station_level": 2,
+      "duration_seconds": 480,
+      "cash_cost": 45,
+      "inputs": {
+        "iron_bar": 2,
+        "polished_quartz": 1
+      },
+      "outputs": {},
+      "equipment_output": "iron_pickaxe",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_miner_lantern",
+      "version": 1,
+      "name": "Craft Miner Lantern",
+      "station": "tool_station",
+      "required_station_level": 1,
+      "duration_seconds": 240,
+      "cash_cost": 18,
+      "inputs": {
+        "copper_bar": 1,
+        "tin_bar": 1,
+        "coal": 2
+      },
+      "outputs": {},
+      "equipment_output": "miner_lantern",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_prism_lantern",
+      "version": 1,
+      "name": "Craft Prism Lantern",
+      "station": "tool_station",
+      "required_station_level": 2,
+      "duration_seconds": 600,
+      "cash_cost": 55,
+      "inputs": {
+        "silver_bar": 1,
+        "cut_amethyst": 1,
+        "iron_bar": 1
+      },
+      "outputs": {},
+      "equipment_output": "prism_lantern",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_copper_helmet",
+      "version": 1,
+      "name": "Craft Copper Helmet",
+      "station": "tool_station",
+      "required_station_level": 1,
+      "duration_seconds": 240,
+      "cash_cost": 15,
+      "inputs": {
+        "copper_bar": 1,
+        "tin_bar": 1,
+        "stone": 2
+      },
+      "outputs": {},
+      "equipment_output": "copper_helmet",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_iron_helmet",
+      "version": 1,
+      "name": "Craft Iron Helmet",
+      "station": "tool_station",
+      "required_station_level": 2,
+      "duration_seconds": 420,
+      "cash_cost": 35,
+      "inputs": {
+        "iron_bar": 2,
+        "polished_quartz": 1
+      },
+      "outputs": {},
+      "equipment_output": "iron_helmet",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_cargo_pack",
+      "version": 1,
+      "name": "Craft Cargo Pack",
+      "station": "tool_station",
+      "required_station_level": 1,
+      "duration_seconds": 180,
+      "cash_cost": 15,
+      "inputs": {
+        "clay": 6,
+        "copper_bar": 1
+      },
+      "outputs": {},
+      "equipment_output": "cargo_pack",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_hauler_frame",
+      "version": 1,
+      "name": "Craft Hauler Frame",
+      "station": "tool_station",
+      "required_station_level": 2,
+      "duration_seconds": 420,
+      "cash_cost": 40,
+      "inputs": {
+        "iron_bar": 2,
+        "clay": 8
+      },
+      "outputs": {},
+      "equipment_output": "hauler_frame",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_survey_kit",
+      "version": 1,
+      "name": "Craft Survey Kit",
+      "station": "tool_station",
+      "required_station_level": 1,
+      "duration_seconds": 300,
+      "cash_cost": 25,
+      "inputs": {
+        "polished_quartz": 2,
+        "copper_bar": 1
+      },
+      "outputs": {},
+      "equipment_output": "survey_kit",
+      "max_batches": 10
+    },
+    {
+      "key": "craft_prism_survey_kit",
+      "version": 1,
+      "name": "Craft Prism Survey Kit",
+      "station": "tool_station",
+      "required_station_level": 2,
+      "duration_seconds": 600,
+      "cash_cost": 65,
+      "inputs": {
+        "cut_amethyst": 2,
+        "gold_ore": 2,
+        "iron_bar": 1
+      },
+      "outputs": {},
+      "equipment_output": "prism_survey_kit",
+      "max_batches": 10
+    }
+  ],
+  "resources": [
+    {
+      "id": "amethyst",
+      "name": "Amethyst",
+      "sell_price": 50
+    },
+    {
+      "id": "gold_ore",
+      "name": "Gold ore",
+      "sell_price": 45
+    },
+    {
+      "id": "copper_bar",
+      "name": "Copper bar",
+      "sell_price": 55
+    },
+    {
+      "id": "tin_bar",
+      "name": "Tin bar",
+      "sell_price": 65
+    },
+    {
+      "id": "iron_bar",
+      "name": "Iron bar",
+      "sell_price": 70
+    },
+    {
+      "id": "silver_bar",
+      "name": "Silver bar",
+      "sell_price": 145
+    },
+    {
+      "id": "polished_quartz",
+      "name": "Polished quartz",
+      "sell_price": 28
+    },
+    {
+      "id": "cut_amethyst",
+      "name": "Cut amethyst",
+      "sell_price": 125
+    }
+  ],
+  "equipment_capacity": 48
+}

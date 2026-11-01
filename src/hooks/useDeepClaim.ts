@@ -3,17 +3,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
-import { DeepClaimError, deepClaimDispatchArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot } from '@/lib/deepClaim/service';
-import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimSellInput, DeepClaimSnapshot } from '@/lib/deepClaim/types';
+import { DEEP_CLAIM_MUTATIONS, DeepClaimError, deepClaimDispatchArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot, type DeepClaimMutation } from '@/lib/deepClaim/service';
+import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimSellInput, DeepClaimSnapshot, DeepClaimStatId } from '@/lib/deepClaim/types';
 
-type Pending = { operation: 'dc_bootstrap' | 'dc_dispatch' | 'dc_collect' | 'dc_sell' | 'dc_upgrade'; args: Record<string, unknown>; fingerprint: string; label: string };
+type Pending = { operation: DeepClaimMutation; args: Record<string, unknown>; fingerprint: string; label: string };
 const online = () => typeof navigator === 'undefined' || navigator.onLine;
 const listenOnline = (listener: () => void) => { window.addEventListener('online', listener); window.addEventListener('offline', listener); return () => { window.removeEventListener('online', listener); window.removeEventListener('offline', listener); }; };
 function storage(): Storage | null { try { return window.localStorage; } catch { return null; } }
 function readPending(key: string): Pending | null {
   try {
     const value = JSON.parse(storage()?.getItem(key) ?? 'null');
-    return value && ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade'].includes(value.operation)
+    return value && DEEP_CLAIM_MUTATIONS.includes(value.operation)
       && typeof value.args?.p_request_id === 'string' && /^[a-f\d-]{36}$/i.test(value.args.p_request_id)
       && typeof value.fingerprint === 'string' && typeof value.label === 'string' ? value as Pending : null;
   } catch { return null; }
@@ -44,7 +44,7 @@ export function useDeepClaim() {
     return data;
   }, staleTime: 10_000, refetchInterval: state => document.visibilityState !== 'visible' ? false
     : state.state.data?.expeditions.some(job => job.status === 'active' && job.tutorial) ? 2_000
-    : state.state.data?.expeditions.some(job => job.status === 'active') ? 10_000 : 30_000,
+    : state.state.data?.expeditions.some(job => job.status === 'active') || state.state.data?.production_jobs?.some(job => job.status === 'active') ? 10_000 : 30_000,
   refetchOnWindowFocus: true, retry: 1, structuralSharing: shareDeepClaimSnapshot });
   const refetch = query.refetch;
   useLayoutEffect(() => {
@@ -103,6 +103,13 @@ export function useDeepClaim() {
     collect: (id: string) => perform('dc_collect', { p_job_id: id }, 'Collect haul'),
     sell: (input: DeepClaimSellInput) => perform('dc_sell', { p_resource_key: input.resource_key, p_quantity: input.quantity, p_expected_revision: revision }, 'Sell materials'),
     upgrade: (building: DeepClaimBuildingId) => perform('dc_upgrade', { p_building_key: building, p_expected_revision: revision }, 'Upgrade building'),
+    hire: (candidateId: string) => perform('dc_hire', { p_candidate_id: candidateId, p_expected_revision: revision }, 'Hire employee'),
+    train: (workerId: string, stat: DeepClaimStatId) => perform('dc_train', { p_worker_id: workerId, p_stat: stat, p_expected_revision: revision }, 'Train employee'),
+    assignEquipment: (itemId: string, workerId: string | null) => perform('dc_assign_equipment', { p_item_id: itemId, p_worker_id: workerId, p_expected_revision: revision }, 'Assign equipment'),
+    repairEquipment: (itemId: string) => perform('dc_repair_equipment', { p_item_id: itemId, p_expected_revision: revision }, 'Repair equipment'),
+    retireEquipment: (itemId: string) => perform('dc_retire_equipment', { p_item_id: itemId, p_expected_revision: revision }, 'Retire equipment'),
+    startProduction: (recipeKey: string, batches: number) => perform('dc_start_production', { p_recipe_key: recipeKey, p_batches: batches, p_expected_revision: revision }, 'Start production'),
+    collectProduction: (jobId: string) => perform('dc_collect_production', { p_job_id: jobId }, 'Collect production'),
     retryPending: () => pendingRef.current ? perform(pendingRef.current.operation, {}, pendingRef.current.label, true) : Promise.resolve(data),
   };
 }

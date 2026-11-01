@@ -1,6 +1,6 @@
 # Deep Claim balance reference
 
-Version-one Phase 1 values. SQL is authoritative; the public arithmetic model exists for explanations and headless verification, never client rewards.
+Version-one mining values plus version-two workforce/production. SQL is authoritative; the public arithmetic model exists for explanations and headless verification, never client rewards. The canonical public Phase 2 catalog is `supabase/seed/deep-claim-phase2-catalog.json`; SQL embeds the same versioned values.
 
 ## Session rhythm
 
@@ -23,7 +23,7 @@ Eight launch material IDs are stone, clay, coal, copper_ore, tin_ore, iron_ore, 
 
 Upgrade branches compete for the same isolated company money: office capacity, shaft depth/travel, warehouse capacity and tool efficiency. They must retain a viable operating reserve or another bounded recovery path so buying an upgrade cannot permanently strand a new company.
 
-Coal remains a useful commodity at launch and becomes processing fuel in later phases. Common-material crafting demand, quality specimens, fluctuating markets, research and contracts are not silently counted as completed launch systems.
+Coal is both a commodity and processing fuel. Stone/clay feed crafting and repairs. Quality specimens, fluctuating markets, research and contracts remain future systems.
 
 ## Measurement requirements
 
@@ -61,4 +61,33 @@ XP is twelve per preset energy on completion. Level = min(10,1+floor(XP/60)); ef
 
 Run `node scripts/simulate-deep-claim.mjs`. The initial harness covers 168 crew/duration/material combinations, cargo and finite-deposit conservation, operating-capital protection and the starter-stock bound. Early rich-seam analysis exposed the original one-hour all-upgrades path; the finite three-unit silver sample and revised final-tier prices close that specific path. This is not proof of a universal minimum playtime for every future geological seed.
 
-Manufacturing, hiring and research strategy simulations belong to their implementation phases. The launch harness must not claim to simulate systems that do not exist. Longer multi-day field balancing and richer market/resource demand should be repeated as those systems arrive.
+Phase 2 extends the harness with production/workforce arithmetic and reachable first manufacturing investments. Longer multi-day field balancing and richer market/resource demand should be repeated as those systems arrive; a bounded simulator is not proof of a universal commercial-length progression curve. Research strategies remain unimplemented.
+
+## Phase 2 workforce and equipment
+
+Daily hiring offers three of seven persistent specialist profiles. Hire costs range from 80 to 125 credits and wages from two to four per preset energy. These are visible before hiring and paid at dispatch, never as unlimited unattended payroll. Quarters build/upgrade costs are 90/450/1,200 and provide six/nine/twelve total worker slots, compared with three before construction. Crew size remains one to three; office levels still allow one/two/three simultaneous expeditions.
+
+Training costs 30 credits for up to three base-stat points, once per idle worker per operating day, capped at 100. It grants no energy. Higher levels still add the original capped XP bonus. Effective statistics are computed once by the backend, including functioning gear.
+
+Ten craftable items cover two tiers of pickaxes, helmets, lanterns, cargo gear and survey instruments. Tool/head/utility slots force a choice between utility benefits. Tier-one durability is 100; tier two is 140. Configuration-two shifts wear each equipped item by two/four/six for Quick/Standard/Deep. A basic item therefore lasts fifty Quick or sixteen full Deep shifts before breaking. Old configuration-one shifts have no new wear.
+
+Tier-one repairs cost `ceil(missing durability × 0.20)` plus the item's material bundle; tier-two repairs use 0.30. Materials range from common stone/clay/coal/quartz to an iron bar or finished crystal for advanced items. No repair is free when damaged. Full condition is not a paid improvement. There are at most 48 owned/pending equipment items; unassigned items can be permanently retired with no resale or material refund.
+
+## Phase 2 production economy
+
+Each station has one serial production lane and the company has at most three uncollected jobs. One to ten batches may be committed together. Station levels two/three use 85/70% of the base per-batch seconds, rounded up before multiplying by batches. Station upgrades do not accelerate existing jobs. Inputs and credits are consumed at job creation; outputs are unavailable until real server time has elapsed and collection succeeds.
+
+| Recipe | Inputs per batch | Credits | Base seconds | Outputs | Net sale value added |
+|---|---|---:|---:|---|---:|
+| Copper | 10 copper ore + 2 coal | 8 | 180 | 2 copper bars | 14 |
+| Tin | 10 tin ore + 2 coal | 10 | 240 | 2 tin bars | 12 |
+| Iron | 12 iron ore + 3 coal | 12 | 300 | 3 iron bars | 18 |
+| Silver | 8 silver ore + 3 coal | 16 | 420 | 2 silver bars | 22 |
+| Quartz | 6 quartz | 6 | 180 | 3 polished quartz | 6 |
+| Amethyst | 4 amethyst | 16 | 480 | 2 cut amethyst | 34 |
+
+The added value rewards industry but always consumes finite mined inputs, operating credits and station time. There is no NPC input purchase, automatic loop, cancellation refund, equipment resale or conversion back into raw ore. Copper bars sell at 55, tin 65, iron 70, silver 145, polished quartz 28 and cut amethyst 125. New raw amethyst/gold ore sell at 50/45. Gold ore is also an advanced survey-kit input.
+
+Smeltery build/upgrade costs are 90/350/900; gem workshop costs are 120/450/1,100. The existing tool station crafts equipment, with tier-two recipes requiring level two. A first copper pickaxe costs one copper bar, four stone, twenty credits and four processing minutes after smelting. Keeping some starter coal/copper/stone instead of selling every material therefore creates a real early investment choice. Every new economic action preserves the existing operating-reserve rule.
+
+Shaft level four costs 5,000 and supports 299m, extending the shaft corridor to 256m. Deep generation adds amethyst and gold-bearing clusters in newly generated version-two chunks from 160m; previously frozen version-one chunks and unseen cells inside them retain their original geology. This is a depth expansion, not completion of the full six-region/hazard roadmap.

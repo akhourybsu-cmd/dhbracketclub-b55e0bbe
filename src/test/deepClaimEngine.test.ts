@@ -11,9 +11,9 @@ const input = () => ({ workers: workers(), mode: 'extract' as const, duration_mi
 
 describe('Deep Claim frozen v1 economy and crew rules', () => {
   it('has eight distinct priced resources and functional effects for every real building level', () => {
-    expect(RESOURCE_CATALOG.map(resource => resource.id)).toEqual([...DEEP_CLAIM_RESOURCE_IDS]);
-    expect(RESOURCE_CATALOG.map(resource => resource.sell_price)).toEqual([1,2,4,8,10,14,12,30]);
-    expect(Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost) => sum + cost,0)).toBe(6080);
+    expect(RESOURCE_CATALOG.slice(0,8).map(resource => resource.id)).toEqual([...DEEP_CLAIM_RESOURCE_IDS].slice(0,8));
+    expect(RESOURCE_CATALOG.slice(0,8).map(resource => resource.sell_price)).toEqual([1,2,4,8,10,14,12,30]);
+    expect(['mine_office','mine_shaft','warehouse','tool_station'].flatMap(key => BUILDING_UPGRADE_COSTS[key as keyof typeof BUILDING_UPGRADE_COSTS].slice(0,2)).reduce((sum,cost) => sum + cost,0)).toBe(6080);
     const starterAssay = { stone:12,clay:16,coal:10,copper_ore:18,tin_ore:12,iron_ore:15,quartz:8,silver_ore:3 };
     expect(resourceSaleValue(starterAssay)).toBe(744);
     // Even without wages, the entire permanent starter assay cannot purchase

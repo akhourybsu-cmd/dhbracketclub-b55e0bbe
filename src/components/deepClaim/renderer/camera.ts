@@ -45,6 +45,8 @@ export function initialMineCamera(size: ViewportSize, bounds: MineBounds): DeepC
 export function fitSurfaceCamera(size: ViewportSize, bounds: MineBounds, buildings: readonly { x: number; width: number }[]): DeepClaimCamera {
   if (!buildings.length) return constrainCamera({ x: 48, y: -1.2, scale: 8 }, size, bounds);
   const left = Math.min(...buildings.map(building => building.x)), right = Math.max(...buildings.map(building => building.x + building.width));
-  const scale = clamp((size.width - 24) / Math.max(1, right - left), 4, 21);
-  return constrainCamera({ x: (left + right) / 2, y: -1.2, scale, minimumScale: 4 }, size, bounds);
+  const fitScale = (size.width - 24) / Math.max(1, right - left);
+  const minimumScale = fitScale < 4 ? 3 : 4;
+  const scale = clamp(fitScale, minimumScale, 21);
+  return constrainCamera({ x: (left + right) / 2, y: -1.2, scale, minimumScale }, size, bounds);
 }

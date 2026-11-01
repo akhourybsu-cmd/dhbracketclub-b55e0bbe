@@ -9,6 +9,8 @@ export class DeepClaimError extends Error {
   }
 }
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production'] as const;
+export type DeepClaimMutation = typeof DEEP_CLAIM_MUTATIONS[number];
 export function parseDeepClaimSnapshot(value: unknown): DeepClaimSnapshot {
   try { validateDeepClaimSnapshot(value); return value; }
   catch { throw new DeepClaimError('The saved operation could not be verified. Refresh to recover your company.', 'data'); }
@@ -31,7 +33,7 @@ export function deepClaimFailure(error: unknown): DeepClaimError {
   return new DeepClaimError('Deep Claim could not sync. Your action is kept for a safe retry. Check your connection.');
 }
 export async function deepClaimRpc(name: string, args: Record<string, unknown> = {}): Promise<unknown> {
-  if (!['dc_get','dc_bootstrap','dc_reconcile','dc_preview','dc_dispatch','dc_collect','dc_sell','dc_upgrade'].includes(name)) throw new DeepClaimError('Unknown company operation.', 'rule');
+  if (!['dc_get','dc_reconcile','dc_preview',...DEEP_CLAIM_MUTATIONS].includes(name)) throw new DeepClaimError('Unknown company operation.', 'rule');
   try {
     const { data, error } = await withTimeout(supabase.rpc(name as never, args as never), QUERY_TIMEOUT_MS, 'Deep Claim');
     if (error) throw error;

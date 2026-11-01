@@ -6,6 +6,7 @@ import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
 import { BUILDING_ART, workerAppearanceVariant } from './artManifest';
 import { constrainCamera, fitSurfaceCamera, initialMineCamera, mineToScreen, panMine, screenToMine, visibleMineCells, zoomMineAt, type DeepClaimCamera, type MineBounds, type ViewportSize } from './camera';
 import { paintBuilding, paintFog, paintRail, paintSky, paintSurface, paintTerrain, paintWorker, type WorkerPose } from './pixelArt';
+import { buildingActivity, workerEquipmentPaint } from './productionVisuals';
 import './deepClaimCanvas.css';
 
 export interface DeepClaimCanvasProps {
@@ -57,6 +58,9 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   const observation = useRef({ time: snapshot.server_now, server: Date.parse(snapshot.server_now), at: performance.now() });
   const [supported, setSupported] = useState(true), [announcement, setAnnouncement] = useState('');
   const chunks = useMemo(() => snapshot.world ? revealedChunkMap(snapshot.world) : new Map<string, DeepClaimTile[]>(), [snapshot.world]);
+  const visibleCache = useRef<{ source: Map<string, DeepClaimTile[]>; key: string; tiles: Map<string, DeepClaimTile> } | null>(null);
+  const ownedBuildings = snapshot.buildings.filter(building => building.level > 0).map(building => building.key).sort().join(':');
+  const lastOwnedBuildings = useRef(ownedBuildings);
   const latest = useRef({ snapshot, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, onSelectTile, onSelectBuilding });
   latest.current = { snapshot, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, onSelectTile, onSelectBuilding };
   if (observation.current.time !== snapshot.server_now) {
@@ -66,7 +70,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
 
   const estimatedServerNow = useCallback(() => observation.current.server + (latest.current.reducedMotion ? 0 : Math.max(0, performance.now() - observation.current.at)), []);
   const focusSurface = useCallback(() => {
-    camera.current = fitSurfaceCamera(size.current, bounds.current, latest.current.snapshot.buildings.map(building => BUILDING_ART[building.key]));
+    camera.current = fitSurfaceCamera(size.current, bounds.current, latest.current.snapshot.buildings.filter(building => building.level > 0).map(building => BUILDING_ART[building.key]));
   }, []);
   const focusMine = useCallback(() => {
     const revealedDepth = Math.max(1, ...latest.current.snapshot.world?.tiles.map(tile => tile.y) ?? [1]);
@@ -82,14 +86,20 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     const horizon = mineToScreen({ x: 0, y: 0 }, cam, viewport).y;
     if (horizon > 0) paintSky(c, viewport.width, viewport.height, Math.min(viewport.height, horizon), cam.x * 16, timestamp, !data.reducedMotion && !data.reducedGraphics);
     c.save(); c.translate(viewport.width / 2, viewport.height / 2); c.scale(cam.scale / 16, cam.scale / 16); c.translate(-cam.x * 16, -cam.y * 16);
-    const visible = visibleMineCells(cam, viewport, bounds.current), visibleTiles = new Map<string, DeepClaimTile>();
+    const visible = visibleMineCells(cam, viewport, bounds.current), visibleKey = `${visible.minX}:${visible.maxX}:${visible.minY}:${visible.maxY}`;
+    let visibleTiles = visibleCache.current?.source === data.chunks && visibleCache.current.key === visibleKey ? visibleCache.current.tiles : null;
     // Only intersecting revealed chunks are visited. The fog has no resource data.
-    for (let cx = Math.floor(visible.minX / 32); cx <= Math.floor(visible.maxX / 32); cx++) for (let cy = Math.floor(visible.minY / 32); cy <= Math.floor(visible.maxY / 32); cy++) {
-      for (const tile of data.chunks.get(`${cx}:${cy}`) ?? []) if (tile.x >= visible.minX && tile.x <= visible.maxX && tile.y >= visible.minY && tile.y <= visible.maxY) visibleTiles.set(tileKey(tile), tile);
+    if (!visibleTiles) {
+      visibleTiles = new Map<string, DeepClaimTile>();
+      for (let cx = Math.floor(visible.minX / 32); cx <= Math.floor(visible.maxX / 32); cx++) for (let cy = Math.floor(visible.minY / 32); cy <= Math.floor(visible.maxY / 32); cy++) {
+        for (const tile of data.chunks.get(`${cx}:${cy}`) ?? []) if (tile.x >= visible.minX && tile.x <= visible.maxX && tile.y >= visible.minY && tile.y <= visible.maxY) visibleTiles.set(tileKey(tile), tile);
+      }
+      visibleCache.current = { source: data.chunks, key: visibleKey, tiles: visibleTiles };
     }
     for (let y = visible.minY; y <= visible.maxY; y++) for (let x = visible.minX; x <= visible.maxX; x++) {
       const tile = visibleTiles.get(`${x}:${y}`);
-      if (tile) texture.current.draw(c, tile, !data.reducedGraphics); else paintFog(c, x * 16, y * 16);
+      if (tile) texture.current.draw(c, tile, !data.reducedGraphics && cam.scale >= 8);
+      else if (cam.scale >= 8 && !data.reducedGraphics) paintFog(c, x * 16, y * 16);
     }
     // Surface scenery and the rail are infrastructure art, never generated ore.
     if (horizon >= -180 && horizon <= viewport.height + 190) {
@@ -98,7 +108,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       for (const building of data.snapshot.buildings) {
         const a = BUILDING_ART[building.key];
         if (a.x + a.width < visible.minX - 2 || a.x > visible.maxX + 2) continue;
-        paintBuilding(c, building.key, building.level, timestamp, !data.reducedMotion && !data.reducedGraphics);
+        paintBuilding(c, building.key, building.level, timestamp, !data.reducedMotion && !data.reducedGraphics, false, buildingActivity(data.snapshot, building.key, estimatedServerNow()));
       }
     }
     const projected = projectWorkers(data.snapshot, estimatedServerNow());
@@ -108,8 +118,10 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       const worker = data.snapshot.workers.find(worker => worker.id === point.worker_id);
       if (!worker) continue;
       const pose: WorkerPose = point.stage === 'work' ? 'mine' : point.pose === 'work' ? 'setup' : point.pose;
-      const separation = point.job_id ? (index % 3 - 1) * .33 : 0;
-      paintWorker(c, point.x + separation, point.y, worker.specialty, pose, point.elapsed_seconds * 1000, point.stage === 'return' ? -1 : 1, workerAppearanceVariant(worker.id), !data.reducedMotion && point.progress < 1);
+      const crew = point.job_id ? data.snapshot.expeditions.find(job => job.id === point.job_id)?.worker_ids : null;
+      const crewIndex = crew?.indexOf(worker.id) ?? 0;
+      const separation = crew ? (crewIndex - (crew.length - 1) / 2) * .55 : 0;
+      paintWorker(c, point.x + separation, point.y, worker.specialty, pose, point.elapsed_seconds * 1000, point.stage === 'return' ? -1 : 1, workerAppearanceVariant(worker.id), !data.reducedMotion && point.progress < 1, workerEquipmentPaint(data.snapshot, worker.id));
       if (!data.reducedGraphics && point.y > 0) {
         c.fillStyle = '#ead09a15'; c.fillRect(point.x * 16 - 12, point.y * 16 - 27, 30, 25);
       }
@@ -162,7 +174,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       const ratio = Math.min(latest.current.reducedGraphics ? 1 : 2, window.devicePixelRatio || 1);
       element.width = Math.round(rect.width * ratio); element.height = Math.round(rect.height * ratio);
       if (!cameraReady.current) { camera.current = initialMineCamera(size.current, bounds.current); if (lastView.current === 'surface') focusSurface(); else focusMine(); cameraReady.current = true; }
-      else if (camera.current.minimumScale === 4) focusSurface();
+      else if (camera.current.minimumScale !== undefined) focusSurface();
       camera.current = constrainCamera(camera.current, size.current, bounds.current); previousFrame.current = -Infinity; invalidate();
     };
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
@@ -185,6 +197,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       if (view === 'surface') focusSurface(); else focusMine();
     }
     if (lastView.current !== view) { lastView.current = view; if (view === 'surface') focusSurface(); else focusMine(); }
+    if (lastOwnedBuildings.current !== ownedBuildings) { lastOwnedBuildings.current = ownedBuildings; if (camera.current.minimumScale !== undefined) focusSurface(); }
     const element = canvas.current;
     if (element) {
       const ratio = Math.min(reducedGraphics ? 1 : 2, window.devicePixelRatio || 1);
@@ -193,7 +206,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     }
     if (!active) { if (raf.current !== null) cancelAnimationFrame(raf.current); raf.current = null; }
     else { previousFrame.current = -Infinity; invalidate(); }
-  }, [snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, focusMine, focusSurface, invalidate]);
+  }, [snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, ownedBuildings, focusMine, focusSurface, invalidate]);
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === 'hidden') { if (raf.current !== null) cancelAnimationFrame(raf.current); raf.current = null; } else { previousFrame.current = -Infinity; invalidate(); } };
     document.addEventListener('visibilitychange', visibility);
@@ -206,10 +219,14 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   function resumeAudioFromGesture() { const controller = latest.current.audio; if (controller?.getSnapshot().master) void controller.unlock(); }
   function tap(point: DeepClaimPoint) {
     const world = screenToMine(point, camera.current, size.current), data = latest.current;
-    for (const building of data.snapshot.buildings) {
-      const a = BUILDING_ART[building.key], extraX = Math.max(0, 44 / camera.current.scale - a.width) / 2, extraY = Math.max(0, 44 / camera.current.scale - a.height) / 2;
-      if (world.x >= a.x - extraX && world.x <= a.x + a.width + extraX && world.y >= a.y - extraY && world.y <= extraY) { data.audio?.play('building'); data.onSelectBuilding(building.key); return; }
-    }
+    const hits = data.snapshot.buildings.map(building => {
+      const a = BUILDING_ART[building.key], top = building.level > 0 ? a.y : -2;
+      const extraX = Math.max(0, 44 / camera.current.scale - a.width) / 2, extraY = Math.max(0, 44 / camera.current.scale + top) / 2;
+      const contains = world.x >= a.x - extraX && world.x <= a.x + a.width + extraX && world.y >= top - extraY && world.y <= extraY;
+      const exact = world.x >= a.x && world.x <= a.x + a.width && world.y >= top && world.y <= 0;
+      return { key: building.key, contains, exact, distance: Math.hypot(world.x - a.x - a.width / 2, world.y - top / 2) };
+    }).filter(hit => hit.contains).sort((a, b) => Number(b.exact) - Number(a.exact) || a.distance - b.distance);
+    if (hits[0]) { data.audio?.play('building'); data.onSelectBuilding(hits[0].key); return; }
     const tile = { x: Math.floor(world.x), y: Math.floor(world.y) };
     if (tile.x < 0 || tile.x >= bounds.current.width || tile.y < 1 || tile.y > bounds.current.depth) return;
     data.onSelectTile(tile); setAnnouncement(`Mine tile ${tile.x}, depth ${tile.y} metres selected. Use the operation panel to inspect safe options.`);

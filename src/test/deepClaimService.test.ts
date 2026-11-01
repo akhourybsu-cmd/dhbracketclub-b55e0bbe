@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DeepClaimError, deepClaimFailure, deepClaimDispatchArgs, parseDeepClaimPreview, parseDeepClaimSnapshot, shareDeepClaimSnapshot } from '@/lib/deepClaim/service';
+import { DeepClaimError, deepClaimFailure, deepClaimDispatchArgs, deepClaimRpc, parseDeepClaimPreview, parseDeepClaimSnapshot, shareDeepClaimSnapshot } from '@/lib/deepClaim/service';
 import { companySnapshot } from './fixtures/deepClaim';
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { rpc: vi.fn() } }));
 
 describe('Deep Claim private/public transport boundary', () => {
+  it('does not allow the transport to call private generation or reconciliation helpers', async () => {
+    for (const name of ['dc_cell_v1', 'dc_cell_v2', 'dc_snapshot_v1', 'dc_freeze_equipment_v2']) {
+      await expect(deepClaimRpc(name)).rejects.toMatchObject({ code: 'rule', message: 'Unknown company operation.' });
+    }
+  });
   it('classifies a rejected operating-reserve purchase as a rule error so recovery is not locked', () => {
     const error = deepClaimFailure({ code: 'P0001', message: 'Keep $2 operating cash after an upgrade' });
     expect(error.code).toBe('rule'); expect(error.message).toContain('$2');

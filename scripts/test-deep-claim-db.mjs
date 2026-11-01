@@ -4,11 +4,18 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { createDeepClaimDatabase, DEEP_CLAIM_ACTORS as actors, fixtureId } from './fixtures/deep-claim-db.mjs';
+import { runPhase2ExtraTests } from './fixtures/deep-claim-phase2-extra.mjs';
 
 const fixture = await createDeepClaimDatabase();
+for (const [suffix, hash] of [
+  ['20261102010000_deep_claim_foundation.sql', '1d370b6b66261c53440a60e43a7801a52f8c100d1e9cd57c4966026dae0c3197'],
+  ['20261102020000_deep_claim_discovery.sql', '94720663733be2af208c403daa85e5ac0bee86a320d0d5d702bf7d8c2bc45593'],
+]) assert.equal(createHash('sha256').update(fixture.sources.get(`supabase/migrations/${suffix}`)).digest('hex'), hash, 'Published Phase 1 migrations must remain immutable');
 const { db, rpc: rawRpc, actorQuery } = fixture;
 const enginePaths = ['src/lib/deepClaim/simulation.ts', 'src/lib/deepClaim/world.ts', 'src/lib/deepClaim/catalog.ts', 'src/lib/deepClaim/types.ts'];
 for (const path of enginePaths) fixture.sources.set(path, await readFile(path, 'utf8'));
+const catalogPath = 'supabase/seed/deep-claim-phase2-catalog.json';
+fixture.sources.set(catalogPath, await readFile(catalogPath, 'utf8'));
 const built = await build({ entryPoints: enginePaths.slice(0, 2), bundle: true, platform: 'node', format: 'esm', write: false, outdir: '/tmp/deep-claim-db-engine' });
 const load = suffix => import(`data:text/javascript;base64,${Buffer.from(built.outputFiles.find(file => file.path.endsWith(suffix)).text).toString('base64')}`);
 const { calculateCrewPlan, calendarEnergyDay } = await load('/simulation.js');
@@ -20,6 +27,8 @@ async function rpc(user, name, parameters = {}, role = 'authenticated') {
   return result;
 }
 const A = actors.alex, B = actors.blair, CLUB = actors.club;
+const PUBLIC_RPCS = ['dc_bootstrap','dc_get','dc_reconcile','dc_preview','dc_dispatch','dc_collect','dc_sell','dc_upgrade',
+  'dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_start_production','dc_collect_production','dc_retire_equipment'];
 let serial = 900000, checks = 0;
 const request = () => fixtureId(++serial);
 const one = async (sql, values = []) => (await db.query(sql, values)).rows[0];
@@ -36,6 +45,8 @@ const dispatch = (user, snapshot, options = {}, key = request()) => rpc(user, 'd
 const collect = (user, job, key = request()) => rpc(user, 'dc_collect', { p_job_id: job, p_request_id: key });
 const sell = (user, snapshot, resource, quantity, key = request()) => rpc(user, 'dc_sell', { p_resource_key: resource, p_quantity: quantity, p_expected_revision: snapshot.revision, p_request_id: key });
 const upgrade = (user, snapshot, building, key = request()) => rpc(user, 'dc_upgrade', { p_building_key: building, p_expected_revision: snapshot.revision, p_request_id: key });
+const hire = (user, snapshot, candidate, key = request()) => rpc(user, 'dc_hire', { p_candidate_id: candidate, p_expected_revision: snapshot.revision, p_request_id: key });
+const train = (user, snapshot, worker, stat, key = request()) => rpc(user, 'dc_train', { p_worker_id: worker, p_stat: stat, p_expected_revision: snapshot.revision, p_request_id: key });
 const tile = (snapshot, x, y) => snapshot.world.tiles.find(value => value.x === x && value.y === y);
 async function finish(user, snapshot) {
   const job = snapshot.expeditions.find(value => value.status === 'active'); assert.ok(job);
@@ -54,7 +65,6 @@ const economicState = snapshot => ({ revision: snapshot.revision, company: snaps
   resources: snapshot.resources, world: snapshot.world, expeditions: snapshot.expeditions, buildings: snapshot.buildings });
 async function reset() {
   await db.exec('truncate public.dc_companies cascade');
-  if ((await one("select to_regclass('public.dc_requests') found")).found) await db.exec('truncate public.dc_requests');
   await db.exec("update public.clubs set status='active',settings='{}';update public.platform_assets set is_active=true where slug='deep-claim';update public.club_installed_assets set enabled=true,visible_to_members=true where asset_id=(select id from public.platform_assets where slug='deep-claim')");
   for (const [user, club] of [[A, CLUB], [B, CLUB], [actors.casey, CLUB], [actors.other, actors.otherClub]]) await db.query('insert into public.club_members(user_id,club_id) values($1,$2) on conflict(user_id) do update set club_id=excluded.club_id', [user, club]);
 }
@@ -71,8 +81,8 @@ async function proof() {
   await fixture.assertSourcesUnchanged();
   if (!process.argv.includes('--proof')) return;
   const bodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body_md5 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname ~ '^(dc_|deep_claim_)' order by signature")).rows;
-  await writeFile('/tmp/deep-claim-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.body_md5])), null, 2));
-  await writeFile('/tmp/deep-claim-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].filter(([path]) => path.includes('20261102')).map(([path, source]) => [path, { sha256: createHash('sha256').update(source).digest('hex'), md5: createHash('md5').update(source).digest('hex') }])), null, 2));
+  await writeFile('/tmp/deep-claim-phase2-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.body_md5])), null, 2));
+  await writeFile('/tmp/deep-claim-phase2-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].filter(([path]) => path.includes('20261102')).map(([path, source]) => [path, { sha256: createHash('sha256').update(source).digest('hex'), md5: createHash('md5').update(source).digest('hex') }])), null, 2));
   const literal = value => `'${value.replaceAll("'", "''")}'`;
   const expected = bodies.map(row => `(${literal(row.signature)},${literal(row.body_md5)})`).join(',\n');
   const postflight = `-- READ ONLY. Compare the installed release with the independently tested SQL.
@@ -82,7 +92,7 @@ select count(*) expected_functions,count(p.oid) installed_functions,
  coalesce(bool_and(p.oid is not null and md5(p.prosrc)=e.body_md5),false) all_bodies_match
 from expected e left join pg_proc p on p.oid=to_regprocedure(e.signature);
 
-with allowed(name) as(values('dc_bootstrap'),('dc_get'),('dc_reconcile'),('dc_preview'),('dc_dispatch'),('dc_collect'),('dc_sell'),('dc_upgrade'))
+with allowed(name) as(values ${PUBLIC_RPCS.map(name => `(${literal(name)})`).join(',')})
 select count(*) total_functions,
  count(*) filter(where has_function_privilege('authenticated',p.oid,'EXECUTE')) member_rpc_count,
  bool_and(has_function_privilege('authenticated',p.oid,'EXECUTE')=(a.name is not null)) member_acl_exact,
@@ -108,7 +118,7 @@ join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace
 where n.nspname='public' and c.relname in('dc_companies','dc_worlds','dc_chunks','dc_tiles','dc_expeditions','dc_inventory')
 order by c.relname,k.conname;
 `;
-  await writeFile('/tmp/deep-claim-postflight.sql', postflight);
+  await writeFile('/tmp/deep-claim-phase2-postflight.sql', postflight);
   console.log(`PASS proof: ${bodies.length} installed function bodies and exact Deep Claim migration sources`);
 }
 
@@ -122,7 +132,7 @@ try {
         assert.deepEqual(await one("select has_table_privilege($1,$2,'SELECT') r,has_table_privilege($1,$2,'INSERT') i,has_table_privilege($1,$2,'UPDATE') u,has_table_privilege($1,$2,'DELETE') d", [role, `public.${tablename}`]), { r: false, i: false, u: false, d: false }, `${role} ${tablename}`);
         assert.equal((await one('select relrowsecurity enabled from pg_class where oid=$1::regclass', [`public.${tablename}`])).enabled, true);
       }
-      const allowed = new Set(['dc_bootstrap', 'dc_get', 'dc_reconcile', 'dc_preview', 'dc_dispatch', 'dc_collect', 'dc_sell', 'dc_upgrade']);
+      const allowed = new Set(PUBLIC_RPCS);
       const functions = (await db.query("select p.proname name,p.oid::regprocedure::text signature from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname ~ '^(dc_|deep_claim_)'")).rows;
       for (const row of functions) {
         assert.equal((await one("select has_function_privilege('authenticated',$1,'EXECUTE') allowed", [row.signature])).allowed, allowed.has(row.name), `Member ${row.signature}`);
@@ -136,7 +146,7 @@ try {
     await check('new accounts see no company and bootstrap creates one private company with authoritative starting resources', async () => {
       const empty = await get(); assert.equal(empty.company, null); assert.deepEqual(empty.workers, []); assert.equal(empty.world, null);
       const first = await bootstrap(); noPrivateState(first);
-      assert.equal(first.schema_version, 1); assert.equal(first.company.user_id, A); assert.equal(first.company.club_id, CLUB);
+      assert.equal(first.schema_version, 2); assert.equal(first.company.user_id, A); assert.equal(first.company.club_id, CLUB);
       assert.equal(first.company.name, 'Frontier & Sons'); assert.equal(first.company.cash, 180); assert.equal(first.company.timezone, 'America/New_York');
       assert.equal(first.company.crew_slots, 1); assert.equal(first.company.tutorial_used, false);
       assert.equal(first.workers.length, 3); assert.equal(new Set(first.workers.map(worker => worker.name)).size, 3);
@@ -146,7 +156,8 @@ try {
         assert.ok(Object.values(worker.stats).every(stat => Number.isInteger(stat) && stat >= 1 && stat <= 100));
       }
       assert.equal(first.world.width, 96); assert.equal(first.world.chunk_size, 32); assert.ok(first.world.tiles.length < 96 * 32);
-      assert.deepEqual(first.buildings.map(building => building.key).sort(), ['mine_office', 'mine_shaft', 'warehouse', 'tool_station'].sort());
+      assert.deepEqual(first.buildings.map(building => building.key).sort(), ['mine_office', 'mine_shaft', 'warehouse', 'tool_station', 'workers_quarters', 'smeltery', 'gem_workshop'].sort());
+      assert.ok(first.buildings.filter(building => ['workers_quarters', 'smeltery', 'gem_workshop'].includes(building.key)).every(building => building.level === 0));
       const other = await get(B); assert.equal(other.company, null); assert.deepEqual(other.resources, {});
       assert.notEqual((await bootstrap(B)).company.id, first.company.id);
     });
@@ -621,6 +632,169 @@ try {
       assert.equal(route.length, 197); assert.deepEqual(route[0], { x: 48, y: 0 }); assert.deepEqual(route.at(-1), { x: 95, y: 149 });
       assert.equal((await one("select to_regclass('pg_temp.dc_route_queue_v1') queue")).queue, null);
     });
+
+    await check('the additive migration preserves real pre-phase-two companies, worlds, chunks, workers, receipts and active job plans', async () => {
+      const legacy = await createDeepClaimDatabase({ phase: 1 });
+      try {
+        const first = await legacy.rpc(A, 'dc_bootstrap', { p_name: 'Saved Phase One', p_request_id: request() });
+        const key = request(), args = { ...previewArgs(first.workers.map(worker => worker.id), { mode: 'extract', x: 47, y: 1, duration: 60 }), p_expected_revision: first.revision, p_request_id: key };
+        const started = await legacy.rpc(A, 'dc_dispatch', args), job = started.expeditions[0];
+        assert.equal(job.config_version, 1); assert.equal(started.schema_version, 1);
+        await legacy.db.query('select public.dc_reveal_v1($1,31,140)', [first.company.id]);
+        await legacy.db.query('select public.dc_reveal_v1($1,31,170)', [first.company.id]);
+        const oldUnrevealed = (await legacy.db.query('select public.dc_cell_v1($1,30,171) cell', [first.company.id])).rows[0].cell;
+        const saved = {};
+        for (const table of ['dc_worlds', 'dc_chunks', 'dc_tiles', 'dc_workers', 'dc_expeditions', 'dc_plans', 'dc_milestones', 'dc_requests']) saved[table] = (await legacy.db.query(`select row_to_json(t) record from public.${table} t order by row_to_json(t)::text`)).rows;
+        await legacy.applyPendingMigrations();
+        for (const table of Object.keys(saved)) {
+          const rows = (await legacy.db.query(`select row_to_json(t) record from public.${table} t order by row_to_json(t)::text`)).rows;
+          for (const previous of saved[table]) assert.ok(rows.some(current => Object.entries(previous.record).every(([field, value]) => JSON.stringify(current.record[field]) === JSON.stringify(value))), `${table} must preserve every existing field`);
+        }
+        const migrated = await legacy.rpc(A, 'dc_get'); validateDeepClaimSnapshot(migrated);
+        assert.equal(migrated.schema_version, 2); assert.equal(migrated.company.id, first.company.id); assert.equal(migrated.company.cash, started.company.cash);
+        const { stage: _previousStage, ...frozenJob } = job, { stage: _currentStage, ...migratedJob } = migrated.expeditions.find(value => value.id === job.id);
+        assert.deepEqual(migratedJob, frozenJob);
+        assert.equal((await legacy.db.query('select public.dc_chunk_version_v2($1,30,171) version', [first.company.id])).rows[0].version, 1);
+        assert.deepEqual((await legacy.db.query('select public.dc_cell_v1($1,30,171) cell', [first.company.id])).rows[0].cell, oldUnrevealed, 'Unrevealed cells of a saved v1 deep chunk must still use v1 geology');
+        const retry = await legacy.rpc(A, 'dc_dispatch', args); assert.equal(retry.company.cash, started.company.cash); assert.equal(retry.expeditions.length, 1);
+        await legacy.advanceJob(A, job.id, 3601);
+        const returned = await legacy.rpc(A, 'dc_get'); validateDeepClaimSnapshot(returned);
+        assert.deepEqual(returned.expeditions[0].cargo, saved.dc_plans[0].record.content.cargo); assert.equal(returned.expeditions[0].config_version, 1);
+        assert.ok(returned.workers.every(worker => worker.xp === 24 && worker.energy === 4));
+        assert.equal((await legacy.db.query('select count(*)::int n from public.dc_job_equipment where job_id=$1', [job.id])).rows[0].n, 0);
+        const collected = await legacy.rpc(A, 'dc_collect', { p_job_id: job.id, p_request_id: request() });
+        const next = await legacy.rpc(A, 'dc_dispatch', { ...previewArgs([collected.workers[0].id], { mode: 'extract', x: 47, y: 2 }), p_expected_revision: collected.revision, p_request_id: request() });
+        assert.equal(next.expeditions.find(value => value.status === 'active').config_version, 2);
+      } finally { await legacy.close(); }
+    });
+
+    await check('daily candidates persist across refreshes, rotate all seven real profiles and never expose another company roster', async () => {
+      const initial = await bootstrap(), first = await get();
+      assert.equal(first.candidates.length, 3); assert.equal(first.company.worker_capacity, 3);
+      assert.deepEqual((await get()).candidates, first.candidates);
+      assert.equal(new Set(first.candidates.map(candidate => candidate.id)).size, 3);
+      const peer = await bootstrap(B); assert.ok(peer.candidates.every(candidate => !first.candidates.some(value => value.id === candidate.id)));
+      for (let offset = 0; offset < 7; offset++) await db.query('select public.dc_ensure_candidates_v2($1,$2::date+$3::integer)', [initial.company.id, first.company.energy_day, offset]);
+      const candidates = (await db.query('select * from public.dc_candidates where company_id=$1', [initial.company.id])).rows;
+      assert.equal(new Set(candidates.map(candidate => candidate.profile.specialty)).size, 7);
+      assert.ok(candidates.every(candidate => candidate.profile.wage > 0 && candidate.profile.hire_cost > 0));
+      for (const candidate of first.candidates) assert.ok(Object.values(candidate.stats).every(value => value >= 1 && value <= 100));
+      assert.deepEqual((await get()).candidates, first.candidates);
+    });
+
+    await check('hiring requires real housing and payment, copies the server profile and cannot hire the same candidate twice', async () => {
+      let snapshot = await bootstrap(); const firstCandidate = snapshot.candidates[0];
+      await assert.rejects(hire(A, snapshot, firstCandidate.id));
+      await db.query('update public.dc_companies set cash=10000 where id=$1', [snapshot.company.id]); snapshot = await get();
+      snapshot = await upgrade(A, snapshot, 'workers_quarters'); assert.equal(snapshot.company.worker_capacity, 6);
+      const beforeCash = snapshot.company.cash, beforeRevision = snapshot.revision, key = request(); snapshot = await hire(A, snapshot, firstCandidate.id, key);
+      assert.equal(snapshot.workers.length, 4); assert.equal(snapshot.company.cash, beforeCash - firstCandidate.hire_cost);
+      const employee = snapshot.workers.find(worker => !['Mara Flint', 'Ivo Vale', 'Tessa Pike'].includes(worker.name));
+      assert.equal(employee.specialty, firstCandidate.specialty); assert.equal(employee.wage, firstCandidate.wage); assert.equal(employee.energy, 6); assert.equal(employee.xp, 0);
+      assert.deepEqual(employee.base_stats, firstCandidate.stats); assert.deepEqual(employee.traits, firstCandidate.traits);
+      const retry = await hire(A, { ...snapshot, revision: beforeRevision }, firstCandidate.id, key);
+      assert.equal(retry.workers.length, 4); assert.equal(retry.company.cash, snapshot.company.cash);
+      await assert.rejects(hire(A, snapshot, firstCandidate.id));
+      const peer = await bootstrap(B); await assert.rejects(hire(B, peer, firstCandidate.id));
+      await db.query("update public.dc_workers set name='Stored wage regression' where id=$1", [employee.id]);
+      const renamed = await get(), hiredWorker = renamed.workers.find(worker => worker.id === employee.id);
+      for (const [duration, energy] of [[20, 1], [60, 2], [180, 3]]) {
+        const quote = await preview(A, renamed, { mode: 'extract', x: 47, y: 1, duration, workers: [employee.id] });
+        assert.equal(quote.wages, hiredWorker.wage * energy);
+        const plan = calculateCrewPlan({ workers: [hiredWorker], mode: 'extract', duration_minutes: duration, path_edges: quote.route.length - 1,
+          target_depth: 1, tool_level: 1, material: 'coal', remaining: tile(renamed, 47, 1).remaining });
+        assert.equal(plan.wages, quote.wages); assert.deepEqual(plan.stages, quote.stages);
+      }
+    });
+
+    await check('housing levels enforce six, nine and twelve workers without granting free hires on day refresh', async () => {
+      let snapshot = await bootstrap(); await db.query('update public.dc_companies set cash=100000 where id=$1', [snapshot.company.id]); snapshot = await get();
+      for (let level = 1; level <= 3; level++) {
+        snapshot = await upgrade(A, snapshot, 'workers_quarters'); assert.equal(snapshot.company.worker_capacity, 3 + 3 * level);
+        if (level > 1) {
+          await db.query("update public.dc_companies set energy_day=energy_day+1,energy_reset_at=energy_reset_at+interval '1 day' where id=$1", [snapshot.company.id]);
+          snapshot = await get();
+        }
+        for (const candidate of snapshot.candidates.filter(candidate => !candidate.hired)) snapshot = await hire(A, snapshot, candidate.id);
+        assert.equal(snapshot.workers.length, 3 + 3 * level);
+        const before = snapshot.company.cash;
+        await db.query('select public.dc_ensure_candidates_v2($1,$2::date+10)', [snapshot.company.id, snapshot.company.energy_day]);
+        assert.equal((await get()).company.cash, before);
+      }
+      await db.query("update public.dc_companies set energy_day=energy_day+1,energy_reset_at=energy_reset_at+interval '1 day' where id=$1", [snapshot.company.id]); snapshot = await get();
+      const fresh = snapshot.candidates.find(candidate => !candidate.hired); assert.ok(fresh);
+      await assert.rejects(hire(A, snapshot, fresh.id));
+      assert.equal(snapshot.workers.length, 12); await assert.rejects(upgrade(A, snapshot, 'workers_quarters'));
+    });
+
+    await check('training charges thirty credits once per worker per operating day, respects skill caps and never trains an assigned worker', async () => {
+      let snapshot = await bootstrap(); const worker = snapshot.workers.find(worker => worker.name === 'Mara Flint'), originalRevision = snapshot.revision, key = request();
+      const original = worker.base_stats.mining; snapshot = await train(A, snapshot, worker.id, 'mining', key);
+      assert.equal(snapshot.company.cash, 150); assert.equal(snapshot.workers.find(value => value.id === worker.id).base_stats.mining, Math.min(100, original + 3));
+      const firstRevision = snapshot.revision;
+      const retried = await rpc(A, 'dc_train', { p_worker_id: worker.id, p_stat: 'mining', p_expected_revision: originalRevision, p_request_id: key });
+      assert.equal(retried.company.cash, 150); assert.equal(retried.revision, firstRevision);
+      await assert.rejects(train(A, snapshot, worker.id, 'geology'));
+      await assert.rejects(train(A, snapshot, worker.id, 'luck'));
+      const peer = await bootstrap(B); await assert.rejects(train(A, snapshot, peer.workers[0].id, 'mining'));
+      snapshot = await dispatch(A, snapshot, { tutorial: true }); await assert.rejects(train(A, snapshot, snapshot.workers.find(value => value.name === 'Ivo Vale').id, 'geology'));
+      snapshot = await finish(A, snapshot); snapshot = await collect(A, snapshot.expeditions.find(job => job.status === 'ready').id);
+      await db.query("update public.dc_companies set energy_day=energy_day+1,energy_reset_at=energy_reset_at+interval '1 day' where id=$1", [snapshot.company.id]);
+      snapshot = await get(); snapshot = await train(A, snapshot, worker.id, 'mining'); assert.equal(snapshot.company.cash, 113);
+      const other = snapshot.workers.find(value => value.name === 'Tessa Pike');
+      await db.query("update public.dc_workers set stats=jsonb_set(stats,'{mining}','99') where id=$1", [other.id]); snapshot = await get();
+      snapshot = await train(A, snapshot, other.id, 'mining'); assert.equal(snapshot.workers.find(value => value.id === other.id).base_stats.mining, 100);
+    });
+
+    await check('new workforce mutations reconcile stale devices and reject removed members before receipt recovery', async () => {
+      let snapshot = await bootstrap(); await db.query('update public.dc_companies set cash=10000 where id=$1', [snapshot.company.id]); snapshot = await get();
+      snapshot = await upgrade(A, snapshot, 'workers_quarters'); const candidate = snapshot.candidates[0], key = request();
+      const attempts = await Promise.allSettled([hire(A, snapshot, candidate.id, key), hire(A, snapshot, candidate.id)]);
+      assert.equal(attempts.filter(value => value.status === 'fulfilled').length, 1); assert.equal((await get()).workers.length, 4);
+      const hired = attempts.find(value => value.status === 'fulfilled').value;
+      await db.query('delete from public.club_members where user_id=$1', [A]);
+      await assert.rejects(hire(A, snapshot, candidate.id, key), error => error.code === '42501');
+      await assert.rejects(train(A, hired, hired.workers[0].id, 'mining'), error => error.code === '42501');
+    });
+
+    await check('shaft level four unlocks genuine v2 amethyst and gold without rewriting old chunks or exposing future geology', async () => {
+      let snapshot = await bootstrap();
+      const originalWorld = await one('select * from public.dc_worlds where company_id=$1', [snapshot.company.id]);
+      const oldChunks = (await db.query('select * from public.dc_chunks where company_id=$1 order by chunk_x,chunk_y', [snapshot.company.id])).rows;
+      const oldCell = (await one('select public.dc_cell_v1($1,47,4) cell', [snapshot.company.id])).cell;
+      assert.equal((await preview(A, snapshot, { x: 47, y: 170 })).allowed, false);
+      await db.query('update public.dc_companies set cash=20000 where id=$1', [snapshot.company.id]); snapshot = await get();
+      for (let level = 1; level < 4; level++) snapshot = await upgrade(A, snapshot, 'mine_shaft');
+      assert.equal(snapshot.world.max_depth, 299);
+      assert.deepEqual(await one('select * from public.dc_worlds where company_id=$1', [snapshot.company.id]), originalWorld);
+      for (const chunk of oldChunks) assert.deepEqual(await one('select * from public.dc_chunks where company_id=$1 and chunk_x=$2 and chunk_y=$3', [chunk.company_id, chunk.chunk_x, chunk.chunk_y]), chunk);
+      assert.deepEqual((await one('select public.dc_cell_v1($1,47,4) cell', [snapshot.company.id])).cell, oldCell);
+      assert.equal((await one('select public.dc_chunk_version_v2($1,31,159) version', [snapshot.company.id])).version, 1);
+      assert.equal((await one('select public.dc_chunk_version_v2($1,31,160) version', [snapshot.company.id])).version, 2);
+      const candidates = (await db.query("select x,y,public.dc_cell_v1($1,x,y) cell from(values(47),(49))v(x) cross join generate_series(160,256)y", [snapshot.company.id])).rows;
+      for (const resource of ['amethyst', 'gold_ore']) {
+        const target = candidates.find(value => value.cell.material === resource && !snapshot.world.tiles.some(tile => tile.x === value.x && tile.y === value.y));
+        assert.ok(target, `Unlocked v2 geology must include a shaft-reachable ${resource} vein`);
+        const before = snapshot.resources[resource] || 0;
+        const begun = await dispatch(A, snapshot, { mode: 'explore', x: target.x, y: target.y, duration: 60 });
+        assert.equal(begun.expeditions.find(job => job.status === 'active').cargo, null);
+        assert.ok(!begun.world.tiles.some(tile => tile.x === target.x && tile.y === target.y)); noPrivateState(begun);
+        const ready = await finish(A, begun), job = ready.expeditions.find(job => job.status === 'ready');
+        assert.ok(job.cargo[resource] > 0);
+        snapshot = await collect(A, job.id); assert.ok(snapshot.resources[resource] > before);
+        const mined = tile(snapshot, target.x, target.y); assert.ok(mined.remaining < mined.initial_amount);
+      }
+    });
+
+    await check('the authoritative phase-two catalog matches the frozen shipped catalog and published recipes cannot be rewritten', async () => {
+      assert.deepEqual((await one('select config from public.dc_rules where version=2')).config, JSON.parse(fixture.sources.get(catalogPath)));
+      await assert.rejects(db.exec("update public.dc_rules set config='{}' where version=2"), /immutable/i);
+      await assert.rejects(db.exec("update public.dc_recipes set definition='{}' where recipe_key='smelt_copper'"), /immutable/i);
+      await assert.rejects(db.exec("update public.dc_equipment_catalog set definition='{}' where definition_key='copper_pickaxe'"), /immutable/i);
+    });
+
+    await runPhase2ExtraTests({ check, db, rpc, one, A, B, CLUB, request, bootstrap, get, preview, dispatch, collect, sell, upgrade, finish, collectAndSell, fixture,
+      engine: { calculateCrewPlan, calendarEnergyDay, validateDeepClaimSnapshot, validateDeepClaimPreview } });
   }
   await proof();
   console.log(`${checks} Deep Claim database integration checks passed.`);
