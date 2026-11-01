@@ -4,8 +4,19 @@ import type { ReactNode } from 'react';
 import './showdown.css';
 import './afterimage/afterimageResults.css';
 import './cipher/cipherHub.css';
+import './hubChrome.css';
 import { AfterimageMark } from './AfterimageMark';
 import { CipherMark } from './cipher/CipherMark';
+
+/** A stable club-duel identity; each game's own artwork lives in its selector. */
+export function ShowdownMark({ className = '' }: { className?: string }) {
+  return <svg viewBox="0 0 48 48" className={`sd-platform-mark ${className}`} aria-hidden="true">
+    <path d="M24 3 42 13v22L24 45 6 35V13Z" fill="currentColor" fillOpacity=".07" stroke="currentColor" strokeOpacity=".35" />
+    <path d="m14 13 6 2 13 16-3 3-15-15Zm20 0-6 2-13 16 3 3 15-15Z" fill="currentColor" fillOpacity=".85" />
+    <path d="m12 29 7 7m10-7 7 7M14 34l-3 3m23-3 3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="m24 19 5 5-5 5-5-5Z" fill="var(--sd-bg,#09111f)" stroke="currentColor" strokeWidth="1.5" />
+  </svg>;
+}
 
 export function PrismMark({ className = '', label }: { className?: string; label?: string }) {
   return <svg viewBox="0 0 160 160" className={`sd-prism-mark ${className}`} role={label ? 'img' : undefined} aria-label={label} aria-hidden={label ? undefined : true}>
@@ -31,7 +42,7 @@ export function ShowdownFrame({ children, title = 'DH Showdown', subtitle, backT
   return <main className={`sd-shell ${gameKey === 'afterimage' ? 'sd-afterimage' : gameKey === 'cipher_duel' ? 'sd-cipher' : ''} ${className}`} data-game={gameKey} data-testid="showdown-shell">
     <header className="sd-header">
       <Link to={backTo} className="sd-icon-button" aria-label={backTo.split('?')[0] === '/showdown' ? 'Back to Showdown' : 'Back to Compete'}><ArrowLeft size={19} aria-hidden="true" /></Link>
-      <div className="sd-header-brand"><ShowdownGameMark gameKey={gameKey} /><div><span>{title}</span>{subtitle && <small>{subtitle}</small>}</div></div>
+      <div className="sd-header-brand">{backTo === '/compete' ? <ShowdownMark /> : <ShowdownGameMark gameKey={gameKey} />}<div><span>{title}</span>{subtitle && <small>{subtitle}</small>}</div></div>
       {action}
     </header>
     {children}

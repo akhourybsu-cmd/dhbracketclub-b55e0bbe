@@ -83,7 +83,7 @@ describe('Afterimage discovery and per-game records', () => {
     render(<Harness><ShowdownPage /></Harness>);
     fireEvent.click(screen.getByRole('button', { name: 'Challenge a member' }));
     const dialog = screen.getByRole('dialog', { name: 'New showdown' });
-    fireEvent.click(within(dialog).getByRole('button', { name: /Afterimage/ }));
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Afterimage' }));
     expect(within(dialog).getByLabelText('Play my scenes now')).toBeChecked();
     expect(within(dialog).queryByRole('option', { name: 'Alex' })).not.toBeInTheDocument();
     fireEvent.change(within(dialog).getByLabelText('Club member'), { target: { value: 'blair' } });
@@ -95,13 +95,14 @@ describe('Afterimage discovery and per-game records', () => {
     render(<Harness><ShowdownPage /></Harness>);
     fireEvent.click(screen.getByRole('button', { name: 'Challenge a member' }));
     const dialog = screen.getByRole('dialog', { name: 'New showdown' });
-    fireEvent.click(within(dialog).getByRole('button', { name: /Afterimage/ }));
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Afterimage' }));
     fireEvent.change(within(dialog).getByLabelText('Club member'), { target: { value: 'blair' } });
     fireEvent.click(within(dialog).getByLabelText('Play my scenes now'));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Send challenge' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Your three scenes are ready');
     expect(screen.getByTestId('memory-location')).toHaveTextContent('game=afterimage&tab=play');
-    expect(screen.getByLabelText('Afterimage record')).toHaveTextContent('7Wins4Losses1Draws');
+    const selectedRecord = screen.getByRole('group', { name: 'Afterimage record' });
+    for (const label of ['7 wins', '4 losses', '1 draw']) expect(within(selectedRecord).getByText(label, { exact: true })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Ranks' }));
     expect(screen.getByRole('heading', { name: 'Afterimage standings' })).toBeInTheDocument();
     expect(screen.getByLabelText('Game standings')).toHaveTextContent('21points');
@@ -113,8 +114,9 @@ describe('Afterimage discovery and per-game records', () => {
     expect(screen.getByText(/Your score: 300 \/ 375/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open Prism history' }));
     expect(await screen.findByText(/Your score: 1500 \/ 1,500/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Prism Break record')).toHaveTextContent('2Wins1Losses0Draws');
-    fireEvent.change(screen.getByLabelText('Showdown game'), { target: { value: 'afterimage' } });
+    const selectedRecord = screen.getByRole('group', { name: 'Prism Break record' });
+    for (const label of ['2 wins', '1 loss', '0 draws']) expect(within(selectedRecord).getByText(label, { exact: true })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Showdown games' })).getByRole('radio', { name: 'Afterimage' }));
     fireEvent.click(screen.getByRole('tab', { name: 'History' }));
     expect(screen.getByTestId('memory-location')).toHaveTextContent('game=afterimage');
     expect(screen.getByText(/Your score: 300 \/ 375/)).toBeInTheDocument();

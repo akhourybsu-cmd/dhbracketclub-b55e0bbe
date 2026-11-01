@@ -1,0 +1,58 @@
+/* The club lobby has one identity while individual game shells keep their art. */
+.sd-header-brand > .sd-platform-mark {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  color: var(--sd-cyan);
+}
+
+.sd-hub-shell .sd-header-brand span {
+  font-size: 15px;
+  letter-spacing: -.035em;
+}
+
+.sd-hub-shell .sd-header-brand > div {
+  min-width: 0;
+}
+
+.sd-hub-shell .sd-header-brand small {
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-hub-shell .sd-tabs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  overflow: visible;
+}
+
+.sd-hub-shell .sd-tabs button {
+  position: relative;
+  min-width: 0;
+  gap: 5px;
+  padding-inline: 4px;
+}
+
+.sd-hub-shell .sd-tabs button b {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 9px;
+  border: 1px solid var(--sd-line);
+}
+
+@media (max-width: 420px) {
+  .sd-hub-shell .sd-tabs button {
+    flex-direction: column;
+    gap: 3px;
+    font-size: 10px;
+    line-height: 1.2;
+    min-height: 48px;
+    padding-block: 5px;
+  }
+}

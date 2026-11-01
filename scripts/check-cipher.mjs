@@ -159,7 +159,7 @@ async function createFlow(page, { loseAck = false, tutorial = false } = {}) {
   const before = await page.evaluate(() => window.showdownQa.state.challenges.length);
   await page.getByRole('button', { name: 'Challenge a member', exact: true }).click();
   const chooser = page.getByRole('dialog', { name: 'New showdown' });
-  await chooser.getByRole('button', { name: /Cipher Duel/i }).click();
+  await chooser.getByRole('radio', { name: /^Cipher Duel$/i }).click();
   await chooser.getByRole('combobox', { name: 'Club member' }).selectOption(users.blair);
   await chooser.getByRole('button', { name: 'Create your code', exact: true }).click();
   await expect(page.getByTestId('cipher-code-maker')).toBeVisible(); await guide(page, tutorial);

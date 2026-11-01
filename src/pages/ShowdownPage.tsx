@@ -1,14 +1,15 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, Check, Clock3, History, Inbox, Loader2, Plus, RefreshCw, Swords, Trophy, Users, Zap } from 'lucide-react';
+import { ArrowRight, Clock3, History, Inbox, Loader2, Plus, RefreshCw, Swords, Trophy, Users, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useShowdownLobby } from '@/hooks/useShowdown';
 import { getShowdownGame } from '@/lib/showdown/registry';
-import type { ShowdownChallenge, ShowdownMember } from '@/lib/showdown/types';
+import type { ShowdownChallenge, ShowdownGame, ShowdownMember } from '@/lib/showdown/types';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { showdownDate, showdownTimeLeft } from '@/components/showdown/showdownPresentation';
-import { ShowdownGameMark, ShowdownAvatar, ShowdownDataState, ShowdownFrame } from '@/components/showdown/ShowdownChrome';
+import { ShowdownAvatar, ShowdownDataState, ShowdownFrame } from '@/components/showdown/ShowdownChrome';
+import { ShowdownGameSelector } from '@/components/showdown/ShowdownGameSelector';
 import { CipherStatistics } from '@/components/showdown/cipher/CipherStatistics';
 
 const SECTIONS = [
@@ -20,6 +21,7 @@ type Section = typeof SECTIONS[number]['id'];
 type Decision = { challenge: ShowdownChallenge; action: 'decline' | 'cancel' };
 
 function isOpen(challenge: ShowdownChallenge) { return challenge.status === 'pending' || challenge.status === 'active'; }
+function registeredGameKey(value: string | null) { return value && getShowdownGame(value)?.enabled ? value : 'prism_break'; }
 function cipherWaiting(challenge: ShowdownChallenge) {
   const state = challenge.cipher;
   return !!state && (state.own_code_locked && !state.opponent_code_locked || ['solved', 'exhausted', 'surrendered'].includes(state.own_status));
@@ -48,9 +50,14 @@ export default function ShowdownPage() {
 function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubName: string }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [gameKey, setGameKey] = useState(() => { const requestedGame = params.get('game'); return requestedGame && getShowdownGame(requestedGame)?.enabled ? requestedGame : 'prism_break'; });
+  const [gameKey, setGameKey] = useState(() => registeredGameKey(params.get('game')));
   const lobby = useShowdownLobby(gameKey);
   const data = lobby.data;
+  // The catalog belongs to this keyed club session. Statistics and matches never carry across game queries.
+  const lastCatalog = useRef<ShowdownGame[] | null>(null);
+  useLayoutEffect(() => { if (data) lastCatalog.current = data.games; }, [data]);
+  const catalog = data?.games ?? lastCatalog.current;
+  const availableGames = useMemo(() => catalog?.filter(game => game.enabled && getShowdownGame(game.game_key, game.current_rules_version)?.enabled) ?? [], [catalog]);
   const [choosing, setChoosing] = useState(() => params.get('challenge') === 'new');
   const [chosenGame, setChosenGame] = useState(gameKey);
   const [recipientId, setRecipientId] = useState(() => params.get('recipient') ?? '');
@@ -68,23 +75,31 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
   const scope = useRef(viewerId);
   scope.current = viewerId;
   const formId = useId();
+  const wasDeepChooser = useRef(params.get('challenge') === 'new');
   useLayoutEffect(() => {
-    const requestedGame = params.get('game') ?? 'prism_break';
-    if (getShowdownGame(requestedGame)?.enabled) setGameKey(requestedGame);
-    if (params.get('challenge') === 'new') { setChoosing(true); setChosenGame(requestedGame); setRecipientId(params.get('recipient') ?? ''); }
+    const requestedGame = registeredGameKey(params.get('game'));
+    const fallbackGame = availableGames.find(game => game.game_key === 'prism_break') ?? availableGames[0];
+    const nextGame = catalog && fallbackGame && !availableGames.some(game => game.game_key === requestedGame) ? fallbackGame.game_key : requestedGame;
+    setGameKey(nextGame);
+    if (params.get('game') !== nextGame && (params.has('game') || nextGame !== 'prism_break')) setParams(current => { const next = new URLSearchParams(current); next.set('game', nextGame); return next; }, { replace: true });
+  }, [params, availableGames, catalog, setParams]);
+  useLayoutEffect(() => {
+    const deep = params.get('challenge') === 'new';
+    if (deep) { setChoosing(true); setChosenGame(registeredGameKey(params.get('game'))); setRecipientId(params.get('recipient') ?? ''); }
+    else if (wasDeepChooser.current) setChoosing(false);
+    wasDeepChooser.current = deep;
   }, [params]);
-  const availableGames = data?.games.filter(game => game.enabled && getShowdownGame(game.game_key)?.enabled) ?? [];
   const members = data?.members.filter(member => member.user_id !== viewerId) ?? [];
   const selectedMember = members.find(member => member.user_id === recipientId);
   const selectedGame = availableGames.find(game => game.game_key === chosenGame);
-  const currentGame = data?.games.find(game => game.game_key === gameKey);
-  const currentRegistration = getShowdownGame(gameKey);
+  const currentGame = catalog?.find(game => game.game_key === gameKey);
+  const currentRegistration = getShowdownGame(gameKey, currentGame?.current_rules_version);
   const selectedRegistration = getShowdownGame(chosenGame);
   const roundNoun = currentRegistration?.roundNoun ?? 'rounds';
   const gameName = currentGame?.name ?? currentRegistration?.name ?? 'Showdown';
-  const afterimage = gameKey === 'afterimage';
   const cipher = gameKey === 'cipher_duel';
   const selectingCipher = chosenGame === 'cipher_duel';
+  const duration = currentRegistration && 'typicalDuration' in currentRegistration ? currentRegistration.typicalDuration.replace('minutes', 'min') : '1–2 min';
   const active = data?.challenges.filter(isOpen) ?? [];
   const incoming = active.filter(challenge => challenge.recipient_id === viewerId && (challenge.game_key === 'cipher_duel' ? !challenge.cipher?.own_code_locked : !challenge.players.find(player => player.user_id === viewerId)?.started_at));
   const playable = active.filter(challenge => challenge.game_key === 'cipher_duel' ? !cipherWaiting(challenge) : !challenge.players.find(player => player.user_id === viewerId)?.finished_at);
@@ -94,7 +109,12 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
   const section: Section = SECTIONS.some(tab => tab.id === requested) ? requested as Section : incoming.length ? 'inbox' : 'play';
   const visible = section === 'inbox' ? incoming : section === 'play' ? playable : section === 'waiting' ? waiting : historical;
   const counts: Partial<Record<Section, number>> = { inbox: incoming.length, play: playable.length, waiting: waiting.length };
-  const openChooser = () => { setChoosing(true); setChosenGame(gameKey); setRecipientId(''); setCreateError(''); setPlayNow(true); intent.current = null; };
+  const openChooser = () => { setChoosing(true); setChosenGame(availableGames.some(game => game.game_key === gameKey) ? gameKey : availableGames[0]?.game_key ?? gameKey); setRecipientId(''); setCreateError(''); setPlayNow(true); intent.current = null; };
+  const switchGame = (nextGame: string) => {
+    if (creating || deciding || !availableGames.some(game => game.game_key === nextGame)) return;
+    setGameKey(nextGame); setNotice('');
+    setParams(current => { const next = new URLSearchParams(current); next.set('game', nextGame); return next; }, { replace: true });
+  };
   const closeChooser = () => {
     setChoosing(false); setCreateError('');
     if (params.has('challenge')) setParams(current => { const next = new URLSearchParams(current); next.delete('challenge'); next.delete('recipient'); next.set('game', gameKey); return next; }, { replace: true });
@@ -131,16 +151,22 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
     finally { mutation.current = false; if (activeSession.current) setDeciding(false); }
   }
 
-  return <ShowdownFrame gameKey={gameKey} subtitle={clubName} action={<button type="button" className="sd-icon-button" aria-label="Refresh challenges" disabled={lobby.loading || lobby.refreshing || creating || deciding} onClick={() => void lobby.refresh()}><RefreshCw size={17} className={lobby.refreshing ? 'sd-loading' : ''} aria-hidden="true" /></button>}>
-    {!data ? <ShowdownDataState error={lobby.error} retry={() => void lobby.refresh()} /> : <div className="sd-content" data-testid="showdown-lobby">
-      <section className="sd-hero">
-        <div className="sd-hero-copy"><p className="sd-eyebrow"><Swords size={12} aria-hidden="true" />{gameName} · SHOWDOWN</p><h1>{cipher ? <>Set a secret.<br />Read their mind.</> : afterimage ? <>Hold the moment.<br />Make it yours.</> : <>Your move.<br />Their moment.</>}</h1><p>{cipher ? <>Four pegs. Six colors. Ten guesses.<br />Lock your code. Crack theirs.</> : <>{afterimage ? 'Remember the scene. Restore the details.' : 'Same puzzles. Separate schedules.'}<br />Three rounds decide it.</>}</p></div>
-        <ShowdownGameMark gameKey={gameKey} className="sd-hero-art" />
+  return <ShowdownFrame className="sd-hub-shell" gameKey={gameKey} subtitle={clubName} action={<button type="button" className="sd-icon-button" aria-label="Refresh challenges" disabled={lobby.loading || lobby.refreshing || creating || deciding} onClick={() => void lobby.refresh()}><RefreshCw size={17} className={lobby.refreshing ? 'sd-loading' : ''} aria-hidden="true" /></button>}>
+    <div className="sd-content sd-hub-content" data-testid="showdown-lobby">
+      <ShowdownGameSelector games={availableGames} value={gameKey} onChange={switchGame} disabled={creating || deciding} />
+      <section className="sd-game-workspace" aria-label={`${gameName} challenge board`}>
+        <div className="sd-workspace-heading"><div><h1>{gameName}</h1><p>{currentRegistration?.description ?? currentGame?.description ?? 'Club rivals. Your schedule.'}</p></div><span className="sd-workspace-category">{duration}</span></div>
+        <div className="sd-workspace-actions">
+          <button type="button" className="sd-button sd-primary" onClick={openChooser} disabled={!data || !members.length || !availableGames.length}><Plus size={16} aria-hidden="true" />Challenge a member</button>
+          <div className="sd-record sd-workspace-record" role="group" aria-label={`${gameName} record`} aria-busy={!data}>
+            <div><b aria-hidden="true">{data?.record.wins ?? '—'}</b><span aria-hidden="true">W</span><span className="sr-only">{data ? `${data.record.wins} ${data.record.wins === 1 ? 'win' : 'wins'}` : 'Wins loading'}</span></div>
+            <div><b aria-hidden="true">{data?.record.losses ?? '—'}</b><span aria-hidden="true">L</span><span className="sr-only">{data ? `${data.record.losses} ${data.record.losses === 1 ? 'loss' : 'losses'}` : 'Losses loading'}</span></div>
+            <div><b aria-hidden="true">{data?.record.draws ?? '—'}</b><span aria-hidden="true">D</span><span className="sr-only">{data ? `${data.record.draws} ${data.record.draws === 1 ? 'draw' : 'draws'}` : 'Draws loading'}</span></div>
+          </div>
+        </div>
+        {data && !members.length && <p className="sd-lobby-note">Another club member is needed for a showdown.</p>}
+        {catalog && !availableGames.length && <p className="sd-lobby-note">No supported games are available for new challenges right now.</p>}
       </section>
-      <button type="button" className="sd-button sd-primary sd-full" onClick={openChooser} disabled={!members.length || !availableGames.length}><Plus size={17} aria-hidden="true" />Challenge a member</button>
-      {!members.length && <p className="sd-lobby-note">Another club member is needed for a showdown.</p>}
-      <div className="sd-record" aria-label={`${gameName} record`}><div><b>{data.record.wins}</b><span>Wins</span></div><div><b>{data.record.losses}</b><span>Losses</span></div><div><b>{data.record.draws}</b><span>Draws</span></div></div>
-      {data.games.filter(game => game.enabled && getShowdownGame(game.game_key)?.enabled).length > 1 && <label className="sd-game-filter">Game<select aria-label="Showdown game" value={gameKey} onChange={event => { const nextGame = event.target.value; setGameKey(nextGame); setNotice(''); setParams(current => { const next = new URLSearchParams(current); next.set('game', nextGame); return next; }, { replace: true }); }}>{availableGames.map(game => <option value={game.game_key} key={game.game_key}>{game.name}</option>)}</select></label>}
       <nav className="sd-tabs" role="tablist" aria-label="Showdown views" onKeyDown={event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -149,27 +175,29 @@ function ShowdownLobbySession({ viewerId, clubName }: { viewerId: string; clubNa
         setParams({ tab: SECTIONS[next].id, game: gameKey }, { replace: true }); setNotice('');
         document.getElementById(`${formId}-${SECTIONS[next].id}`)?.focus();
       }}>{SECTIONS.map(tab => <button type="button" role="tab" id={`${formId}-${tab.id}`} aria-controls={`${formId}-panel`} tabIndex={section === tab.id ? 0 : -1} aria-selected={section === tab.id} key={tab.id} onClick={() => { setParams({ tab: tab.id, game: gameKey }, { replace: true }); setNotice(''); }}><tab.icon size={14} aria-hidden="true" />{tab.label}{Boolean(counts[tab.id]) && <b>{counts[tab.id]}</b>}</button>)}</nav>
-      <div className="sd-scroll" role="tabpanel" id={`${formId}-panel`} aria-labelledby={`${formId}-${section}`} tabIndex={0}>
+      <div className="sd-scroll" role="tabpanel" id={`${formId}-panel`} aria-labelledby={`${formId}-${section}`} tabIndex={0} aria-busy={!data}>
+        {!data ? <ShowdownDataState title={lobby.error ? undefined : `Opening ${gameName}`} error={lobby.error} retry={() => void lobby.refresh()} /> : <>
         {notice && <p className="sd-notice" role="status">{notice}</p>}
         {lobby.error && <div className="sd-error" role="alert"><p>{lobby.error} Your last loaded challenges are still shown.</p><button type="button" className="sd-button" onClick={() => void lobby.refresh()}>Retry refresh</button></div>}
         {section === 'standings' ? <>
           {cipher && data.cipher_statistics && <CipherStatistics statistics={data.cipher_statistics} />}
           <div className="sd-section-title"><div><h2>{gameName} standings</h2><p>3 points per win · 1 per draw. Completed matches only.</p></div><Trophy size={22} aria-hidden="true" /></div>
-          {data.standings.length ? <div className="sd-standings" aria-label="Game standings">{data.standings.map((player, index) => <article className="sd-standing" key={player.user_id}><span>{index + 1}</span><ShowdownAvatar name={player.display_name} url={player.avatar_url} /><div><strong>{player.display_name}{player.user_id === viewerId ? ' · you' : ''}</strong><small>{player.wins}W · {player.losses}L · {player.draws}D</small></div><b>{player.points}<small>points</small></b></article>)}</div> : <EmptyState section="standings" cipher={cipher} onChallenge={openChooser} disabled={!members.length} />}
+          {data.standings.length ? <div className="sd-standings" aria-label="Game standings">{data.standings.map((player, index) => <article className="sd-standing" key={player.user_id}><span>{index + 1}</span><ShowdownAvatar name={player.display_name} url={player.avatar_url} /><div><strong>{player.display_name}{player.user_id === viewerId ? ' · you' : ''}</strong><small>{player.wins}W · {player.losses}L · {player.draws}D</small></div><b>{player.points}<small>points</small></b></article>)}</div> : <EmptyState section="standings" cipher={cipher} onChallenge={openChooser} disabled={!members.length || !availableGames.length} />}
           <div className="sd-section-title"><div><h2>Your rivalries</h2><p>Career head-to-head records for this game.</p></div><Users size={21} aria-hidden="true" /></div>
           {data.rivalries.length ? data.rivalries.map(rival => <article className="sd-rivalry" key={rival.opponent_id}><div><ShowdownAvatar name={rival.display_name} url={rival.avatar_url} /><div><strong>{rival.display_name}</strong><p>{rival.played} completed {rival.played === 1 ? 'match' : 'matches'}</p></div></div><b>{rival.wins}–{rival.losses}–{rival.draws}</b></article>) : <p className="sd-lobby-note">Your first completed match starts a rivalry.</p>}
           <p className="sd-lobby-note">Standings never compare raw scores from different mini-games. Rivalry records read wins–losses–draws from your perspective.</p>
         </> : <>
           <div className="sd-section-title"><div><h2>{section === 'inbox' ? 'The invitation is yours.' : section === 'play' ? 'Make your mark.' : section === 'waiting' ? 'Your rival’s turn.' : 'The match archive.'}</h2><p>{section === 'inbox' ? cipher ? 'Set and lock your code to join the duel.' : 'Open an invitation to play. No acceptance step.' : section === 'play' ? 'Jump in or pick up exactly where you left off.' : section === 'waiting' ? cipher ? 'Your code or attempt is locked. Your rival can continue on their schedule.' : `Your ${roundNoun} are locked. We’ll notify you when the result is ready.` : 'Completed and closed challenges stay here.'}</p></div>{section === 'history' ? <History size={22} aria-hidden="true" /> : <Swords size={22} aria-hidden="true" />}</div>
-          {visible.length ? <div className="sd-card-list">{visible.map(challenge => <ChallengeCard key={challenge.id} challenge={challenge} viewerId={viewerId} gameName={data.games.find(game => game.game_key === challenge.game_key)?.name ?? getShowdownGame(challenge.game_key)?.name ?? 'Showdown'} disabled={creating || deciding} decide={action => { setDecision({ challenge, action }); setDecisionError(''); }} />)}</div> : <EmptyState section={section} cipher={cipher} onChallenge={openChooser} disabled={!members.length} />}
+          {visible.length ? <div className="sd-card-list">{visible.map(challenge => <ChallengeCard key={challenge.id} challenge={challenge} viewerId={viewerId} gameName={data.games.find(game => game.game_key === challenge.game_key)?.name ?? getShowdownGame(challenge.game_key)?.name ?? 'Showdown'} disabled={creating || deciding} decide={action => { setDecision({ challenge, action }); setDecisionError(''); }} />)}</div> : <EmptyState section={section} cipher={cipher} onChallenge={openChooser} disabled={!members.length || !availableGames.length} />}
           {section === 'history' && lobby.hasMore && <button type="button" className="sd-button sd-full" disabled={lobby.loadingMore} onClick={() => void lobby.loadMore()}>{lobby.loadingMore ? <Loader2 size={16} className="sd-loading" aria-hidden="true" /> : <History size={16} aria-hidden="true" />}{lobby.loadingMore ? 'Loading matches…' : 'Load older matches'}</button>}
         </>}
+        </>}
       </div>
-    </div>}
+    </div>
     <Dialog open={choosing} onOpenChange={open => { if (!creating && !mutation.current) { if (open) setChoosing(true); else closeChooser(); } }}>
       <DialogContent className={`sd-dialog ${chosenGame === 'afterimage' ? 'sd-afterimage' : selectingCipher ? 'sd-cipher' : ''}`} onEscapeKeyDown={event => { if (creating) event.preventDefault(); }} onPointerDownOutside={event => { if (creating) event.preventDefault(); }}>
         <DialogHeader><DialogTitle>New showdown</DialogTitle><DialogDescription>{selectingCipher ? 'Choose a club rival, then create your secret code. The invitation is sent only after you lock it.' : 'Choose a game and a club rival. They have 72 hours to finish the same three rounds.'}</DialogDescription></DialogHeader>
-        <div aria-label="Choose a game">{availableGames.map(game => <button type="button" className="sd-game-choice" key={game.game_key} aria-pressed={chosenGame === game.game_key} disabled={creating} onClick={() => { setChosenGame(game.game_key); setCreateError(''); }}><ShowdownGameMark gameKey={game.game_key} /><span><strong>{game.name}</strong><small>{game.description}</small></span>{chosenGame === game.game_key && <Check size={17} aria-hidden="true" />}</button>)}</div>
+        <ShowdownGameSelector games={availableGames} value={chosenGame} onChange={key => { setChosenGame(key); setCreateError(''); }} compact disabled={creating} label="Choose a game" />
         <label htmlFor={`${formId}-member`}>Club member<select id={`${formId}-member`} value={recipientId} disabled={creating} onChange={event => { setRecipientId(event.target.value); setCreateError(''); }}><option value="">Choose your rival</option>{members.map(member => <option value={member.user_id} key={member.user_id}>{member.display_name}</option>)}</select></label>
         {selectedMember && <MemberSummary member={selectedMember} cipher={selectingCipher} />}
         {!selectingCipher && <label className="sd-play-now"><input type="checkbox" checked={playNow} disabled={creating} onChange={event => setPlayNow(event.target.checked)} />Play my {selectedRegistration?.roundNoun ?? 'rounds'} now</label>}

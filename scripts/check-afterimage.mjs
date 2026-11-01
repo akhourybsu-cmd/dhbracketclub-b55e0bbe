@@ -145,7 +145,7 @@ async function rawCreate(page, rematch = null) {
 async function createChallenge(page) {
   await page.getByRole('button', { name: 'Challenge a member', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'New showdown' });
-  await dialog.getByRole('button', { name: /Afterimage/ }).click();
+  await dialog.getByRole('radio', { name: 'Afterimage', exact: true }).click();
   await dialog.getByRole('combobox', { name: 'Club member' }).selectOption(users.blair);
   await dialog.getByRole('button', { name: 'Send challenge', exact: true }).click();
   await expect(page.getByTestId('afterimage-game')).toHaveAttribute('data-afterimage-phase', 'ready'); return matchId(page);
