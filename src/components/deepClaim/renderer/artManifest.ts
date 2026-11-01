@@ -2,11 +2,11 @@ import type { DeepClaimBuildingId, DeepClaimFormation, DeepClaimResourceId, Deep
 import { DEEP_CLAIM_MINERAL_IDS } from '@/lib/deepClaim/types';
 import { BUILDING_INFO } from '@/lib/deepClaim/catalog';
 
-/** Phases 1–5: original procedural pixel art, not a finished commercial sprite atlas. */
+/** Original source-authored pixel pack v1, with source-painted loading/failure fallbacks. */
 export const DEEP_CLAIM_ART_PROVENANCE = {
   author: 'Original DH Club / Deep Claim implementation',
-  source: 'Authored pixel primitives and coordinate-only cosmetic texture patterns. No stock, emoji, external image requests, private world seeds or generated gameplay terrain.',
-  grade: 'Phase 1–5 original procedural art; expanded hand-painted animation and commercial atlas polish are future work.',
+  source: 'Editable authored pixel primitives, vein/joinery/stitching sources and a reproducible committed PNG atlas. No stock, emoji, runtime generation, private world seeds or generated gameplay terrain.',
+  grade: 'Phase 6 original source-authored pixel pack v1. This is compiled pixel geometry, not commercially painted artwork.',
   logicalTilePixels: 16,
 } as const;
 export const FORMATION_ART: Record<DeepClaimFormation, { label: string; dark: string; wall: string; detail: string }> = {
@@ -72,6 +72,7 @@ export const EQUIPMENT_ART = {
 export type EquipmentArtKey = keyof typeof EQUIPMENT_ART;
 export const equipmentArtwork = (key: string) => EQUIPMENT_ART[key as EquipmentArtKey];
 export const DEEP_CLAIM_ART_MANIFEST = {
+  atlas: { version: 1, image: '/deep-claim/atlas-v1.png', metadata: 'renderer/generated/atlas-v1.json', source: 'art/deep-claim/pack-v1.json', regenerate: 'node scripts/build-deep-claim-atlas.mjs' },
   terrain: ['surface_grass', 'fog_rock', 'dug_tunnel', ...Object.keys(FORMATION_ART).map(id => `formation_${id}`), ...DEEP_CLAIM_MINERAL_IDS.map(id => `deposit_${id}`)],
   inventory: Object.keys(RESOURCE_ART).map(id => `stock_${id}`), equipment: Object.keys(EQUIPMENT_ART),
   workers: Object.keys(SPECIALTY_ART).map(id => `crew_${id}`), buildings: Object.keys(BUILDING_ART).map(id => `${id}_levels_${id === 'research_office' ? '0_2' : ['workers_quarters','smeltery','gem_workshop','trading_post'].includes(id) ? '0_3' : id === 'mine_shaft' ? '1_5' : '1_3'}`),

@@ -14,6 +14,8 @@ import { DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_FORMATI
 import { companySnapshot } from './fixtures/deepClaim';
 import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
 
+vi.mock('@/components/deepClaim/renderer/authoredAtlas', () => ({ preloadDeepClaimAtlas: () => Promise.resolve('failed'), subscribeDeepClaimAtlas: () => () => {}, getDeepClaimAtlasDiagnostics: () => ({ state: 'failed', width: 0, height: 0, spriteCount: 0, decodedBytes: 0, draws: 0 }), drawAuthoredSprite: () => false }));
+
 const viewport = { width: 390, height: 500 }, bounds = { width: 96, depth: 149 };
 const legacyBuildingArt = ['mine_office','mine_shaft','warehouse','tool_station'].map(key => BUILDING_ART[key as keyof typeof BUILDING_ART]);
 const phase2BuildingKeys = ['mine_office','mine_shaft','warehouse','tool_station','workers_quarters','smeltery','gem_workshop'] as const;
@@ -28,16 +30,19 @@ class MockContext {
   constructor() { contexts.push(this); }
 }
 const frames = new Map<number, FrameRequestCallback>();
+let frameTime = 0;
 let frameId = 0, visibility: DocumentVisibilityState = 'visible';
 const originalVisibility = Object.getOwnPropertyDescriptor(document, 'visibilityState');
 const box = { ...viewport, x: 0, y: 0, left: 0, top: 0, right: 390, bottom: 500, toJSON: () => ({}) };
-function frame(at = 1000) { act(() => { const queue = [...frames.values()]; frames.clear(); queue.forEach(callback => callback(at)); }); }
+function frame(at = 1000) { act(() => { const elapsed = Math.max(0, at - frameTime); frameTime = at; vi.advanceTimersByTime(elapsed); const queue = [...frames.values()]; frames.clear(); queue.forEach(callback => callback(at)); }); }
 function pointer(element: HTMLElement, type: string, x: number, y: number, pointerId = 1) {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.assign(event, { pointerId, clientX: x, clientY: y, pointerType: 'touch', isPrimary: pointerId === 1 }); fireEvent(element, event);
 }
 beforeEach(() => {
-  contexts.length = 0; frames.clear(); frameId = 0; visibility = 'visible';
+  contexts.length = 0; frames.clear(); frameId = 0; frameTime = 0; visibility = 'visible';
+  vi.useFakeTimers({ toFake: ['setTimeout','clearTimeout'] });
+  vi.spyOn(performance, 'now').mockImplementation(() => frameTime);
   vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; }));
   vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => frames.delete(id)));
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} unobserve() {} });
@@ -46,7 +51,7 @@ beforeEach(() => {
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
 });
 afterEach(() => {
-  cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); frames.clear();
+  cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); frames.clear();
   if (originalVisibility) Object.defineProperty(document, 'visibilityState', originalVisibility); else delete (document as unknown as Record<string, unknown>).visibilityState;
 });
 
@@ -139,7 +144,7 @@ describe('Original pixel artwork and authoritative viewport', () => {
     frame(); expect(frames.size).toBe(0);
     root.rerender(<DeepClaimCanvas {...props} reducedMotion selectedTile={{ x: 48, y: 2 }} />);
     expect(frames.size).toBe(1); frame(); expect(frames.size).toBe(0);
-    root.rerender(<DeepClaimCanvas {...props} />); frame(); expect(frames.size).toBe(1);
+    root.rerender(<DeepClaimCanvas {...props} />); frame(); expect(frames.size + vi.getTimerCount()).toBe(1);
     act(() => { visibility = 'hidden'; document.dispatchEvent(new Event('visibilitychange')); });
     expect(frames.size).toBe(0);
     root.rerender(<DeepClaimCanvas {...props} active={false} />);
@@ -413,7 +418,7 @@ describe('Deep Claim Phase 3 committed underground artwork', () => {
     root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...snapshot, expeditions: [{ ...job, mode: 'infrastructure' }] }} />);
     frame(2000); expect(audio.play).not.toHaveBeenCalled();
     root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...snapshot, expeditions: [{ ...job, mode: 'extract' }] }} />);
-    frame(3000); expect(audio.play).toHaveBeenCalledWith('pickaxe', expect.any(Number));
+    frame(3000); expect(audio.play).toHaveBeenCalledWith('pickaxe', expect.any(Number), undefined);
   });
   it('provides four infrastructure silhouettes and six original specimen icons with named qualities', () => {
     const { container } = render(<>{DEEP_CLAIM_INFRASTRUCTURE_KEYS.map(infrastructureKey => <DeepClaimInfrastructureIcon key={infrastructureKey} infrastructureKey={infrastructureKey} grade={2} />)}{DEEP_CLAIM_DISCOVERY_KINDS.map(kind => <DeepClaimDiscoveryIcon key={kind} kind={kind} quality="exceptional" />)}</>);
@@ -514,5 +519,39 @@ describe('Deep Claim Phase 3 committed underground artwork', () => {
     paintBuilding(five as unknown as CanvasRenderingContext2D, 'mine_shaft', 5, 0, false);
     expect(four.fills).not.toContain('#d2d9bf'); expect(five.fills).toContain('#d2d9bf');
     expect(five.fillRect.mock.calls.length).toBeGreaterThan(four.fillRect.mock.calls.length);
+  });
+});
+
+
+describe('Deep Claim runtime lifetime safeguards', () => {
+  it('ignores inactive/lost pointer gestures and cancels every pending renderer timer on unmount', () => {
+    const select = vi.fn(), props = { snapshot: companySnapshot(), view: 'mine' as const, selectedTile: null, onSelectTile: select, onSelectBuilding: vi.fn() };
+    const root = render(<DeepClaimCanvas {...props} />), map = screen.getByTestId('deep-claim-canvas'); frame();
+    pointer(map, 'pointerdown', 195, 250); pointer(map, 'lostpointercapture', 195, 250); pointer(map, 'pointerup', 195, 250);
+    expect(select).not.toHaveBeenCalled();
+    pointer(map, 'pointerdown', 195, 250); root.rerender(<DeepClaimCanvas {...props} active={false} />);
+    pointer(map, 'pointermove', 220, 250); pointer(map, 'pointerup', 220, 250); fireEvent.keyDown(map, { key: 'ArrowRight' });
+    expect(select).not.toHaveBeenCalled(); expect(frames.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
+    root.unmount(); expect(frames.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
+  });
+  it('exposes only aggregate diagnostics after a paint and isolates callback failures', () => {
+    const samples: Parameters<NonNullable<React.ComponentProps<typeof DeepClaimCanvas>['onDiagnostics']>>[0][] = [];
+    const diagnostics = vi.fn(sample => { samples.push(sample); throw new Error('Optional QA callback failed'); });
+    const props = { snapshot: companySnapshot(), view: 'mine' as const, selectedTile: null, onSelectTile: vi.fn(), onSelectBuilding: vi.fn(), reducedMotion: true, onDiagnostics: diagnostics };
+    const root = render(<DeepClaimCanvas {...props} />); expect(diagnostics).not.toHaveBeenCalled(); expect(() => frame()).not.toThrow();
+    expect(samples[0]).toMatchObject({ paint_count: 1, scheduled_wakeups: 1, mode: 'static', active: true, visible: true, world_index_builds: 1 });
+    expect(samples[0].terrain_cache_entries).toBeLessThanOrEqual(384); expect(samples[0].field_cache_entries).toBeLessThanOrEqual(72);
+    expect(samples[0].visible_tiles).toBeLessThanOrEqual(samples[0].visible_cells); expect(JSON.stringify(samples[0])).not.toMatch(/worker_id|company_id|material|inventory|cargo|server_now/);
+    expect(frames.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
+    root.rerender(<DeepClaimCanvas {...props} selectedTile={{ x: 48, y: 3 }} />); expect(() => frame(2000)).not.toThrow(); expect(diagnostics).toHaveBeenCalledTimes(2);
+  });
+  it('uses elapsed server position for explicit reduced-motion crew focus without advancing a recorded stage', () => {
+    const snapshot = companySnapshot(), start = snapshot.server_now;
+    const job = { id: 'focus-travel', mode: 'extract', status: 'active', stage: 'travel', worker_ids: [snapshot.workers[0].id], path: [{ x:48,y:0 },{ x:48,y:1 },{ x:47,y:1 }], target: { x:47,y:1 }, stages: [{ key:'travel',starts_at:start,ends_at:new Date(Date.parse(start)+5000).toISOString() }] } as DeepClaimExpedition;
+    snapshot.expeditions = [job]; snapshot.workers[0].assigned_job_id = job.id;
+    const diagnostics = vi.fn(); render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} reducedMotion onDiagnostics={diagnostics} />);
+    frame(2500); fireEvent.click(screen.getByRole('button', { name:'Focus crew' })); frame(2500);
+    expect(diagnostics.mock.calls.at(-1)![0].camera).toMatchObject({ x:48,y:3 });
+    expect(job.stage).toBe('travel'); expect(job.status).toBe('active'); expect(frames.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
   });
 });

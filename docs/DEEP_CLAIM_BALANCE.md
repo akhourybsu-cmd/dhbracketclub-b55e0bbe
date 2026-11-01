@@ -271,3 +271,13 @@ Seven permanent Feat families provide thirty-two unlocks, worth at most 590 DH p
 Project Feats require the actual five-percent contribution and completed project, regardless of whether its credit award has been claimed. Raw donated amounts, preview clicks, active jobs, uncollected production and repeated requests grant no additional progress. Historical source achievements import as historical awards. Only real post-integration completions contribute new general engagement dates; none of these changes rewrites an old award.
 
 Public comparisons are separate named records: original mining haul value in a club-local Monday week, maximum completed mining depth, or highest recovered-find frozen value. They are not added together. Weekly value uses recorded original cargo rather than staged remainder, so collection and selling cannot create or reduce ranked value. Other companies synchronize their own returns; a standings read never excavates their private worlds.
+
+## Phase 6 preserves the economy
+
+Phase 6 changes presentation and runtime behavior without rebalancing server formulas, prices, calendars or rewards. Rendering cadence, audio arrangement, asset loading, camera motion, reduced graphics and a local discovery reveal have no effect on finite ore, crew energy, work duration, cargo, research, project shares or DH Score. Seven released migrations remain byte-for-byte immutable; the original canonical catalogs and shared explanatory rule calculations remain the reference.
+
+The reachable progression remains 599 meters of supported depth, fourteen research nodes, twelve permanent deliveries, eight company milestones, six finite cooperative projects and seven DH Feat families. A guide can explain real prerequisites and a receipt can celebrate a real result; neither is a new source of rewards, daily tasks or regenerating starter stock.
+
+Existing headless evidence covers 210 mining combinations, finite industry/research reachability and eighteen one/two/three-member project partitions. The earned starter-to-bronze route spans two operating days with its specified crew and legal finite inputs. These checks bound concrete strategies and detect conservation/arbitrage errors; they do not establish fifty hours of content, a minimum number of sessions for every seed or commercial-length retention. Broader longitudinal balancing and physical-device profiling remain separate future measurements.
+
+Presentation release checks must preserve the economic source baseline before interpreting new performance measurements. PNG download size, decoded atlas memory, cache limits, scheduler wakeups and audio voice counts are runtime budgets, not gameplay multipliers or a reason to recalculate a frozen job.

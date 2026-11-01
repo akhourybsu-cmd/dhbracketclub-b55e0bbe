@@ -25,6 +25,7 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-rou
 import { ThemeProvider } from 'next-themes';
 import DeepClaimPage from '../../src/pages/DeepClaimPage';
 import { deepClaimFixture } from './deep-claim-transport';
+import { DeepClaimRuntimeVisual } from './deep-claim-runtime';
 
 const parameters = new URLSearchParams(location.search);
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -39,6 +40,7 @@ createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClie
     <MemoryRouter initialEntries={[parameters.get('route') || '/deep-claim']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <RouteProbe />
       <Routes>
+        <Route path="/deep-claim/render-stress" element={<DeepClaimRuntimeVisual />} />
         <Route path="/deep-claim" element={<DeepClaimPage />} />
         <Route path="/compete" element={<main><h1>Compete</h1><a href="/deep-claim">Deep Claim</a></main>} />
         <Route path="*" element={<main><h1>Route unavailable</h1></main>} />

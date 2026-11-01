@@ -2,7 +2,7 @@
 
 Deep Claim is a persistent, personal mining company inside DH Club. The player makes business and crew decisions, then returns to see the consequences in a mine that changes permanently. The company belongs to one member within one club; it is not a shared club treasury or a live multiplayer mine.
 
-This document records the design and integration contracts through Phase 5 club operations and DH integration. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
+This document records the design and integration contracts through Phase 6 original presentation and runtime polish. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
 
 ## Player promise and first session
 
@@ -155,6 +155,20 @@ The shared notification preference controls batched in-app company updates. Actu
 
 Deep links carry the expected club and a whitelisted Office destination. A mismatched current club produces a clear notice rather than silently changing clubs or selecting another club's private state.
 
+## Phase 6 original presentation and runtime polish
+
+Phase 6 improves the experience around the same authoritative game. It introduces a versioned original pixel-art pack, composed Web Audio arrangements, clearer presentation controls and runtime safeguards. It does not create a new mining rule, reset a company or alter any paid job, recipe, project, research benefit or reward. All seven published migrations, canonical economic catalogs and rule calculations remain unchanged.
+
+The authored pack covers the current mineral, worker, equipment, building, infrastructure and discovery identities with stable sprite references. Build levels, crew poses, functioning gear, installed projects and production activity continue to derive from actual disclosed state. Atlas loading and decoding are optional presentation work: a missing image falls back to the existing local painters and cannot prevent dispatch, inspection, collection or navigation. Pixel illustrations are original source-authored project work, not a claim of commissioned commercial painting.
+
+Music and ambient arrangements respond to the visible surface/mine setting and known depth or formation. They never anticipate an undiscovered room, a hidden find or a future job outcome. Material cues use only disclosed visible materials. Separate music, ambient and effects levels supplement the existing master volume, with compatibility for older saved settings. Audio still requires an opt-in gesture and the app's sound gates. Scheduling and voices are bounded and stop on mute, hidden/inactive views or disposal. The score is composed and synthesized in Web Audio, with no claim of recorded orchestration.
+
+Compact settings and a paged guide explain the working game without replacing the six primary navigation tabs. Existing server-confirmed findings may receive a centered, dismissible reveal; seeing or skipping presentation never sells, keeps, salvages or claims an item. Remembered reveal state is a local account/club/company-scoped interface preference, distinct from authoritative ownership and reward receipts.
+
+Camera and sprite feedback remain short and interruptible. Reduced motion preserves current server-derived positions on explicit invalidation without running a decorative animation loop. Reduced graphics lowers rendering work without hiding functional terrain, workers or installed projects. Keyboard/list alternatives, focus restoration, native gesture cancellation and small-phone safe areas are part of the presentation contract, not optional replacements for pointer-only controls.
+
+Performance claims require recorded budgets and measurements. Viewport culling, bounded texture/path caches, frame scheduling, audio cleanup and graceful atlas failure are checked independently. Browser timing and headless interaction checks are useful evidence, but do not establish physical-device frame rates or battery behavior. Presentation also cannot establish a universal playtime: the current world, research, contracts and project goals are finite versioned content, with no asserted fifty-hour minimum.
+
 ## Crew decisions
 
 The specialty framework supports Miner, Geologist, Hauler, Engineer, Surveyor, Demolitionist and Safety Officer. Phase 1 starts with mining, geology and hauling specialists; Phase 2’s daily candidate system makes the broader workforce available without replacing those starters.
@@ -211,7 +225,7 @@ Phase 4 adds dependency-based research, finite delivery contracts, source-backed
 
 Phase 5 adds opt-in club standings/showcases, finite shared projects, existing-ledger DH Feats and batched in-app updates. Company credits and worker energy remain isolated resources; DH Score is never spendable, and there is no cross-game combined ranking or public mine save.
 
-**Phase 6 finished presentation is deferred.** Phases 1–5 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
+Phase 6 supplies the current original pixel pack and composed synthesized presentation, with local painter fallbacks. Additional authored animation, recorded music, future asset packs and physical-device profiling remain further work; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md). This release does not claim a commissioned commercial atlas, a recorded soundtrack or proof of a fixed minimum game length.
 
 ## Verification gates
 
@@ -224,5 +238,7 @@ Phase 3 verifies wholly pending and partially applied legacy plans across absent
 Phase 4 verifies research prerequisites, one active order, exact costs, elapsed completion and frozen old effects; research-aware effective statistics and production clocks; persistent contract eligibility, whole-input delivery and once-only rewards; historical source-backed milestone progress and explicit claims; rollback after economic writes; collected-production statistics beyond bounded public history; and unchanged old receipt fingerprints, geology and active jobs. Canonical catalog parity, finite reward totals, recipe dependency reachability and the absence of circular resource conversions are required economy checks.
 
 Phase 5 additionally verifies opt-in/out, private-account and cross-club isolation; exact public-field allowlists and retained old featured finds; frozen weekly cargo, ties and calendar boundaries; whole-donation rollback, individual/global caps and once-only qualified claims; old metrics/receipts preserved by real Feats composition; historical import versus new monthly awards; lifetime history across club/install changes; notification preferences, cooldowns, daily limits, dismissal-safe dedupe and owner-only project notification queueing. Shared-project/account locks and foreign-key locks require explicit review; the isolated harness remains insufficient evidence of native parallel stress behavior.
+
+Phase 6 verifies reproducible original atlas outputs and byte/decoded-memory budgets; stable rule/catalog/migration hashes; disclosed-state-only art/audio; old preference migration and independent sound levels; gesture-only audio startup, background/mute/disposal cleanup and resume races; bounded rendering/caches; native pointer/wheel/keyboard cancellation; reduced-motion invalidation; focus restoration and atlas-failure fallback. Performance reports distinguish measured browser behavior from untested physical hardware, and every gameplay/retry/privacy regression remains required.
 
 Installation, migration, commit, push and deployment status must be recorded from actual evidence in the implementation ledger. This design document does not assert that a live deployment or live database migration has occurred.

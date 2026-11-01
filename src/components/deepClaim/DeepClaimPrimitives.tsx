@@ -1,13 +1,27 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useLayoutEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { Loader2, Pickaxe, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export function ClaimButton({ children, className = '', primary = false, danger = false, pending = false, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { primary?: boolean; danger?: boolean; pending?: boolean }) {
-  return <button {...props} type={props.type ?? 'button'} className={`dcl-button ${primary ? 'is-primary' : ''} ${danger ? 'is-danger' : ''} ${className}`} disabled={props.disabled || pending}>{pending && <Loader2 size={15} className="dcl-spin" aria-hidden="true" />}{children}</button>;
+  return <button {...props} type={props.type ?? 'button'} className={`dcl-button ${primary ? 'is-primary' : ''} ${danger ? 'is-danger' : ''} ${className}`} disabled={props.disabled || pending} aria-busy={pending || undefined}>{pending && <Loader2 size={15} className="dcl-spin" aria-hidden="true" />}{children}</button>;
+}
+
+const DialogScope = createContext<((id: symbol, open: boolean) => void) | null>(null);
+
+/** Tracks portaled and nested camp dialogs without inspecting the DOM on every frame. */
+export function ClaimDialogScope({ children, onOpenChange }: { children: ReactNode; onOpenChange: (open: boolean) => void }) {
+  const dialogs = useRef(new Set<symbol>());
+  const report = useCallback((id: symbol, open: boolean) => { if (open) dialogs.current.add(id); else dialogs.current.delete(id); onOpenChange(dialogs.current.size > 0); }, [onOpenChange]);
+  return <DialogScope.Provider value={report}>{children}</DialogScope.Provider>;
 }
 
 export function ClaimDialog({ open, onClose, title, description, children, className = '', busy = false }: { open: boolean; onClose: () => void; title: string; description?: string; children: ReactNode; className?: string; busy?: boolean }) {
-  return <Dialog open={open} onOpenChange={value => { if (!value && !busy) onClose(); }}><DialogContent className={`dcl-dialog ${className}`} onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} onPointerDownOutside={event => { if (busy) event.preventDefault(); }}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description ?? 'Manage your mining company.'}</DialogDescription></DialogHeader>{children}</DialogContent></Dialog>;
+  const report = useContext(DialogScope);
+  const token = useRef(Symbol('claim-dialog'));
+  const heading = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => { if (!open) return; report?.(token.current, true); const id = token.current; return () => report?.(id, false); }, [open, report]);
+  return <Dialog open={open} onOpenChange={value => { if (!value && !busy) onClose(); }}><DialogContent className={`dcl-dialog ${className}`} onOpenAutoFocus={event => { event.preventDefault(); opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; heading.current?.focus({ preventScroll: true }); }} onCloseAutoFocus={event => { event.preventDefault(); if (document.querySelector('[role="dialog"][data-state="open"]')) return; const target = opener.current; if (target?.isConnected && !target.closest('[hidden],[inert]') && !(target instanceof HTMLButtonElement && target.disabled)) target.focus({ preventScroll: true }); else document.querySelector<HTMLElement>('.deep-claim [role="tab"][aria-selected="true"]')?.focus({ preventScroll: true }); }} onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} onPointerDownOutside={event => { if (busy) event.preventDefault(); }}><DialogHeader><DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle><DialogDescription>{description ?? 'Manage your mining company.'}</DialogDescription></DialogHeader>{children}</DialogContent></Dialog>;
 }
 
 export function ClaimMeter({ value, max, label, tone = 'brass' }: { value: number; max: number; label: string; tone?: 'brass' | 'green' | 'blue' | 'red' }) {

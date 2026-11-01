@@ -1,6 +1,6 @@
 # Deep Claim technical protocol
 
-Phase 0 architecture through Phase 5 club participation protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
+Phase 0 architecture through Phase 6 presentation protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
 
 ## Ownership and authority
 
@@ -164,6 +164,20 @@ Schema four retains all prior state and adds the canonical business catalog, pai
 Fresh receipt writes, including no-op company creation requests, are limited to 120 per member per minute. Authorization is checked before retry lookup. Argument fingerprints include scope and optimistic revision; exact retries are checked before changing eligibility. Reused UUIDs with changed arguments are rejected. The client stores only unfinished action identity/arguments in `dh:deep-claim:pending:v1:<user>:<club>` and clears that namespace on sign-out. A definitive SQL rule rejection clears the intent; an uncertain response retains it for explicit confirmation.
 
 Economic investments preserve two operating credits. Dispatch requires sufficient cash for wages and project fees upfront, then checks remaining cash plus liquid collected stock plus guaranteed finite cargo against that recoverable minimum. Project input value is subtracted before assessing remaining stock. This prevents a depleted one-stone seam or a construction purchase from bankrupting an otherwise empty company. Surveys have no guaranteed cargo; pending finds, equipment, staged cargo and unfinished processing are not liquid reserve. No bailout currency is minted. Legacy risk labels describe operational efficiency; configuration-three conditions add explicit bounded delay chance. Injuries, destroyed passages and permanent loss remain unimplemented.
+
+## Presentation authority and runtime budget
+
+Phase 6 is a client presentation release. Private snapshot schema four, field rules three, business catalog four, social catalog five, all existing migrations and every authoritative RPC retain their contracts. Original sprite frames, music, camera interpolation, transition state and local discovery acknowledgements have no economic authority. An asset load failure must leave operational controls and the existing painter fallback available; it cannot prevent company synchronization or turn unknown terrain into a generated map.
+
+Authored sprites use the existing sixteen-pixel world coordinates and shared surface building footprints. The source manifest and reproducible offline packing step version the illustration independently of geology and rules. Only a worker's disclosed role, appearance, assigned gear and current public stage may select its sprite. Building ownership, level, active production and installed infrastructure come from the authorized snapshot. Static bases and bounded animation frames replace repeated detail painting; fog still contains no resource information. Culling and texture caches apply only to already revealed cells.
+
+The viewport and audio controller share coarse public scene context: surface or mine, camera depth and an optional actually revealed formation. This context can select ambience and material timbre, never future discoveries, private plans or rewards. A local elapsed-time estimate illustrates an existing server-timed route; reduced motion suppresses repeated animation rather than changing the actual server-derived position or official progress. Snapshot structural sharing must retain unchanged public branches while preserving revision ordering and every updated authoritative field.
+
+Audio starts muted and requires an explicit gesture to create/resume its context. Original composed note arrangements and deterministic sound synthesis use separately adjustable music, ambience and effect buses under the existing application master/category preferences. Preference additions preserve older settings. Hidden, inactive, muted and disposed controllers stop scheduling and release voices; a delayed resume rechecks visibility and activity before scheduling. Rate limits, attenuation and a bounded simultaneous-voice pool keep nearby work sounds from multiplying with the workforce. No audio or visual callback can issue a gameplay mutation.
+
+Menus respect safe-area insets, keyboard focus and reduced motion. Short transitions occur on explicit navigation, not polling updates. A prominent discovery presentation may reference only an already returned, server-confirmed pending find. Its local seen marker is scoped to account, club and company and affects presentation only; dismissing it does not keep, sell, salvage or award that find. Existing explicit backend-validated decisions remain necessary.
+
+Read-only renderer diagnostics, when requested by tests, report aggregate work and camera information. They never publish a seed, unrevealed cell, future event, reward plan or economic authority, and there is no production global debug object. Browser timing measurements describe the measured test environment; they are not evidence of a particular physical phone's frame rate or battery use.
 
 ## Deferred extension points
 

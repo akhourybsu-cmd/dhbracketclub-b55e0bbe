@@ -1,3 +1,4 @@
+import { replaceEqualDeep } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { validateDeepClaimPreview, validateDeepClaimSnapshot } from './world';
@@ -74,9 +75,10 @@ export async function mutateDeepClaim(operation: string, args: Record<string, un
 /** Background reads may finish after a mutation: never roll a company back. */
 export function shareDeepClaimSnapshot(previous: unknown, incoming: unknown): DeepClaimSnapshot {
   const next = incoming as DeepClaimSnapshot, before = previous as DeepClaimSnapshot | undefined;
+  if (before?.company && next.company && (before.company.id !== next.company.id || before.company.user_id !== next.company.user_id || before.company.club_id !== next.company.club_id)) return next;
   if (before?.company && !next.company || before && before.revision > next.revision) return before!;
   if (before && before.revision === next.revision && Date.parse(before.server_now) > Date.parse(next.server_now)) return before;
-  return next;
+  return replaceEqualDeep(before, next);
 }
 export function shareDeepClaimClubView(previous: unknown, incoming: unknown): DeepClaimClubView {
   const next = incoming as DeepClaimClubView, before = previous as DeepClaimClubView | undefined;

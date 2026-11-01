@@ -1,6 +1,8 @@
 import type { DeepClaimBuildingId, DeepClaimFormation, DeepClaimMineralId, DeepClaimSpecialty } from '@/lib/deepClaim/types';
 import { BUILDING_ART, FORMATION_ART, FRONTIER_PALETTE as P, RESOURCE_ART, SPECIALTY_ART } from './artManifest';
 import type { BuildingActivity, WorkerEquipmentPaint } from './productionVisuals';
+import authoredPack from '../../../../art/deep-claim/pack-v1.json';
+import { drawAuthoredSprite } from './authoredAtlas';
 
 export type WorkerPose = 'idle' | 'walk' | 'mine' | 'haul' | 'setup' | 'survey' | 'build';
 const rect = (c: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) => { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); };
@@ -8,12 +10,16 @@ const rect = (c: CanvasRenderingContext2D, color: string, x: number, y: number, 
 export function cosmeticGrain(x: number, y: number, variant = 0) { return ((Math.imul(x + 71, 1103515245) ^ Math.imul(y + 19, 12345) ^ variant * 7919) >>> 0) % 16; }
 
 export function paintFog(c: CanvasRenderingContext2D, x: number, y: number) {
+  const variant = cosmeticGrain(x, y) % 4;
+  if (drawAuthoredSprite(c, `fog:${variant}`, x, y, 16, 16)) return;
   rect(c, '#17191b', x, y, 16, 16);
   rect(c, '#1c1d1e', x + 1, y + 1, 14, 1); rect(c, '#101315', x, y + 15, 16, 1);
-  if (cosmeticGrain(x, y) < 7) rect(c, '#202122', x + 4, y + 7, 5, 2);
+  if (variant < 2) rect(c, '#202122', x + 3 + variant, y + 7, 5, 2);
 }
 
+export const terrainSpriteKey = (resource: DeepClaimMineralId | null, dug: boolean, variant: number, detailed: boolean, soil: boolean, formation: DeepClaimFormation | null, neighbors: number) => `terrain:${dug ? 'dug' : soil || resource === 'clay' ? 'soil' : 'stone'}:${resource ?? 'none'}:${variant % 4}:${detailed ? 1 : 0}:${formation ?? 'none'}:${formation && dug ? neighbors & 15 : 0}`;
 export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, resource: DeepClaimMineralId | null, dug = false, variant = 0, detailed = true, soilBase = false, formation: DeepClaimFormation | null = null, neighbors = 0) {
+  if (drawAuthoredSprite(c, terrainSpriteKey(resource, dug, variant, detailed, soilBase, formation, neighbors), x, y, 16, 16)) return;
   if (dug) {
     const room = formation ? FORMATION_ART[formation] : null;
     rect(c, room?.dark ?? '#242528', x, y, 16, 16);
@@ -40,16 +46,8 @@ export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, 
   if (formation && detailed) { const room = FORMATION_ART[formation]; rect(c, room.wall, x + 2, y + 8, 3, 2); rect(c, room.detail, x + 11, y + 5, 2, 1); }
   if (!resource) return;
   const art = RESOURCE_ART[resource];
-  rect(c, art.dark, x + 4, y + 5, 8, 7);
-  if (art.shape === 'crystal') {
-    rect(c, art.mid, x + 7, y + 3, 3, 9); rect(c, art.light, x + 8, y + 3, 1, 6);
-    rect(c, art.mid, x + 3, y + 8, 4, 4); rect(c, art.light, x + 3, y + 7, 2, 3);
-    rect(c, art.dark, x + 10, y + 10, 3, 3);
-  } else {
-    for (const [dx, dy, w, h] of [[3, 5, 4, 3], [9, 8, 4, 4], [5, 11, 3, 2], [10, 3, 2, 2]]) {
-      rect(c, art.mid, x + dx, y + dy, w, h); rect(c, art.light, x + dx, y + dy, Math.max(1, w - 1), 1);
-    }
-  }
+  const veins = authoredPack.mineral_veins[resource] as [keyof Pick<typeof art, 'dark' | 'mid' | 'light'>, number, number, number, number][];
+  for (const [shade, dx, dy, width, height] of detailed ? veins : veins.slice(0, 4)) rect(c, art[shade], x + dx, y + dy, width, height);
 }
 
 export function paintSurface(c: CanvasRenderingContext2D, minX: number, maxX: number) {
@@ -74,11 +72,11 @@ export function paintSky(c: CanvasRenderingContext2D, width: number, height: num
   const drift = motion ? time * .0008 % 70 : 0;
   for (let index = -1; index < 5; index++) {
     const x = index * 200 + drift - cameraX * .12, y = Math.max(12, horizon - 143 + index % 2 * 17);
-    rect(c, '#d0c7a568', x, y, 70, 7); rect(c, '#d0c7a568', x + 15, y - 5, 36, 5);
+    if (!drawAuthoredSprite(c, 'decor:cloud', x, y - 5, 72, 24)) { rect(c, '#d0c7a568', x, y, 70, 7); rect(c, '#d0c7a568', x + 15, y - 5, 36, 5); }
   }
 }
 
-export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuildingId, level: number, time: number, animate: boolean, selected = false, activity: BuildingActivity = { working: false, ready: false }) {
+export function paintBuildingSource(c: CanvasRenderingContext2D, id: DeepClaimBuildingId, level: number, time: number, animate: boolean, selected = false, activity: BuildingActivity = { working: false, ready: false }) {
   const a = BUILDING_ART[id], x = a.x * 16, y = a.y * 16, w = a.width * 16, h = a.height * 16;
   if (level <= 0) {
     // Level zero is an actual unbuilt plot, never a completed factory façade.
@@ -185,26 +183,56 @@ export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuilding
     if (tier >= 2) { rect(c, '#c19a62', x + 4, y + 16, 5, h - 21); rect(c, '#c19a62', x + w - 9, y + 16, 5, h - 21); }
     if (tier >= 3) { rect(c, '#8a9590', x + 3, -7, w - 6, 4); rect(c, '#cbb887', x + 14, y + 13, 3, h - 18); }
   }
+  for (const [minimum, color, dx, dy, width, height] of authoredPack.building_details[id] as [number, string, number, number, number, number][]) if (tier >= minimum) rect(c, color, x + dx, y + dy, width, height);
   // A small lit exterior lantern is useful at every actual building level.
   rect(c, '#2f3028', x + w - 14, -24, 7, 11); rect(c, animate && Math.floor(time / 600) % 2 ? '#f0d48b' : '#d9b96a', x + w - 12, -22, 3, 6);
   if (activity.ready) { rect(c, '#635332', x + w - 34, -20, 18, 19); rect(c, '#b59b60', x + w - 33, -19, 16, 16); rect(c, '#594f34', x + w - 27, -19, 3, 16); rect(c, '#e4d398', x + w - 30, -15, 9, 3); }
 }
 
-export function paintWorker(c: CanvasRenderingContext2D, x: number, y: number, specialty: DeepClaimSpecialty, pose: WorkerPose, elapsedMs: number, facing = 1, variant = 0, animate = true, gear: WorkerEquipmentPaint = {}) {
-  const a = SPECIALTY_ART[specialty], px = Math.round(x * 16), py = Math.round(y * 16);
+/** Static bases are pre-rendered once; small actual activity overlays remain explicit. */
+export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuildingId, level: number, time: number, animate: boolean, selected = false, activity: BuildingActivity = { working: false, ready: false }) {
+  const a = BUILDING_ART[id], tier = Math.max(0, Math.min(id === 'mine_shaft' ? 5 : id === 'research_office' ? 2 : 3, Math.floor(level)));
+  const x = a.x * 16, y = a.y * 16, w = a.width * 16, h = a.height * 16;
+  if (!drawAuthoredSprite(c, `building:${id}:${tier}`, x - 8, y - 16, w + 16, h + 24)) { paintBuildingSource(c, id, level, time, animate, selected, activity); return; }
+  if (selected) { c.strokeStyle = '#ead09a'; c.lineWidth = 2; c.strokeRect(x - 4, tier > 0 ? y - 5 : -30, w + 8, tier > 0 ? h + 7 : 32); }
+  if (!tier) return;
+  if (id === 'mine_office' && animate) for (let puff = 0; puff < 3; puff++) { const rise = (time / 150 + puff * 8) % 27; rect(c, '#d0c9aa66', x + w - 21 + puff * 3, y - 15 - rise, 7 + puff * 2, 5); }
+  if (id === 'mine_shaft' && animate) { rect(c, '#b59962', x + 35, y + 18, 40, 20); rect(c, '#514834', x + 41, y + 22, 28, 12); rect(c, '#d3bd86', x + 52, y + 17, 4, 23); rect(c, '#d3bd86', x + 36, y + 27 + Math.floor(time / 300) % 2 * 2, 38, 3); }
+  if (activity.working && id === 'smeltery') {
+    rect(c, '#8f5333', x + 40, -34, 48, 26); rect(c, '#d1984f', x + 47, -28, 34, 18); rect(c, '#eed08c', x + 57, -22 - (animate ? Math.floor(time / 240) % 2 * 3 : 0), 14, 11);
+    if (animate) for (let puff = 0; puff < 3; puff++) { const rise = (time / 130 + puff * 7) % 26; rect(c, '#b9b49a66', x + 13 + puff * 3, y - 7 - rise, 10 + puff, 6); }
+  }
+  if (activity.working && id === 'gem_workshop') { const gx = x + w / 2 - 11; rect(c, '#cbd0af', gx + 7, -34, 8, 12); rect(c, '#5b6c5a', gx + (animate ? Math.floor(time / 180) % 2 * 7 + 4 : 5), -35, 2, 16); rect(c, '#a58bbd', gx + 23, -23, 7, 5); rect(c, '#dfcbea', gx + 24, -25, 4, 3); }
+  if (activity.working && id === 'tool_station') { rect(c, '#d6b169', x + 34, -31, 5, 2); if (animate && Math.floor(time / 200) % 2) { rect(c, '#f0d69c', x + 40, -36, 2, 2); rect(c, '#d6b169', x + 43, -29, 2, 1); } }
+  if (activity.working && id === 'research_office') { rect(c, '#c9b878', x + 28, y + 43, 13, 9); rect(c, animate && Math.floor(time / 450) % 2 ? '#ead7a2' : '#ddc68d', x + 31, y + 44, 7, 6); }
+  rect(c, animate && Math.floor(time / 600) % 2 ? '#f0d48b' : '#d9b96a', x + w - 12, -22, 3, 6);
+  if (activity.ready) { rect(c, '#635332', x + w - 34, -20, 18, 19); rect(c, '#b59b60', x + w - 33, -19, 16, 16); rect(c, '#594f34', x + w - 27, -19, 3, 16); rect(c, '#e4d398', x + w - 30, -15, 9, 3); }
+}
+
+/** Local-coordinate role/appearance body frames, authored offline without gear combinations. */
+export function paintWorkerBodySource(c: CanvasRenderingContext2D, specialty: DeepClaimSpecialty, pose: WorkerPose, elapsedMs: number, variant = 0, animate = true) {
+  const a = SPECIALTY_ART[specialty];
   const frame = animate ? Math.floor(elapsedMs / 220) % 4 : 0, walking = pose === 'walk' || pose === 'haul';
   const leg = walking ? frame % 2 * 2 : 0, bob = walking && frame % 2 ? -1 : 0;
   const skin = ['#c79c75', '#a87c5c', '#e0b48b', '#80604d'][Math.abs(variant) % 4];
-  c.save(); c.translate(px, py); c.scale(facing < 0 ? -1 : 1, 1);
   rect(c, '#00000042', -5, 0, 11, 2); rect(c, '#24282a', -3, -4, 3, 4 - leg); rect(c, '#24282a', 1, -4 + leg, 3, 4 - leg);
   rect(c, '#2b3031', -4, -2 + leg, 4, 2); rect(c, '#2b3031', 1, -2, 5, 2);
   rect(c, a.coat, -4, -11 + bob, 8, 8); rect(c, '#493e32', -4, -5 + bob, 8, 2); rect(c, '#d1ba80', -1, -5 + bob, 2, 2);
   rect(c, skin, -3, -17 + bob, 7, 6); rect(c, '#45382e', 2, -15 + bob, 1, 1); rect(c, '#5b4936', -4, -17 + bob, 2, 5);
-  rect(c, '#5b4b33', -5, -19 + bob, 11, 4); rect(c, gear.headTier === 2 ? '#b1c0b5' : gear.headTier === 1 ? '#c09361' : a.helmet, -4, -21 + bob, 8, 4); rect(c, '#e0c881', -3, -21 + bob, 5, 1);
-  if (gear.headTier === 2) rect(c, '#667d79', -5, -17 + bob, 3, 4);
-  if (gear.headBroken) rect(c, '#a65e3c', -1, -21 + bob, 1, 5);
+  for (const [color, dx, dy, width, height] of authoredPack.worker_stitching[specialty] as [string, number, number, number, number][]) rect(c, color, dx, dy + bob, width, height);
+  rect(c, '#5b4b33', -5, -19 + bob, 11, 4); rect(c, a.helmet, -4, -21 + bob, 8, 4); rect(c, '#e0c881', -3, -21 + bob, 5, 1);
   rect(c, '#34413c', 4, -18 + bob, 3, 3); rect(c, '#f0da8e', 5, -18 + bob, 2, 2);
   rect(c, skin, 3, -10 + bob, 3, 4);
+}
+
+export function paintWorker(c: CanvasRenderingContext2D, x: number, y: number, specialty: DeepClaimSpecialty, pose: WorkerPose, elapsedMs: number, facing = 1, variant = 0, animate = true, gear: WorkerEquipmentPaint = {}) {
+  const a = SPECIALTY_ART[specialty], frame = animate ? Math.floor(elapsedMs / 220) % 4 : 0;
+  const bob = (pose === 'walk' || pose === 'haul') && frame % 2 ? -1 : 0;
+  c.save(); c.translate(Math.round(x * 16), Math.round(y * 16)); c.scale(facing < 0 ? -1 : 1, 1);
+  if (!drawAuthoredSprite(c, `worker:${specialty}:${pose}:${Math.abs(variant) % 4}:${frame}`, -12, -28, 24, 32)) paintWorkerBodySource(c, specialty, pose, elapsedMs, variant, animate);
+  if (gear.headTier) { rect(c, gear.headTier >= 2 ? '#b1c0b5' : '#c09361', -4, -21 + bob, 8, 4); rect(c, '#e0c881', -3, -21 + bob, 5, 1); }
+  if (gear.headTier === 2) rect(c, '#667d79', -5, -17 + bob, 3, 4);
+  if (gear.headBroken) rect(c, '#a65e3c', -1, -21 + bob, 1, 5);
   if (pose === 'survey') {
     rect(c, '#ccbc8b', 4, -12 + bob, 8, 7); rect(c, '#75886c', 5, -10 + bob, 5, 1); rect(c, '#75886c', 7, -11 + bob, 1, 5);
     rect(c, '#7b8e83', -7, -8, 3, 8); rect(c, '#c5cbaa', -9, -10, 7, 3); if (animate && frame % 2) rect(c, '#d4c797', -7, -11, 3, 1);

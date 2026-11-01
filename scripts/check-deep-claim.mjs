@@ -12,13 +12,15 @@ import { chromium, expect } from '@playwright/test';
 import { createDeepClaimMiddleware } from './fixtures/deep-claim-server.mjs';
 import { DEEP_CLAIM_ACTORS } from './fixtures/deep-claim-db.mjs';
 import { runPhase5Browser } from './fixtures/deep-claim-phase5-browser.mjs';
+import { installDeepClaimRuntimeProbe, runPhase6Browser } from './fixtures/deep-claim-phase6-browser.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime').split(','));
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
+  optionalRareRevealDismissals: 0,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
 const endpoint = createDeepClaimMiddleware(token);
 let server, browser, currentPage, viteLog;
@@ -48,7 +50,7 @@ async function start() {
   browser = await chromium.launch({ executablePath: process.env.DEEP_CLAIM_QA_CHROMIUM || '/usr/bin/chromium', headless: true, args: ['--no-sandbox'] });
 }
 
-async function pageFor(context) {
+async function pageFor(context, { runtimeProbe = false } = {}) {
   const page = await context.newPage(); currentPage = page;
   page.setDefaultTimeout(15000);
   page.on('pageerror', error => report.runtimeErrors.push(error.message));
@@ -60,11 +62,22 @@ async function pageFor(context) {
   // The isolated DB explicitly installs Deep Claim; actual RPC access checks
   // still enforce membership and installation on every read and mutation.
   await stub('src/hooks/useClubAssets.ts', "export const useClubAssets=()=>({loading:false,assets:[],isInstalled:slug=>slug==='deep-claim',refresh:async()=>{}});");
+  // A real server return can introduce this optional presentation before the
+  // player opens its haul, not only after a collection receipt. Let Playwright
+  // dismiss exactly this overlay whenever it blocks an ordinary action or
+  // assertion. Later never resolves the still-pending specimen; earned manual
+  // keep/sell/salvage assertions continue through the actual field log.
+  await page.addLocatorHandler(page.getByRole('dialog', { name: 'A find from the deep', exact: true }), async dialog => {
+    await dialog.getByRole('button', { name: 'Later', exact: true }).click();
+    report.optionalRareRevealDismissals++;
+  });
+  if (runtimeProbe) await installDeepClaimRuntimeProbe(page);
   return page;
 }
-async function setup(width = 390, height = 844, theme = 'dark', motion = 'no-preference') {
-  const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion });
-  return { context, page: await pageFor(context), theme };
+async function setup(width = 390, height = 844, theme = 'dark', motion = 'no-preference', options = {}) {
+  const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion,
+    ...(options.deviceScaleFactor ? { deviceScaleFactor: options.deviceScaleFactor } : {}), ...(options.isMobile ? { isMobile: true } : {}) });
+  return { context, page: await pageFor(context, options), theme };
 }
 async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex, route = '/deep-claim' } = {}) {
   currentPage = page;
@@ -132,6 +145,8 @@ async function tab(page, label) {
 }
 async function closeReward(page) {
   await page.getByRole('button', { name: 'Back to the claim', exact: true }).click();
+  await settle(page);
+  // The exact optional-reveal handler also runs before this auto-wait assertion.
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 async function intro(page, { confirm = true } = {}) {
@@ -190,14 +205,19 @@ async function presentation() {
         }
       }
       if (name === 'Settings') {
+        const settingsViews = page.getByRole('tablist', { name: 'Camp settings views', exact: true });
+        await settingsViews.getByRole('tab', { name: 'Sound', exact: true }).click();
         await expect(page.getByRole('switch', { name: 'Enable sound', exact: true })).toHaveAttribute('aria-checked', 'false');
+        await settingsViews.getByRole('tab', { name: 'Visuals', exact: true }).click();
         if (motion === 'reduce') await expect(page.getByRole('switch', { name: 'Reduced motion', exact: true })).toHaveAttribute('aria-checked', 'true');
         await page.getByRole('switch', { name: 'Reduced graphics', exact: true }).click();
         await expect(page.getByRole('switch', { name: 'Reduced graphics', exact: true })).toHaveAttribute('aria-checked', 'true');
+        await settingsViews.getByRole('tab', { name: 'Updates', exact: true }).click();
         const preference = page.getByRole('switch', { name: 'Deep Claim notifications', exact: true });
         await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'true');
         await preference.click(); await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'false');
         await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible(); await tab(page, 'Settings');
+        await settingsViews.getByRole('tab', { name: 'Updates', exact: true }).click();
         await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'false');
         await preference.click(); await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'true');
         checked(`global-notification-preferences-save-and-reload-under-own-RLS-${label}`, true);
@@ -716,7 +736,7 @@ async function business() {
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
@@ -725,6 +745,7 @@ async function main() {
   if (sections.has('caverns')) await caverns();
   if (sections.has('business')) await business();
   if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
+  if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
 }
 
 try {
@@ -735,7 +756,11 @@ try {
   if (browser) for (const [index, page] of browser.contexts().flatMap(context => context.pages()).entries()) {
     if (page.isClosed()) continue;
     await page.screenshot({ path: join(output, `failure-${index}.png`) }).catch(() => {});
-    await writeFile(join(output, `failure-${index}.json`), JSON.stringify(await page.evaluate(() => ({ text: document.body.innerText, route: document.querySelector('[data-qa-route]')?.getAttribute('data-qa-route') })).catch(() => ({})), null, 2));
+    await writeFile(join(output, `failure-${index}.json`), JSON.stringify(await page.evaluate(() => ({ text: document.body.innerText, route: document.querySelector('[data-qa-route]')?.getAttribute('data-qa-route'),
+      runtime: window.deepClaimRuntime ? { samples: window.deepClaimRuntime.samples.slice(-12),
+        audio: window.deepClaimRuntime.controllers.map(controller => controller.getDiagnostics?.()),
+        native_contexts: window.deepClaimRuntime.contexts.map(context => context.state),
+        context_calls: window.deepClaimRuntime.contextCalls.slice(-30), visibility_mode: window.deepClaimRuntime.visibilityMode } : null })).catch(() => ({})), null, 2));
   }
   if (currentPage && !currentPage.isClosed()) await writeFile(join(output, 'calls.json'), JSON.stringify(await command(currentPage, 'calls').catch(() => []), null, 2));
 } finally {

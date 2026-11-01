@@ -2,7 +2,7 @@
 
 Deep Claim uses an original industrial-frontier identity: a working company and an inhabited mine, with restrained pixel geometry, warm metal, worn earth and readable equipment. The game should feel physical and useful, with ore and the active crew carrying the brightest accents.
 
-This is the Phase 0 art direction and the Phase 1–5 asset contract. The implementation ledger records which renderer/audio features have been verified. **The original procedural artwork is not a finished commercial sprite atlas; the complete atlas, expanded animations and full soundtrack remain Phase 6 work.**
+This is the art direction and Phase 1–6 asset contract. Phase 6 introduces **Frontier Pixel Pack v1**, compiled from original source-authored pixel primitives and detail definitions, plus five composed Web Audio miniatures. The implementation ledger records actual verification and release status. These are original project assets, not commissioned commercial painting or recorded orchestration. Existing local painters remain a functional fallback when atlas loading or decoding fails.
 
 ## Palette and geometry
 
@@ -34,9 +34,41 @@ The game can retain its own dark mine identity within either application theme. 
 | `src/components/deepClaim/renderer/fieldSprites.ts` | Original support/ventilation/pump/rail sprites and the six recovered-specimen illustrations. |
 | `src/components/deepClaim/renderer/fieldAtlas.ts` | Bounded field-art caching, infrastructure states and selected Manhattan coverage. |
 | `src/components/deepClaim/renderer/fieldVisuals.ts` | Known/depleted formation indexing and public recovered-find/time filtering. |
-| `src/lib/deepClaim/audio.ts` | Original synthesized mining/company cues and an initial musical motif; user-gesture activation only. |
+| `art/deep-claim/pack-v1.json` | Versioned authored mineral veins, building joinery, worker stitching, decorative pixel blocks and logical sprite specifications. |
+| `art/deep-claim/README.md` | Editable-source provenance, compiled painter inputs, packing/anchor rules and reproducible generation commands. |
+| `public/deep-claim/atlas-v1.png` | Committed compiled RGBA pixel atlas, loaded from the application itself. |
+| `src/components/deepClaim/renderer/generated/atlas-v1.json` | Generated sprite rectangles, dimensions, source fingerprint and compressed-byte metadata. |
+| `src/components/deepClaim/renderer/authoredAtlas.ts` | One shared asynchronous atlas decode, bounded loading and local-painter fallback. |
+| `src/components/deepClaim/renderer/frameScheduler.ts` | Visibility-aware, bounded rendering cadence and explicit reduced-motion invalidation. |
+| `src/lib/deepClaim/visualProjection.ts` | Reusable indexes and path geometry from immutable validated public arrays only. |
+| `src/components/deepClaim/renderer/DeepClaimClubArt.tsx` / `clubSprites.ts` | Static sanitized club emblems, project illustrations, identity crests and specimen cases. |
+| `src/lib/deepClaim/audioScore.ts` | Five original written MIDI arrangements, material timbres and explicit audio budgets. |
+| `src/lib/deepClaim/audio.ts` | Gesture-gated Web Audio score, ambience and cues with independent gain buses and lifecycle cleanup. |
 
-Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock image, runtime image-generation or external audio-service dependencies in the Phase 1–3 art plan.
+Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock-image, runtime image-generation or external audio-service dependencies in this pack.
+
+## Phase 6 authored pack and fallback
+
+The pack source deliberately authors rectangles in logical pixels. Established original painter silhouettes are combined with unique mineral veins, building-level joinery, worker-role stitching and local decorations, then compiled into a committed PNG. This is a reproducible source-art pipeline rather than a download from a commercial library. It contains no world seed, hidden terrain, private plan or reward data.
+
+Stable identities cover ten raw mineral treatments, nineteen inventory goods, twelve equipment definitions, nine building identities with their actual level ranges, seven worker specialties, four infrastructure types and six specimen kinds. Worker frame specifications are 24×32 logical pixels with an anchor at `(12, 28)`, four frames and a 220ms pose cadence. Runtime role, appearance, direction and actual owned functioning gear remain layered from the disclosed worker state. A sprite sheet cannot invent an assignment, excavation or upgrade.
+
+Atlas loading is asynchronous and shared, with a bounded decode deadline. Until it succeeds, the original local painters keep the game usable. Dimension mismatch, fetch failure, decode failure or draw failure selects the fallback rather than blocking navigation or economic controls. The atlas is cosmetic and its loading state never changes a validated puzzle, rule, job or balance.
+
+The current compiled pack has 2,255 registered frame references sharing 454 unique pixel rectangles. Deduplicated aliases are references, not additional distinct drawings. Its committed dimensions are 1024×800, compressed PNG size is 30,335 bytes and base decoded RGBA pixels occupy 3,276,800 bytes (3.125MiB). Browser/GPU copies and object overhead are outside that pixel-byte calculation.
+
+| Presentation resource | Enforced or declared limit |
+|---|---|
+| Atlas geometry | Width at most 1024; height at most 2048; RGBA pixel storage at most 8MiB |
+| Compressed atlas gate | 256KiB |
+| Registered frame references | At most 4,096 in the independent budget check |
+| Atlas load/decode | One shared image; 10-second deadline; session-terminal failure uses painters without automatic retry loops |
+| Fallback terrain / field texture caches | 384 / 72 entries |
+| Render cadence | Targets at most 30 paints/s normally, 12 with reduced graphics; reduced motion paints on explicit invalidation |
+
+Reproduce the authored outputs with `node scripts/build-deep-claim-atlas.mjs`; verify committed outputs without rewriting them with `node scripts/build-deep-claim-atlas.mjs --check`. The independent `node scripts/check-deep-claim-presentation.mjs` checks all seven migration hashes, six rule/math modules and five canonical catalogs against the Phase 5 baseline, then inspects actual PNG dimensions, bounded decompression, byte budgets and every sprite rectangle. These source/art checks do not replace browser decoding, functional gameplay tests or physical-device measurement.
+
+Small-phone review must verify both detailed and reduced-graphics output, real building hit regions and accessible list alternatives. Static public club illustrations continue to receive sanitized public data only; the authored private-mine atlas is not a reason to pass another member's save to a showcase.
 
 ## Phase 3 underground presentation
 
@@ -74,7 +106,7 @@ Phase 2 adds workers’ quarters, smeltery and gem workshop, plus a fourth shaft
 
 Equipment illustrations need recognizable pickaxes, lanterns, helmets and hauling/survey gear. Distinguish useful tiers without depending only on color, and give worn/broken items explicit condition indicators and text. Gear cards represent one owned item ID or a labelled recipe; they cannot suggest that a single item belongs to several workers. Production station effects can communicate an active server job without implying new inventory before settlement and collection.
 
-Small shoring details, crates, paths and fog overlays can reuse the procedural painter’s palette and geometry. Decorative objects must not look like clickable buttons or signal a reward that has not been earned.
+Small surface crates, paths and fog overlays can reuse the painter's palette and geometry. Decorative objects must not look like clickable buttons, imitate installed underground protection or signal a reward that has not been earned.
 
 Phase 4 adds Research Office and Trading Post variants tied to their real unlocked tiers. All nine building identities need accessible operational alternatives even when the player pans the surface. New bronze, steel and gold bars use distinct physical markings and labels; steel tool and cargo equipment must remain identifiable beyond hue. The business office uses the same industrial typography, brass focus treatment and compact portaled panels. No scene illustration or animation may imply a research reward or contract delivery before server confirmation.
 
@@ -90,20 +122,32 @@ Avoid heavy particle systems, excessive blur and large game-engine dependencies.
 
 ## Audio direction and controls
 
-Phase 1 audio consists of original Web Audio synthesis: a restrained frontier/pentatonic motif and useful cues for mining, hauling/cargo and building actions. This is initial audio, not a licensed recording collection or a complete soundtrack.
+Phase 1 introduced a short synthesized frontier motif and mining/company cues. Phase 6 replaces that repeating bed with five source-composed sixteen-bar, sixty-four-beat miniatures. Each has written melody, bass, sparse harmonic pad and answering notes, retaining a shared claim motif. Playback uses oscillators and a deterministic locally generated noise buffer rather than downloaded recordings.
 
-Audio starts only after a user gesture and opt-in. Provide master, music, effects and ambient controls, a clear mute state and persisted preferences. Suspend playback when the page is hidden and limit overlapping voices. Avoid a loud effect for every background frame or simulated worker swing. A returning player must not be greeted by unsolicited autoplay.
+| Scene | Original miniature | Tempo | One 64-beat arrangement |
+|---|---|---:|---:|
+| Surface | Lanterns at the Claim | 84 BPM | About 45.71s |
+| Shallow mine | Footfalls Under Clay | 72 BPM | About 53.33s |
+| Ironworks | The Copper Counterweight | 78 BPM | About 49.23s |
+| Crystal region | A Prism Keeps the Light | 68 BPM | About 56.47s |
+| Forgotten region | The Archive Below | 64 BPM | 60s |
+
+These are adaptive looping arrangements, not five simultaneous tracks or a claimed recorded album. Scene selection uses the visible surface/mine view and public depth, with known formation ambience only. Stone, earth, carbon, metal and crystal material families have distinct mining timbres. Unknown or undisclosed materials use a generic stone cue.
+
+Audio starts only after a user gesture and opt-in. Master volume is supplemented by independent `musicVolume`, `ambientVolume` and `sfxVolume` settings between zero and one. Older saved settings default each new bus to one and retain their existing master choice and volume. Existing application master/category gates remain authoritative. Menus pause scene music/ambience while permitted source-confirmed interface/reward cues can remain available. Hidden/inactive pages, mute and disposal stop scheduling and release voices; a delayed context resume cannot revive muted or disposed playback.
+
+The total cap remains fourteen voices, with at most eight music and three ambient voices. Music scheduling uses a 0.65-second lookahead at 250ms intervals; ambient-only scheduling sleeps for 1,000ms between checks. A muted or background-paused scene has no continuing music/ambient interval. One second of mono float noise is generated locally: 192,000 bytes at a 48kHz context rate, with actual buffer size proportional to the browser's sample rate. This is a concrete memory description rather than a physical-device performance guarantee.
 
 Preference storage must be documented using the actual renderer/audio implementation’s keys. No account, company, inventory or private expedition content belongs in a device-wide audio preference record.
 
-The Phase 1 logical terrain tile is 16×16 pixels with crisp Canvas scaling and no image smoothing. Its procedural worker animation uses four poses sampled at 220ms, with two alternating leg positions and two pickaxe directions; reduced motion holds a still pose. The Phase 2 manifest covers ten raw mineral treatments, sixteen inventory icons and ten equipment definitions across five archetypes/two tiers with broken states. Seven buildings fit the camp overview: the shaft has levels one through four, the other original buildings one through three, and the new buildings zero through three. It remains a procedural first pass, not a completed sprite-pack commission.
+Logical terrain tiles remain 16×16 pixels with crisp Canvas scaling and no image smoothing. The initial worker animation used four poses at 220ms with alternating legs and pickaxe directions; the authored pack retains that timing contract, and reduced motion holds a stable pose. Phase 2 initially covered sixteen inventory goods, ten equipment definitions and seven buildings. Later phases extend these to nineteen goods, twelve equipment definitions and nine buildings, with shaft levels one through five, research-office levels zero through two and the other added buildings zero through three. Actual atlas coverage belongs to the generated manifest rather than an assumed purchased pack.
 
-Production effects derive activity from the public job’s real start/end timestamps; ready indicators require the server-ready status. Worker attachments require an actual owned assignment and respect broken condition. The existing audio module is unchanged in Phase 2; renderer expansion does not imply a new soundtrack.
+Production effects derive activity from the public job’s real start/end timestamps; ready indicators require the server-ready status. Worker attachments require an actual owned assignment and respect broken condition. Early renderer expansions did not add music; the Phase 6 score is explicitly documented above.
 
-Audio settings use `dh:deep-claim:audio:v1:<encoded-user-id>`. Graphics/motion preferences use `dh:deep-claim:visuals:v1:<user-id>`. These are device preferences, separate from company state and from the private pending-transaction recovery namespace. Audio limits fourteen simultaneous voices, attenuates distant effects, honors the existing app sound gate, and suspends scheduling while backgrounded. The synthesized motif is original initial presentation, not the promised complete Phase 6 soundtrack.
+Audio settings use `dh:deep-claim:audio:v1:<encoded-user-id>`. Graphics/motion preferences use `dh:deep-claim:visuals:v1:<user-id>`. Discovery presentation receipts use `dh:deep-claim:reveals:v1:<user-id>:<club-id>:<company-id>` and contain only reveal bookkeeping, never ownership or a keep/sell/salvage decision. These are device preferences, separate from company state and the pending-transaction recovery namespace. Audio attenuates distant effects and honors the existing app sound gate. Its native browser scheduling tests do not establish performance on physical phones or audio hardware.
 
 ## Attribution and future replacement
 
-Phase 1–3 inline SVG and procedural shapes are original project artwork; synthesized notes and effects require no third-party sample attribution. Any later external font, image, texture, animation or recorded audio must be listed with its source and license before shipping. Do not claim that an untracked downloaded asset is original.
+The original inline SVGs, source-authored pixel primitives, pack details and written score are project artwork. Synthesized notes and deterministic noise use no third-party recording. Any later external font, image, texture, animation or recorded audio must be listed with its source and license before shipping. Do not describe generated source primitives as commissioned painting or an untracked download as original.
 
-A later atlas should preserve stable asset IDs, logical dimensions, worker-state semantics and building-level references so art upgrades do not invalidate saved companies. Phase 6 can replace procedural pieces incrementally after visual and accessibility review; game mechanics remain independent of the painter.
+A future pack must preserve stable asset IDs, logical dimensions, worker-state semantics and building-level references so art upgrades do not invalidate saved companies. Additional animation, recorded music and broader authored scenes can replace pieces incrementally after visual, accessibility and hardware review; game mechanics remain independent of the painter.

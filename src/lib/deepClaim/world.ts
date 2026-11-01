@@ -1,3 +1,4 @@
+import { indexPublicWorkerStages, indexRevealedWorld, pointAlongPublicPath } from './visualProjection';
 import {
   DEEP_CLAIM_BUSINESS_METRICS, DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
   DEEP_CLAIM_STAT_IDS, type DeepClaimExpedition, type DeepClaimPoint, type DeepClaimPreview, type DeepClaimResources,
@@ -147,36 +148,18 @@ export const tileKey = ({ x, y }: DeepClaimPoint) => `${x}:${y}`;
 export function chunkAddress({ x, y }: DeepClaimPoint): { x: number; y: number; key: string } {
   const cx = Math.floor(x / 32), cy = Math.floor(y / 32); return { x: cx, y: cy, key: `${cx}:${cy}` };
 }
-export function revealedChunkMap(world: DeepClaimWorld): Map<string, DeepClaimTile[]> {
-  const chunks = new Map<string, DeepClaimTile[]>();
-  for (const tile of world.tiles) { const key = chunkAddress(tile).key; const group = chunks.get(key) ?? []; group.push(tile); chunks.set(key, group); }
-  return chunks;
-}
-function alongPath(path: readonly DeepClaimPoint[], progress: number): DeepClaimPoint {
-  if (!path.length) return { x: 48, y: 0 };
-  const lengths = path.slice(1).map((point, index) => Math.abs(point.x - path[index].x) + Math.abs(point.y - path[index].y));
-  const total = lengths.reduce((sum, length) => sum + length, 0);
-  let distance = total * progress;
-  for (let i = 0; i < lengths.length; i++) {
-    if (distance <= lengths[i]) {
-      const ratio = lengths[i] > 0 ? distance / lengths[i] : 0;
-      return { x: path[i].x + (path[i + 1].x - path[i].x) * ratio, y: path[i].y + (path[i + 1].y - path[i].y) * ratio };
-    }
-    distance -= lengths[i];
-  }
-  return { ...path[path.length - 1] };
-}
+export function revealedChunkMap(world: DeepClaimWorld): Map<string, DeepClaimTile[]> { return indexRevealedWorld(world).chunks; }
 /** Pure visual projection: never advances the server-declared stage or commits terrain/rewards. */
 export function projectWorkers(snapshot: DeepClaimSnapshot, estimatedServerNowMs = Date.parse(snapshot.server_now)): DeepClaimWorkerPosition[] {
   const at = Math.max(Date.parse(snapshot.server_now), Number.isFinite(estimatedServerNowMs) ? estimatedServerNowMs : 0);
+  const stages = indexPublicWorkerStages(snapshot.expeditions);
   return snapshot.workers.map((worker, index) => {
-    const job = snapshot.expeditions.find(job => job.id === worker.assigned_job_id && job.status === 'active');
-    const stage = job?.stages.find(stage => stage.key === job.stage);
-    if (!job || !stage) return { worker_id: worker.id, job_id: null, x: 22 + index * 2, y: 0, stage: 'idle', progress: 0, elapsed_seconds: 0, pose: 'idle' };
-    const start = Date.parse(stage.starts_at), end = Date.parse(stage.ends_at);
+    const projected = worker.assigned_job_id ? stages.get(worker.assigned_job_id) : null;
+    if (!projected) return { worker_id: worker.id, job_id: null, x: 22 + index * 2, y: 0, stage: 'idle', progress: 0, elapsed_seconds: 0, pose: 'idle' };
+    const { job, start, end } = projected;
     const elapsed_seconds = Math.max(0, Math.min(end - start, at - start)) / 1000;
     const progress = end > start ? elapsed_seconds * 1000 / (end - start) : 1;
-    const position = job.stage === 'travel' ? alongPath(job.path, progress) : job.stage === 'return' ? alongPath([...job.path].reverse(), progress) : job.target;
+    const position = job.stage === 'travel' ? pointAlongPublicPath(job.path, progress) : job.stage === 'return' ? pointAlongPublicPath(job.path, 1 - progress) : job.target;
     return { worker_id: worker.id, job_id: job.id, ...position, stage: job.stage, progress, elapsed_seconds,
       pose: job.stage === 'travel' || job.stage === 'return' ? 'walk' : job.stage === 'haul' ? 'haul' : 'work' };
   });

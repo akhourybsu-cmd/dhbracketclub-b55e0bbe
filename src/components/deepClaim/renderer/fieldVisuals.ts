@@ -11,10 +11,10 @@ function add<T extends DeepClaimPoint>(map: Map<string, T[]>, entry: T) {
   const key = chunkAddress(entry).key, group = map.get(key) ?? []; group.push(entry); map.set(key, group);
 }
 /** Only server-published records on known committed ground become map markers. */
-export function indexPublicField(snapshot: Pick<DeepClaimSnapshot, 'world' | 'infrastructure' | 'discoveries' | 'server_now'>): FieldOverlayIndex {
+export function indexPublicField(snapshot: Pick<DeepClaimSnapshot, 'world' | 'infrastructure' | 'discoveries' | 'server_now'>, knownTiles?: Map<string, DeepClaimTile>): FieldOverlayIndex {
   const infrastructure = new Map<string, DeepClaimInfrastructure[]>(), discoveries = new Map<string, DeepClaimDiscovery[]>();
   const infrastructureById = new Map<string, DeepClaimInfrastructure>();
-  const known = new Map((snapshot.world?.tiles ?? []).map(tile => [tileKey(tile), tile]));
+  const known = knownTiles ?? new Map((snapshot.world?.tiles ?? []).map(tile => [tileKey(tile), tile]));
   for (const entry of snapshot.infrastructure ?? []) {
     const tile = known.get(tileKey(entry));
     if (!tile || tile.remaining !== 0) continue;

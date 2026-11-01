@@ -20,7 +20,7 @@ vi.mock('@/hooks/useDeepClaim', () => ({ useDeepClaim: () => ({ data: wire.snaps
 vi.mock('@/hooks/useDeepClaimClub', () => ({ useDeepClaimClub: (input: unknown) => { wire.clubHook(input); return { data: wire.club, loading: false, refreshing: wire.refreshing, error: wire.error, readOnly: wire.readOnly, refresh: wire.refresh }; } }));
 vi.mock('@/hooks/useNotificationPreferences', () => ({ useNotificationPreferences: () => ({ prefs: { deep_claim: true }, loading: false, saving: false, error: null, update: wire.prefUpdate, refresh: wire.refresh }) }));
 vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: () => <div data-testid="private-mine-canvas" /> }));
-vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const settings = { master: false, music: true, ambient: true, sfx: true, volume: .65 }; return { getSnapshot: () => settings, subscribe: () => () => {}, updateSettings: vi.fn(), unlock: vi.fn(), play: vi.fn(), setActive: vi.fn(), dispose: vi.fn() }; } }));
+vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const settings = { master: false, music: true, ambient: true, sfx: true, volume: .65, musicVolume: 1, sfxVolume: 1, ambientVolume: 1 }; return { getSnapshot: () => settings, subscribe: () => () => {}, updateSettings: vi.fn(), unlock: vi.fn(), play: vi.fn(), setActive: vi.fn(), dispose: vi.fn() }; } }));
 const actions = { setSocialPreferences: wire.preferences, contributeProject: wire.contribute, claimProject: wire.claim };
 function publicSpecimen(kind: DeepClaimDiscovery['kind']) { const { name, detail } = discoverySpecimen(kind, 'fine'); return { kind, quality: 'fine' as const, name, detail }; }
 function kept(id: string, kind: DeepClaimDiscovery['kind'] = 'banded_geode'): DeepClaimDiscovery { const { name, detail, sale_value, salvage } = discoverySpecimen(kind, 'fine'); return { id, kind, quality: 'fine', name, detail, sale_value, salvage, job_id: 'PRIVATE-JOB', x: 79, y: 599, status: 'kept', discovered_at: '2026-11-02T12:00:00Z', resolved_at: '2026-11-02T12:00:00Z' }; }
@@ -57,6 +57,12 @@ describe('Deep Claim optional club shell and privacy', () => {
 });
 
 describe('Deep Claim atomic project review', () => {
+  it('places the reviewed project identity before decorative artwork so short viewports start with its title', () => {
+    const result = render(<Board />); project();
+    const heading = screen.getByRole('heading', { name: 'Camp Supply' });
+    const art = result.container.querySelector('.dcl-club-body>.dcl-project-detail-art');
+    expect(art).not.toBeNull(); expect(heading.compareDocumentPosition(art!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
   it('starts explicit Club reviews and views at the top without jumping on edits, polling or confirmation', () => {
     const result = render(<Board />); const scroller = result.container.querySelector<HTMLDivElement>('.dcl-club-body')!;
     scroller.scrollTop = 180; project(); expect(scroller.scrollTop).toBe(0);
@@ -114,6 +120,6 @@ describe('Deep Claim public identity and notification targets', () => {
     render(<MemoryRouter initialEntries={[`/deep-claim?club=${CLUB}&office=club&view=projects`]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><Nav /><DeepClaimPage /></MemoryRouter>); await screen.findByRole('dialog', { name: 'Company Office' }); fireEvent.click(screen.getByRole('button', { name: 'Clear notification route', hidden: true })); await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Company Office' })).not.toBeInTheDocument());
   });
   it('routes the camp notification toggle through the existing global preference hook', async () => {
-    render(<App />); fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); fireEvent.click(screen.getByRole('switch', { name: 'Deep Claim notifications' })); await waitFor(() => expect(wire.prefUpdate).toHaveBeenCalledWith('deep_claim', false));
+    render(<App />); fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); fireEvent.click(screen.getByRole('tab', { name: 'Updates' })); fireEvent.click(screen.getByRole('switch', { name: 'Deep Claim notifications' })); await waitFor(() => expect(wire.prefUpdate).toHaveBeenCalledWith('deep_claim', false));
   });
 });

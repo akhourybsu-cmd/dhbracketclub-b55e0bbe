@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Building2, Check, Clock3, Coins, FileText, House, List, Package, Pickaxe, RefreshCw, Settings, ShieldCheck, Users, WifiOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +9,7 @@ import { BUILDING_INFO, RESOURCE_BY_ID, RESOURCE_CATALOG, buildingEffect, resour
 import { createDeepClaimAudio } from '@/lib/deepClaim/audio';
 import { DEEP_CLAIM_RESOURCE_IDS, type DeepClaimBuildingId, type DeepClaimExpedition, type DeepClaimMode, type DeepClaimPoint, type DeepClaimProductionJob, type DeepClaimProductionStation, type DeepClaimResourceId, type DeepClaimResources } from '@/lib/deepClaim/types';
 import { DeepClaimCanvas } from '@/components/deepClaim/renderer/DeepClaimCanvas';
-import { DeepClaimBusinessIcon, DeepClaimEquipmentIcon, DeepClaimResourceIcon } from '@/components/deepClaim/renderer/DeepClaimIcons';
+import { DeepClaimBusinessIcon, DeepClaimDiscoveryIcon, DeepClaimEquipmentIcon, DeepClaimResourceIcon } from '@/components/deepClaim/renderer/DeepClaimIcons';
 import { DeepClaimMark } from '@/components/deepClaim/DeepClaimMark';
 import { DeepClaimDispatch } from '@/components/deepClaim/DeepClaimDispatch';
 import { DeepClaimCrew, DeepClaimLog, DeepClaimStores } from '@/components/deepClaim/DeepClaimPanels';
@@ -20,7 +20,8 @@ import { DeepClaimBusiness, type ClaimBusinessView } from '@/components/deepClai
 import { DeepClaimIndustry } from '@/components/deepClaim/DeepClaimIndustry';
 import { DeepClaimFieldLog, DeepClaimOperations, type ClaimFieldView } from '@/components/deepClaim/DeepClaimField';
 import { DeepClaimSettings, type ClaimVisualPreferences } from '@/components/deepClaim/DeepClaimSettings';
-import { ClaimBadge, ClaimButton, ClaimDialog, ClaimMeter, ClaimState } from '@/components/deepClaim/DeepClaimPrimitives';
+import { ClaimBadge, ClaimButton, ClaimDialog, ClaimDialogScope, ClaimMeter, ClaimState } from '@/components/deepClaim/DeepClaimPrimitives';
+import { discoveryRevealKey, markDiscoveryRevealed, nextDiscoveryReveal, observeDiscoveryReveals, readDiscoveryReveals, saveDiscoveryReveals, type DiscoveryRevealReceipt } from '@/components/deepClaim/discoveryReveals';
 import { claimIntroAvailable, claimTargets, claimTimeLeft } from '@/components/deepClaim/display';
 import '@/components/deepClaim/deepClaim.css';
 
@@ -70,6 +71,10 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
   const [quantity, setQuantity] = useState(1);
   const [haul, setHaul] = useState<string | null>(null);
   const [reward, setReward] = useState<Reward | null>(null);
+  const [revealTarget, setRevealTarget] = useState<{ scope: string; id: string } | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const revealReceipt = useRef<{ key: string; value: DiscoveryRevealReceipt } | null>(null);
+  const revealedThisVisit = useRef(false);
   const [localError, setLocalError] = useState('');
   const [dismissedError, setDismissedError] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -79,7 +84,16 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
   const notificationOpened = useRef(false);
   const id = useId();
   const audio = useMemo(() => createDeepClaimAudio(userId), [userId]);
-  useEffect(() => { active.current = true; return () => { active.current = false; audio.dispose(); }; }, [audio]);
+  const audioLease = useMemo(() => ({ audio, owners: 0 }), [audio]);
+  useEffect(() => {
+    active.current = true; audioLease.owners++;
+    return () => {
+      active.current = false; audioLease.owners--;
+      // StrictMode immediately reacquires this same controller. A real route or
+      // identity departure releases its own lease and closes it after the turn.
+      queueMicrotask(() => { if (audioLease.owners === 0) audioLease.audio.dispose(); });
+    };
+  }, [audioLease]);
   useEffect(() => { const timer = window.setInterval(() => { if (document.visibilityState === 'visible') tick(value => value + 1); }, 1000); return () => clearInterval(timer); }, []);
   const now = operation.serverNow();
   const ready = data?.expeditions.filter(job => job.status === 'ready') ?? [];
@@ -97,6 +111,12 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
   const saleValid = Number.isSafeInteger(quantity) && quantity > 0 && quantity <= stock;
   const canWrite = !operation.readOnly && !operation.busy;
   const sceneVisible = tab === 'surface' || tab === 'mine';
+  const revealScope = company ? discoveryRevealKey(userId, clubId, company.id) : '';
+  const revealedFind = revealTarget?.scope === revealScope ? data?.discoveries?.find(find => find.id === revealTarget.id && find.status === 'pending') ?? null : null;
+  useLayoutEffect(() => { setRevealTarget(null); revealReceipt.current = null; revealedThisVisit.current = false; }, [revealScope]);
+  const ownDialogOpen = !!(office || fieldOperations || dispatch || buildings || building || sale || haul || reward || revealedFind);
+  const occluded = ownDialogOpen || dialogOpen;
+  useEffect(() => { audio.setBackgroundPaused?.(occluded || !sceneVisible); }, [audio, occluded, sceneVisible]);
   const currentError = localError || operation.error;
   const freeCrewSlot = !!company && live.filter(job => job.status === 'active').length < company.crew_slots;
   useEffect(() => {
@@ -112,6 +132,21 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
   const firstUpgradePending = !!data?.buildings.length && data.buildings.every(item => coreBuildings.includes(item.key) ? item.level === 1 : item.level === 0);
   const sellFirstHaul = firstHaulCollected && firstUpgradePending && !live.length && resourceTotal(data?.resources ?? {}) > 0;
   const reviewFirstUpgrade = firstHaulCollected && firstUpgradePending && !live.length && resourceTotal(data?.resources ?? {}) === 0;
+
+  useEffect(() => {
+    if (!data?.company || operation.readOnly || operation.pendingAction) return;
+    const key = discoveryRevealKey(userId, clubId, data.company.id);
+    const previous = revealReceipt.current?.key === key ? revealReceipt.current.value : readDiscoveryReveals(key);
+    const value = observeDiscoveryReveals(previous, data.discoveries ?? [], data.server_now);
+    revealReceipt.current = { key, value }; saveDiscoveryReveals(key, value);
+    if (!sceneVisible || occluded || revealedThisVisit.current) return;
+    const find = nextDiscoveryReveal(value, data.discoveries ?? []);
+    if (!find) return;
+    revealedThisVisit.current = true;
+    const marked = markDiscoveryRevealed(value, find.id, data.discoveries ?? []);
+    revealReceipt.current = { key, value: marked }; saveDiscoveryReveals(key, marked);
+    setRevealTarget({ scope: key, id: find.id }); audio.play('complete');
+  }, [data, operation.readOnly, operation.pendingAction, userId, clubId, sceneVisible, occluded, audio]);
 
   function changeVisuals(patch: Partial<ClaimVisualPreferences>) {
     setVisuals(before => { const next = { ...before, ...patch }; try { localStorage.setItem(`dh:deep-claim:visuals:v1:${userId}`, JSON.stringify(next)); } catch { /* Device preferences still work without storage. */ } return next; });
@@ -189,7 +224,7 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
     catch (error) { if (active.current) setLocalError(error instanceof Error ? error.message : 'Still unable to confirm. Your request remains saved.'); }
   }
 
-  return <main className="deep-claim" data-testid="deep-claim-shell" data-reduced-motion={visuals.reducedMotion}>
+  return <ClaimDialogScope onOpenChange={setDialogOpen}><main className="deep-claim" data-testid="deep-claim-shell" data-reduced-motion={visuals.reducedMotion}>
     <header className="dcl-topbar"><Link to="/compete" className="dcl-icon-button" aria-label="Return to DH"><ArrowLeft size={19} aria-hidden="true" /></Link><div className="dcl-brand"><small>DEEP CLAIM</small><h1>{company?.name ?? 'A Prospector’s Empire'}</h1></div>{company && <div className="dcl-top-money"><strong aria-label={`${company.cash.toLocaleString()} company credits`}><Coins size={14} aria-hidden="true" />{company.cash.toLocaleString()}</strong><small>{company.warehouse_used}/{company.warehouse_capacity} stored</small></div>}<button type="button" className="dcl-icon-button" aria-label="Refresh company" disabled={operation.refreshing || operation.busy} onClick={() => void operation.refresh()}><RefreshCw size={17} className={operation.refreshing ? 'dcl-spin' : ''} aria-hidden="true" /></button></header>
     {linkMessage && <div className="dcl-action-error" role="status"><span>{linkMessage}</span><button type="button" onClick={clearNotificationLink}>Return to current company</button></div>}
     {operation.pendingAction ? <div className="dcl-offline" role="status"><span><ShieldCheck size={14} aria-hidden="true" />Saved action: {operation.pendingAction}</span><button type="button" disabled={operation.busy} onClick={() => void retrySaved()}>{operation.busy ? 'Confirming…' : 'Confirm sync'}</button></div> : operation.readOnly && data ? <div className="dcl-offline" role="status"><span><WifiOff size={14} aria-hidden="true" />Saved camp · read-only until reconnected</span><button type="button" disabled={operation.refreshing} onClick={() => void operation.refresh()}>Reconnect</button></div> : null}
@@ -197,11 +232,11 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
       {currentError && currentError !== dismissedError && <div className="dcl-action-error" role="alert"><span>{currentError}</span><button type="button" aria-label="Dismiss company message" onClick={() => { setDismissedError(currentError); setLocalError(''); }}>OK</button></div>}
       <div className="dcl-content">
         <div className="dcl-scene" hidden={!sceneVisible} role={sceneVisible ? 'tabpanel' : undefined} id={sceneVisible ? `${id}-panel` : undefined} aria-labelledby={`${id}-${tab}`}>
-          <DeepClaimCanvas snapshot={data} view={tab === 'mine' ? 'mine' : 'surface'} selectedTile={selectedTile} onSelectTile={selectMapTile} focusRequest={focusRequest} onSelectBuilding={openSurfaceBuilding} active={sceneVisible} reducedMotion={visuals.reducedMotion} reducedGraphics={visuals.reducedGraphics} audio={audio} />
+          <DeepClaimCanvas snapshot={data} view={tab === 'mine' ? 'mine' : 'surface'} selectedTile={selectedTile} onSelectTile={selectMapTile} focusRequest={focusRequest} onSelectBuilding={openSurfaceBuilding} active={sceneVisible && !occluded} reducedMotion={visuals.reducedMotion} reducedGraphics={visuals.reducedGraphics} audio={audio} />
           <div className="dcl-map-heading"><div><h2>{tab === 'mine' ? 'Below the claim' : 'The frontier camp'}</h2><p>{introAvailable ? 'Start your 30-second extraction shift.' : sellFirstHaul ? 'Sell your first haul in Stores, then improve your camp.' : reviewFirstUpgrade ? 'Your first sale is in. Review a permanent camp upgrade.' : tab === 'mine' ? `Revealed ground · supported depth ${data.world?.max_depth ?? 0}m` : `${live.filter(job => job.status === 'active').length}/${company.crew_slots} crews working · ${ready.length + productionReady.length} ready collections`}</p></div><div className="dcl-map-tools">{phase4 && tab === 'surface' && <button type="button" className="dcl-icon-button" aria-label="Open company office" onClick={() => openOffice()}><DeepClaimBusinessIcon kind="office" decorative /></button>}<button type="button" className="dcl-icon-button" aria-label={tab === 'surface' ? 'Open camp buildings' : phase3 ? 'Open mine operations' : 'Choose a worksite from list'} onClick={() => { if (tab === 'surface') setBuildings(true); else if (phase3) setFieldOperations({ point: selectedTile }); else openDispatch('explore'); }}>{tab === 'surface' ? <Building2 size={18} aria-hidden="true" /> : <List size={18} aria-hidden="true" />}</button></div></div>
           <div className="dcl-map-actions">{live.length ? <div className="dcl-operation-dock">{live.map(job => <ExpeditionCard key={job.id} job={job} now={now} onRefresh={() => void operation.refresh()} onCollect={() => { setHaul(job.id); setLocalError(''); }} />)}<ClaimButton className="is-small" disabled={!findsAtCapacity && (!canWrite || !freeCrewSlot || ready.length + productionReady.length > 0)} onClick={() => findsAtCapacity ? openFinds() : openDispatch('explore')} aria-label={findsAtCapacity ? 'Review pending finds' : 'Dispatch another crew'}><Pickaxe size={15} aria-hidden="true" />{findsAtCapacity ? 'Review finds' : ready.length + productionReady.length ? 'Collect output first' : freeCrewSlot ? 'New shift' : 'Crews busy'}</ClaimButton></div> : <><ClaimButton primary disabled={!productionReady.length && !pendingFinds && !sellFirstHaul && !reviewFirstUpgrade && !canWrite} onClick={() => { if (productionReady.length) openWorkshop(productionReady[0].station); else if (pendingFinds) openFinds(); else if (sellFirstHaul) setTab('stores'); else if (reviewFirstUpgrade) setBuildings(true); else if (introAvailable) openDispatch('extract', { x: 47, y: 1 }); else openDispatch('explore', null); }}><Pickaxe size={16} aria-hidden="true" />{productionReady.length ? 'Collect production' : pendingFinds ? `Review finds · ${pendingFinds}` : introAvailable ? 'Start first shift · 30s' : sellFirstHaul ? 'Sell first haul' : reviewFirstUpgrade ? 'Review camp upgrades' : 'Explore'}</ClaimButton><ClaimButton disabled={!canWrite || productionReady.length > 0 || findsAtCapacity || !introAvailable && !claimTargets(data, 'extract').length} onClick={() => introAvailable ? openDispatch('explore', null) : openDispatch('extract', null)}><Package size={16} aria-hidden="true" />{introAvailable ? 'Explore' : 'Extract'}</ClaimButton></>}</div>
         </div>
-        {!sceneVisible && <section className="dcl-pane" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} tabIndex={0}>{tab === 'crew' ? phase2 ? <DeepClaimWorkforce snapshot={data} initialView={crewView} actions={operation} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={managementConfirmed} onQuarters={() => setBuilding('workers_quarters')} /> : <DeepClaimCrew snapshot={data} /> : tab === 'stores' ? phase2 ? <DeepClaimIndustry snapshot={data} view={storesView} onView={setStoresView} station={station} onStation={setStation} busy={operation.busy} readOnly={operation.readOnly} now={now} onRefresh={() => void operation.refresh()} onBuild={setBuilding} onResearch={() => openOffice('research')} onSell={key => { setSale(key); setQuantity(resourceQuantity(data.resources, key)); setLocalError(''); }} onOpenHaul={id => { setHaul(id); setLocalError(''); }} startProduction={operation.startProduction} collectProduction={collectProduction} onConfirmed={managementConfirmed} /> : <DeepClaimStores snapshot={data} readyHauls={ready} onOpenHaul={id => { setHaul(id); setLocalError(''); }} busy={operation.busy} readOnly={operation.readOnly} onSell={key => { setSale(key); setQuantity(resourceQuantity(data.resources, key)); setLocalError(''); }} /> : tab === 'log' ? phase3 ? <DeepClaimFieldLog snapshot={data} view={fieldView} onView={setFieldView} selectedFindId={selectedFindId} onSelectFind={setSelectedFindId} onLocate={locateSite} resolveDiscovery={operation.resolveDiscovery} readOnly={operation.readOnly} busy={operation.busy} onConfirmed={managementConfirmed} /> : <DeepClaimLog snapshot={data} /> : <DeepClaimSettings audio={audio} visuals={visuals} onVisualsChange={changeVisuals} onRefresh={() => void operation.refresh()} refreshing={operation.refreshing} serverTime={data.server_now} industry={phase2} field={phase3} business={phase4} />}</section>}
+        {!sceneVisible && <section key={tab} className="dcl-pane dcl-view-enter" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${tab}`} tabIndex={0}>{tab === 'crew' ? phase2 ? <DeepClaimWorkforce snapshot={data} initialView={crewView} actions={operation} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={managementConfirmed} onQuarters={() => setBuilding('workers_quarters')} /> : <DeepClaimCrew snapshot={data} /> : tab === 'stores' ? phase2 ? <DeepClaimIndustry snapshot={data} view={storesView} onView={setStoresView} station={station} onStation={setStation} busy={operation.busy} readOnly={operation.readOnly} now={now} onRefresh={() => void operation.refresh()} onBuild={setBuilding} onResearch={() => openOffice('research')} onSell={key => { setSale(key); setQuantity(resourceQuantity(data.resources, key)); setLocalError(''); }} onOpenHaul={id => { setHaul(id); setLocalError(''); }} startProduction={operation.startProduction} collectProduction={collectProduction} onConfirmed={managementConfirmed} /> : <DeepClaimStores snapshot={data} readyHauls={ready} onOpenHaul={id => { setHaul(id); setLocalError(''); }} busy={operation.busy} readOnly={operation.readOnly} onSell={key => { setSale(key); setQuantity(resourceQuantity(data.resources, key)); setLocalError(''); }} /> : tab === 'log' ? phase3 ? <DeepClaimFieldLog snapshot={data} view={fieldView} onView={setFieldView} selectedFindId={selectedFindId} onSelectFind={setSelectedFindId} onLocate={locateSite} resolveDiscovery={operation.resolveDiscovery} readOnly={operation.readOnly} busy={operation.busy} onConfirmed={managementConfirmed} /> : <DeepClaimLog snapshot={data} /> : <DeepClaimSettings audio={audio} visuals={visuals} onVisualsChange={changeVisuals} onRefresh={() => void operation.refresh()} refreshing={operation.refreshing} serverTime={data.server_now} industry={phase2} field={phase3} business={phase4} />}</section>}
       </div>
       <nav className="dcl-tabs" role="tablist" aria-label="Company views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = TABS.findIndex(item => item.key === tab); const next = event.key === 'Home' ? 0 : event.key === 'End' ? TABS.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length; setTab(TABS[next].key); document.getElementById(`${id}-${TABS[next].key}`)?.focus(); }}>{TABS.map(item => <button type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-panel`} aria-selected={tab === item.key} tabIndex={tab === item.key ? 0 : -1} onClick={() => setTab(item.key)} key={item.key}><item.icon size={18} aria-hidden="true" />{item.label}{item.key === 'stores' && ready.length + productionReady.length > 0 && <b aria-label={`${ready.length + productionReady.length} collections ready`}>{ready.length + productionReady.length}</b>}{item.key === 'log' && pendingFinds > 0 && <b aria-label={`${pendingFinds} finds pending`}>{pendingFinds}</b>}</button>)}</nav>
       {phase4 && office && <DeepClaimBusiness snapshot={data} view={officeView} onView={setOfficeView} onClose={() => setOffice(false)} onBuild={key => { setOffice(false); setBuilding(key); }} onHire={() => { setOffice(false); setCrewView('hire'); setTab('crew'); }} onStores={() => { setOffice(false); setStoresView('stock'); setTab('stores'); }} clubContent={<DeepClaimClubSession key={clubProject ?? 'club'} snapshot={data} view={clubView} onView={setClubView} onClose={() => setOffice(false)} projectKey={clubProject} onProjectHandled={() => setClubProject(null)} actions={operation} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={(title, description, updated, credits) => { if (active.current) { setOffice(false); setReward({ title, description, ...(credits ? { cash: updated.company?.cash } : {}) }); audio.play('complete'); } }} />} actions={operation} now={now} onRefresh={() => void operation.refresh()} busy={operation.busy} readOnly={operation.readOnly} onConfirmed={(title, description, updated) => { if (active.current) { setOffice(false); setReward({ title, description, cash: updated.company?.cash }); audio.play('complete'); } }} />}
@@ -212,8 +247,11 @@ function DeepClaimCompany({ userId, clubId }: { userId: string; clubId: string }
       <ClaimDialog open={!!sale} onClose={() => setSale(null)} busy={operation.busy} title={sale ? `Sell ${RESOURCE_BY_ID[sale].name}` : 'Sell materials'} description="Company stock is exchanged for company credits.">{sale && <><div className="dcl-sale-identity"><DeepClaimResourceIcon resourceId={sale} decorative /><strong>{stock.toLocaleString()} in storage</strong></div><label>Quantity<input type="number" min="1" max={stock} step="1" value={Number.isNaN(quantity) ? '' : quantity} disabled={!canWrite} onChange={event => setQuantity(Number(event.target.value))} aria-label="Quantity to sell" /></label><div className="dcl-trade-summary"><span>{RESOURCE_BY_ID[sale].sell_price} cr × {saleValid ? quantity : '—'}</span><strong>{saleValid ? (quantity * RESOURCE_BY_ID[sale].sell_price).toLocaleString() : '—'} cr</strong></div>{!saleValid && <p className="dcl-note">Choose a whole quantity from 1 to {stock}.</p>}{localError && <p className="dcl-error" role="alert">{localError}</p>}<ClaimButton primary pending={operation.busy} disabled={!canWrite || !saleValid} onClick={() => void sell()}>Confirm sale</ClaimButton></>}</ClaimDialog>
       <ClaimDialog open={!!haul} onClose={() => setHaul(null)} busy={operation.busy} title="The haul is home" description="Cargo stays staged until it moves safely into your warehouse.">{chosenHaul && <><ResourceList resources={chosenHaul.cargo ?? {}} /><p className="dcl-note">Warehouse space: {company.warehouse_capacity - company.warehouse_used} units. If the haul is larger, the rest stays staged and blocks new shifts until collected.</p>{localError && <p className="dcl-error" role="alert">{localError}</p>}<ClaimButton primary pending={operation.busy} disabled={!canWrite || company.warehouse_used >= company.warehouse_capacity && resourceTotal(chosenHaul.cargo ?? {}) > 0} onClick={() => void collect()}>Collect into storage</ClaimButton>{company.warehouse_used >= company.warehouse_capacity && <ClaimButton onClick={() => { setHaul(null); setTab('stores'); }}>Make room in Stores</ClaimButton>}</>}</ClaimDialog>
     </>}
+    <ClaimDialog open={!!revealedFind} onClose={() => setRevealTarget(null)} title="A find from the deep" description="Recovered by your crew. Its next chapter is yours to choose." className={`dcl-find-reveal is-${revealedFind?.quality ?? 'fine'}`}>
+      {revealedFind && <><div className="dcl-find-reveal-art"><DeepClaimDiscoveryIcon kind={revealedFind.kind} quality={revealedFind.quality} decorative /></div><ClaimBadge>{revealedFind.quality} specimen</ClaimBadge><h3>{revealedFind.name}</h3><p>{revealedFind.detail}</p><p className="dcl-note">The specimen is pending in your field book. Nothing is sold or salvaged until you decide.</p><div className="dcl-dialog-actions"><ClaimButton onClick={() => setRevealTarget(null)}>Later</ClaimButton><ClaimButton primary onClick={() => { const find = revealedFind; setRevealTarget(null); openFinds(find.id); }}>Inspect find<ArrowRight size={15} aria-hidden="true" /></ClaimButton></div></>}
+    </ClaimDialog>
     <ClaimDialog open={!!reward} onClose={() => setReward(null)} title={reward?.title ?? 'Company updated'} description={reward?.description} className="is-collect"><div className="dcl-collect-mark"><Check aria-hidden="true" /></div>{reward?.resources && <ResourceList resources={reward.resources} />}{!!reward?.equipment?.length && <div className="dcl-equipment-receipt">{reward.equipment.map(item => <span key={item.id}><DeepClaimEquipmentIcon archetype={item.key} tier={item.tier} decorative /><strong>{item.name}</strong><small>Owned equipment · Tier {item.tier}</small></span>)}</div>}{reward?.cash != null && <strong className="dcl-reward-cash">{reward.cash.toLocaleString()} company credits</strong>}{!!reward?.remaining && <p className="dcl-note">{reward.remaining} units remain staged. Sell stock or add storage space before collecting the rest.</p>}<ClaimButton primary onClick={() => setReward(null)}>Back to the claim</ClaimButton></ClaimDialog>
-  </main>;
+  </main></ClaimDialogScope>;
 }
 
 function ExpeditionCard({ job, now, onRefresh, onCollect }: { job: DeepClaimExpedition; now: number; onRefresh: () => void; onCollect: () => void }) {
