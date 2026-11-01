@@ -1,6 +1,7 @@
 import { replayActions } from './prism/engine';
 import type { PrismAction } from './prism/types';
 import { ShowdownError } from './service';
+import { sameJSONState } from './stateEquality';
 import type { ShowdownMatchDetail, ShowdownRound, ShowdownRoundInput, ShowdownSaveState } from './types';
 
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -13,7 +14,7 @@ export interface RoundSessionClient {
   save: (input: ShowdownRoundInput) => Promise<ShowdownMatchDetail>;
   submit: (input: ShowdownRoundInput, skip: boolean) => Promise<ShowdownMatchDetail>;
 }
-const equal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const equal = sameJSONState;
 const prefix = (a: PrismAction[], b: PrismAction[]) => a.length <= b.length && a.every((action, i) => equal(action, b[i]));
 
 /** A durable, serialized outbox. Every retry retains its original server request identity. */

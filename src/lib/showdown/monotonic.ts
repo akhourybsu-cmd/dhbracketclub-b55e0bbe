@@ -30,6 +30,10 @@ export function showdownMatchStructuralSharing(previous: unknown, incoming: unkn
     const next = incoming.rounds.find(value => value.round_number === round.round_number);
     if (!next || next.puzzle_id !== round.puzzle_id || next.puzzle_version !== round.puzzle_version || regresses(round.me, next.me)) return previous;
     if (round.opponent && (!next.opponent || regresses(round.opponent, next.opponent))) return previous;
+    if (!terminal.has(after.status) && round.scene && next.scene) {
+      const phases = ['ready', 'study', 'reconstruct', 'submitted', 'review'];
+      if (phases.indexOf(next.scene.phase) < phases.indexOf(round.scene.phase)) return previous;
+    }
   }
   // Win/loss and rivalry aggregates may legitimately change after other
   // completed matches. Do not use those totals as snapshot ordering signals.

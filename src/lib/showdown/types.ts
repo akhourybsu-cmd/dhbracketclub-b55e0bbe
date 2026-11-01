@@ -1,4 +1,5 @@
 import type { PrismAction, PrismDifficulty, PrismPuzzle } from './prism/types';
+import type { AfterimagePlacement, AfterimageSceneView } from './afterimage/types';
 
 export type ShowdownStatus = 'pending' | 'active' | 'completed' | 'declined' | 'cancelled' | 'expired';
 export interface ShowdownMember { user_id: string; display_name: string; avatar_url: string | null }
@@ -9,6 +10,7 @@ export interface ShowdownStanding extends ShowdownRecord, ShowdownMember { point
 export interface ShowdownPlayer extends ShowdownMember {
   started_at: string | null; finished_at: string | null; rounds_completed: number;
   total_score: number | null; solved_count: number | null; rotations: number | null;
+  perfect_count?: number | null;
 }
 export interface ShowdownChallenge {
   id: string; club_id: string; game_key: string; rules_version: number; status: ShowdownStatus;
@@ -18,10 +20,12 @@ export interface ShowdownChallenge {
 export interface ShowdownRoundState {
   actions: PrismAction[]; revision: number; submitted: boolean; skipped: boolean; solved: boolean;
   score: number | null; rotations: number;
+  placements?: AfterimagePlacement[]; correct_count?: number | null; perfect?: boolean | null;
 }
 export interface ShowdownRound {
   round_number: number; difficulty: PrismDifficulty; puzzle_id: string; puzzle_version: number; title: string;
   puzzle: PrismPuzzle | null; minimum_rotations: number | null; me: ShowdownRoundState; opponent: ShowdownRoundState | null;
+  scene?: AfterimageSceneView | null;
 }
 export interface ShowdownMatchDetail {
   challenge: ShowdownChallenge; rounds: ShowdownRound[]; current_round: number | null;
@@ -36,5 +40,8 @@ export interface ShowdownLobbyData {
 export interface ShowdownCreateInput { recipientId: string; gameKey: string; requestId?: string; rematchOf?: string | null }
 export interface ShowdownRoundInput {
   challengeId: string; roundNumber: number; actions: PrismAction[]; expectedRevision: number; requestId: string;
+}
+export interface ShowdownReconstructionInput {
+  challengeId: string; roundNumber: number; placements: AfterimagePlacement[]; expectedRevision: number; requestId: string;
 }
 export type ShowdownSaveState = 'saved' | 'saving' | 'offline';

@@ -1,0 +1,58 @@
+/* Shared Afterimage chrome stays local to the existing Showdown shell and dialogs. */
+.sd-shell.sd-afterimage,.sd-dialog.sd-afterimage{--sd-bg:#252d28;--sd-panel:#303a32;--sd-card:rgb(238 222 185 / .065);--sd-text:#fff2d6;--sd-muted:#c9c4b1;--sd-line:rgb(231 220 187 / .19);--sd-cyan:#a2d1bf;--sd-purple:#d8b77d;--sd-gold:#edc16f;background:radial-gradient(ellipse at 0 0,rgb(139 189 158 / .1),transparent 50%),radial-gradient(ellipse at 100% 75%,rgb(218 172 92 / .07),transparent 50%),var(--sd-bg)}
+.light .sd-shell.sd-afterimage,.light .sd-dialog.sd-afterimage{--sd-bg:#f2ead9;--sd-panel:#fff9ed;--sd-card:rgb(241 225 195 / .58);--sd-text:#354b42;--sd-muted:#687262;--sd-line:rgb(102 118 84 / .21);--sd-cyan:#326e63;--sd-purple:#956e3c;--sd-gold:#986d2f}
+.sd-afterimage :is(.sd-hero h1,.sd-results-hero h1,.sd-waiting h1){font-family:'Instrument Serif',Georgia,serif;font-weight:400;letter-spacing:-.025em;line-height:1.06}
+.sd-afterimage .sd-hero h1{font-size:clamp(32px,5.5vw,48px)}
+.sd-afterimage .sd-button.sd-primary{color:#203f36;background:linear-gradient(120deg,#bedac6,#e2cc95);border-color:rgb(221 227 184 / .5);box-shadow:0 5px 20px rgb(19 40 28 / .1)}
+.sd-afterimage .sd-tabs button[aria-selected=true]{border-color:var(--sd-line);background:rgb(159 191 155 / .12)}
+.sd-afterimage .sd-avatar{background:linear-gradient(140deg,rgb(162 209 191 / .12),rgb(237 193 111 / .12))}
+.sd-afterimage .sd-score-player[data-winner=true]{border-color:var(--sd-gold);background:linear-gradient(135deg,rgb(218 172 92 / .1),transparent 90%),var(--sd-panel)}
+.sd-afterimage .sd-badge{color:var(--sd-cyan);border-color:var(--sd-line);background:var(--sd-card)}
+.sd-afterimage .sd-badge[data-tone=gold]{color:var(--sd-gold)}
+.sd-afterimage .sd-badge[data-tone=muted]{color:var(--sd-muted)}
+.ai-mark{overflow:visible;filter:drop-shadow(0 5px 10px rgb(16 34 25 / .15));border-radius:18%}
+.sd-header-brand>.ai-mark{width:38px;height:38px;flex:0 0 auto}
+.sd-game-choice>.ai-mark{width:58px;height:58px;flex:0 0 auto}
+.sd-game-choice+.sd-game-choice{margin-top:8px}
+.sd-game-choice>span{flex:1;min-width:0}
+.sd-game-choice>svg:last-child:not(.ai-mark):not(.sd-prism-mark){flex:0 0 auto}
+.sd-waiting>.ai-mark{width:130px;height:130px}
+.air-results-hero .sd-eyebrow{display:block}
+.air-medallion{display:grid;place-items:center;width:64px;height:64px;border:1px solid var(--sd-line);border-radius:50%;margin:0 auto 13px;background:radial-gradient(circle,rgb(224 194 127 / .13),transparent 70%);color:var(--sd-gold);box-shadow:inset 0 0 0 6px var(--sd-bg),inset 0 0 0 7px var(--sd-line)}
+.air-medallion>svg{width:27px;height:27px}
+.air-results-hero h1{font-size:clamp(32px,5vw,46px);margin-top:7px}
+.air-score-player .sd-score-total>span{font-family:'DM Sans',sans-serif;display:inline-block;font-size:11px;color:var(--sd-muted);font-weight:500;letter-spacing:0}
+.air-score-player>small{display:flex;align-items:center;justify-content:center;gap:4px;min-height:18px;font-size:9px}
+.air-score-player>small>svg{flex:0 0 auto}
+.air-points-cap{font-size:9px;color:var(--sd-muted)}
+.air-round-table .sd-round-row>button{flex-wrap:wrap;column-gap:4px;row-gap:0}
+.air-round-table .sd-round-row>button>small{flex-basis:100%;font-weight:500;text-transform:capitalize;margin-top:0}
+.air-review-dialog{max-width:1000px;width:calc(100vw - 24px);padding:22px;gap:14px}
+.air-review{min-width:0}
+.air-review>*+*{margin-top:13px}
+.air-comparison{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+.air-comparison figure{min-width:0;border:1px solid var(--sd-line);background:var(--sd-card);border-radius:15px;overflow:hidden;margin:0}
+.air-comparison figcaption{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;padding:10px 12px;color:var(--sd-text)}
+.air-comparison figcaption small{font-size:10px;font-weight:400;color:var(--sd-muted)}
+.air-comparison[data-view=recall]>.air-original,.air-comparison[data-view=original]>.air-recall{display:none}
+.air-review-receipt{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;color:var(--sd-muted);border:1px solid var(--sd-line);border-radius:11px;background:var(--sd-card);padding:11px 12px}
+.air-review-receipt>span{display:flex;align-items:center;gap:5px}
+.air-review-receipt b{color:var(--sd-text)}
+.air-review-legend{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:13px}
+.air-review-legend>span{display:flex;align-items:center;gap:5px;font-size:10px}
+.air-review-legend i{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--sd-muted)}
+.air-review-legend i[data-state=correct]{background:#7db196}
+.air-review-legend i[data-state=wrong]{background:#d78972}
+.air-review-legend i[data-state=empty]{background:transparent;border:1px dashed var(--sd-muted)}
+.air-distractors{border-top:1px solid var(--sd-line);padding-top:12px}
+.air-distractors h3{font-size:11px;color:var(--sd-text)}
+.air-distractors h3 small{display:block;font-size:10px;font-weight:400;color:var(--sd-muted);margin-top:3px}
+.air-distractors>div{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.air-distractors>div>span{display:flex;flex-direction:column;align-items:center;max-width:95px;min-width:70px;border:1px solid var(--sd-line);border-radius:12px;background:var(--sd-card);padding:5px}
+.air-distractors .ai-object-art{width:48px;height:48px}
+.air-distractors small{font-size:9px;text-align:center;color:var(--sd-muted)}
+.air-distractors>p{margin-top:7px;font-size:10px}
+.air-review .air-readonly-note{font-size:10px;color:var(--sd-muted);text-align:center}
+@media(min-width:750px){.air-view-tabs{display:none}.air-comparison{grid-template-columns:repeat(2,minmax(0,1fr))}.air-comparison[data-view=recall]>.air-original,.air-comparison[data-view=original]>.air-recall{display:block}.air-score-player>small{font-size:10px}.air-comparison figcaption{align-items:flex-start;flex-direction:column;gap:3px}}
+@media(max-width:350px){.sd-afterimage .sd-hero h1{font-size:30px}.air-review-dialog{padding:17px}.air-score-player>small{font-size:8px}.air-score-player .sd-score-total>span{display:block}.air-comparison figcaption{align-items:flex-start;flex-direction:column;gap:3px}}
+@media(max-height:650px){.sd-waiting>.ai-mark{width:80px;height:80px}.sd-afterimage .sd-hero h1{font-size:29px}}
