@@ -90,7 +90,7 @@ export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuilding
     if (selected) { c.strokeStyle = '#cbb77f'; c.lineWidth = 2; c.strokeRect(x, -30, w, 32); }
     return;
   }
-  const tier = Math.max(1, Math.min(id === 'mine_shaft' ? 5 : 3, Math.floor(level))), roof = tier >= 3 ? '#69756f' : '#664c3d';
+  const tier = Math.max(1, Math.min(id === 'mine_shaft' ? 5 : id === 'research_office' ? 2 : 3, Math.floor(level))), roof = tier >= 3 ? '#69756f' : '#664c3d';
   if (selected) { c.strokeStyle = '#ead09a'; c.lineWidth = 2; c.strokeRect(x - 4, y - 5, w + 8, h + 7); }
   rect(c, '#20232366', x - 5, -1, w + 10, 5); rect(c, '#302922', x + 1, -5, w - 2, 6);
   if (id === 'workers_quarters') {
@@ -121,6 +121,36 @@ export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuilding
     if (activity.working) { rect(c, '#a58bbd', gx + 23, -23, 7, 5); rect(c, '#dfcbea', gx + 24, -25, 4, 3); }
     if (tier >= 2) { rect(c, '#d1c493', x + 5, y + 23, 4, h - 27); rect(c, '#d1c493', x + w - 9, y + 23, 4, h - 27); }
     if (tier >= 3) { rect(c, '#a6b599', x + 19, y + 11, 4, h - 15); rect(c, '#a6b599', x + w - 23, y + 11, 4, h - 15); rect(c, '#cbbb88', x + 17, y + 4, w - 34, 3); }
+  } else if (id === 'research_office') {
+    // Compact study room: all structural detail stays within its actual camp footprint.
+    rect(c, '#465347', x + 4, y + 24, w - 8, h - 28); rect(c, '#829178', x + 7, y + 29, w - 14, h - 34);
+    for (let board = 0; board < 4; board++) rect(c, '#60735c', x + 9, y + 36 + board * 9, w - 18, 2);
+    rect(c, '#394f4b', x, y + 16, w, 9); rect(c, '#7f927e', x + 8, y + 10, w - 16, 7); rect(c, '#bac5a0', x + 17, y + 6, w - 34, 5);
+    rect(c, '#30483f', x + 12, y + 35, w - 24, 26); rect(c, '#91aba0', x + 15, y + 38, w - 30, 19);
+    rect(c, '#cfdbc0', x + 17, y + 39, w - 34, 3);
+    for (let pane = 0; pane < 3; pane++) rect(c, '#526b5c', x + 24 + pane * 21, y + 38, 3, 20);
+    rect(c, '#a9a67a', x + 11, -16, w - 22, 6); rect(c, '#d3c69c', x + 20, -20, 24, 4); rect(c, '#7d8f72', x + 23, -19, 15, 1);
+    rect(c, '#526d69', x + w - 36, -22, 18, 12); rect(c, '#b1c0a4', x + w - 32, -24, 11, 11); rect(c, '#3c594e', x + w - 29, -19, 6, 2);
+    if (tier >= 2) {
+      rect(c, '#a8bfb0', x + 19, y + 3, w - 38, 13); rect(c, '#d3debd', x + 22, y + 4, w - 44, 3);
+      for (let pane = 0; pane < 3; pane++) rect(c, '#607d70', x + 25 + pane * 15, y + 4, 2, 12);
+      rect(c, '#c0b37e', x + 5, y + 25, 4, h - 29); rect(c, '#c0b37e', x + w - 9, y + 25, 4, h - 29);
+      rect(c, '#435b54', x + 9, y + 4, 7, 13); rect(c, '#b9b990', x + 7, y + 1, 12, 5);
+      rect(c, '#8b9e86', x + 14, -9, w - 28, 3);
+    }
+    // Active light represents the paid server research order, never local completion.
+    if (activity.working) { rect(c, '#c9b878', x + 28, y + 43, 13, 9); rect(c, animate && Math.floor(time / 450) % 2 ? '#ead7a2' : '#ddc68d', x + 31, y + 44, 7, 6); }
+  } else if (id === 'trading_post') {
+    rect(c, '#5c5140', x + 5, y + 22, w - 10, h - 26); rect(c, '#8b7955', x + 9, y + 28, w - 18, h - 32);
+    rect(c, '#4a4939', x + 3, y + 13, w - 6, 11); rect(c, '#b19a67', x + 11, y + 8, w - 22, 6);
+    rect(c, '#3d4236', x + 12, y + 31, w - 24, 31); rect(c, '#6d7a5e', x + 16, y + 34, w - 32, 24);
+    // The striped awning and balance scales identify a trading counter at low zoom.
+    for (let stripe = 0; stripe < 7; stripe++) { const ax = x + 7 + stripe * 14; rect(c, stripe % 2 ? '#c0b17e' : '#916449', ax, y + 23, 14, 10); rect(c, stripe % 2 ? '#a6986e' : '#785641', ax, y + 33, 14, 4); }
+    rect(c, '#493e2e', x + 9, -23, w - 18, 20); rect(c, '#b49a66', x + 7, -26, w - 14, 5); rect(c, '#d2be88', x + 10, -27, w - 20, 2);
+    rect(c, '#c5b17c', x + 37, -44, 2, 17); rect(c, '#c5b17c', x + 25, -40, 26, 2); rect(c, '#9d8f63', x + 25, -37, 2, 7); rect(c, '#9d8f63', x + 49, -37, 2, 7); rect(c, '#cdbd88', x + 22, -31, 8, 2); rect(c, '#cdbd88', x + 46, -31, 8, 2);
+    rect(c, '#d1c49b', x + 63, -32, 22, 5); rect(c, '#768166', x + 67, -31, 14, 1);
+    if (tier >= 2) { rect(c, '#b6a773', x + 7, y + 17, 4, h - 21); rect(c, '#b6a773', x + w - 11, y + 17, 4, h - 21); rect(c, '#6c7964', x + 13, y + 6, w - 26, 3); rect(c, '#a9b18c', x + 21, y + 2, w - 42, 4); }
+    if (tier >= 3) { rect(c, '#8ba18d', x + 4, y + 16, 3, h - 19); rect(c, '#8ba18d', x + w - 7, y + 16, 3, h - 19); rect(c, '#d1bd85', x + 10, y + 17, w - 20, 3); rect(c, '#94a489', x + w - 18, y + 1, 2, 18); rect(c, '#ba9c61', x + w - 34, y + 1, 16, 7); rect(c, '#ddcd97', x + w - 31, y + 3, 8, 2); }
   } else if (id === 'mine_shaft') {
     rect(c, '#292c29', x + 18, -17, w - 36, 17); rect(c, '#ad9260', x + 14, y + 5, 7, h - 8); rect(c, '#7c643f', x + w - 22, y + 5, 7, h - 8);
     for (let row = 0; row < 4; row++) { rect(c, '#8c744a', x + 20, y + 22 + row * 23, w - 42, 4); rect(c, '#493b2d', x + 22 + row * 10, y + 29 + row * 23, 5, 18); }
@@ -183,8 +213,9 @@ export function paintWorker(c: CanvasRenderingContext2D, x: number, y: number, s
     rect(c, '#a58754', 5, -9 - lift, 2, 9); rect(c, '#aebcac', 3, -11 - lift, 7, 3); rect(c, '#89724a', 7, -4, 5, 4);
   } else if (pose === 'mine') {
     const swing = frame < 2 ? -1 : 1;
-    rect(c, '#9f7b4d', 5, -13 - swing * 3, 2, 12); rect(c, gear.toolBroken ? '#8c5a40' : gear.toolTier === 2 ? '#bfccc0' : gear.toolTier === 1 ? '#c19361' : '#a4b0a2', 2, -15 - swing * 3, gear.toolBroken ? 6 : 11, 3); rect(c, '#d1cfaa', 9, -16 - swing * 3, gear.toolBroken ? 1 : 4, 2);
+    rect(c, '#9f7b4d', 5, -13 - swing * 3, 2, 12); rect(c, gear.toolBroken ? '#8c5a40' : gear.toolTier === 3 ? '#c1d8d7' : gear.toolTier === 2 ? '#bfccc0' : gear.toolTier === 1 ? '#c19361' : '#a4b0a2', 2, -15 - swing * 3, gear.toolBroken ? 6 : 11, 3); rect(c, '#d1cfaa', 9, -16 - swing * 3, gear.toolBroken ? 1 : 4, 2);
     if (gear.toolTier === 2 && !gear.toolBroken) rect(c, '#607d77', 3, -13 - swing * 3, 5, 2);
+    if (gear.toolTier === 3 && !gear.toolBroken) { rect(c, '#3f5c69', 2, -13 - swing * 3, 7, 2); rect(c, '#c1d8d7', 12, -14 - swing * 3, 2, 3); rect(c, '#3f5c69', 4, -7 - swing * 3, 4, 2); }
     if (animate && frame === 3) { rect(c, '#d2b374', 15, -5, 2, 1); rect(c, '#9c7953', 12, -8, 1, 2); }
   } else if (pose === 'haul') {
     rect(c, '#433c2e', -9, -12, 7, 11); rect(c, '#9a8054', -8, -11, 5, 9); rect(c, '#544a36', -7, -11, 1, 9);
@@ -192,8 +223,12 @@ export function paintWorker(c: CanvasRenderingContext2D, x: number, y: number, s
     rect(c, '#d0bd8e', 4, -10, 6, 6); rect(c, '#778465', 6, -9, 3, 1);
   } else if (a.tool === 'lamp') { rect(c, '#4a4934', 5, -5, 5, 6); rect(c, '#e3c273', 6, -4, 3, 3); }
   else if (a.tool === 'pack') { rect(c, '#7f6b45', -8, -12, 5, 10); rect(c, '#b69a5e', -7, -11, 3, 2); }
-  else { rect(c, '#80603d', 5, -9, 1, 10); rect(c, gear.toolBroken ? '#8c5a40' : gear.toolTier === 2 ? '#bfccc0' : gear.toolTier === 1 ? '#c19361' : '#a3a998', 3, -10, gear.toolBroken ? 4 : 7, 2); }
-  if (gear.utility === 'cargo') { rect(c, '#544b35', -9, -13, 6, 12); rect(c, gear.utilityBroken ? '#80674b' : '#ad9e65', -8, -12, 4, 10); if (gear.utilityTier === 2) { rect(c, '#a8b8ac', -10, -14, 2, 14); rect(c, '#a8b8ac', -10, -2, 9, 2); } }
+  else { rect(c, '#80603d', 5, -9, 1, 10); rect(c, gear.toolBroken ? '#8c5a40' : gear.toolTier === 3 ? '#c1d8d7' : gear.toolTier === 2 ? '#bfccc0' : gear.toolTier === 1 ? '#c19361' : '#a3a998', 3, -10, gear.toolBroken ? 4 : 7, 2); if (gear.toolTier === 3 && !gear.toolBroken) { rect(c, '#3f5c69', 4, -8, 4, 2); rect(c, '#c1d8d7', 9, -9, 2, 3); } }
+  if (gear.utility === 'cargo') {
+    rect(c, '#544b35', -9, -13, 6, 12); rect(c, gear.utilityBroken ? '#80674b' : '#ad9e65', -8, -12, 4, 10);
+    if (gear.utilityTier === 2) { rect(c, '#a8b8ac', -10, -14, 2, 14); rect(c, '#a8b8ac', -10, -2, 9, 2); }
+    if (gear.utilityTier === 3) { const metal = gear.utilityBroken ? '#80674b' : '#b5cdd0'; rect(c, metal, -11, -15, 2, 15); rect(c, metal, -11, -15, 9, 2); rect(c, metal, -11, -2, 10, 2); rect(c, '#3f5c69', -9, -11, 3, 3); rect(c, '#3f5c69', -6, -8, 3, 3); }
+  }
   else if (gear.utility === 'lantern') { rect(c, '#6d6544', 7, -6, 5, 7); rect(c, gear.utilityBroken ? '#6e6650' : gear.utilityTier === 2 ? '#d4c29a' : '#edc77e', 8, -5, 3, 4); if (gear.utilityTier === 2) rect(c, '#ab8dc1', 9, -5, 1, 3); }
   else if (gear.utility === 'survey') { rect(c, '#b8ac7b', -8, -10, 4, 7); rect(c, gear.utilityBroken ? '#8a684a' : '#718c77', -7, -9, 2, 3); if (gear.utilityTier === 2) rect(c, '#b69bcb', -8, -4, 3, 2); }
   c.restore();

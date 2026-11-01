@@ -14,9 +14,13 @@ describe('Deep Claim private/public transport boundary', () => {
     await expect(deepClaimRpc('dc_resolve_discovery')).rejects.toThrow('action is kept for a safe retry');
   });
   it('does not allow the transport to call private generation or reconciliation helpers', async () => {
-    for (const name of ['dc_cell_v1', 'dc_cell_v2', 'dc_cell_v3', 'dc_snapshot_v1', 'dc_freeze_equipment_v2', 'dc_chunk_version_v3']) {
+    for (const name of ['dc_cell_v1', 'dc_cell_v2', 'dc_cell_v3', 'dc_snapshot_v1', 'dc_freeze_equipment_v2', 'dc_chunk_version_v3', 'dc_business_catalog_v4', 'dc_research_bonuses_v4', 'dc_business_stats_v4', 'dc_start_production_phase3_base']) {
       await expect(deepClaimRpc(name)).rejects.toMatchObject({ code: 'rule', message: 'Unknown company operation.' });
     }
+  });
+  it.each(['dc_start_research','dc_fulfill_contract','dc_claim_milestone'])('permits secured business operation %s while keeping network failures recoverable', async operation => {
+    wire.rpc.mockRejectedValueOnce({ code: 'NETWORK' });
+    await expect(deepClaimRpc(operation, { p_request_id: 'safe-receipt' })).rejects.toThrow('action is kept for a safe retry');
   });
   it('classifies a rejected operating-reserve purchase as a rule error so recovery is not locked', () => {
     const error = deepClaimFailure({ code: 'P0001', message: 'Keep $2 operating cash after an upgrade' });

@@ -1,7 +1,7 @@
 // Deterministic, offline v1 economy guardrails. No production accounts, writes or hidden geography.
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
+const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts'; export * from './src/lib/deepClaim/business.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
 const engine = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString('base64')}`);
 const { STARTER_WORKERS, RESOURCE_CATALOG, DEEP_CLAIM_MINERAL_IDS, RECIPE_CATALOG, EQUIPMENT_CATALOG, productionQuote, recipeValueAdded, availableEquipmentCapacity, calculateCrewPlan, withdrawFinite, collectCargo, sellResource, retainsOperatingCapital, canUpgrade, BUILDING_UPGRADE_COSTS } = engine;
 const workers = STARTER_WORKERS.map((worker,index) => ({ ...worker, id: `benchmark-${index}`, traits: [...worker.traits], stats: { ...worker.stats }, xp: 0, level: 1, energy: 6, assigned_job_id: null }));
@@ -25,7 +25,8 @@ assert.equal(Object.values(starterInventory).reduce((sum,quantity)=>sum+quantity
 assert.equal(cash,229);
 assert(canUpgrade(cash,'tool_station',1)); assert(canUpgrade(cash,'mine_office',1));
 const allUpgradeCost = ['mine_office','mine_shaft','warehouse','tool_station'].flatMap(key=>BUILDING_UPGRADE_COSTS[key].slice(0,2)).reduce((sum,cost)=>sum+cost,0);
-const phase3UpgradeCost=Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost)=>sum+cost,0);
+const phase4UpgradeCost=Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost)=>sum+cost,0);
+const phase3UpgradeCost=Object.entries(BUILDING_UPGRADE_COSTS).filter(([key])=>!['research_office','trading_post'].includes(key)).flatMap(([,costs])=>costs).reduce((sum,cost)=>sum+cost,0);
 const phase2UpgradeCost=phase3UpgradeCost-12000;
 const starterAssay = {stone:12,clay:16,coal:10,copper_ore:18,tin_ore:12,iron_ore:15,quartz:8,silver_ore:3};
 const assayValue = engine.resourceSaleValue(starterAssay);
@@ -79,6 +80,39 @@ for(const definition of FIELD_CATALOG.discoveries)for(const quality of FIELD_CAT
 assert.equal(salvageFits({stone:119},{quartz:2},120),false);
 assert.equal(salvageFits({stone:118},{quartz:2},120),true);
 const phase3FieldProof={surveyCrewComparison,baseIncidentChance:bareConditions.incident_chance_percent,protectedIncidentChance:protectedConditions.incident_chance_percent,entranceRailWeightedBonus:entranceBonus,entranceRailStrength:entranceRail.strength,auxiliaryOperationsMintNoCargo:true,finiteSpecimenVariants:specimens,salvageNoArbitrage:true,salvageAtomicCapacity:true,shaftMaximumDepth:engine.buildingBenefits('mine_shaft',5).max_depth};
-console.log(JSON.stringify({ rulesVersion:3,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,productionRecipes:RECIPE_CATALOG.length,equipmentDefinitions:EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,
+// Phase4 controlled earned route: exhaust only the real finite starter assay.
+// No generated rich seams, NPC purchases, free inputs or reward retries are assumed.
+const {BUSINESS_CATALOG,ALL_RECIPE_CATALOG,ALL_EQUIPMENT_CATALOG,validateBusinessCatalog,researchEffects,resourceShortfalls,contractPremium}=engine;
+validateBusinessCatalog();
+let businessCash=180,businessStock={},miningJobs=0,spentEnergy=0,operatingDays=1;
+const starterSites=[['coal',47,1],['stone',49,1],['clay',46,1],['copper_ore',50,1],['tin_ore',47,2],['iron_ore',49,2],['quartz',47,3],['silver_ore',49,3]];
+const walkable=new Set(Array.from({length:7},(_,y)=>`48:${y}`));
+function starterRoute(x,y){const queue=[{x:48,y:0,edges:0}],seen=new Set(['48:0']);for(let cursor=0;cursor<queue.length;cursor++){const point=queue[cursor];if(point.x===x&&point.y===y)return point.edges;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=point.x+dx,ny=point.y+dy,key=`${nx}:${ny}`;if(!seen.has(key)&&(walkable.has(key)||nx===x&&ny===y)){seen.add(key);queue.push({x:nx,y:ny,edges:point.edges+1});}}}throw new Error('Starter site has no known depleted route');}
+for(const[id,x,y]of starterSites){const amount=starterAssay[id];const pathEdges=starterRoute(x,y);
+ let remaining=amount;
+ while(remaining>0){if(spentEnergy===6){spentEnergy=0;operatingDays++;}const plan=calculateCrewPlan({workers:[operationCrew[0]],mode:'extract',duration_minutes:20,path_edges:pathEdges,target_depth:y,tool_level:1,material:id,remaining});const take=withdrawFinite(remaining,plan.quantity);remaining=take.remaining;businessCash-=plan.wages;businessStock[id]=(businessStock[id]??0)+take.quantity;miningJobs++;spentEnergy++;assert(businessCash>=2);}
+ walkable.add(`${x}:${y}`);
+}
+assert.equal(engine.resourceSaleValue(businessStock),744);
+// Sell the finite stock that is not needed for our chosen first alloy project.
+for(const id of ['clay','iron_ore','quartz','silver_ore']){const sold=sellResource(businessStock,businessCash,id,businessStock[id]);businessStock=sold.inventory;businessCash=sold.cash;}
+businessCash-=80+90;assert(businessCash>=2); // actual research office and smeltery fees
+let productionSeconds=0;
+function consume(resources){for(const[id,amount]of Object.entries(resources)){assert((businessStock[id]??0)>=amount,`finite stock shortage:${id}`);businessStock[id]-=amount;}}
+function manufacture(key,speed=0){const q=productionQuote(engine.RECIPE_BY_KEY[key],1,1,speed);consume(q.inputs);businessCash-=q.cash_cost;assert(businessCash>=2);productionSeconds+=q.duration_seconds;for(const[id,amount]of Object.entries(q.outputs))businessStock[id]=(businessStock[id]??0)+amount;}
+manufacture('smelt_copper');manufacture('smelt_tin');
+const firstAlloyResearch=engine.RESEARCH_BY_KEY.processing_1;consume(firstAlloyResearch.inputs);businessCash-=firstAlloyResearch.cash_cost;assert(businessCash>=2);
+const research=researchEffects(['processing_1']);assert.equal(research.processing_speed_percent,5);manufacture('smelt_bronze',research.processing_speed_percent);assert.equal(businessStock.bronze_bar,2);
+const earnedAlloyCash=businessCash,alloyLiquidationValue=businessStock.bronze_bar*engine.RESOURCE_BY_ID.bronze_bar.sell_price;
+const firstDeliveryShortfall=resourceShortfalls(businessStock,engine.CONTRACT_BY_KEY.yard_foundations.inputs);assert.deepEqual(firstDeliveryShortfall,{stone:8},'The finite starter stone must not fabricate a twenty-unit delivery.');
+const contractMarketValue=BUSINESS_CATALOG.contracts.reduce((sum,order)=>sum+engine.resourceSaleValue(order.inputs),0),contractPayout=BUSINESS_CATALOG.contracts.reduce((sum,order)=>sum+order.reward,0),finitePremium=BUSINESS_CATALOG.contracts.reduce((sum,order)=>sum+contractPremium(order),0);
+assert.equal(contractMarketValue,3976);assert.equal(contractPayout,4569);assert.equal(finitePremium,593);
+const milestoneBudget=BUSINESS_CATALOG.milestones.reduce((sum,milestone)=>sum+milestone.reward,0);assert.equal(milestoneBudget,400);
+const newMargins=BUSINESS_CATALOG.recipes.filter(recipe=>!recipe.equipment_output).map(recipe=>recipeValueAdded({...recipe,effective_duration_seconds:recipe.duration_seconds}));assert.deepEqual(newMargins,[20,36,30]);
+const fullGraph=new Map();for(const recipe of ALL_RECIPE_CATALOG)for(const input of Object.keys(recipe.inputs))for(const output of Object.keys(recipe.outputs)){const list=fullGraph.get(input)??[];list.push(output);fullGraph.set(input,list);}
+function fullAcyclic(node,path=new Set()){if(path.has(node))throw new Error('Industrial resource cycle');const next=new Set(path);next.add(node);for(const output of fullGraph.get(node)??[])fullAcyclic(output,next);}
+for(const node of fullGraph.keys())fullAcyclic(node);
+const businessProof={researchNodes:14,researchCashCost:BUSINESS_CATALOG.research.reduce((sum,node)=>sum+node.cash_cost,0),researchMaterialSaleValue:BUSINESS_CATALOG.research.reduce((sum,node)=>sum+engine.resourceSaleValue(node.inputs),0),finiteContracts:12,contractMarketValue,contractPayout,finiteContractPremium:finitePremium,milestoneBudget,totalFiniteCreditPremiumAndAwards:finitePremium+milestoneBudget,processingMargins:newMargins,productionDAGAcyclic:true,earnedStarterRoute:{miningJobs,operatingDays,spentEnergyLastDay:spentEnergy,researchSeconds:300,productionSeconds,bronzeBars:2,cashRemaining:earnedAlloyCash,liquidationAlternativeCash:earnedAlloyCash+alloyLiquidationValue,firstDeliveryShortfall},note:'The controlled route mines each real starter deposit once, pays every mining wage/building/recipe/research input, and counts explicit daily energy resets. Further deliveries require genuine finite exploration.'};
+console.log(JSON.stringify({ rulesVersion:3,businessCatalogVersion:4,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,phase4AllBuildingCashCost:phase4UpgradeCost,productionRecipes:ALL_RECIPE_CATALOG.length,equipmentDefinitions:ALL_EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,businessProof,
   starterAssaySaleValue:assayValue,starterAssayCannotMaxCompanyWithin24h:true,finiteDepositConservation:true,partialCollectionConservation:true,bankruptcyCounterexampleBlocked:true,
   controlledRichSeamBenchmark:benchmarks,note:'Starter assay is permanently finite and cannot fund all upgrades. Later funds require genuine exploration; no claim of a universal24-hour minimum across all generated worlds.' },null,2));

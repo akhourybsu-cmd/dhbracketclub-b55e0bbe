@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeepClaimCanvas } from '@/components/deepClaim/renderer/DeepClaimCanvas';
-import { DeepClaimDiscoveryIcon, DeepClaimEquipmentIcon, DeepClaimInfrastructureIcon, DeepClaimPortrait, DeepClaimResourceIcon } from '@/components/deepClaim/renderer/DeepClaimIcons';
+import { DeepClaimBusinessIcon, DeepClaimDiscoveryIcon, DeepClaimEquipmentIcon, DeepClaimInfrastructureIcon, DeepClaimPortrait, DeepClaimResourceIcon } from '@/components/deepClaim/renderer/DeepClaimIcons';
 import { BUILDING_ART, DEEP_CLAIM_ART_MANIFEST, EQUIPMENT_ART, RESOURCE_ART } from '@/components/deepClaim/renderer/artManifest';
 import { constrainCamera, fitSurfaceCamera, mineToScreen, panMine, screenToMine, visibleMineCells, zoomMineAt } from '@/components/deepClaim/renderer/camera';
 import { paintBuilding, paintTerrain, paintWorker } from '@/components/deepClaim/renderer/pixelArt';
@@ -9,13 +9,14 @@ import { buildingActivity, workerEquipmentPaint } from '@/components/deepClaim/r
 import { fieldMarkerAt, indexPublicField, infrastructureInstalled, knownRoomNeighbors, visibleFieldEntries } from '@/components/deepClaim/renderer/fieldVisuals';
 import { DISCOVERY_ART, infrastructureSprite } from '@/components/deepClaim/renderer/fieldSprites';
 import { paintInfrastructureCoverage } from '@/components/deepClaim/renderer/fieldAtlas';
-import { BUILDING_INFO, EQUIPMENT_CATALOG, FIELD_CATALOG } from '@/lib/deepClaim/catalog';
+import { ALL_EQUIPMENT_CATALOG, BUILDING_INFO, EQUIPMENT_CATALOG, FIELD_CATALOG } from '@/lib/deepClaim/catalog';
 import { DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES, type DeepClaimDiscovery, type DeepClaimExpedition, type DeepClaimInfrastructure, type DeepClaimProductionJob, type DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import { companySnapshot } from './fixtures/deepClaim';
 import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
 
 const viewport = { width: 390, height: 500 }, bounds = { width: 96, depth: 149 };
 const legacyBuildingArt = ['mine_office','mine_shaft','warehouse','tool_station'].map(key => BUILDING_ART[key as keyof typeof BUILDING_ART]);
+const phase2BuildingKeys = ['mine_office','mine_shaft','warehouse','tool_station','workers_quarters','smeltery','gem_workshop'] as const;
 const contexts: MockContext[] = [];
 class MockContext {
   fillStyle: string | CanvasGradient | CanvasPattern = ''; strokeStyle = ''; lineWidth = 1; imageSmoothingEnabled = true;
@@ -167,7 +168,7 @@ describe('Original pixel artwork and authoritative viewport', () => {
 
 function phase2Snapshot(): DeepClaimSnapshot {
   const snapshot = companySnapshot();
-  return { ...snapshot, schema_version: 2, buildings: DEEP_CLAIM_BUILDING_IDS.map(key => ({ key, level: ['workers_quarters','smeltery','gem_workshop'].includes(key) ? 0 : 1, max_level: key === 'mine_shaft' ? 4 : 3, upgrade_cost: 90, effect: 'Actual building effect.' })),
+  return { ...snapshot, schema_version: 2, buildings: phase2BuildingKeys.map(key => ({ key, level: ['workers_quarters','smeltery','gem_workshop'].includes(key) ? 0 : 1, max_level: key === 'mine_shaft' ? 4 : 3, upgrade_cost: 90, effect: 'Actual building effect.' })),
     equipment: [], production_jobs: [], equipment_catalog: [...EQUIPMENT_CATALOG], recipes: [], candidates: [] };
 }
 function processing(status: DeepClaimProductionJob['status'] = 'active'): DeepClaimProductionJob {
@@ -179,15 +180,15 @@ function processing(status: DeepClaimProductionJob['status'] = 'active'): DeepCl
 describe('Deep Claim Phase 2 industry artwork and compatibility', () => {
   it('keeps processed stock out of the mineral manifest and gives refined bars and cut gems distinct silhouettes', () => {
     for (const id of DEEP_CLAIM_MINERAL_IDS) expect(DEEP_CLAIM_ART_MANIFEST.terrain).toContain(`deposit_${id}`);
-    for (const id of ['copper_bar','tin_bar','iron_bar','silver_bar','polished_quartz','cut_amethyst']) expect(DEEP_CLAIM_ART_MANIFEST.terrain).not.toContain(`deposit_${id}`);
+    for (const id of ['copper_bar','tin_bar','iron_bar','silver_bar','polished_quartz','cut_amethyst','bronze_bar','steel_bar','gold_bar']) expect(DEEP_CLAIM_ART_MANIFEST.terrain).not.toContain(`deposit_${id}`);
     const { container } = render(<><DeepClaimResourceIcon resourceId="copper_ore" /><DeepClaimResourceIcon resourceId="copper_bar" /><DeepClaimResourceIcon resourceId="amethyst" /><DeepClaimResourceIcon resourceId="cut_amethyst" /></>);
     const silhouettes = [...container.querySelectorAll('svg')].map(svg => [...svg.querySelectorAll('path')].map(path => path.getAttribute('d')).join('|'));
     expect(silhouettes[0]).not.toBe(silhouettes[1]); expect(silhouettes[2]).not.toBe(silhouettes[3]);
   });
   it('covers every actual equipment definition with five original archetypes and a readable broken state', () => {
-    expect(Object.keys(EQUIPMENT_ART).sort()).toEqual(EQUIPMENT_CATALOG.map(item => item.key).sort());
-    const { container } = render(<>{EQUIPMENT_CATALOG.map(item => <DeepClaimEquipmentIcon key={item.key} archetype={item.key} tier={item.tier} durability={item.key === 'iron_pickaxe' ? 0 : 10} />)}</>);
-    expect(container.querySelectorAll('svg')).toHaveLength(10);
+    expect(Object.keys(EQUIPMENT_ART).sort()).toEqual(ALL_EQUIPMENT_CATALOG.map(item => item.key).sort());
+    const { container } = render(<>{ALL_EQUIPMENT_CATALOG.map(item => <DeepClaimEquipmentIcon key={item.key} archetype={item.key} tier={item.tier} durability={item.key === 'iron_pickaxe' ? 0 : 10} />)}</>);
+    expect(container.querySelectorAll('svg')).toHaveLength(ALL_EQUIPMENT_CATALOG.length);
     expect(new Set([...container.querySelectorAll('[data-dc-equipment-art]')].map(svg => svg.getAttribute('data-dc-equipment-art'))).size).toBe(5);
     expect(screen.getByRole('img', { name: 'Broken Iron pickaxe' })).toHaveAttribute('data-dc-equipment-broken', 'true');
     expect(container.querySelector('image,img')).toBeNull();
@@ -211,8 +212,9 @@ describe('Deep Claim Phase 2 industry artwork and compatibility', () => {
   });
   it('fits all seven owned buildings on phone and desktop while preserving the close mine zoom floor', () => {
     for (const size of [{ width: 320, height: 440 }, { width: 390, height: 600 }, { width: 1440, height: 800 }]) {
-      const camera = fitSurfaceCamera(size, { width: 96, depth: 299 }, Object.values(BUILDING_ART));
-      for (const building of Object.values(BUILDING_ART)) {
+      const buildings = phase2BuildingKeys.map(key => BUILDING_ART[key]);
+      const camera = fitSurfaceCamera(size, { width: 96, depth: 299 }, buildings);
+      for (const building of buildings) {
         expect(mineToScreen({ x: building.x, y: 0 }, camera, size).x).toBeGreaterThanOrEqual(11.999);
         expect(mineToScreen({ x: building.x + building.width, y: 0 }, camera, size).x).toBeLessThanOrEqual(size.width - 11.999);
       }
@@ -272,6 +274,121 @@ function discovery(overrides: Partial<DeepClaimDiscovery> = {}): DeepClaimDiscov
   return { id: 'find-a', x: 48, y: 4, job_id: 'mining-job', kind: 'banded_geode', name: 'Banded geode', quality: 'fine', detail: 'A layered specimen recovered by the returning crew.', sale_value: 60,
     salvage: { stone: 2, quartz: 1 }, status: 'pending', discovered_at: '2026-11-01T11:59:00Z', resolved_at: null, ...overrides };
 }
+
+function phase4Snapshot(): DeepClaimSnapshot {
+  return { ...phase3Snapshot(), schema_version: 4,
+    buildings: DEEP_CLAIM_BUILDING_IDS.map(key => ({ key, level: key === 'research_office' || key === 'trading_post' ? 0 : 1, max_level: key === 'mine_shaft' ? 5 : key === 'research_office' ? 2 : 3, upgrade_cost: 80, effect: 'Actual building effect.' })),
+    business: { research: [], contracts: [], milestones: [], research_bonuses: {}, processing_speed_percent: 0,
+      stats: { completed_mining_expeditions: 0, completed_surveys: 0, total_surveyed_tiles: 0, installed_infrastructure: 0, max_completed_mining_depth: 0, collected_production_batches: 0, collected_processed_units: 0, completed_research: 0, completed_contracts: 0, total_contract_credits: 0, kept_discoveries: 0 } } };
+}
+
+describe('Deep Claim Phase 4 company artwork', () => {
+  it('distinguishes company alloys by both stamped geometry and material without adding hidden mineral textures', () => {
+    const keys = ['bronze_bar','steel_bar','gold_bar'] as const;
+    const { container } = render(<>{keys.map(resourceId => <DeepClaimResourceIcon key={resourceId} resourceId={resourceId} />)}</>);
+    const stamps = [...container.querySelectorAll('svg')].map(svg => svg.querySelector('path:last-child')?.getAttribute('d'));
+    expect(new Set(stamps).size).toBe(3);
+    for (const key of keys) {
+      expect(screen.getByRole('img', { name: RESOURCE_ART[key].label })).toBeInTheDocument();
+      expect(DEEP_CLAIM_ART_MANIFEST.inventory).toContain(`stock_${key}`);
+      expect(DEEP_CLAIM_ART_MANIFEST.terrain).not.toContain(`deposit_${key}`);
+    }
+    expect(DEEP_CLAIM_MINERAL_IDS).toHaveLength(10);
+    expect(DEEP_CLAIM_RESOURCE_IDS).toHaveLength(19);
+  });
+  it('gives steel tools and cargo a reinforced silhouette while retaining a clearly named broken state', () => {
+    const { container } = render(<><DeepClaimEquipmentIcon archetype="iron_pickaxe" /><DeepClaimEquipmentIcon archetype="steel_pickaxe" /><DeepClaimEquipmentIcon archetype="hauler_frame" /><DeepClaimEquipmentIcon archetype="steel_cargo_harness" durability={0} /></>);
+    const icons = [...container.querySelectorAll('svg')];
+    expect(icons[1]).toHaveAttribute('data-dc-equipment-tier', '3');
+    expect(icons[1].querySelectorAll('path').length).toBeGreaterThan(icons[0].querySelectorAll('path').length);
+    expect(icons[3].querySelectorAll('path').length).toBeGreaterThan(icons[2].querySelectorAll('path').length);
+    expect(screen.getByRole('img', { name: 'Broken Steel cargo harness' })).toHaveAttribute('data-dc-equipment-broken', 'true');
+  });
+  it('paints research and trade as unfinished plots until built, with distinct structural upgrades at each supported level', () => {
+    for (const key of ['research_office','trading_post'] as const) {
+      const stages = Array.from({ length: key === 'research_office' ? 3 : 4 }, (_, level) => {
+        const context = new MockContext();
+        paintBuilding(context as unknown as CanvasRenderingContext2D, key, level, 1000, false);
+        return context;
+      });
+      expect(stages[0].fills).toContain('#b29b68');
+      expect(stages[1].fills).not.toContain('#b29b68');
+      for (let level = 2; level < stages.length; level++) expect(stages[level].fillRect.mock.calls.length).toBeGreaterThan(stages[level - 1].fillRect.mock.calls.length);
+    }
+    expect(DEEP_CLAIM_ART_MANIFEST.buildings).toContain('research_office_levels_0_2');
+    expect(DEEP_CLAIM_ART_MANIFEST.buildings).toContain('trading_post_levels_0_3');
+  });
+  it('fits all nine non-overlapping building footprints at 320px, wider phones, and desktop without moving the existing camp', () => {
+    const ordered = Object.values(BUILDING_ART).sort((a, b) => a.x - b.x);
+    for (let index = 1; index < ordered.length; index++) expect(ordered[index].x).toBeGreaterThanOrEqual(ordered[index - 1].x + ordered[index - 1].width);
+    expect(BUILDING_ART.research_office.x + BUILDING_ART.research_office.width / 2).toBe(17);
+    expect(BUILDING_ART.trading_post.x + BUILDING_ART.trading_post.width / 2).toBe(57);
+    expect(phase2BuildingKeys.map(key => BUILDING_INFO[key].x)).toEqual([24,48,66,77,9,38,91]);
+    for (const size of [{ width: 320, height: 440 }, { width: 390, height: 600 }, { width: 1440, height: 800 }]) {
+      const camera = fitSurfaceCamera(size, { width: 96, depth: 599 }, ordered);
+      for (const building of ordered) {
+        expect(mineToScreen({ x: building.x, y: 0 }, camera, size).x).toBeGreaterThanOrEqual(11.999);
+        expect(mineToScreen({ x: building.x + building.width, y: 0 }, camera, size).x).toBeLessThanOrEqual(size.width - 11.999);
+      }
+    }
+  });
+  it('resolves small-phone plot and built-building taps to their actual named callback despite enlarged adjacent touch areas', () => {
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue({ ...box, width: 320, right: 320 });
+    const snapshot = phase4Snapshot(), select = vi.fn();
+    const root = render(<DeepClaimCanvas snapshot={snapshot} view="surface" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={select} reducedMotion />);
+    const size = { width: 320, height: 500 }, camera = fitSurfaceCamera(size, { width: 96, depth: 599 }, Object.values(BUILDING_ART));
+    const canvas = screen.getByTestId('deep-claim-canvas');
+    for (const key of ['research_office','trading_post'] as const) {
+      const point = mineToScreen({ x: BUILDING_INFO[key].x, y: -1 }, camera, size);
+      pointer(canvas, 'pointerdown', point.x, point.y); pointer(canvas, 'pointerup', point.x, point.y);
+      expect(select).toHaveBeenLastCalledWith(key);
+    }
+    const built = { ...snapshot, revision: 2, buildings: snapshot.buildings.map(building => ({ ...building, level: 1 })) };
+    root.rerender(<DeepClaimCanvas snapshot={built} view="surface" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={select} reducedMotion />);
+    for (const key of DEEP_CLAIM_BUILDING_IDS) {
+      const point = mineToScreen({ x: BUILDING_INFO[key].x, y: -2 }, camera, size);
+      pointer(canvas, 'pointerdown', point.x, point.y); pointer(canvas, 'pointerup', point.x, point.y);
+      expect(select).toHaveBeenLastCalledWith(key);
+    }
+  });
+  it('animates only actual paid research during its public timestamps and never invents completion or a collection crate', () => {
+    const snapshot = phase4Snapshot(), start = Date.parse(snapshot.server_now);
+    snapshot.business!.research = [{ key: 'excavation_1', status: 'active', started_at: '2026-11-01T12:00:00Z', completes_at: '2026-11-01T12:05:00Z', completed_at: null }];
+    const original = JSON.stringify(snapshot);
+    expect(buildingActivity(snapshot, 'research_office', start - 1)).toEqual({ working: false, ready: false });
+    expect(buildingActivity(snapshot, 'research_office', start + 150_000)).toEqual({ working: true, ready: false });
+    expect(buildingActivity(snapshot, 'research_office', start + 300_000)).toEqual({ working: false, ready: false });
+    snapshot.business!.contracts = [{ key: 'foundry_1', status: 'offered', completed_at: null }];
+    expect(buildingActivity(snapshot, 'trading_post', start)).toEqual({ working: false, ready: false });
+    snapshot.business!.contracts = [];
+    expect(JSON.stringify(snapshot)).toBe(original);
+    const active = new MockContext(), idle = new MockContext();
+    paintBuilding(active as unknown as CanvasRenderingContext2D, 'research_office', 1, 0, false, false, buildingActivity(snapshot, 'research_office', start));
+    paintBuilding(idle as unknown as CanvasRenderingContext2D, 'research_office', 1, 0, false);
+    expect(active.fills).toContain('#ddc68d'); expect(idle.fills).not.toContain('#ddc68d');
+    expect(active.fills).not.toContain('#b59b60');
+    expect(buildingActivity(companySnapshot(), 'research_office', start)).toEqual({ working: false, ready: false });
+  });
+  it('shows steel equipment only on its assigned worker, including damaged equipment, without changing public ownership', () => {
+    const snapshot = phase4Snapshot();
+    snapshot.equipment = [{ id: 'steel-tool', definition_key: 'steel_pickaxe', worker_id: 'worker-a', durability: 100, max_durability: 180, repair_cost: 8, repair_materials: { steel_bar: 1 } }, { id: 'steel-pack', definition_key: 'steel_cargo_harness', worker_id: 'worker-a', durability: 0, max_durability: 180, repair_cost: 8, repair_materials: { steel_bar: 1 } }];
+    const original = JSON.stringify(snapshot), equipment = workerEquipmentPaint(snapshot, 'worker-a');
+    expect(equipment).toEqual({ toolTier: 3, toolBroken: false, utility: 'cargo', utilityTier: 3, utilityBroken: true });
+    expect(workerEquipmentPaint(snapshot, 'worker-b')).toEqual({});
+    const sprite = new MockContext();
+    paintWorker(sprite as unknown as CanvasRenderingContext2D, 48, 4, 'miner', 'mine', 0, 1, 0, false, equipment);
+    expect(sprite.fills).toContain('#c1d8d7'); expect(sprite.fills).toContain('#80674b');
+    expect(JSON.stringify(snapshot)).toBe(original);
+  });
+  it('provides distinct named company icons with decorative presentation available to their parent controls', () => {
+    const { container } = render(<>{(['research','contract','milestone','office'] as const).map(kind => <DeepClaimBusinessIcon key={kind} kind={kind} />)}<DeepClaimBusinessIcon kind="research" decorative /></>);
+    expect(screen.getAllByRole('img')).toHaveLength(4);
+    const shapes = [...container.querySelectorAll('[role="img"]')].map(svg => svg.innerHTML);
+    expect(new Set(shapes).size).toBe(4);
+    expect(container.querySelector('[aria-hidden="true"]')).toHaveAttribute('data-dc-business-art', 'research');
+    expect(container.querySelector('image,img')).toBeNull();
+  });
+});
 
 describe('Deep Claim Phase 3 committed underground artwork', () => {
   it('gives surveying and construction their own work poses without extraction debris', () => {

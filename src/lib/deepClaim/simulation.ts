@@ -148,8 +148,8 @@ export function retainsOperatingCapital(cash: number, wages: number, inventory: 
   return cash >= wages && cash - wages + resourceSaleValue(inventory) + resourceSaleValue(guaranteedCargo) >= 2;
 }
 export function canUpgrade(cash: number, building: DeepClaimBuildingId, currentLevel: number): boolean {
-  const added = ['workers_quarters','smeltery','gem_workshop'].includes(building);
-  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 5 : 3);
+  const added = ['workers_quarters','smeltery','gem_workshop','research_office','trading_post'].includes(building);
+  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 5 : building==='research_office'?2:3);
   const price = BUILDING_UPGRADE_COSTS[building]?.[added ? currentLevel : currentLevel - 1];
   return price !== undefined && cash - price >= 2;
 }

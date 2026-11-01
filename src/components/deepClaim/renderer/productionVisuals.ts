@@ -3,12 +3,17 @@ import { equipmentArtwork } from './artManifest';
 
 export interface BuildingActivity { working: boolean; ready: boolean }
 export interface WorkerEquipmentPaint {
-  toolTier?: 1 | 2; toolBroken?: boolean; headTier?: 1 | 2; headBroken?: boolean;
-  utility?: 'lantern' | 'cargo' | 'survey'; utilityTier?: 1 | 2; utilityBroken?: boolean;
+  toolTier?: 1 | 2 | 3; toolBroken?: boolean; headTier?: 1 | 2 | 3; headBroken?: boolean;
+  utility?: 'lantern' | 'cargo' | 'survey'; utilityTier?: 1 | 2 | 3; utilityBroken?: boolean;
 }
 
 /** A clock can stop a processing animation; only a server-ready DTO adds a crate. */
 export function buildingActivity(snapshot: DeepClaimSnapshot, station: DeepClaimBuildingId, at = Date.parse(snapshot.server_now)): BuildingActivity {
+  if (station === 'research_office') return {
+    working: (snapshot.business?.research ?? []).some(project => project.status === 'active' && at >= Date.parse(project.started_at) && at < Date.parse(project.completes_at)),
+    ready: false,
+  };
+  if (station === 'trading_post') return { working: false, ready: false };
   const jobs = (snapshot.production_jobs ?? []).filter(job => job.station === station);
   return { working: jobs.some(job => job.status === 'active' && at >= Date.parse(job.started_at) && at < Date.parse(job.completes_at)),
     ready: jobs.some(job => job.status === 'ready') };

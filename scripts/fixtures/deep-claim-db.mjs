@@ -11,7 +11,7 @@ export const DEEP_CLAIM_ACTORS = {
   club: fixtureId(1001), otherClub: fixtureId(1002), privateClub: fixtureId(1003),
 };
 
-export async function createDeepClaimDatabase({ install = true, phase = 3 } = {}) {
+export async function createDeepClaimDatabase({ install = true, phase = 4 } = {}) {
   const db = new PGlite();
   const sources = new Map();
   async function source(path) {
@@ -30,7 +30,7 @@ export async function createDeepClaimDatabase({ install = true, phase = 3 } = {}
     // Use the application's actual asset schema, RLS policies and catalog.
     await source('supabase/migrations/20260509210000_platform-assets.sql');
     const migrations = (await readdir('supabase/migrations')).filter(path => /^20261102\d+_deep_claim.*\.sql$/.test(path)).sort();
-    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_' };
+    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_', 4: '20261102060000_' };
     assert.ok(phaseCeilings[phase], `Unsupported Deep Claim fixture phase ${phase}`);
     assert.ok(migrations.length, 'Deep Claim migrations must exist before running this fixture');
     for (const path of migrations.filter(path => path < phaseCeilings[phase])) await source(`supabase/migrations/${path}`);
@@ -59,7 +59,7 @@ export async function createDeepClaimDatabase({ install = true, phase = 3 } = {}
       installedBodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'dc_%' order by signature")).rows;
     }
     await refreshFunctions();
-    async function applyPendingMigrations({ phase: targetPhase = 3 } = {}) {
+    async function applyPendingMigrations({ phase: targetPhase = 4 } = {}) {
       assert.ok(phaseCeilings[targetPhase], `Unsupported Deep Claim fixture phase ${targetPhase}`);
       for (const path of migrations.filter(path => path < phaseCeilings[targetPhase])) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
       await refreshFunctions();
@@ -114,6 +114,17 @@ export async function createDeepClaimDatabase({ install = true, phase = 3 } = {}
     async function expireEnergyDay(user) {
       await db.query("update public.dc_companies set energy_day=(clock_timestamp() at time zone timezone)::date-1,energy_reset_at=clock_timestamp()-interval '1 second' where user_id=$1", [user]);
     }
+    /** Shift only an existing owned research clock in this isolated database. */
+    async function advanceResearch(user, researchKey, seconds) {
+      assert.ok(Number.isFinite(seconds) && seconds > 0 && seconds <= 86400);
+      await db.transaction(async transaction => {
+        const found = (await transaction.query('select r.company_id from public.dc_research_orders r join public.dc_companies c on c.id=r.company_id where c.user_id=$1 and r.research_key=$2 and r.completed_at is null', [user, researchKey])).rows[0];
+        assert.ok(found, 'The isolated research clock requires an existing owned active order');
+        await transaction.exec('alter table public.dc_research_orders disable trigger dc_research_order_guard');
+        await transaction.query("update public.dc_research_orders set started_at=started_at-$3*interval '1 second',completes_at=completes_at-$3*interval '1 second' where company_id=$1 and research_key=$2", [found.company_id, researchKey, seconds]);
+        await transaction.exec('alter table public.dc_research_orders enable trigger dc_research_order_guard');
+      });
+    }
     /** Shift a company's unfinished production queue together, preserving lane order. */
     async function advanceProduction(user, jobId, seconds) {
       assert.ok(Number.isFinite(seconds) && seconds > 0 && seconds <= 86400);
@@ -125,7 +136,7 @@ export async function createDeepClaimDatabase({ install = true, phase = 3 } = {}
         await transaction.exec('alter table public.dc_production_jobs enable trigger dc_production_guard');
       });
     }
-    return { db, sources, functions, initialInstallations, actorQuery, rpc, applyPendingMigrations, advanceJob, advanceProduction, expireEnergyDay, assertSourcesUnchanged, close: () => db.close() };
+    return { db, sources, functions, initialInstallations, actorQuery, rpc, applyPendingMigrations, advanceJob, advanceProduction, advanceResearch, expireEnergyDay, assertSourcesUnchanged, close: () => db.close() };
   } catch (error) {
     await db.close();
     throw error;

@@ -12,10 +12,10 @@ export const DEEP_CLAIM_SPECIALTIES = ['miner','geologist','hauler','engineer','
 export type DeepClaimSpecialty = typeof DEEP_CLAIM_SPECIALTIES[number];
 export const DEEP_CLAIM_MINERAL_IDS = ['stone','clay','coal','copper_ore','tin_ore','iron_ore','quartz','silver_ore','amethyst','gold_ore'] as const;
 export type DeepClaimMineralId = typeof DEEP_CLAIM_MINERAL_IDS[number];
-export const DEEP_CLAIM_RESOURCE_IDS = [...DEEP_CLAIM_MINERAL_IDS,'copper_bar','tin_bar','iron_bar','silver_bar','polished_quartz','cut_amethyst'] as const;
+export const DEEP_CLAIM_RESOURCE_IDS = [...DEEP_CLAIM_MINERAL_IDS,'copper_bar','tin_bar','iron_bar','silver_bar','polished_quartz','cut_amethyst','bronze_bar','steel_bar','gold_bar'] as const;
 export type DeepClaimResourceId = typeof DEEP_CLAIM_RESOURCE_IDS[number];
 export type DeepClaimResources = Partial<Record<DeepClaimResourceId, number>>;
-export const DEEP_CLAIM_BUILDING_IDS = ['mine_office','mine_shaft','warehouse','tool_station','workers_quarters','smeltery','gem_workshop'] as const;
+export const DEEP_CLAIM_BUILDING_IDS = ['mine_office','mine_shaft','warehouse','tool_station','workers_quarters','smeltery','gem_workshop','research_office','trading_post'] as const;
 export type DeepClaimBuildingId = typeof DEEP_CLAIM_BUILDING_IDS[number];
 export type DeepClaimBuildings = Record<DeepClaimBuildingId, number>;
 export type DeepClaimDuration = 20 | 60 | 180;
@@ -102,7 +102,7 @@ export interface DeepClaimBuilding {
 }
 export interface DeepClaimLogEntry { id: string; kind: string; title: string; created_at: string }
 export interface DeepClaimSnapshot {
-  schema_version: 1 | 2 | 3;
+  schema_version: 1 | 2 | 3 | 4;
   server_now: string;
   revision: number;
   company: DeepClaimCompany | null;
@@ -122,6 +122,8 @@ export interface DeepClaimSnapshot {
   discovery_summary?: DeepClaimDiscoverySummary;
   field_reports?: DeepClaimFieldReport[];
   field_catalog?: DeepClaimFieldCatalog;
+  business_catalog?: DeepClaimBusinessCatalog;
+  business?: DeepClaimBusiness;
 }
 export interface DeepClaimPreview {
   allowed: boolean;
@@ -175,7 +177,7 @@ export interface DeepClaimCandidate {
   wage: number; hire_cost: number; operating_day: string; hired: boolean;
 }
 export interface DeepClaimEquipmentDefinition {
-  key: string; name: string; slot: DeepClaimEquipmentSlot; tier: 1 | 2; max_durability: number;
+  key: string; name: string; slot: DeepClaimEquipmentSlot; tier: 1 | 2 | 3; max_durability: number;
   bonuses: Partial<DeepClaimStats>; repair_rate: number; repair_materials: DeepClaimResources;
 }
 export interface DeepClaimEquipment {
@@ -186,11 +188,14 @@ export interface DeepClaimRecipe {
   key: string; version: 1; name: string; station: DeepClaimProductionStation; required_station_level: number;
   duration_seconds: number; effective_duration_seconds: number; cash_cost: number; inputs: DeepClaimResources;
   outputs: DeepClaimResources; equipment_output: string | null; max_batches: 10;
+  required_research?: string[]; research_speed_percent?: number; locked?: boolean;
 }
+export type DeepClaimRecipeSnapshot = Omit<DeepClaimRecipe,'effective_duration_seconds'|'research_speed_percent'|'locked'>;
 export interface DeepClaimProductionJob {
   id: string; recipe_key: string; recipe_version: 1; batches: number; station: DeepClaimProductionStation;
   status: 'active' | 'ready' | 'collected'; started_at: string; completes_at: string; duration_seconds: number;
   cash_cost: number; inputs: DeepClaimResources; outputs: DeepClaimResources; equipment_outputs: string[];
+  research_speed_percent?: number; recipe_snapshot?: DeepClaimRecipeSnapshot;
 }
 export interface DeepClaimHireInput { candidate_id: string }
 export interface DeepClaimTrainInput { worker_id: string; stat: DeepClaimStatId }
@@ -247,3 +252,35 @@ export interface DeepClaimFieldCatalog {
   generation: { version: 3; min_chunk_y: number; macro_size: number; activation_percent: number; center_offset_min: number; center_offset_range: number; radius_x_min: number; radius_x_range: number; radius_y_min: number; radius_y_range: number };
 }
 export interface DeepClaimResolveDiscoveryInput { discovery_id: string; choice: DeepClaimDiscoveryChoice }
+
+/** Phase4 company development is separate from the immutable terrain/field rules version3. */
+export const DEEP_CLAIM_RESEARCH_BRANCHES = ['excavation','geology','processing','logistics','workforce','safety','deep_operations'] as const;
+export type DeepClaimResearchBranch = typeof DEEP_CLAIM_RESEARCH_BRANCHES[number];
+export const DEEP_CLAIM_BUSINESS_METRICS = ['completed_mining_expeditions','completed_surveys','total_surveyed_tiles','installed_infrastructure','max_completed_mining_depth','collected_production_batches','collected_processed_units','completed_research','completed_contracts','total_contract_credits','kept_discoveries'] as const;
+export type DeepClaimBusinessMetric = typeof DEEP_CLAIM_BUSINESS_METRICS[number];
+export type DeepClaimBusinessStats = Record<DeepClaimBusinessMetric,number>;
+export interface DeepClaimResearchDefinition {
+ key:string;name:string;branch:DeepClaimResearchBranch;tier:1|2;description:string;requires:string[];required_building_level:1|2;
+ cash_cost:number;inputs:DeepClaimResources;duration_seconds:number;stat_bonuses:Partial<DeepClaimStats>;processing_speed_percent:number;unlocks_recipes:string[];
+}
+export interface DeepClaimContractDefinition {
+ key:string;version:1;name:string;description:string;tier:1|2|3;requires_contracts:string[];required_research:string[];inputs:DeepClaimResources;reward:number;
+}
+export interface DeepClaimMilestoneDefinition { key:string;name:string;description:string;metric:DeepClaimBusinessMetric;target:number;reward:number }
+export interface DeepClaimBusinessCatalog {
+ version:4;research:DeepClaimResearchDefinition[];contracts:DeepClaimContractDefinition[];milestones:DeepClaimMilestoneDefinition[];
+ caps:{active_research:1};buildings:{research_office:{costs:number[]};trading_post:{costs:number[]}};
+ /** Public new industry definitions, independent from the unchanged Phase2 catalog. */
+ resources:{id:DeepClaimResourceId;name:string;sell_price:number;color:string;description:string}[];
+ equipment:DeepClaimEquipmentDefinition[];recipes:DeepClaimRecipeSnapshot[];
+}
+export interface DeepClaimResearchOrder {key:string;status:'active'|'completed';started_at:string;completes_at:string;completed_at:string|null}
+export interface DeepClaimCompanyContract {key:string;status:'offered'|'completed';completed_at:string|null}
+export interface DeepClaimMilestone {key:string;progress:number;claimed_at:string|null}
+export interface DeepClaimBusiness {
+ research:DeepClaimResearchOrder[];contracts:DeepClaimCompanyContract[];milestones:DeepClaimMilestone[];stats:DeepClaimBusinessStats;
+ research_bonuses:Partial<DeepClaimStats>;processing_speed_percent:number;
+}
+export interface DeepClaimStartResearchInput {research_key:string}
+export interface DeepClaimFulfillContractInput {contract_key:string}
+export interface DeepClaimClaimMilestoneInput {milestone_key:string}

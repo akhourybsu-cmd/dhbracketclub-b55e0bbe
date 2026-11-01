@@ -1,6 +1,6 @@
 # Deep Claim technical protocol
 
-Phase 0 architecture, Phase 1 mining, Phase 2 workforce/production, and Phase 3 underground operations protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
+Phase 0 architecture, Phase 1 mining, Phase 2 workforce/production, Phase 3 underground operations and Phase 4 company development protocol. The implementation ledger records actual verification and deployment; this protocol describes contracts rather than asserting that a migration is already live.
 
 ## Ownership and authority
 
@@ -69,6 +69,22 @@ Starting production locks company state, validates one to ten batches, consumes 
 
 Authorized reads/mutations reconcile elapsed jobs to ready exactly once. A client countdown cannot mint outputs. Material collection uses real warehouse space and leaves overflow staged, with later intentional partial transfers using new receipts. Equipment is instantiated once on collection. Both the job status and request receipt prevent duplicate outputs, including a retry with a lost acknowledgement. Any ready mining haul or production job must be collected before another mining dispatch; ready production also occupies its queue slot until resolved. Starting more work cannot evade the three-job or equipment-cap limits. There is no automatic production loop, NPC input purchase, or cancellation refund.
 
+## Company development and frozen industry
+
+Schema four adds one company development catalog and owned business state. Seven research branches contain fourteen once-only upgrades with explicit prerequisites, real credit/material costs and Research Office requirements. A company can fund one research order at a time. Its definition, inputs, charge and server timestamps are frozen at purchase. Completion reconciles under the same company lock; it needs no collection click and cannot be accelerated by a device clock. There is no cancellation refund or repeatable research-income source.
+
+Completed research contributes bounded company-wide bonuses to the effective employee statistics used for new quotes and dispatches, capped at 100 after existing levels, training and gear. Base statistics remain distinct. Research bonuses are exposed separately for explanation and must never be added twice to public effective stats. Expedition configuration remains three: research changes its already-frozen crew inputs, not the terrain/field algorithm. Existing plans, equipment snapshots, incidents, energy charges, cargo and return clocks stay unchanged.
+
+Processing research reduces newly queued production times by five percent and then an additional ten percent. Apply integer ceiling after the station modifier, with a twenty-second minimum; store the actual modifier and effective duration with the job. Already queued or staged production keeps its original recipe, costs, outputs and clocks. Five new version-one recipe keys add bronze, steel, gold and two steel equipment items. The sixteen original recipe definitions and ten original gear definitions remain immutable. New recipes enforce research on the backend; the UI can explain a lock but cannot unlock it.
+
+The Trading Post exposes twelve finite company delivery contracts in three prerequisite tiers. Orders are persistent and have no expiration, reroll or separate acceptance step. Fulfillment consumes the complete frozen requirement from collected warehouse stock and grants the frozen company-credit payout atomically. Staged cargo, uncollected production and undecided finds are not inventory. One company/key record prevents a second delivery; request receipts recover a lost acknowledgement without another withdrawal or payout. No contract grants equipment, energy or DH Score.
+
+Eight company milestones use durable completed expeditions, collected production, completed research, installed projects, kept discoveries and deliveries. Progress is calculated from source records, including eligible historical activity. Only explicit secured claims grant the finite credit award; clients cannot submit progress, eligibility or reward amounts. Once-only claim records and company locks prevent duplicate awards. These are company objectives, separate from future integration with DH Feats.
+
+Operational totals aggregate authoritative records across the company history, not just the recent public log. Collected processing quantities use frozen recipe outputs multiplied by batches, because a job's mutable output field represents the remaining staged stock. Survey totals use actual applied revelations. A zero-cargo expedition, preview, repeatedly read result or duplicate receipt cannot be treated as new processed goods or delivered stock.
+
+Research Office and Trading Post upgrades have actual research/contract-tier functions. They reuse the existing building purchase, reserve and visual ownership model. The six-tab game shell remains; the company office provides compact Company, Research, Contracts and Records views instead of another global navigation system.
+
 ## Energy and operating calendar
 
 Each worker starts with six energy per operating day. Quick/Standard/Deep shifts cost one/two/three energy for every assigned worker and last 20/60/180 minutes. The one-time induction run is accelerated on the server. The server validates `clubs.settings.timezone` against PostgreSQL IANA names, using America/New_York when absent or invalid. The company persists its next UTC reset boundary; zone changes are adopted at the next reset, rather than granting repeated energy immediately. Timestamps remain UTC and database timezone conversion handles 23/25-hour daylight-saving days. Offline days never accumulate more than six energy.
@@ -81,9 +97,9 @@ React Query keys include account and club. Responses carry a company revision; a
 
 ## Database and public API
 
-Phase 1 has fourteen private tables: `dc_rules`, `dc_companies`, `dc_worlds`, `dc_chunks`, `dc_tiles`, `dc_workers`, `dc_expeditions`, `dc_expedition_workers`, `dc_plans`, `dc_milestones`, `dc_reservations`, `dc_inventory`, `dc_requests` and `dc_logs`. Phase 2 adds `dc_equipment_catalog`, `dc_recipes`, `dc_candidates`, `dc_equipment`, `dc_training`, `dc_production_jobs` and `dc_job_equipment`. Phase 3 adds `dc_infrastructure`, `dc_discoveries` and `dc_field_events`. All 24 tables use RLS and deny anonymous/member direct CRUD. `dc_tiles` contains only revealed/mutated cells, not millions of untouched blocks. Versioned chunk seeds, original plans, definitions and argument receipts are immutable. Reservations protect every finite cell affected by an expedition.
+Phase 1 has fourteen private tables: `dc_rules`, `dc_companies`, `dc_worlds`, `dc_chunks`, `dc_tiles`, `dc_workers`, `dc_expeditions`, `dc_expedition_workers`, `dc_plans`, `dc_milestones`, `dc_reservations`, `dc_inventory`, `dc_requests` and `dc_logs`. Phase 2 adds `dc_equipment_catalog`, `dc_recipes`, `dc_candidates`, `dc_equipment`, `dc_training`, `dc_production_jobs` and `dc_job_equipment`. Phase 3 adds `dc_infrastructure`, `dc_discoveries` and `dc_field_events`. Phase 4 adds `dc_research_orders`, `dc_company_contracts` and `dc_milestone_receipts`. All 27 tables use RLS and deny anonymous/member direct CRUD. `dc_tiles` contains only revealed/mutated cells, not millions of untouched blocks. Versioned chunk seeds, original plans, definitions and argument receipts are immutable. Reservations protect every finite cell affected by an expedition.
 
-Eighteen RPCs are executable by authenticated members. The original eight retain their names and authorization boundaries:
+Twenty-one RPCs are executable by authenticated members. The original eight retain their names and authorization boundaries:
 
 | RPC | Inputs / behavior |
 |---|---|
@@ -105,10 +121,15 @@ Eighteen RPCs are executable by authenticated members. The original eight retain
 | `dc_preview_operation(...preview inputs,p_infrastructure_key)` | Verify current survey/construction/mining choices and public conditions. |
 | `dc_dispatch_operation(...preview inputs,p_infrastructure_key,p_expected_revision,p_request_id)` | Freeze and atomically dispatch a configuration-three field operation. |
 | `dc_resolve_discovery(p_discovery_id,p_choice,p_expected_revision,p_request_id)` | Keep, sell or salvage one owned pending find exactly once. |
+| `dc_start_research(p_research_key,p_expected_revision,p_request_id)` | Pay for one eligible, frozen server-timed research order. |
+| `dc_fulfill_contract(p_contract_key,p_expected_revision,p_request_id)` | Consume the whole collected order and award its frozen payout once. |
+| `dc_claim_milestone(p_milestone_key,p_expected_revision,p_request_id)` | Verify durable progress and claim a finite company-credit award once. |
 
 Public snapshots contain schema/server time/revision, company, stock, workers, revealed world, expeditions, building levels and recent logs. Schema two adds daily candidates, owned equipment, production jobs and public recipe/equipment catalogs. The new client also reads schema one for safe rollout; version-two payloads require complete version-two collections. Active expedition cargo remains null. Ready cargo is what remains staged; collected expedition history retains the original haul and must never be interpreted as pending stock. Recent collected jobs and visible logs are bounded; full underlying history remains persisted. Cursor history remains a future extension.
 
 Schema three retains both prior contracts and adds infrastructure, recovered discoveries, discovery counts, applied field reports and the canonical public field catalog. New snapshots carry these collections even for an unstarted company, with empty owned arrays and zero counts. Workforce/production remain enabled for every schema at least two. The original dispatch endpoint delegates current rules while preserving its historical receipt fingerprint, so a pre-migration committed request with a lost response can still be retried exactly. The new operation endpoint uses its own request identity/payload, including the selected infrastructure type. Neither endpoint permits a client to choose a legacy rule version.
+
+Schema four retains all prior state and adds the canonical business catalog, paid research orders, finite delivery records, milestone claims and authoritative lifetime aggregates. New production jobs expose their original public recipe snapshot and frozen research timing. A production configuration guard rejects cached older handlers before they can insert research-gated recipes; existing production records remain valid and unchanged. Cutover locks companies before production and advances company revision once to reject stale quotes.
 
 Fresh receipt writes, including no-op company creation requests, are limited to 120 per member per minute. Authorization is checked before retry lookup. Argument fingerprints include scope and optimistic revision; exact retries are checked before changing eligibility. Reused UUIDs with changed arguments are rejected. The client stores only unfinished action identity/arguments in `dh:deep-claim:pending:v1:<user>:<club>` and clears that namespace on sign-out. A definitive SQL rule rejection clears the intent; an uncertain response retains it for explicit confirmation.
 
@@ -116,7 +137,7 @@ Economic investments preserve two operating credits. Dispatch requires sufficien
 
 ## Deferred extension points
 
-Dedicated recovery expeditions, persistent blockages/injuries, full later-region hazards, contracts, research, DH Feats, club projects and notifications remain phase extensions. They must reuse the same ownership, version, transaction and inventory boundaries. No parallel DH Score or global currency is introduced.
+Dedicated recovery expeditions, persistent blockages/injuries, full later-region hazards, advanced industrial automation, DH Feats, club projects and notifications remain phase extensions. They must reuse the same ownership, version, transaction and inventory boundaries. No parallel DH Score or global currency is introduced.
 
 ## Deployment
 

@@ -6,6 +6,7 @@ import { useDeepClaim } from '@/hooks/useDeepClaim';
 import { companySnapshot } from './fixtures/deepClaim';
 import { phaseTwoSnapshot } from './fixtures/deepClaimPhase2';
 import { phaseThreeSnapshot } from './fixtures/deepClaimPhase3';
+import { phaseFourSnapshot } from './fixtures/deepClaimPhase4';
 import { discoverySpecimen } from '@/lib/deepClaim/field';
 import type { DeepClaimSnapshot } from '@/lib/deepClaim/types';
 const wire = vi.hoisted(() => ({ rpc: vi.fn(), user: 'user-a', club: 'club-a', installed: true }));
@@ -22,6 +23,33 @@ beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.user = 'user-a
   onlineManager.setOnline(true); Object.defineProperty(navigator, 'onLine', { configurable: true, value: true }); wire.rpc.mockResolvedValue({ data: companySnapshot(), error: null }); });
 afterEach(() => { cleanup(); localStorage.clear(); });
 describe('Deep Claim company query and transaction recovery', () => {
+  it.each([
+    ['startResearch','dc_start_research','excavation_1','p_research_key','Start research'],
+    ['fulfillContract','dc_fulfill_contract','yard_foundations','p_contract_key','Deliver contract'],
+    ['claimMilestone','dc_claim_milestone','first_shift','p_milestone_key','Claim company milestone'],
+  ] as const)('recovers %s after a lost acknowledgement without replacing its reviewed revision or request', async (method, endpoint, key, parameter, label) => {
+    let server = phaseFourSnapshot(), lost = true;
+    wire.rpc.mockImplementation(async (name: string) => {
+      if (name === endpoint && lost) {
+        lost = false; server = phaseFourSnapshot(5);
+        return { data: null, error: { code: 'NETWORK' } };
+      }
+      return { data: server, error: null };
+    });
+    const first = harness(), hook = renderHook(() => useDeepClaim(), { wrapper: first.Wrapper });
+    await waitFor(() => expect(hook.result.current.data?.schema_version).toBe(4));
+    await act(async () => { await expect(hook.result.current[method](key, 3)).rejects.toThrow('safe retry'); });
+    expect(hook.result.current.pendingAction).toBe(label);
+    const initial = wire.rpc.mock.calls.find(([name]) => name === endpoint);
+    expect(initial?.[1]).toEqual({ [parameter]: key, p_expected_revision: 3, p_request_id: expect.any(String) });
+    hook.unmount(); first.client.clear();
+    const next = harness(), resumed = renderHook(() => useDeepClaim(), { wrapper: next.Wrapper });
+    await waitFor(() => expect(resumed.result.current.data?.revision).toBe(5));
+    expect(resumed.result.current.readOnly).toBe(true);
+    await act(async () => { await resumed.result.current.retryPending(); });
+    expect(wire.rpc.mock.calls.filter(([name]) => name === endpoint)).toEqual([initial, initial]);
+    expect(resumed.result.current.pendingAction).toBeNull();
+  });
   it('uses the field-operation endpoint for a current-schema survey and preserves the reviewed revision', async () => {
     wire.rpc.mockResolvedValue({ data: phaseThreeSnapshot(), error: null });
     const { Wrapper } = harness(); const { result } = renderHook(() => useDeepClaim(), { wrapper: Wrapper });
@@ -90,6 +118,9 @@ describe('Deep Claim company query and transaction recovery', () => {
     ['dc_collect_production', { p_job_id: 'production-a' }, 'Collect production'],
     ['dc_dispatch_operation', { p_worker_ids: ['worker-a'], p_mode: 'infrastructure', p_target_x: 48, p_target_y: 5, p_duration_minutes: 20, p_tutorial: false, p_infrastructure_key: 'supports', p_expected_revision: 1 }, 'Dispatch crew'],
     ['dc_resolve_discovery', { p_discovery_id: 'discovery-a', p_choice: 'keep', p_expected_revision: 1 }, 'Review discovery'],
+    ['dc_start_research', { p_research_key: 'excavation_1', p_expected_revision: 1 }, 'Start research'],
+    ['dc_fulfill_contract', { p_contract_key: 'coal_supply', p_expected_revision: 1 }, 'Deliver contract'],
+    ['dc_claim_milestone', { p_milestone_key: 'first_shift', p_expected_revision: 1 }, 'Claim company milestone'],
   ] as const)('recovers a persisted %s request with its exact identity after a reload', async (operation, args, label) => {
     const request = { ...args, p_request_id: '00000000-0000-4000-8000-000000000090' };
     localStorage.setItem('dh:deep-claim:pending:v1:user-a:club-a', JSON.stringify({ operation, args: request, label, fingerprint: JSON.stringify([operation, args]) }));

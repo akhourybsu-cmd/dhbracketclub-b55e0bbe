@@ -16,7 +16,7 @@ const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business').split(','));
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
 const endpoint = createDeepClaimMiddleware(token);
@@ -219,6 +219,15 @@ async function presentation() {
     await page.getByRole('dialog', { name: 'The surface camp' }).getByRole('button', { name: /Warehouse/ }).click();
     await expect(page.getByRole('dialog', { name: 'Warehouse', exact: true })).toBeVisible();
     await fit(page, `${label}-upgrade-menu`); await shot(page, `${label}-upgrade-menu`); await page.keyboard.press('Escape');
+    for (const view of ['Company', 'Research', 'Contracts', 'Records']) {
+      const office = await officeView(page, view);
+      await fit(page, `${label}-office-${view.toLowerCase()}`); await shot(page, `${label}-office-${view.toLowerCase()}`);
+      if (view === 'Research') { await office.getByRole('button', { name: 'Review Cutting Methods', exact: true }).click(); await expect(office.getByRole('button', { name: 'Start research', exact: true })).toBeDisabled(); }
+      if (view === 'Contracts') { await office.getByRole('button', { name: 'Review order Yard Foundations', exact: true }).click(); await expect(office.getByRole('button', { name: 'Deliver whole order', exact: true })).toBeDisabled(); }
+      if (view === 'Records') { await office.getByRole('button', { name: 'Review milestone First Shift', exact: true }).click(); await expect(office.getByRole('button', { name: 'Claim company credits', exact: true })).toBeDisabled(); }
+      if (view !== 'Company') await fit(page, `${label}-office-${view.toLowerCase()}-review`);
+      await page.keyboard.press('Escape');
+    }
     await page.getByRole('tab', { name: 'Surface', exact: true }).focus(); await page.keyboard.press('End');
     await expect(page.getByRole('tab', { name: 'Settings', exact: true })).toBeFocused();
     await page.keyboard.press('Home'); await expect(page.getByRole('tab', { name: 'Surface', exact: true })).toBeFocused();
@@ -389,6 +398,13 @@ async function workerFile(page, name, view) {
   const file = page.getByRole('dialog', { name, exact: true });
   await file.getByRole('group', { name: 'Worker file views', exact: true }).getByRole('button', { name: view, exact: true }).click();
   return file;
+}
+async function officeView(page, view) {
+  await clearDialogs(page); await tab(page, 'Surface');
+  await page.getByRole('button', { name: 'Open company office', exact: true }).click();
+  const office = page.getByRole('dialog', { name: 'Company Office', exact: true });
+  await office.getByRole('group', { name: 'Company office views', exact: true }).getByRole('button', { name: new RegExp(`^${view}(?:\\s|\\d|$)`) }).click();
+  return office;
 }
 async function processRecipe(page, key, { loseAcknowledgement = false } = {}) {
   let snapshot = await rpc(page, 'dc_get'); const recipe = snapshot.recipes.find(value => value.key === key);
@@ -609,16 +625,97 @@ async function caverns() {
   }
   assert.fail('QA sampling gap: 24 valid independent worlds had no chamber within the first-shaft survey band; no world or award was fabricated');
 }
+async function business() {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    const run = `business-${attempt}`, { context, page } = await setup();
+    await found(page, { run }); await intro(page);
+    let snapshot = await rpc(page, 'dc_get'); const tutorial = snapshot.expeditions[0];
+    await command(page, 'advance_job', { job_id: tutorial.id, seconds: 31 });
+    await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
+    await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
+    for (const [x, y] of [[50, 1], [47, 2], [49, 2], [47, 3]]) snapshot = await harvest(page, x, y);
+    await sale(page, 'Iron ore'); await sale(page, 'Quartz');
+    const site = await command(page, 'stone_worksite');
+    if (!site) { await context.close(); continue; }
+    let dialog = await operationPlan(page, 'Exploration', { ...site, workers: ['Ivo Vale'] });
+    await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
+    snapshot = await rpc(page, 'dc_get'); const stoneJob = snapshot.expeditions.find(job => job.status === 'active'); assert.ok(stoneJob);
+    await command(page, 'advance_job', { job_id: stoneJob.id, seconds: stoneJob.duration_seconds + 1 });
+    await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
+    await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
+    snapshot = await rpc(page, 'dc_get');
+    checked('business-progression-starts-from-actually-earned-stock-and-normal-energy', snapshot.resources.stone >= 20 && snapshot.resources.copper_ore >= 18 && snapshot.resources.tin_ore >= 12
+      && snapshot.workers.find(worker => worker.name === 'Ivo Vale').energy === 0 && snapshot.workers.filter(worker => worker.name !== 'Ivo Vale').every(worker => worker.energy === 1));
+    for (const name of ['Research Office', 'Trading Post', 'Smeltery']) await build(page, name);
+    snapshot = await processRecipe(page, 'smelt_copper'); snapshot = await processRecipe(page, 'smelt_tin');
+    checked('research-inputs-are-real-processed-goods', snapshot.resources.copper_bar === 2 && snapshot.resources.tin_bar === 2 && snapshot.resources.coal >= 6);
+    let office = await officeView(page, 'Research');
+    await office.getByRole('group', { name: 'Research branches', exact: true }).getByRole('button', { name: /^Processing/ }).click();
+    await office.getByRole('button', { name: 'Review Alloy Practice', exact: true }).click();
+    await expect(office.getByRole('button', { name: 'Start research', exact: true })).toBeEnabled();
+    await fit(page, 'business-earned-research-review'); await shot(page, 'business-earned-research-review');
+    const beforeResearch = await rpc(page, 'dc_get');
+    await command(page, 'fail_next', { name: 'dc_start_research', after_commit: true });
+    await office.getByRole('button', { name: 'Start research', exact: true }).click(); await expect(office.getByRole('alert')).toBeVisible();
+    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
+    snapshot = await rpc(page, 'dc_get'); const research = snapshot.business.research.find(order => order.key === 'processing_1'); assert.ok(research);
+    const researchCalls = (await command(page, 'calls')).filter(call => call.name === 'dc_start_research');
+    checked('paid-research-lost-ack-replays-one-order-and-keeps-server-clock', researchCalls.length === 2 && researchCalls[0].args.p_request_id === researchCalls[1].args.p_request_id
+      && research.status === 'active' && snapshot.business.processing_speed_percent === 0 && snapshot.company.cash === beforeResearch.company.cash - 80
+      && snapshot.resources.copper_bar === beforeResearch.resources.copper_bar - 1 && snapshot.resources.tin_bar === beforeResearch.resources.tin_bar - 1 && snapshot.resources.coal === beforeResearch.resources.coal - 4);
+    office = await officeView(page, 'Research'); await shot(page, 'business-active-research'); await page.keyboard.press('Escape');
+    await command(page, 'advance_research', { research_key: 'processing_1', seconds: 301 });
+    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+    snapshot = await rpc(page, 'dc_get');
+    checked('research-completes-offline-without-a-second-payment-or-collect-click', snapshot.business.research.find(order => order.key === 'processing_1').status === 'completed'
+      && snapshot.business.processing_speed_percent === 5 && snapshot.company.cash === beforeResearch.company.cash - 80 && snapshot.business.stats.completed_research === 1);
+    snapshot = await processRecipe(page, 'smelt_bronze');
+    const bronzeJob = snapshot.production_jobs.find(job => job.recipe_key === 'smelt_bronze');
+    checked('unlocked-bronze-production-uses-paid-inputs-and-frozen-research-timing', snapshot.resources.bronze_bar === 2 && bronzeJob.research_speed_percent === 5 && bronzeJob.duration_seconds === 342
+      && bronzeJob.recipe_snapshot.outputs.bronze_bar === 2 && snapshot.business.stats.collected_processed_units === 6);
+    office = await officeView(page, 'Contracts'); await office.getByRole('button', { name: 'Review order Yard Foundations', exact: true }).click();
+    await expect(office.getByRole('button', { name: 'Deliver whole order', exact: true })).toBeEnabled();
+    await fit(page, 'business-whole-delivery-review'); await shot(page, 'business-whole-delivery-review');
+    const beforeDelivery = await rpc(page, 'dc_get');
+    await office.getByRole('button', { name: 'Deliver whole order', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Order delivered.', exact: true })).toBeVisible(); await closeReward(page);
+    snapshot = await rpc(page, 'dc_get');
+    checked('persistent-contract-delivers-collected-stock-once-for-frozen-payout', snapshot.resources.stone === beforeDelivery.resources.stone - 20 && snapshot.company.cash === beforeDelivery.company.cash + 24
+      && snapshot.business.contracts.find(order => order.key === 'yard_foundations').status === 'completed' && snapshot.business.stats.completed_contracts === 1 && snapshot.business.stats.total_contract_credits === 24);
+    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+    office = await officeView(page, 'Contracts'); await office.getByRole('button', { name: 'Review order Yard Foundations', exact: true }).click();
+    await expect(office.getByRole('button', { name: 'Deliver whole order', exact: true })).toBeDisabled(); await page.keyboard.press('Escape');
+    for (const name of ['First Shift', 'First Batch', 'Better Methods']) {
+      office = await officeView(page, 'Records'); await office.getByRole('button', { name: `Review milestone ${name}`, exact: true }).click();
+      await expect(office.getByRole('button', { name: 'Claim company credits', exact: true })).toBeEnabled();
+      await office.getByRole('button', { name: 'Claim company credits', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Company milestone secured.', exact: true })).toBeVisible(); await closeReward(page);
+    }
+    snapshot = await rpc(page, 'dc_get');
+    checked('legacy-and-new-source-backed-milestones-pay-only-explicit-once-claims', ['first_shift','first_batch','first_research'].every(key => snapshot.business.milestones.find(item => item.key === key).claimed_at)
+      && snapshot.company.cash === beforeDelivery.company.cash + 24 + 70);
+    office = await officeView(page, 'Records'); await office.getByRole('button', { name: 'Review milestone First Shift', exact: true }).click();
+    await expect(office.getByRole('button', { name: 'Claim company credits', exact: true })).toBeDisabled();
+    await fit(page, 'business-earned-records-review'); await shot(page, 'business-earned-records-review'); await page.keyboard.press('Escape');
+    office = await officeView(page, 'Records'); await office.getByRole('group', { name: 'Company records', exact: true }).getByRole('button', { name: 'Operations', exact: true }).click();
+    await fit(page, 'business-source-backed-operations'); await shot(page, 'business-source-backed-operations');
+    await context.close(); console.log('PASS Deep Claim earned business development'); return;
+  }
+  assert.fail('QA sampling gap: no suitable legal finite stone frontier in24 independent worlds; no economy or world was fabricated');
+}
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
   if (sections.has('industry')) await industry();
   if (sections.has('field')) await field();
   if (sections.has('caverns')) await caverns();
+  if (sections.has('business')) await business();
 }
 
 try {

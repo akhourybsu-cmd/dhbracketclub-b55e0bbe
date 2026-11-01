@@ -64,6 +64,28 @@ export function createDeepClaimMiddleware(token) {
           await state.database.advanceProduction(input.user, options.job_id, options.seconds);
           return reply(response, { data: true });
         }
+        if (input.command === 'advance_research') {
+          await state.database.advanceResearch(input.user, options.research_key, options.seconds);
+          return reply(response, { data: true });
+        }
+        if (input.command === 'stone_worksite') {
+          // Local QA chooses a legal frontier with enough real host stone for
+          // the authored first delivery. The player still pays and mines it.
+          const snapshot = await state.database.rpc(input.user, 'dc_get', {}), company = snapshot.company?.id;
+          const worker = snapshot.workers.find(value => value.name === 'Ivo Vale');
+          if (!company || !worker) throw new Error('An owned company and available crew are required');
+          const candidates = (await state.database.db.query(`select distinct t.x+v.dx x,t.y+v.dy y from public.dc_tiles t cross join(values(-1,0),(1,0),(0,-1),(0,1))v(dx,dy)
+            where t.company_id=$1 and t.remaining=0 and t.x+v.dx between 0 and 95 and t.x+v.dx<>48 and t.y+v.dy between 1 and $2
+            and not exists(select 1 from public.dc_tiles known where known.company_id=$1 and known.x=t.x+v.dx and known.y=t.y+v.dy)
+            order by y,x`, [company, snapshot.world.max_depth])).rows;
+          for (const point of candidates) {
+            const cell = (await state.database.db.query('select public.dc_cell_v1($1,$2,$3) cell', [company, point.x, point.y])).rows[0].cell;
+            if (cell.material !== 'stone' || cell.initial_amount < Math.max(0, 20 - (snapshot.resources.stone || 0))) continue;
+            const quote = (await state.database.db.query("select public.dc_preview_operation_v3($1,$2::uuid[],'explore',$3,$4,20,false,null,clock_timestamp()) quote", [company, [worker.id], point.x, point.y])).rows[0].quote;
+            if (quote.allowed && quote._quantity >= Math.max(0, 20 - (snapshot.resources.stone || 0))) return reply(response, { data: point });
+          }
+          return reply(response, { data: null });
+        }
         if (input.command === 'cavern_survey_site') {
           // This owner-only local test oracle selects an existing public
           // shaft worksite whose genuine timed survey will reveal a chamber.

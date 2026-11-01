@@ -44,7 +44,7 @@ export function useDeepClaim() {
     return data;
   }, staleTime: 10_000, refetchInterval: state => document.visibilityState !== 'visible' ? false
     : state.state.data?.expeditions.some(job => job.status === 'active' && job.tutorial) ? 2_000
-    : state.state.data?.expeditions.some(job => job.status === 'active') || state.state.data?.production_jobs?.some(job => job.status === 'active') ? 10_000 : 30_000,
+    : state.state.data?.expeditions.some(job => job.status === 'active') || state.state.data?.production_jobs?.some(job => job.status === 'active') || state.state.data?.business?.research.some(job => job.status === 'active') ? 10_000 : 30_000,
   refetchOnWindowFocus: true, retry: 1, structuralSharing: shareDeepClaimSnapshot });
   const refetch = query.refetch;
   useLayoutEffect(() => {
@@ -111,6 +111,9 @@ export function useDeepClaim() {
     startProduction: (recipeKey: string, batches: number) => perform('dc_start_production', { p_recipe_key: recipeKey, p_batches: batches, p_expected_revision: revision }, 'Start production'),
     collectProduction: (jobId: string) => perform('dc_collect_production', { p_job_id: jobId }, 'Collect production'),
     resolveDiscovery: (discoveryId: string, choice: 'keep' | 'sell' | 'salvage', expectedRevision = revision) => perform('dc_resolve_discovery', { p_discovery_id: discoveryId, p_choice: choice, p_expected_revision: expectedRevision }, 'Review discovery'),
+    startResearch: (researchKey: string, expectedRevision = revision) => perform('dc_start_research', { p_research_key: researchKey, p_expected_revision: expectedRevision }, 'Start research'),
+    fulfillContract: (contractKey: string, expectedRevision = revision) => perform('dc_fulfill_contract', { p_contract_key: contractKey, p_expected_revision: expectedRevision }, 'Deliver contract'),
+    claimMilestone: (milestoneKey: string, expectedRevision = revision) => perform('dc_claim_milestone', { p_milestone_key: milestoneKey, p_expected_revision: expectedRevision }, 'Claim company milestone'),
     retryPending: () => pendingRef.current ? perform(pendingRef.current.operation, {}, pendingRef.current.label, true) : Promise.resolve(data),
   };
 }

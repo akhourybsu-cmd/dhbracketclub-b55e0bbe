@@ -266,10 +266,17 @@ export async function runPhase2ExtraTests(h) {
 
   await check('Phase2 economy: recipes have finite paid inputs and no recursive input/output minting loop', async () => {
     const snapshot = await bootstrap(), recipes = snapshot.recipes;
-    assert.ok(recipes.length >= 10);
+    const legacy = (await one("select config->'recipes' recipes from public.dc_rules where version=2")).recipes;
+    assert.equal(legacy.length, 16);
+    const authored = [...legacy, ...(snapshot.business_catalog?.recipes ?? [])];
+    assert.equal(recipes.length, authored.length);
     const producers = new Map();
     for (const recipe of recipes) {
-      assert.ok(recipe.cash_cost > 0 && recipe.duration_seconds >= 120 && recipe.duration_seconds <= 600);
+      const original = authored.find(definition => definition.key === recipe.key); assert.ok(original);
+      for (const [field, value] of Object.entries(original)) assert.deepEqual(recipe[field], value, `${recipe.key} changed authored ${field}`);
+      assert.ok(recipe.cash_cost > 0);
+      if (legacy.some(definition => definition.key === recipe.key)) assert.ok(recipe.duration_seconds >= 120 && recipe.duration_seconds <= 600);
+      else assert.equal(recipe.duration_seconds, original.duration_seconds);
       assert.equal(recipe.max_batches, 10);
       assert.ok(Object.values(recipe.inputs).reduce((sum, quantity) => sum + quantity, 0) > 0);
       for (const [resource, quantity] of Object.entries(recipe.inputs)) assert.ok(Number.isSafeInteger(quantity) && quantity > 0 && !(resource in recipe.outputs));

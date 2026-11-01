@@ -2,11 +2,11 @@ import type { DeepClaimBuildingId, DeepClaimFormation, DeepClaimResourceId, Deep
 import { DEEP_CLAIM_MINERAL_IDS } from '@/lib/deepClaim/types';
 import { BUILDING_INFO } from '@/lib/deepClaim/catalog';
 
-/** Phases 1–3: original procedural pixel art, not a finished commercial sprite atlas. */
+/** Phases 1–4: original procedural pixel art, not a finished commercial sprite atlas. */
 export const DEEP_CLAIM_ART_PROVENANCE = {
   author: 'Original DH Club / Deep Claim implementation',
   source: 'Authored pixel primitives and coordinate-only cosmetic texture patterns. No stock, emoji, external image requests, private world seeds or generated gameplay terrain.',
-  grade: 'Phase 1–3 original procedural art; expanded hand-painted animation and commercial atlas polish are future work.',
+  grade: 'Phase 1–4 original procedural art; expanded hand-painted animation and commercial atlas polish are future work.',
   logicalTilePixels: 16,
 } as const;
 export const FORMATION_ART: Record<DeepClaimFormation, { label: string; dark: string; wall: string; detail: string }> = {
@@ -37,6 +37,9 @@ export const RESOURCE_ART: Record<DeepClaimResourceId, { label: string; dark: st
   silver_bar: { label: 'Silver bar', dark: '#536775', mid: '#b8ced6', light: '#f2eed7', shape: 'bar' },
   polished_quartz: { label: 'Polished quartz', dark: '#706b82', mid: '#c5c5d2', light: '#fff0df', shape: 'polished' },
   cut_amethyst: { label: 'Cut amethyst', dark: '#57426f', mid: '#a188c1', light: '#e2c9e9', shape: 'gem' },
+  bronze_bar: { label: 'Bronze bar', dark: '#765331', mid: '#b7904f', light: '#ddc18b', shape: 'bar' },
+  steel_bar: { label: 'Steel bar', dark: '#364d58', mid: '#839ba4', light: '#d0ded9', shape: 'bar' },
+  gold_bar: { label: 'Gold bar', dark: '#8c612e', mid: '#d3aa4f', light: '#f5dda0', shape: 'bar' },
 };
 export const SPECIALTY_ART: Record<DeepClaimSpecialty, { coat: string; helmet: string; tool: 'pick' | 'map' | 'pack' | 'wrench' | 'scope' | 'charge' | 'lamp' }> = {
   miner: { coat: '#a66c43', helmet: '#d3b362', tool: 'pick' }, geologist: { coat: '#77836b', helmet: '#d5c6a0', tool: 'map' },
@@ -53,6 +56,8 @@ export const BUILDING_ART: Record<DeepClaimBuildingId, { label: string; x: numbe
   workers_quarters: { label: 'Workers’ quarters', x: BUILDING_INFO.workers_quarters.x - 5, y: -6, width: 10, height: 6 },
   smeltery: { label: 'Smeltery', x: BUILDING_INFO.smeltery.x - 4, y: -7, width: 8, height: 7 },
   gem_workshop: { label: 'Gem workshop', x: BUILDING_INFO.gem_workshop.x - 4, y: -5, width: 8, height: 5 },
+  research_office: { label: 'Research office', x: BUILDING_INFO.research_office.x - 3, y: -5, width: 6, height: 5 },
+  trading_post: { label: 'Trading post', x: BUILDING_INFO.trading_post.x - 3.5, y: -5, width: 7, height: 5 },
 };
 export type EquipmentSilhouette = 'pickaxe' | 'lantern' | 'helmet' | 'cargo' | 'survey';
 export const EQUIPMENT_ART = {
@@ -61,15 +66,18 @@ export const EQUIPMENT_ART = {
   copper_helmet: { label: 'Copper helmet', kind: 'helmet', tier: 1 }, iron_helmet: { label: 'Iron helmet', kind: 'helmet', tier: 2 },
   cargo_pack: { label: 'Cargo pack', kind: 'cargo', tier: 1 }, hauler_frame: { label: 'Hauler frame', kind: 'cargo', tier: 2 },
   survey_kit: { label: 'Survey kit', kind: 'survey', tier: 1 }, prism_survey_kit: { label: 'Prism survey kit', kind: 'survey', tier: 2 },
-} satisfies Record<string, { label: string; kind: EquipmentSilhouette; tier: 1 | 2 }>;
+  steel_pickaxe: { label: 'Steel pickaxe', kind: 'pickaxe', tier: 3 },
+  steel_cargo_harness: { label: 'Steel cargo harness', kind: 'cargo', tier: 3 },
+} satisfies Record<string, { label: string; kind: EquipmentSilhouette; tier: 1 | 2 | 3 }>;
 export type EquipmentArtKey = keyof typeof EQUIPMENT_ART;
 export const equipmentArtwork = (key: string) => EQUIPMENT_ART[key as EquipmentArtKey];
 export const DEEP_CLAIM_ART_MANIFEST = {
   terrain: ['surface_grass', 'fog_rock', 'dug_tunnel', ...Object.keys(FORMATION_ART).map(id => `formation_${id}`), ...DEEP_CLAIM_MINERAL_IDS.map(id => `deposit_${id}`)],
   inventory: Object.keys(RESOURCE_ART).map(id => `stock_${id}`), equipment: Object.keys(EQUIPMENT_ART),
-  workers: Object.keys(SPECIALTY_ART).map(id => `crew_${id}`), buildings: Object.keys(BUILDING_ART).map(id => `${id}_levels_${['workers_quarters','smeltery','gem_workshop'].includes(id) ? '0_3' : id === 'mine_shaft' ? '1_5' : '1_3'}`),
+  workers: Object.keys(SPECIALTY_ART).map(id => `crew_${id}`), buildings: Object.keys(BUILDING_ART).map(id => `${id}_levels_${id === 'research_office' ? '0_2' : ['workers_quarters','smeltery','gem_workshop','trading_post'].includes(id) ? '0_3' : id === 'mine_shaft' ? '1_5' : '1_3'}`),
+  business: ['research', 'contract', 'milestone', 'office'],
   infrastructure: ['supports', 'ventilation', 'pump', 'rail'].map(id => `${id}_building_installed_grades_1_3`),
   discoveries: ['banded_geode', 'fern_fossil', 'survey_journal', 'rail_relic', 'crystal_cluster', 'meteorite_fragment'],
   props: ['ore_cart', 'rail_track', 'lantern', 'supply_crates', 'chimney_smoke', 'headgear_wheel', 'survey_flag'],
-  animations: ['idle', 'walk', 'mine', 'haul', 'survey', 'construction', 'surface_smoke', 'shaft_wheel', 'smeltery_work', 'gem_wheel_work', 'tool_station_work'],
+  animations: ['idle', 'walk', 'mine', 'haul', 'survey', 'construction', 'surface_smoke', 'shaft_wheel', 'smeltery_work', 'gem_wheel_work', 'tool_station_work', 'research_work'],
 } as const;

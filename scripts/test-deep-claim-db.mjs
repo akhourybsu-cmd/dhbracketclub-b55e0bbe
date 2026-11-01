@@ -8,25 +8,33 @@ import { runPhase2ExtraTests } from './fixtures/deep-claim-phase2-extra.mjs';
 import { runPhase3PreservationTests } from './fixtures/deep-claim-phase3-preservation.mjs';
 import { runPhase3WorldTests } from './fixtures/deep-claim-phase3-world.mjs';
 import { runPhase3ExtraTests } from './fixtures/deep-claim-phase3-extra.mjs';
+import { runPhase4PreservationTests } from './fixtures/deep-claim-phase4-preservation.mjs';
+import { runPhase4ResearchTests } from './fixtures/deep-claim-phase4-research.mjs';
+import { runPhase4ExtraTests } from './fixtures/deep-claim-phase4-extra.mjs';
 
 const fixture = await createDeepClaimDatabase();
 for (const [suffix, hash] of [
   ['20261102010000_deep_claim_foundation.sql', '1d370b6b66261c53440a60e43a7801a52f8c100d1e9cd57c4966026dae0c3197'],
   ['20261102020000_deep_claim_discovery.sql', '94720663733be2af208c403daa85e5ac0bee86a320d0d5d702bf7d8c2bc45593'],
   ['20261102030000_deep_claim_workforce_production.sql', 'c27b82ed2f5f5daf41b6ac2a514cfa44832b0ddec37d8a3b7e0abaa1f2927d12'],
+  ['20261102040000_deep_claim_underground_operations.sql', 'f5cd959948231619d1396bed64592f1623a6e5939bbde8842c83a56733b85063'],
 ]) assert.equal(createHash('sha256').update(fixture.sources.get(`supabase/migrations/${suffix}`)).digest('hex'), hash, 'Published migrations must remain immutable');
 const { db, rpc: rawRpc, actorQuery } = fixture;
-const enginePaths = ['src/lib/deepClaim/simulation.ts', 'src/lib/deepClaim/world.ts', 'src/lib/deepClaim/field.ts', 'src/lib/deepClaim/catalog.ts', 'src/lib/deepClaim/types.ts'];
+const enginePaths = ['src/lib/deepClaim/simulation.ts', 'src/lib/deepClaim/world.ts', 'src/lib/deepClaim/field.ts', 'src/lib/deepClaim/business.ts', 'src/lib/deepClaim/production.ts', 'src/lib/deepClaim/catalog.ts', 'src/lib/deepClaim/types.ts'];
 for (const path of enginePaths) fixture.sources.set(path, await readFile(path, 'utf8'));
 const catalogPath = 'supabase/seed/deep-claim-phase2-catalog.json';
 fixture.sources.set(catalogPath, await readFile(catalogPath, 'utf8'));
 const fieldCatalogPath = 'supabase/seed/deep-claim-phase3-catalog.json';
 fixture.sources.set(fieldCatalogPath, await readFile(fieldCatalogPath, 'utf8'));
-const built = await build({ entryPoints: enginePaths.slice(0, 3), bundle: true, platform: 'node', format: 'esm', write: false, outdir: '/tmp/deep-claim-db-engine' });
+const businessCatalogPath = 'supabase/seed/deep-claim-phase4-catalog.json';
+fixture.sources.set(businessCatalogPath, await readFile(businessCatalogPath, 'utf8'));
+const built = await build({ entryPoints: enginePaths.slice(0, 5), bundle: true, platform: 'node', format: 'esm', write: false, outdir: '/tmp/deep-claim-db-engine' });
 const load = suffix => import(`data:text/javascript;base64,${Buffer.from(built.outputFiles.find(file => file.path.endsWith(suffix)).text).toString('base64')}`);
 const { calculateCrewPlan, calendarEnergyDay } = await load('/simulation.js');
 const { validateDeepClaimSnapshot, validateDeepClaimPreview } = await load('/world.js');
 const fieldEngine = await load('/field.js');
+const businessEngine = await load('/business.js');
+const productionEngine = await load('/production.js');
 async function rpc(user, name, parameters = {}, role = 'authenticated') {
   const result = await rawRpc(user, name, parameters, role);
   if (name === 'dc_preview' || name === 'dc_preview_operation') validateDeepClaimPreview(result);
@@ -36,7 +44,7 @@ async function rpc(user, name, parameters = {}, role = 'authenticated') {
 const A = actors.alex, B = actors.blair, CLUB = actors.club;
 const PUBLIC_RPCS = ['dc_bootstrap','dc_get','dc_reconcile','dc_preview','dc_dispatch','dc_collect','dc_sell','dc_upgrade',
   'dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_start_production','dc_collect_production','dc_retire_equipment',
-  'dc_preview_operation','dc_dispatch_operation','dc_resolve_discovery'];
+  'dc_preview_operation','dc_dispatch_operation','dc_resolve_discovery', 'dc_start_research','dc_fulfill_contract','dc_claim_milestone'];
 let serial = 900000, checks = 0;
 const checkFilter = process.env.DEEP_CLAIM_DB_FILTER ? new RegExp(process.env.DEEP_CLAIM_DB_FILTER) : null;
 assert.ok(!checkFilter || !process.argv.includes('--proof'), 'Release proofs require the complete unfiltered integration suite');
@@ -67,6 +75,9 @@ const sell = (user, snapshot, resource, quantity, key = request()) => rpc(user, 
 const upgrade = (user, snapshot, building, key = request()) => rpc(user, 'dc_upgrade', { p_building_key: building, p_expected_revision: snapshot.revision, p_request_id: key });
 const hire = (user, snapshot, candidate, key = request()) => rpc(user, 'dc_hire', { p_candidate_id: candidate, p_expected_revision: snapshot.revision, p_request_id: key });
 const train = (user, snapshot, worker, stat, key = request()) => rpc(user, 'dc_train', { p_worker_id: worker, p_stat: stat, p_expected_revision: snapshot.revision, p_request_id: key });
+const startResearch = (user, snapshot, research, key = request()) => rpc(user, 'dc_start_research', { p_research_key: research, p_expected_revision: snapshot.revision, p_request_id: key });
+const fulfillContract = (user, snapshot, contract, key = request()) => rpc(user, 'dc_fulfill_contract', { p_contract_key: contract, p_expected_revision: snapshot.revision, p_request_id: key });
+const claimMilestone = (user, snapshot, milestone, key = request()) => rpc(user, 'dc_claim_milestone', { p_milestone_key: milestone, p_expected_revision: snapshot.revision, p_request_id: key });
 const tile = (snapshot, x, y) => snapshot.world.tiles.find(value => value.x === x && value.y === y);
 async function finish(user, snapshot) {
   const job = snapshot.expeditions.find(value => value.status === 'active'); assert.ok(job);
@@ -91,9 +102,13 @@ async function reset() {
 async function check(name, fn) { if (checkFilter && !checkFilter.test(name)) return; await reset(); await fn(); checks++; console.log(`PASS ${name}`); }
 function noPrivateState(snapshot) {
   const forbidden = new Set(['world_seed', 'seed', 'private_seed', 'plan', 'plans', 'milestones', 'future_cargo', 'expected_cargo', 'request_fingerprint']);
-  function walk(value) {
+  function walk(value, path = []) {
     if (!value || typeof value !== 'object') return;
-    for (const [key, child] of Object.entries(value)) { assert.ok(!forbidden.has(key), `Private field leaked: ${key}`); walk(child); }
+    for (const [key, child] of Object.entries(value)) {
+      const childPath = [...path, key], publicBusinessMilestones = key === 'milestones' && childPath.length === 2 && ['business','business_catalog'].includes(childPath[0]);
+      assert.ok(!forbidden.has(key) || publicBusinessMilestones, `Private field leaked: ${childPath.join('.')}`);
+      walk(child, childPath);
+    }
   }
   walk(snapshot);
 }
@@ -101,8 +116,8 @@ async function proof() {
   await fixture.assertSourcesUnchanged();
   if (!process.argv.includes('--proof')) return;
   const bodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body_md5 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname ~ '^(dc_|deep_claim_)' order by signature")).rows;
-  await writeFile('/tmp/deep-claim-phase3-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.body_md5])), null, 2));
-  await writeFile('/tmp/deep-claim-phase3-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].filter(([path]) => path.includes('20261102')).map(([path, source]) => [path, { sha256: createHash('sha256').update(source).digest('hex'), md5: createHash('md5').update(source).digest('hex') }])), null, 2));
+  await writeFile('/tmp/deep-claim-phase4-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.body_md5])), null, 2));
+  await writeFile('/tmp/deep-claim-phase4-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].filter(([path]) => path.includes('20261102')).map(([path, source]) => [path, { sha256: createHash('sha256').update(source).digest('hex'), md5: createHash('md5').update(source).digest('hex') }])), null, 2));
   const literal = value => `'${value.replaceAll("'", "''")}'`;
   const expected = bodies.map(row => `(${literal(row.signature)},${literal(row.body_md5)})`).join(',\n');
   const postflight = `-- READ ONLY. Compare the installed release with the independently tested SQL.
@@ -138,7 +153,7 @@ join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace
 where n.nspname='public' and c.relname in('dc_companies','dc_worlds','dc_chunks','dc_tiles','dc_expeditions','dc_inventory')
 order by c.relname,k.conname;
 `;
-  await writeFile('/tmp/deep-claim-phase3-postflight.sql', postflight);
+  await writeFile('/tmp/deep-claim-phase4-postflight.sql', postflight);
   console.log(`PASS proof: ${bodies.length} installed function bodies and exact Deep Claim migration sources`);
 }
 
@@ -168,7 +183,8 @@ try {
       assert.deepEqual(empty.infrastructure, []); assert.deepEqual(empty.discoveries, []); assert.deepEqual(empty.field_reports, []);
       assert.deepEqual(empty.discovery_summary, { pending: 0, kept: 0, sold: 0, salvaged: 0 });
       const first = await bootstrap(); noPrivateState(first);
-      assert.equal(first.schema_version, 3); assert.equal(first.company.user_id, A); assert.equal(first.company.club_id, CLUB);
+      for (const privateCopy of [{ milestones: [] }, { business: { nested: { milestones: [] } } }, { business: { milestones: [{ seed: 'hidden' }] } }]) assert.throws(() => noPrivateState(privateCopy), /Private field leaked/);
+      assert.equal(first.schema_version, 4); assert.equal(first.company.user_id, A); assert.equal(first.company.club_id, CLUB);
       assert.equal(first.company.name, 'Frontier & Sons'); assert.equal(first.company.cash, 180); assert.equal(first.company.timezone, 'America/New_York');
       assert.equal(first.company.crew_slots, 1); assert.equal(first.company.tutorial_used, false);
       assert.equal(first.workers.length, 3); assert.equal(new Set(first.workers.map(worker => worker.name)).size, 3);
@@ -178,8 +194,8 @@ try {
         assert.ok(Object.values(worker.stats).every(stat => Number.isInteger(stat) && stat >= 1 && stat <= 100));
       }
       assert.equal(first.world.width, 96); assert.equal(first.world.chunk_size, 32); assert.ok(first.world.tiles.length < 96 * 32);
-      assert.deepEqual(first.buildings.map(building => building.key).sort(), ['mine_office', 'mine_shaft', 'warehouse', 'tool_station', 'workers_quarters', 'smeltery', 'gem_workshop'].sort());
-      assert.ok(first.buildings.filter(building => ['workers_quarters', 'smeltery', 'gem_workshop'].includes(building.key)).every(building => building.level === 0));
+      assert.deepEqual(first.buildings.map(building => building.key).sort(), ['mine_office', 'mine_shaft', 'warehouse', 'tool_station', 'workers_quarters', 'smeltery', 'gem_workshop', 'research_office', 'trading_post'].sort());
+      assert.ok(first.buildings.filter(building => ['workers_quarters', 'smeltery', 'gem_workshop', 'research_office', 'trading_post'].includes(building.key)).every(building => building.level === 0));
       const other = await get(B); assert.equal(other.company, null); assert.deepEqual(other.resources, {});
       assert.notEqual((await bootstrap(B)).company.id, first.company.id);
     });
@@ -673,7 +689,7 @@ try {
           for (const previous of saved[table]) assert.ok(rows.some(current => Object.entries(previous.record).every(([field, value]) => JSON.stringify(current.record[field]) === JSON.stringify(value))), `${table} must preserve every existing field`);
         }
         const migrated = await legacy.rpc(A, 'dc_get'); validateDeepClaimSnapshot(migrated);
-        assert.equal(migrated.schema_version, 3); assert.equal(migrated.company.id, first.company.id); assert.equal(migrated.company.cash, started.company.cash);
+        assert.equal(migrated.schema_version, 4); assert.equal(migrated.company.id, first.company.id); assert.equal(migrated.company.cash, started.company.cash);
         const { stage: _previousStage, ...frozenJob } = job, { stage: _currentStage, ...migratedJob } = migrated.expeditions.find(value => value.id === job.id);
         for (const [field, value] of Object.entries(frozenJob)) assert.deepEqual(migratedJob[field], value);
         assert.equal((await legacy.db.query('select public.dc_chunk_version_v2($1,30,171) version', [first.company.id])).rows[0].version, 1);
@@ -919,12 +935,15 @@ try {
       assert.ok(plan.cargo.stone >= 2, 'The final frozen cargo must fund the next operating reserve');
     });
 
-    const harness = { check, db, rpc, one, A, B, CLUB, request, bootstrap, get, preview, dispatch, previewOperation, dispatchOperation, resolveDiscovery, collect, sell, upgrade, finish, collectAndSell, fixture,
-      engine: { calculateCrewPlan, calendarEnergyDay, validateDeepClaimSnapshot, validateDeepClaimPreview, ...fieldEngine } };
+    const harness = { check, db, rpc, one, A, B, CLUB, request, bootstrap, get, preview, dispatch, previewOperation, dispatchOperation, resolveDiscovery, startResearch, fulfillContract, claimMilestone, collect, sell, upgrade, finish, collectAndSell, fixture,
+      engine: { calculateCrewPlan, calendarEnergyDay, validateDeepClaimSnapshot, validateDeepClaimPreview, ...fieldEngine, ...businessEngine, ...productionEngine } };
     await runPhase2ExtraTests(harness);
     await runPhase3PreservationTests(harness);
     await runPhase3WorldTests(harness);
     await runPhase3ExtraTests(harness);
+    await runPhase4PreservationTests(harness);
+    await runPhase4ResearchTests(harness);
+    await runPhase4ExtraTests(harness);
   }
   await proof();
   console.log(`${checks} Deep Claim database integration checks passed.`);

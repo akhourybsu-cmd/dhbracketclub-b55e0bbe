@@ -2,7 +2,7 @@
 
 Deep Claim is a persistent, personal mining company inside DH Club. The player makes business and crew decisions, then returns to see the consequences in a mine that changes permanently. The company belongs to one member within one club; it is not a shared club treasury or a live multiplayer mine.
 
-This document records the design and integration contracts for the company foundation, workforce/production expansion and Phase 3 underground operations. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
+This document records the design and integration contracts for the company foundation, workforce/production expansion, underground operations and Phase 4 business development. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
 
 ## Player promise and first session
 
@@ -95,6 +95,36 @@ The player chooses **keep, sell or salvage**. Keep records a permanent cabinet e
 
 New dispatches pause at 24 pending decisions; already-active crews can still return their finds, yielding a bounded maximum of 48 pending entries. The public snapshot includes all pending finds, recent kept/resolved history and complete summary counts while preserving full server history. A complete museum and cursor-based collection history remain future work.
 
+## Phase 4 business development
+
+Phase 4 makes company planning a lasting part of the existing mining loop: **research → produce → deliver → reinvest**. Fourteen research nodes, twelve finite delivery orders and eight company milestones share the same company cash, collected stock, authorization and request ledger. There is no research currency, recurring contract stipend or automatic resource purchase.
+
+The research office is a functional new building with levels zero through two; the trading post has levels zero through three. Their actual levels gate research tiers and delivery tiers. Both have surface targets and accessible Office entry points. The existing six main navigation tabs remain intact; Company, Research, Contracts and Records are bounded views within the company office. Hiring retains a clear shortcut.
+
+### Research with dependencies
+
+Seven branches each contain two permanent nodes: Excavation, Geology, Processing, Logistics, Workforce, Safety and Deep Operations. A second-tier node requires its first tier and specified cross-branch prerequisites. The dependency tree uses real completed research and research-office levels; it never retroactively locks an existing recipe, item or shaft upgrade.
+
+Starting research consumes all displayed company credits and materials atomically, preserves the operating reserve and freezes the paid definition. Only one research order can be active. The server records its start and completion times; authorized reconciliation completes it once without another collection click. There is no cancellation, refund or reload reroll. Tier-one projects take five minutes; tier-two projects take twenty minutes.
+
+Stat research adds bounded bonuses to effective worker statistics after training, XP and functioning equipment, with the existing 100-point cap. The public research-bonus breakdown explains that contribution; consumers must not add it to already-effective statistics again. New dispatches freeze those statistics normally, while every old expedition retains its original plan and outcome. Processing research reduces future production time by five percent and then another ten percentage points. Existing production orders retain their paid inputs, outputs, station speed and completion times.
+
+### Advanced industry and finite deliveries
+
+Bronze, steel and gold bars are processed inventory goods, never terrain. Five additional recipes produce those goods, a steel pickaxe and a steel cargo harness from actual paid inputs and station time. Research requirements are enforced by the server and explained before a locked recipe can be started. The existing sixteen recipes and ten equipment definitions retain their versions and availability. New gear uses the existing exclusive slots, wear/repair rules, owned-item IDs and combined 48-item ownership/reservation cap; production keeps its three-job queue limit.
+
+Twelve authored contracts form three tiers of four deliveries. Every company retains each order's frozen definition and status. Trading-post level, prerequisite deliveries and specified research determine eligibility. There are no expiry timers, acceptance clicks, partial deliveries, cancellation refunds or daily rerolls.
+
+Fulfilling an eligible contract consumes its complete input bundle from collected inventory and pays its frozen company-credit reward once, in one transaction. Cargo awaiting collection, unfinished production and unresolved finds cannot be delivered. Rewards include a bounded premium over the normal sale value of those consumed goods. A contract can never be completed twice, including with a different request UUID after completion. The twelve-order catalog is finite; it supplies industrial goals rather than an endless credit faucet.
+
+### Earned milestones and company records
+
+Eight once-only company milestones recognize completed work: a first mining shift, collected production, installed infrastructure, completed research, a completed mining operation at 100 meters, three deliveries, three kept finds and sustained industrial production. Each displays server-derived progress and an explicit claim action. Qualifying historical actions remain eligible without silently minting credits during migration or hydration. Claims pay finite company-credit rewards, never DH Score, worker energy or equipment.
+
+Records derive from durable source rows rather than the visible recent log: completed mining expeditions and surveys, actual surveyed tiles, installed infrastructure, deepest completed mining, collected production batches and processed units, completed research/contracts, contract credits and kept discoveries. Production quantities come from frozen recipe outputs multiplied by batches once collection is complete; the mutable staged-output remainder cannot represent lifetime production. A partial collection, retry, refresh or duplicate browser tab cannot advance the same underlying achievement twice.
+
+Snapshot schema four extends schema three with the business catalog, orders, milestone progress and source-backed records. Clients retain safe reads for earlier schemas. Expedition configuration stays three because the mining algorithm and world generation do not change; new production freezes its research modifier separately. The migration preserves every existing seed, chunk, revealed tile, active expedition, production order and request receipt.
+
 ## Crew decisions
 
 The specialty framework supports Miner, Geologist, Hauler, Engineer, Surveyor, Demolitionist and Safety Officer. Phase 1 starts with mining, geology and hauling specialists; Phase 2’s daily candidate system makes the broader workforce available without replacing those starters.
@@ -147,11 +177,11 @@ The mine has an immersive shell and a clear return to DH. Primary mobile operati
 
 ## Future phase boundaries
 
-The Phase 3 boundary includes new-chunk cavern geometry, surveying, four infrastructure projects, delay-only incidents and keep/sell/salvage decisions. Expanded hazards with destructive consequences, broader collection/museum history, research, contracts and later industry remain future work. Do not reserve visible inactive tabs as substitutes for those systems.
+Phase 4 adds dependency-based research, finite delivery contracts, source-backed company milestones and alloy/advanced-equipment production to the Phase 3 underground systems. Expanded hazards with destructive consequences, broader collection/museum history and later industrial systems remain future work. Do not reserve visible inactive tabs as substitutes for those systems.
 
-**Phase 5 social and DH Feats integration is deferred.** Phases 1–3 have no club competition, global ranking, DH Score rewards or DH Score spending. Business cash and worker energy remain isolated company resources. Later engagement awards must extend the existing permanent DH Feats ledger and privacy conventions, rather than introducing a second score system.
+**Phase 5 social and DH Feats integration is deferred.** Phases 1–4 have no club competition, global ranking, DH Score rewards or DH Score spending. Business cash and worker energy remain isolated company resources. Later engagement awards must extend the existing permanent DH Feats ledger and privacy conventions, rather than introducing a second score system.
 
-**Phase 6 finished presentation is deferred.** Phases 1–3 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
+**Phase 6 finished presentation is deferred.** Phases 1–4 use original procedural pixel illustration and initial synthesized audio. A complete commercial sprite atlas, expanded animation set and full soundtrack are not claimed as delivered; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md).
 
 ## Verification gates
 
@@ -160,5 +190,7 @@ Before release, verify member/install/visibility/cross-club authorization; priva
 Phase 2 additionally verifies candidate-day stability and hire caps; daily/idle/capped training; item ownership, slot exclusivity, frozen job bonuses and once-only wear; repair inputs; finite recipe inputs and batch/queue limits; staging/collection retries; old-endpoint wear enforcement; schema-one reads; and version-one jobs/chunks surviving the migration unchanged. Economy checks must cover initial smelting/crafting access and the absence of instant buy/sell or recursive recipe arbitrage. Timed production may add sale value to finite paid inputs; that intended margin is distinct from a repeatable free-resource loop.
 
 Phase 3 verifies wholly pending and partially applied legacy plans across absent chunk boundaries; stale-ticket rejection; known-only cavern routing; elapsed survey reveals without ore; project fees/materials/grade/uniqueness and delayed installation; strongest-only mitigation and real rail travel savings; private incident outcomes and delayed publication; once-only finds from actual depleted mining; all discovery choices and salvage rollback; pending bounds; and new rules through the oldest public endpoints. The isolated database harness serializes transactions, so native concurrent-lock behavior must not be claimed as empirically stress-tested there.
+
+Phase 4 verifies research prerequisites, one active order, exact costs, elapsed completion and frozen old effects; research-aware effective statistics and production clocks; persistent contract eligibility, whole-input delivery and once-only rewards; historical source-backed milestone progress and explicit claims; rollback after economic writes; collected-production statistics beyond bounded public history; and unchanged old receipt fingerprints, geology and active jobs. Canonical catalog parity, finite reward totals, recipe dependency reachability and the absence of circular resource conversions are required economy checks.
 
 Installation, migration, commit, push and deployment status must be recorded from actual evidence in the implementation ledger. This design document does not assert that a live deployment or live database migration has occurred.

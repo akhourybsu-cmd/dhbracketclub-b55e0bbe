@@ -1,0 +1,759 @@
+{
+  "version": 4,
+  "research": [
+    {
+      "key": "excavation_1",
+      "name": "Cutting Methods",
+      "branch": "excavation",
+      "tier": 1,
+      "description": "Improves mining by 4.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 70,
+      "inputs": {
+        "stone": 12,
+        "clay": 6
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {
+        "mining": 4
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "excavation_2",
+      "name": "Precision Extraction",
+      "branch": "excavation",
+      "tier": 2,
+      "description": "Improves mining by 6.",
+      "requires": [
+        "excavation_1",
+        "geology_1"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 280,
+      "inputs": {
+        "iron_bar": 3,
+        "polished_quartz": 2
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {
+        "mining": 6
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "geology_1",
+      "name": "Field Assaying",
+      "branch": "geology",
+      "tier": 1,
+      "description": "Improves geology by 4.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 60,
+      "inputs": {
+        "quartz": 4,
+        "clay": 4
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {
+        "geology": 4
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "geology_2",
+      "name": "Crystal Analysis",
+      "branch": "geology",
+      "tier": 2,
+      "description": "Improves geology by 6.",
+      "requires": [
+        "geology_1",
+        "deep_operations_1"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 300,
+      "inputs": {
+        "silver_bar": 1,
+        "polished_quartz": 4
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {
+        "geology": 6
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "processing_1",
+      "name": "Alloy Practice",
+      "branch": "processing",
+      "tier": 1,
+      "description": "Reduces future production times by 5 additional percent. Unlocks new industrial recipes.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 80,
+      "inputs": {
+        "copper_bar": 1,
+        "tin_bar": 1,
+        "coal": 4
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {},
+      "processing_speed_percent": 5,
+      "unlocks_recipes": [
+        "smelt_bronze"
+      ]
+    },
+    {
+      "key": "processing_2",
+      "name": "Industrial Metallurgy",
+      "branch": "processing",
+      "tier": 2,
+      "description": "Reduces future production times by 10 additional percent. Unlocks new industrial recipes.",
+      "requires": [
+        "processing_1",
+        "excavation_2"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 400,
+      "inputs": {
+        "iron_bar": 4,
+        "silver_bar": 1,
+        "polished_quartz": 3
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {},
+      "processing_speed_percent": 10,
+      "unlocks_recipes": [
+        "smelt_steel",
+        "smelt_gold"
+      ]
+    },
+    {
+      "key": "logistics_1",
+      "name": "Route Planning",
+      "branch": "logistics",
+      "tier": 1,
+      "description": "Improves logistics by 4.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 60,
+      "inputs": {
+        "stone": 10,
+        "clay": 8
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {
+        "logistics": 4
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "logistics_2",
+      "name": "Freight Engineering",
+      "branch": "logistics",
+      "tier": 2,
+      "description": "Improves logistics by 6. Unlocks new industrial recipes.",
+      "requires": [
+        "logistics_1",
+        "processing_2"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 300,
+      "inputs": {
+        "steel_bar": 2,
+        "copper_bar": 2
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {
+        "logistics": 6
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": [
+        "craft_steel_cargo_harness"
+      ]
+    },
+    {
+      "key": "workforce_1",
+      "name": "Crew Coordination",
+      "branch": "workforce",
+      "tier": 1,
+      "description": "Improves leadership by 4.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 70,
+      "inputs": {
+        "clay": 8,
+        "coal": 4
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {
+        "leadership": 4
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "workforce_2",
+      "name": "Long Shift Training",
+      "branch": "workforce",
+      "tier": 2,
+      "description": "Improves endurance by 6.",
+      "requires": [
+        "workforce_1",
+        "safety_1"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 220,
+      "inputs": {
+        "iron_bar": 2,
+        "polished_quartz": 2
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {
+        "endurance": 6
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "safety_1",
+      "name": "Safe Work Practice",
+      "branch": "safety",
+      "tier": 1,
+      "description": "Improves safety by 4.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 60,
+      "inputs": {
+        "stone": 10,
+        "coal": 4
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {
+        "safety": 4
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "safety_2",
+      "name": "Reliable Operations",
+      "branch": "safety",
+      "tier": 2,
+      "description": "Improves safety by 6.",
+      "requires": [
+        "safety_1",
+        "deep_operations_1"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 260,
+      "inputs": {
+        "iron_bar": 3,
+        "copper_bar": 2
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {
+        "safety": 6
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "deep_operations_1",
+      "name": "Worksite Engineering",
+      "branch": "deep_operations",
+      "tier": 1,
+      "description": "Improves engineering by 4.",
+      "requires": [],
+      "required_building_level": 1,
+      "cash_cost": 90,
+      "inputs": {
+        "copper_bar": 1,
+        "stone": 10
+      },
+      "duration_seconds": 300,
+      "stat_bonuses": {
+        "engineering": 4
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": []
+    },
+    {
+      "key": "deep_operations_2",
+      "name": "Deep Cutting Systems",
+      "branch": "deep_operations",
+      "tier": 2,
+      "description": "Improves engineering by 6. Unlocks new industrial recipes.",
+      "requires": [
+        "deep_operations_1",
+        "excavation_2",
+        "processing_2"
+      ],
+      "required_building_level": 2,
+      "cash_cost": 450,
+      "inputs": {
+        "steel_bar": 3,
+        "cut_amethyst": 1
+      },
+      "duration_seconds": 1200,
+      "stat_bonuses": {
+        "engineering": 6
+      },
+      "processing_speed_percent": 0,
+      "unlocks_recipes": [
+        "craft_steel_pickaxe"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "key": "yard_foundations",
+      "version": 1,
+      "name": "Yard Foundations",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 1,
+      "requires_contracts": [],
+      "required_research": [],
+      "inputs": {
+        "stone": 20
+      },
+      "reward": 24
+    },
+    {
+      "key": "boiler_fuel",
+      "version": 1,
+      "name": "Boiler Fuel",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 1,
+      "requires_contracts": [
+        "yard_foundations"
+      ],
+      "required_research": [],
+      "inputs": {
+        "coal": 10
+      },
+      "reward": 46
+    },
+    {
+      "key": "pottery_clay",
+      "version": 1,
+      "name": "Pottery Clay",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 1,
+      "requires_contracts": [
+        "yard_foundations"
+      ],
+      "required_research": [],
+      "inputs": {
+        "clay": 20
+      },
+      "reward": 46
+    },
+    {
+      "key": "copper_assay",
+      "version": 1,
+      "name": "Copper Assay",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 1,
+      "requires_contracts": [
+        "boiler_fuel"
+      ],
+      "required_research": [],
+      "inputs": {
+        "copper_ore": 10
+      },
+      "reward": 92
+    },
+    {
+      "key": "copper_fittings",
+      "version": 1,
+      "name": "Copper Fittings",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 2,
+      "requires_contracts": [
+        "copper_assay"
+      ],
+      "required_research": [],
+      "inputs": {
+        "copper_bar": 4
+      },
+      "reward": 250
+    },
+    {
+      "key": "structural_iron",
+      "version": 1,
+      "name": "Structural Iron",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 2,
+      "requires_contracts": [
+        "copper_assay"
+      ],
+      "required_research": [],
+      "inputs": {
+        "iron_bar": 6
+      },
+      "reward": 483
+    },
+    {
+      "key": "alloy_stock",
+      "version": 1,
+      "name": "Alloy Stock",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 2,
+      "requires_contracts": [
+        "copper_fittings"
+      ],
+      "required_research": [
+        "processing_1"
+      ],
+      "inputs": {
+        "bronze_bar": 4
+      },
+      "reward": 368
+    },
+    {
+      "key": "optical_quartz",
+      "version": 1,
+      "name": "Optical Quartz",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 2,
+      "requires_contracts": [
+        "pottery_clay"
+      ],
+      "required_research": [],
+      "inputs": {
+        "polished_quartz": 8
+      },
+      "reward": 257
+    },
+    {
+      "key": "steel_bracing",
+      "version": 1,
+      "name": "Steel Bracing",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 3,
+      "requires_contracts": [
+        "structural_iron"
+      ],
+      "required_research": [
+        "processing_2"
+      ],
+      "inputs": {
+        "steel_bar": 4
+      },
+      "reward": 483
+    },
+    {
+      "key": "gold_commission",
+      "version": 1,
+      "name": "Gold Commission",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 3,
+      "requires_contracts": [
+        "copper_fittings"
+      ],
+      "required_research": [
+        "processing_2"
+      ],
+      "inputs": {
+        "gold_bar": 2
+      },
+      "reward": 483
+    },
+    {
+      "key": "crystal_instruments",
+      "version": 1,
+      "name": "Crystal Instruments",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 3,
+      "requires_contracts": [
+        "optical_quartz"
+      ],
+      "required_research": [
+        "geology_2"
+      ],
+      "inputs": {
+        "cut_amethyst": 4,
+        "polished_quartz": 4
+      },
+      "reward": 703
+    },
+    {
+      "key": "frontier_industry",
+      "version": 1,
+      "name": "Frontier Industry",
+      "description": "Deliver the complete collected order for a one-time credit payout.",
+      "tier": 3,
+      "requires_contracts": [
+        "steel_bracing",
+        "gold_commission",
+        "crystal_instruments"
+      ],
+      "required_research": [
+        "deep_operations_2",
+        "logistics_2"
+      ],
+      "inputs": {
+        "steel_bar": 4,
+        "bronze_bar": 4,
+        "gold_bar": 2
+      },
+      "reward": 1334
+    }
+  ],
+  "milestones": [
+    {
+      "key": "first_shift",
+      "name": "First Shift",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "completed_mining_expeditions",
+      "target": 1,
+      "reward": 10
+    },
+    {
+      "key": "first_batch",
+      "name": "First Batch",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "collected_production_batches",
+      "target": 1,
+      "reward": 20
+    },
+    {
+      "key": "first_installation",
+      "name": "Built to Last",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "installed_infrastructure",
+      "target": 1,
+      "reward": 30
+    },
+    {
+      "key": "first_research",
+      "name": "Better Methods",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "completed_research",
+      "target": 1,
+      "reward": 40
+    },
+    {
+      "key": "depth_100",
+      "name": "One Hundred Down",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "max_completed_mining_depth",
+      "target": 100,
+      "reward": 50
+    },
+    {
+      "key": "three_deliveries",
+      "name": "Trusted Supplier",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "completed_contracts",
+      "target": 3,
+      "reward": 70
+    },
+    {
+      "key": "three_kept_finds",
+      "name": "Cabinet Curator",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "kept_discoveries",
+      "target": 3,
+      "reward": 80
+    },
+    {
+      "key": "industrialist",
+      "name": "Industrialist",
+      "description": "Complete the recorded company objective and claim its one-time credit award.",
+      "metric": "collected_processed_units",
+      "target": 40,
+      "reward": 100
+    }
+  ],
+  "caps": {
+    "active_research": 1
+  },
+  "buildings": {
+    "research_office": {
+      "costs": [
+        80,
+        250
+      ]
+    },
+    "trading_post": {
+      "costs": [
+        60,
+        200,
+        500
+      ]
+    }
+  },
+  "resources": [
+    {
+      "id": "bronze_bar",
+      "name": "Bronze bar",
+      "sell_price": 80,
+      "color": "#b68b52",
+      "description": "Copper and tin alloy used for industrial fittings."
+    },
+    {
+      "id": "steel_bar",
+      "name": "Steel bar",
+      "sell_price": 105,
+      "color": "#aabecb",
+      "description": "Carbon-strengthened structural metal for advanced crew equipment."
+    },
+    {
+      "id": "gold_bar",
+      "name": "Gold bar",
+      "sell_price": 210,
+      "color": "#e3bd61",
+      "description": "Refined gold for high-value industrial commissions."
+    }
+  ],
+  "equipment": [
+    {
+      "key": "steel_pickaxe",
+      "name": "Steel Pickaxe",
+      "slot": "tool",
+      "tier": 3,
+      "max_durability": 180,
+      "bonuses": {
+        "mining": 26,
+        "engineering": 8,
+        "endurance": 4
+      },
+      "repair_rate": 0.5,
+      "repair_materials": {
+        "steel_bar": 1,
+        "polished_quartz": 1
+      }
+    },
+    {
+      "key": "steel_cargo_harness",
+      "name": "Steel Cargo Harness",
+      "slot": "utility",
+      "tier": 3,
+      "max_durability": 180,
+      "bonuses": {
+        "logistics": 26,
+        "endurance": 8,
+        "leadership": 4
+      },
+      "repair_rate": 0.4,
+      "repair_materials": {
+        "steel_bar": 1,
+        "bronze_bar": 1
+      }
+    }
+  ],
+  "recipes": [
+    {
+      "key": "smelt_bronze",
+      "version": 1,
+      "name": "Smelt Bronze",
+      "station": "smeltery",
+      "required_station_level": 1,
+      "duration_seconds": 360,
+      "cash_cost": 12,
+      "inputs": {
+        "copper_bar": 1,
+        "tin_bar": 1,
+        "coal": 2
+      },
+      "outputs": {
+        "bronze_bar": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10,
+      "required_research": [
+        "processing_1"
+      ]
+    },
+    {
+      "key": "smelt_steel",
+      "version": 1,
+      "name": "Smelt Steel",
+      "station": "smeltery",
+      "required_station_level": 2,
+      "duration_seconds": 600,
+      "cash_cost": 18,
+      "inputs": {
+        "iron_bar": 2,
+        "coal": 4
+      },
+      "outputs": {
+        "steel_bar": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10,
+      "required_research": [
+        "processing_2"
+      ]
+    },
+    {
+      "key": "smelt_gold",
+      "version": 1,
+      "name": "Smelt Gold",
+      "station": "smeltery",
+      "required_station_level": 2,
+      "duration_seconds": 600,
+      "cash_cost": 18,
+      "inputs": {
+        "gold_ore": 8,
+        "coal": 3
+      },
+      "outputs": {
+        "gold_bar": 2
+      },
+      "equipment_output": null,
+      "max_batches": 10,
+      "required_research": [
+        "processing_2"
+      ]
+    },
+    {
+      "key": "craft_steel_pickaxe",
+      "version": 1,
+      "name": "Craft Steel Pickaxe",
+      "station": "tool_station",
+      "required_station_level": 3,
+      "duration_seconds": 900,
+      "cash_cost": 95,
+      "inputs": {
+        "steel_bar": 3,
+        "bronze_bar": 1,
+        "polished_quartz": 2
+      },
+      "outputs": {},
+      "equipment_output": "steel_pickaxe",
+      "max_batches": 10,
+      "required_research": [
+        "deep_operations_2"
+      ]
+    },
+    {
+      "key": "craft_steel_cargo_harness",
+      "version": 1,
+      "name": "Craft Steel Cargo Harness",
+      "station": "tool_station",
+      "required_station_level": 3,
+      "duration_seconds": 840,
+      "cash_cost": 85,
+      "inputs": {
+        "steel_bar": 3,
+        "bronze_bar": 2,
+        "clay": 8
+      },
+      "outputs": {},
+      "equipment_output": "steel_cargo_harness",
+      "max_batches": 10,
+      "required_research": [
+        "logistics_2"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,54 @@
 # Deep Claim implementation ledger
 
-## Current release — Phase 3 underground operations
+## Current release — Phase 4 company development
+
+Phase 4 is implemented on baseline main `11ff248f24933bc1f13829ec11093358a08f0d41`. It extends the existing company, workforce, field operations and production architecture. The final release SHA and GitHub/Lovable synchronization are reported after publishing this commit; this document does not invent its own future SHA.
+
+### Working vertical slice
+
+- Fourteen paid research projects span seven branches with explicit dependencies and two permanent advances each. A real Research Office gates tiers. One project runs at a time using frozen inputs, costs and server timestamps; it completes automatically on reconciliation. Completed research improves future effective worker statistics or production timing. Base stats, existing plans and queued jobs remain unchanged.
+- Twelve authored delivery contracts persist without expiration, rerolls or a separate acceptance click. Trading Post levels unlock their three tiers. Each delivery consumes the complete collected warehouse order and pays its frozen company-credit reward once. Staged cargo and uncollected production cannot fund a delivery.
+- Eight source-backed company milestones expose actual recorded progress and explicit, once-only credit claims. Historical qualifying work counts. Eleven operational totals aggregate durable source records, including frozen collected recipe quantities rather than mutable staged remainders. These are company objectives; DH Score integration remains Phase 5.
+- Bronze, steel and gold bars add five useful recipes and two tier-three owned equipment definitions. Research gates are enforced by the backend. Existing material inputs, station lanes, gear limits, durability, repairs and staged collection remain functional; the original sixteen recipes and ten gear definitions are unchanged.
+- Research Office and Trading Post have real level-dependent functions and original pixel artwork. All nine surface buildings retain accessible named targets. The Company Office adds compact Company, Research, Contracts and Records views inside the six-tab shell, with reviewed decisions, server-clock state, bounded lists and central confirmation receipts.
+- All three new actions reuse account/club-scoped durable request identities, optimistic revisions, authoritative RPCs and offline inspection. Research with a lost committed acknowledgement resumes the same paid project and deadline after reload.
+
+### Changed files and boundaries
+
+New frontend modules are `src/lib/deepClaim/business.ts`, `src/components/deepClaim/DeepClaimBusiness.tsx` and the Phase 4 fixture/unit/component tests. Existing types/catalog/production/validation/simulation, service/hook, Page/Industry/Settings, isolated renderer/icons and styles are extended. The canonical, answer-free catalog is `supabase/seed/deep-claim-phase4-catalog.json`.
+
+SQL/browser/headless scripts and the isolated database transport are extended, with three new `deep-claim-phase4-{preservation,research,extra}.mjs` modules. All five working documents and the CLAUDE index match the implementation. No dependency, unrelated game, authentication, club, installation, global notification or DH currency system was replaced.
+
+### SQL deployment — applied and verified
+
+`20261102050000_deep_claim_business_development.sql` was applied transactionally with its exact original source recorded in Supabase migration history. SHA256: `0c5b2ad128cd41aecca0c4ede5a3faa6d58f872825070abd30e1d16c6962ad24`.
+
+The additive migration introduces `dc_research_orders`, `dc_company_contracts` and `dc_milestone_receipts`; three secured business RPCs; effective-stat/timing adapters; two building levels; and new finite industry definitions. Earlier eighteen RPC signatures and receipt fingerprints remain valid. Old production rows retain configuration two and zero research speed; new paid orders explicitly use configuration four. An insert guard rejects cached older production handlers before they can bypass research gates. Expedition rules stay three and geology is untouched.
+
+Cutover acquires the asset metadata row before company and production barriers, matching authorization lock order. It advances company revision to invalidate stale quotes without changing cash, inventory, energy, workers, plans, terrain or old outcomes. The first four migration files remain unchanged.
+
+Production postflight matched **93/93 tested function bodies**, exactly **21 member RPC grants**, service access, anonymous denial, and **27/27 private tables under RLS with no member/anonymous direct CRUD**. All three canonical catalogs and recorded migration source match the tested originals. Private tables are absent from Realtime publication. The release preflight and postflight both show 51 installations, one Deep Claim installation and identical installation fingerprint `5bd2b10a7efc18b44b674516f5337998`; existing club choices were preserved. No live company or test account was created.
+
+### Verification evidence
+
+- Actual application typecheck, `npx tsc --noEmit -p tsconfig.app.json`, and scoped ESLint passed. Final QA script lint was repeated after fixture compatibility updates.
+- Full unit/component suite: **188 files, 1,777 tests passed**, run without competing heavy jobs.
+- Actual-migration PostgreSQL suite: **110 groups passed**, retaining all 85 prior groups. New coverage includes real pre-0500 whole/partly elapsed mining, survey and infrastructure jobs, staged production and gear/find/receipt preservation, research clocks/dependencies/future-only effects, cached-handler denial, all contract and milestone payouts, partial collection, rollback, retries and multi-club access.
+- The exact release transaction separately verified all 73 prior function hashes and four recorded original migration sources against a real isolated pre-migration company and active job. Plan/world/balance preservation, exact legacy request recovery, new-source recording and repeat-apply rejection passed.
+- Headless balance passed 210 existing mining scenarios plus research/industry dependency and finite economy proofs. Research costs total 2,700 credits plus materials worth 2,673. Twelve contracts consume goods worth 3,976 and pay 4,569; finite delivery premiums total 593. All eight milestone awards total 400. Combined additional finite rewards are 993 credits. New bar margins are 20/36/30 per batch with an acyclic input graph.
+- A controlled earned route mines the eight original finite assay deposits in legal route order, pays wages/buildings/recipes/research and respects two operating days of energy to make bronze with 304 cash remaining. Further deliveries require real exploration rather than invented stock or recurring rewards.
+- Final browser run: **204 checks passed, zero errors and zero runtime errors** across five phone/landscape/desktop, light/dark and reduced-motion cases and all seven functional sections. The earned business journey uses six real mining returns, three collected batches, paid five-percent processing research, a 342-second bronze order, a whole twenty-stone delivery and seventy credits of explicit milestone claims. Research lost-acknowledgement recovery/reload, single-payment deadlines and permanent result inspection passed. Visual review corrected a narrow-screen counter wrap before the final complete run.
+- Final production build passed in **14.06 seconds** after the visual correction. No large engine, new dependency or runtime asset-generation service was added.
+
+### Remaining work and decisions
+
+Phase 5 is next: optional club standings/projects/showcases, secure source-backed DH Feats and relevant shared notifications. Phase 6 includes the finished authored atlas, full music/soundscape, physical-device profiling and final presentation/balance polish. The existing procedural art and synthesized audio remain original working presentation, not a claimed finished commercial asset pack or soundtrack.
+
+Advanced automated industry, dynamic markets, member trading, additional geological regions and a paged lifetime museum remain extensions. Current contracts are finite and do not expire. Offline progression reconciles on authorized reads/mutations; unattended cron/notification delivery is not claimed. Company credits remain isolated from DH Score. PGlite serializes transactions, so native multi-connection deadlock stress remains unverified. Production security/source checks do not impersonate a live member; Lovable preview synchronization and public-site publishing are separate deployment facts.
+
+## Phase 3 historical release record
+
+The following records describe the earlier Phase 3 release and verification at that time. Current Phase 4 behavior and verification above supersede forward-looking references below.
 
 Phase 3 is implemented on baseline main `ed02c36da1ddb8624eecc78fed7737998164d790`. Existing ownership, terrain, earned inventory and configuration-one/two jobs remain intact. The final release SHA and verified GitHub/Lovable synchronization are reported after publishing this commit; this document does not invent its own future SHA.
 

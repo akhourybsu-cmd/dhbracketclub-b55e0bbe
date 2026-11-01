@@ -1,11 +1,12 @@
 import {
-  DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
+  DEEP_CLAIM_BUSINESS_METRICS, DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DAILY_ENERGY, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES,
   DEEP_CLAIM_STAT_IDS, type DeepClaimExpedition, type DeepClaimPoint, type DeepClaimPreview, type DeepClaimResources,
   type DeepClaimSnapshot, type DeepClaimTile, type DeepClaimWorkerPosition, type DeepClaimWorld,
 } from './types';
-import { EQUIPMENT_BY_KEY, FIELD_CATALOG, RECIPE_BY_KEY, resourceTotal } from './catalog';
+import { ALL_EQUIPMENT_CATALOG, ALL_RECIPE_CATALOG, BUSINESS_CATALOG, EQUIPMENT_BY_KEY, EQUIPMENT_CATALOG, FIELD_CATALOG, RECIPE_BY_KEY, RECIPE_CATALOG, resourceTotal } from './catalog';
+import { applyResearchBonuses, researchEffects } from './business';
 import { discoverySpecimen } from './field';
-import { equipmentRepairQuote, workerStatsWithEquipment } from './production';
+import { equipmentRepairQuote, recipeDurationSeconds, recipeUnitDurationSeconds, workerStatsWithEquipment } from './production';
 
 export class DeepClaimValidationError extends Error {
   constructor(message: string) { super(message); this.name = 'DeepClaimValidationError'; }
@@ -67,17 +68,20 @@ function validateJob(value: unknown): asserts value is DeepClaimExpedition {
   }
 }
 export function validateDeepClaimSnapshot(value: unknown, identity?: { userId: string; clubId: string }): asserts value is DeepClaimSnapshot {
-  if (!object(value) || !keys(value, ['schema_version','server_now','revision','company','resources','workers','world','expeditions','buildings','log','candidates','equipment','production_jobs','recipes','equipment_catalog','infrastructure','discoveries','discovery_summary','field_reports','field_catalog'])
-    || ![1,2,3].includes(value.schema_version as number) || !timestamp(value.server_now) || !integer(value.revision)
+  if (!object(value) || !keys(value, ['schema_version','server_now','revision','company','resources','workers','world','expeditions','buildings','log','candidates','equipment','production_jobs','recipes','equipment_catalog','infrastructure','discoveries','discovery_summary','field_reports','field_catalog','business','business_catalog'])
+    || ![1,2,3,4].includes(value.schema_version as number) || !timestamp(value.server_now) || !integer(value.revision)
     || !Array.isArray(value.workers) || !Array.isArray(value.expeditions) || !Array.isArray(value.buildings) || !Array.isArray(value.log)) fail('Invalid Deep Claim save.');
   validateDeepClaimResources(value.resources);
-  const v2 = Number(value.schema_version) >= 2, v3=value.schema_version===3;
+  const v2 = Number(value.schema_version) >= 2, v3=Number(value.schema_version)>=3, v4=value.schema_version===4;
+  if(v4)validatePhaseFourBusiness(value);
+  else if(value.business!==undefined||value.business_catalog!==undefined)fail('Business records require schema four.');
   if(v3) validatePhaseThreeCollections(value);
   else if(['infrastructure','discoveries','discovery_summary','field_reports','field_catalog'].some(key=>value[key]!==undefined)) fail('Field records require a version-three save.');
   if (v2) validatePhaseTwoCollections(value);
   else if (['candidates','equipment','production_jobs','recipes','equipment_catalog'].some(key => value[key] !== undefined)) fail('Phase-two records require a version-two save.');
   if (value.company === null) {
     if (value.world !== null || value.revision !== 0 || value.workers.length || value.expeditions.length || value.buildings.length || value.log.length || resourceTotal(value.resources)
+      || v4 && ((value.business as import('./types').DeepClaimBusiness).research.length || (value.business as import('./types').DeepClaimBusiness).contracts.some(contract=>contract.status!=='offered') || (value.business as import('./types').DeepClaimBusiness).milestones.some(milestone=>milestone.progress>0||milestone.claimed_at!==null) || Object.values((value.business as import('./types').DeepClaimBusiness).stats).some(Boolean))
       || v3 && ((value.infrastructure as unknown[]).length || (value.discoveries as unknown[]).length || (value.field_reports as unknown[]).length || Object.values(value.discovery_summary as Record<string,number>).some(Boolean))
       || v2 && ['candidates','equipment','production_jobs'].some(key => (value[key] as unknown[]).length > 0)) fail('Invalid company setup state.');
     return;
@@ -116,11 +120,11 @@ export function validateDeepClaimSnapshot(value: unknown, identity?: { userId: s
   }
   const expeditions = value.expeditions as DeepClaimExpedition[];
   if (value.workers.some(worker => worker.assigned_job_id !== null && !expeditions.some(job => job.id === worker.assigned_job_id && job.status === 'active' && job.worker_ids.includes(worker.id)))) fail('Invalid active worker assignment.');
-  if (new Set(value.buildings.map(building => object(building) ? building.key : null)).size !== (v2 ? 7 : 4) || value.buildings.length !== (v2 ? 7 : 4)) fail('Invalid company buildings.');
+  if (new Set(value.buildings.map(building => object(building) ? building.key : null)).size !== (v4 ? 9 : v2 ? 7 : 4) || value.buildings.length !== (v4 ? 9 : v2 ? 7 : 4)) fail('Invalid company buildings.');
   for (const building of value.buildings) if (!object(building) || !keys(building, ['key','level','max_level','upgrade_cost','effect'])
-    || !memberOf(building.key, v2 ? DEEP_CLAIM_BUILDING_IDS : DEEP_CLAIM_BUILDING_IDS.slice(0,4))
-    || !integer(building.level, v2 && ['workers_quarters','smeltery','gem_workshop'].includes(String(building.key)) ? 0 : 1, v2 && building.key === 'mine_shaft' ? (v3 ? 5 : 4) : 3)
-    || building.max_level !== (v2 && building.key === 'mine_shaft' ? (v3 ? 5 : 4) : 3)
+    || !memberOf(building.key, v4 ? DEEP_CLAIM_BUILDING_IDS : DEEP_CLAIM_BUILDING_IDS.slice(0,v2?7:4))
+    || !integer(building.level, v2 && ['workers_quarters','smeltery','gem_workshop','research_office','trading_post'].includes(String(building.key)) ? 0 : 1, v2 && building.key === 'mine_shaft' ? (v3 ? 5 : 4) : building.key==='research_office'?2:3)
+    || building.max_level !== (v2 && building.key === 'mine_shaft' ? (v3 ? 5 : 4) : building.key==='research_office'?2:3)
     || building.upgrade_cost !== null && !integer(building.upgrade_cost, 1) || !text(building.effect, 240)) fail('Invalid building upgrade.');
   if (v2) validatePhaseTwoAssignments(value as unknown as DeepClaimSnapshot);
   for (const entry of value.log) if (!object(entry) || !keys(entry, ['id','kind','title','created_at']) || !text(entry.id) || !text(entry.kind, 60) || !text(entry.title, 240) || !timestamp(entry.created_at)) fail('Invalid company log.');
@@ -186,27 +190,31 @@ function sameAmounts(first: DeepClaimResources, second: DeepClaimResources) {
 }
 function validatePhaseTwoCollections(value: Record<string,unknown>) {
   for (const name of ['candidates','equipment','production_jobs','recipes','equipment_catalog']) if (!Array.isArray(value[name])) fail('A version-two save requires workforce and production catalogs.');
+  const modern=value.schema_version===4;
+  const expectedEquipment=modern?ALL_EQUIPMENT_CATALOG:EQUIPMENT_CATALOG,expectedRecipes=modern?ALL_RECIPE_CATALOG:RECIPE_CATALOG;
   const equipmentCatalog = value.equipment_catalog as unknown[], recipes = value.recipes as unknown[], candidates = value.candidates as unknown[], equipment = value.equipment as unknown[], jobs = value.production_jobs as unknown[];
   // A member without a company has no operational catalogs yet. Both may
   // be empty only at the exact revision-zero bootstrap boundary.
   if (value.company === null && value.revision === 0 && equipmentCatalog.length === 0 && recipes.length === 0
     && candidates.length === 0 && equipment.length === 0 && jobs.length === 0) return;
-  if (equipmentCatalog.length !== Object.keys(EQUIPMENT_BY_KEY).length || recipes.length !== Object.keys(RECIPE_BY_KEY).length || candidates.length > 7) fail('Invalid workforce or recipe catalog.');
+  if (equipmentCatalog.length !== expectedEquipment.length || recipes.length !== expectedRecipes.length || candidates.length > 7) fail('Invalid workforce or recipe catalog.');
   const definitionKeys = new Set<string>(), recipeKeys = new Set<string>(), candidateIds = new Set<string>(), equipmentIds = new Set<string>(), jobIds = new Set<string>();
   for (const definition of equipmentCatalog) {
     if (!object(definition) || !keys(definition,['key','name','slot','tier','max_durability','bonuses','repair_rate','repair_materials']) || !text(definition.key)) fail('Invalid equipment catalog.');
     const canonical = EQUIPMENT_BY_KEY[definition.key];
-    if (!canonical || definitionKeys.has(definition.key) || definition.name !== canonical.name || definition.slot !== canonical.slot || definition.tier !== canonical.tier || definition.max_durability !== canonical.max_durability || definition.repair_rate !== canonical.repair_rate || !object(definition.bonuses) || !keys(definition.bonuses,DEEP_CLAIM_STAT_IDS) || DEEP_CLAIM_STAT_IDS.some(stat => (definition.bonuses as Record<string,unknown>)[stat] !== undefined && !integer((definition.bonuses as Record<string,unknown>)[stat],0,30)) || DEEP_CLAIM_STAT_IDS.some(stat => ((definition.bonuses as Record<string,unknown>)[stat] ?? 0) !== (canonical.bonuses[stat] ?? 0))) fail('Unsupported equipment rules.');
+    if (!canonical || !expectedEquipment.some(item=>item.key===definition.key) || definitionKeys.has(definition.key) || definition.name !== canonical.name || definition.slot !== canonical.slot || definition.tier !== canonical.tier || definition.max_durability !== canonical.max_durability || definition.repair_rate !== canonical.repair_rate || !object(definition.bonuses) || !keys(definition.bonuses,DEEP_CLAIM_STAT_IDS) || DEEP_CLAIM_STAT_IDS.some(stat => (definition.bonuses as Record<string,unknown>)[stat] !== undefined && !integer((definition.bonuses as Record<string,unknown>)[stat],0,30)) || DEEP_CLAIM_STAT_IDS.some(stat => ((definition.bonuses as Record<string,unknown>)[stat] ?? 0) !== (canonical.bonuses[stat] ?? 0))) fail('Unsupported equipment rules.');
     validateDeepClaimResources(definition.repair_materials);
     if (!sameAmounts(definition.repair_materials,canonical.repair_materials)) fail('Unsupported equipment repair materials.');
     definitionKeys.add(definition.key);
   }
   for (const recipe of recipes) {
-    if (!object(recipe) || !keys(recipe,['key','version','name','station','required_station_level','duration_seconds','effective_duration_seconds','cash_cost','inputs','outputs','equipment_output','max_batches']) || !text(recipe.key)) fail('Invalid recipe catalog.');
+    if (!object(recipe) || !keys(recipe,['key','version','name','station','required_station_level','duration_seconds','effective_duration_seconds','cash_cost','inputs','outputs','equipment_output','max_batches','required_research','research_speed_percent','locked']) || !text(recipe.key)) fail('Invalid recipe catalog.');
     const canonical = RECIPE_BY_KEY[recipe.key];
-    if (!canonical || recipeKeys.has(recipe.key) || recipe.version !== canonical.version || recipe.name !== canonical.name || recipe.station !== canonical.station || recipe.required_station_level !== canonical.required_station_level || recipe.duration_seconds !== canonical.duration_seconds || recipe.cash_cost !== canonical.cash_cost || recipe.equipment_output !== canonical.equipment_output || recipe.max_batches !== 10 || !integer(recipe.effective_duration_seconds,1)) fail('Unsupported production recipe.');
+    if (!canonical || !expectedRecipes.some(item=>item.key===recipe.key) || recipeKeys.has(recipe.key) || recipe.version !== canonical.version || recipe.name !== canonical.name || recipe.station !== canonical.station || recipe.required_station_level !== canonical.required_station_level || recipe.duration_seconds !== canonical.duration_seconds || recipe.cash_cost !== canonical.cash_cost || recipe.equipment_output !== canonical.equipment_output || recipe.max_batches !== 10 || !integer(recipe.effective_duration_seconds,1)) fail('Unsupported production recipe.');
     validateDeepClaimResources(recipe.inputs); validateDeepClaimResources(recipe.outputs);
     if (!sameAmounts(recipe.inputs,canonical.inputs) || !sameAmounts(recipe.outputs,canonical.outputs)) fail('Unsupported recipe quantities.');
+    if(modern && (!Array.isArray(recipe.required_research) || semanticJSON(recipe.required_research)!==semanticJSON(canonical.required_research??[]) || !integer(recipe.research_speed_percent,0,15) || typeof recipe.locked!=='boolean'))fail('Invalid research requirements on a production recipe.');
+    if(!modern && ['required_research','research_speed_percent','locked'].some(key=>recipe[key]!==undefined))fail('Research production requires schema four.');
     recipeKeys.add(recipe.key);
   }
   for (const candidate of candidates) {
@@ -223,7 +231,7 @@ function validatePhaseTwoCollections(value: Record<string,unknown>) {
     equipmentIds.add(item.id);
   }
   for (const job of jobs) {
-    if (!object(job) || !keys(job,['id','recipe_key','recipe_version','batches','station','status','started_at','completes_at','duration_seconds','cash_cost','inputs','outputs','equipment_outputs']) || !text(job.id) || jobIds.has(job.id) || !text(job.recipe_key) || !RECIPE_BY_KEY[job.recipe_key] || job.recipe_version !== 1 || !integer(job.batches,1,10) || job.station !== RECIPE_BY_KEY[job.recipe_key].station || !memberOf(job.status,['active','ready','collected']) || !timestamp(job.started_at) || !timestamp(job.completes_at) || !integer(job.duration_seconds,1) || Date.parse(job.completes_at)-Date.parse(job.started_at) !== job.duration_seconds*1000 || !integer(job.cash_cost) || !Array.isArray(job.equipment_outputs) || job.equipment_outputs.some(key => typeof key !== 'string' || !EQUIPMENT_BY_KEY[key]) || job.equipment_outputs.length > job.batches) fail('Invalid production job.');
+    if (!object(job) || !keys(job,['id','recipe_key','recipe_version','batches','station','status','started_at','completes_at','duration_seconds','cash_cost','inputs','outputs','equipment_outputs','research_speed_percent','recipe_snapshot']) || !text(job.id) || jobIds.has(job.id) || !text(job.recipe_key) || !RECIPE_BY_KEY[job.recipe_key] || job.recipe_version !== 1 || !integer(job.batches,1,10) || job.station !== RECIPE_BY_KEY[job.recipe_key].station || !memberOf(job.status,['active','ready','collected']) || !timestamp(job.started_at) || !timestamp(job.completes_at) || !integer(job.duration_seconds,1) || Date.parse(job.completes_at)-Date.parse(job.started_at) !== job.duration_seconds*1000 || !integer(job.cash_cost) || !Array.isArray(job.equipment_outputs) || job.equipment_outputs.some(key => typeof key !== 'string' || !EQUIPMENT_BY_KEY[key]) || job.equipment_outputs.length > job.batches) fail('Invalid production job.');
     validateDeepClaimResources(job.inputs); validateDeepClaimResources(job.outputs);
     const recipe=RECIPE_BY_KEY[job.recipe_key];
     if (job.cash_cost !== recipe.cash_cost*job.batches
@@ -231,7 +239,9 @@ function validatePhaseTwoCollections(value: Record<string,unknown>) {
       || DEEP_CLAIM_RESOURCE_IDS.some(id=>((job.inputs as DeepClaimResources)[id]??0) !== (recipe.inputs[id]??0)*Number(job.batches))
       || DEEP_CLAIM_RESOURCE_IDS.some(id=>((job.outputs as DeepClaimResources)[id]??0) > (recipe.outputs[id]??0)*Number(job.batches))
       || (job.equipment_outputs as string[]).some(key=>key!==recipe.equipment_output)) fail('Production quantities do not match the frozen recipe.');
-    const possibleTimes=[1,2,3].filter(level=>level>=recipe.required_station_level).map(level=>Math.ceil(recipe.duration_seconds*[100,85,70][level-1]/100)*Number(job.batches));
+    if(job.research_speed_percent!==undefined&&!integer(job.research_speed_percent,0,15))fail('Invalid frozen research timing.');
+    if(job.recipe_snapshot!==undefined)validateFrozenRecipe(job.recipe_snapshot,recipe);
+    const possibleTimes=[1,2,3].filter(level=>level>=recipe.required_station_level).map(level=>recipeDurationSeconds(recipe,Number(job.batches),level,Number(job.research_speed_percent??0)));
     if (!possibleTimes.includes(Number(job.duration_seconds))) fail('Production timing does not match a supported station level.');
     if (job.status==='active' && (DEEP_CLAIM_RESOURCE_IDS.some(id=>((job.outputs as DeepClaimResources)[id]??0) !== (recipe.outputs[id]??0)*Number(job.batches)) || (job.equipment_outputs as string[]).length !== (recipe.equipment_output ? job.batches : 0))) fail('Active production must retain its complete uncollected outputs.');
     jobIds.add(job.id);
@@ -256,12 +266,14 @@ function validatePhaseTwoAssignments(snapshot: DeepClaimSnapshot) {
   }
   for (const worker of snapshot.workers) if (worker.equipment_ids!.some(id => !equipment.some(item => item.id === id && item.worker_id === worker.id))) fail('Invalid worker equipment assignment.');
   for (const worker of snapshot.workers) {
-    const expected=workerStatsWithEquipment(worker.base_stats!,worker.xp,equipment.filter(item=>item.worker_id===worker.id));
+    const base=workerStatsWithEquipment(worker.base_stats!,worker.xp,equipment.filter(item=>item.worker_id===worker.id));
+    const expected=snapshot.schema_version===4?applyResearchBonuses(base,snapshot.business!.research_bonuses):base;
     if (DEEP_CLAIM_STAT_IDS.some(stat=>worker.stats[stat]!==expected[stat])) fail('Worker effective stats must apply training, XP and usable gear once.');
   }
   for (const recipe of recipes) {
     const level = Math.max(1,snapshot.buildings.find(building => building.key === recipe.station)?.level ?? 1);
-    const effective = Math.ceil(recipe.duration_seconds * [100,85,70][level-1] / 100);
+    const effective = recipeUnitDurationSeconds(recipe,level,snapshot.schema_version===4?snapshot.business!.processing_speed_percent:0);
+    if(snapshot.schema_version===4 && (recipe.research_speed_percent!==snapshot.business!.processing_speed_percent || recipe.locked!==(recipe.required_research??[]).some(key=>!snapshot.business!.research.some(order=>order.key===key&&order.status==='completed'))))fail('Production access does not match completed research.');
     if (recipe.effective_duration_seconds !== effective) fail('Recipe timing does not match its operating station.');
   }
 }
@@ -331,3 +343,45 @@ function validatePhaseThreePreview(value:Record<string,unknown>) {
   }
   if(value.survey!==null && value.installation!==null) fail('A quote cannot combine field operations.');
 }
+
+function validateFrozenRecipe(value:unknown,canonical:import('./types').DeepClaimRecipe){
+ if(!object(value)||!keys(value,['key','version','name','station','required_station_level','duration_seconds','cash_cost','inputs','outputs','equipment_output','max_batches','required_research']))fail('Invalid frozen production recipe.');
+ const base={...canonical};delete base.effective_duration_seconds;delete base.research_speed_percent;delete base.locked;
+ if(semanticJSON({...value,required_research:value.required_research??[]})!==semanticJSON({...base,required_research:base.required_research??[]}))fail('Frozen production recipe does not match its immutable version.');
+}
+function validatePhaseFourBusiness(value:Record<string,unknown>){
+ if(semanticJSON(value.business_catalog)!==semanticJSON(BUSINESS_CATALOG))fail('Unsupported company business catalog.');
+ const b=value.business;
+ if(!object(b)||!keys(b,['research','contracts','milestones','stats','research_bonuses','processing_speed_percent'])||!Array.isArray(b.research)||b.research.length>14||!Array.isArray(b.contracts)||!Array.isArray(b.milestones)
+  ||!object(b.stats)||!keys(b.stats,DEEP_CLAIM_BUSINESS_METRICS)||DEEP_CLAIM_BUSINESS_METRICS.some(metric=>!integer((b.stats as Record<string,unknown>)[metric]))
+  ||!object(b.research_bonuses)||!keys(b.research_bonuses,DEEP_CLAIM_STAT_IDS)||Object.values(b.research_bonuses).some(bonus=>!integer(bonus,0,10))||!integer(b.processing_speed_percent,0,15))fail('Invalid source-backed company business state.');
+ const seenResearch=new Set<string>(),seenContracts=new Set<string>(),seenMilestones=new Set<string>(),completed:string[]=[];let active=0;
+ for(const order of b.research){
+  if(!object(order)||!keys(order,['key','status','started_at','completes_at','completed_at'])||!text(order.key)||seenResearch.has(order.key)||!BUSINESS_CATALOG.research.some(node=>node.key===order.key)||!memberOf(order.status,['active','completed'])
+   ||!timestamp(order.started_at)||!timestamp(order.completes_at)||Date.parse(order.started_at)>Date.parse(String(value.server_now))
+   ||Date.parse(order.completes_at)-Date.parse(order.started_at)!==BUSINESS_CATALOG.research.find(node=>node.key===order.key)!.duration_seconds*1000
+   ||(order.status==='active'?order.completed_at!==null:!timestamp(order.completed_at)||Date.parse(String(order.completed_at))<Date.parse(order.completes_at)||Date.parse(String(order.completed_at))>Date.parse(String(value.server_now))))fail('Invalid paid research order.');
+  if(order.status==='active')active++;else completed.push(order.key);seenResearch.add(order.key);
+ }
+ if(active>1)fail('Only one research order may be active.');
+ for(const order of b.research as import('./types').DeepClaimResearchOrder[])if(BUSINESS_CATALOG.research.find(node=>node.key===order.key)!.requires.some(key=>!completed.includes(key)))fail('Research prerequisites must be completed.');
+ const effects=researchEffects(completed);
+ if(!sameStats(b.research_bonuses,effects.stat_bonuses)||b.processing_speed_percent!==effects.processing_speed_percent)fail('Research benefits must match completed paid projects.');
+ const fresh=value.company===null&&value.revision===0;
+ if(fresh&&b.contracts.length===0&&b.milestones.length===0){if(b.research.length||Object.values(b.stats).some(Boolean))fail('Invalid fresh company development.');return;}
+ if(b.contracts.length!==12||b.milestones.length!==8)fail('Company development requires all finite orders and milestones.');
+ for(const contract of b.contracts){
+  if(!object(contract)||!keys(contract,['key','status','completed_at'])||!text(contract.key)||seenContracts.has(contract.key)||!BUSINESS_CATALOG.contracts.some(definition=>definition.key===contract.key)||!memberOf(contract.status,['offered','completed'])
+   ||(contract.status==='offered'?contract.completed_at!==null:!timestamp(contract.completed_at)||Date.parse(String(contract.completed_at))>Date.parse(String(value.server_now))))fail('Invalid finite company delivery order.');
+  seenContracts.add(contract.key);
+ }
+ for(const milestone of b.milestones){
+  if(!object(milestone)||!keys(milestone,['key','progress','claimed_at'])||!text(milestone.key)||seenMilestones.has(milestone.key)||!integer(milestone.progress)||milestone.claimed_at!==null&&(!timestamp(milestone.claimed_at)||Date.parse(String(milestone.claimed_at))>Date.parse(String(value.server_now))))fail('Invalid company milestone.');
+  const definition=BUSINESS_CATALOG.milestones.find(definition=>definition.key===milestone.key);
+  if(!definition||milestone.progress!==Math.min(definition.target,Number(b.stats[definition.metric]))||milestone.claimed_at!==null&&milestone.progress<definition.target)fail('Milestone progress must come from durable company records.');
+  seenMilestones.add(milestone.key);
+ }
+ if(b.stats.completed_research!==completed.length||b.stats.completed_contracts!==(b.contracts as import('./types').DeepClaimCompanyContract[]).filter(order=>order.status==='completed').length
+  ||b.stats.total_contract_credits!==BUSINESS_CATALOG.contracts.filter(definition=>(b.contracts as import('./types').DeepClaimCompanyContract[]).some(order=>order.key===definition.key&&order.status==='completed')).reduce((sum,contract)=>sum+contract.reward,0))fail('Company development totals do not match permanent records.');
+}
+function sameStats(first:Partial<import('./types').DeepClaimStats>,second:Partial<import('./types').DeepClaimStats>):boolean{return DEEP_CLAIM_STAT_IDS.every(stat=>(first[stat]??0)===(second[stat]??0));}

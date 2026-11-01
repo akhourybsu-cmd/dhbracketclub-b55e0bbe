@@ -1,8 +1,9 @@
+import phase4Catalog from '../../../supabase/seed/deep-claim-phase4-catalog.json';
 import phase3Catalog from '../../../supabase/seed/deep-claim-phase3-catalog.json';
 import phase2Catalog from '../../../supabase/seed/deep-claim-phase2-catalog.json';
 import {
   DEEP_CLAIM_RESOURCE_IDS, type DeepClaimBuildingId, type DeepClaimDuration, type DeepClaimResourceId,
-  type DeepClaimResources, type DeepClaimSpecialty, type DeepClaimStatId, type DeepClaimEquipmentDefinition, type DeepClaimRecipe, type DeepClaimFieldCatalog, type DeepClaimInfrastructureKey, type DeepClaimDiscoveryKind,
+  type DeepClaimResources, type DeepClaimSpecialty, type DeepClaimStatId, type DeepClaimEquipmentDefinition, type DeepClaimRecipe, type DeepClaimFieldCatalog, type DeepClaimInfrastructureKey, type DeepClaimDiscoveryKind, type DeepClaimBusinessCatalog,
 } from './types';
 
 /** Public market/catalog data. Deposits, geography and future yields stay server-private. */
@@ -31,6 +32,7 @@ export const RESOURCE_CATALOG: readonly DeepClaimResourceDefinition[] = [
   { id: 'polished_quartz', name: 'Polished quartz', sell_price: 28, color: '#f0e6ed', description: 'Finished quartz used in precision equipment.' },
   { id: 'cut_amethyst', name: 'Cut amethyst', sell_price: 125, color: '#cba6ed', description: 'A cut deep crystal for advanced instruments.' },
 
+  ...phase4Catalog.resources as DeepClaimResourceDefinition[],
 ];
 export const RESOURCE_BY_ID = Object.fromEntries(RESOURCE_CATALOG.map(resource => [resource.id, resource])) as Record<DeepClaimResourceId, DeepClaimResourceDefinition>;
 export const STAT_INFO: Record<DeepClaimStatId, { name: string; description: string }> = {
@@ -59,6 +61,8 @@ export const BUILDING_INFO: Record<DeepClaimBuildingId, { name: string; descript
   workers_quarters: { name: 'Workers’ Quarters', description: 'Houses additional hired workers.', x: 9 },
   smeltery: { name: 'Smeltery', description: 'Consumes ore and coal to produce refined bars.', x: 38 },
   gem_workshop: { name: 'Gem Workshop', description: 'Polishes quartz and cuts deep crystals.', x: 91 },
+  research_office: {name:'Research Office',description:'Develops permanent paid company methods.',x:17},
+  trading_post: {name:'Trading Post',description:'Fulfills finite whole-stock delivery orders.',x:57},
 };
 export const DURATION_OPTIONS: readonly { minutes: DeepClaimDuration; label: string; energy: number; description: string }[] = [
   { minutes: 20, label: 'Quick', energy: 1, description: 'A short trip. One energy per worker.' },
@@ -89,15 +93,17 @@ export const STARTER_WORKERS = [
 ] as const;
 export const BUILDING_UPGRADE_COSTS: Record<DeepClaimBuildingId, readonly number[]> = {
   mine_office: [90,1200], mine_shaft: [80,2000,5000,12000], warehouse: [60,1000], tool_station: [50,1600],
-  workers_quarters: [90,450,1200], smeltery: [90,350,900], gem_workshop: [120,450,1100],
+  workers_quarters: [90,450,1200], smeltery: [90,350,900], gem_workshop: [120,450,1100],research_office:[80,250],trading_post:[60,200,500],
 };
-export function buildingBenefits(key: DeepClaimBuildingId, level: number): { crew_slots?: number; max_depth?: number; shaft_depth?: number; warehouse_capacity?: number; yield_bonus_percent?: number; worker_capacity?: number; processing_speed_percent?: number } {
-  const added = ['workers_quarters','smeltery','gem_workshop'].includes(key);
-  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 5 : 3)) throw new Error('Invalid Deep Claim building level.');
+export function buildingBenefits(key: DeepClaimBuildingId, level: number): { crew_slots?: number; max_depth?: number; shaft_depth?: number; warehouse_capacity?: number; yield_bonus_percent?: number; worker_capacity?: number; processing_speed_percent?: number; research_tier?:number; contract_tier?:number } {
+  const added = ['workers_quarters','smeltery','gem_workshop','research_office','trading_post'].includes(key);
+  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 5 : key==='research_office'?2:3)) throw new Error('Invalid Deep Claim building level.');
   if (key === 'mine_office') return { crew_slots: level };
   if (key === 'mine_shaft') return { max_depth: [49,99,149,299,599][level - 1], shaft_depth: [6,56,106,256,556][level - 1] };
   if (key === 'warehouse') return { warehouse_capacity: 120 * 2 ** (level - 1) };
   if (key === 'tool_station') return { yield_bonus_percent: 25 * (level - 1), processing_speed_percent:[100,85,70][level-1] };
+  if(key==='research_office')return {research_tier:level};
+  if(key==='trading_post')return {contract_tier:level};
   if (key === 'workers_quarters') return { worker_capacity: 3 + level * 3 };
   if (key === 'smeltery' || key === 'gem_workshop') return { processing_speed_percent: level === 0 ? 0 : [100,85,70][level - 1] };
   throw new Error('Unknown Deep Claim building.');
@@ -109,15 +115,19 @@ export function buildingEffect(key: DeepClaimBuildingId, level: number): string 
   if (key === 'warehouse') return `${benefit.warehouse_capacity} resource units of storage`;
   if (key === 'tool_station') return `${benefit.yield_bonus_percent}% extraction bonus · ${100-benefit.processing_speed_percent!}% shorter crafting times`;
   if (key === 'workers_quarters') return `${benefit.worker_capacity} worker capacity`;
+  if(key==='research_office')return level===0?'Build to develop company methods':`Research tier ${level} · one active project`;
+  if(key==='trading_post')return level===0?'Build to fulfill delivery orders':`Delivery orders through tier ${level}`;
   return level === 0 ? 'Build to open this production lane' : `One production lane · ${100 - benefit.processing_speed_percent!}% shorter processing times`;
 }
 
 /** Canonical public production/workforce data; no world seeds or daily candidate rolls. */
 export const PHASE2_CATALOG = phase2Catalog;
 export const EQUIPMENT_CATALOG = phase2Catalog.equipment as DeepClaimEquipmentDefinition[];
-export const EQUIPMENT_BY_KEY = Object.fromEntries(EQUIPMENT_CATALOG.map(item => [item.key,item])) as Record<string, DeepClaimEquipmentDefinition>;
+export const ALL_EQUIPMENT_CATALOG = [...EQUIPMENT_CATALOG,...phase4Catalog.equipment as DeepClaimEquipmentDefinition[]];
+export const EQUIPMENT_BY_KEY = Object.fromEntries(ALL_EQUIPMENT_CATALOG.map(item => [item.key,item])) as Record<string, DeepClaimEquipmentDefinition>;
 export const RECIPE_CATALOG = phase2Catalog.recipes.map(recipe => ({ ...recipe, effective_duration_seconds: recipe.duration_seconds })) as DeepClaimRecipe[];
-export const RECIPE_BY_KEY = Object.fromEntries(RECIPE_CATALOG.map(recipe => [recipe.key,recipe])) as Record<string, DeepClaimRecipe>;
+export const ALL_RECIPE_CATALOG = [...RECIPE_CATALOG,...phase4Catalog.recipes.map(recipe=>({...recipe,effective_duration_seconds:recipe.duration_seconds})) as DeepClaimRecipe[]];
+export const RECIPE_BY_KEY = Object.fromEntries(ALL_RECIPE_CATALOG.map(recipe => [recipe.key,recipe])) as Record<string, DeepClaimRecipe>;
 export const CANDIDATE_PROFILES = phase2Catalog.candidate_profiles;
 export const TRAINING_COST = phase2Catalog.training.cash_cost;
 export const TRAINING_GAIN = phase2Catalog.training.stat_gain;
@@ -130,3 +140,9 @@ export const FIELD_CATALOG = phase3Catalog as DeepClaimFieldCatalog;
 export const INFRASTRUCTURE_BY_KEY = Object.fromEntries(FIELD_CATALOG.infrastructure.map(item => [item.key,item])) as Record<DeepClaimInfrastructureKey, DeepClaimFieldCatalog['infrastructure'][number]>;
 export const DISCOVERY_BY_KEY = Object.fromEntries(FIELD_CATALOG.discoveries.map(item => [item.key,item])) as Record<DeepClaimDiscoveryKind, DeepClaimFieldCatalog['discoveries'][number]>;
 export const DISCOVERY_QUALITY_BY_KEY = Object.fromEntries(FIELD_CATALOG.qualities.map(item => [item.key,item])) as Record<import('./types').DeepClaimDiscoveryQuality, DeepClaimFieldCatalog['qualities'][number]>;
+
+/** Schema4 public business data. Original recipe/equipment catalogs remain available for legacy saves. */
+export const BUSINESS_CATALOG=phase4Catalog as DeepClaimBusinessCatalog;
+export const RESEARCH_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.research.map(node=>[node.key,node]));
+export const CONTRACT_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.contracts.map(contract=>[contract.key,contract]));
+export const MILESTONE_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.milestones.map(milestone=>[milestone.key,milestone]));

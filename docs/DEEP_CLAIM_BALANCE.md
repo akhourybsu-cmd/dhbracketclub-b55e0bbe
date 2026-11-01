@@ -1,6 +1,6 @@
 # Deep Claim balance reference
 
-Version-one mining, version-two workforce/production, and version-three underground operations. SQL is authoritative; public arithmetic exists for explanations and headless verification, never client rewards. Canonical public catalogs are `supabase/seed/deep-claim-phase2-catalog.json` and `supabase/seed/deep-claim-phase3-catalog.json`; SQL embeds the same versioned values.
+Version-one mining, version-two workforce/production, version-three underground operations and version-four business development. SQL is authoritative; public arithmetic exists for explanations and headless verification, never client rewards. Canonical public catalogs are `supabase/seed/deep-claim-phase2-catalog.json`, `supabase/seed/deep-claim-phase3-catalog.json` and `supabase/seed/deep-claim-phase4-catalog.json`; SQL embeds the same versioned values.
 
 ## Session rhythm
 
@@ -11,7 +11,7 @@ Version-one mining, version-two workforce/production, and version-three undergro
 | Standard shift | 60 minutes | 2 |
 | Deep expedition | 180 minutes | 3 |
 
-Each persistent worker receives six energy per America/New_York operating day. Workers cannot overlap jobs. Wages are paid at dispatch; no unattended recurring payroll drains a returning player's account. A small crew is an investment in distinct capabilities, not an anonymous population counter.
+Each persistent worker receives six energy per operating day in the authoritative club timezone, with America/New_York as the fallback. Workers cannot overlap jobs. Wages are paid at dispatch; no unattended recurring payroll drains a returning player's account. A small crew is an investment in distinct capabilities, not an anonymous population counter.
 
 ## Functional workforce statistics
 
@@ -23,7 +23,7 @@ Eight launch material IDs are stone, clay, coal, copper_ore, tin_ore, iron_ore, 
 
 Upgrade branches compete for the same isolated company money: office capacity, shaft depth/travel, warehouse capacity and tool efficiency. They must retain a viable operating reserve or another bounded recovery path so buying an upgrade cannot permanently strand a new company.
 
-Coal is both a commodity and processing fuel. Stone/clay feed crafting, repairs and infrastructure. Phase 3 introduces finite quality specimens with permanent keep/sell/salvage choices. Fluctuating markets, research and contracts remain future systems.
+Coal is both a commodity and processing fuel. Stone/clay feed crafting, repairs and infrastructure. Phase 3 introduces finite quality specimens with permanent keep/sell/salvage choices. Phase 4 adds paid research, finite delivery contracts and company milestones; fluctuating markets remain a future system.
 
 ## Measurement requirements
 
@@ -61,7 +61,7 @@ XP is twelve per preset energy on completion. Level = min(10,1+floor(XP/60)); ef
 
 Run `node scripts/simulate-deep-claim.mjs`. The initial harness covers 168 crew/duration/material combinations, cargo and finite-deposit conservation, operating-capital protection and the starter-stock bound. Early rich-seam analysis exposed the original one-hour all-upgrades path; the finite three-unit silver sample and revised final-tier prices close that specific path. This is not proof of a universal minimum playtime for every future geological seed.
 
-Phase 2 extends the harness with production/workforce arithmetic and reachable first manufacturing investments. Longer multi-day field balancing and richer market/resource demand should be repeated as those systems arrive; a bounded simulator is not proof of a universal commercial-length progression curve. Research strategies remain unimplemented.
+Phase 2 extends the harness with production/workforce arithmetic and reachable first manufacturing investments. Phase 4 adds research dependencies, alloy production and finite business rewards. Longer multi-day field balancing and richer market/resource demand should be repeated as those systems arrive; a bounded simulator is not proof of a universal commercial-length progression curve.
 
 ## Phase 2 workforce and equipment
 
@@ -141,3 +141,94 @@ Six original recoverable finds are Banded Geode, Fern Fossil, Survey Journal, Ra
 Frozen sale value is `clamp(floor(base value × percentage / 100), 15, 500)`. Salvage uses only the actual displayed bundle of existing inventory IDs, with the quality multiplier. Keeping a specimen preserves its collection entry; selling or salvaging consumes the same find permanently. Salvage requires complete warehouse space and cannot partially consume a specimen. No choice grants DH Score or resets employee energy.
 
 Twenty-four pending discoveries stop new dispatches until a decision is made. Existing crews may still return safely, keeping staging bounded to 48. The current snapshot displays all pending finds, the latest 24 kept, latest 12 other resolved and latest 24 field reports; older records persist. Longer collection browsing and a full museum remain future work.
+
+## Phase 4 research and company development
+
+Research office construction/upgrade costs are 80/250 credits for levels one/two. Trading-post construction/upgrades cost 60/200/500 for levels one/two/three. They do not replace the mine office, increase worker energy or alter the original building prices. Each purchase retains the two-credit operating-capital safeguard.
+
+Fourteen once-only research nodes form seven branches with two tiers each. Tier-one orders take 300 seconds and cost 60–90 credits plus finite materials, including original processed bars for industrial branches. Tier-two orders take 1,200 seconds and cost 220–450 plus processed materials. A tier-two node requires its branch's first tier and its catalog cross-links; research-office level one/two gates the corresponding tier. One paid research order can be active at a time. Costs are consumed at start, and server-time completion activates the frozen benefit without a second collection action. Research has no cancellation or refund path.
+
+| Node | Credits | Materials | Completed prerequisites |
+|---|---:|---|---|
+| Cutting Methods (`excavation_1`) | 70 | 12 stone, 6 clay | None |
+| Precision Extraction (`excavation_2`) | 280 | 3 iron bars, 2 polished quartz | Excavation 1, Geology 1 |
+| Field Assaying (`geology_1`) | 60 | 4 quartz, 4 clay | None |
+| Crystal Analysis (`geology_2`) | 300 | 1 silver bar, 4 polished quartz | Geology 1, Deep Operations 1 |
+| Alloy Practice (`processing_1`) | 80 | 1 copper bar, 1 tin bar, 4 coal | None |
+| Industrial Metallurgy (`processing_2`) | 400 | 4 iron bars, 1 silver bar, 3 polished quartz | Processing 1, Excavation 2 |
+| Route Planning (`logistics_1`) | 60 | 10 stone, 8 clay | None |
+| Freight Engineering (`logistics_2`) | 300 | 2 steel bars, 2 copper bars | Logistics 1, Processing 2 |
+| Crew Coordination (`workforce_1`) | 70 | 8 clay, 4 coal | None |
+| Long Shift Training (`workforce_2`) | 220 | 2 iron bars, 2 polished quartz | Workforce 1, Safety 1 |
+| Safe Work Practice (`safety_1`) | 60 | 10 stone, 4 coal | None |
+| Reliable Operations (`safety_2`) | 260 | 3 iron bars, 2 copper bars | Safety 1, Deep Operations 1 |
+| Worksite Engineering (`deep_operations_1`) | 90 | 1 copper bar, 10 stone | None |
+| Deep Cutting Systems (`deep_operations_2`) | 450 | 3 steel bars, 1 cut amethyst | Deep Operations 1, Excavation 2, Processing 2 |
+
+All research costs 2,700 credits and consumes materials with a combined fixed sale value of 2,673. The fourteen server timers total 175 minutes, serialized through the one-active-order limit; gathering their materials and funding the research office add real progression. Original smelting supplies the first industrial research inputs, so no new research/recipe dependency cycle prevents entry.
+
+| Branch | First-tier benefit | Additional second-tier benefit |
+|---|---|---|
+| Excavation | +4 Mining | +6 Mining |
+| Geology | +4 Geology | +6 Geology |
+| Processing | 5% faster future production | Another 10 percentage points, 15% total |
+| Logistics | +4 Logistics | +6 Logistics |
+| Workforce | +4 Leadership | +6 Endurance |
+| Safety | +4 Safety | +6 Safety |
+| Deep Operations | +4 Engineering | +6 Engineering |
+
+Sum completed stat bonuses after base training, XP and functioning equipment, then cap each effective statistic at 100. Public workers already contain that result. The separate research breakdown is explanatory, not another modifier to apply in the client. New expeditions freeze effective statistics through the existing configuration-three planner; old expedition plans remain unchanged.
+
+Processing research applies only to newly started production: first apply the existing station-level modifier with its integer ceiling, then apply the research percentage with another integer ceiling and a 20-second per-batch floor. Multiply that final per-batch duration by the batch count. Research cannot accelerate an already-paid job or alter its inputs or outputs. Existing queue and equipment limits remain three uncollected jobs and 48 owned/reserved items.
+
+## Phase 4 finite industry and rewards
+
+Bronze, steel and gold bars are processed inventory identities with fixed positive sale prices. They never appear in generated terrain. Five new version-one recipes make these three goods, a steel pickaxe and a steel cargo harness using finite inputs, upfront credits and real station time. Their research and station requirements are validated before payment. The original sixteen recipes and ten equipment definitions remain available with their existing versions; research is not a retroactive tax on old capabilities.
+
+| Recipe | Inputs per batch | Credits | Base seconds | Output | Required research / station |
+|---|---|---:|---:|---|---|
+| Bronze | 1 copper bar, 1 tin bar, 2 coal | 12 | 360 | 2 bronze bars | Processing 1 / smeltery 1 |
+| Steel | 2 iron bars, 4 coal | 18 | 600 | 2 steel bars | Processing 2 / smeltery 2 |
+| Gold | 8 gold ore, 3 coal | 18 | 600 | 2 gold bars | Processing 2 / smeltery 2 |
+| Steel pickaxe | 3 steel bars, 1 bronze bar, 2 polished quartz | 95 | 900 | 1 owned pickaxe | Deep Operations 2 / tool station 3 |
+| Steel cargo harness | 3 steel bars, 2 bronze bars, 8 clay | 85 | 840 | 1 owned harness | Logistics 2 / tool station 3 |
+
+Bronze/steel/gold bars sell for 80/105/210 credits each. Their net added sale value after input opportunity cost and recipe credits is 20/36/30 per batch. They cannot be converted back into raw inputs. Tier-three gear has 180 durability: the pickaxe adds 26 Mining, 8 Engineering and 4 Endurance; the harness adds 26 Logistics, 8 Endurance and 4 Leadership. Missing-durability repair rates are 0.50/0.40 credits, rounded up, plus one steel bar and one polished quartz/bronze bar respectively. Existing two-per-energy wear applies; equipment has no resale value.
+
+Contracts are twelve permanent authored deliveries, four per trading-post tier. Each order freezes its input bundle and payout and can be completed only once per company. Prerequisite deliveries and research must be complete. Fulfillment consumes the entire bundle from actual collected inventory in one transaction, then grants the documented company-credit reward. There is no partial delivery, cancellation, expiry, daily reroll or automatic repeat order. A completed order cannot consume goods or pay again under a new request UUID.
+
+Every payout is greater than the delivered goods' fixed sale value and at most 120% of it. The premium is the finite bonus; the full payout is not free money because the delivered goods leave stock. Goods are never purchased from an NPC, so processing and contracts cannot form a buy/convert/sell loop. Neither an uncollected production output nor staged mining cargo can fund a delivery.
+
+| Delivery | Tier | Whole input bundle | Payout | Premium over ordinary sale |
+|---|---:|---|---:|---:|
+| Yard Foundations | 1 | 20 stone | 24 | 4 |
+| Boiler Fuel | 1 | 10 coal | 46 | 6 |
+| Pottery Clay | 1 | 20 clay | 46 | 6 |
+| Copper Assay | 1 | 10 copper ore | 92 | 12 |
+| Copper Fittings | 2 | 4 copper bars | 250 | 30 |
+| Structural Iron | 2 | 6 iron bars | 483 | 63 |
+| Alloy Stock | 2 | 4 bronze bars | 368 | 48 |
+| Optical Quartz | 2 | 8 polished quartz | 257 | 33 |
+| Steel Bracing | 3 | 4 steel bars | 483 | 63 |
+| Gold Commission | 3 | 2 gold bars | 483 | 63 |
+| Crystal Instruments | 3 | 4 cut amethyst, 4 polished quartz | 703 | 91 |
+| Frontier Industry | 3 | 4 steel bars, 4 bronze bars, 2 gold bars | 1,334 | 174 |
+
+The complete catalog consumes goods worth 3,976 credits and pays 4,569: a finite 593-credit premium. Delivery/research prerequisites remain part of each frozen definition. The final order requires the preceding steel, gold and crystal commissions plus Deep Operations 2 and Logistics 2, so it cannot be claimed immediately with unrelated starter stock.
+
+Eight company milestones pay 10–120 credits each, totaling at most 600 across the finite catalog. They recognize first completed mining, collected production, installed infrastructure, completed research, mining at 100 meters, three completed deliveries, three kept finds and industrial production. Qualifying older work contributes to progress, but payment always requires an explicit, once-only claim. No business reward grants DH Score, energy, equipment or a resource bundle.
+
+| Milestone | Required durable progress | Credits |
+|---|---|---:|
+| First Shift | 1 completed mining expedition | 10 |
+| First Batch | 1 fully collected production batch | 20 |
+| Built to Last | 1 installed infrastructure project | 30 |
+| Better Methods | 1 completed research node | 40 |
+| One Hundred Down | Completed mining at depth 100m or deeper | 50 |
+| Trusted Supplier | 3 completed contracts | 70 |
+| Cabinet Curator | 3 kept discoveries | 80 |
+| Industrialist | 40 fully collected processed material units | 100 |
+
+These eight rewards total exactly 400 credits. Combined with the 593-credit delivery premium, Phase 4 introduces 993 credits of finite business bonuses. Deliveries also return the ordinary value of consumed goods; research, buildings, wages, recipe fees and material consumption remain real sinks. This reward budget cannot independently buy the 5,000/12,000-credit deep shaft upgrades, and supplies no repeatable daily income.
+
+Milestone and company-record quantities come from durable server rows, including history beyond the bounded UI lists. Collected production units use frozen recipe outputs multiplied by batches, never the staged-output remainder. Partial collection and repeated requests cannot inflate production, delivery or milestone counts. Exact node costs, recipe definitions, contract inputs/payouts and milestone targets are versioned in the Phase 4 canonical catalog and must remain identical in SQL and the public arithmetic.

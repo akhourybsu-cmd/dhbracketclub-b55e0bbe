@@ -9,7 +9,7 @@ export class DeepClaimError extends Error {
   }
 }
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
-export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production','dc_dispatch_operation','dc_resolve_discovery'] as const;
+export const DEEP_CLAIM_MUTATIONS = ['dc_bootstrap','dc_dispatch','dc_collect','dc_sell','dc_upgrade','dc_hire','dc_train','dc_assign_equipment','dc_repair_equipment','dc_retire_equipment','dc_start_production','dc_collect_production','dc_dispatch_operation','dc_resolve_discovery','dc_start_research','dc_fulfill_contract','dc_claim_milestone'] as const;
 export type DeepClaimMutation = typeof DEEP_CLAIM_MUTATIONS[number];
 export function parseDeepClaimSnapshot(value: unknown): DeepClaimSnapshot {
   try { validateDeepClaimSnapshot(value); return value; }
