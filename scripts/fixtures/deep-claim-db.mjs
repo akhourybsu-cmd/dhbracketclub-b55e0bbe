@@ -11,7 +11,7 @@ export const DEEP_CLAIM_ACTORS = {
   club: fixtureId(1001), otherClub: fixtureId(1002), privateClub: fixtureId(1003),
 };
 
-export async function createDeepClaimDatabase({ install = true, phase = 7, notificationPreferences = false, database } = {}) {
+export async function createDeepClaimDatabase({ install = true, phase = 7, notificationPreferences = false, tutorial = false, database } = {}) {
   const db = database ?? new PGlite();
   const sources = new Map();
   async function source(path) {
@@ -58,6 +58,12 @@ export async function createDeepClaimDatabase({ install = true, phase = 7, notif
     // fixture. Core/browser PostgreSQL still executes every gameplay migration.
     const coreMigrations = migrations.filter(path => path !== '20261102061000_deep_claim_dh_integration.sql');
     for (const path of coreMigrations.filter(path => path < phaseCeilings[phase])) await source(`supabase/migrations/${path}`);
+    // The released economy/Feats suites deliberately retain their Phase7
+    // baseline. Browser QA opts into the additive educational journal only.
+    if (tutorial) {
+      assert.equal(phase, 7, 'Tutorial browser fixtures require the complete released Phase7 economy');
+      await source('supabase/migrations/20261102080000_deep_claim_training_journal.sql');
+    }
     const initialInstallations = (await db.query("select count(*)::int n from public.club_installed_assets i join public.platform_assets a on a.id=i.asset_id where a.slug='deep-claim'")).rows[0].n;
     if (install) await db.exec(`
       insert into public.club_installed_assets(club_id,asset_id,enabled,visible_to_members)

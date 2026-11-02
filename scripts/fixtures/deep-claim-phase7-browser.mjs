@@ -27,7 +27,7 @@ export async function runPhase7Browser(h) {
   }
   try{
     await h.found(page,{run:'ancient-deep-controlled-old-history'});
-    const setup=await h.command(page,'prepare_ancient_deep');await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByRole('tablist',{name:'Company views'})).toBeVisible();
+    const setup=await h.command(page,'prepare_ancient_deep');await h.reloadCompany(page);await expect(page.getByRole('tablist',{name:'Company views'})).toBeVisible();
     let snapshot=await current();checked('deep-late-game-preconditions-are-explicit-and-new-goods-remain-zero',snapshot.schema_version===5&&snapshot.buildings.find(building=>building.key==='mine_shaft').level===5&&['nickel_ore','sulfur','nickel_alloy'].every(key=>snapshot.resources[key]===0),{scope:setup.scope});
     checked('deep-addon-is-not-decoded-for-an-old-depth-company',(await diagnostic())?.addon?.state!=='ready');
     let dialog=await shaft();await expect(dialog.getByRole('region',{name:'Ancient Deep shaft requirements',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Confirm upgrade',exact:true})).toBeDisabled();
@@ -86,12 +86,12 @@ export async function runPhase7Browser(h) {
     const beforeRepair={cash:snapshot.company.cash,alloy:snapshot.resources.nickel_alloy,sulfur:snapshot.resources.sulfur,cost:worn.repair_cost};
     file=await h.workerFile(page,'Mara Flint','Gear');await file.getByRole('button',{name:'Repair Nickel Heat Shield',exact:true}).click();await page.getByRole('button',{name:'Confirm repair',exact:true}).click();await h.closeReward(page);snapshot=await current();
     checked('deep-paid-repair-consumes-real-alloy-and-sulfur-once',snapshot.equipment.find(value=>value.id===item.id).durability===180&&snapshot.company.cash===beforeRepair.cash-beforeRepair.cost&&snapshot.resources.nickel_alloy===beforeRepair.alloy-1&&snapshot.resources.sulfur===beforeRepair.sulfur-2);
-    await page.reload({waitUntil:'domcontentloaded'});await expect(page.getByRole('tablist',{name:'Company views'})).toBeVisible();const restored=await current();checked('deep-reload-preserves-the-same-owned-repaired-item-and-new-stock',restored.equipment.filter(value=>value.id===item.id).length===1&&restored.equipment.find(value=>value.id===item.id).durability===180&&restored.resources.sulfur===snapshot.resources.sulfur);
+    await h.reloadCompany(page);await expect(page.getByRole('tablist',{name:'Company views'})).toBeVisible();const restored=await current();checked('deep-reload-preserves-the-same-owned-repaired-item-and-new-stock',restored.equipment.filter(value=>value.id===item.id).length===1&&restored.equipment.find(value=>value.id===item.id).durability===180&&restored.resources.sulfur===snapshot.resources.sulfur);
     await context.close();
   }catch(error){throw error;}
   const fallback=await h.setup(320,568,'light','reduce',{runtimeProbe:true,deviceScaleFactor:2,isMobile:true});
   try{
-    await fallback.page.route('**/deep-claim/atlas-v2.png*',route=>route.abort('failed'));await h.found(fallback.page,{run:'ancient-deep-addon-failure'});await h.command(fallback.page,'prepare_ancient_deep',{unlock:true});await fallback.page.reload({waitUntil:'domcontentloaded'});
+    await fallback.page.route('**/deep-claim/atlas-v2.png*',route=>route.abort('failed'));await h.found(fallback.page,{run:'ancient-deep-addon-failure'});await h.command(fallback.page,'prepare_ancient_deep',{unlock:true});await h.reloadCompany(fallback.page);
     await expect.poll(()=>fallback.page.evaluate(()=>window.deepClaimRuntime.samples.at(-1)?.addon?.state)).toBe('failed');
     await h.tab(fallback.page,'Mine');await fit(fallback.page,'deep-addon-fallback-phone');await shot(fallback.page,'deep-addon-fallback-phone');await fallback.page.getByRole('button',{name:'Open mine operations',exact:true}).click();await expect(fallback.page.getByRole('dialog',{name:'Underground operations',exact:true})).toBeVisible();
     checked('deep-addon-failure-keeps-real-known-depth-and-operation-controls',await fallback.page.getByRole('combobox',{name:'Known mine depth',exact:true}).isVisible());await fallback.context.close();

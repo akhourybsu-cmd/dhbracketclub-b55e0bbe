@@ -1,0 +1,32 @@
+{
+  "baseline": "94a4334b39626fb31365fb5d47753c1946dcfc94",
+  "sha256": {
+    "supabase/migrations/20261102010000_deep_claim_foundation.sql": "1d370b6b66261c53440a60e43a7801a52f8c100d1e9cd57c4966026dae0c3197",
+    "supabase/migrations/20261102020000_deep_claim_discovery.sql": "94720663733be2af208c403daa85e5ac0bee86a320d0d5d702bf7d8c2bc45593",
+    "supabase/migrations/20261102030000_deep_claim_workforce_production.sql": "c27b82ed2f5f5daf41b6ac2a514cfa44832b0ddec37d8a3b7e0abaa1f2927d12",
+    "supabase/migrations/20261102040000_deep_claim_underground_operations.sql": "f5cd959948231619d1396bed64592f1623a6e5939bbde8842c83a56733b85063",
+    "supabase/migrations/20261102050000_deep_claim_business_development.sql": "0c5b2ad128cd41aecca0c4ede5a3faa6d58f872825070abd30e1d16c6962ad24",
+    "supabase/migrations/20261102060000_deep_claim_club_operations.sql": "a33881f242be6795c21f81e17d2840f8726f412c1cac68f214588808966032bf",
+    "supabase/migrations/20261102061000_deep_claim_dh_integration.sql": "ddd9dc22f3fb305cf94795784086ad4d02c1b77241c21e57018be240c2dac925",
+    "supabase/migrations/20261102070000_deep_claim_ancient_deep.sql": "ed112cdd427b1760290c79ebf991d91e0a9ba914c4d221548a0e0553ac7fee24",
+    "src/lib/deepClaim/types.ts": "987acc87eee8bf468e4fc0e87b216a39694514e35016121bd96bbd7c2ca66647",
+    "src/lib/deepClaim/catalog.ts": "388af2448e7ba83ca079e99a4931eca9414885fcf486ff6cd9daa22448c437e0",
+    "src/lib/deepClaim/world.ts": "a641d348d24bb3f7631dbe6ff87fa9dea24a25be87a9fdaf78b0b78dd00a16f9",
+    "src/lib/deepClaim/simulation.ts": "202e37c26fc2eb25cabf908ae7f60c08e4884819847589ad0fd65927410234a4",
+    "src/lib/deepClaim/field.ts": "9a64d47df0ea34acb095366a7e6b743093cb929cef2e8b29af24180f60da4021",
+    "src/lib/deepClaim/business.ts": "0a47486242e87ba872b917826f4f854b0e66ce336f325f9bf8827fd976f8534a",
+    "src/lib/deepClaim/production.ts": "420c436544ac4ecdb882dc763105e2e6e50c346cf5b2966f61fcad4402ddba80",
+    "src/lib/deepClaim/social.ts": "ee7c0538813ce860a2f84fb2ee2cd8b26a09ef921e13b94f613b2d09b4f256c5",
+    "src/lib/deepClaim/deepOperations.ts": "0c20bd75bd0d2bde2a6666b9e09f7451a8041172b6b5eaeabfd67d9f6b5245a6",
+    "supabase/seed/deep-claim-phase2-catalog.json": "9321c5e67096cf1b34d6d2b2354314ce7ef97ae64276186f3dc86c7a1527068e",
+    "supabase/seed/deep-claim-phase3-catalog.json": "347c9c0bb4ff429a6e7fe3842cbcb212e6c79f2b2943431cc3b4cb94cf44a13f",
+    "supabase/seed/deep-claim-phase4-catalog.json": "caf8c362b60c1a339974b9239a41381cbdb8623b117c595d74ef0cc55f51800a",
+    "supabase/seed/deep-claim-phase5-catalog.json": "e0839a5ed8398ec79fb56183d11889d0035e83549f538db70250947b79f5ff99",
+    "supabase/seed/deep-claim-phase7-catalog.json": "401f8334af215b2a10a9368aa6eff82f4060978656190c556343f64c0d83ebeb",
+    "src/lib/feats/deepClaimCatalog.json": "6f57c4d89a9d60196f8e6a777a6726ba6dd80ce6a9394e9ea8347c6eda72a217",
+    "public/deep-claim/atlas-v1.png": "6bc1fbb52d3e1024d75917c5bfdc4f0ecd3ef53ad2d1220ed7a64db5a3a29180",
+    "public/deep-claim/atlas-v2.png": "b5b2d536c599776ebac40adbf4444a7ea4ee677d0184adf6d1ad8830cafc755a",
+    "src/components/deepClaim/renderer/generated/atlas-v1.json": "702db8f28b67048f7f0823b5f2ee0df02b0eaaf545355e8fb198d1310a45695b",
+    "src/components/deepClaim/renderer/generated/atlas-v2.json": "efc56ca51a65410768c6a3e7cab79dfd7ca162e9bd913b4792758c8cdbc413b9"
+  }
+}

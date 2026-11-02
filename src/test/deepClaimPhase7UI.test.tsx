@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DeepClaimPage from '@/pages/DeepClaimPage';
+import { continueDeepClaimCompany } from './fixtures/deepClaimTutorialMock';
 import { DeepClaimDispatch } from '@/components/deepClaim/DeepClaimDispatch';
 import { DeepClaimOperations } from '@/components/deepClaim/DeepClaimField';
 import { DeepClaimBusiness, type ClaimBusinessView } from '@/components/deepClaim/DeepClaimBusiness';
@@ -18,10 +19,13 @@ const wire = vi.hoisted(() => ({ data: null as DeepClaimSnapshot | null, scans: 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'user-a' }, loading: false }) }));
 vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: { id: 'club-a' }, loading: false }) }));
 vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false, isInstalled: () => true }) }));
+// Pixel backdrop lifecycle is covered separately; keep these economic suites renderer-free.
+vi.mock('@/components/deepClaim/menu/DeepClaimMenuBackdrop', () => ({ DeepClaimMenuBackdrop: () => null }));
+vi.mock('@/hooks/useDeepClaimTutorial', async () => ({ useDeepClaimTutorial: (await import('./fixtures/deepClaimTutorialMock')).useDeepClaimTutorialMock }));
 vi.mock('@/hooks/useDeepClaim', () => ({ useDeepClaim: () => ({ data: wire.data, readOnly: false, busy: false, refreshing: false, error: null, serverNow: () => Date.parse(wire.data!.server_now), upgrade: wire.upgrade, startResearch: wire.research, refresh: wire.noop, preview: wire.preview, dispatch: wire.dispatch, hire: wire.noop, train: wire.noop, assignEquipment: wire.assign, repairEquipment: wire.repair, retireEquipment: wire.noop, startProduction: wire.production, collectProduction: wire.noop }) }));
 vi.mock('@/components/deepClaim/display', async original => { const actual = await original<typeof import('@/components/deepClaim/display')>(); return { ...actual, claimTargets: (...args: Parameters<typeof actual.claimTargets>) => { wire.scans.push(args[1]); return actual.claimTargets(...args); } }; });
 vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: () => <div data-testid="mine-canvas" /> }));
-vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const snapshot = { master: false, music: true, sfx: true, ambient: true, volume: .65, musicVolume: 1, ambientVolume: 1, sfxVolume: 1 }; return { getSnapshot: () => snapshot, subscribe: () => () => {}, updateSettings: wire.noop, unlock: wire.noop, play: wire.noop, setBackgroundPaused: wire.noop, dispose: wire.noop }; } }));
+vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const snapshot = { master: false, music: true, sfx: true, ambient: true, volume: .65, musicVolume: 1, ambientVolume: 1, sfxVolume: 1 }; return { getSnapshot: () => snapshot, subscribe: () => () => {}, setScene: vi.fn(), updateSettings: wire.noop, unlock: wire.noop, play: wire.noop, setBackgroundPaused: wire.noop, dispose: wire.noop }; } }));
 
 function deepSnapshot(): DeepClaimSnapshot {
   const data = phaseSevenSnapshot(7);
@@ -57,7 +61,7 @@ describe('Known-ground navigation and worksite stability', () => {
     render(<Dispatch mode="survey" />); fireEvent.click(screen.getByRole('button', { name: 'Extraction' })); expect(screen.getByRole('combobox', { name: 'Expedition worksite' })).toHaveValue('47:800');
   });
   it('does not repeat the public target scan on clock ticks or unrelated company revisions', () => {
-    vi.useFakeTimers(); const view = render(<App />); const count = wire.scans.length; act(() => vi.advanceTimersByTime(3000)); expect(wire.scans).toHaveLength(count);
+    vi.useFakeTimers(); const view = render(<App />); continueDeepClaimCompany(); const count = wire.scans.length; act(() => vi.advanceTimersByTime(3000)); expect(wire.scans).toHaveLength(count);
     wire.data = { ...wire.data!, revision: 8, company: { ...wire.data!.company!, cash: 31000 } }; view.rerender(<App />); expect(wire.scans).toHaveLength(count);
     wire.data = { ...wire.data!, world: { ...wire.data!.world!, revision: 8, tiles: [...wire.data!.world!.tiles] } }; view.rerender(<App />); expect(wire.scans).toHaveLength(count + 1);
   });
@@ -74,12 +78,12 @@ describe('Authoritative deep shift explanations', () => {
     wire.preview.mockResolvedValue(quote({ operation_version: 3, deep_modifiers: undefined })); render(<Dispatch />); fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' })); await screen.findByRole('button', { name: 'Dispatch crew' }); expect(screen.queryByRole('region', { name: 'Heat and lift modifiers' })).not.toBeInTheDocument();
   });
   it('blocks shaft6 without the existing research and links directly to its actual review', () => {
-    render(<App />); fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' })); fireEvent.click(screen.getByRole('button', { name: /Mine Shaft.*Level 5/ }));
+    render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' })); fireEvent.click(screen.getByRole('button', { name: /Mine Shaft.*Level 5/ }));
     const shaft = screen.getByRole('dialog', { name: 'Mine Shaft' }); expect(within(shaft).getByRole('button', { name: 'Confirm upgrade' })).toBeDisabled(); expect(shaft).toHaveTextContent('Required: Deep Cutting Systems'); expect(shaft).toHaveTextContent('192');
     fireEvent.click(within(shaft).getByRole('button', { name: 'Review deep research' })); expect(screen.getByRole('heading', { name: 'Deep Cutting Systems' })).toBeInTheDocument(); expect(wire.upgrade).not.toHaveBeenCalled();
   });
   it('enables the real shaft upgrade only after authoritative research completion', async () => {
-    wire.data!.business!.research.push({ key: 'deep_operations_2', status: 'completed', started_at: wire.data!.server_now, completes_at: wire.data!.server_now, completed_at: wire.data!.server_now }); render(<App />);
+    wire.data!.business!.research.push({ key: 'deep_operations_2', status: 'completed', started_at: wire.data!.server_now, completes_at: wire.data!.server_now, completed_at: wire.data!.server_now }); render(<App />); continueDeepClaimCompany();
     fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' })); fireEvent.click(screen.getByRole('button', { name: /Mine Shaft.*Level 5/ })); expect(screen.getByRole('button', { name: 'Confirm upgrade' })).toBeEnabled();
     wire.upgrade.mockResolvedValue(wire.data); await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Confirm upgrade' })); }); expect(wire.upgrade).toHaveBeenCalledWith('mine_shaft');
   });

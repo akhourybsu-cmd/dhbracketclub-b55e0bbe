@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DeepClaimPage from '@/pages/DeepClaimPage';
+import { continueDeepClaimCompany } from './fixtures/deepClaimTutorialMock';
 import { ClaimState } from '@/components/deepClaim/DeepClaimPrimitives';
 import { STARTER_WORKERS, buildingEffect } from '@/lib/deepClaim/catalog';
 import type { DeepClaimExpedition, DeepClaimPreview, DeepClaimSnapshot } from '@/lib/deepClaim/types';
@@ -10,9 +11,12 @@ const wire = vi.hoisted(() => ({ data: null as DeepClaimSnapshot | null, install
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'player' }, loading: false }) }));
 vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: { id: 'club' }, loading: false }) }));
 vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false, isInstalled: () => wire.installed, refresh: wire.refresh }) }));
+// Pixel backdrop lifecycle is covered separately; keep these economic suites renderer-free.
+vi.mock('@/components/deepClaim/menu/DeepClaimMenuBackdrop', () => ({ DeepClaimMenuBackdrop: () => null }));
+vi.mock('@/hooks/useDeepClaimTutorial', async () => ({ useDeepClaimTutorial: (await import('./fixtures/deepClaimTutorialMock')).useDeepClaimTutorialMock }));
 vi.mock('@/hooks/useDeepClaim', () => ({ useDeepClaim: () => { wire.hook(); return { data: wire.data, loading: false, refreshing: false, error: null, busy: false, readOnly: wire.readOnly, pendingAction: wire.pending, serverNow: () => Date.parse('2026-11-02T12:00:00Z'), refresh: wire.refresh, bootstrap: wire.bootstrap, preview: wire.preview, dispatch: wire.dispatch, collect: wire.collect, sell: wire.sell, upgrade: wire.upgrade, retryPending: wire.retry }; } }));
 vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: () => <div data-testid="deep-claim-canvas" /> }));
-vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const snapshot = { master: false, music: true, ambient: true, sfx: true, volume: .65 }; return { getSnapshot: () => snapshot, subscribe: () => () => {}, updateSettings: wire.audioUpdate, unlock: wire.unlock, play: wire.play, setActive: vi.fn(), dispose: wire.dispose }; } }));
+vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const snapshot = { master: false, music: true, ambient: true, sfx: true, volume: .65 }; return { getSnapshot: () => snapshot, subscribe: () => () => {}, setScene: vi.fn(), updateSettings: wire.audioUpdate, unlock: wire.unlock, play: wire.play, setActive: vi.fn(), dispose: wire.dispose }; } }));
 const at = '2026-11-02T12:00:00Z';
 function snapshot(): DeepClaimSnapshot {
   return { schema_version: 1, server_now: at, revision: 1, company: { id: 'company', user_id: 'player', club_id: 'club', name: 'Flint & Co', cash: 100, timezone: 'America/New_York', energy_day: '2026-11-02', tutorial_used: false, warehouse_capacity: 120, warehouse_used: 0, crew_slots: 1 }, resources: {},
@@ -42,7 +46,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     expect(wire.hook).not.toHaveBeenCalled(); expect(screen.queryByTestId('deep-claim-canvas')).not.toBeInTheDocument();
   });
   it('gives a first-time company a directly valid 30-second extraction, only after a server quote', async () => {
-    render(<Harness />);
+    render(<Harness />); continueDeepClaimCompany();
     fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
     const dialog = screen.getByRole('dialog', { name: 'Work a seam' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
@@ -56,13 +60,17 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     wire.bootstrap.mockImplementation(async () => { wire.data = snapshot(); return wire.data; });
     render(<Harness />);
     expect(screen.queryByTestId('deep-claim-canvas')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'New Game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip introduction' }));
     fireEvent.change(screen.getByLabelText('Company name'), { target: { value: 'Frontier Works' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Review deed' }));
+    expect(wire.bootstrap).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Found company' }));
     await waitFor(() => expect(wire.bootstrap).toHaveBeenCalledWith('Frontier Works'));
     expect(await screen.findByTestId('deep-claim-canvas')).toBeInTheDocument();
   });
   it('keeps normal exploration distinct from the accelerated first shift and clears edited quotes', async () => {
-    render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
     const dialog = screen.getByRole('dialog', { name: 'Survey new ground' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).not.toBeChecked();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
@@ -79,14 +87,14 @@ describe('Deep Claim first play and dispatch confirmation', () => {
   });
   it('shows authoritative blocked reasons and never exposes a confirm action for them', async () => {
     wire.preview.mockResolvedValue(quote({ allowed: false, reasons: ['Crew slots are occupied.'] }));
-    render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
     const dialog = screen.getByRole('dialog', { name: 'Work a seam' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(await within(dialog).findByText('Crew slots are occupied.')).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument(); expect(wire.dispatch).not.toHaveBeenCalled();
   });
   it('accepts a newer authoritative preview but invalidates it if the cached company later advances', async () => {
     wire.preview.mockResolvedValue(quote({ company_revision: 2 }));
-    const view = render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
+    const view = render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
     const dialog = screen.getByRole('dialog', { name: 'Work a seam' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(await within(dialog).findByRole('button', { name: 'Dispatch crew' })).toBeInTheDocument();
     wire.data = { ...wire.data!, revision: 3 }; view.rerender(<Harness />);
@@ -95,11 +103,23 @@ describe('Deep Claim first play and dispatch confirmation', () => {
 });
 
 describe('Deep Claim authoritative hauls and recovery', () => {
+  it('opens the recovered company and confirmation when a saved economic action is retried from the title', async () => {
+    wire.pending = 'Contribute to club project';
+    render(<Harness />);
+    expect(screen.getByTestId('deep-claim-title')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm sync$/ }));
+    expect(await screen.findByRole('dialog', { name: /^Saved action confirmed\.$/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('deep-claim-title')).not.toBeInTheDocument();
+    expect(wire.retry).toHaveBeenCalledOnce();
+    expect(wire.bootstrap).not.toHaveBeenCalled();
+    expect(wire.dispatch).not.toHaveBeenCalled();
+    expect(wire.sell).not.toHaveBeenCalled();
+  });
   it('treats collected historical cargo as secured, not as uncollected staged cargo', async () => {
     wire.data!.expeditions = [haul()]; wire.data!.company!.tutorial_used = true;
     const updated = snapshot(); updated.revision = 2; updated.resources = { copper_ore: 20 }; updated.company!.warehouse_used = 20; updated.company!.tutorial_used = true; updated.expeditions = [haul('collected')];
     wire.collect.mockImplementation(async () => { wire.data = updated; return updated; });
-    render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Open haul' }));
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Open haul' }));
     fireEvent.click(screen.getByRole('button', { name: 'Collect into storage' }));
     const reward = await screen.findByRole('dialog', { name: 'Haul secured.' });
     expect(reward).toHaveTextContent('20'); expect(reward).toHaveTextContent('Copper ore'); expect(reward).not.toHaveTextContent('remain staged');
@@ -108,12 +128,12 @@ describe('Deep Claim authoritative hauls and recovery', () => {
     wire.data!.expeditions = [haul()]; wire.data!.company!.warehouse_used = 105; wire.data!.resources = { stone: 105 };
     const updated = snapshot(); updated.revision = 2; updated.resources = { stone: 105, copper_ore: 15 }; updated.company!.warehouse_used = 120; updated.expeditions = [{ ...haul(), cargo: { copper_ore: 5 } }];
     wire.collect.mockImplementation(async () => { wire.data = updated; return updated; });
-    render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Open haul' })); fireEvent.click(screen.getByRole('button', { name: 'Collect into storage' }));
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Open haul' })); fireEvent.click(screen.getByRole('button', { name: 'Collect into storage' }));
     const reward = await screen.findByRole('dialog', { name: 'Haul secured.' }); expect(reward).toHaveTextContent('15'); expect(reward).toHaveTextContent('5 units remain staged');
   });
   it('guides a collected first haul through Stores and one real camp upgrade, then releases the guide', async () => {
     wire.data!.company!.tutorial_used = true; wire.data!.company!.warehouse_used = 20; wire.data!.resources = { copper_ore: 20 }; wire.data!.expeditions = [haul('collected')];
-    const view = render(<Harness />);
+    const view = render(<Harness />); continueDeepClaimCompany();
     fireEvent.click(screen.getByRole('button', { name: 'Sell first haul' }));
     expect(screen.getByRole('tab', { name: 'Stores' })).toHaveAttribute('aria-selected', 'true');
     wire.data = { ...wire.data!, revision: 2, resources: {}, company: { ...wire.data!.company!, cash: 400, warehouse_used: 0 } }; view.rerender(<Harness />);
@@ -127,14 +147,14 @@ describe('Deep Claim authoritative hauls and recovery', () => {
   });
   it('keeps an unconfirmed action read-only and retries the saved receipt instead of creating another action', async () => {
     wire.pending = 'Dispatch crew'; wire.readOnly = true;
-    render(<Harness />);
+    render(<Harness />); continueDeepClaimCompany();
     expect(screen.getByRole('button', { name: 'Start first shift · 30s' })).toBeDisabled();
     expect(screen.getByRole('link', { name: 'Return to DH' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm sync' }));
     await waitFor(() => expect(wire.retry).toHaveBeenCalledOnce()); expect(wire.dispatch).not.toHaveBeenCalled(); expect(wire.collect).not.toHaveBeenCalled();
   });
   it('exposes all three persistent workers and current seven-skill profiles without hiring placeholders', () => {
-    const view = render(<Harness />); fireEvent.click(screen.getByRole('tab', { name: 'Crew' }));
+    const view = render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('tab', { name: 'Crew' }));
     for (const worker of STARTER_WORKERS) expect(screen.getByRole('heading', { name: worker.name })).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Crew file' })[0]);
     const profile = screen.getByRole('dialog', { name: 'Mara Flint' }); expect(profile).toHaveTextContent('10% more extraction output'); expect(profile).toHaveTextContent('Leadership');
@@ -143,7 +163,7 @@ describe('Deep Claim authoritative hauls and recovery', () => {
   });
   it('requires a valid whole stock quantity before passing a sale to the server', async () => {
     wire.data!.resources = { stone: 8 }; wire.data!.company!.warehouse_used = 8; wire.sell.mockResolvedValue(snapshot());
-    render(<Harness />); fireEvent.click(screen.getByRole('tab', { name: 'Stores' })); fireEvent.click(screen.getByRole('button', { name: 'Sell Stone' }));
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('tab', { name: 'Stores' })); fireEvent.click(screen.getByRole('button', { name: 'Sell Stone' }));
     const dialog = screen.getByRole('dialog', { name: 'Sell Stone' }); fireEvent.change(within(dialog).getByLabelText('Quantity to sell'), { target: { value: '0' } });
     expect(within(dialog).getByRole('button', { name: 'Confirm sale' })).toBeDisabled();
     fireEvent.change(within(dialog).getByLabelText('Quantity to sell'), { target: { value: '3' } }); fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm sale' }));
@@ -151,16 +171,18 @@ describe('Deep Claim authoritative hauls and recovery', () => {
   });
   it('preserves the authoritative upgrade price plus two operating credits before enabling confirmation', () => {
     wire.data!.company!.cash = 50;
-    const view = render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' })); fireEvent.click(screen.getByRole('button', { name: /Mine Office.*Level 1/ }));
+    const view = render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' })); fireEvent.click(screen.getByRole('button', { name: /Mine Office.*Level 1/ }));
     const dialog = screen.getByRole('dialog', { name: 'Mine Office' });
     expect(within(dialog).getByRole('button', { name: 'Confirm upgrade' })).toBeDisabled(); expect(dialog).toHaveTextContent('earn 2 more credits');
     wire.data = { ...wire.data!, company: { ...wire.data!.company!, cash: 52 } }; view.rerender(<Harness />);
     expect(within(dialog).getByRole('button', { name: 'Confirm upgrade' })).toBeEnabled(); expect(wire.upgrade).not.toHaveBeenCalled();
   });
-  it('never unlocks audio before an explicit settings gesture', async () => {
+  it('keeps audio opt-in through an explicit menu gesture and only enables sound from settings', async () => {
     render(<Harness />); expect(wire.unlock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); expect(wire.unlock).not.toHaveBeenCalled();
+    continueDeepClaimCompany(); await waitFor(() => expect(wire.unlock).toHaveBeenCalledOnce());
+    expect(wire.audioUpdate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); expect(wire.unlock).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('switch', { name: 'Enable sound' }));
-    await waitFor(() => expect(wire.unlock).toHaveBeenCalledOnce()); expect(wire.audioUpdate).toHaveBeenCalledWith({ master: true });
+    await waitFor(() => expect(wire.unlock).toHaveBeenCalledTimes(2)); expect(wire.audioUpdate).toHaveBeenCalledWith({ master: true });
   });
 });

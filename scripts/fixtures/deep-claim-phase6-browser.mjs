@@ -2,7 +2,7 @@
 // are the actual application implementations; probes only observe their APIs.
 export async function installDeepClaimRuntimeProbe(page) {
   await page.addInitScript(() => {
-    const runtime = { samples: [], controllers: [], contexts: [], contextCalls: [], visibilityMode: 'native' };
+    const runtime = { samples: [], menuSamples: [], controllers: [], contexts: [], contextCalls: [], visibilityMode: 'native' };
     Object.assign(window, { deepClaimRuntime: runtime });
     const Native = window.AudioContext || window.webkitAudioContext;
     if (Native) {
@@ -31,6 +31,18 @@ export async function installDeepClaimRuntimeProbe(page) {
         return Actual({...props,onDiagnostics:sample=>{
           const runtime=window.deepClaimRuntime;
           if(runtime){runtime.samples.push({...sample,observed_at:performance.now()});if(runtime.samples.length>400)runtime.samples.shift();}
+          props.onDiagnostics?.(sample);
+        }});
+      }`,
+  }));
+  const menuPath = '/src/components/deepClaim/menu/DeepClaimMenuBackdrop.tsx';
+  await page.route(url => url.pathname === menuPath && !url.searchParams.has('dc_qa_actual'), route => route.fulfill({
+    contentType: 'text/javascript', body: `import {DeepClaimMenuBackdrop as Actual} from '${menuPath}${actual}';
+      export * from '${menuPath}${actual}';
+      export function DeepClaimMenuBackdrop(props) {
+        return Actual({...props,onDiagnostics:sample=>{
+          const runtime=window.deepClaimRuntime;
+          if(runtime){runtime.menuSamples.push({...sample,observed_at:performance.now()});if(runtime.menuSamples.length>400)runtime.menuSamples.shift();}
           props.onDiagnostics?.(sample);
         }});
       }`,
@@ -134,8 +146,13 @@ export async function runPhase6Browser(h) {
     await page.getByRole('switch', { name: 'Music', exact: true }).click();
     await page.getByRole('switch', { name: 'Camp ambience', exact: true }).click();
 
-    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible(); await waitPaint(page);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('deep-claim-title').getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
     checked('runtime-saved-opt-in-never-autoplays-on-reload', await page.evaluate(() => window.deepClaimRuntime.contexts.length === 0));
+    // Continue is now an actual user gesture. Check silence on the title
+    // before pressing it, rather than incorrectly classifying its permitted
+    // gesture unlock as automatic playback.
+    await h.continueCompany(page); await waitPaint(page);
     await h.tab(page, 'Mine');
     const canvas = page.getByTestId('deep-claim-canvas'); await canvas.tap({ position: { x: 180, y: 120 } });
     await h.clearDialogs(page);

@@ -3,7 +3,7 @@ import { DEEP_CLAIM_AUDIO_BUDGET, DEEP_CLAIM_COMPOSITIONS, deepClaimAudioRegion,
 
 export interface DeepClaimAudioSettings {master:boolean;music:boolean;sfx:boolean;ambient:boolean;volume:number;musicVolume:number;ambientVolume:number;sfxVolume:number}
 export interface DeepClaimAudioScene {view:'surface'|'mine';depth:number;formation?:string|null}
-export type DeepClaimAudioCue='pickaxe'|'haul'|'deposit'|'building'|'upgrade'|'dispatch'|'complete'|'error';
+export type DeepClaimAudioCue='pickaxe'|'haul'|'deposit'|'building'|'upgrade'|'dispatch'|'complete'|'error'|'menu_select'|'menu_back'|'tutorial_step'|'tutorial_chapter'|'title';
 type Group='music'|'ambient'|'sfx';
 type Listener=()=>void;
 interface Voice {source:OscillatorNode|AudioBufferSourceNode;gain:GainNode;filter?:BiquadFilterNode;group:Group;category:SoundCategory;ambientRole?:'wind'|'drone'}
@@ -155,6 +155,10 @@ export class DeepClaimAudio {
   if(cue==='pickaxe'){const timbre=deepClaimMaterialTimbre(material);this.noiseVoice(gain*timbre.noise,.085,timbre.kind==='earth'?550:2400,'sfx',category);this.tone(timbre.fundamental,timbre.ring,gain*.65,'triangle',0,'sfx',category);this.tone(timbre.overtone,timbre.ring*1.2,gain*.25,'sine',.012,'sfx',category);}
   else if(cue==='haul'){this.noiseVoice(gain*.2,.075,550,'sfx',category);this.tone(110,.1,gain*.3,'triangle',0,'sfx',category);}
   else if(cue==='error'){this.tone(164.81,.14,gain*.5,'triangle',0,'sfx',category);this.tone(146.83,.18,gain*.4,'triangle',.12,'sfx',category);}
+  else if(cue==='menu_select'){this.tone(659.25,.055,gain*.22,'sine',0,'sfx',category);}
+  else if(cue==='menu_back'){this.tone(329.63,.07,gain*.25,'triangle',0,'sfx',category);}
+  else if(cue==='tutorial_step'){this.tone(440,.09,gain*.28,'sine',0,'sfx',category);this.tone(587.33,.12,gain*.24,'sine',.045,'sfx',category);}
+  else if(cue==='tutorial_chapter'||cue==='title'){[293.66,440,587.33].forEach((frequency,index)=>this.tone(frequency,.2,gain*.28,'sine',index*.065,'sfx',category));}
   else if(cue==='building'){this.tone(293.66,.14,gain*.5,'triangle',0,'sfx',category);this.tone(440,.2,gain*.4,'sine',.075,'sfx',category);}
   else {const notes=cue==='complete'||cue==='upgrade'?[293.66,392,440,587.33]:cue==='dispatch'?[220,293.66,392]:[392,440,587.33];notes.forEach((frequency,index)=>this.tone(frequency,.28,gain*.55,'triangle',index*.085,'sfx',category));}
  };

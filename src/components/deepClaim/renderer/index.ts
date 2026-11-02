@@ -1,3 +1,3 @@
-export { DeepClaimCanvas, type DeepClaimCanvasProps } from './DeepClaimCanvas';
+export { DeepClaimCanvas, type DeepClaimCanvasProps, type DeepClaimMapInteraction } from './DeepClaimCanvas';
 export { DeepClaimPortrait, DeepClaimResourceIcon, DeepClaimEquipmentIcon, DeepClaimInfrastructureIcon, DeepClaimDiscoveryIcon, DeepClaimBusinessIcon, type DeepClaimPortraitProps, type DeepClaimEquipmentIconProps, type DeepClaimInfrastructureIconProps, type DeepClaimDiscoveryIconProps, type DeepClaimBusinessIconProps } from './DeepClaimIcons';
 export { DeepClaimClubIcon, DeepClaimProjectArt, DeepClaimShowcaseArt, DeepClaimCompanyCrest, type DeepClaimClubIconProps, type DeepClaimProjectArtProps, type DeepClaimShowcaseArtProps, type DeepClaimCompanyCrestProps } from './DeepClaimClubArt';

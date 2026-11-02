@@ -6,6 +6,8 @@ import { DEEP_CLAIM_BUSINESS_METRICS, DEEP_CLAIM_RESEARCH_BRANCHES, type DeepCla
 import { DeepClaimBusinessIcon, DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
 import { ClaimBadge, ClaimButton, ClaimDialog, ClaimMeter, ClaimState } from './DeepClaimPrimitives';
 import { claimTimeLeft } from './display';
+import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
+import { DeepClaimPortrait } from './tutorial/DeepClaimPortrait';
 
 export type ClaimBusinessView = 'company' | 'research' | 'contracts' | 'records' | 'club';
 export interface DeepClaimBusinessActions {
@@ -23,17 +25,31 @@ export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, on
   onConfirmed: (title: string, description: string, snapshot: DeepClaimSnapshot) => void;
   now: number; onRefresh: () => void; busy: boolean; readOnly: boolean; clubContent?: ReactNode; initialResearchKey?: string;
 }) {
+  const tutorial = useDeepClaimTutorialEvents();
+  useTutorialView('tab_opened', { tab: 'office', view }, `office:${view}`);
   const [branch, setBranch] = useState<DeepClaimResearchBranch>(() => snapshot.business_catalog?.research.find(item => item.key === initialResearchKey)?.branch ?? 'excavation');
   const [contractPage, setContractPage] = useState(0);
   const [milestonePage, setMilestonePage] = useState(0);
   const [records, setRecords] = useState<'milestones' | 'operations'>('milestones');
-  const [review, setReview] = useState<Review | null>(() => initialResearchKey && snapshot.business_catalog?.research.some(item => item.key === initialResearchKey) ? { kind: 'research', key: initialResearchKey, revision: snapshot.revision } : null);
+  const [storedReview, setReview] = useState<Review | null>(() => initialResearchKey && snapshot.business_catalog?.research.some(item => item.key === initialResearchKey) ? { kind: 'research', key: initialResearchKey, revision: snapshot.revision } : null);
   const [error, setError] = useState('');
   const body = useRef<HTMLDivElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const openerLabel = useRef<string | null>(null);
   const previousReview = useRef<string | null>(null);
+  const previousView = useRef(view);
+  const internalView = useRef<ClaimBusinessView | null>(null);
+  const review = previousView.current === view || internalView.current === view ? storedReview : null;
   const reviewIdentity = review ? `${review.kind}:${review.key}` : null;
+  useLayoutEffect(() => {
+    if (internalView.current === view) {
+      previousView.current = view; internalView.current = null;
+      return;
+    }
+    if (previousView.current === view) return;
+    previousView.current = view; internalView.current = null;
+    setReview(null); setError('');
+  }, [view]);
   useLayoutEffect(() => {
     if (body.current) body.current.scrollTop = 0;
     if (reviewIdentity) reviewHeading.current?.focus({ preventScroll: true });
@@ -52,6 +68,9 @@ export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, on
   const research = review?.kind === 'research' ? catalog?.research.find(item => item.key === review.key) : undefined;
   const contract = review?.kind === 'contract' ? catalog?.contracts.find(item => item.key === review.key) : undefined;
   const milestone = review?.kind === 'milestone' ? catalog?.milestones.find(item => item.key === review.key) : undefined;
+  useTutorialView(research ? 'research_inspected' : contract ? 'contract_inspected' : 'milestone_inspected',
+    research || contract || milestone ? { record_id: research?.key ?? contract?.key ?? milestone?.key, view } : null,
+    `office-review:${reviewIdentity}`);
   const milestoneState = business?.milestones.find(item => item.key === milestone?.key);
   const eligible = catalog?.milestones.filter(item => { const state = business?.milestones.find(value => value.key === item.key); return state && !state.claimed_at && state.progress >= item.target; }) ?? [];
   const stale = !!review && review.revision < snapshot.revision;
@@ -73,7 +92,7 @@ export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, on
   }
   if (milestone && (!milestoneState || milestoneState.claimed_at || milestoneState.progress < milestone.target)) reasons.push(milestoneState?.claimed_at ? 'This company milestone was already claimed.' : 'The recorded company progress has not reached this milestone.');
   function inspect(kind: Review['kind'], key: string) { openerLabel.current = document.activeElement?.getAttribute('aria-label') ?? null; setReview({ kind, key, revision: snapshot.revision }); setError(''); }
-  function changeView(next: ClaimBusinessView) { setReview(null); setError(''); onView(next); }
+  function changeView(next: ClaimBusinessView) { internalView.current = next; setReview(null); setError(''); onView(next); }
   async function confirm() {
     if (!review || stale || reasons.length || readOnly || busy) return;
     setError('');
@@ -89,11 +108,11 @@ export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, on
   const milestones = catalog?.milestones ?? [];
   const currentMilestonePage = Math.min(milestonePage, Math.max(0, Math.ceil(milestones.length / 4) - 1));
   const activeDefinition = catalog?.research.find(item => item.key === active?.key);
-  return <ClaimDialog open onClose={onClose} busy={busy} title="Company Office" description={company ? `${company.name} · build a lasting operation` : 'Your company’s development desk.'} className={`dcl-business-dialog ${clubContent ? 'has-club' : ''}`}>
-    <div className="dcl-business-views" role="group" aria-label="Company office views">{(clubContent ? ['company', 'research', 'contracts', 'records', 'club'] as const : ['company', 'research', 'contracts', 'records'] as const).map(key => <button type="button" key={key} aria-pressed={view === key} disabled={busy} onClick={() => changeView(key)}>{key === 'company' ? 'Company' : key === 'research' ? 'Research' : key === 'contracts' ? 'Contracts' : key === 'records' ? 'Records' : 'Club'}{key === 'records' && eligible.length > 0 && <b>{eligible.length}</b>}</button>)}</div>
+  return <ClaimDialog open onClose={onClose} busy={busy} title="Company Office" description={company ? `${company.name} · build a lasting operation` : 'Your company’s development desk.'} className={`dcl-business-dialog ${clubContent ? 'has-club' : ''}`} headerActions={tutorial.available ? <div className="dct-adviser-actions"><TutorialHelp lessonId={view === 'research' ? 'business.research' : view === 'contracts' ? 'business.contracts' : view === 'records' ? 'business.milestones' : view === 'club' ? 'club.projects' : 'business.office'} label="Company Office" /><ClaimButton className="is-small dct-ask-gus" data-dc-tutorial="ask-gus" aria-label="Ask Gus" onClick={tutorial.askGus}><span className="dct-adviser-portrait" aria-hidden="true"><DeepClaimPortrait speaker="gus" expression="amused" decorative /></span><span className="dct-adviser-label">Ask Gus</span></ClaimButton></div> : undefined}>
+    <div className="dcl-business-views" role="group" aria-label="Company office views">{(clubContent ? ['company', 'research', 'contracts', 'records', 'club'] as const : ['company', 'research', 'contracts', 'records'] as const).map(key => <button type="button" key={key} data-dc-tutorial={key === 'club' || key === 'company' ? undefined : `office-${key}`} aria-pressed={view === key} disabled={busy} onClick={() => changeView(key)}>{key === 'company' ? 'Company' : key === 'research' ? 'Research' : key === 'contracts' ? 'Contracts' : key === 'records' ? 'Records' : 'Club'}{key === 'records' && eligible.length > 0 && <b>{eligible.length}</b>}</button>)}</div>
     <div ref={body} className={`dcl-business-body ${view === 'club' ? 'is-club-view' : ''}`}>
       {view === 'club' && clubContent ? clubContent : !catalog || !business || !company ? <ClaimState title="The office needs a fresh report" onRetry={onRefresh}>Refresh the company before managing development.</ClaimState> : review ? <>
-        <div className="dcl-business-detail-heading"><DeepClaimBusinessIcon kind={research ? 'research' : contract ? 'contract' : 'milestone'} decorative /><div><ClaimBadge>{research ? `Tier ${research.tier} research` : contract ? `Tier ${contract.tier} delivery` : 'Company milestone'}</ClaimBadge><h3 ref={reviewHeading} tabIndex={-1}>{research?.name ?? contract?.name ?? milestone?.name}</h3></div></div>
+        <div className="dcl-business-detail-heading" data-dc-tutorial={research ? 'research-review' : contract ? 'contract-review' : 'milestone-review'}><DeepClaimBusinessIcon kind={research ? 'research' : contract ? 'contract' : 'milestone'} decorative /><div><ClaimBadge>{research ? `Tier ${research.tier} research` : contract ? `Tier ${contract.tier} delivery` : 'Company milestone'}</ClaimBadge><h3 ref={reviewHeading} tabIndex={-1}>{research?.name ?? contract?.name ?? milestone?.name}</h3></div></div>
         <p className="dcl-note">{research?.description ?? contract?.description ?? milestone?.description}</p>
         {research && <>
           <div className="dcl-business-effect"><h4>Permanent benefit for future work</h4><ResearchEffect bonuses={research.stat_bonuses} processing={research.processing_speed_percent} />{research.unlocks_recipes.length > 0 && <p>New recipes: {research.unlocks_recipes.map(key => snapshot.recipes?.find(item => item.key === key)?.name ?? catalog.recipes.find(item => item.key === key)?.name ?? key).join(', ')}.</p>}</div>
@@ -113,7 +132,7 @@ export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, on
         {milestone && <><div className="dcl-trade-summary"><span>{METRIC_NAMES[milestone.metric]}<small>{milestoneState?.progress ?? 0} / {milestone.target} recorded</small></span><strong>{milestone.reward} cr</strong></div><ClaimMeter value={Math.min(milestone.target, milestoneState?.progress ?? 0)} max={milestone.target} label={`${milestone.name} recorded progress`} /><p className="dcl-note">A once-only company credit award for recorded work. Past qualifying activity counts; it is never paid again.</p></>}
         {reasons.length > 0 && <ul className="dcl-blocked-reasons">{reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}{stale && <p className="dcl-note">Your company changed. Review the current report before confirming.</p>}{readOnly && <p className="dcl-note">Reconnect or confirm the saved action before making another office decision.</p>}{error && <p className="dcl-error" role="alert">{error}</p>}
       </> : view === 'company' ? <>
-        <div className="dcl-business-company"><DeepClaimBusinessIcon kind="office" decorative /><div><span className="dcl-eyebrow">YOUR FRONTIER COMPANY</span><h3>{company.name}</h3><p>One claim. Permanent progress.</p></div></div>
+        <div className="dcl-business-company" data-dc-tutorial="office-company"><DeepClaimBusinessIcon kind="office" decorative /><div><span className="dcl-eyebrow">YOUR FRONTIER COMPANY</span><h3>{company.name}</h3><p>One claim. Permanent progress.</p></div></div>
         <div className="dcl-business-kpis"><span><Coins size={15} aria-hidden="true" /><strong>{company.cash.toLocaleString()}</strong><small>Company credits</small></span><span><GraduationCap size={15} aria-hidden="true" /><strong>{business.stats.completed_research}/{catalog.research.length}</strong><small>Research complete</small></span><span><Package size={15} aria-hidden="true" /><strong>{business.stats.completed_contracts}/{contracts.length}</strong><small>Orders delivered</small></span></div>
         {active && <ActiveResearch order={active} name={activeDefinition?.name ?? active.key} now={now} onRefresh={onRefresh} />}
         {eligible.length > 0 && <ClaimButton primary onClick={() => { changeView('records'); setRecords('milestones'); inspect('milestone', eligible[0].key); }}><ShieldCheck size={16} aria-hidden="true" />Review milestone · {eligible.length} ready</ClaimButton>}
@@ -132,7 +151,7 @@ export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, on
         {!tradingBuilding?.level && <section className="dcl-card dcl-capacity-callout"><div><strong>Build the Trading Post</strong><p>Its level opens delivery tiers 1, 2 and 3.</p></div><ClaimButton disabled={busy} onClick={() => onBuild('trading_post')}>Build Trading Post</ClaimButton></section>}
         <div className="dcl-contract-list">{contracts.slice(currentContractPage * 4, currentContractPage * 4 + 4).map(item => <section className="dcl-card dcl-contract-card" key={item.key}><header><DeepClaimBusinessIcon kind="contract" decorative /><div><h4>{item.name}</h4><p>Tier {item.tier} · {item.reward} cr</p></div><ClaimBadge tone={completedContracts.has(item.key) ? 'green' : 'brass'}>{completedContracts.has(item.key) ? 'Delivered' : 'Order'}</ClaimBadge></header><BusinessMaterials resources={item.inputs} stock={snapshot.resources} compact /><ClaimButton className="is-small" onClick={() => inspect('contract', item.key)} aria-label={`Review order ${item.name}`}>Review order<ArrowRight size={13} aria-hidden="true" /></ClaimButton></section>)}</div><OfficePagination page={currentContractPage} total={contracts.length} size={4} label="orders" onPage={setContractPage} />
       </> : <>
-        <div className="dcl-segment" role="group" aria-label="Company records"><button type="button" aria-pressed={records === 'milestones'} onClick={() => setRecords('milestones')}>Milestones</button><button type="button" aria-pressed={records === 'operations'} onClick={() => setRecords('operations')}>Operations</button></div>
+        <div className="dcl-segment" role="group" aria-label="Company records"><button type="button" aria-pressed={records === 'milestones'} onClick={() => setRecords('milestones')}>Milestones</button><button type="button" aria-pressed={records === 'operations'} onClick={() => { setRecords('operations'); tutorial.emit('tab_opened', { tab: 'office', view: 'operations' }); }}>Operations</button></div>
         {records === 'milestones' ? <><div className="dcl-milestone-list">{milestones.slice(currentMilestonePage * 4, currentMilestonePage * 4 + 4).map(item => { const state = business.milestones.find(value => value.key === item.key); const progress = state?.progress ?? 0; return <section className="dcl-card dcl-milestone-card" key={item.key}><header><DeepClaimBusinessIcon kind="milestone" decorative /><div><h4>{item.name}</h4><p>{item.description}</p></div><ClaimBadge tone={state?.claimed_at ? 'green' : progress >= item.target ? 'brass' : 'muted'}>{state?.claimed_at ? 'Claimed' : progress >= item.target ? 'Ready' : `${progress}/${item.target}`}</ClaimBadge></header><ClaimMeter value={Math.min(item.target, progress)} max={item.target} label={`${item.name} recorded progress`} /><ClaimButton className="is-small" onClick={() => inspect('milestone', item.key)} aria-label={`Review milestone ${item.name}`}>{state?.claimed_at ? 'View record' : `Review · ${item.reward} cr`}</ClaimButton></section>; })}</div><OfficePagination page={currentMilestonePage} total={milestones.length} size={4} label="milestones" onPage={setMilestonePage} /><p className="dcl-note">Progress comes from recorded company work, including qualifying activity before this office opened. Awards require one explicit claim.</p><Link className="dcl-button" to="/feats?goal=deep_claim_shifts">View DH Feats</Link></> : <><div className="dcl-business-stat-grid">{DEEP_CLAIM_BUSINESS_METRICS.map(key => <span key={key}><strong>{business.stats[key].toLocaleString()}{key === 'max_completed_mining_depth' ? 'm' : ''}</strong><small>{METRIC_NAMES[key]}</small></span>)}</div><p className="dcl-note">Lifetime totals from completed work and collected production. Staged output and uncompleted jobs are excluded.</p></>}
       </>}
     </div>

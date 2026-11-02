@@ -1,11 +1,13 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ArrowLeft, ArrowRight, BookOpen, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import type { createDeepClaimAudio } from '@/lib/deepClaim/audio';
 import { ClaimButton, ClaimDialog } from './DeepClaimPrimitives';
+import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
 
 export interface ClaimVisualPreferences { reducedMotion: boolean; reducedGraphics: boolean }
-export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, refreshing, serverTime, industry = false, field = false, business = false, deep = false }: {
+export interface ClaimSettingsViewRequest { id: string; view: 'sound' | 'visuals' | 'updates' }
+export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, refreshing, serverTime, industry = false, field = false, business = false, deep = false, onOpenJournal, onMainMenu, viewRequest }: {
   audio: ReturnType<typeof createDeepClaimAudio>;
   visuals: ClaimVisualPreferences;
   onVisualsChange: (patch: Partial<ClaimVisualPreferences>) => void;
@@ -16,10 +18,23 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
   field?: boolean;
   business?: boolean;
   deep?: boolean;
+  onOpenJournal?: () => void;
+  onMainMenu?: () => void;
+  viewRequest?: ClaimSettingsViewRequest;
 }) {
+  const tutorial = useDeepClaimTutorialEvents();
   const [guide, setGuide] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [view, setView] = useState<'sound' | 'visuals' | 'updates'>('sound');
+  const handledView = useRef<string | null>(null);
+  useEffect(() => {
+    if (!viewRequest || handledView.current === viewRequest.id || viewRequest.view === 'updates' && !business) return;
+    handledView.current = viewRequest.id;
+    setGuide(false); setView(viewRequest.view);
+  }, [viewRequest, business]);
+  useTutorialView('settings_opened', { view }, `settings:${view}`);
+  const openJournal = onOpenJournal ?? (tutorial.available ? () => tutorial.openJournal() : undefined);
+  const mainMenu = onMainMenu ?? tutorial.mainMenu;
   const guideHeading = useRef<HTMLHeadingElement>(null);
   const id = useId();
   const [soundError, setSoundError] = useState('');
@@ -57,12 +72,13 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
     ...(deep ? [{ title: 'Work the Ancient Deep', text: 'Deep Cutting Systems research and Mine Shaft level 6 open supported depth to 999m. The powered lift saves travel only on the known, constructed central shaft. Hot mining reduces productive work, not cargo or crew safety. Engineering, installed ventilation and working crew heat shields reduce the penalty. Survey and installation work are unaffected by heat.' }] : []),
   ];
   const page = Math.min(guidePage, chapters.length - 1);
+  useTutorialView('guide_reviewed', guide ? { view: 'field_guide', record_id: `page:${page}` } : null, `field-guide:${guide}:${page}`);
   const previousGuidePage = useRef(page);
   useLayoutEffect(() => { if (guide && previousGuidePage.current !== page) guideHeading.current?.focus({ preventScroll: true }); previousGuidePage.current = page; }, [guide, page]);
   function turnGuide(next: number) { setGuidePage(next); }
   return <div className="dcl-settings">
-    <div className="dcl-section-heading"><div><h2>Camp settings</h2><p>Make the frontier feel right.</p></div></div>
-    <div className="dcl-settings-tabs" role="tablist" aria-label="Camp settings views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = views.findIndex(item => item.key === view); const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + views.length) % views.length; setView(views[next].key); document.getElementById(`${id}-${views[next].key}`)?.focus(); }}>{views.map(item => <button key={item.key} type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-settings-panel`} aria-selected={view === item.key} tabIndex={view === item.key ? 0 : -1} onClick={() => setView(item.key)}>{item.label}</button>)}</div>
+    <div className="dcl-section-heading"><div><h2>Camp settings</h2><p>Make the frontier feel right.</p></div><TutorialHelp lessonId={view === 'updates' ? 'club.updates' : 'settings.sound'} label={view === 'updates' ? 'Camp updates' : 'Sound and visuals'} /></div>
+    <div className="dcl-settings-tabs" role="tablist" aria-label="Camp settings views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = views.findIndex(item => item.key === view); const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + views.length) % views.length; setView(views[next].key); document.getElementById(`${id}-${views[next].key}`)?.focus(); }}>{views.map(item => <button key={item.key} data-dc-tutorial={`settings-${item.key}`} type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-settings-panel`} aria-selected={view === item.key} tabIndex={view === item.key ? 0 : -1} onClick={() => setView(item.key)}>{item.label}</button>)}</div>
     <div className="dcl-settings-panel dcl-view-enter" key={view} role="tabpanel" id={`${id}-settings-panel`} aria-labelledby={`${id}-${view}`}>
       {view === 'sound' ? <section className="dcl-card dcl-settings-group" aria-label="Sound settings">
         <h3>{settings.master ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}Frontier sound</h3>
@@ -72,9 +88,9 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
         <div className="dcl-sound-bus"><SettingToggle label="Mining effects" checked={settings.sfx} onChange={() => audio.updateSettings({ sfx: !settings.sfx })} /><VolumeControl label="Effects mix" accessibleLabel="Mining effects volume" value={settings.sfxVolume ?? 1} onChange={sfxVolume => audio.updateSettings({ sfxVolume })} /></div>
         <div className="dcl-sound-bus"><SettingToggle label="Camp ambience" checked={settings.ambient} onChange={() => audio.updateSettings({ ambient: !settings.ambient })} /><VolumeControl label="Ambience mix" accessibleLabel="Camp ambience volume" value={settings.ambientVolume ?? 1} onChange={ambientVolume => audio.updateSettings({ ambientVolume })} /></div>
         {soundError && <p className="dcl-error" role="alert">{soundError}</p>}
-      </section> : view === 'visuals' ? <section className="dcl-card dcl-settings-group" aria-label="Visual settings"><h3>Visual comfort</h3><SettingToggle label="Reduced motion" description="Fewer animated details. The crew still progresses." checked={visuals.reducedMotion} onChange={() => onVisualsChange({ reducedMotion: !visuals.reducedMotion })} /><SettingToggle label="Reduced graphics" description="Lighter rendering for smaller devices." checked={visuals.reducedGraphics} onChange={() => onVisualsChange({ reducedGraphics: !visuals.reducedGraphics })} /></section> : <DeepClaimNotificationSetting />}
+      </section> : view === 'visuals' ? <section className="dcl-card dcl-settings-group" aria-label="Visual settings"><h3>Visual comfort</h3>{typeof tutorial.commentaryEnabled === 'boolean' && tutorial.onCommentaryChange && <SettingToggle label="Gus commentary" description="Optional chapter conversations. Tutorial guidance and manual Ask Gus remain available." checked={tutorial.commentaryEnabled} onChange={() => tutorial.onCommentaryChange?.(!tutorial.commentaryEnabled)} />}<SettingToggle label="Reduced motion" description="Fewer animated details. The crew still progresses." checked={visuals.reducedMotion} onChange={() => onVisualsChange({ reducedMotion: !visuals.reducedMotion })} /><SettingToggle label="Reduced graphics" description="Lighter rendering for smaller devices." checked={visuals.reducedGraphics} onChange={() => onVisualsChange({ reducedGraphics: !visuals.reducedGraphics })} /></section> : <DeepClaimNotificationSetting />}
     </div>
-    <section className="dcl-card dcl-settings-actions"><ClaimButton onClick={() => { setGuidePage(0); setGuide(true); }}><BookOpen size={16} aria-hidden="true" />Field guide</ClaimButton><ClaimButton onClick={onRefresh} pending={refreshing}><RefreshCw size={16} aria-hidden="true" />Refresh camp</ClaimButton>{serverTime && <p>Last server check: {new Date(serverTime).toLocaleString()}</p>}</section>
+    <section className="dcl-card dcl-settings-actions">{openJournal && <ClaimButton data-dc-tutorial="training-journal" onClick={openJournal}><BookOpen size={16} aria-hidden="true" />Training Journal</ClaimButton>}<ClaimButton onClick={() => { setGuidePage(0); setGuide(true); }}><BookOpen size={16} aria-hidden="true" />Field guide</ClaimButton><ClaimButton onClick={onRefresh} pending={refreshing}><RefreshCw size={16} aria-hidden="true" />Refresh camp</ClaimButton>{mainMenu && <ClaimButton data-dc-tutorial="settings-main-menu" onClick={mainMenu}>Return to Main Menu</ClaimButton>}{mainMenu && <p>Your company and ongoing shifts stay saved. Unconfirmed actions must be resolved before leaving.</p>}{serverTime && <p>Last server check: {new Date(serverTime).toLocaleString()}</p>}</section>
     <ClaimDialog open={guide} onClose={() => setGuide(false)} title="The prospector’s field guide" description="A small crew. A lasting claim." className="dcl-guide-dialog">
       <div className="dcl-guide-progress" role="status">Page {page + 1} of {chapters.length}</div>
       <section className="dcl-guide-page dcl-view-enter" key={page}><BookOpen size={28} aria-hidden="true" /><h3 ref={guideHeading} tabIndex={-1}>{chapters[page].title}</h3><p>{chapters[page].text}</p></section>

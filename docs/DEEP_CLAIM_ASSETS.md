@@ -2,7 +2,7 @@
 
 Deep Claim uses an original industrial-frontier identity: a working company and an inhabited mine, with restrained pixel geometry, warm metal, worn earth and readable equipment. The game should feel physical and useful, with ore and the active crew carrying the brightest accents.
 
-This is the art direction and Phase 1–7 asset contract. Phase 6 introduces **Frontier Pixel Pack v1**, compiled from original source-authored pixel primitives and detail definitions, plus five composed Web Audio miniatures. Phase 7 adds a separate Ancient Deep atlas and one regional miniature while preserving v1 bytes, its compiler inputs and the five earlier compositions. The implementation ledger records actual verification and release status. These are original project assets, not commissioned commercial painting or recorded orchestration. Existing local painters remain a functional fallback when atlas loading or decoding fails.
+This is the art direction and Phase 1–7 asset contract, extended by the cinematic title and Training Journal. Phase 6 introduces **Frontier Pixel Pack v1**, compiled from original source-authored pixel primitives and detail definitions, plus five composed Web Audio miniatures. Phase 7 adds a separate Ancient Deep atlas and one regional miniature while preserving v1 bytes, its compiler inputs and the five earlier compositions. The title and narrative portraits reuse this identity without rebaking either atlas. The implementation ledger records actual verification and release status. These are original project assets, not commissioned commercial painting or recorded orchestration. Existing local painters remain a functional fallback when atlas loading or decoding fails.
 
 ## Palette and geometry
 
@@ -47,6 +47,9 @@ The game can retain its own dark mine identity within either application theme. 
 | `src/components/deepClaim/renderer/DeepClaimClubArt.tsx` / `clubSprites.ts` | Static sanitized club emblems, project illustrations, identity crests and specimen cases. |
 | `src/lib/deepClaim/audioScore.ts` | Six original written MIDI arrangements, including the additive Ancient Deep score, material timbres and explicit audio budgets. |
 | `src/lib/deepClaim/audio.ts` | Gesture-gated Web Audio score, ambience and cues with independent gain buses and lifecycle cleanup. |
+| `src/components/deepClaim/menu/illustratedScene.ts` / `DeepClaimMenuBackdrop.tsx` | Fixed original title/founding composition with bounded cached layers; no company/world input. |
+| `src/components/deepClaim/tutorial/DeepClaimPortrait.tsx` | Original local pixel SVG portraits for Gus, Mara, Ivo and Tessa, with six expression identities. |
+| `src/lib/deepClaim/tutorial/dialogue.ts` | Structured original dialogue lines, speaker/expression identities and stable text keys. |
 
 Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock-image, runtime image-generation or external audio-service dependencies in this pack.
 
@@ -72,6 +75,18 @@ The current compiled pack has 2,255 registered frame references sharing 454 uniq
 Reproduce v1 with `node scripts/build-deep-claim-atlas.mjs`; verify its committed outputs without rewriting them with `node scripts/build-deep-claim-atlas.mjs --check`. The router executes the archived original compiler against its frozen inputs, retaining original source fingerprints and output bytes even when current gameplay gains new materials. Build/check the separate add-on with `node scripts/build-deep-claim-addon.mjs` and `node scripts/build-deep-claim-addon.mjs --check`.
 
 The independent `node scripts/check-deep-claim-presentation.mjs --phase=6` retains the original strict eighteen-source presentation gate. For the authorized Ancient Deep rule extension, use `node scripts/check-deep-claim-presentation.mjs --phase=7`: it checks seven old migration hashes and five old canonical catalogs, allows only the additive `0700` migration, freezes the original v1 pack/PNG/metadata and archived compiler inputs, then audits both PNGs' dimensions, bounded decompression, byte budgets and sprite bounds. It does not silently rewrite the Phase 6 baseline to excuse new rules. These source/art checks do not replace browser decoding, functional gameplay tests or physical-device measurement.
+
+For the metadata-only menu/journal release, `--phase=8` additionally permits the `0800` educational migration while preserving the eight prior sources and existing economic rule/catalog/art fingerprints. It does not authorize another gameplay rebalance or an atlas rewrite.
+
+## Cinematic title and narrative portraits
+
+The title is an explicitly illustrative 960×760 logical scene. Fixed scenery combines the mine office, shaft, warehouse, workshop, distant silhouettes, rail cart, moving lift, workers, lanterns and authored underground seams. These cosmetic tunnels are not the player's geology. No snapshot, world seed, company map or pending reward enters the backdrop API.
+
+The composition reuses original painters and available v1 art with separate sky/ground caches, gentle parallax and restrained activity. One display Canvas and two cached bitmaps each have at most one million backing pixels; normal DPR is capped at two and reduced graphics at one. The existing scheduler targets thirty paints per second or twelve in reduced graphics, while reduced motion paints a static composition on invalidation. Hidden/inactive scenes stop scheduling; unmount releases observers, frames and bitmap storage. An original SVG scene remains available if Canvas or asset drawing fails, and menu controls remain independent of illustration success. These are source budgets rather than a physical-device performance measurement.
+
+Gus, Mara, Ivo and Tessa have original 96×112 pixel SVG portraits. Neutral, amused, skeptical, excited, concerned and proud use authored facial details, with additional Gus poses. Named speakers and readable text remain the accessible identity; decorative duplicate portraits are hidden from assistive technology. The portraits are source-authored vector pixel geometry, with no remote image service, stock likeness, runtime AI generation or new workforce record. The existing atlas v1/v2 images and compiled metadata remain byte-preserved.
+
+Dialogue advances immediately by touch, mouse or keyboard and can be skipped or revisited in history. There is no forced typewriter wait or recorded voice claim. Optional Gus commentary belongs to the company Training Journal; manual help remains available. See [the menu/tutorial guide](DEEP_CLAIM_MENU_TUTORIAL.md) for event, persistence and current verification details.
 
 ## Phase 7 Ancient Deep add-on
 
@@ -148,7 +163,7 @@ Phase 1 introduced a short synthesized frontier motif and mining/company cues. P
 
 Phase 7 adds the Ancient Deep miniature without changing the five earlier composition fingerprints. These are adaptive looping arrangements, with one scene score at a time. Scene selection uses the visible surface/mine view and public depth, with known formation ambience only. Stone, earth, carbon, metal and crystal material families have distinct mining timbres; disclosed nickel and sulfur receive the new material treatments. Unknown or undisclosed materials use a generic stone cue.
 
-Audio starts only after a user gesture and opt-in. Master volume is supplemented by independent `musicVolume`, `ambientVolume` and `sfxVolume` settings between zero and one. Older saved settings default each new bus to one and retain their existing master choice and volume. Existing application master/category gates remain authoritative. Menus pause scene music/ambience while permitted source-confirmed interface/reward cues can remain available. Hidden/inactive pages, mute and disposal stop scheduling and release voices; a delayed context resume cannot revive muted or disposed playback.
+Audio starts only after a user gesture and opt-in. Master volume is supplemented by independent `musicVolume`, `ambientVolume` and `sfxVolume` settings between zero and one. Older saved settings default each new bus to one and retain their existing master choice and volume. Existing application master/category gates remain authoritative. In-game occlusion pauses background music/ambience while permitted interface/reward cues can remain available; the title reuses the existing surface arrangement. Menu selection/back, title and tutorial step/chapter cues share the existing controller, buses and voice budget. Hidden/inactive pages, mute and disposal stop scheduling and release voices; a delayed context resume cannot revive muted or disposed playback.
 
 The total cap remains fourteen voices, with at most eight music and three ambient voices. Music scheduling uses a 0.65-second lookahead at 250ms intervals; ambient-only scheduling sleeps for 1,000ms between checks. A muted or background-paused scene has no continuing music/ambient interval. One second of mono float noise is generated locally: 192,000 bytes at a 48kHz context rate, with actual buffer size proportional to the browser's sample rate. This is a concrete memory description rather than a physical-device performance guarantee.
 

@@ -1,0 +1,10 @@
+.dcl-dialog.dct-library-dialog{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);width:calc(100vw - 12px);max-width:960px;padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column}
+.dct-library-dialog>div:first-child,.dct-dialogue-dialog>div:first-child{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.dcl-dialog.dct-library-dialog>button.absolute,.dcl-dialog.dct-dialogue-dialog>button.absolute{display:none}
+.dct-library-dialog>section{flex:1;min-height:0}
+.dcl-dialog.dct-dialogue-dialog{padding:0;gap:0;max-width:640px;overflow:auto;background:transparent;border:0;box-shadow:none}
+.dct-director-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.dct-director-actions>*{flex:1;font-size:11px}
+.dct-sync-note{font-size:10px;line-height:1.5;color:var(--dct-gold)}
+.dcm-settings-dialog .dcl-settings>.dcl-section-heading{display:none}
+@media(min-width:800px){.dcl-dialog.dct-library-dialog{height:min(820px,calc(100dvh - 24px));max-height:calc(100dvh - 24px)}}
+@media(forced-colors:active){.dcl-dialog.dct-dialogue-dialog{background:Canvas;color:CanvasText}}

@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 export function createDeepClaimMiddleware(token) {
   const runs = new Map();
   async function runState(key) {
-    if (!runs.has(key)) runs.set(key, createDeepClaimDatabase({ notificationPreferences: true }).then(database => ({ database, calls: [], failures: new Map(), holds: new Map() })));
+    if (!runs.has(key)) runs.set(key, createDeepClaimDatabase({ notificationPreferences: true, tutorial: true }).then(database => ({ database, calls: [], failures: new Map(), holds: new Map() })));
     return runs.get(key);
   }
   function reply(response, body, status = 200) {

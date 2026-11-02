@@ -50,7 +50,7 @@ describe('Deep Claim existing application integration', () => {
 
   it('uses the current three-step onboarding and available icon map', () => {
     const intro = getOnboarding('deep-claim');
-    expect(intro).toEqual(expect.objectContaining({ featureType: 'game', featureKey: 'deep-claim', version: 1 }));
+    expect(intro).toEqual(expect.objectContaining({ featureType: 'game', featureKey: 'deep-claim', version: 2 }));
     expect(intro?.onboardingSteps).toHaveLength(3);
     expect(intro?.primaryCta.route).toBe('/deep-claim');
     expect(intro?.onboardingSteps[1].body).toMatch(/exploration or extraction/);

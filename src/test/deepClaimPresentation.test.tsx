@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { StrictMode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DeepClaimPage from '@/pages/DeepClaimPage';
+import { continueDeepClaimCompany } from './fixtures/deepClaimTutorialMock';
 import { ClaimDialog, ClaimDialogScope } from '@/components/deepClaim/DeepClaimPrimitives';
 import { DeepClaimSettings } from '@/components/deepClaim/DeepClaimSettings';
 import { discoveryRevealKey, markDiscoveryRevealed, nextDiscoveryReveal, observeDiscoveryReveals, readDiscoveryReveals, saveDiscoveryReveals } from '@/components/deepClaim/discoveryReveals';
@@ -15,9 +16,12 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: wire.us
 vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: { id: wire.clubId }, loading: false }) }));
 vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false, isInstalled: () => true }) }));
 vi.mock('@/hooks/useNotificationPreferences', () => ({ useNotificationPreferences: () => ({ prefs: { deep_claim: true }, loading: false, saving: false, error: null, update: vi.fn(), refresh: vi.fn() }) }));
+// Pixel backdrop lifecycle is covered separately; keep these economic suites renderer-free.
+vi.mock('@/components/deepClaim/menu/DeepClaimMenuBackdrop', () => ({ DeepClaimMenuBackdrop: () => null }));
+vi.mock('@/hooks/useDeepClaimTutorial', async () => ({ useDeepClaimTutorial: (await import('./fixtures/deepClaimTutorialMock')).useDeepClaimTutorialMock }));
 vi.mock('@/hooks/useDeepClaim', () => ({ useDeepClaim: () => ({ data: wire.data, readOnly: wire.readOnly, busy: false, refreshing: false, error: null, pendingAction: null, serverNow: () => Date.parse(wire.data!.server_now), refresh: wire.refresh, resolveDiscovery: wire.resolve }) }));
 vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: ({ active }: { active: boolean }) => <div data-testid="claim-canvas" data-active={active} /> }));
-vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const value = { master: false, music: true, sfx: true, ambient: true, volume: .65, musicVolume: 1, ambientVolume: 1, sfxVolume: 1 }; const controller = { disposed: false, started: false, getSnapshot: () => value, subscribe: () => () => {}, updateSettings: wire.update, unlock: async () => { if (controller.disposed) return false; controller.started = true; return wire.unlock(); }, setBackgroundPaused: wire.pause, play: wire.play, dispose: () => { controller.disposed = true; } }; wire.controllers.push(controller); return controller; } }));
+vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const value = { master: false, music: true, sfx: true, ambient: true, volume: .65, musicVolume: 1, ambientVolume: 1, sfxVolume: 1 }; const controller = { disposed: false, started: false, getSnapshot: () => value, subscribe: () => () => {}, setScene: vi.fn(), updateSettings: wire.update, unlock: async () => { if (controller.disposed) return false; controller.started = true; return wire.unlock(); }, setBackgroundPaused: wire.pause, play: wire.play, dispose: () => { controller.disposed = true; } }; wire.controllers.push(controller); return controller; } }));
 function find(overrides: Partial<DeepClaimDiscovery> = {}): DeepClaimDiscovery { return { id: 'new-find', job_id: 'shift', kind: 'banded_geode', name: 'Banded Geode', quality: 'fine', detail: 'Pale quartz bands, confirmed by the returning crew.', sale_value: 42, salvage: { quartz: 2 }, x: 47, y: 3, status: 'pending', discovered_at: '2026-11-01T12:01:00Z', resolved_at: null, ...overrides }; }
 function App() { return <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DeepClaimPage /></MemoryRouter>; }
 beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.data = phaseThreeSnapshot(); wire.data.server_now = '2026-11-01T12:00:00Z'; wire.readOnly = false; wire.userId = 'player'; wire.clubId = 'club'; wire.controllers = []; wire.unlock.mockResolvedValue(true); });
@@ -60,7 +64,7 @@ describe('Source-backed rare-find presentation receipts', () => {
 });
 
 describe('Camp settings and guide navigation', () => {
-  function Settings() { const value = { master: false, music: true, ambient: true, sfx: true, volume: .65, musicVolume: 1, ambientVolume: 1, sfxVolume: 1 }; const audio = { getSnapshot: () => value, subscribe: () => () => {}, updateSettings: wire.update, unlock: wire.unlock } as unknown as ReturnType<typeof createDeepClaimAudio>; return <DeepClaimSettings audio={audio} visuals={{ reducedGraphics: false, reducedMotion: false }} onVisualsChange={wire.update} onRefresh={wire.refresh} refreshing={false} industry field business />; }
+  function Settings() { const value = { master: false, music: true, ambient: true, sfx: true, volume: .65, musicVolume: 1, ambientVolume: 1, sfxVolume: 1 }; const audio = { getSnapshot: () => value, subscribe: () => () => {}, setScene: vi.fn(), updateSettings: wire.update, unlock: wire.unlock } as unknown as ReturnType<typeof createDeepClaimAudio>; return <DeepClaimSettings audio={audio} visuals={{ reducedGraphics: false, reducedMotion: false }} onVisualsChange={wire.update} onRefresh={wire.refresh} refreshing={false} industry field business />; }
   it('keeps sound opt-in and three independent mix controls without changing other buses', async () => {
     render(<Settings />); expect(wire.unlock).not.toHaveBeenCalled();
     fireEvent.change(screen.getByRole('slider', { name: 'Music volume' }), { target: { value: '35' } });
@@ -85,12 +89,12 @@ describe('Camp settings and guide navigation', () => {
 
 describe('Dialog focus and scene suspension', () => {
   it('keeps its owned audio alive through StrictMode replay and disposes the old controller on account change and real unmount', async () => {
-    const view = render(<StrictMode><App /></StrictMode>); await Promise.resolve();
+    const view = render(<StrictMode><App /></StrictMode>); continueDeepClaimCompany(); await Promise.resolve();
     fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); fireEvent.click(screen.getByRole('switch', { name: 'Enable sound' }));
-    await waitFor(() => expect(wire.unlock).toHaveBeenCalledOnce()); const first = wire.controllers.find(controller => controller.started)!; expect(first.disposed).toBe(false);
+    await waitFor(() => expect(wire.unlock).toHaveBeenCalledTimes(2)); const first = wire.controllers.find(controller => controller.started)!; expect(first.disposed).toBe(false);
     wire.userId = 'next-player'; wire.data = { ...phaseThreeSnapshot(), company: { ...wire.data!.company!, id: 'next-company', user_id: wire.userId } }; view.rerender(<StrictMode><App /></StrictMode>);
-    await waitFor(() => expect(first.disposed).toBe(true)); fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); fireEvent.click(screen.getByRole('switch', { name: 'Enable sound' }));
-    await waitFor(() => expect(wire.unlock).toHaveBeenCalledTimes(2)); const second = wire.controllers.find(controller => controller.started && controller !== first)!; expect(second.disposed).toBe(false);
+    await waitFor(() => expect(first.disposed).toBe(true)); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('tab', { name: 'Settings' })); fireEvent.click(screen.getByRole('switch', { name: 'Enable sound' }));
+    await waitFor(() => expect(wire.unlock).toHaveBeenCalledTimes(4)); const second = wire.controllers.find(controller => controller.started && controller !== first)!; expect(second.disposed).toBe(false);
     view.unmount(); await Promise.resolve(); expect(second.disposed).toBe(true);
   });
   it('focuses a readable dialog heading and restores the explicit opener on close', async () => {
@@ -104,26 +108,26 @@ describe('Dialog focus and scene suspension', () => {
     view.unmount(); expect(onOpen).toHaveBeenLastCalledWith(false);
   });
   it('reveals a new authoritative rare find once and permits only manual inspection or dismissal', async () => {
-    const view = render(<App />); expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument();
+    const view = render(<App />); continueDeepClaimCompany(); expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument();
     wire.data = { ...wire.data!, revision: 4, server_now: '2026-11-01T12:02:00Z', discoveries: [find()], discovery_summary: { pending: 1, kept: 0, sold: 0, salvaged: 0 } }; view.rerender(<App />);
     const reveal = await screen.findByRole('dialog', { name: 'A find from the deep' }); expect(reveal).toHaveTextContent('Banded Geode'); expect(screen.getByTestId('claim-canvas')).toHaveAttribute('data-active', 'false'); expect(wire.pause).toHaveBeenLastCalledWith(true); expect(wire.resolve).not.toHaveBeenCalled();
     fireEvent.click(within(reveal).getByRole('button', { name: 'Inspect find' })); const decision = await screen.findByRole('dialog', { name: 'Banded Geode' }); expect(within(decision).getByRole('button', { name: /^Keep in cabinet/ })).toBeInTheDocument(); expect(wire.resolve).not.toHaveBeenCalled();
   });
   it.each(['account', 'club'] as const)('clears an open private reveal across a %s switch', boundary => {
-    const view = render(<App />); wire.data = { ...wire.data!, revision: 4, discoveries: [find()] }; view.rerender(<App />);
+    const view = render(<App />); continueDeepClaimCompany(); wire.data = { ...wire.data!, revision: 4, discoveries: [find()] }; view.rerender(<App />);
     expect(screen.getByRole('dialog', { name: 'A find from the deep' })).toBeInTheDocument();
     if (boundary === 'account') wire.userId = 'another-player'; else wire.clubId = 'another-club';
     wire.data = { ...phaseThreeSnapshot(), company: { ...wire.data.company!, id: `company-${boundary}`, user_id: wire.userId, club_id: wire.clubId } }; view.rerender(<App />);
     expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument(); expect(screen.queryByText('Pale quartz bands, confirmed by the returning crew.')).not.toBeInTheDocument();
   });
   it('drops an open reveal when the authoritative company changes in the same mounted page', () => {
-    const view = render(<App />); wire.data = { ...wire.data!, revision: 4, discoveries: [find()] }; view.rerender(<App />);
+    const view = render(<App />); continueDeepClaimCompany(); wire.data = { ...wire.data!, revision: 4, discoveries: [find()] }; view.rerender(<App />);
     expect(screen.getByRole('dialog', { name: 'A find from the deep' })).toBeInTheDocument();
     wire.data = { ...phaseThreeSnapshot(), company: { ...wire.data.company!, id: 'different-company', name: 'New company' } }; view.rerender(<App />);
     expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument(); expect(screen.queryByText('Pale quartz bands, confirmed by the returning crew.')).not.toBeInTheDocument();
   });
   it('never presents old finds on first hydration or new finds while cached read-only', () => {
-    wire.data!.discoveries = [find({ id: 'old-find', discovered_at: '2026-10-01T12:00:00Z' })]; const view = render(<App />); expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument();
+    wire.data!.discoveries = [find({ id: 'old-find', discovered_at: '2026-10-01T12:00:00Z' })]; const view = render(<App />); continueDeepClaimCompany(); expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument();
     wire.readOnly = true; wire.data = { ...wire.data!, revision: 4, discoveries: [...wire.data!.discoveries!, find()] }; view.rerender(<App />); expect(screen.queryByRole('dialog', { name: 'A find from the deep' })).not.toBeInTheDocument();
     wire.readOnly = false; view.rerender(<App />); expect(screen.getByRole('dialog', { name: 'A find from the deep' })).toBeInTheDocument(); fireEvent.click(screen.getByRole('button', { name: 'Later' })); expect(wire.resolve).not.toHaveBeenCalled(); expect(screen.getByTestId('claim-canvas')).toHaveAttribute('data-active', 'true');
   });

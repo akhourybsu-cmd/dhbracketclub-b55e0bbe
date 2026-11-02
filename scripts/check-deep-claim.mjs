@@ -14,12 +14,13 @@ import { DEEP_CLAIM_ACTORS } from './fixtures/deep-claim-db.mjs';
 import { runPhase5Browser } from './fixtures/deep-claim-phase5-browser.mjs';
 import { installDeepClaimRuntimeProbe, runPhase6Browser } from './fixtures/deep-claim-phase6-browser.mjs';
 import { runPhase7Browser } from './fixtures/deep-claim-phase7-browser.mjs';
+import { runDeepClaimAcademyBrowser, runDeepClaimCampaignBrowser, runDeepClaimMenuBrowser } from './fixtures/deep-claim-training-browser.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime,deep').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime,deep,menu,training').split(','));
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
   optionalRareRevealDismissals: 0,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
@@ -80,11 +81,45 @@ async function setup(width = 390, height = 844, theme = 'dark', motion = 'no-pre
     ...(options.deviceScaleFactor ? { deviceScaleFactor: options.deviceScaleFactor } : {}), ...(options.isMobile ? { isMobile: true } : {}) });
   return { context, page: await pageFor(context, options), theme };
 }
-async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex, route = '/deep-claim' } = {}) {
+async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex, route = '/deep-claim', enter = true } = {}) {
   currentPage = page;
   const params = new URLSearchParams({ run, theme, user, token, route });
   await page.goto(`${base}/scripts/fixtures/deep-claim.html?${params}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.deepClaimReady && window.deepClaimQa && window.deepClaimQueryClient);
+  await settle(page);
+  if (enter && route.split('?')[0] === '/deep-claim') await continueCompany(page, { required: false });
+}
+/** Exercise the production front door; never route around its save checks. */
+async function continueCompany(page, { required = true } = {}) {
+  const company = page.getByRole('tablist', { name: 'Company views', exact: true });
+  const resume = page.getByRole('button', { name: 'Continue', exact: true });
+  const start = page.getByRole('button', { name: 'New Game', exact: true });
+  // Authorized notification links deliberately open the actual Office. Radix
+  // hides the background tablist from accessibility while that dialog is open.
+  const linkedOffice = page.getByRole('dialog', { name: 'Company Office', exact: true });
+  await expect(company.or(resume).or(start).or(linkedOffice).first()).toBeVisible();
+  if (await linkedOffice.isVisible()) return;
+  if (await company.isVisible()) return;
+  await expect(page.getByTestId('deep-claim-title')).toHaveAttribute('data-dc-menu-loading', 'false');
+  if (await resume.isEnabled()) { await resume.click(); await expect(company).toBeVisible(); }
+  else if (required) await expect(company).toBeVisible();
+  await settle(page);
+}
+async function reloadCompany(page) {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await continueCompany(page);
+}
+async function dismissTutorial(page) {
+  // Founding acknowledges the actual bootstrap before the crew introduction
+  // appears. Company navigation alone is therefore too early to infer that
+  // guidance has finished mounting. Use its real controls, never an RPC patch.
+  const dialogue = page.getByRole('button', { name: 'Skip dialogue', exact: true });
+  const exit = page.getByRole('button', { name: 'Exit tutorial', exact: true });
+  await expect(dialogue.or(exit).first()).toBeVisible();
+  if (await dialogue.isVisible()) await dialogue.click();
+  await exit.click();
+  await expect(page.getByRole('region', { name: 'Tutorial guidance', exact: true })).toHaveCount(0);
+  await expect.poll(async () => (await rpc(page, 'dc_tutorial_get')).campaign_status).toBe('paused');
   await settle(page);
 }
 async function settle(page) {
@@ -133,11 +168,16 @@ async function fit(page, label) {
 }
 
 async function found(page, options = {}) {
-  await go(page, options);
+  const { guided = false, ...entry } = options;
+  await go(page, { ...entry, enter: false });
+  await page.getByRole('button', { name: 'New Game', exact: true }).click();
+  await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Company name', exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Flint & Vale Mining');
+  await page.getByRole('button', { name: 'Review deed', exact: true }).click();
   await page.getByRole('button', { name: 'Found company', exact: true }).click();
-  await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  if (guided) await expect(page.locator('[data-dialogue-scene="opening.crew"]')).toBeVisible();
+  else { await dismissTutorial(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible(); }
   return rpc(page, 'dc_get');
 }
 async function tab(page, label) {
@@ -217,7 +257,7 @@ async function presentation() {
         const preference = page.getByRole('switch', { name: 'Deep Claim notifications', exact: true });
         await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'true');
         await preference.click(); await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'false');
-        await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible(); await tab(page, 'Settings');
+        await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible(); await tab(page, 'Settings');
         await settingsViews.getByRole('tab', { name: 'Updates', exact: true }).click();
         await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'false');
         await preference.click(); await expect(preference).toBeEnabled(); await expect(preference).toHaveAttribute('aria-checked', 'true');
@@ -270,7 +310,7 @@ async function journey() {
   let saved = await rpc(page, 'dc_get'), job = saved.expeditions[0];
   checked('tutorial-dispatch-is-authoritative', job.duration_seconds === 30 && saved.company.cash === 173 && saved.workers.every(worker => worker.energy === 5) && job.cargo === null);
   await tab(page, 'Mine'); await shot(page, 'journey-active-mine');
-  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   saved = await rpc(page, 'dc_get'); checked('reload-preserves-the-same-dispatch', saved.expeditions.length === 1 && saved.expeditions[0].id === job.id && saved.company.cash === 173);
   await command(page, 'advance_job', { job_id: job.id, seconds: 31 });
   await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
@@ -295,7 +335,7 @@ async function journey() {
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click(); await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   saved = await rpc(page, 'dc_get'); job = saved.expeditions.find(value => value.status === 'active');
   checked('normal-exploration-hides-future-ground', job.duration_seconds === 1200 && job.cargo === null && !saved.world.tiles.some(tile => tile.x === 47 && tile.y === 4));
-  await command(page, 'advance_job', { job_id: job.id, seconds: 1201 }); await page.reload({ waitUntil: 'domcontentloaded' });
+  await command(page, 'advance_job', { job_id: job.id, seconds: 1201 }); await reloadCompany(page);
   await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   saved = await rpc(page, 'dc_get'); checked('offline-return-reconciles-only-real-work', saved.expeditions.find(value => value.id === job.id).status === 'ready' && saved.world.tiles.some(tile => tile.x === 47 && tile.y === 4) && saved.workers.find(worker => worker.name === 'Mara Flint').assigned_job_id === null);
   await tab(page, 'Mine'); await shot(page, 'journey-expanded-mine'); await context.close(); console.log('PASS Deep Claim journey');
@@ -310,7 +350,7 @@ async function reliability() {
   await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
   let saved = await rpc(page, 'dc_get'); const job = saved.expeditions[0];
   checked('lost-ack-commits-one-dispatch', saved.expeditions.length === 1 && saved.company.cash === 173);
-  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+  await reloadCompany(page); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
   saved = await rpc(page, 'dc_get'); checked('reload-retries-the-original-receipt-once', saved.expeditions.length === 1 && saved.expeditions[0].id === job.id && saved.company.cash === 173);
@@ -447,7 +487,7 @@ async function processRecipe(page, key, { loseAcknowledgement = false } = {}) {
   if (loseAcknowledgement) await command(page, 'fail_next', { name: 'dc_start_production', after_commit: true });
   await dialog.getByRole('button', { name: 'Start production', exact: true }).click();
   if (loseAcknowledgement) {
-    await expect(dialog.getByRole('alert')).toBeVisible(); await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(dialog.getByRole('alert')).toBeVisible(); await reloadCompany(page);
     await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
@@ -458,7 +498,7 @@ async function processRecipe(page, key, { loseAcknowledgement = false } = {}) {
   assert.ok(job); checked(`production-not-created-before-collection-${key}`, recipe.equipment_output
     ? JSON.stringify(snapshot.equipment.map(item => item.id).sort()) === JSON.stringify(ownedBefore)
     : Object.entries(outputBefore).every(([resource, quantity]) => (snapshot.resources[resource] || 0) === quantity));
-  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   checked(`production-reload-keeps-job-${key}`, (await rpc(page, 'dc_get')).production_jobs.filter(value => value.id === job.id).length === 1);
   await command(page, 'advance_production', { job_id: job.id, seconds: job.duration_seconds + 1 });
   await page.getByRole('button', { name: 'Refresh company', exact: true }).click(); await workshop(page, names[recipe.station]);
@@ -530,7 +570,7 @@ async function field() {
   checked('installation-charges-inputs-before-real-timed-work', job.mode === 'infrastructure' && job.config_version === 7 && structure.status === 'building'
     && structure.installed_at === null && snapshot.company.cash === beforeBuild.company.cash - 19 && snapshot.resources.stone === 4 && snapshot.resources.clay === 14
     && snapshot.workers.every(value => value.energy === 3) && !snapshot.field_reports.some(value => value.job_id === job.id));
-  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   snapshot = await rpc(page, 'dc_get'); checked('installation-reload-never-completes-server-work-early', snapshot.infrastructure[0].id === structure.id && snapshot.infrastructure[0].status === 'building');
   await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
   await page.getByRole('button', { name: 'Refresh company', exact: true }).click(); snapshot = await rpc(page, 'dc_get');
@@ -545,7 +585,7 @@ async function field() {
   checked('survey-dispatch-does-not-reveal-unknown-ground', JSON.stringify(snapshot.world.tiles) === JSON.stringify(beforeSurvey.world.tiles)
     && snapshot.company.cash === beforeSurvey.company.cash - 7 && JSON.stringify(snapshot.resources) === JSON.stringify(beforeSurvey.resources));
   await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
-  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   snapshot = await rpc(page, 'dc_get');
   checked('survey-offline-return-reveals-without-excavation-or-resources', snapshot.expeditions.find(value => value.id === job.id).status === 'collected'
     && snapshot.world.tiles.length > beforeSurvey.world.tiles.length && JSON.stringify(snapshot.resources) === JSON.stringify(beforeSurvey.resources)
@@ -577,7 +617,7 @@ async function field() {
   const beforeSale = await rpc(page, 'dc_get');
   await command(page, 'fail_next', { name: 'dc_resolve_discovery', after_commit: true });
   await dialog.getByRole('button', { name: 'Confirm sale', exact: true }).click(); await expect(dialog.getByRole('alert')).toBeVisible();
-  await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+  await reloadCompany(page); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
   snapshot = await rpc(page, 'dc_get');
@@ -628,7 +668,7 @@ async function caverns() {
       && snapshot.workers.find(value => value.name === 'Ivo Vale').energy === 2 && snapshot.workers.filter(value => value.name !== 'Ivo Vale').every(value => value.energy === 5)
       && !snapshot.world.tiles.some(value => candidate.expected.some(point => point.x === value.x && point.y === value.y)));
     await command(page, 'advance_job', { job_id: job.id, seconds: job.duration_seconds + 1 });
-    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+    await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
     snapshot = await rpc(page, 'dc_get');
     checked('actual-paid-survey-reveals-genuine-generation-three-natural-air', candidate.expected.every(point => snapshot.world.tiles.some(value => value.x === point.x && value.y === point.y && value.formation === point.formation && value.material === null && value.initial_amount === 0 && value.remaining === 0))
       && JSON.stringify(snapshot.resources) === JSON.stringify(before.resources) && snapshot.expeditions.find(value => value.id === job.id).status === 'collected');
@@ -686,7 +726,7 @@ async function business() {
     const beforeResearch = await rpc(page, 'dc_get');
     await command(page, 'fail_next', { name: 'dc_start_research', after_commit: true });
     await office.getByRole('button', { name: 'Start research', exact: true }).click(); await expect(office.getByRole('alert')).toBeVisible();
-    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+    await reloadCompany(page); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
     snapshot = await rpc(page, 'dc_get'); const research = snapshot.business.research.find(order => order.key === 'processing_1'); assert.ok(research);
@@ -696,7 +736,7 @@ async function business() {
       && snapshot.resources.copper_bar === beforeResearch.resources.copper_bar - 1 && snapshot.resources.tin_bar === beforeResearch.resources.tin_bar - 1 && snapshot.resources.coal === beforeResearch.resources.coal - 4);
     office = await officeView(page, 'Research'); await shot(page, 'business-active-research'); await page.keyboard.press('Escape');
     await command(page, 'advance_research', { research_key: 'processing_1', seconds: 301 });
-    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+    await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
     snapshot = await rpc(page, 'dc_get');
     checked('research-completes-offline-without-a-second-payment-or-collect-click', snapshot.business.research.find(order => order.key === 'processing_1').status === 'completed'
       && snapshot.business.processing_speed_percent === 5 && snapshot.company.cash === beforeResearch.company.cash - 80 && snapshot.business.stats.completed_research === 1);
@@ -713,7 +753,7 @@ async function business() {
     snapshot = await rpc(page, 'dc_get');
     checked('persistent-contract-delivers-collected-stock-once-for-frozen-payout', snapshot.resources.stone === beforeDelivery.resources.stone - 20 && snapshot.company.cash === beforeDelivery.company.cash + 24
       && snapshot.business.contracts.find(order => order.key === 'yard_foundations').status === 'completed' && snapshot.business.stats.completed_contracts === 1 && snapshot.business.stats.total_contract_credits === 24);
-    await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+    await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
     office = await officeView(page, 'Contracts'); await office.getByRole('button', { name: 'Review order Yard Foundations', exact: true }).click();
     await expect(office.getByRole('button', { name: 'Deliver whole order', exact: true })).toBeDisabled(); await page.keyboard.press('Escape');
     for (const name of ['First Shift', 'First Batch', 'Better Methods']) {
@@ -737,7 +777,7 @@ async function business() {
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime','deep'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime', 'deep', 'menu', 'training', 'campaign', 'academy'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
@@ -745,9 +785,13 @@ async function main() {
   if (sections.has('field')) await field();
   if (sections.has('caverns')) await caverns();
   if (sections.has('business')) await business();
-  if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
-  if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
-  if (sections.has('deep')) await runPhase7Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, processRecipe, workerFile, expect, assert, actors: DEEP_CLAIM_ACTORS });
+  if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
+  if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
+  if (sections.has('deep')) await runPhase7Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, processRecipe, workerFile, expect, assert, actors: DEEP_CLAIM_ACTORS });
+  const training = { setup, pageFor, go, continueCompany, reloadCompany, dismissTutorial, found, intro, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, workerFile, officeView, settle, expect, assert, actors: DEEP_CLAIM_ACTORS };
+  if (sections.has('menu')) await runDeepClaimMenuBrowser(training);
+  if (sections.has('training') || sections.has('campaign')) await runDeepClaimCampaignBrowser(training);
+  if (sections.has('training') || sections.has('academy')) await runDeepClaimAcademyBrowser(training);
 }
 
 try {
@@ -759,7 +803,7 @@ try {
     if (page.isClosed()) continue;
     await page.screenshot({ path: join(output, `failure-${index}.png`) }).catch(() => {});
     await writeFile(join(output, `failure-${index}.json`), JSON.stringify(await page.evaluate(() => ({ text: document.body.innerText, route: document.querySelector('[data-qa-route]')?.getAttribute('data-qa-route'),
-      runtime: window.deepClaimRuntime ? { samples: window.deepClaimRuntime.samples.slice(-12),
+      runtime: window.deepClaimRuntime ? { samples: window.deepClaimRuntime.samples.slice(-12), menu_samples: window.deepClaimRuntime.menuSamples?.slice(-12),
         audio: window.deepClaimRuntime.controllers.map(controller => controller.getDiagnostics?.()),
         native_contexts: window.deepClaimRuntime.contexts.map(context => context.state),
         context_calls: window.deepClaimRuntime.contextCalls.slice(-30), visibility_mode: window.deepClaimRuntime.visibilityMode } : null })).catch(() => ({})), null, 2));

@@ -2,7 +2,7 @@
 
 Deep Claim is a persistent, personal mining company inside DH Club. The player makes business and crew decisions, then returns to see the consequences in a mine that changes permanently. The company belongs to one member within one club; it is not a shared club treasury or a live multiplayer mine.
 
-This document records the design and integration contracts through Phase 7, the Ancient Deep. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
+This document records the design and integration contracts through Phase 7, the Ancient Deep, and the cinematic entry/Training Journal release. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. [The menu/tutorial guide](DEEP_CLAIM_MENU_TUTORIAL.md) describes the educational state and event contracts. Later systems below are plans, not unlocked features or completed work.
 
 ## Player promise and first session
 
@@ -10,7 +10,21 @@ The core loop is **plan → dispatch → return → collect → sell or invest �
 
 The first session introduces a private company, three named workers and a short, real expedition. A once-per-company tutorial dispatch lasts approximately 30 seconds, consumes one energy per assigned worker and follows the same server settlement rules as ordinary work. It supplies useful cargo and makes an early upgrade reachable. It is not a repeatable instant-reward button.
 
-The existing DH onboarding system provides three short entry steps: meet the crew, plan a descent, and return to collect and invest. The game itself teaches its first dispatch in context. No separate account, club, onboarding store or achievement system is introduced.
+The existing DH onboarding system retains three short discovery steps that introduce the title menu, real company and Training Journal. The full in-game campaign then teaches actual operations. No separate account, club, economic save or achievement system is introduced.
+
+## Cinematic entry and the Prospector's Training Journal
+
+A normal launch presents the title after the existing access and company checks. Continue resumes the authorized current-club company without bootstrap. New Game introduces Gus “Gravel” Calloway, lets a new owner name and review the deed, then calls the existing confirmed founding action. An established company receives safe Continue/replay choices. No company deletion, reset or additional save slot is implied. Valid notification links still reach their relevant authorized Office view.
+
+The illustrated title combines an original settlement, lift, cart, workers and lantern-lit tunnels. It receives no company snapshot or seed and is explicitly title artwork. It reuses the game's pixel painters and existing soundtrack instead of mounting an active private mine or introducing another rendering/audio engine. Original six-expression portraits distinguish Gus and the established starter voices. Gus is a retiring mentor, never a hireable worker or economic record.
+
+The First Descent has twelve beginner lessons. Thirty advanced lessons cover workforce, industry, field operations, business, optional club systems and settings. Eighty-four stable steps and sixty-seven dialogue lines connect narrative to real views. Worker/stat inspection, actual quotes, committed dispatches, positive collections, sales and informed upgrade review drive the corresponding lesson predicates. The original thirty-second induction remains once per company; other expeditions keep their real timing and costs.
+
+The journal records reviewed and genuinely practiced learning separately. Replay and read-only demonstrations do not spend, reveal, publish or award anything. Existing source-backed history can establish legitimate practice without another purchase. Optional Gus commentary can be disabled without removing instructional controls, manual Ask Gus or the original paged Field Guide. Advice uses disclosed current-company data and cannot predict hidden deposits or rewards.
+
+Educational progress has its own company-scoped revision, bounded request receipts and resumable cursor under additive migration `20261102080000_deep_claim_training_journal.sql`. It cannot alter company state, economic receipts, DH Feats or sharing preferences. The isolated extension proof preserves the eight prior migrations and 153 old critical function bodies, adding two private tables and two member RPCs. The resulting fixture has thirty-five private tables, twenty-seven member RPCs and 161 critical functions; actual deployment belongs in the delivery ledger.
+
+Guidance uses explicit targets and events, including portaled views. It follows viewport bounds without trapping focus or map gestures. Missing controls offer safe reference/practice, and learned transactions require resolved authoritative evidence. Returning to the title preserves ongoing work and recoverable pending actions. Full browser/build/native evidence remains distinct from implemented source; current verification status is recorded in the menu/tutorial guide and delivery ledger.
 
 ## Phase 1 playable scope
 
@@ -268,5 +282,7 @@ Phase 5 additionally verifies opt-in/out, private-account and cross-club isolati
 Phase 6 verifies reproducible original atlas outputs and byte/decoded-memory budgets; stable rule/catalog/migration hashes; disclosed-state-only art/audio; old preference migration and independent sound levels; gesture-only audio startup, background/mute/disposal cleanup and resume races; bounded rendering/caches; native pointer/wheel/keyboard cancellation; reduced-motion invalidation; focus restoration and atlas-failure fallback. Performance reports distinguish measured browser behavior from untested physical hardware, and every gameplay/retry/privacy regression remains required.
 
 Phase 7 verifies frozen old sources/art and old plans through cutover; absent-chunk-only generation and the 600/608 boundary; actual known-edge lift weighting and rail order; quoted/server heat parity, crew-average protection, broken/foreign gear exclusion and frozen effects through wear; finite nickel production/crafting/repair; 128/192 infrastructure limits; unchanged legacy catalogs, score receipts and RPC security; known-ground navigation, forced-colors/focus behavior and production PWA caching. Browser emulation remains distinct from physical-device testing, and serialized PostgreSQL fixtures do not prove native parallel stress behavior.
+
+The menu/Training Journal release additionally verifies Continue never bootstraps, founding confirms exactly once, veteran saves stay intact, the real induction remains once-only, and replay grants nothing. Tests cover owned worker/view requests, actual quote and positive-transfer observations, reviewed versus practiced status, resume/skip/exit, monotonic progress, cross-company authorization, metadata-only rollback, UUID conflicts, old function/data preservation, title/portrait fallbacks, optional commentary, portaled target placement, focus, reduced motion and audio lifecycle. Native PostgreSQL and final browser/publication evidence must be reported separately from authored test harnesses or partial focused passes.
 
 Installation, migration, commit, push and deployment status must be recorded from actual evidence in the implementation ledger. This design document does not assert that a live deployment or live database migration has occurred.

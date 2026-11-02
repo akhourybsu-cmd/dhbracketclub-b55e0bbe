@@ -149,6 +149,31 @@ describe('Deep Claim viewport geometry', () => {
 });
 
 describe('Original pixel artwork and authoritative viewport', () => {
+  it('reports actual accessible and pointer camera interactions while passive renders and tile taps stay silent', () => {
+    const interacted = vi.fn();
+    render(<DeepClaimCanvas snapshot={companySnapshot()} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} onInteraction={interacted} reducedMotion />);
+    frame(); expect(interacted).not.toHaveBeenCalled();
+    const canvas = screen.getByTestId('deep-claim-canvas'); pointer(canvas, 'pointerdown', 195, 250); pointer(canvas, 'pointerup', 195, 250);
+    expect(interacted).not.toHaveBeenCalled();
+    pointer(canvas, 'pointerdown', 195, 250); pointer(canvas, 'pointermove', 232, 250); pointer(canvas, 'pointerup', 232, 250);
+    expect(interacted).toHaveBeenLastCalledWith('pan');
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom into mine' })); expect(interacted).toHaveBeenLastCalledWith('zoom');
+    fireEvent.click(screen.getByRole('button', { name: 'Focus surface buildings' })); expect(interacted).toHaveBeenLastCalledWith('focus');
+    fireEvent.keyDown(canvas, { key: '+' }); expect(interacted).toHaveBeenLastCalledWith('keyboard');
+  });
+  it('ignores clamped camera commands and uses the current optional callback without letting it interrupt controls', () => {
+    const first = vi.fn(), second = vi.fn(), snapshot = companySnapshot();
+    const props = { snapshot, view: 'mine' as const, selectedTile: null, onSelectTile: vi.fn(), onSelectBuilding: vi.fn(), reducedMotion: true };
+    const root = render(<DeepClaimCanvas {...props} onInteraction={first} />);
+    const canvas = screen.getByTestId('deep-claim-canvas');
+    for (let step = 0; step < 30; step++) fireEvent.keyDown(canvas, { key: '+' });
+    first.mockClear(); fireEvent.click(screen.getByRole('button', { name: 'Zoom into mine' }));
+    expect(first).not.toHaveBeenCalled();
+    root.rerender(<DeepClaimCanvas {...props} onInteraction={second} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out of mine' })); expect(second).toHaveBeenCalledExactlyOnceWith('zoom'); expect(first).not.toHaveBeenCalled();
+    second.mockImplementation(() => { throw new Error('Tutorial observation unavailable'); });
+    expect(() => fireEvent.click(screen.getByRole('button', { name: 'Focus crew' }))).not.toThrow();
+  });
   it('renders each launch resource and all seven specialty portraits as local, named pixel art', () => {
     const { container } = render(<>{DEEP_CLAIM_RESOURCE_IDS.map(resourceId => <DeepClaimResourceIcon resourceId={resourceId} key={resourceId} />)}{DEEP_CLAIM_SPECIALTIES.map(specialty => <DeepClaimPortrait specialty={specialty} key={specialty} />)}</>);
     const total = DEEP_CLAIM_RESOURCE_IDS.length + DEEP_CLAIM_SPECIALTIES.length;

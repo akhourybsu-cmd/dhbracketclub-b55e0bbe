@@ -9,9 +9,10 @@ import { inflateSync } from 'node:zlib';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-assert.ok(args.length <= 1 && args.every(arg => ['--phase=6', '--phase=7'].includes(arg)), 'Use --phase=6 (default) or --phase=7');
-const phase = args[0] === '--phase=7' ? 7 : 6;
-const baseline = JSON.parse(await readFile(resolve(root, 'scripts/fixtures/deep-claim-presentation-baseline.json'), 'utf8'));
+assert.ok(args.length <= 1 && args.every(arg => ['--phase=6', '--phase=7', '--phase=8'].includes(arg)), 'Use --phase=6 (default), --phase=7 or --phase=8');
+const phase = args[0] === '--phase=8' ? 8 : args[0] === '--phase=7' ? 7 : 6;
+const baselinePath = phase === 8 ? 'scripts/fixtures/deep-claim-phase8-preservation-baseline.json' : 'scripts/fixtures/deep-claim-presentation-baseline.json';
+const baseline = JSON.parse(await readFile(resolve(root, baselinePath), 'utf8'));
 const entries = Object.entries(baseline.sha256);
 // Phase 7 intentionally extends current rule code. The seven released SQL
 // sources and five old catalogs remain immutable; do not rewrite their hashes
@@ -19,14 +20,18 @@ const entries = Object.entries(baseline.sha256);
 const auditedEntries = phase === 7 ? entries.filter(([path]) => path.startsWith('supabase/migrations/') || path.endsWith('.json')) : entries;
 const expectedMigrations = entries.filter(([path]) => path.startsWith('supabase/migrations/')).map(([path]) => path.split('/').at(-1)).sort();
 if (phase === 7) expectedMigrations.push('20261102070000_deep_claim_ancient_deep.sql');
+if (phase === 8) expectedMigrations.push('20261102080000_deep_claim_training_journal.sql');
 const actualMigrations = (await readdir(resolve(root, 'supabase/migrations'))).filter(path => /^20261102\d+_deep_claim.*\.sql$/.test(path)).sort();
-assert.deepEqual(actualMigrations, expectedMigrations, `Unexpected migration in the Phase ${phase} release`);
+// Phase7's historical artifact remains checkable after the additive journal.
+// The current Phase8 gate still audits the complete migration list exactly.
+const scopedMigrations = phase === 7 ? actualMigrations.filter(path => path < '20261102080000_') : actualMigrations;
+assert.deepEqual(scopedMigrations, expectedMigrations, `Unexpected migration in the Phase ${phase} release`);
 for (const [path, expected] of auditedEntries) {
   const contents = await readFile(resolve(root, path));
   assert.equal(createHash('sha256').update(contents).digest('hex'), expected, `Presentation changed frozen gameplay source: ${path}`);
 }
 let frozenArtFiles = 0, extension;
-if (phase === 7) {
+if (phase >= 7) {
   const artBaseline = JSON.parse(await readFile(resolve(root, 'scripts/fixtures/deep-claim-phase7-preservation-baseline.json'), 'utf8'));
   const frozen = [...Object.entries(artBaseline.frozen_art_v1), ...Object.entries({ ...artBaseline.archived_v1_sources, ...artBaseline.archived_v1_resolution }).map(([path, hash]) => [`${artBaseline.archive_root}/${path}`, hash])];
   for (const [path, expected] of frozen) {
@@ -80,10 +85,11 @@ return { version, width, height, registered_references: frames.length, unique_re
   png_bytes: png.length, decoded_bytes: decodedBytes, compressed_budget_bytes: limits.compressed, decoded_budget_bytes: limits.decoded };
 }
 const atlases = [await auditAtlas(1, { width: 1024, height: 2048, compressed: 256 * 1024, decoded: 8 * 1024 * 1024, references: 4096 })];
-if (phase === 7) atlases.push(await auditAtlas(2, { width: 512, height: 1024, compressed: 128 * 1024, decoded: 2 * 1024 * 1024, references: 2048 }));
+if (phase >= 7) atlases.push(await auditAtlas(2, { width: 512, height: 1024, compressed: 128 * 1024, decoded: 2 * 1024 * 1024, references: 2048 }));
 console.log(JSON.stringify({ phase, baseline: baseline.baseline, preserved_sources: auditedEntries.length,
-  published_migrations: phase === 7 ? 7 : expectedMigrations.length, total_migrations: expectedMigrations.length,
+  published_migrations: phase === 8 ? 8 : phase === 7 ? 7 : expectedMigrations.length, total_migrations: expectedMigrations.length,
   rule_modules: auditedEntries.filter(([path]) => path.endsWith('.ts')).length,
-  canonical_catalogs: auditedEntries.filter(([path]) => path.endsWith('.json')).length,
+  canonical_catalogs: auditedEntries.filter(([path]) => path.startsWith('supabase/seed/') || path === 'src/lib/feats/deepClaimCatalog.json').length,
+  ...(phase === 8 ? { frozen_atlas_files: auditedEntries.filter(([path]) => /atlas-v[12]\.(png|json)$/.test(path)).length } : {}),
   frozen_art_files: frozenArtFiles, extension, atlases,
   scope: 'Source and committed-asset budgets only; no live database, hardware or playtime verification.' }, null, 2));

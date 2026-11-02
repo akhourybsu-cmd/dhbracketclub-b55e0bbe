@@ -1,6 +1,60 @@
 # Deep Claim implementation ledger
 
-## Current release — Phase 7 Ancient Deep operations
+## Current release — cinematic menu, Gus and the Training Journal
+
+This implementation builds on main `94a4334b39626fb31365fb5d47753c1946dcfc94`. Implementation and final local verification are complete. **The new code is not committed or deployed, and `0800` is not applied to production.** The current evidence below establishes the local release gates; earlier release records remain historical.
+
+### Implemented slice and preservation boundary
+
+- Normal authorized entry opens a save-aware title with Continue, New Game, Tutorial & Field Guide, Settings and Return to DH Club. Continue never bootstraps. Existing-company New Game preserves the save and offers safe continuation/replay. A new owner reviews the name/deed before the existing real bootstrap action; valid current-club notification destinations remain actionable.
+- The title is original illustrative pixel artwork, independent of the player's map or hidden seed. It uses existing painters, bounded cached Canvas layers and an SVG fallback. Four narrative identities include Gus and the established Mara/Ivo/Tessa voices, with six portrait-expression states. Gus is an optional adviser, never an economic employee record.
+- Twelve beginner and thirty advanced lessons use **42 lesson IDs, 84 step IDs and 67 dialogue-line IDs**. The original once-per-company thirty-second induction remains intact. Actual owned workers, subviews, server quotes, paid-action results and positive transfers feed scoped learning observations. Read-only review cannot establish a paid action or award resources; stale nested views and deliberate same-action review transitions have separate regressions.
+- The Prospector's Training Journal has independent company-scoped educational state, resume/replay/skip, commentary preference, contextual help, manual Ask Gus and safe alternatives. The original paged Field Guide remains available. Advice uses disclosed company data; no tutorial chooses a discovery outcome, changes sharing consent, contributes materials or alters DH Score.
+- Help and Ask Gus share existing dialog headings/navigation rows instead of adding fixed-height rows. All controls retain forty-four-pixel targets; narrow screens use Gus's existing portrait and an accessible label. Office/Club bodies shrink and scroll above their fixed footer. Confirming a recovered economic action through Sync returns to the game and its real receipt, including actions recovered from the title.
+- Snapshot schema five, field rules seven, generation four, production configuration four, all eight previously applied migration sources, economic catalogs and both authored atlases remain unchanged. The additive journal creates two private tables and two member RPCs, preserving all **153 old critical function bodies/OIDs/security metadata** and the **33 old table-row multisets**, including company revisions. The intended postcondition is **161 critical functions, 27 member DC RPCs and 35 private RLS tables**, with no private Realtime publication.
+
+### Changed modules
+
+The Page and `DeepClaimTutorialDirector` orchestrate entry, real navigation, dialogue and confirmed observations. New menu/tutorial modules live under `src/components/deepClaim/{menu,tutorial}/`; data-driven rules/content live under `src/lib/deepClaim/tutorial/`, with `useDeepClaimTutorial.ts` handling the separate timeout-protected query, bounded educational queue and revision conflicts. Existing gameplay components expose explicit targets and default-noop UI event hooks. Auth cleanup covers the educational pending-note/deed-draft namespaces; sound and visual preferences keep their original storage.
+
+The new SQL is `supabase/migrations/20261102080000_deep_claim_training_journal.sql`, SHA256 `787670491647a61f49ad967a980acf6805255c7ecbbc29c5d0b253699c81a670`, MD5 `8cdd87f5834c5bfaf91a7089f059b637`. `scripts/lib/deep-claim-training-release.mjs` constructs the exact-source guarded transaction without connecting to production. Dedicated SQL/native fixtures extend the established harnesses rather than replacing old gameplay proofs. See [menu/tutorial architecture](DEEP_CLAIM_MENU_TUTORIAL.md), [protocol](DEEP_CLAIM_PROTOCOL.md) and [native QA](DEEP_CLAIM_NATIVE_QA.md).
+
+### Verification checkpoint — all local release gates passed
+
+| Gate | Evidence currently recorded | Final release status |
+|---|---|---|
+| Unit/component regression | The final full run passed all 206 files and 2,079 tests with `--maxWorkers=2`; log `/tmp/deep-claim-menu-unit-final.log`. All 25 tutorial-integration tests passed, and the 16-test recovery/UI suite passed again after the type-correct test-regex refinement. | Passed. |
+| Retained gameplay/Feats SQL | All 158 core groups, 19 actual Feats integration groups and 14 native core groups passed. | Passed. |
+| Educational SQL | Twenty extension groups passed in the current runtime, preserving all 153 old critical function bodies and all old rows while verifying the new whitelist, ACL, revision, rollback and receipt rules. | Passed. |
+| Native journal concurrency/release | Fourteen groups passed on fresh PostgreSQL 17.11 with eight pooled connections, including rollback, concurrency and the exact guarded release. | Passed locally; production application remains pending. |
+| Headless balance | The retained 210 scenarios and 648 Ancient Deep cases passed. | Passed; economic rules remain unchanged. |
+| Browser regression | All twelve sections are covered by explicit passing section runs: 477 distinct passing labels across 619 observations, with zero runtime errors. Campaign covers all twelve chapters without skips and the real thirty-second induction, reload/fresh device, help, advice and menu continuation; academy covers thirty lessons without economic or practical-progress changes. | Passed across the recorded section runs; this is not a claim that one uninterrupted run passed. |
+| Production-build PWA browser smoke | All 12 checks passed with zero assertion/runtime errors against the final local production build; `/tmp/deep-claim-pwa-2Rz19k/report.json`. Chromium was not in standalone display mode. | Passed within the stated cloud-browser boundary. |
+| TypeScript and scoped lint | Final application typechecking passed without errors. Scoped ESLint reported zero errors and one pre-existing AuthContext line-20 Fast Refresh warning. | Passed with the existing warning recorded. |
+| Source/art preservation | Phase 8 preservation passed for 27 files; both atlas compilers passed `--check`. | Passed. |
+| Production build | Final build passed in 17.99 seconds: `DeepClaimPage-BMcgtOuh.js` 737.16 KB / 175.31 KB gzip; `DeepClaimPage-BXiDjE5L.css` 105.32 KB / 18.07 KB gzip. | Passed; these bundle metrics are not a hardware-performance claim. |
+
+The current-runtime educational SQL proof is recorded in `/tmp/deep-claim-menu-db-tutorial.log`. The native-tested release SQL is **101,153 bytes**, SHA256 `143ab335dabda0431015a1b9ad8a08561693d0c4171f3dfb40061f0d5fa5df46`, MD5 `b74129b41103204aa2ba0d05755726cc`. The exact transaction preserved the old function OIDs/security metadata and thirty-three old private table-row multisets, and established the fixture's intended `161/27/35` postcondition. These are isolated verification results, not a production cutover.
+
+The consolidated browser record is `/tmp/deep-claim-menu-browser-evidence.json`. The first seven retained sections passed 209 checks in `/tmp/deep-claim-S9IBSW/report.json` before its later social-layout failure. After that correction, the final four social/runtime/deep/menu sections passed all 213 checks in `/tmp/deep-claim-tHDr82/report.json`; the latest presentation section passed 135 checks in `/tmp/deep-claim-1zt3Jk/report.json`. The campaign's 27-check section is in `/tmp/deep-claim-0LgREP/report.json`, and the corrected academy's 35-check section is in `/tmp/deep-claim-Yl3Pqu/report.json`. The consolidated distinct-label/observation counts account for overlaps across these explicit runs; the failed partial run is not presented as wholly passing.
+
+The runtime restoration retained source but not the earlier temporary logs. Restoring files does not constitute a rerun; the passing gates above reflect fresh recorded runs. Remaining results must be recorded from actual completed commands, with native/PGlite/browser/physical-device evidence distinguished. No production QA account, fabricated company or invented reward is needed for these gates.
+
+### Migration and publication record — awaiting release
+
+| Release evidence | Current state |
+|---|---|
+| Reviewed original `0800` source | Frozen hashes above; production application pending. |
+| Final source checks and production build | Final unit/typecheck/lint/build/PWA gates, all browser sections, SQL/native proofs, headless balance and source/atlas preservation passed as recorded above. |
+| Guarded native release transaction | Exact-source transaction passed the fourteen-group native extension proof; production execution pending. |
+| Production preflight and locked live-row capture | Fresh read-only preflight matches all 153 baseline critical bodies and all eight original migration sources, with 33 private RLS tables, 25 member RPCs, zero direct anonymous/member CRUD, zero private Realtime tables, 51 installations and 219 awards. Transaction-locked capture remains pending and must capture current dynamic data. |
+| Applied migration/history and independent postflight | **Unapplied**; no new production result. |
+| Main commit and verified push SHA | **Not committed or pushed** for this release. |
+| Exact Lovable synchronization and public-site verification | **Not deployed**; pending actual evidence. |
+
+After the gates pass, the release record must include the exact commit/push SHA, original-source history receipt, guarded transaction result, independent `161/27/35` authorization/body/data postflight, verified Lovable commit and any separately checked public-site assets. A local build or ready preview alone is insufficient evidence of production publication. Physical Android/iOS PWA installation, real OS interruption/push and subjective audio review remain unverified in this cloud environment.
+
+## Phase 7 release record — Ancient Deep operations
 
 This expansion builds on published main `e2498e9a313a7d26c1b3eb4da6dbbf6548af42e9`, whose exact Lovable preview synchronization was verified. The playable slice, local verification, production migration and public-site publication are complete. The evidence below distinguishes local authenticated gameplay tests from read-only production verification.
 
