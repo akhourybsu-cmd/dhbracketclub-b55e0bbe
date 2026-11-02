@@ -254,11 +254,22 @@ async function closeReward(page) {
   // The exact optional-reveal handler also runs before this auto-wait assertion.
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
+async function chooseWorksite(dialog, x, y, { keyboard = false } = {}) {
+  const sites = dialog.getByRole('group', { name: 'Expedition worksite', exact: true });
+  const choice = sites.locator(`[data-dc-worksite="${x}:${y}"]`);
+  assert.ok(await sites.locator('[data-dc-worksite]').count() <= 5, 'Worksite cards stay bounded, including the selected map target');
+  if (!await choice.count()) await dialog.getByRole('searchbox', { name: 'Depth or material', exact: true }).fill(`${x}:${y}`);
+  await expect(choice).toBeVisible();
+  if (keyboard) { await choice.focus(); await choice.press('Space'); }
+  else await choice.click();
+  await expect(choice).toHaveAttribute('aria-pressed', 'true');
+  return sites;
+}
 async function intro(page, { confirm = true } = {}) {
   await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Start first shift · 30s', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Extraction' });
-  await expect(dialog.getByRole('combobox', { name: 'Expedition worksite' })).toHaveValue('47:1');
+  await expect(dialog.getByRole('group', { name: 'Expedition worksite', exact: true }).locator('[data-dc-worksite="47:1"]')).toHaveAttribute('aria-pressed', 'true');
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Verified dispatch estimate' })).toBeVisible();
   await expect(dialog.getByText('30s', { exact: true })).toBeVisible();
@@ -329,7 +340,25 @@ async function presentation() {
         await expect(page.getByTestId('deep-claim-map')).toHaveAttribute('data-dc-view', 'mine');
         await canvasIsDrawn(page, `${label}-mine`);
         const canvas = page.getByTestId('deep-claim-canvas'); await canvas.focus(); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Equal'); await page.keyboard.press('Home');
+        await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
+        const lift = page.getByRole('dialog', { name: 'Underground operations', exact: true });
+        const stop = lift.getByRole('group', { name: 'Known mine depth', exact: true }).locator('[data-dc-depth]').first();
+        await stop.focus(); await page.keyboard.press('Enter'); await expect(stop).toHaveAttribute('aria-pressed', 'true');
+        await expect(lift.locator('select')).toHaveCount(0);
+        await fit(page, `${label}-lift-selector`); await shot(page, `${label}-lift-selector`);
+        await lift.getByRole('button', { name: 'Locate known depth', exact: true }).click();
+        await expect(lift).toHaveCount(0);
         const explore = await operationPlan(page, 'Exploration', { review: false });
+        const worksites = explore.getByRole('group', { name: 'Expedition worksite', exact: true });
+        const alternate = worksites.locator('[data-dc-worksite][aria-pressed="false"]').first();
+        if (await alternate.count()) {
+          const key = await alternate.getAttribute('data-dc-worksite');
+          const [x, y] = key.split(':').map(Number); await chooseWorksite(explore, x, y, { keyboard: true });
+          checked(`worksite-cards-support-native-keyboard-selection-${label}`, true, { target: key });
+        }
+        await expect(explore.locator('select')).toHaveCount(0);
+        checked(`worksite-cards-have-clear-coordinate-free-labels-${label}`, (await worksites.locator('[data-dc-worksite]').allTextContents()).every(text => !/\bx\d+|\d+:\d+/.test(text)));
+        await fit(page, `${label}-worksite-cards`); await shot(page, `${label}-worksite-cards`);
         await explore.getByRole('button', { name: 'Review dispatch', exact: true }).click();
         await expect(explore.getByRole('button', { name: 'Dispatch crew', exact: true })).toBeEnabled();
         await expect(explore.getByText('20 min', { exact: true }).last()).toBeVisible();
@@ -371,6 +400,24 @@ async function presentation() {
         await expect(page.getByRole('heading', { name: 'Hiring', exact: true })).toBeVisible();
         await fit(page, `${label}-hiring`); await shot(page, `${label}-hiring`);
         await page.getByRole('group', { name: 'Crew view', exact: true }).getByRole('button', { name: /^Staff/ }).click();
+        const file = await workerFile(page, initial.workers[0].name, 'Training');
+        const skills = file.getByRole('group', { name: 'Training skill', exact: true });
+        await expect(skills.locator('[data-dc-training-skill]')).toHaveCount(7); await expect(file.locator('select')).toHaveCount(0);
+        const logistics = skills.locator('[data-dc-training-skill="logistics"]'); await logistics.focus(); await logistics.press('Space');
+        await expect(logistics).toHaveAttribute('aria-pressed', 'true');
+        await expect(file.getByRole('region', { name: 'Training skill preview', exact: true })).toContainText('Logistics');
+        await fit(page, `${label}-training-selector`); await shot(page, `${label}-training-selector`);
+        await file.getByRole('button', { name: 'Back to crew', exact: true }).click(); await expect(file).toHaveCount(0);
+        await page.getByRole('button', { name: 'Help: Crew', exact: true }).click();
+        const journal = page.getByRole('region', { name: 'Prospector’s Training Journal', exact: true }); await expect(journal).toBeVisible();
+        await journal.getByRole('button', { name: 'Back to training lessons', exact: true }).click();
+        const sections = journal.getByRole('group', { name: 'Training section', exact: true });
+        await expect(sections.locator('[data-dc-training-section]')).toHaveCount(7); await expect(journal.locator('select')).toHaveCount(0);
+        const club = sections.locator('[data-dc-training-section="club"]'); await club.focus(); await club.press('Space');
+        await expect(club).toHaveAttribute('aria-pressed', 'true'); await expect(journal.getByRole('heading', { name: 'DH Club', exact: true })).toBeVisible();
+        await fit(page, `${label}-journal-section-selector`); await shot(page, `${label}-journal-section-selector`);
+        await journal.getByRole('button', { name: 'Close Training Journal', exact: true }).click(); await expect(journal).toHaveCount(0);
+        checked(`training-and-journal-selectors-are-native-keyboard-buttons-${label}`, true);
       }
       if (name === 'Stores') {
         await workshop(page, 'Smeltery');
@@ -495,7 +542,7 @@ async function journey() {
   await expect(page.getByRole('dialog', { name: 'Warehouse upgraded.', exact: true })).toBeVisible(); await closeReward(page);
   saved = await rpc(page, 'dc_get'); checked('real-upgrade-doubles-storage-and-spends-once', saved.company.cash === 133 && saved.company.warehouse_capacity === 240);
   let dialog = await operationPlan(page, 'Exploration', { review: false });
-  await dialog.getByRole('combobox', { name: 'Expedition worksite' }).selectOption('47:4');
+  await chooseWorksite(dialog, 47, 4);
   await selectCrew(dialog, ['Mara Flint']);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click(); await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   saved = await rpc(page, 'dc_get'); job = saved.expeditions.find(value => value.status === 'active');
@@ -579,13 +626,13 @@ async function operationPlan(page, mode, { x, y, infrastructure = 'supports', re
   await page.getByRole('dialog', { name: 'Underground operations', exact: true }).getByRole('group', { name: 'Mine operations', exact: true }).getByRole('button', { name: new RegExp(`^${mode}(?:\\s|$)`) }).click();
   const title = mode === 'Survey' ? 'Survey' : mode === 'Infrastructure' ? 'Infrastructure' : mode === 'Extraction' ? 'Extraction' : 'Exploration';
   const dialog = page.getByRole('dialog', { name: title, exact: true });
-  const worksite = dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true });
-  assert.ok(await worksite.locator('option').count() <= 65, 'Native worksite controls must stay bounded, including a selected map target');
-  if (x !== undefined) {
-    if (!await worksite.locator(`option[value="${x}:${y}"]`).count()) await dialog.getByRole('searchbox', { name: 'Depth or material', exact: true }).fill(`${x}:${y}`);
-    await worksite.selectOption(`${x}:${y}`);
+  const worksite = dialog.getByRole('group', { name: 'Expedition worksite', exact: true });
+  assert.ok(await worksite.locator('[data-dc-worksite]').count() <= 5, 'Worksite cards must stay bounded, including a selected map target');
+  if (x !== undefined) await chooseWorksite(dialog, x, y);
+  if (mode === 'Infrastructure') {
+    const project = dialog.getByRole('group', { name: 'Infrastructure project', exact: true }).locator(`[data-dc-project="${infrastructure}"]`);
+    await project.click(); await expect(project).toHaveAttribute('aria-pressed', 'true');
   }
-  if (mode === 'Infrastructure') await dialog.getByRole('combobox', { name: 'Infrastructure project', exact: true }).selectOption(infrastructure);
   if (workers) await selectCrew(dialog, workers);
   if (review) {
     await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
@@ -597,7 +644,7 @@ async function harvest(page, x, y, { workers } = {}) {
   await clearDialogs(page); await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Extract', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Extraction', exact: true });
-  await dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true }).selectOption(`${x}:${y}`);
+  await chooseWorksite(dialog, x, y);
   if (workers) await selectCrew(dialog, workers);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
@@ -705,7 +752,7 @@ async function industry() {
   await page.getByRole('button', { name: 'Confirm hire', exact: true }).click(); await closeReward(page);
   snapshot = await rpc(page, 'dc_get'); const hired = snapshot.workers.find(value => value.id === candidate.id);
   checked('hiring-adds-one-paid-persistent-worker', snapshot.workers.length === 4 && hired?.energy === 6 && hired.wage === candidate.wage && snapshot.company.cash === beforeHireCash - candidate.hire_cost);
-  let file = await workerFile(page, hired.name, 'Training'); await file.getByRole('combobox', { name: 'Training skill', exact: true }).selectOption('mining');
+  let file = await workerFile(page, hired.name, 'Training'); await file.getByRole('group', { name: 'Training skill', exact: true }).locator('[data-dc-training-skill="mining"]').click();
   await file.getByRole('button', { name: 'Review training', exact: true }).click(); await page.getByRole('button', { name: 'Confirm training', exact: true }).click(); await closeReward(page);
   snapshot = await rpc(page, 'dc_get'); checked('training-is-paid-and-permanent', snapshot.workers.find(value => value.id === hired.id).base_stats.mining === Math.min(100, hired.base_stats.mining + 3));
   file = await workerFile(page, hired.name, 'Training'); await expect(file.getByRole('button', { name: 'Review training', exact: true })).toBeDisabled(); await clearDialogs(page);
@@ -803,7 +850,7 @@ async function menus() {
     file = await workerFile(client, 'Ivo Vale', 'Overview');
     await fit(client, `menus-${label}-worker-overview`); await shot(client, `menus-${label}-worker-overview`);
     await file.getByRole('group', { name: 'Worker file views', exact: true }).getByRole('button', { name: 'Training', exact: true }).click();
-    await expect(file.getByRole('combobox', { name: 'Training skill', exact: true })).toBeEnabled();
+    await expect(file.getByRole('group', { name: 'Training skill', exact: true }).locator('[data-dc-training-skill="mining"]')).toBeEnabled();
     await fit(client, `menus-${label}-training`);
     await file.getByRole('group', { name: 'Worker file views', exact: true }).getByRole('button', { name: 'Gear', exact: true }).click();
     await expect(file.getByRole('progressbar', { name: 'Copper Pickaxe condition', exact: true })).toHaveAttribute('aria-valuenow', String(item.max_durability - 2));
@@ -975,7 +1022,7 @@ async function field() {
   // after the real server operation returns, then reconcile a lost sale ACK.
   await tab(page, 'Surface'); await page.getByRole('button', { name: 'Extract', exact: true }).click();
   dialog = page.getByRole('dialog', { name: 'Extraction', exact: true });
-  await dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true }).selectOption('47:3');
+  await chooseWorksite(dialog, 47, 3);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   snapshot = await rpc(page, 'dc_get'); job = snapshot.expeditions.find(value => value.status === 'active');
@@ -1058,12 +1105,12 @@ async function caverns() {
     await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
     await fit(page, 'caverns-deep-site-operations'); await shot(page, 'caverns-deep-site-operations'); await page.keyboard.press('Escape');
     const followup = await operationPlan(page, 'Survey', { review: false });
-    const siteCount = await followup.getByRole('combobox', { name: 'Expedition worksite', exact: true }).locator('option').count();
-    checked('cavern-survey-site-selector-remains-bounded', siteCount <= 65, { siteCount });
+    const siteCount = await followup.getByRole('group', { name: 'Expedition worksite', exact: true }).locator('[data-dc-worksite]').count();
+    checked('cavern-survey-site-selector-remains-bounded', siteCount <= 5, { siteCount });
     const search = followup.getByRole('searchbox', { name: 'Depth or material', exact: true });
     if (await search.isVisible()) {
       await search.fill(`48:${candidate.site.y}`);
-      await expect(followup.getByRole('combobox', { name: 'Expedition worksite', exact: true }).locator(`option[value="48:${candidate.site.y}"]`)).toHaveCount(1);
+      await expect(followup.getByRole('group', { name: 'Expedition worksite', exact: true }).locator(`[data-dc-worksite="48:${candidate.site.y}"]`)).toHaveCount(1);
       await expect(followup.getByRole('group', { name: 'Worksite pages', exact: true })).toBeVisible();
       await fit(page, 'caverns-worksite-search'); await shot(page, 'caverns-worksite-search');
     }

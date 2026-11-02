@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { Loader2, Pickaxe, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import './deepClaimSelectors.css';
 
 export function ClaimButton({ children, className = '', primary = false, danger = false, pending = false, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { primary?: boolean; danger?: boolean; pending?: boolean }) {
   return <button {...props} type={props.type ?? 'button'} className={`dcl-button ${primary ? 'is-primary' : ''} ${danger ? 'is-danger' : ''} ${className}`} disabled={props.disabled || pending} aria-busy={pending || undefined}>{pending && <Loader2 size={15} className="dcl-spin" aria-hidden="true" />}{children}</button>;

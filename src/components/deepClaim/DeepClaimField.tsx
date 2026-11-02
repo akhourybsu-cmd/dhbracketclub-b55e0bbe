@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, BookOpen, Coins, Compass, FileText, HardHat, MapPin, Radar, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react';
+import { ArrowRight, BookOpen, Coins, Compass, FileText, HardHat, MapPin, Radar, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { RESOURCE_BY_ID, resourceTotal } from '@/lib/deepClaim/catalog';
 import type { DeepClaimDiscoveryChoice, DeepClaimMode, DeepClaimPoint, DeepClaimResources, DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import { DeepClaimDiscoveryIcon, DeepClaimInfrastructureIcon, DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
@@ -8,6 +8,7 @@ import { claimTargets } from './display';
 import { CLAIM_OPERATION_NAMES, CLAIM_PROJECT_NAMES } from './fieldLabels';
 import { ClaimBadge, ClaimButton, ClaimDialog, ClaimEmpty } from './DeepClaimPrimitives';
 import { TutorialHelp, TutorialToolbar, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
+import './deepClaimDepthPicker.css';
 
 export type ClaimFieldView = 'finds' | 'reports' | 'ledger';
 
@@ -22,19 +23,43 @@ export function DeepClaimOperations({ snapshot, point, onClose, onDispatch, onLo
   const knownDepths = useMemo(() => { const depths = new Map<number, DeepClaimPoint>(); for (const site of claimTargets({ world: snapshot.world }, 'survey')) if (!depths.has(site.y)) depths.set(site.y, site); return [...depths.entries()]; }, [snapshot.world]);
   const [chosenDepth, setChosenDepth] = useState(() => point?.y ?? knownDepths[knownDepths.length - 1]?.[0] ?? 0);
   const knownDepth = knownDepths.find(([depth]) => depth === chosenDepth) ?? knownDepths[knownDepths.length - 1];
+  const [depthSearch, setDepthSearch] = useState('');
+  const [depthPage, setDepthPage] = useState(() => Math.floor(Math.max(0, knownDepths.findIndex(([depth]) => depth === (point?.y ?? knownDepths[knownDepths.length - 1]?.[0]))) / 6));
+  const filteredDepths = useMemo(() => {
+    const search = depthSearch.trim().toLocaleLowerCase().replace(/(?:metres|meters|m)$/, '').trim();
+    return search ? knownDepths.filter(([depth]) => String(depth).includes(search)) : knownDepths;
+  }, [knownDepths, depthSearch]);
+  const depthPages = Math.max(1, Math.ceil(filteredDepths.length / 6));
+  const shownDepthPage = Math.min(depthPage, depthPages - 1);
+  const visibleDepths = filteredDepths.slice(shownDepthPage * 6, shownDepthPage * 6 + 6);
+  const pinnedDepth = knownDepth && !visibleDepths.some(([depth]) => depth === knownDepth[0]) ? knownDepth : null;
   const capacity = snapshot.deep_operations?.infrastructure_capacity ?? snapshot.field_catalog?.caps.infrastructure ?? 128;
   const [projectPage, setProjectPage] = useState(0);
   const shownProjectPage = Math.min(projectPage, Math.max(0, Math.ceil(structures.length / 6) - 1));
   const selected = structures.find(item => item.x === point?.x && item.y === point?.y);
   const tile = snapshot.world?.tiles.find(item => item.x === point?.x && item.y === point?.y);
-  return <ClaimDialog open onClose={onClose} title="Underground operations" description={point ? `Worksite x${point.x} · ${point.y}m` : undefined} headerActions={<TutorialHelp lessonId="field.exploration" label="Mine operations" />}>
+  return <ClaimDialog open onClose={onClose} title="Underground operations" description={point ? `${point.y}m deep` : undefined} headerActions={<TutorialHelp lessonId="field.exploration" label="Mine operations" />}>
     {point && <div className="dcl-field-location"><MapPin size={19} aria-hidden="true" /><strong>{tile?.material && tile.remaining > 0 ? `${RESOURCE_BY_ID[tile.material].name} · ${tile.remaining} remaining` : tile ? 'Revealed passage' : 'Unknown ground'}</strong>{tile?.formation && <ClaimBadge>{tile.formation.replace(/_/g, ' ')}</ClaimBadge>}</div>}
-    <section className="dcl-depth-navigation" data-dc-tutorial="field-depth" aria-label="Known-ground navigation"><label>Known mine depth<select aria-label="Known mine depth" value={knownDepth?.[0] ?? ''} disabled={!knownDepths.length} onChange={event => setChosenDepth(Number(event.target.value))}>{!knownDepths.length && <option value="">No connected passage</option>}{knownDepths.map(([depth, site]) => <option key={depth} value={depth}>{depth}m · {site.x === 48 ? 'shaft passage' : `x${site.x} passage`}</option>)}</select></label><ClaimButton disabled={!knownDepth} onClick={() => { if (knownDepth) onLocate(knownDepth[1]); }}><MapPin size={14} aria-hidden="true" />Locate known depth</ClaimButton><p>Connected passages only.</p></section>
+    <section className="dcl-depth-navigation dcl-depth-picker" data-dc-tutorial="field-depth" aria-label="Known-ground navigation">
+      <header><h3>Mine lift</h3><ClaimBadge>{knownDepths.length} stops</ClaimBadge></header>
+      {knownDepths.length > 6 && <label className="dcl-depth-search"><Search size={16} aria-hidden="true" /><input type="search" inputMode="numeric" aria-label="Find depth" placeholder="Find depth" value={depthSearch} onChange={event => { setDepthSearch(event.target.value); setDepthPage(0); }} />{depthSearch && <button type="button" aria-label="Clear depth search" onClick={() => { setDepthSearch(''); setDepthPage(Math.floor(Math.max(0, knownDepths.findIndex(([depth]) => depth === knownDepth?.[0])) / 6)); }}><X size={16} aria-hidden="true" /></button>}</label>}
+      <div className="dcl-choice-grid dcl-depth-stops" role="group" aria-label="Known mine depth" aria-disabled={!knownDepths.length || undefined}>
+        {(pinnedDepth ? [pinnedDepth, ...visibleDepths] : visibleDepths).map(([depth, site]) => <button type="button" className={`dcl-choice${pinnedDepth?.[0] === depth ? ' is-pinned' : ''}`} key={depth} data-dc-depth={depth} aria-label={`${depth} metres`} aria-pressed={knownDepth?.[0] === depth} onClick={() => setChosenDepth(depth)}><span className="dcl-choice-art"><DepthStopArt /></span><span className="dcl-choice-copy"><strong>{depth}m</strong><small>{knownDepth?.[0] === depth ? 'Selected' : site.x === 48 ? 'Shaft' : 'Passage'}</small></span></button>)}
+      </div>
+      {!knownDepths.length ? <p className="dcl-depth-empty" role="status">No connected passage</p> : !filteredDepths.length && <p className="dcl-depth-empty" role="status">No matching depth</p>}
+      {depthPages > 1 && <div className="dcl-depth-pages" role="group" aria-label="Depth pages"><ClaimButton className="is-small" aria-label="Previous depth page" disabled={shownDepthPage === 0} onClick={() => setDepthPage(shownDepthPage - 1)}>Previous</ClaimButton><span aria-live="polite">{shownDepthPage + 1} / {depthPages}</span><ClaimButton className="is-small" aria-label="Next depth page" disabled={shownDepthPage === depthPages - 1} onClick={() => setDepthPage(shownDepthPage + 1)}>Next</ClaimButton></div>}
+      <ClaimButton disabled={!knownDepth} onClick={() => { if (knownDepth) onLocate(knownDepth[1]); }}><MapPin size={14} aria-hidden="true" />Locate known depth</ClaimButton>
+    </section>
     <div className="dcl-field-operation-grid" data-dc-tutorial="field-operations" role="group" aria-label="Mine operations">{(['explore', 'extract', 'survey', 'infrastructure'] as const).map(mode => { const Icon = mode === 'survey' ? Radar : mode === 'infrastructure' ? HardHat : Compass; return <button type="button" key={mode} onClick={() => onDispatch(mode, point)}><Icon size={21} aria-hidden="true" /><strong>{CLAIM_OPERATION_NAMES[mode]}</strong><small>{mode === 'explore' ? 'Reveal new ground' : mode === 'extract' ? 'Mine a known deposit' : mode === 'survey' ? 'Reveal without mining' : 'Build mine infrastructure'}</small></button>; })}</div>
     {!!snapshot.discovery_summary?.pending && <ClaimButton primary onClick={onFinds}><Sparkles size={15} aria-hidden="true" />Review finds · {snapshot.discovery_summary.pending}</ClaimButton>}
     {!!snapshot.field_reports?.length && <ClaimButton onClick={onReports}><BookOpen size={15} aria-hidden="true" />Read field reports</ClaimButton>}
-    <section className="dcl-installed-list" data-dc-tutorial="field-infrastructure" aria-label="Mine infrastructure"><h3>Infrastructure <small>{structures.length}/{capacity}</small></h3>{selected && <p className="dcl-note">Selected: {CLAIM_PROJECT_NAMES[selected.key]} · grade {selected.grade} · {selected.status}. Radius {selected.radius}; {selected.strength}{selected.key === 'rail' ? '% bonus on covered route segments' : ' percentage points protection at covered worksites'}.</p>}{structures.length ? structures.slice(shownProjectPage * 6, shownProjectPage * 6 + 6).map(item => <button type="button" key={item.id} onClick={() => onLocate(item)} aria-label={`Locate ${CLAIM_PROJECT_NAMES[item.key]} at x${item.x}, ${item.y} metres`}><DeepClaimInfrastructureIcon infrastructureKey={item.key} grade={item.grade} decorative /><span><strong>{CLAIM_PROJECT_NAMES[item.key]}</strong><small>Grade {item.grade} · x{item.x} · {item.y}m · radius {item.radius}</small></span><ClaimBadge tone={item.status === 'installed' ? 'green' : 'blue'}>{item.status}</ClaimBadge></button>) : <p className="dcl-note">No infrastructure installed. Choose Infrastructure to plan a project.</p>}{structures.length > 6 && <FieldPagination page={shownProjectPage} total={structures.length} label="projects" onPage={setProjectPage} />}</section>
+    <section className="dcl-installed-list" data-dc-tutorial="field-infrastructure" aria-label="Mine infrastructure"><h3>Infrastructure <small>{structures.length}/{capacity}</small></h3>{selected && <p className="dcl-note">Selected: {CLAIM_PROJECT_NAMES[selected.key]} · grade {selected.grade} · {selected.status}. Radius {selected.radius}; {selected.strength}{selected.key === 'rail' ? '% bonus on covered route segments' : ' percentage points protection at covered worksites'}.</p>}{structures.length ? structures.slice(shownProjectPage * 6, shownProjectPage * 6 + 6).map(item => <button type="button" key={item.id} onClick={() => onLocate(item)} aria-label={`Locate ${CLAIM_PROJECT_NAMES[item.key]} at x${item.x}, ${item.y} metres`}><DeepClaimInfrastructureIcon infrastructureKey={item.key} grade={item.grade} decorative /><span><strong>{CLAIM_PROJECT_NAMES[item.key]}</strong><small>Grade {item.grade} · {item.y}m · radius {item.radius}</small></span><ClaimBadge tone={item.status === 'installed' ? 'green' : 'blue'}>{item.status}</ClaimBadge></button>) : <p className="dcl-note">No infrastructure installed. Choose Infrastructure to plan a project.</p>}{structures.length > 6 && <FieldPagination page={shownProjectPage} total={structures.length} label="projects" onPage={setProjectPage} />}</section>
   </ClaimDialog>;
+}
+
+/** Original shaft cage with integer pixel geometry, shared by public lift stops. */
+function DepthStopArt() {
+  return <svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true" focusable="false" shapeRendering="crispEdges"><g transform="translate(4 4)"><path d="M3 1H6V23H3ZM18 1H21V23H18Z" fill="#526653" /><path d="M4 2H20V5H4ZM4 20H20V23H4Z" fill="#b8985e" /><path d="M11 3H13V8H11Z" fill="#d8c997" /><path d="M7 8H17V18H7Z" fill="#2b3d38" /><path d="M8 9H16V17H8Z" fill="#a58a55" /><path d="M9 10H15V15H9Z" fill="#7f977b" /><path d="M11 10H13V15H11ZM8 16H16V18H8Z" fill="#e0c17d" /><path d="M2 23H22V24H2Z" fill="#253b35" /></g></svg>;
 }
 
 export function DeepClaimFieldLog({ snapshot, view, onView, selectedFindId, onSelectFind, onLocate, resolveDiscovery, readOnly, busy, onConfirmed }: {

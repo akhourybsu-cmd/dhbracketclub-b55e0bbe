@@ -51,6 +51,32 @@ describe('Deep Claim workforce operations', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Review training' })); const dialog = screen.getByRole('dialog', { name: 'Train Worker a' }); expect(dialog).toHaveTextContent('37 cr');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm training' })); await waitFor(() => expect(state.train).toHaveBeenCalledWith('worker-a', 'mining'));
     cleanup(); data.workers[0].trained_day = data.company!.energy_day; view.unmount(); render(workforce(data)); openWorker('Training'); expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled(); expect(screen.getByText(/Trained today/)).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Training skill' })).getAllByRole('button').every(button => (button as HTMLButtonElement).disabled)).toBe(true);
+  });
+  it('reviews the selected illustrated skill without charging until the matching course is confirmed', async () => {
+    const data = phaseTwoSnapshot(); data.workers[0].training_cost = 37; data.workers[0].training_gain = 4;
+    render(workforce(data)); openWorker('Training');
+    const skills = screen.getByRole('group', { name: 'Training skill' });
+    expect(screen.queryByRole('combobox', { name: 'Training skill' })).not.toBeInTheDocument();
+    expect(within(skills).getAllByRole('button')).toHaveLength(7);
+    expect(within(skills).getByRole('button', { name: 'Mining' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(skills).getByRole('button', { name: 'Geology' }));
+    expect(within(skills).getByRole('button', { name: 'Geology' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(skills).getByRole('button', { name: 'Mining' })).toHaveAttribute('aria-pressed', 'false');
+    expect(state.train).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Review training' }));
+    const dialog = screen.getByRole('dialog', { name: 'Train Worker a' });
+    expect(dialog).toHaveTextContent('Geology base'); expect(dialog).toHaveTextContent('37 cr');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm training' }));
+    await waitFor(() => expect(state.train).toHaveBeenCalledWith('worker-a', 'geology'));
+  });
+  it('keeps every skill choice frozen while company actions are read-only', () => {
+    render(workforce(phaseTwoSnapshot(), true)); openWorker('Training');
+    const skills = screen.getByRole('group', { name: 'Training skill' });
+    expect(within(skills).getAllByRole('button').every(button => (button as HTMLButtonElement).disabled)).toBe(true);
+    fireEvent.click(within(skills).getByRole('button', { name: 'Geology' }));
+    expect(within(skills).getByRole('button', { name: 'Mining' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled(); expect(state.train).not.toHaveBeenCalled();
   });
   it('blocks paid training and equipment changes for employees currently on a shift', () => {
     const data = phaseTwoSnapshot(); data.workers[0].assigned_job_id = 'shift'; data.equipment = [gear(data)]; render(workforce(data)); openWorker('Training'); expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled(); fireEvent.click(screen.getByRole('button', { name: 'Gear' })); expect(screen.getByRole('button', { name: 'Equip Copper Pickaxe' })).toBeDisabled(); expect(screen.getByRole('button', { name: 'Repair Copper Pickaxe' })).toBeDisabled();

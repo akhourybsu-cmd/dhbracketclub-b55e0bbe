@@ -41,10 +41,13 @@ export async function runPhase7Browser(h) {
     await expect.poll(async()=>(await diagnostic())?.addon?.state).toBe('ready');await expect.poll(async()=>(await diagnostic())?.addon?.draws||0).toBeGreaterThan(0);
     checked('deep-authored-addon-decodes-only-after-public-depth-unlock',(await diagnostic()).addon.decodedBytes===786432,(await diagnostic()).addon);
     await h.tab(page,'Mine');await page.getByRole('button',{name:'Open mine operations',exact:true}).click();
-    dialog=page.getByRole('dialog',{name:'Underground operations',exact:true});const depth=dialog.getByRole('combobox',{name:'Known mine depth',exact:true});
-    const depths=await depth.locator('option').evaluateAll(nodes=>nodes.map(node=>Number(node.value)));
-    checked('deep-navigator-lists-only-actual-known-passages',depths.length>500&&depths.every(value=>Number.isInteger(value)&&value<=956)&&!depths.includes(999));
-    await depth.selectOption('800');await dialog.getByRole('button',{name:'Locate known depth',exact:true}).click();await expect.poll(async()=>(await diagnostic())?.camera?.y||0).toBeGreaterThan(790);
+    dialog=page.getByRole('dialog',{name:'Underground operations',exact:true});const depth=dialog.getByRole('group',{name:'Known mine depth',exact:true});
+    const depths=await depth.locator('[data-dc-depth]').evaluateAll(nodes=>nodes.map(node=>Number(node.dataset.dcDepth)));
+    const known=new Set(snapshot.world.tiles.filter(tile=>tile.y>0&&tile.remaining===0).map(tile=>tile.y));
+    checked('deep-navigator-lists-only-actual-known-passages',known.size>500&&depths.length>0&&depths.length<=7&&depths.every(value=>Number.isInteger(value)&&value<=956&&known.has(value))&&!depths.includes(999));
+    await dialog.getByRole('searchbox',{name:'Find depth',exact:true}).fill('999m');await expect(depth.locator('[data-dc-depth="999"]')).toHaveCount(0);
+    await dialog.getByRole('searchbox',{name:'Find depth',exact:true}).fill('800m');const stop=depth.locator('[data-dc-depth="800"]');await stop.click();await expect(stop).toHaveAttribute('aria-pressed','true');
+    await dialog.getByRole('button',{name:'Locate known depth',exact:true}).click();await expect.poll(async()=>(await diagnostic())?.camera?.y||0).toBeGreaterThan(790);
     await fit(page,'deep-known-depth-navigation');await shot(page,'deep-known-depth-navigation');
     const nickel=await h.command(page,'deep_worksite',{resource:'nickel_ore'}),sulfur=await h.command(page,'deep_worksite',{resource:'sulfur'});assert.ok(nickel&&sulfur,'Current private seeded geology needs a legal paid nickel and sulfur worksite');
     dialog=await plan('Exploration',nickel);const beforeProtection=await h.rpc(page,'dc_preview_operation',{p_worker_ids:[snapshot.workers.find(worker=>worker.name==='Mara Flint').id],p_mode:'explore',p_target_x:nickel.x,p_target_y:nickel.y,p_duration_minutes:60,p_tutorial:false,p_infrastructure_key:null});
@@ -94,7 +97,7 @@ export async function runPhase7Browser(h) {
     await fallback.page.route('**/deep-claim/atlas-v2.png*',route=>route.abort('failed'));await h.found(fallback.page,{run:'ancient-deep-addon-failure'});await h.command(fallback.page,'prepare_ancient_deep',{unlock:true});await h.reloadCompany(fallback.page);
     await expect.poll(()=>fallback.page.evaluate(()=>window.deepClaimRuntime.samples.at(-1)?.addon?.state)).toBe('failed');
     await h.tab(fallback.page,'Mine');await fit(fallback.page,'deep-addon-fallback-phone');await shot(fallback.page,'deep-addon-fallback-phone');await fallback.page.getByRole('button',{name:'Open mine operations',exact:true}).click();await expect(fallback.page.getByRole('dialog',{name:'Underground operations',exact:true})).toBeVisible();
-    checked('deep-addon-failure-keeps-real-known-depth-and-operation-controls',await fallback.page.getByRole('combobox',{name:'Known mine depth',exact:true}).isVisible());await fallback.context.close();
+    checked('deep-addon-failure-keeps-real-known-depth-and-operation-controls',await fallback.page.getByRole('group',{name:'Known mine depth',exact:true}).isVisible());await fallback.context.close();
   }catch(error){throw error;}
   console.log('PASS Deep Claim Ancient Deep paid vertical slice and addon recovery');
 }

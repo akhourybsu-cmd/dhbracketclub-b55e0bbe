@@ -1,6 +1,26 @@
 # Deep Claim implementation ledger
 
-## Current release — unified visual finish
+## Current release — thematic selectors
+
+This presentation release builds on clean main `862993fe1ed327c33bc0f6d5f4b2e3ebc650e598`. All five native dropdowns in Deep Claim are replaced with direct game controls. No schema, economic rule, world-generation, atlas, dependency or authorization change is introduced.
+
+- Dispatch uses illustrated worksite cards with a small map of already revealed ground, resource art, depth, branch location, remaining stock and an explicit selected state. Raw x/y coordinates are internal IDs rather than visible destination prose. Four-card pages, depth/material search and a pinned selection keep large mines bounded and preserve the exact chosen destination while browsing. A refreshed small list cannot retain an inaccessible hidden filter.
+- Infrastructure uses original illustrated project tiles with concise functional labels. Mine navigation uses a pixel-art lift with six known stops per page, an optional pinned stop, known-depth search and an explicit Locate action. Hidden or disconnected ground never becomes an available stop.
+- Worker training uses seven skill buttons with actual base values. The Training Journal uses a compact horizontal section strip and keeps all existing lessons, search and pagination. Selection, confirmation, costs, daily limits and read-only guards remain unchanged.
+- Public map context, authoritative estimate/revision checks, starter-shift selection and tutorial event IDs are preserved. Exact internal worksite identities remain available to tests through stable data attributes; neither illustrations nor local selection can dispatch a crew or award resources.
+
+| Verification | Evidence |
+|---|---|
+| Full app suite | **211 files / 2,153 tests passed** in 138.41 seconds; `/tmp/dc-selectors-unit.log`. |
+| Final focused regressions | **139 tests across six suites passed** in 23.40 seconds; `/tmp/dc-selectors-focused-final.log`. Includes the final small-list filter recovery, exact target/quote behavior, bounded 600-site browsing, public-only deep navigation, selected-course confirmation, read-only controls and journal filter resets. |
+| Native browser | **320 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-gr1qqx/report.json`. Seven screen/theme/motion cases cover all five selectors, actual keyboard selection, exact server estimates, no-spend browsing, finite underground work, collection and native 30-second sale/Keep tutorial paths. All 28 selector screenshots were separately reviewed. |
+| Source checks | Explicit application-project TypeScript, scoped ESLint, CSS parsing and whitespace checks passed. The Phase 8 preservation gate retains all 27 frozen gameplay sources, catalogs, SQL and both original atlases; `/tmp/dc-selectors-preservation.log`. |
+| Production build | Passed in **30.64 seconds**; `DeepClaimPage-QGac5IKp.js` 764.31 KB / 181.00 KB gzip and `DeepClaimPage-DbzdRCM6.css` 240.06 KB / 37.09 KB gzip. The existing large-chunk advisory remains. |
+| Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-gXj3L7/report.json`. This verifies production-build authentication and PWA bootstrap without claiming physical-device installation. |
+
+Native QA uses real production components and authoritative isolated local PostgreSQL transport. No live member company, stock or achievement was changed. Publication and public-asset verification are pending; no SQL migration is required.
+
+## Previous release — unified visual finish
 
 This visual release builds on clean main `eb4abe0bf8771f8f30e35e91a6b17adbdb3aa110`. It keeps the concise menus, existing game behavior and original industrial-frontier artwork. No database, economic rule, asset installation, world-generation, atlas or dependency change is introduced.
 

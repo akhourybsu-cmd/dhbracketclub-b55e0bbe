@@ -114,7 +114,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     expect(within(dialog).getByRole('button', { name: 'Review dispatch' })).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /First shift/ }));
     expect(screen.getByRole('dialog', { name: 'Extraction' })).toBeInTheDocument();
-    expect(within(dialog).getByLabelText('Expedition worksite')).toHaveValue('47:1');
+    expect(within(within(dialog).getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '47:1');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     await waitFor(() => expect(wire.preview).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'extract', target_x: 47, target_y: 1, duration_minutes: 20, tutorial: true })));
   });

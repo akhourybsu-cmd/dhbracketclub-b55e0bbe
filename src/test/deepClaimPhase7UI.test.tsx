@@ -44,21 +44,46 @@ afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe('Known-ground navigation and worksite stability', () => {
   it('lists only actual connected known depths, one passage per depth, and locates the chosen real point', () => {
-    render(<Operations />); const selector = screen.getByRole('combobox', { name: 'Known mine depth' }); const options = [...(selector as HTMLSelectElement).options];
-    expect(options).toHaveLength(956); expect(options.some(option => option.textContent?.includes('999m'))).toBe(false); expect(options.some(option => /nickel/i.test(option.textContent ?? ''))).toBe(false);
-    fireEvent.change(selector, { target: { value: '800' } }); fireEvent.click(screen.getByRole('button', { name: 'Locate known depth' })); expect(wire.locate).toHaveBeenCalledWith({ x: 48, y: 800 });
+    render(<Operations />); const selector = screen.getByRole('group', { name: 'Known mine depth' });
+    expect(screen.queryByRole('combobox', { name: 'Known mine depth' })).not.toBeInTheDocument();
+    expect(within(selector).getAllByRole('button')).toHaveLength(2); expect(within(selector).getByRole('button', { name: '956 metres' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find depth' }), { target: { value: '800m' } });
+    expect(within(selector).getAllByRole('button')).toHaveLength(2); expect(selector).not.toHaveTextContent(/999m|nickel|x48/i);
+    fireEvent.click(within(selector).getByRole('button', { name: '800 metres' })); expect(wire.locate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Locate known depth' })); expect(wire.locate).toHaveBeenCalledWith({ x: 48, y: 800 });
   });
   it('keeps navigation disabled when no connected known passage exists', () => {
     const data = deepSnapshot(); data.world!.tiles = [{ x: 20, y: 999, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }]; render(<Operations data={data} />);
-    expect(screen.getByRole('combobox', { name: 'Known mine depth' })).toBeDisabled(); expect(screen.getByRole('button', { name: 'Locate known depth' })).toBeDisabled(); expect(wire.locate).not.toHaveBeenCalled();
+    const selector = screen.getByRole('group', { name: 'Known mine depth' }); expect(selector).toHaveAttribute('aria-disabled', 'true'); expect(within(selector).queryByRole('button')).not.toBeInTheDocument(); expect(screen.getByRole('status')).toHaveTextContent('No connected passage'); expect(screen.getByRole('button', { name: 'Locate known depth' })).toBeDisabled(); expect(wire.locate).not.toHaveBeenCalled();
+  });
+  it('bounds lift stops to six per page and pins the selected depth without silently changing it', () => {
+    render(<Operations />); const selector = screen.getByRole('group', { name: 'Known mine depth' });
+    fireEvent.click(screen.getByRole('button', { name: 'Previous depth page' })); expect(within(selector).getAllByRole('button')).toHaveLength(7); expect(within(selector).getByRole('button', { name: '956 metres' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(selector).getByRole('button', { name: '949 metres' })); fireEvent.click(screen.getByRole('button', { name: 'Previous depth page' }));
+    expect(within(selector).getAllByRole('button')).toHaveLength(7); const selected = within(selector).getByRole('button', { name: '949 metres' }); expect(selected).toHaveAttribute('aria-pressed', 'true'); selected.focus(); expect(selected).toHaveFocus(); expect(wire.locate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Locate known depth' })); expect(wire.locate).toHaveBeenCalledWith({ x: 48, y: 949 });
+  });
+  it('never creates a lift stop for hidden or disconnected ground and retains a selection across an empty search', () => {
+    render(<Operations />); const selector = screen.getByRole('group', { name: 'Known mine depth' }); fireEvent.change(screen.getByRole('searchbox', { name: 'Find depth' }), { target: { value: '999' } });
+    expect(within(selector).getAllByRole('button')).toHaveLength(1); expect(within(selector).getByRole('button', { name: '956 metres' })).toHaveAttribute('aria-pressed', 'true'); expect(within(selector).queryByRole('button', { name: '999 metres' })).not.toBeInTheDocument(); expect(screen.getByRole('status')).toHaveTextContent('No matching depth');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear depth search' })); expect(screen.getByRole('searchbox', { name: 'Find depth' })).toHaveValue(''); expect(within(selector).getAllByRole('button')).toHaveLength(2); expect(within(selector).getByRole('button', { name: '956 metres' })).toHaveAttribute('aria-pressed', 'true');
+  });
+  it('shows one stop per known depth and preserves the actual connected branch location behind its concise label', () => {
+    const data = deepSnapshot(); data.world!.tiles = [{ x: 48, y: 1, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }, { x: 47, y: 1, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }, { x: 47, y: 2, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }]; render(<Operations data={data} />);
+    const selector = screen.getByRole('group', { name: 'Known mine depth' }); expect(within(selector).getAllByRole('button')).toHaveLength(2); expect(within(selector).getByRole('button', { name: '2 metres' })).toHaveAttribute('aria-pressed', 'true'); expect(selector).not.toHaveTextContent(/x47|x48/); fireEvent.click(screen.getByRole('button', { name: 'Locate known depth' })); expect(wire.locate).toHaveBeenCalledWith({ x: 47, y: 2 });
   });
   it('retains a legal deep target when changing modes and clears only the old quote and browsing filter', async () => {
-    render(<Dispatch mode="survey" />); const selector = screen.getByRole('combobox', { name: 'Expedition worksite' }); fireEvent.change(screen.getByRole('searchbox', { name: 'Depth or material' }), { target: { value: '800m' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Infrastructure' })); expect(selector).toHaveValue('48:800'); expect(screen.getByRole('searchbox', { name: 'Depth or material' })).toHaveValue('');
+    render(<Dispatch mode="survey" />); fireEvent.change(screen.getByRole('searchbox', { name: 'Depth or material' }), { target: { value: '800m' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Infrastructure' })); expect(within(screen.getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '48:800'); expect(screen.getByRole('searchbox', { name: 'Depth or material' })).toHaveValue('');
     fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' })); await waitFor(() => expect(wire.preview).toHaveBeenCalledWith(expect.objectContaining({ mode: 'infrastructure', target_x: 48, target_y: 800 })));
   });
   it('chooses a legal deposit when the selected passage cannot be used for extraction', () => {
-    render(<Dispatch mode="survey" />); fireEvent.click(screen.getByRole('button', { name: 'Extraction' })); expect(screen.getByRole('combobox', { name: 'Expedition worksite' })).toHaveValue('47:800');
+    render(<Dispatch mode="survey" />); fireEvent.click(screen.getByRole('button', { name: 'Extraction' })); expect(within(screen.getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '47:800');
+  });
+  it('filters public worksite cards while pinning the shallow selection and excluding ineligible mineral cells', () => {
+    render(<DeepClaimDispatch snapshot={wire.data!} initialMode="survey" initialTarget={{ x: 48, y: 1 }} onClose={wire.noop} readOnly={false} busy={false} preview={wire.preview} dispatch={wire.dispatch} />); fireEvent.change(screen.getByRole('searchbox', { name: 'Depth or material' }), { target: { value: '800m' } });
+    const selector = screen.getByRole('group', { name: 'Expedition worksite' }); const cards = within(selector).getAllByRole('button').filter(button => button.hasAttribute('data-dc-worksite'));
+    expect(cards.map(card => card.getAttribute('data-dc-worksite'))).toEqual(['48:1', '48:800']); expect(cards[0]).toHaveAttribute('aria-pressed', 'true'); expect(selector).not.toHaveTextContent(/nickel|x48|x47/i);
   });
   it('does not repeat the public target scan on clock ticks or unrelated company revisions', () => {
     vi.useFakeTimers(); const view = render(<App />); continueDeepClaimCompany(); const count = wire.scans.length; act(() => vi.advanceTimersByTime(3000)); expect(wire.scans).toHaveLength(count);

@@ -43,11 +43,11 @@ export async function runDeepClaimMenuBrowser(h) {
     await page.keyboard.press('Home');await h.expect(start).toBeFocused();await page.keyboard.press('ArrowUp');
     await h.expect(title(page).getByRole('button',{name:'Return to DH Club',exact:true})).toBeFocused();
     h.checked(`training-title-arrow-navigation-wraps-without-activating-a-command-${width}x${height}-${theme}`,true);
-    await openJournal(page,h);await h.expect(journal(page).getByRole('combobox',{name:'Training section',exact:true}).locator('option')).toHaveCount(7);
+    await openJournal(page,h);await h.expect(journal(page).getByRole('group',{name:'Training section',exact:true}).locator('[data-dc-training-section]')).toHaveCount(7);
     await h.expect.poll(async()=>(await menuSample(page))?.state).toBe('inactive');
     const paused=await menuSample(page);await page.waitForTimeout(250);
     h.checked(`training-title-paint-loop-pauses-behind-the-journal-${width}x${height}-${theme}`,(await menuSample(page)).paints===paused.paints);
-    await journal(page).getByRole('combobox',{name:'Training section',exact:true}).selectOption('club');
+    await journal(page).getByRole('group',{name:'Training section',exact:true}).locator('[data-dc-training-section="club"]').click();
     await journal(page).getByRole('searchbox',{name:'Search training lessons',exact:true}).fill('Privacy');
     await h.expect(journal(page).locator('[data-journal-lesson="club.privacy"]')).toBeVisible();
     await journal(page).getByRole('button',{name:'Open Privacy',exact:true}).click();
@@ -111,7 +111,7 @@ export async function runDeepClaimAcademyBrowser(h) {
   const before=await h.rpc(page,'dc_get'),beforeProgress=await h.rpc(page,'dc_tutorial_get');
   const callStart=(await h.command(page,'calls')).length;
   for(const [section,keys] of Object.entries(ACADEMY)){
-    await journal(page).getByRole('combobox',{name:'Training section',exact:true}).selectOption(section);
+    await journal(page).getByRole('group',{name:'Training section',exact:true}).locator(`[data-dc-training-section="${section}"]`).click();
     for(const key of keys){
       const id=`${section}.${key}`,card=journal(page).locator(`[data-journal-lesson="${id}"]`);
       if(!await card.count())await journal(page).getByRole('button',{name:'Next training page',exact:true}).click();

@@ -14,6 +14,7 @@ const scene: DialogueScene = { id: 'test.gus', title: 'The old claim', estimated
 const practice: TutorialPractice = { id: 'practice.industry.warehouse', lesson_id: 'industry.warehouse', title: 'Room for the haul', notice: 'Safe demonstration. No stock, credits or employee energy changes.', scenario: 'A returned haul is larger than the available storage.', facts: [{ label: 'Cargo', value: 'Staged until collected' }, { label: 'Capacity', value: 'Every unit must have room' }], choices: [{ id: 'collect', label: 'Collect what fits', feedback: 'The remainder stays staged.', recommended: true }, { id: 'discard', label: 'Assume the rest disappears', feedback: 'Cargo is never silently discarded.' }], takeaway: 'Make space before collecting the remainder.', readonly: true };
 const progress = (): TutorialProgress => ({ version: 1, user_id: 'u', club_id: 'c', company_id: 'company', server_now: '2026-11-02T12:00:00Z', revision: 1, active_lesson_id: 'beginner.claim', active_step_id: 'beginner.claim.deed', completed_steps: [], reviewed_lessons: ['workforce.hiring'], practiced_lessons: ['workforce.stats'], skipped_lessons: [], seen_dialogue: [], campaign_status: 'active', commentary_enabled: true, updated_at: null });
 const noop = () => {};
+const sectionNames = { beginner: 'The First Descent', workforce: 'Workforce', industry: 'Industry', field: 'Underground', business: 'Business', club: 'DH Club', settings: 'Game management' };
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('Instant, controlled camp dialogue', () => {
@@ -112,11 +113,13 @@ describe('The full journal and economic-safe practice', () => {
     render(<DeepClaimTutorialJournal lessons={TUTORIAL_LESSONS} progress={progress()} onStart={start} onReplay={replay} onReview={review} onClose={noop} />);
     expect(TUTORIAL_LESSONS).toHaveLength(42); expect(screen.queryByText(/\/42 practiced/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start guided first shift' })).toBeInTheDocument();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Training section' }), { target: { value: 'workforce' } });
+    expect(screen.queryByRole('combobox', { name: 'Training section' })).not.toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Training section' })).getByRole('button', { name: 'Workforce' }));
     expect(screen.getByText('Reviewed')).toBeInTheDocument(); expect(screen.getByText('Done in your company')).toBeInTheDocument();
     const seen = new Set<string>();
     for (const section of TUTORIAL_SECTIONS) {
-      fireEvent.change(screen.getByRole('combobox', { name: 'Training section' }), { target: { value: section } });
+      fireEvent.click(within(screen.getByRole('group', { name: 'Training section' })).getByRole('button', { name: sectionNames[section] }));
+      expect(within(screen.getByRole('group', { name: 'Training section' })).getByRole('button', { name: sectionNames[section] })).toHaveAttribute('aria-pressed', 'true');
       for (let page = 0; page < TUTORIAL_LESSONS.length; page++) {
         for (const card of document.querySelectorAll<HTMLElement>('[data-journal-lesson]')) {
           seen.add(card.dataset.journalLesson!); expect(within(card).getAllByRole('button')).toHaveLength(1);
@@ -130,6 +133,21 @@ describe('The full journal and economic-safe practice', () => {
     expect([...seen].sort()).toEqual([...TUTORIAL_LESSON_IDS].sort());
     expect(start).not.toHaveBeenCalled(); expect(replay).not.toHaveBeenCalled(); expect(review).not.toHaveBeenCalled();
   });
+  it('clears the old lesson search and page when choosing another illustrated notebook section', () => {
+    const start = vi.fn(), replay = vi.fn(), review = vi.fn();
+    render(<DeepClaimTutorialJournal lessons={TUTORIAL_LESSONS} progress={progress()} onStart={start} onReplay={replay} onReview={review} onClose={noop} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Next training page' }));
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search training lessons' }), { target: { value: 'no matching lesson here' } });
+    expect(screen.getByText('No lessons match this search. Try another subject.')).toBeInTheDocument();
+    const sections = screen.getByRole('group', { name: 'Training section' });
+    fireEvent.click(within(sections).getByRole('button', { name: 'Industry' }));
+    expect(screen.getByRole('searchbox', { name: 'Search training lessons' })).toHaveValue('');
+    expect(screen.getByRole('status')).toHaveTextContent('Page 1 of');
+    expect(screen.queryByText('No lessons match this search. Try another subject.')).not.toBeInTheDocument();
+    expect(within(sections).getByRole('button', { name: 'Industry' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(sections).getByRole('button', { name: 'The First Descent' })).toHaveAttribute('aria-pressed', 'false');
+    expect(start).not.toHaveBeenCalled(); expect(replay).not.toHaveBeenCalled(); expect(review).not.toHaveBeenCalled();
+  });
   it('starts the short guide and resumes its own next stage even when an optional topic was last active', () => {
     const start = vi.fn(), replay = vi.fn(); const saved = progress();
     const view = render(<DeepClaimTutorialJournal lessons={TUTORIAL_LESSONS} progress={saved} onStart={start} onReplay={replay} onReview={noop} onClose={noop} />);
@@ -141,7 +159,7 @@ describe('The full journal and economic-safe practice', () => {
   it('opens a topic without starting it, then starts its real walkthrough only on explicit request', () => {
     const start = vi.fn(), replay = vi.fn(), review = vi.fn(); const lesson = TUTORIAL_LESSONS.find(item => item.id === 'workforce.stats')!;
     render(<DeepClaimTutorialJournal lessons={TUTORIAL_LESSONS} progress={progress()} onStart={start} onReplay={replay} onReview={review} onClose={noop} />);
-    fireEvent.change(screen.getByRole('combobox', { name: 'Training section' }), { target: { value: 'workforce' } });
+    fireEvent.click(within(screen.getByRole('group', { name: 'Training section' })).getByRole('button', { name: 'Workforce' }));
     fireEvent.click(screen.getByRole('button', { name: `Open ${lesson.title}` }));
     expect(screen.getByRole('heading', { name: lesson.title })).toHaveFocus(); expect(start).not.toHaveBeenCalled(); expect(replay).not.toHaveBeenCalled(); expect(review).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Start lesson' })); expect(start).toHaveBeenCalledWith(lesson.id); expect(replay).not.toHaveBeenCalled();

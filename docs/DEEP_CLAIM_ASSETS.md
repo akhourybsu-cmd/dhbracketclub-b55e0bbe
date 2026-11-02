@@ -32,6 +32,12 @@ Research retains actual confirmed progress and Maxed states, with compact framed
 
 ## Source inventory and ownership
 
+### Thematic selectors
+
+The five former native dropdowns use direct, keyboard-operable buttons with explicit pressed states. Dispatch worksite cards combine original resource illustrations with a bounded 7×5 pixel map sampled only from already revealed public tiles. Unknown ground stays dark; the preview never generates terrain or reveals a hidden deposit. Material names, depth, west/east branch distance and remaining stock identify destinations without visible raw coordinates. Four-card paging and a retained selected card bound the DOM even in a large mine.
+
+Infrastructure tiles reuse existing project sprites. The mine-lift selector adds an original inline pixel cage/shaft emblem and six known stops per page. Training uses concise skill emblems and actual base values; the journal section rail has its own scoped light/dark treatment and horizontal scrolling within the panel. Shared `deepClaimSelectors.css` defines the inset frames, focus/selected borders, touch targets and reduced-motion/forced-color behavior. `deepClaimDepthPicker.css` and the journal stylesheet supply their local geometry. These are interface illustrations; both world atlases remain unchanged.
+
 | Source | Purpose |
 |---|---|
 | `src/components/deepClaim/DeepClaimInventory.tsx` / `inventory.css` | Image-led, paged warehouse slots and a large-art item inspector; original resource SVGs and actual catalog recipe uses, with no new inventory authority. |

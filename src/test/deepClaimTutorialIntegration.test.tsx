@@ -74,7 +74,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
       initialView="hire" inspectRequest={{ id, workerId: 'worker-b', view }} /></Bridge>;
     const rendered = render(workforce('inspect-1', 'training'));
     expect(await screen.findByRole('dialog', { name: 'Worker b' })).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Training skill' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Training skill' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to crew' }));
     rendered.rerender(workforce('inspect-1', 'training'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
