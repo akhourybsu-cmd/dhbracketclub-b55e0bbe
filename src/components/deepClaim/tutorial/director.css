@@ -4,6 +4,7 @@
 .dct-library-dialog>section{flex:1;min-height:0}
 .dcl-dialog.dct-dialogue-dialog{padding:0;gap:0;max-width:640px;overflow:auto;background:transparent;border:0;box-shadow:none}
 .dct-director-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.dct-director-actions>*{flex:1;font-size:11px}
+.dct-step-status{display:inline-flex;align-items:center;gap:5px;width:fit-content;font-size:10px!important;line-height:1.2!important;color:var(--dct-muted);border:1px solid var(--dct-line);border-radius:5px;padding:4px 6px;margin-top:5px!important}.dct-step-status[data-complete=true]{color:var(--dct-gold);border-color:color-mix(in srgb,var(--dct-gold) 40%,transparent)}
 .dct-sync-note{font-size:10px;line-height:1.5;color:var(--dct-gold)}
 .dcm-settings-dialog .dcl-settings>.dcl-section-heading{display:none}
 @media(min-width:800px){.dcl-dialog.dct-library-dialog{height:min(820px,calc(100dvh - 24px));max-height:calc(100dvh - 24px)}}

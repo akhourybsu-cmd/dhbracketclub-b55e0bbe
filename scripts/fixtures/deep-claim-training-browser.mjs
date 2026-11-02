@@ -21,7 +21,7 @@ async function openJournal(page, h) {
 }
 
 export async function runDeepClaimMenuBrowser(h) {
-  const cases = [[320,568,'dark','no-preference'],[390,844,'light','no-preference'],[844,390,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']];
+  const cases = h.visualCases ?? [[320,568,'dark','no-preference'],[390,844,'light','no-preference'],[844,390,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']];
   for (const [width,height,theme,motion] of cases) {
     // Reuse one untouched isolated company slot across the visual matrix.
     const {context,page} = await h.setup(width,height,theme,motion,{runtimeProbe:true,isMobile:width<900});
@@ -67,6 +67,12 @@ export async function runDeepClaimMenuBrowser(h) {
     await page.keyboard.press('Escape');await h.expect(title(page)).toBeVisible();
     await h.expect(title(page).getByRole('button',{name:'Settings',exact:true})).toBeFocused();
     h.checked(`training-menu-reference-and-settings-never-found-a-company-${width}x${height}-${theme}`,!(await h.command(page,'calls')).some(call=>call.name==='dc_bootstrap'));
+    await title(page).getByRole('button',{name:'New Game',exact:true}).click();
+    await h.expect(page.getByRole('button',{name:'Skip introduction',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Advance dialogue',exact:true}).click();
+    await h.expect(page.getByRole('button',{name:'Previous dialogue line',exact:true})).toBeEnabled();
+    await h.fit(page,`training-dialogue-${width}x${height}-${theme}-${motion}`);await h.shot(page,`training-dialogue-${width}x${height}-${theme}-${motion}`);
+    h.checked(`training-prologue-preview-is-still-nondestructive-${width}x${height}-${theme}`,!(await h.command(page,'calls')).some(call=>call.name==='dc_bootstrap'));
     await context.close();
   }
   const {context,page}=await h.setup(390,844,'dark','no-preference',{runtimeProbe:true,isMobile:true});
@@ -114,7 +120,7 @@ export async function runDeepClaimAcademyBrowser(h) {
       await journal(page).getByRole('button',{name:'Practice safely',exact:true}).click();const practice=page.getByRole('region',{name:'Safe practice',exact:true});
       await h.expect(practice).toHaveAttribute('data-practice-id',`practice.${id}`);await h.expect(practice.getByRole('button',{name:'Finish safe practice',exact:true})).toBeDisabled();
       await practice.getByRole('group',{name:'Try a decision',exact:true}).getByRole('button').first().click();
-      await h.expect(practice.locator('[role="status"].dct-practice-feedback')).toBeVisible();await practice.getByRole('button',{name:'Finish safe practice',exact:true}).click();
+      await h.expect(practice.locator('[role="status"].dct-practice-feedback')).toBeVisible();await h.fit(page,`training-practice-footer-${id}`);await practice.getByRole('button',{name:'Finish safe practice',exact:true}).click();
       await h.expect(journal(page)).toBeVisible();await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).reviewed_lessons.includes(id)).toBe(true);
       if(await journal(page).locator('[data-journal-detail]').count())await journal(page).getByRole('button',{name:'Back to training lessons',exact:true}).click();
       h.checked(`training-safe-academy-review-${id}`,true);

@@ -25,6 +25,7 @@ The game can retain its own dark mine identity within either application theme. 
 | Source | Purpose |
 |---|---|
 | `src/components/deepClaim/DeepClaimMark.tsx` | Original inline SVG shaft-and-ore emblem for the game and discovery surfaces. |
+| `src/components/deepClaim/DeepClaimNavEmblem.tsx` | Six original inline pixel SVG navigation emblems on 24×24 logical grids; no atlas rebake or external asset dependency. |
 | `src/components/deepClaim/DeepClaimDiscoveryCard.tsx` | Compete entry using the same emblem and restrained company palette. |
 | `src/components/deepClaim/renderer/DeepClaimCanvas.tsx` | Canvas 2D side-on company/mine renderer; implementation owned by the renderer module. |
 | `src/components/deepClaim/renderer/artManifest.ts` | Procedural art manifest, palette and supported mineral/worker/building identities; authoritative coverage is the exported manifest, not an assumed external atlas. |
@@ -52,6 +53,8 @@ The game can retain its own dark mine identity within either application theme. 
 | `src/lib/deepClaim/tutorial/dialogue.ts` | Structured original dialogue lines, speaker/expression identities and stable text keys. |
 
 Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock-image, runtime image-generation or external audio-service dependencies in this pack.
+
+The follow-up visual refinement reuses these assets for tactile CSS buttons, compact navigation and actual-reward displays. Reduced-motion styles remove decorative button motion; this presentation pass leaves atlas bytes, gameplay and persistence unchanged. Its verification/publication status is recorded in the implementation ledger.
 
 ## Phase 6 authored pack and fallback
 

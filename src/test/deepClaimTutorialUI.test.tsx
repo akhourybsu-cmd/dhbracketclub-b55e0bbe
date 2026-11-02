@@ -27,6 +27,16 @@ describe('Instant, controlled camp dialogue', () => {
     const next = screen.getByRole('button', { name: 'Continue' }); fireEvent.keyDown(next, { key: 'Enter' }); expect(advance).not.toHaveBeenCalled(); fireEvent.click(next); expect(advance).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Dialogue history' })); const history = screen.getByRole('region', { name: 'Dialogue history' }); expect(within(history).getAllByRole('listitem')).toHaveLength(2); expect(history).toHaveTextContent('Mara Flint');
   });
+  it('supports an explicit introduction skip and reports controlled conversation progress without advancing itself', () => {
+    const advance = vi.fn(), skip = vi.fn();
+    const view = render(<DeepClaimTutorialDialogue scene={scene} lineIndex={0} onAdvance={advance} onSkip={skip} skipLabel="Skip introduction" />);
+    expect(screen.getByRole('progressbar', { name: 'Conversation progress' })).toHaveAttribute('aria-valuenow', '1');
+    expect(screen.getByRole('progressbar', { name: 'Conversation progress' })).toHaveAttribute('aria-valuemax', '2');
+    fireEvent.click(screen.getByRole('button', { name: 'Skip introduction' })); expect(skip).toHaveBeenCalledOnce(); expect(advance).not.toHaveBeenCalled();
+    view.rerender(<DeepClaimTutorialDialogue scene={scene} lineIndex={1} onAdvance={advance} onSkip={skip} skipLabel="Skip introduction" />);
+    expect(screen.getByRole('progressbar', { name: 'Conversation progress' })).toHaveAttribute('aria-valuenow', '2');
+    expect(screen.getByText('Ready when you are.')).toBeInTheDocument(); expect(advance).not.toHaveBeenCalled();
+  });
 });
 
 describe('Viewport-aware guide geometry', () => {
@@ -95,11 +105,33 @@ describe('The full journal and economic-safe practice', () => {
     const reviewed = vi.fn(), practiced = vi.fn(); render(<DeepClaimTutorialJournal lessons={TUTORIAL_LESSONS} progress={progress()} onStart={noop} onReplay={noop} onReview={reviewed} onPractice={practiced} onClose={noop} initialLessonId="field.discoveries" />);
     expect(screen.getByRole('heading', { name: 'Rare Discoveries' })).toHaveFocus(); expect(screen.getByText(/six specimen identities/)).toBeInTheDocument(); expect(reviewed).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole('button', { name: 'Mark lesson reviewed' })); expect(reviewed).toHaveBeenCalledWith('field.discoveries'); expect(practiced).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole('button', { name: 'Practice safely' })); expect(practiced).toHaveBeenCalledWith('field.discoveries');
   });
+  it('keeps complete notes and task instructions in explicit disclosures without duplicating or recording a lesson', () => {
+    const reviewed = vi.fn(), practiced = vi.fn(), base = TUTORIAL_LESSONS.find(item => item.id === 'club.privacy') ?? TUTORIAL_LESSONS[0];
+    const lesson = { ...base, summary: 'A single field note.', reference: ['A single field note.', 'Another complete field note.'] };
+    render(<DeepClaimTutorialJournal lessons={[lesson]} progress={progress()} onStart={noop} onReplay={noop} onReview={reviewed} onPractice={practiced} onClose={noop} initialLessonId={lesson.id} />);
+    const notes = screen.getByText('Field notes').closest('summary')!, notesDetail = notes.closest('details')!;
+    const route = screen.getByText('Lesson route').closest('summary')!, routeDetail = route.closest('details')!;
+    expect(notesDetail.open).toBe(false); expect(routeDetail.open).toBe(false); expect(screen.getAllByText('A single field note.')).toHaveLength(1);
+    fireEvent.click(notes); expect(notesDetail.open).toBe(true); expect(screen.getByText('Another complete field note.')).toBeVisible();
+    fireEvent.click(route); expect(routeDetail.open).toBe(true); expect(within(routeDetail).getByText(lesson.steps[0].instruction)).toBeVisible();
+    expect(reviewed).not.toHaveBeenCalled(); expect(practiced).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark lesson reviewed' })); expect(reviewed).toHaveBeenCalledWith(lesson.id);
+    expect(screen.getByRole('button', { name: 'Mark lesson reviewed' })).toHaveTextContent('Mark lesson reviewed');
+  });
   it('keeps unavailable systems readable, labelled and reachable for safe learning', () => {
     render(<DeepClaimTutorialJournal lessons={TUTORIAL_LESSONS} progress={null} onStart={noop} onReplay={noop} onReview={noop} onClose={noop} availability={{ 'industry.smeltery': 'available_for_practice' }} initialLessonId="industry.smeltery" />); expect(screen.getByText('Safe practice available')).toBeInTheDocument(); expect(screen.getByText(/No unbounded offline queue/)).toBeInTheDocument();
   });
   it('requires a local demo choice before completion and provides feedback without any game action interface', () => {
     const done = vi.fn(); render(<DeepClaimTutorialPractice practice={practice} onReviewed={done} onClose={noop} />); expect(screen.getByText('PRACTICE · NO REAL TRANSACTIONS')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Finish safe practice' })).toBeDisabled(); fireEvent.click(screen.getByRole('button', { name: 'Collect what fits' })); expect(screen.getByRole('status')).toHaveTextContent('The remainder stays staged.'); expect(done).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole('button', { name: 'Finish safe practice' })); expect(done).toHaveBeenCalledOnce();
+  });
+  it('shows immediate choice feedback while leaving extra advice explicitly expandable and completion deliberate', () => {
+    const done = vi.fn(); render(<DeepClaimTutorialPractice practice={practice} onReviewed={done} onClose={noop} />);
+    const choice = screen.getByRole('button', { name: 'Collect what fits' }); fireEvent.click(choice);
+    expect(choice).toHaveAttribute('aria-pressed', 'true'); expect(screen.getByRole('status')).toHaveTextContent('The remainder stays staged.');
+    const advice = screen.getByText('Gus’s takeaway').closest('summary')!, details = advice.closest('details')!;
+    expect(details.open).toBe(false); fireEvent.click(advice); expect(details.open).toBe(true);
+    expect(screen.getByText(practice.takeaway)).toBeVisible(); expect(done).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Finish safe practice' })); expect(done).toHaveBeenCalledOnce();
   });
   it('offers graduation navigation without fictitious rewards or guaranteed profit', () => {
     const resume = vi.fn(), advanced = vi.fn(), guide = vi.fn(); render(<DeepClaimTutorialCompletion onContinue={resume} onAdvanced={advanced} onGuide={guide} reducedMotion />); expect(screen.getByText(/Training grants no extra/)).toBeInTheDocument(); fireEvent.click(screen.getByRole('button', { name: 'Continue Mining' })); fireEvent.click(screen.getByRole('button', { name: 'Explore Advanced Training' })); fireEvent.click(screen.getByRole('button', { name: 'Open Field Guide' })); expect(resume).toHaveBeenCalledOnce(); expect(advanced).toHaveBeenCalledOnce(); expect(guide).toHaveBeenCalledOnce();

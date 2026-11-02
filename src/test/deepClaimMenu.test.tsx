@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeepClaimTitleScreen, type DeepClaimMenuSummary } from '@/components/deepClaim/menu/DeepClaimTitleScreen';
 import { DeepClaimMenuBackdrop, type DeepClaimMenuDiagnostics } from '@/components/deepClaim/menu/DeepClaimMenuBackdrop';
+import { DeepClaimPrologue } from '@/components/deepClaim/menu/DeepClaimPrologue';
 import { menuSceneGeometry } from '@/components/deepClaim/menu/illustratedScene';
 import { DeepClaimPortrait } from '@/components/deepClaim/tutorial/DeepClaimPortrait';
 import { TUTORIAL_EXPRESSIONS, TUTORIAL_SPEAKERS } from '@/lib/deepClaim/tutorial/types';
@@ -19,6 +20,7 @@ function controls() { return { onContinue: vi.fn(), onNewGame: vi.fn(), onJourna
 function paintAt(at: number) { act(() => { const delta = Math.max(0, at - clock); clock = at; vi.advanceTimersByTime(delta); const pending = [...frames.values()]; frames.clear(); for (const frame of pending) frame(at); }); }
 function canvasContext() { return { setTransform: vi.fn(), clearRect: vi.fn(), fillRect: vi.fn(), drawImage: vi.fn(), save: vi.fn(), restore: vi.fn(), translate: vi.fn(), scale: vi.fn(), fillStyle: '', imageSmoothingEnabled: true }; }
 beforeEach(() => {
+  localStorage.clear();
   visibility = 'visible'; clock = 0; nextFrame = 0; frames.clear(); art.listeners.clear(); art.sky.mockClear(); art.ground.mockClear(); art.activity.mockClear();
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   vi.spyOn(performance, 'now').mockImplementation(() => clock);
@@ -40,6 +42,7 @@ describe('Deep Claim functional title front door', () => {
     expect(screen.getByRole('heading', { name: 'DEEP CLAIM' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'New Game' })).toHaveClass('is-primary');
+    expect(within(screen.getByRole('navigation', { name: 'Deep Claim main menu' })).getAllByRole('button')).toHaveLength(5);
     expect(actions.onNewGame).not.toHaveBeenCalled(); expect(actions.onInteraction).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'New Game' }));
     expect(actions.onNewGame).toHaveBeenCalledOnce(); expect(actions.onInteraction).toHaveBeenCalledOnce();
@@ -98,6 +101,40 @@ describe('Deep Claim functional title front door', () => {
     expect(screen.getByTestId('deep-claim-menu-backdrop')).toHaveAttribute('data-dc-title-scene', 'illustrative');
     fireEvent.click(screen.getByRole('button', { name: 'New Game' })); expect(actions.onNewGame).toHaveBeenCalledOnce();
     expect(screen.getByTestId('deep-claim-title')).toHaveAttribute('data-dc-reduced-motion', 'true');
+  });
+});
+
+describe('Deep Claim concise founding flow', () => {
+  function founding() { return { identity: 'menu-test:club', clubName: 'The Club', reducedMotion: true, reducedGraphics: true, busy: false, blocked: false, onBack: vi.fn(), onFound: vi.fn().mockResolvedValue(undefined), onInteraction: vi.fn() }; }
+  it('provides one clear introduction skip and reviews a persistent company before signing', async () => {
+    const actions = founding(); render(<DeepClaimPrologue {...actions} />);
+    expect(screen.getAllByRole('button', { name: 'Skip introduction' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Skip dialogue' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip introduction' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Company name' }), { target: { value: '  Flint Works  ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Review deed' }));
+    expect(actions.onFound).not.toHaveBeenCalled();
+    const facts = screen.getByRole('group', { name: 'Starting company' });
+    expect(facts).toHaveTextContent('3 crew'); expect(facts).toHaveTextContent('Persistent mine'); expect(facts).toHaveTextContent('30s first shift');
+    expect(screen.getByText(/One company per member, per club/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit name' }));
+    expect(screen.getByRole('textbox', { name: 'Company name' })).toHaveValue('  Flint Works  ');
+    fireEvent.click(screen.getByRole('button', { name: 'Review deed' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Found company' })); });
+    expect(actions.onFound).toHaveBeenCalledExactlyOnceWith('Flint Works');
+  });
+  it('keeps the reviewed company intact and blocks signing while a server action is pending or read-only', () => {
+    const actions = founding(); const view = render(<DeepClaimPrologue {...actions} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Skip introduction' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Company name' }), { target: { value: 'Vale Works' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Review deed' }));
+    view.rerender(<DeepClaimPrologue {...actions} busy />);
+    expect(screen.getByRole('button', { name: 'Signing the deed…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Edit name' })).toBeDisabled();
+    view.rerender(<DeepClaimPrologue {...actions} blocked />);
+    expect(screen.getByText('Vale Works')).toBeVisible();
+    const sign = screen.getByRole('button', { name: 'Found company' }); expect(sign).toBeDisabled(); fireEvent.click(sign);
+    expect(actions.onFound).not.toHaveBeenCalled();
   });
 });
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Clock3, Factory, HardHat, Lamp, LockKeyhole, Package, Pickaxe, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Clock3, Factory, HardHat, Lamp, LockKeyhole, Package, Pickaxe, ShieldCheck, Users } from 'lucide-react';
 import type { TutorialLesson, TutorialPractice } from '@/lib/deepClaim/tutorial/types';
 import type { DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import { DeepClaimDiscoveryIcon } from '../renderer/DeepClaimIcons';
@@ -14,9 +14,9 @@ export function DeepClaimTutorialPractice({ practice, lesson, onReviewed, onClos
   return <section className="dct-practice" aria-label="Safe practice" data-practice-id={practice.id}>
     <header className="dct-page-header"><div><span className="dct-kicker">PRACTICE · NO REAL TRANSACTIONS</span><h1>{practice.title}</h1></div><button type="button" className="dct-icon-button" aria-label="Close safe practice" onClick={onClose}><ArrowLeft size={19} aria-hidden="true" /></button></header>
     <div className="dct-practice-body"><p className="dct-safety"><ShieldCheck size={18} aria-hidden="true" />{practice.notice}</p><TutorialPracticeVisual lessonId={practice.lesson_id} /><p className="dct-practice-scenario">{practice.scenario}</p><dl className="dct-practice-facts">{practice.facts.map((fact, index) => <div key={`${fact.label}:${index}`}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
-      <fieldset className="dct-practice-choices"><legend>Try a decision</legend>{practice.choices.map(item => <button type="button" key={item.id} aria-pressed={choice === item.id} onClick={() => setChoice(item.id)}>{item.label}{choice === item.id && <Check size={17} aria-hidden="true" />}</button>)}</fieldset>
-      {selected && <section className="dct-practice-feedback dct-enter" role="status"><strong>{selected.recommended ? 'A sound approach.' : 'What this means'}</strong><p>{selected.feedback}</p><p>{practice.takeaway}</p></section>}
-      {lesson && <p className="dct-reference-note">{lesson.objective}</p>}
+      <fieldset className="dct-practice-choices"><legend>Try a decision</legend>{practice.choices.map((item, index) => <button type="button" key={item.id} aria-pressed={choice === item.id} onClick={() => setChoice(item.id)}><span className="dct-choice-key" aria-hidden="true">{String.fromCharCode(65 + index)}</span><span className="dct-choice-label">{item.label}</span><span className="dct-choice-confirm" aria-hidden="true">{choice === item.id ? <Check size={17} /> : <ArrowRight size={16} />}</span></button>)}</fieldset>
+      {selected && <section className="dct-practice-feedback dct-enter" role="status"><div className="dct-feedback-heading"><ShieldCheck size={19} aria-hidden="true" /><strong>{selected.recommended ? 'A sound approach.' : 'What this means'}</strong></div><p>{selected.feedback}</p><details className="dct-disclosure"><summary><Lamp size={15} aria-hidden="true" /><strong>Gus’s takeaway</strong><ChevronDown size={15} aria-hidden="true" /></summary><p>{practice.takeaway}</p></details></section>}
+      {lesson && <details className="dct-disclosure"><summary><ShieldCheck size={15} aria-hidden="true" /><strong>Lesson objective</strong><ChevronDown size={15} aria-hidden="true" /></summary><p className="dct-reference-note">{lesson.objective}</p></details>}
     </div>
     <footer className="dct-page-footer"><button type="button" className="dct-button" onClick={onClose}>Back to lessons</button><button type="button" className="dct-button is-primary" disabled={!selected} onClick={onReviewed}>Finish safe practice<Check size={16} aria-hidden="true" /></button></footer>
   </section>;

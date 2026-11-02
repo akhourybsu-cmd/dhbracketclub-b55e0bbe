@@ -1,6 +1,24 @@
 # Deep Claim implementation ledger
 
-## Current release — cinematic menu, Gus and the Training Journal
+## Current release — tactile visual refinement
+
+This presentation pass builds on clean published main `c2e4cf57`. Implementation and final local verification are complete; **the changes remain uncommitted and publication is pending**. No gameplay, persistence, hooks, SQL, authentication, economy or dependencies change, and neither atlas is rebaked. No new migration or additional SQL/native run is required for this presentation-only release.
+
+- Compact menu badges and one Skip action reduce competing text. Tactile buttons, six original 24px navigation emblems, a stock HUD bar and artwork for actual rewards strengthen the existing game shell.
+- Seven selectable worker-skill tiles show one explanation at a time. Shorter crew/Office/Club copy and compact dispatch facts retain visible costs, energy, storage, risk, privacy and irreversible-decision information before confirmation.
+- The Training Journal gains visual reference layouts, native field-note disclosures and shorter copy. The retained Field Guide gains progress and clearer footers; tutorial identities, observations and economic authority remain unchanged.
+
+| Verification | Current evidence |
+|---|---|
+| Focused checks | Menu 16, tutorial UI 21 and gameplay-panel 102 tests passed; the 27-file Phase 8 preservation gate and an implementation application typecheck passed. |
+| Browser proof | All 373 checks passed with zero assertion/runtime errors; `/tmp/deep-claim-Ii1Fc6/report.json`. Presentation and menu cover 320px phone, 844px landscape and 1440px desktop in both themes, plus 390px dark/reduced motion. |
+| Final source checks | All 206 files / 2,084 tests passed with two workers; application typechecking passed with zero errors; scoped ESLint passed with zero errors/warnings. The final 27-file Phase 8 preservation check passed. |
+| Final production build | Passed in 18.43 seconds: `DeepClaimPage-BX74XRLq.js` 744.99 KB / 177.13 KB gzip; `DeepClaimPage-MPp4Aqfu.css` 138.38 KB / 23.74 KB gzip. |
+| PWA smoke | All 12 checks passed with zero assertion/runtime errors; `/tmp/deep-claim-pwa-olB05J/report.json`. Chromium was not in standalone display mode. |
+
+The passing browser run includes the actual twelve-chapter campaign with its authoritative thirty-second induction, reload, second device, saved-action recovery and save protection, plus thirty read-only academy reviews without economic changes. Guide, Journal, Dialogue and Practice footers retain visible forty-four-pixel targets and pass native hit tests. All local release gates have passed; production remains the earlier `c2e4cf57` release until the actual commit/push and publication receipt is recorded. Physical-device installation and subjective audio quality are not established by these cloud checks.
+
+## Menu/tutorial release record — cinematic menu, Gus and the Training Journal
 
 This implementation builds on main `94a4334b39626fb31365fb5d47753c1946dcfc94`. Implementation, final local verification, production application of `0800` and public publication are complete. The feature is main commit `52a5308ef57058093e42aace838caf861eaedba6`; this production receipt is recorded in a follow-up documentation-only commit, whose own future SHA is not predicted here. Earlier release records remain historical.
 

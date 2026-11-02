@@ -21,7 +21,12 @@ const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
 const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime,deep,menu,training').split(','));
+const visualMatrix = process.env.DEEP_CLAIM_QA_VISUAL_MATRIX === '1';
+const visualCases = visualMatrix
+  ? [[320,568,'dark','no-preference'],[320,568,'light','no-preference'],[844,390,'dark','no-preference'],[844,390,'light','no-preference'],[1440,900,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']]
+  : [[320,568,'dark','no-preference'],[390,844,'light','no-preference'],[844,390,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']];
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
+  visual_matrix: visualMatrix,
   optionalRareRevealDismissals: 0,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
 const endpoint = createDeepClaimMiddleware(token);
@@ -162,6 +167,28 @@ async function fit(page, label) {
         }
       }
     }
+    // Instruction actions and fixed reading footers must be genuinely usable,
+    // not merely report a 44px layout box underneath an overflow clip. Compact
+    // guidance intentionally unmounts its secondary actions, so only retained
+    // foreground controls are examined here.
+    const panels = '.dct-guidance,.dct-page-footer,.dct-dialogue-controls';
+    for (const node of document.querySelectorAll(`${panels.split(',').map(panel => `${panel} :is(button,a[href],select,input:not([type="hidden"]),[role="button"])`).join(',')}`)) {
+      if (!(node instanceof HTMLElement) || node.closest('[hidden],[aria-hidden="true"],[inert]') || node.matches(':disabled,[aria-disabled="true"]')) continue;
+      const box = node.getBoundingClientRect(), style = getComputedStyle(node), panel = node.closest(panels);
+      if (!box.width || !box.height || style.display === 'none' || style.visibility === 'hidden' || !panel) continue;
+      const name = node.getAttribute('aria-label') || node.textContent?.trim().slice(0, 44) || node.tagName;
+      const boundary = panel.getBoundingClientRect();
+      let visible = { left: Math.max(0, box.left, boundary.left), top: Math.max(0, box.top, boundary.top), right: Math.min(innerWidth, box.right, boundary.right), bottom: Math.min(innerHeight, box.bottom, boundary.bottom) };
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const clipping = getComputedStyle(parent), rect = parent.getBoundingClientRect();
+        if (/(hidden|clip|scroll|auto)/.test(clipping.overflowX)) { visible.left = Math.max(visible.left, rect.left + parent.clientLeft); visible.right = Math.min(visible.right, rect.left + parent.clientLeft + parent.clientWidth); }
+        if (/(hidden|clip|scroll|auto)/.test(clipping.overflowY)) { visible.top = Math.max(visible.top, rect.top + parent.clientTop); visible.bottom = Math.min(visible.bottom, rect.top + parent.clientTop + parent.clientHeight); }
+      }
+      if (visible.right - visible.left < 43.5 || visible.bottom - visible.top < 43.5) problems.push(`Clipped training target: ${name}`);
+      if (visible.left > box.left + 1 || visible.top > box.top + 1 || visible.right < box.right - 1 || visible.bottom < box.bottom - 1) problems.push(`Training action outside its visible panel: ${name}`);
+      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      if (!hit || hit !== node && !node.contains(hit)) problems.push(`Occluded training action: ${name}`);
+    }
     return problems;
   });
   checked(`layout-${label}`, issues.length === 0, issues);
@@ -215,7 +242,7 @@ async function canvasIsDrawn(page, label) {
   checked(`mine-canvas-drawn-and-contained-${label}`, result.width > 200 && result.height > 100 && result.colors > 12 && result.inView, result);
 }
 async function presentation() {
-  const cases = [[320, 568, 'dark', 'no-preference'], [390, 844, 'light', 'no-preference'], [844, 390, 'dark', 'no-preference'], [1440, 900, 'light', 'no-preference'], [390, 844, 'dark', 'reduce']];
+  const cases = visualCases;
   for (const [index, [width, height, theme, motion]] of cases.entries()) {
     const label = `${width}x${height}-${theme}-${motion}`, run = `presentation-${index}`, { context, page } = await setup(width, height, theme, motion);
     const initial = await found(page, { run, theme });
@@ -788,7 +815,7 @@ async function main() {
   if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
   if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
   if (sections.has('deep')) await runPhase7Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, processRecipe, workerFile, expect, assert, actors: DEEP_CLAIM_ACTORS });
-  const training = { setup, pageFor, go, continueCompany, reloadCompany, dismissTutorial, found, intro, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, workerFile, officeView, settle, expect, assert, actors: DEEP_CLAIM_ACTORS };
+  const training = { setup, pageFor, go, continueCompany, reloadCompany, dismissTutorial, found, intro, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, workerFile, officeView, settle, visualCases, expect, assert, actors: DEEP_CLAIM_ACTORS };
   if (sections.has('menu')) await runDeepClaimMenuBrowser(training);
   if (sections.has('training') || sections.has('campaign')) await runDeepClaimCampaignBrowser(training);
   if (sections.has('training') || sections.has('academy')) await runDeepClaimAcademyBrowser(training);

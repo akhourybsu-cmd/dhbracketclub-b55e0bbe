@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Crosshair } from 'lucide-react';
 import type { DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
 import { BEGINNER_LESSONS, getTutorialLesson, TUTORIAL_LESSONS } from '@/lib/deepClaim/tutorial/chapters';
@@ -160,10 +161,10 @@ export function DeepClaimTutorialDirector(props: DeepClaimTutorialDirectorProps)
       onBack={index > 0 ? () => update({ active_lesson_id: current.id, active_step_id: current.steps[index - 1].id }) : undefined}
       onNext={already || result?.complete ? next : undefined} onExit={pause} onSkip={() => finishLesson(false)}
       onMore={() => { setReferenceId(current.id); setPane('journal'); }}>
-      <p role="status">{already ? 'Previously confirmed for this company.' : result?.explanation}</p>
+      <p role="status" className="dct-step-status" data-complete={already || !!result?.complete}>{already || result?.complete ? <Check size={13} aria-hidden="true" /> : <Crosshair size={13} aria-hidden="true" />}<span>{already ? 'Recorded' : result?.complete ? 'Ready' : 'Your move'}</span><span className="sr-only">{already ? 'Previously confirmed for this company.' : result?.explanation}</span></p>
       <div className="dct-director-actions">{step.open && <button className="dct-button" type="button" onClick={() => props.navigate(step.open!)}>Show me</button>}
         <button className="dct-button" type="button" onClick={() => { setPracticeId(current.id); setPracticeAdvances(true); setPane('practice'); }}>Read-only alternative</button></div>
-      {props.error && <p className="dct-sync-note">Journal changes await synchronization. Your company keeps working.</p>}
+      {props.error && <p className="dct-sync-note">Journal sync pending. Your mine keeps working.</p>}
     </DeepClaimTutorialOverlay>}
   </>;
 }
