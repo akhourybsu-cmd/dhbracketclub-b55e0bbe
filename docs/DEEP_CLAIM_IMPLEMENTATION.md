@@ -23,7 +23,11 @@ Implementation lives in the existing Business, Industry, Workforce, Settings, Pr
 
 The final full suite includes an existing Afterimage navigation assertion corrected to await the final URL rather than the earlier toast; the expected destination and game behavior remain unchanged. A new production-collection test mock was corrected to honor its asynchronous callback contract before the passing final runs. The workspace connection interruption did not require rebuilding the implementation or changing production data.
 
-Commit/push and public publication verification are pending. No database application is required or claimed. Physical-device installation and subjective audio/performance review remain unverified by these cloud checks.
+The 23-file feature was pushed normally to main as `2fae25968f18726427543d88964763e8fe2a3375`, tree `3c2404289c007e9fd15d6b2cbdc1603f62d47300`, from the expected `02d0820e` parent without force updates or protection bypass. Every uploaded blob and the final tree matched the tested workspace; main readback matched and the local import was clean. Lovable reported that exact commit ready with no project error before publication.
+
+Deployment `b18363f1-084e-4c4f-9d2f-a4367c42105d` was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-02T20:00:53Z**, public build `1793649586476`. It serves `DeepClaimPage-C91Jc_A3.js` and `DeepClaimPage-BaeKGdps.css`, including the new inventory, research, work-order, gear, building and fixed-detail/footer markers. Public CSS SHA256 `85beacdb115c5b9a55f3b3b68f062039af87e55c2bd435933d93e67f2a10d4dd` exactly matches the final tested build. Both original atlas SHA values remain unchanged. Hosted JavaScript was rebuilt by Lovable, so equality with the local JavaScript hash is not claimed. The build timestamp is not a Git SHA; source synchronization and actual public assets were verified separately. The proof is `/tmp/dc-menus-public-proof/proof.json`.
+
+This receipt is recorded in a follow-up documentation-only commit. No database application is required or claimed. Physical-device installation and subjective audio/performance review remain unverified by these cloud checks.
 
 ## Previous release — DH Games publisher opening
 
