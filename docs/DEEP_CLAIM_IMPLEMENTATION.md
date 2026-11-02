@@ -1,6 +1,33 @@
 # Deep Claim implementation ledger
 
-## Current release — first-shift guide and natural camp dialogue
+## Current release — concise menus and research completion
+
+This presentation release builds on clean main `069cf947e4c0476808426a1d60858271fdd29344`. Deep Claim menus use plain section names and actual operational information. Introductory slogans, branch-count prose and repeated explanations of what a menu contains are removed. Costs, materials, effects, prerequisites, irreversible choices, privacy controls and error recovery remain available. No database, catalog, ruleset, atlas, dependency, authentication or economic authority changes are introduced.
+
+- Research presents a simple heading, one overall completion meter and illustrated branch selectors with progress tracks and explicit Maxed states. Totals derive from unique confirmed completed research keys in the current catalog, excluding active, unknown and duplicate records. Elapsed time alone cannot mark research complete.
+- Research tiles show actual stat bonuses, production-time reductions and illustrated recipe unlocks. Completed research retains its effects and details while removing obsolete costs and paid-start controls; the confirmation handler also guards completed entries. Live research continues to use persisted timestamps and the existing completion refresh.
+- Crew, hiring, inventory, production, discoveries, reports, club projects, showcases, buildings and settings lose promotional subtext. Functional explanations remain beside the actual item or decision. Club reward details use a disclosure; social sharing stays opt-in.
+- Shared dialogs retain their accessible descriptions without inserting a visible fallback sentence or empty description row. Existing focus, busy, escape, safe-area and transaction-footer behavior is unchanged. Empty menus can use a title without a redundant paragraph. Main menu save protection remains explicit and names the one-company-per-member/per-club rule.
+
+Implementation is in the existing Deep Claim menu components, Page and scoped `businessMenu.css`. Six research-state regressions extend the existing suite. Other test/browser changes update the actual accessible labels and keep interaction, cost, persistence and authorization assertions intact.
+
+Item and building inspectors use their actual quantities, effects, recipes and upgrade panels instead of catalog-flavor subtitles. Worker profiles retain skills, traits, energy and equipment details without another general introduction. The discovery reveal keeps the actual specimen details and choices while removing its generic handover sentence.
+
+| Verification | Evidence |
+|---|---|
+| Full app suite | **211 files / 2,145 tests passed** in 136.13 seconds with two workers; `/tmp/dc-concise-unit-delivery.log`. Existing UI assertions follow the concise names and retain their transaction, slot, condition, cost and source-state checks. |
+| Focused coverage | **134 tests across nine suites passed**; `/tmp/dc-concise-focused-final.log`. The final research and Ancient Deep UI recheck passed **24 tests**, including all six new completion/maxima regressions; `/tmp/dc-concise-final-targeted.log`. |
+| Final native browser | **170 checks passed**, zero assertion/runtime errors; `/tmp/deep-claim-qS0QL5/report.json`. Seven screen/theme/motion cases cover earned materials, worn equipped gear, settings, real research progress/completion, sequential work orders, sale/upgrade/batch totals, and keyboard-scrolled review details. Coal's flavor sentence is explicitly absent while its actual production uses and sale controls remain available. |
+| Navigation and tutorial regression | The title, save protection, native 30-second first-shift sale/Keep paths and the broader populated-menu pass also completed with **278 passing checks**; `/tmp/deep-claim-jd340r/report.json`. This run preceded only the final inspector subtitle removal; the final 170-check run covers those updated inspectors. |
+| Source checks | Application-project TypeScript, scoped ESLint and whitespace checks passed. The Phase 8 gate preserved all **27 frozen gameplay sources**, catalogs, SQL and original atlases; `/tmp/dc-concise-preservation-final.log`. |
+| Production build | Passed in **22.95 seconds**; `DeepClaimPage-Dg5i3rbv.js` 757.01 KB / 178.86 KB gzip. The existing large-chunk advisory remains. |
+| Built production PWA | All **12 checks passed**, no runtime/assertion errors; `/tmp/deep-claim-pwa-5M0taB/report.json`. This verifies local production-build authentication and PWA bootstrap, without claiming physical-device installation. |
+
+Native scenarios use the real production components and authoritative isolated local PostgreSQL transport. No live member stock, company or achievement was created or changed by QA. Final phone inspector, small-phone completed research, desktop active research and landscape transaction screenshots were visually reviewed.
+
+Publication is pending the ordinary main update and public-asset verification. No SQL migration is required.
+
+## Previous release — first-shift guide and natural camp dialogue
 
 This refinement builds on clean main `004dc699704cdc07b9add464badef1672f4167ff`. It replaces the compulsory opening inspection sequence with six existing guided tasks: quote, dispatch, return, collection, sell-or-keep and upgrade inspection. The full 42-topic library remains available, with existing 84 step / 67 dialogue identities and saved records intact. No migration, economic rule, authored atlas, authentication or DH Score change is introduced.
 

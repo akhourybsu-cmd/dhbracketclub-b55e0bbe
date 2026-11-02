@@ -57,7 +57,7 @@ describe('Deep Claim publisher entry', () => {
   it('does not restart an already shown intro after a transient authentication loading state', () => {
     const view = render(<Harness />); skipDHGamesIntro();
     wire.authLoading = true; view.rerender(<Harness />);
-    expect(screen.getByText('Finding the frontier')).toBeInTheDocument();
+    expect(screen.getByText('Loading')).toBeInTheDocument();
     wire.authLoading = false; view.rerender(<Harness />);
     expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
     expect(screen.queryByTestId('dh-games-intro')).not.toBeInTheDocument();
@@ -78,7 +78,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
   it('gives a first-time company a directly valid 30-second extraction, only after a server quote', async () => {
     render(<Harness />); continueDeepClaimCompany();
     fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
-    const dialog = screen.getByRole('dialog', { name: 'Work a seam' });
+    const dialog = screen.getByRole('dialog', { name: 'Extraction' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Extraction' }));
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
@@ -104,7 +104,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
   });
   it('keeps normal exploration distinct from the accelerated first shift and clears edited quotes', async () => {
     render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
-    const dialog = screen.getByRole('dialog', { name: 'Survey new ground' });
+    const dialog = screen.getByRole('dialog', { name: 'Exploration' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).not.toBeChecked();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     await within(dialog).findByRole('button', { name: 'Dispatch crew' });
@@ -113,7 +113,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Review dispatch' })).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /First shift/ }));
-    expect(screen.getByRole('dialog', { name: 'Work a seam' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Extraction' })).toBeInTheDocument();
     expect(within(dialog).getByLabelText('Expedition worksite')).toHaveValue('47:1');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     await waitFor(() => expect(wire.preview).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'extract', target_x: 47, target_y: 1, duration_minutes: 20, tutorial: true })));
@@ -121,14 +121,14 @@ describe('Deep Claim first play and dispatch confirmation', () => {
   it('shows authoritative blocked reasons and never exposes a confirm action for them', async () => {
     wire.preview.mockResolvedValue(quote({ allowed: false, reasons: ['Crew slots are occupied.'] }));
     render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
-    const dialog = screen.getByRole('dialog', { name: 'Work a seam' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
+    const dialog = screen.getByRole('dialog', { name: 'Extraction' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(await within(dialog).findByText('Crew slots are occupied.')).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument(); expect(wire.dispatch).not.toHaveBeenCalled();
   });
   it('accepts a newer authoritative preview but invalidates it if the cached company later advances', async () => {
     wire.preview.mockResolvedValue(quote({ company_revision: 2 }));
     const view = render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
-    const dialog = screen.getByRole('dialog', { name: 'Work a seam' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
+    const dialog = screen.getByRole('dialog', { name: 'Extraction' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(await within(dialog).findByRole('button', { name: 'Dispatch crew' })).toBeInTheDocument();
     wire.data = { ...wire.data!, revision: 3 }; view.rerender(<Harness />);
     expect(within(dialog).getByText(/Your camp changed/)).toBeInTheDocument(); expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument();

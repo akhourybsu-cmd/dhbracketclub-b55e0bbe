@@ -50,7 +50,7 @@ describe('Deep Claim workforce operations', () => {
     const view = render(workforce(data)); openWorker('Training'); expect(screen.getByText(/Base 50 → 54/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Review training' })); const dialog = screen.getByRole('dialog', { name: 'Train Worker a' }); expect(dialog).toHaveTextContent('37 cr');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm training' })); await waitFor(() => expect(state.train).toHaveBeenCalledWith('worker-a', 'mining'));
-    cleanup(); data.workers[0].trained_day = data.company!.energy_day; view.unmount(); render(workforce(data)); openWorker('Training'); expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled(); expect(screen.getByText(/Today’s course is complete/)).toBeInTheDocument();
+    cleanup(); data.workers[0].trained_day = data.company!.energy_day; view.unmount(); render(workforce(data)); openWorker('Training'); expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled(); expect(screen.getByText(/Trained today/)).toBeInTheDocument();
   });
   it('blocks paid training and equipment changes for employees currently on a shift', () => {
     const data = phaseTwoSnapshot(); data.workers[0].assigned_job_id = 'shift'; data.equipment = [gear(data)]; render(workforce(data)); openWorker('Training'); expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled(); fireEvent.click(screen.getByRole('button', { name: 'Gear' })); expect(screen.getByRole('button', { name: 'Equip Copper Pickaxe' })).toBeDisabled(); expect(screen.getByRole('button', { name: 'Repair Copper Pickaxe' })).toBeDisabled();
@@ -103,7 +103,7 @@ describe('Deep Claim production and shared game integration', () => {
     state.data!.company!.tutorial_used = true; state.data!.resources = {}; state.data!.expeditions = [{ id: 'intro', tutorial: true, status: 'collected' } as DeepClaimSnapshot['expeditions'][number]]; render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Review camp upgrades' })); fireEvent.click(screen.getByRole('button', { name: /Smeltery.*Unbuilt plot/ })); expect(screen.getByRole('button', { name: 'Confirm build' })).toBeInTheDocument(); expect(state.upgrade).not.toHaveBeenCalled();
   });
   it('opens hiring from the actual office and shows persistent wage information', () => {
-    state.data!.candidates = [candidate(state.data!)]; render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Map office' })); expect(screen.getByRole('heading', { name: 'The hiring office' })).toBeInTheDocument(); expect(screen.getByText('4 cr per energy · wages paid on dispatch')).toBeInTheDocument();
+    state.data!.candidates = [candidate(state.data!)]; render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Map office' })); expect(screen.getByRole('heading', { name: 'Hiring' })).toBeInTheDocument(); expect(screen.getByText('4 cr per energy · wages paid on dispatch')).toBeInTheDocument();
   });
   it('routes ready production from the surface into Workshop and blocks another mining shift until collection', () => {
     state.data!.production_jobs = [job({ status: 'ready' })];

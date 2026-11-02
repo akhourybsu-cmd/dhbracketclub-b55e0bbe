@@ -67,8 +67,8 @@ export function DeepClaimTitleScreen({ summary, loading = false, busy = false, e
       {error && <div className="dc-title-status" role="status"><p>{error}</p>{onRetry && <button type="button" onClick={() => choose(onRetry)} disabled={loading}><RefreshCw size={15} aria-hidden="true" />Retry connection</button>}</div>}
       <footer className="dc-title-footer"><span>DRY MY HORSE</span></footer>
     </div>
-    <ClaimDialog open={protectSave} onClose={() => setProtectSave(false)} title="One claim. Yours." description="New Game will not replace your save." className="dc-title-save-dialog">
-      <div className="dcl-dialog-body"><div className="dc-title-protected-save"><ShieldCheck size={25} aria-hidden="true" /><div><span>Save protected</span><strong>{summary?.companyName}</strong></div></div><p>Deep Claim keeps one company per member in each club. Continue or replay the tutorial; your progress stays intact.</p></div>
+    <ClaimDialog open={protectSave} onClose={() => setProtectSave(false)} title="Existing company" description="New Game will not replace your save." className="dc-title-save-dialog">
+      <div className="dcl-dialog-body"><div className="dc-title-protected-save"><ShieldCheck size={25} aria-hidden="true" /><div><span>Save protected</span><strong>{summary?.companyName}</strong></div></div><p>One company per member, per club. Continue your save or review the tutorial.</p></div>
       <div className="dcl-dialog-actions"><ClaimButton onClick={() => { setProtectSave(false); choose(onContinue); }} primary>Continue</ClaimButton><ClaimButton onClick={() => { setProtectSave(false); choose(onJournal); }}>Replay tutorial</ClaimButton><ClaimButton onClick={() => { setProtectSave(false); interact(); }}>Back</ClaimButton></div>
     </ClaimDialog>
   </section>;

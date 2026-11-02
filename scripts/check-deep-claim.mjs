@@ -145,7 +145,7 @@ async function dismissTutorial(page) {
   await expect.poll(async () => (await rpc(page, 'dc_tutorial_get')).campaign_status).toBe('paused');
   // The first-shift guide opens the real planner. Pausing guidance leaves that
   // unpaid draft intact; close it explicitly before testing company navigation.
-  const planner = page.getByRole('dialog', { name: 'Work a seam', exact: true });
+  const planner = page.getByRole('dialog', { name: 'Extraction', exact: true });
   if (await planner.isVisible()) await planner.getByRole('button', { name: 'Back', exact: true }).click();
   await settle(page);
 }
@@ -253,7 +253,7 @@ async function closeReward(page) {
 async function intro(page, { confirm = true } = {}) {
   await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Start first shift · 30s', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Work a seam' });
+  const dialog = page.getByRole('dialog', { name: 'Extraction' });
   await expect(dialog.getByRole('combobox', { name: 'Expedition worksite' })).toHaveValue('47:1');
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Verified dispatch estimate' })).toBeVisible();
@@ -364,7 +364,7 @@ async function presentation() {
       }
       if (name === 'Crew') {
         await page.getByRole('group', { name: 'Crew view', exact: true }).getByRole('button', { name: 'Hire', exact: true }).click();
-        await expect(page.getByRole('heading', { name: 'The hiring office', exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Hiring', exact: true })).toBeVisible();
         await fit(page, `${label}-hiring`); await shot(page, `${label}-hiring`);
         await page.getByRole('group', { name: 'Crew view', exact: true }).getByRole('button', { name: /^Staff/ }).click();
       }
@@ -384,7 +384,7 @@ async function presentation() {
     const after = await rpc(page, 'dc_get');
     checked(`review-never-spends-resources-${label}`, initial.company.cash === after.company.cash && after.workers.every(worker => worker.energy === 6) && after.expeditions.length === 0);
     await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
-    await page.getByRole('dialog', { name: 'The surface camp' }).getByRole('button', { name: /Warehouse/ }).click();
+    await page.getByRole('dialog', { name: 'Buildings' }).getByRole('button', { name: /Warehouse/ }).click();
     await expect(page.getByRole('dialog', { name: 'Warehouse', exact: true })).toBeVisible();
     await fit(page, `${label}-upgrade-menu`); await shot(page, `${label}-upgrade-menu`); await page.keyboard.press('Escape');
     for (const view of ['Company', 'Research', 'Contracts', 'Records']) {
@@ -443,7 +443,7 @@ async function quotes() {
     const label = `${width}x${height}-${theme}-${motion}`;
     await go(page, { run, theme });
     await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
-    await page.getByRole('dialog', { name: 'The surface camp', exact: true }).getByRole('button', { name: /Warehouse/ }).click();
+    await page.getByRole('dialog', { name: 'Buildings', exact: true }).getByRole('button', { name: /Warehouse/ }).click();
     const warehouse = page.getByRole('dialog', { name: 'Warehouse', exact: true });
     await review(warehouse, 'Warehouse', warehouseCost, warehouse.getByRole('button', { name: 'Confirm upgrade', exact: true }), `${label}-upgrade`);
     await clearDialogs(page);
@@ -486,7 +486,7 @@ async function journey() {
   await expect(page.getByRole('dialog', { name: 'Trade recorded.', exact: true })).toBeVisible(); await closeReward(page);
   saved = await rpc(page, 'dc_get'); checked('real-market-sale-updates-stock-and-cash', saved.resources.coal === 5 && saved.company.cash === 193);
   await tab(page, 'Surface'); await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
-  await page.getByRole('dialog', { name: 'The surface camp' }).getByRole('button', { name: /Warehouse/ }).click();
+  await page.getByRole('dialog', { name: 'Buildings' }).getByRole('button', { name: /Warehouse/ }).click();
   await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Warehouse upgraded.', exact: true })).toBeVisible(); await closeReward(page);
   saved = await rpc(page, 'dc_get'); checked('real-upgrade-doubles-storage-and-spends-once', saved.company.cash === 133 && saved.company.warehouse_capacity === 240);
@@ -505,7 +505,7 @@ async function reliability() {
   const run = 'reliability', { context, page } = await setup();
   await found(page, { run }); await intro(page, { confirm: false });
   await command(page, 'fail_next', { name: 'dc_dispatch_operation', after_commit: true });
-  await page.getByRole('dialog', { name: 'Work a seam' }).getByRole('button', { name: 'Dispatch crew', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Extraction' }).getByRole('button', { name: 'Dispatch crew', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
@@ -520,7 +520,7 @@ async function reliability() {
   await context.setOffline(true); await expect(page.getByText('Saved camp · read-only until reconnected', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Dispatch another crew', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
-  await page.getByRole('dialog', { name: 'The surface camp' }).getByRole('button', { name: /Warehouse/ }).click();
+  await page.getByRole('dialog', { name: 'Buildings' }).getByRole('button', { name: /Warehouse/ }).click();
   await expect(page.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled(); await page.keyboard.press('Escape');
   checked('offline-camp-is-explicitly-read-only', true); await context.setOffline(false);
   await expect(page.getByText('Saved camp · read-only until reconnected', { exact: true })).toHaveCount(0);
@@ -573,7 +573,7 @@ async function operationPlan(page, mode, { x, y, infrastructure = 'supports', re
   await clearDialogs(page); await tab(page, 'Mine');
   await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
   await page.getByRole('dialog', { name: 'Underground operations', exact: true }).getByRole('group', { name: 'Mine operations', exact: true }).getByRole('button', { name: new RegExp(`^${mode}(?:\\s|$)`) }).click();
-  const title = mode === 'Survey' ? 'Survey the mine' : mode === 'Infrastructure' ? 'Improve the mine' : mode === 'Extraction' ? 'Work a seam' : 'Explore the frontier';
+  const title = mode === 'Survey' ? 'Survey' : mode === 'Infrastructure' ? 'Infrastructure' : mode === 'Extraction' ? 'Extraction' : 'Exploration';
   const dialog = page.getByRole('dialog', { name: title, exact: true });
   const worksite = dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true });
   assert.ok(await worksite.locator('option').count() <= 65, 'Native worksite controls must stay bounded, including a selected map target');
@@ -592,7 +592,7 @@ async function operationPlan(page, mode, { x, y, infrastructure = 'supports', re
 async function harvest(page, x, y, { workers } = {}) {
   await clearDialogs(page); await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Extract', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Work a seam', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Extraction', exact: true });
   await dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true }).selectOption(`${x}:${y}`);
   if (workers) await selectCrew(dialog, workers);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
@@ -633,7 +633,7 @@ async function sale(page, name, quantity) {
 async function build(page, name) {
   await clearDialogs(page); await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
-  await page.getByRole('dialog', { name: 'The surface camp', exact: true }).getByRole('button', { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
+  await page.getByRole('dialog', { name: 'Buildings', exact: true }).getByRole('button', { name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
   await page.getByRole('button', { name: 'Confirm build', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Back to the claim', exact: true })).toBeVisible(); await closeReward(page);
 }
@@ -773,6 +773,7 @@ async function menus() {
     await (await stockMaterial(client, 'Coal')).click();
     let detail = client.getByRole('dialog', { name: 'Coal', exact: true });
     await expect(detail.getByRole('region', { name: 'Used in production', exact: true })).toBeVisible();
+    await expect(detail.getByText('Dark fuel seams that power the frontier.', { exact: true })).toHaveCount(0);
     await expect(detail.getByRole('button', { name: 'Sell Coal', exact: true })).toBeEnabled();
     await fit(client, `menus-${label}-material-detail`); await shot(client, `menus-${label}-material-detail`);
     // Inspection hands off to the existing sale confirmation, without selling.
@@ -969,7 +970,7 @@ async function field() {
   // The authored quartz seam is genuinely finite. Recover its specimen only
   // after the real server operation returns, then reconcile a lost sale ACK.
   await tab(page, 'Surface'); await page.getByRole('button', { name: 'Extract', exact: true }).click();
-  dialog = page.getByRole('dialog', { name: 'Work a seam', exact: true });
+  dialog = page.getByRole('dialog', { name: 'Extraction', exact: true });
   await dialog.getByRole('combobox', { name: 'Expedition worksite', exact: true }).selectOption('47:3');
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
@@ -1028,7 +1029,7 @@ async function caverns() {
     await sale(page, 'Coal'); await sale(page, 'Stone');
     snapshot = await rpc(page, 'dc_get'); assert.equal(snapshot.company.cash, 225);
     await tab(page, 'Surface'); await page.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
-    await page.getByRole('dialog', { name: 'The surface camp', exact: true }).getByRole('button', { name: /Mine Shaft/ }).click();
+    await page.getByRole('dialog', { name: 'Buildings', exact: true }).getByRole('button', { name: /Mine Shaft/ }).click();
     await page.getByRole('button', { name: 'Confirm upgrade', exact: true }).click(); await closeReward(page);
     snapshot = await rpc(page, 'dc_get'); assert.equal(snapshot.company.cash, 145); assert.equal(snapshot.world.max_depth, 99);
     const candidate = await command(page, 'cavern_survey_site');

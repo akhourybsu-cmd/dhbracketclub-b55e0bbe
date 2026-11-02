@@ -21,7 +21,7 @@ export function ClaimDialog({ open, onClose, title, description, children, heade
   const heading = useRef<HTMLHeadingElement>(null);
   const opener = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => { if (!open) return; report?.(token.current, true); const id = token.current; return () => report?.(id, false); }, [open, report]);
-  const titleContent = <><DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle><DialogDescription>{description ?? 'Manage your mining company.'}</DialogDescription></>;
+  const titleContent = <><DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle><DialogDescription className={description?.trim() ? undefined : 'sr-only'}>{description?.trim() || title}</DialogDescription></>;
   return <Dialog open={open} onOpenChange={value => { if (!value && !busy) onClose(); }}><DialogContent className={`dcl-dialog ${footer ? 'has-fixed-footer' : ''} ${className}`} onOpenAutoFocus={event => { event.preventDefault(); opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; heading.current?.focus({ preventScroll: true }); }} onCloseAutoFocus={event => { event.preventDefault(); if (document.querySelector('[role="dialog"][data-state="open"]')) return; const target = opener.current; if (target?.isConnected && !target.closest('[hidden],[inert]') && !(target instanceof HTMLButtonElement && target.disabled)) target.focus({ preventScroll: true }); else document.querySelector<HTMLElement>('.deep-claim [role="tab"][aria-selected="true"]')?.focus({ preventScroll: true }); }} onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} onPointerDownOutside={event => { if (busy) event.preventDefault(); }}><DialogHeader className={headerActions ? 'dcl-dialog-header has-actions' : undefined}>{headerActions ? <><div className="dcl-dialog-heading">{titleContent}</div><div className="dcl-dialog-header-actions">{headerActions}</div></> : titleContent}</DialogHeader>{footer ? <><div className="dcl-dialog-scroll-body" tabIndex={0} role="region" aria-label={`${title} details`}>{children}</div><div className="dcl-dialog-fixed-footer">{footerNote != null && <div className="dcl-dialog-footer-summary" role="group" aria-label="Transaction summary">{footerNote}</div>}{footer}</div></> : children}</DialogContent></Dialog>;
 }
 
@@ -37,9 +37,9 @@ export function ClaimBadge({ children, tone = 'brass' }: { children: ReactNode; 
 }
 
 export function ClaimState({ error, title, children, onRetry, refreshing = false }: { error?: string | null; title?: string; children?: ReactNode; onRetry?: () => void; refreshing?: boolean }) {
-  return <div className="dcl-state" role={error ? 'alert' : 'status'}><span className="dcl-state-mark"><Pickaxe size={34} strokeWidth={1.5} aria-hidden="true" /></span><span className="dcl-eyebrow">DEEP CLAIM</span><h1>{title ?? (error ? 'The lift stopped.' : 'Opening your claim')}</h1><p>{error ?? children ?? 'Checking the camp and calling your crew.'}</p>{onRetry && <ClaimButton onClick={onRetry}><RefreshCw className={refreshing ? 'dcl-spin' : undefined} size={15} aria-hidden="true" />{error ? 'Reconnect' : 'Retry loading'}</ClaimButton>}</div>;
+  return <div className="dcl-state" role={error ? 'alert' : 'status'}><span className="dcl-state-mark"><Pickaxe size={34} strokeWidth={1.5} aria-hidden="true" /></span><span className="dcl-eyebrow">DEEP CLAIM</span><h1>{title ?? (error ? 'Unable to load' : 'Loading')}</h1>{(error || children) && <p>{error ?? children}</p>}{onRetry && <ClaimButton onClick={onRetry}><RefreshCw className={refreshing ? 'dcl-spin' : undefined} size={15} aria-hidden="true" />{error ? 'Reconnect' : 'Retry loading'}</ClaimButton>}</div>;
 }
 
-export function ClaimEmpty({ title, children, icon }: { title: string; children: ReactNode; icon?: ReactNode }) {
-  return <div className="dcl-empty">{icon}<h3>{title}</h3><p>{children}</p></div>;
+export function ClaimEmpty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) {
+  return <div className="dcl-empty">{icon}<h3>{title}</h3>{children && <p>{children}</p>}</div>;
 }

@@ -7,7 +7,7 @@ export async function runPhase7Browser(h) {
   const current=()=>h.rpc(page,'dc_get');
   const diagnostic=()=>page.evaluate(()=>window.deepClaimRuntime.samples.at(-1));
   async function refresh(){await page.getByRole('button',{name:'Refresh company',exact:true}).click();await expect(page.getByRole('button',{name:'Refresh company',exact:true})).toBeEnabled();}
-  async function shaft(){await h.clearDialogs(page);await h.tab(page,'Surface');await page.getByRole('button',{name:'Open camp buildings',exact:true}).click();await page.getByRole('dialog',{name:'The surface camp',exact:true}).getByRole('button',{name:/Mine Shaft/}).click();return page.getByRole('dialog',{name:'Mine Shaft',exact:true});}
+  async function shaft(){await h.clearDialogs(page);await h.tab(page,'Surface');await page.getByRole('button',{name:'Open camp buildings',exact:true}).click();await page.getByRole('dialog',{name:'Buildings',exact:true}).getByRole('button',{name:/Mine Shaft/}).click();return page.getByRole('dialog',{name:'Mine Shaft',exact:true});}
   async function plan(mode,point,{confirm=false}={}){
     const dialog=await h.operationPlan(page,mode,{...point,review:false,workers:['Mara Flint']});
     await dialog.getByRole('group',{name:'Shift duration',exact:true}).getByRole('button',{name:/Standard/}).click();

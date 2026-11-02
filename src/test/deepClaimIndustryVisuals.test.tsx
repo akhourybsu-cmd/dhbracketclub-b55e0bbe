@@ -26,7 +26,7 @@ describe('Deep Claim visual work-order progress', () => {
     expect(screen.getByText('50%')).toBeInTheDocument();
     view.rerender(workshop(snapshot, now + 120_000, refresh, collect));
     expect(screen.getByRole('progressbar', { name: 'Smelt Copper elapsed time' })).toHaveAttribute('aria-valuenow', '100');
-    expect(screen.getByText('Awaiting server confirmation')).toBeInTheDocument();
+    expect(screen.getByText('Checking completion')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Collect Smelt Copper' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Check production' }));
     expect(refresh).toHaveBeenCalledOnce();

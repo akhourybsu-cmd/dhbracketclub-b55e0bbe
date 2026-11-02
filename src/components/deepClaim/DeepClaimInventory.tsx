@@ -46,12 +46,12 @@ export function DeepClaimStores({ snapshot, readOnly, busy, onSell, readyHauls =
     onSell(id);
   }
   return <section className="dcl-inventory" aria-label="Warehouse inventory">
-    <div className="dcl-section-heading"><div><h2>The warehouse</h2></div><TutorialHelp lessonId="industry.warehouse" label="Warehouse" /><Package size={23} aria-hidden="true" /></div>
+    <div className="dcl-section-heading"><div><h2>Warehouse</h2></div><TutorialHelp lessonId="industry.warehouse" label="Warehouse" /><Package size={23} aria-hidden="true" /></div>
     {readyHauls.length > 0 && <section className="dcl-staged-hauls" aria-label="Staged hauls">{readyHauls.map(job => <ClaimButton key={job.id} onClick={() => onOpenHaul?.(job.id)}><Package size={16} aria-hidden="true" />Open haul from {job.target.y}m</ClaimButton>)}</section>}
     <section className="dcl-card dcl-storage-summary dcl-inventory-capacity" data-dc-tutorial="stores-capacity">
       <div><span className="dcl-inventory-capacity-icon" aria-hidden="true"><Package size={26} /></span><strong>{company.warehouse_used.toLocaleString()}<small> / {company.warehouse_capacity.toLocaleString()} units</small></strong><ClaimBadge tone={full ? 'red' : 'green'}>{full ? 'Full' : `${company.warehouse_capacity - company.warehouse_used} space`}</ClaimBadge></div>
       <ClaimMeter value={company.warehouse_used} max={company.warehouse_capacity} label="Warehouse capacity" tone={full ? 'red' : 'green'} />
-      <p>{stored.length} material {stored.length === 1 ? 'type' : 'types'} stored · Excess cargo stays staged.</p>
+      <p>{stored.length} material {stored.length === 1 ? 'type' : 'types'}</p>
     </section>
     <div className="dcl-inventory-categories" role="group" aria-label="Material category">{GROUPS.map(({ id, label, icon: Icon }) => <button key={id} type="button" aria-pressed={group === id} aria-controls={itemsId} onClick={() => setGroup(id)}><Icon size={15} aria-hidden="true" /><span>{label}</span><small>{available.filter(resource => id === 'all' || materialGroup(resource.id) === id).length}</small></button>)}</div>
     <div id={itemsId} className="dcl-resource-grid dcl-inventory-grid" data-dc-tutorial="stores-stock" aria-label="Materials">
@@ -68,16 +68,16 @@ export function DeepClaimStores({ snapshot, readOnly, busy, onSell, readyHauls =
       })}
     </div>
     {filtered.length > 0 && <nav className="dcl-inventory-pages" aria-label="Inventory pages"><ClaimButton className="is-small" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} aria-label="Previous materials"><ArrowLeft size={15} aria-hidden="true" /></ClaimButton><span role="status" aria-live="polite">{currentPage * PAGE_SIZE + 1}–{Math.min(filtered.length, (currentPage + 1) * PAGE_SIZE)} <small>/ {filtered.length} materials</small></span><ClaimButton className="is-small" disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)} aria-label="Next materials"><ArrowRight size={15} aria-hidden="true" /></ClaimButton></nav>}
-    {!filtered.length && <ClaimEmpty title={inStockOnly && !stored.length ? 'Your stores are clear.' : 'No materials in this section.'} icon={<Package aria-hidden="true" />}>{inStockOnly && !stored.length ? 'Collect a haul or a finished batch to add stored materials.' : 'Choose another category or browse all materials.'}</ClaimEmpty>}
-    <ClaimDialog open={!!inspected} onClose={() => setInspectedId(null)} title={inspected?.name ?? 'Material'} description={inspected?.description} className="dcl-inventory-dialog" footer={inspected && <div className="dcl-dialog-actions"><ClaimButton onClick={() => setInspectedId(null)}>Back to inventory</ClaimButton><ClaimButton primary disabled={readOnly || busy || inspectedQuantity <= 0} onClick={() => sell(inspected.id)} aria-label={`Sell ${inspected.name}`}><Coins size={15} aria-hidden="true" />Sell</ClaimButton></div>}>
+    {!filtered.length && <ClaimEmpty title={inStockOnly && !stored.length ? 'Warehouse empty' : 'No materials in this category'} icon={<Package aria-hidden="true" />}>{inStockOnly && !stored.length ? 'Collect a haul or finished batch.' : 'Browse another category.'}</ClaimEmpty>}
+    <ClaimDialog open={!!inspected} onClose={() => setInspectedId(null)} title={inspected?.name ?? 'Material'} description="" className="dcl-inventory-dialog" footer={inspected && <div className="dcl-dialog-actions"><ClaimButton onClick={() => setInspectedId(null)}>Back to inventory</ClaimButton><ClaimButton primary disabled={readOnly || busy || inspectedQuantity <= 0} onClick={() => sell(inspected.id)} aria-label={`Sell ${inspected.name}`}><Coins size={15} aria-hidden="true" />Sell</ClaimButton></div>}>
       {inspected && <>
         <div className="dcl-inventory-detail" style={{ '--dcl-item-color': inspected.color } as CSSProperties}>
           <span className="dcl-inventory-detail-art"><DeepClaimResourceIcon resourceId={inspected.id} decorative /></span>
           <div><ClaimBadge>{GROUPS.find(category => category.id === materialGroup(inspected.id))?.label}</ClaimBadge><strong>{inspectedQuantity.toLocaleString()}<small> in storage</small></strong><span>{inspected.sell_price} cr / unit</span></div>
         </div>
-        <div className="dcl-trade-summary"><span>Stock sale value<small>At the current unit price</small></span><strong>{(inspectedQuantity * inspected.sell_price).toLocaleString()} cr</strong></div>
+        <div className="dcl-trade-summary"><span>Sale value</span><strong>{(inspectedQuantity * inspected.sell_price).toLocaleString()} cr</strong></div>
         {uses.length > 0 && <section className="dcl-inventory-uses" aria-label="Used in production"><h3>Workshop uses</h3>{uses.slice(0, 3).map(recipe => <span key={recipe.key}><b>{resourceQuantity(recipe.inputs, inspected.id)}×</b>{recipe.name}</span>)}{uses.length > 3 && <small>+{uses.length - 3} more recipes</small>}</section>}
-        {inspectedQuantity === 0 && <p className="dcl-note">No collected stock. Materials become available after a haul or finished batch is collected.</p>}
+        {inspectedQuantity === 0 && <p className="dcl-note">No stock · Collect a haul or finished batch.</p>}
 
       </>}
     </ClaimDialog>

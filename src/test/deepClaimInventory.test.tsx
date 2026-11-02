@@ -41,7 +41,7 @@ describe('Deep Claim warehouse inventory', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Inspect Cut amethyst' }));
     const detail = screen.getByRole('dialog', { name: 'Cut amethyst' });
     expect(within(detail).getByRole('button', { name: 'Sell Cut amethyst' })).toBeDisabled();
-    expect(detail).toHaveTextContent('No collected stock');
+    expect(detail).toHaveTextContent('No stock');
     expect(sell).not.toHaveBeenCalled();
   });
 
@@ -88,7 +88,7 @@ describe('Deep Claim warehouse inventory', () => {
     render(<DeepClaimStores snapshot={snapshot} readOnly={false} busy={false} onSell={vi.fn()} readyHauls={[haul]} onOpenHaul={open} inStockOnly />);
     expect(screen.getByRole('progressbar', { name: 'Warehouse capacity' })).toHaveAttribute('aria-valuenow', String(snapshot.company!.warehouse_capacity));
     expect(screen.getByText('Full')).toBeInTheDocument();
-    expect(screen.getByText('Your stores are clear.')).toBeInTheDocument();
+    expect(screen.getByText('Warehouse empty')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Open haul from 36m' }));
     expect(open).toHaveBeenCalledWith('staged-cargo');
     expect(snapshot.resources).toEqual({});

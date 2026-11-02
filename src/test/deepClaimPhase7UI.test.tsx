@@ -114,7 +114,7 @@ describe('Deep industry, gear and readable reviews', () => {
   });
   it('explains shield slot/condition/crew averaging and respects the real research gates', () => {
     render(<DeepClaimIndustry snapshot={wire.data!} view="workshop" onView={wire.noop} station="tool_station" onStation={wire.noop} busy={false} readOnly={false} now={Date.parse(wire.data!.server_now)} onRefresh={wire.noop} onBuild={wire.noop} onResearch={wire.research} onSell={wire.noop} onOpenHaul={wire.noop} startProduction={wire.production} collectProduction={wire.noop} onConfirmed={wire.confirmed} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Review Craft Nickel Heat Shield' })); const review = screen.getByRole('dialog', { name: 'Craft Nickel Heat Shield' }); expect(review).toHaveTextContent('15 percentage points'); expect(review).toHaveTextContent('shares the head slot');
+    fireEvent.click(screen.getByRole('button', { name: 'Review Craft Nickel Heat Shield' })); const review = screen.getByRole('dialog', { name: 'Craft Nickel Heat Shield' }); expect(review).toHaveTextContent('15 percentage points'); expect(review).toHaveTextContent('Uses the head slot');
     fireEvent.click(within(review).getByRole('button', { name: 'Review batch' })); expect(within(review).getByRole('button', { name: 'Start production' })).toBeDisabled(); fireEvent.click(within(review).getByRole('button', { name: 'View required research' })); expect(wire.research).toHaveBeenCalledWith('deep_operations_2'); expect(wire.production).not.toHaveBeenCalled();
   });
   it('distinguishes working assigned shields from broken gear and lists mandatory repair materials', async () => {

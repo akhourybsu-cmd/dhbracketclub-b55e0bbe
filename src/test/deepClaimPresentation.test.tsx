@@ -80,10 +80,10 @@ describe('Camp settings and guide navigation', () => {
     expect(screen.getByRole('tab', { name: 'Updates' })).toHaveFocus(); expect(screen.getByRole('switch', { name: 'Deep Claim notifications' })).toBeInTheDocument();
   });
   it('presents one guide chapter at a time and focuses the new page heading', () => {
-    render(<Settings />); fireEvent.click(screen.getByRole('button', { name: 'Field guide' })); const guide = screen.getByRole('dialog', { name: 'The prospector’s field guide' });
-    expect(within(guide).getByRole('heading', { name: 'Explore the frontier' })).toBeInTheDocument(); expect(within(guide).queryByRole('heading', { name: 'Work a known seam' })).not.toBeInTheDocument();
+    render(<Settings />); fireEvent.click(screen.getByRole('button', { name: 'Field guide' })); const guide = screen.getByRole('dialog', { name: 'Field guide' });
+    expect(within(guide).getByRole('heading', { name: 'Exploration' })).toBeInTheDocument(); expect(within(guide).queryByRole('heading', { name: 'Extraction' })).not.toBeInTheDocument();
     expect(within(guide).getByRole('button', { name: 'Previous guide page' })).toBeDisabled(); fireEvent.click(within(guide).getByRole('button', { name: 'Next guide page' }));
-    expect(within(guide).getByRole('heading', { name: 'Work a known seam' })).toHaveFocus(); expect(within(guide).getByRole('status')).toHaveTextContent('Page 2 of 13');
+    expect(within(guide).getByRole('heading', { name: 'Extraction' })).toHaveFocus(); expect(within(guide).getByRole('status')).toHaveTextContent('Page 2 of 13');
   });
 });
 

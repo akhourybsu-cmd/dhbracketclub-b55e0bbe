@@ -238,7 +238,7 @@ export async function runPhase6Browser(h) {
     await page.setViewportSize({ width: 844, height: 390 }); await fit(page, 'runtime-dpr2-landscape-resize'); await shot(page, 'runtime-dpr2-landscape');
     await soundSettings(page); await fit(page, 'runtime-dpr2-landscape-sound'); await shot(page, 'runtime-dpr2-landscape-sound');
     const guideButton = page.getByRole('button', { name: 'Field guide', exact: true }); await guideButton.click();
-    const guide = page.getByRole('dialog', { name: 'The prospector’s field guide', exact: true }); await expect(guide).toBeVisible();
+    const guide = page.getByRole('dialog', { name: 'Field guide', exact: true }); await expect(guide).toBeVisible();
     const first = await guide.getByRole('status').innerText();
     await guide.getByRole('button', { name: 'Next guide page', exact: true }).click(); await expect(guide.getByRole('status')).not.toHaveText(first);
     await fit(page, 'runtime-paged-guide-landscape'); await shot(page, 'runtime-paged-guide-landscape');

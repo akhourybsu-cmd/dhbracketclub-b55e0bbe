@@ -90,7 +90,7 @@ export async function runDeepClaimMenuBrowser(h) {
   const founded=await h.rpc(page,'dc_get');h.checked('training-deed-uses-one-authoritative-bootstrap',founded.company.name==='The Lantern Claim'&&(await h.command(page,'calls')).filter(call=>call.name==='dc_bootstrap'&&call.status==='completed').length===1);
   await h.go(page,{run,enter:false});await h.expect(title(page).getByRole('button',{name:'Continue',exact:true})).toBeEnabled();
   await h.fit(page,'training-title-verified-existing-save');await h.shot(page,'training-title-verified-existing-save');
-  await title(page).getByRole('button',{name:'New Game',exact:true}).click();const safeguard=page.getByRole('dialog',{name:'One claim. Yours.',exact:true});await h.expect(safeguard).toBeVisible();
+  await title(page).getByRole('button',{name:'New Game',exact:true}).click();const safeguard=page.getByRole('dialog',{name:'Existing company',exact:true});await h.expect(safeguard).toBeVisible();
   await safeguard.getByRole('button',{name:'Continue',exact:true}).click();await h.expect(page.getByRole('tablist',{name:'Company views',exact:true})).toBeVisible();
   const continued=await h.rpc(page,'dc_get');h.assert.deepEqual(economics(continued),economics(founded));
   h.checked('training-continue-and-new-game-safeguard-preserve-the-same-save-and-never-bootstrap',continued.company.id===founded.company.id&&(await h.command(page,'calls')).filter(call=>call.name==='dc_bootstrap').length===1);
@@ -178,7 +178,7 @@ export async function runDeepClaimCampaignBrowser(h) {
       h.checked(`training-readable-action-${keep?'keep':'sale'}-${step}`,readable);
     }
     async function quote(client){
-      const dialog=client.getByRole('dialog',{name:'Work a seam',exact:true});await h.expect(dialog).toBeVisible();
+      const dialog=client.getByRole('dialog',{name:'Extraction',exact:true});await h.expect(dialog).toBeVisible();
       const review=dialog.getByRole('button',{name:'Review dispatch',exact:true});
       if(await review.count()){
         const induction=dialog.locator('[data-dc-tutorial="dispatch-induction"] input');await h.expect(induction).toBeChecked();
@@ -190,7 +190,7 @@ export async function runDeepClaimCampaignBrowser(h) {
       return dialog;
     }
     async function inspectBuilding(client){
-      const buildings=client.getByRole('dialog',{name:'The surface camp',exact:true});
+      const buildings=client.getByRole('dialog',{name:'Buildings',exact:true});
       await h.expect(buildings).toBeVisible();
       await buildings.getByRole('button',{name:/Warehouse/}).click();
       const detail=client.getByRole('dialog',{name:'Warehouse',exact:true});await h.expect(detail).toBeVisible();

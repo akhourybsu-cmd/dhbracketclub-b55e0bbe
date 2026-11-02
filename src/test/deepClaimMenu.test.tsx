@@ -60,8 +60,8 @@ describe('Deep Claim functional title front door', () => {
   it('protects an existing company from New Game and offers a real tutorial replay alternative', () => {
     const actions = controls(); render(<DeepClaimTitleScreen summary={summary} {...actions} />);
     fireEvent.click(screen.getByRole('button', { name: 'New Game' }));
-    const dialog = screen.getByRole('dialog', { name: 'One claim. Yours.' });
-    expect(dialog).toHaveTextContent('Flint & Vale'); expect(dialog).toHaveTextContent('one company per member in each club');
+    const dialog = screen.getByRole('dialog', { name: 'Existing company' });
+    expect(dialog).toHaveTextContent('Flint & Vale'); expect(dialog).toHaveTextContent('One company per member, per club');
     expect(actions.onNewGame).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Replay tutorial' }));
     expect(actions.onJournal).toHaveBeenCalledOnce(); expect(actions.onNewGame).not.toHaveBeenCalled();

@@ -87,7 +87,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
   it('ignores foreign or stale worker inspection IDs without leaving Hiring or exposing another file', () => {
     render(<Bridge><DeepClaimWorkforce snapshot={phaseSevenSnapshot()} actions={actions} busy={false} readOnly={false} onConfirmed={noop} onQuarters={noop}
       initialView="hire" inspectRequest={{ id: 'inspect-foreign', workerId: 'other-company-worker', view: 'training' }} /></Bridge>);
-    expect(screen.getByRole('heading', { name: 'The hiring office' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hiring' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(emit.mock.calls.some(([type]) => type === 'worker_inspected')).toBe(false);
   });
@@ -97,12 +97,12 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
     const workforce = (id: string) => <Bridge><DeepClaimWorkforce snapshot={data} actions={actions} busy={false} readOnly={false} onConfirmed={noop} onQuarters={noop}
       viewRequest={{ id, view: 'hire' }} /></Bridge>;
     const rendered = render(workforce('hiring-1'));
-    expect(await screen.findByRole('heading', { name: 'The hiring office' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hiring' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Staff/ }));
     rendered.rerender(workforce('hiring-1'));
-    expect(screen.getByRole('heading', { name: 'Your people' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Crew' })).toBeInTheDocument();
     rendered.rerender(workforce('hiring-2'));
-    expect(await screen.findByRole('heading', { name: 'The hiring office' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Hiring' })).toBeInTheDocument();
     for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
   });
 
@@ -178,12 +178,12 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
       actions={{ startResearch, fulfillContract, claimMilestone: noop }} onConfirmed={noop} now={Date.parse(data.server_now)} onRefresh={noop} busy={false} readOnly={false} /></Bridge>;
     const rendered = render(office('research'));
     fireEvent.click(screen.getByRole('button', { name: 'Review Cutting Methods' }));
-    expect(screen.getByRole('heading', { name: 'Permanent benefit for future work' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Effects' })).toBeInTheDocument();
     const outerDialog = screen.getByRole('dialog', { name: 'Company Office' });
     rendered.rerender(office('contracts'));
     expect(screen.getByRole('dialog', { name: 'Company Office' })).toBe(outerDialog);
-    expect(screen.getByRole('heading', { name: 'Frontier orders' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Permanent benefit for future work' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Contracts' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Effects' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Review order Yard Foundations' }));
     await waitFor(() => expect(emit).toHaveBeenCalledWith('contract_inspected', expect.objectContaining({ view: 'contracts' })));
     expect(startResearch).not.toHaveBeenCalled(); expect(fulfillContract).not.toHaveBeenCalled();
@@ -236,7 +236,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
     await waitFor(() => expect(emit).toHaveBeenCalledWith('recipe_inspected', { recipe_key: 'polish_quartz', view: 'gem_workshop' }));
     rendered.rerender(industry('gem_workshop', 'stock'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'The warehouse' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Warehouse' })).toBeInTheDocument();
     expect(startProduction).not.toHaveBeenCalled();
   });
 
@@ -266,7 +266,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sharing preferences' }));
     expect(screen.getByRole('checkbox', { name: 'List my company in standings' })).not.toBeChecked();
     rendered.rerender(club('showcase'));
-    expect(screen.getByRole('heading', { name: 'Cabinets of the club' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Showcases' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: 'List my company in standings' })).not.toBeInTheDocument();
     expect(setSocialPreferences).not.toHaveBeenCalled(); expect(contributeProject).not.toHaveBeenCalled();
   });
@@ -288,7 +288,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
     expect(screen.getByRole('dialog', { name: 'Banded Geode' })).toBeInTheDocument();
     rendered.rerender(log('reports'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Field reports' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Reports' })).toBeInTheDocument();
     rendered.rerender(log('finds'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(resolveDiscovery).not.toHaveBeenCalled();
@@ -317,7 +317,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Training Journal' })); expect(openJournal).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Return to Main Menu' })); expect(mainMenu).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole('button', { name: 'Field guide' }));
-    expect(screen.getByRole('dialog', { name: 'The prospector’s field guide' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Field guide' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Next guide page' }));
     await waitFor(() => expect(emit).toHaveBeenCalledWith('guide_reviewed', { view: 'field_guide', record_id: 'page:1' }));
   });
@@ -353,7 +353,7 @@ describe('Deep Claim genuine gameplay tutorial observations', () => {
     fireEvent.click(toggle); expect(toggle).not.toBeChecked(); expect(commentary).toHaveBeenCalledWith(false);
     fireEvent.click(screen.getByRole('button', { name: 'Training Journal' })); expect(openJournal).toHaveBeenCalledOnce();
     expect(updateSettings).not.toHaveBeenCalled();
-    expect(screen.getByText(/Tutorial guidance and manual Ask Gus remain available/)).toBeInTheDocument();
+    expect(screen.getByText(/Guidance and Ask Gus stay available/)).toBeInTheDocument();
   });
 
   it('offers accessible known-depth inspection without speculative work or dispatch', () => {
