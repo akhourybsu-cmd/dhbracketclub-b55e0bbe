@@ -20,6 +20,16 @@ Use a coherent 16-bit visual language rather than smoothing every edge into gene
 
 The game can retain its own dark mine identity within either application theme. Surrounding text, focus states, dialogs and controls must remain readable in light and dark mode. Symbols, texture, silhouettes and labels distinguish resources and workers beyond hue alone.
 
+## Unified interface finish
+
+The management interface uses warm charcoal and brass in dark mode, with ivory and restrained moss in light mode. Shared inset frames, subtle corner hardware and solid instrument panels connect the HUD, dialogs, building inspectors, dispatch quotes and rewards. This is a presentation layer over the existing artwork and source-backed game state; it introduces no replacement world art or atlas generation.
+
+`--dcl-art-stage` provides a consistent contrasting backing for pale crystals, dark ore and worker silhouettes: `#48584e` in dark mode and `#7a8779` in light mode. Standard resource/equipment art uses 64px card and 96px inspector stages; worker portraits use 48px/96px. Native integer sizing and crisp rendering remain preferred over softened scaling. Labels, selection borders, quantities and states carry meaning beyond hue. Disabled controls retain readable text; fixed transaction footers and 44px controls remain usable.
+
+The original 32px UI resource illustrations now give raw clay a stepped earthen clod, coal angular fractured facets, copper clustered inclusions and iron banded veins. These use the existing resource palette and upper-left lighting. Refined bars, crystals, gemstones, settlement/building painters, world tiles and both committed atlases are preserved. Resource SVGs expose stable `data-dc-resource-art` identifiers while retaining their accessible labels and decorative behavior.
+
+Research retains actual confirmed progress and Maxed states, with compact framed branch selectors and a clear active-work gauge. Reduced-motion and forced-color treatments remain supported. Core foreground tokens have measured 4.5:1 contrast against the four solid surfaces in each theme; screenshot review remains necessary for alpha/composited states. The implementation ledger records the exact verification scope and publication evidence.
+
 ## Source inventory and ownership
 
 | Source | Purpose |

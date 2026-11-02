@@ -72,3 +72,89 @@
 @media(min-width:600px) and (max-height:500px){.dcl-business-dialog .dcl-business-views>button{flex-direction:row;padding:5px}.dcl-business-dialog .dcl-research-branches>button{min-height:65px;display:grid;grid-template-columns:30px minmax(0,1fr);gap:2px 5px;align-items:center}.dcl-business-dialog .dcl-research-branches>button>.dcl-branch-art{grid-row:1/3}.dcl-business-dialog .dcl-research-branches small{text-align:left}.dcl-business-dialog .dcl-research-node>header{flex-direction:row}.dcl-business-dialog .dcl-office-completion{padding:8px 10px}}
 @media(prefers-reduced-motion:reduce){.dcl-business-dialog .dcl-business-views>button,.dcl-business-dialog .dcl-research-gauge>.dcl-meter>span{transition:none}}
 .deep-claim[data-reduced-motion=true] .dcl-research-gauge>.dcl-meter>span{transition:none}
+
+/* A compact instrument panel, using the same brass and mineral palette as camp. */
+.dcl-business-dialog .dcl-business-body{gap:11px}
+.dcl-business-dialog .dcl-business-views{gap:4px;padding:3px;border:1px solid var(--dcl-line);border-radius:9px;background:var(--dcl-bg)}
+.dcl-business-dialog .dcl-business-views>button{border-color:transparent;border-radius:6px;background:transparent;box-shadow:none;transition:background-color .14s,border-color .14s,box-shadow .14s,transform .08s}
+.dcl-business-dialog .dcl-business-views>button>svg{filter:drop-shadow(0 2px 0 var(--dcl-shadow))}
+.dcl-business-dialog .dcl-business-views>button[aria-pressed=true]{color:var(--dcl-text);background:color-mix(in srgb,var(--dcl-brass) 14%,var(--dcl-panel));border-color:color-mix(in srgb,var(--dcl-brass) 70%,var(--dcl-line));box-shadow:inset 0 -2px 0 var(--dcl-brass),inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line))}
+.dcl-business-dialog .dcl-business-views>button>b{position:absolute;right:3px;top:3px;margin:0;min-width:13px;height:13px;border-radius:3px;font-variant-numeric:tabular-nums}
+.dcl-business-dialog .dcl-business-company{border-radius:9px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 color-mix(in srgb,var(--dcl-brass) 44%,var(--dcl-line))}
+.dcl-business-dialog .dcl-business-company>svg{padding:6px;border-radius:7px;background:var(--dcl-panel);filter:drop-shadow(0 3px 0 var(--dcl-shadow))}
+.dcl-business-dialog .dcl-business-company h3{margin-top:0;line-height:1.25}
+.dcl-business-dialog .dcl-business-kpis>span{border-radius:7px;box-shadow:inset 0 2px 0 color-mix(in srgb,var(--dcl-brass) 36%,var(--dcl-line));background:var(--dcl-bg)}
+.dcl-business-dialog .dcl-business-kpis strong,.dcl-business-dialog .dcl-business-stat-grid strong{font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+.dcl-business-dialog .dcl-research-overview>.dcl-section-heading{padding-bottom:5px;border-bottom:0}
+.dcl-business-dialog .dcl-research-overview>.dcl-meter{height:8px;border-radius:3px;padding:1px;background:var(--dcl-bg);box-shadow:inset 0 1px 0 var(--dcl-shadow)}
+.dcl-business-dialog .dcl-research-overview>.dcl-meter>span{border-radius:1px}
+.dcl-business-dialog .dcl-research-branches{gap:6px}
+.dcl-business-dialog .dcl-research-branches>button{border-radius:7px;background:var(--dcl-bg);box-shadow:inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line));transition:background-color .14s,border-color .14s,box-shadow .14s,transform .08s}
+.dcl-business-dialog .dcl-research-branches>button[aria-pressed=true]{border-color:var(--dcl-brass);background:color-mix(in srgb,var(--dcl-brass) 11%,var(--dcl-panel));box-shadow:inset 0 -2px 0 var(--dcl-brass),inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line))}
+.dcl-business-dialog .dcl-research-branches>button[data-complete=true]{border-color:color-mix(in srgb,var(--dcl-green) 52%,var(--dcl-line))}
+.dcl-business-dialog .dcl-branch-progress{height:4px;margin-top:2px;border-radius:1px;background:color-mix(in srgb,var(--dcl-line) 65%,var(--dcl-bg));box-shadow:inset 0 1px 0 var(--dcl-shadow)}
+.dcl-business-dialog .dcl-branch-progress>i{box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 18%,transparent)}
+.dcl-business-dialog .dcl-branch-art{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line)),0 2px 0 var(--dcl-shadow)}
+.dcl-business-dialog .dcl-research-node{border-radius:8px;background:var(--dcl-bg);box-shadow:inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line)),0 2px 0 var(--dcl-shadow)}
+.dcl-business-dialog .dcl-research-node[data-research-state=complete]{border-color:color-mix(in srgb,var(--dcl-green) 50%,var(--dcl-line));border-top-color:var(--dcl-green)}
+.dcl-business-dialog .dcl-research-node[data-research-state=active]{border-top-color:var(--dcl-blue);background:color-mix(in srgb,var(--dcl-blue) 5%,var(--dcl-bg))}
+.dcl-business-dialog .dcl-research-node[data-research-state=locked]>.dcl-research-cost{color:var(--dcl-muted)}
+.dcl-business-dialog .dcl-research-node>.dcl-button{margin-top:auto;min-height:44px;background:var(--dcl-panel)}
+.dcl-business-dialog .dcl-research-unlocks>span{padding:6px;border-radius:5px;background:var(--dcl-panel);border-color:color-mix(in srgb,var(--dcl-brass) 27%,var(--dcl-line))}
+.dcl-business-dialog .dcl-research-unlocks>span>svg{width:28px;height:28px;padding:2px;background:var(--dcl-bg);border-radius:3px}
+.dcl-business-dialog .dcl-research-effect>span{font-variant-numeric:tabular-nums;background:color-mix(in srgb,var(--dcl-green) 6%,var(--dcl-panel));border-color:color-mix(in srgb,var(--dcl-green) 28%,var(--dcl-line))}
+.dcl-business-dialog .dcl-active-research{border-radius:9px;gap:9px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 color-mix(in srgb,var(--dcl-blue) 65%,var(--dcl-line))}
+.dcl-business-dialog .dcl-research-active-art{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line))}
+.dcl-business-dialog .dcl-research-gauge{padding:9px;border-radius:6px;background:var(--dcl-panel);border-color:color-mix(in srgb,var(--dcl-blue) 30%,var(--dcl-line))}
+.dcl-business-dialog .dcl-research-gauge>.dcl-meter{height:12px;background:var(--dcl-bg)}
+.dcl-business-dialog .dcl-research-gauge>.dcl-meter>span{background:var(--dcl-blue);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 24%,transparent)}
+.dcl-business-dialog .dcl-business-materials>span{border-radius:6px;background:var(--dcl-bg);box-shadow:inset 2px 0 0 color-mix(in srgb,var(--dcl-green) 48%,transparent)}
+.dcl-business-dialog .dcl-business-materials>span[data-short=true]{box-shadow:inset 2px 0 0 color-mix(in srgb,var(--dcl-red) 58%,transparent)}
+.dcl-business-dialog .dcl-business-materials:not(.is-compact)>span>svg{padding:3px;border-radius:4px;background:var(--dcl-panel)}
+.dcl-business-dialog .dcl-contract-card,.dcl-business-dialog .dcl-milestone-card{border-radius:8px;background:var(--dcl-bg);box-shadow:inset 0 1px 0 var(--dcl-edge-light,var(--dcl-line)),0 2px 0 var(--dcl-shadow)}
+.dcl-business-dialog .dcl-contract-card>header>svg,.dcl-business-dialog .dcl-milestone-card>header>svg{padding:4px;background:var(--dcl-panel);border-radius:6px;filter:drop-shadow(0 2px 0 var(--dcl-shadow))}
+.dcl-business-dialog .dcl-business-stat-grid>span{background:var(--dcl-bg);border-radius:7px;box-shadow:inset 2px 0 0 color-mix(in srgb,var(--dcl-brass) 55%,var(--dcl-line))}
+@media(hover:hover){.dcl-business-dialog .dcl-business-views>button:not(:disabled):hover,.dcl-business-dialog .dcl-research-branches>button:not(:disabled):hover{color:var(--dcl-text);border-color:var(--dcl-brass)}}
+.dcl-business-dialog .dcl-business-views>button:not(:disabled):active,.dcl-business-dialog .dcl-research-branches>button:not(:disabled):active{transform:translateY(1px)}
+@media(max-width:450px){
+  .dcl-business-dialog .dcl-business-views[role=group]{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:3px}
+  .dcl-business-dialog.has-club .dcl-business-views[role=group]{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .dcl-business-dialog.has-club .dcl-business-views[role=group]>button:nth-child(n){grid-column:auto}
+  .dcl-business-dialog .dcl-business-views[role=group]>button{min-height:50px;min-width:44px;padding:5px 1px;flex-direction:column;gap:3px;font-size:9px;line-height:1.15}
+  .dcl-business-dialog .dcl-business-views[role=group]>button>svg{width:20px;height:20px}
+  .dcl-business-dialog .dcl-business-views[role=group]>button>span{white-space:nowrap;letter-spacing:-.01em}
+  .dcl-business-dialog .dcl-business-views[role=group]>button>b{min-width:12px;height:12px;font-size:8px;right:1px;top:1px}
+  .dcl-business-dialog .dcl-business-body{gap:10px}
+  .dcl-business-dialog .dcl-research-overview{gap:6px}
+  .dcl-business-dialog .dcl-research-overview h3{font-size:20px}
+  .dcl-business-dialog .dcl-research-branches{gap:5px}
+  .dcl-business-dialog .dcl-research-branches>button{min-height:64px;gap:2px;padding:5px 3px}
+  .dcl-business-dialog .dcl-research-branches>button>.dcl-branch-art,.dcl-business-dialog .dcl-research-branches>button>.dcl-branch-art>svg{width:24px;height:24px}
+  .dcl-business-dialog .dcl-research-branches>button>span:nth-child(2){font-size:9px;line-height:1.2}
+  .dcl-business-dialog .dcl-research-branches>button>small{font-size:9px;line-height:1.2}
+  .dcl-business-dialog .dcl-research-node>header{flex-direction:row;align-items:flex-start;gap:7px}
+  .dcl-business-dialog .dcl-research-node>header>.dcl-branch-art{width:32px;height:32px}
+  .dcl-business-dialog .dcl-research-node>header>.dcl-branch-art>svg{width:28px;height:28px}
+  .dcl-business-dialog .dcl-research-tier{font-size:8px;margin-bottom:3px;letter-spacing:.08em}
+  .dcl-business-dialog .dcl-research-node h4{font-size:12px;line-height:1.25;margin-bottom:4px}
+  .dcl-business-dialog .dcl-research-node .dcl-badge{font-size:8px;padding:3px 5px;line-height:1.3}
+  .dcl-business-dialog .dcl-research-node .dcl-branch-art{flex-shrink:0}
+  .dcl-business-dialog .dcl-active-research{padding:10px;gap:8px}
+  .dcl-business-dialog .dcl-active-research>header{gap:8px}
+  .dcl-business-dialog .dcl-active-research .dcl-eyebrow{display:none}
+  .dcl-business-dialog .dcl-research-active-art{width:38px;height:38px}
+  .dcl-business-dialog .dcl-research-active-art>svg{width:32px;height:32px}
+  .dcl-business-dialog .dcl-research-gauge{padding:8px;gap:5px}
+  .dcl-business-dialog .dcl-research-stages{display:none}
+  .dcl-business-dialog .dcl-business-detail-heading>.dcl-branch-art{width:56px;height:56px}
+  .dcl-business-dialog .dcl-business-detail-heading>.dcl-branch-art>svg{width:46px;height:46px}
+}
+@media(max-width:310px){
+  .dcl-business-dialog .dcl-business-views[role=group],.dcl-business-dialog.has-club .dcl-business-views[role=group]{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){.dcl-business-dialog .dcl-business-views>button,.dcl-business-dialog .dcl-research-branches>button{transition:none;transform:none!important}}
+@media(forced-colors:active){
+  .dcl-business-dialog .dcl-business-views,.dcl-business-dialog .dcl-business-company,.dcl-business-dialog .dcl-research-branches>button,.dcl-business-dialog .dcl-research-node,.dcl-business-dialog .dcl-research-gauge,.dcl-business-dialog .dcl-research-unlocks>span{background:Canvas;box-shadow:none;border-color:ButtonBorder}
+  .dcl-business-dialog .dcl-business-views>button[aria-pressed=true],.dcl-business-dialog .dcl-research-branches>button[aria-pressed=true]{border:2px solid Highlight;background:Canvas;color:CanvasText;box-shadow:none}
+  .dcl-business-dialog .dcl-branch-progress>i{background:Highlight;box-shadow:none;forced-color-adjust:none}
+}

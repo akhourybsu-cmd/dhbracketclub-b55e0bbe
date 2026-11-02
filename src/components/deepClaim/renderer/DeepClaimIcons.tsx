@@ -2,8 +2,42 @@ import type { DeepClaimDiscoveryKind, DeepClaimDiscoveryQuality, DeepClaimInfras
 import { RESOURCE_ART, SPECIALTY_ART, equipmentArtwork, workerAppearanceVariant } from './artManifest';
 import { DISCOVERY_ART, QUALITY_ART, infrastructureSprite } from './fieldSprites';
 
+/** Authored 32px stock silhouettes: soft clods, fractured coal and mineral-bearing host rock. */
+const RAW_RESOURCE_LAYERS: Partial<Record<DeepClaimResourceId, readonly (readonly [string, string])[]>> = {
+  clay: [
+    [RESOURCE_ART.clay.dark, 'M3 21V15H6V10H11V7H20V9H25V13H28V18H30V25H26V28H7V26H3Z'],
+    [RESOURCE_ART.clay.mid, 'M6 22V15H9V11H14V9H19V12H23V15H26V23H22V25H10V23Z'],
+    [RESOURCE_ART.clay.light, 'M9 12H14V14H9ZM7 16H11V19H7ZM16 10H20V12H16Z'],
+    [RESOURCE_ART.clay.dark, 'M11 20H16V22H11ZM20 18H25V20H20ZM16 24H22V26H16Z'],
+  ],
+  coal: [
+    [RESOURCE_ART.coal.dark, 'M3 23V14H7V8H12V4H20V6H25V11H29V20H27V26H21V29H10V26H5V23Z'],
+    [RESOURCE_ART.coal.mid, 'M7 21V15H10V10H15V7H19V10H23V14H25V21H21V25H12V23H7Z'],
+    [RESOURCE_ART.coal.light, 'M11 11H17V13H11ZM8 16H11V20H8ZM18 8H21V11H18Z'],
+    [RESOURCE_ART.coal.dark, 'M16 13H19V16H17V20H14V24H12V21H14V17H16ZM19 20H24V22H19Z'],
+  ],
+  copper_ore: [
+    [RESOURCE_ART.stone.dark, 'M3 23V16H7V9H12V5H21V9H26V15H29V23H25V28H9V25H3Z'],
+    [RESOURCE_ART.stone.mid, 'M7 21V16H11V10H18V9H23V15H25V22H21V25H12V23Z'],
+    [RESOURCE_ART.stone.light, 'M9 11H13V13H9ZM7 16H10V20H7ZM15 8H18V10H15Z'],
+    [RESOURCE_ART.copper_ore.dark, 'M14 13H19V11H24V15H27V20H23V23H18V21H14ZM6 21H10V19H14V25H10V28H6Z'],
+    [RESOURCE_ART.copper_ore.mid, 'M16 15H20V14H23V17H25V19H22V21H19V19H16ZM7 22H10V20H13V24H10V26H7Z'],
+    [RESOURCE_ART.copper_ore.light, 'M17 15H20V17H17ZM21 14H23V16H21ZM8 22H11V24H8Z'],
+  ],
+  iron_ore: [
+    [RESOURCE_ART.stone.dark, 'M3 24V14H6V10H10V6H23V9H27V16H29V25H24V28H10V26H3Z'],
+    [RESOURCE_ART.stone.mid, 'M7 22V15H10V10H20V11H24V17H25V23H21V25H12V23Z'],
+    [RESOURCE_ART.stone.light, 'M11 9H17V11H11ZM7 16H10V18H7Z'],
+    [RESOURCE_ART.iron_ore.dark, 'M8 12H17V14H23V17H27V20H21V18H14V16H8ZM6 20H13V21H19V23H25V25H18V24H11V22H6Z'],
+    [RESOURCE_ART.iron_ore.mid, 'M8 13H16V15H23V17H25V18H20V17H13V15H8ZM7 21H12V22H18V23H21V24H17V23H10V22H7Z'],
+    [RESOURCE_ART.iron_ore.light, 'M10 12H15V13H10ZM17 15H21V16H17Z'],
+  ],
+};
+
 export function DeepClaimResourceIcon({ resourceId, className = '', decorative = false }: { resourceId: DeepClaimResourceId; className?: string; decorative?: boolean }) {
   const art = RESOURCE_ART[resourceId];
+  const raw = RAW_RESOURCE_LAYERS[resourceId];
+  if (raw) return <svg viewBox="0 0 32 32" className={`dc-resource-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : art.label} aria-hidden={decorative || undefined} data-dc-resource-art={resourceId} focusable="false"><path d="M6 27H27V30H6Z" fill="#17191b" opacity=".24" />{raw.map(([fill, d], index) => <path key={index} d={d} fill={fill} />)}</svg>;
   if (art.shape === 'bar') {
     // Cast stamps distinguish the three company alloys beyond their metal color.
     const stamp = resourceId === 'bronze_bar' ? 'M12 18H14V22H12ZM17 18H19V22H17Z'
@@ -13,8 +47,8 @@ export function DeepClaimResourceIcon({ resourceId, className = '', decorative =
       : 'M12 19H14V21H12ZM17 19H19V21H17Z';
     return <svg viewBox="0 0 32 32" className={`dc-resource-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : art.label} aria-hidden={decorative || undefined} data-dc-resource-art={resourceId} focusable="false"><path d="M5 25H27V28H5Z" fill="#17191b" opacity=".24" /><path d="M3 22L7 11H24L29 22V26H3Z" fill={art.dark} /><path d="M7 11H24L26 17H5Z" fill={art.light} /><path d="M5 18H27V23H5Z" fill={art.mid} /><path d="M7 24H25V26H7Z" fill={art.dark} /><path d="M9 13H21V15H9Z" fill={art.mid} /><path d={stamp} fill={art.dark} /></svg>;
   }
-  if (art.shape === 'polished' || art.shape === 'gem') return <svg viewBox="0 0 32 32" className={`dc-resource-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : art.label} aria-hidden={decorative || undefined} focusable="false"><path d="M8 26H24V29H8Z" fill="#17191b" opacity=".24" /><path d={art.shape === 'gem' ? 'M8 5H24L29 12L16 28L3 12Z' : 'M9 3H23L29 9V23L23 29H9L3 23V9Z'} fill={art.dark} /><path d={art.shape === 'gem' ? 'M9 7H23L26 12H6ZM8 14H24L16 24Z' : 'M10 6H22L26 10V22L22 26H10L6 22V10Z'} fill={art.mid} /><path d={art.shape === 'gem' ? 'M10 7H15L11 12H6ZM12 14H16V23Z' : 'M10 7H20V10H10ZM7 11H10V20H7ZM21 21H24V24H21Z'} fill={art.light} /><path d={art.shape === 'gem' ? 'M16 7H20L22 12H13ZM17 14H24L17 22Z' : 'M11 12H20V20H11Z'} fill={art.light} opacity=".45" /></svg>;
-  return <svg viewBox="0 0 32 32" className={`dc-resource-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : art.label} aria-hidden={decorative || undefined} focusable="false"><path d="M8 25H25V28H8Z" fill="#17191b" opacity=".24" /><path d={art.shape === 'crystal' ? 'M5 24V17H9V9H13V4H18V9H22V15H27V25H5Z' : 'M5 23V14H9V8H22V12H27V24H23V27H10V24Z'} fill={art.dark} /><path d={art.shape === 'crystal' ? 'M9 22V16H13V7H17V12H20V22Z' : 'M8 21V15H12V11H21V15H24V21H20V24H12V21Z'} fill={art.mid} /><path d="M12 12H17V14H12ZM9 16H12V20H9ZM20 16H23V18H20Z" fill={art.light} /><path d="M17 21H23V23H17Z" fill={art.dark} opacity=".5" /></svg>;
+  if (art.shape === 'polished' || art.shape === 'gem') return <svg viewBox="0 0 32 32" className={`dc-resource-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : art.label} aria-hidden={decorative || undefined} data-dc-resource-art={resourceId} focusable="false"><path d="M8 26H24V29H8Z" fill="#17191b" opacity=".24" /><path d={art.shape === 'gem' ? 'M8 5H24L29 12L16 28L3 12Z' : 'M9 3H23L29 9V23L23 29H9L3 23V9Z'} fill={art.dark} /><path d={art.shape === 'gem' ? 'M9 7H23L26 12H6ZM8 14H24L16 24Z' : 'M10 6H22L26 10V22L22 26H10L6 22V10Z'} fill={art.mid} /><path d={art.shape === 'gem' ? 'M10 7H15L11 12H6ZM12 14H16V23Z' : 'M10 7H20V10H10ZM7 11H10V20H7ZM21 21H24V24H21Z'} fill={art.light} /><path d={art.shape === 'gem' ? 'M16 7H20L22 12H13ZM17 14H24L17 22Z' : 'M11 12H20V20H11Z'} fill={art.light} opacity=".45" /></svg>;
+  return <svg viewBox="0 0 32 32" className={`dc-resource-icon ${className}`} shapeRendering="crispEdges" role={decorative ? undefined : 'img'} aria-label={decorative ? undefined : art.label} aria-hidden={decorative || undefined} data-dc-resource-art={resourceId} focusable="false"><path d="M8 25H25V28H8Z" fill="#17191b" opacity=".24" /><path d={art.shape === 'crystal' ? 'M5 24V17H9V9H13V4H18V9H22V15H27V25H5Z' : 'M5 23V14H9V8H22V12H27V24H23V27H10V24Z'} fill={art.dark} /><path d={art.shape === 'crystal' ? 'M9 22V16H13V7H17V12H20V22Z' : 'M8 21V15H12V11H21V15H24V21H20V24H12V21Z'} fill={art.mid} /><path d="M12 12H17V14H12ZM9 16H12V20H9ZM20 16H23V18H20Z" fill={art.light} /><path d="M17 21H23V23H17Z" fill={art.dark} opacity=".5" /></svg>;
 }
 
 export interface DeepClaimPortraitProps {

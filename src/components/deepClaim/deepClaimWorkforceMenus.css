@@ -75,3 +75,45 @@
 @media(prefers-reduced-motion:reduce){.dcl-workforce-menu *,.dcl-worker-file *,.dcl-settings *{scroll-behavior:auto!important}}
 .deep-claim[data-reduced-motion=true] .dcl-workforce-menu .dcl-candidate-card{transition:none!important;transform:none!important}
 @media(forced-colors:active){.dcl-settings .dcl-volume input{appearance:auto;-webkit-appearance:auto}.dcl-settings .dcl-setting-toggle>button i{forced-color-adjust:auto}.dcl-gear-art,.dcl-loadout-art{border-color:CanvasText}}
+
+/* Crew dossiers, tool sockets and controls share the same practical workshop finish. */
+.dcl-workforce-menu .dcl-crew-card,.dcl-workforce-menu .dcl-candidate-card{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 10%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-workforce-menu .dcl-crew-card>header>svg,.dcl-workforce-menu .dcl-candidate-card>header>.dc-worker-portrait{width:48px;height:48px;border:0;outline:1px solid var(--dcl-line);outline-offset:2px;border-radius:3px;padding:0;background:var(--dcl-art-stage,var(--dcl-bg));box-shadow:0 3px 0 var(--dcl-shadow)}
+.dcl-workforce-menu .dcl-crew-card header h3,.dcl-workforce-menu .dcl-candidate-card header h3{letter-spacing:-.015em}
+.dcl-workforce-menu .dcl-worker-stats>div{border-radius:3px;background:var(--dcl-bg);border:0;box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-workforce-menu .dcl-worker-stats dd{font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--dcl-text)}
+.dcl-workforce-menu .dcl-candidate-card>footer>strong{display:flex;align-items:center;gap:5px;color:var(--dcl-brass)}
+.dcl-workforce-menu .dcl-housing-status{border-radius:6px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-worker-file .dcl-crew-profile,.dcl-dialog .dcl-applicant-identity{border-radius:6px;background:var(--dcl-panel);border-color:var(--dcl-line);box-shadow:none}
+.dcl-worker-file .dcl-crew-profile>.dc-worker-portrait,.dcl-dialog .dcl-applicant-identity>.dc-worker-portrait{width:96px;height:96px;flex:0 0 auto;padding:0;border:0;outline:1px solid var(--dcl-line);outline-offset:2px;border-radius:3px;box-shadow:0 3px 0 var(--dcl-shadow);background:var(--dcl-art-stage,var(--dcl-bg))}
+.dcl-worker-file .dcl-crew-profile .dcl-meter{height:8px;border-radius:3px;background:var(--dcl-bg);padding:1px}
+.dcl-worker-file .dcl-crew-profile .dcl-meter>span{border-radius:1px}
+.dcl-worker-file .dcl-training-preview{border-radius:6px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-worker-file .dcl-training-preview b,.dcl-worker-file .dcl-training-preview>strong{font-family:'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
+.dcl-worker-file .dcl-gear-slots>span{border-radius:5px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-worker-file .dcl-gear-slots>span[data-equipped=true]{background:var(--dcl-panel);border-color:var(--dcl-brass);box-shadow:inset 0 -3px 0 color-mix(in srgb,var(--dcl-brass) 60%,transparent)}
+.dcl-worker-file .dcl-loadout-art{width:64px;height:64px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));border-radius:3px}
+.dcl-worker-file .dcl-loadout-art>.dc-equipment-icon{width:64px;height:64px}
+.dcl-worker-file .dcl-gear-slots>span:not([data-equipped=true]) .dcl-loadout-art{background:var(--dcl-bg);color:var(--dcl-muted)}
+.dcl-worker-file .dcl-gear-inventory-card{grid-template-columns:72px minmax(0,1fr);border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 10%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-worker-file .dcl-gear-art{width:72px;min-height:88px;gap:3px;padding:4px 3px;border-radius:4px;border-bottom-width:2px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-worker-file .dcl-gear-art>svg{width:64px;height:64px;filter:drop-shadow(0 2px 0 var(--dcl-shadow))}
+.dcl-worker-file .dcl-gear-art>small{display:block;align-self:stretch;padding:2px 3px;border-radius:2px;background:var(--dcl-bg);color:var(--dcl-text)!important;letter-spacing:.03em;text-align:center}
+.dcl-worker-file .dcl-gear-inventory-card[data-condition=broken]{border-left:3px solid var(--dcl-red)}
+.dcl-worker-file .dcl-gear-inventory-card .dcl-equipment-title{font-weight:800;letter-spacing:-.015em}
+.dcl-worker-file .dcl-gear-inventory-card .dcl-equipment-actions{gap:7px}
+.dcl-settings .dcl-settings-group{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 10%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-settings .dcl-sound-bus{padding:8px 0 2px;margin-top:9px;border:0;border-top:1px solid var(--dcl-line);border-radius:0;background:transparent}
+.dcl-settings .dcl-settings-tabs>button{border-radius:5px;background:var(--dcl-bg)}
+.dcl-settings .dcl-settings-tabs>button[aria-selected=true]{background:var(--dcl-panel-2);border-color:var(--dcl-brass);box-shadow:inset 0 -2px 0 var(--dcl-brass)}
+.dcl-settings .dcl-setting-toggle>button:before{height:27px;border-radius:5px;box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-settings .dcl-setting-toggle>button i{border-radius:3px;box-shadow:0 2px 0 var(--dcl-shadow)}
+.dcl-settings .dcl-volume input::-webkit-slider-runnable-track{height:7px;border-radius:2px;box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-settings .dcl-volume input::-webkit-slider-thumb{width:24px;height:25px;margin-top:-9px;border-radius:3px;background:var(--dcl-panel-2);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 16%,transparent),0 2px 0 var(--dcl-shadow)}
+.dcl-settings .dcl-volume input::-moz-range-track,.dcl-settings .dcl-volume input::-moz-range-progress{height:7px;border-radius:2px}
+.dcl-settings .dcl-volume input::-moz-range-thumb{width:20px;height:21px;border-radius:3px;background:var(--dcl-panel-2);box-shadow:0 2px 0 var(--dcl-shadow)}
+.dcl-settings .dcl-settings-actions{border-radius:6px;background:var(--dcl-bg)}
+@media(min-width:650px){.dcl-workforce-menu .dcl-crew-card>header>svg,.dcl-workforce-menu .dcl-candidate-card>header>.dc-worker-portrait{width:96px;height:96px}}
+@media(max-width:350px){.dcl-worker-file .dcl-gear-inventory-card{grid-template-columns:72px minmax(0,1fr);padding:10px;gap:8px}.dcl-worker-file .dcl-crew-profile{gap:11px}}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){.dcl-workforce-menu .dcl-candidate-card:hover{transform:translateY(-1px);border-color:var(--dcl-brass)}.dcl-worker-file .dcl-equipment-title:hover{color:var(--dcl-brass)}}
+@media(forced-colors:active){.dcl-workforce-menu .dcl-crew-card,.dcl-workforce-menu .dcl-candidate-card,.dcl-workforce-menu .dcl-worker-stats>div,.dcl-workforce-menu .dcl-housing-status,.dcl-worker-file .dcl-crew-profile,.dcl-dialog .dcl-applicant-identity,.dcl-worker-file .dcl-training-preview,.dcl-worker-file .dcl-gear-slots>span,.dcl-worker-file .dcl-gear-art,.dcl-worker-file .dcl-loadout-art,.dcl-worker-file .dcl-gear-inventory-card,.dcl-settings .dcl-settings-group,.dcl-settings .dcl-settings-actions{background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none}.dcl-worker-file .dcl-gear-slots>span[data-equipped=true]{border:3px double Highlight;box-shadow:none}.dcl-settings .dcl-setting-toggle>button:before,.dcl-settings .dcl-setting-toggle>button i{box-shadow:none}.dcl-workforce-menu .dc-worker-portrait,.dcl-worker-file .dc-worker-portrait,.dcl-dialog .dcl-applicant-identity>.dc-worker-portrait{forced-color-adjust:none}}

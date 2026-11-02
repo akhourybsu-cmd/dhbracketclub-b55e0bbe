@@ -140,13 +140,17 @@ async function dismissTutorial(page) {
   const exit = page.getByRole('button', { name: 'Exit tutorial', exact: true });
   await expect(dialogue.or(exit).first()).toBeVisible();
   if (await dialogue.isVisible()) await dialogue.click();
+  // Wait for the guide's actual navigation before pausing it. The caption can
+  // mount one frame before the planner; an early exit would race that opening.
+  const planner = page.getByRole('dialog', { name: 'Extraction', exact: true });
+  await expect(planner).toBeVisible();
   await exit.click();
   await expect(page.getByRole('region', { name: 'Tutorial guidance', exact: true })).toHaveCount(0);
   await expect.poll(async () => (await rpc(page, 'dc_tutorial_get')).campaign_status).toBe('paused');
   // The first-shift guide opens the real planner. Pausing guidance leaves that
   // unpaid draft intact; close it explicitly before testing company navigation.
-  const planner = page.getByRole('dialog', { name: 'Extraction', exact: true });
-  if (await planner.isVisible()) await planner.getByRole('button', { name: 'Back', exact: true }).click();
+  await planner.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(planner).toHaveCount(0);
   await settle(page);
 }
 async function settle(page) {
@@ -937,7 +941,7 @@ async function field() {
   const beforeBuild = snapshot;
   let dialog = await operationPlan(page, 'Infrastructure', { x: 48, y: 1 });
   await expect(dialog.getByText('Timber Supports · grade 1', { exact: true })).toBeVisible();
-  await expect(dialog.getByText('Cash committed now: 19 cr. Project materials, if listed, are also consumed. Keep 2 cr operating reserve.', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Cash committed now: 19 cr. Listed materials are consumed. Keep 2 cr operating reserve.', { exact: true })).toBeVisible();
   await fit(page, 'field-installation-verified-review'); await shot(page, 'field-installation-verified-review');
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   snapshot = await rpc(page, 'dc_get'); job = snapshot.expeditions.find(value => value.status === 'active');

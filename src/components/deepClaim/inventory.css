@@ -8,3 +8,36 @@
 @media(hover:hover) and (pointer:fine){.dcl-inventory-inspect:hover .dcl-inventory-item-art{transform:translateY(-3px)}.dcl-inventory-slot:has(.dcl-inventory-inspect:hover){border-color:var(--dcl-brass)}.dcl-inventory-sell:not(:disabled):hover{background:var(--dcl-panel-2)}.dcl-inventory-categories>button:hover{border-color:var(--dcl-brass)}}
 .deep-claim[data-reduced-motion=true] .dcl-inventory *{animation:none!important;transition:none!important}.deep-claim[data-reduced-motion=true] .dcl-inventory-inspect:hover .dcl-inventory-item-art{transform:none}@media(prefers-reduced-motion:reduce){.dcl-inventory *,.dcl-inventory-dialog *{animation:none!important;transition:none!important}.dcl-inventory-inspect:hover .dcl-inventory-item-art{transform:none}}
 @media(forced-colors:active){.dcl-inventory-inspect,.dcl-inventory-slot>footer,.dcl-inventory-detail,.dcl-inventory-detail-art,.dcl-inventory-sell,.dcl-inventory-categories>button{background:Canvas;color:CanvasText;border-color:ButtonBorder}.dcl-inventory-categories>button[aria-pressed=true]{border:2px solid Highlight}.dcl-inventory-item-art,.dcl-inventory-detail-art>svg{forced-color-adjust:none;filter:none}.dcl-inventory-quantity{background:Canvas;color:CanvasText;border-color:CanvasText}}
+
+/* The inventory is a tray of specimens, with clear silhouettes and native pixel scales. */
+.dcl-inventory .dcl-inventory-capacity{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 2px 0 color-mix(in srgb,var(--dcl-brass) 28%,transparent)}
+.dcl-inventory .dcl-inventory-capacity-icon{border:0;border-radius:3px;background:var(--dcl-bg);color:var(--dcl-brass)}
+.dcl-inventory .dcl-inventory-categories>button{display:grid;grid-template-columns:14px minmax(0,1fr);align-content:center;justify-items:center;gap:1px 4px;padding:4px 5px;font-size:10px;line-height:1.2;border-radius:5px;color:var(--dcl-text);background:var(--dcl-panel)}
+.dcl-inventory .dcl-inventory-categories>button>svg{width:14px;height:14px}
+.dcl-inventory .dcl-inventory-categories>button>small{grid-column:1/-1;font-size:9px;line-height:1.1;font-variant-numeric:tabular-nums}
+.dcl-inventory .dcl-inventory-categories>button[aria-pressed=true]{color:var(--dcl-text);background:var(--dcl-card);box-shadow:inset 0 -3px 0 var(--dcl-brass),0 2px 0 var(--dcl-shadow)}
+.dcl-inventory .dcl-inventory-slot{border-radius:5px;background:var(--dcl-panel);border-color:var(--dcl-line);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 12%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-inventory .dcl-inventory-inspect{background:transparent;min-height:116px;gap:5px;padding-top:23px}
+.dcl-inventory .dcl-inventory-inspect:after{display:none}
+.dcl-inventory .dcl-inventory-item-art{width:64px;height:64px;border-radius:3px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));box-shadow:inset 0 2px 0 var(--dcl-shadow);filter:none}
+.dcl-inventory .dcl-inventory-item-art>svg{width:64px;height:64px;filter:drop-shadow(0 2px 0 var(--dcl-shadow))}
+.dcl-inventory .dcl-inventory-quantity{top:6px;right:6px;min-height:18px;padding:3px 5px;border-radius:2px;font-size:11px;background:var(--dcl-bg);color:var(--dcl-text);box-shadow:0 1px 0 var(--dcl-shadow)}
+.dcl-inventory .dcl-inventory-inspect h3{font-size:11px;line-height:1.3;min-height:28px}
+.dcl-inventory .dcl-inventory-slot[data-empty=true] .dcl-inventory-item-art{opacity:.72;filter:saturate(.7)}
+.dcl-inventory .dcl-inventory-slot[data-empty=true] .dcl-inventory-quantity{color:var(--dcl-muted);box-shadow:none}
+.dcl-inventory .dcl-inventory-slot>footer{background:var(--dcl-bg);border-top-color:color-mix(in srgb,var(--dcl-brass) 24%,var(--dcl-line))}
+.dcl-inventory .dcl-inventory-slot>footer>span:first-child{font-size:11px}
+.dcl-inventory .dcl-inventory-sell{border-left-color:var(--dcl-line);background:var(--dcl-panel-2);color:var(--dcl-text);box-shadow:inset 0 -2px 0 var(--dcl-shadow)}
+.dcl-inventory .dcl-inventory-pages>span{min-width:74px;text-align:center}
+.dcl-inventory-dialog .dcl-inventory-detail{border-radius:6px;background:var(--dcl-panel);gap:15px}
+.dcl-inventory-dialog .dcl-inventory-detail-art{width:112px;height:112px;border-radius:4px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));border-color:var(--dcl-line);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-inventory-dialog .dcl-inventory-detail-art>svg{width:96px;height:96px;filter:drop-shadow(0 3px 0 var(--dcl-shadow))}
+.dcl-inventory-dialog .dcl-inventory-uses{padding:11px 12px;border-radius:6px;background:var(--dcl-bg)}
+.dcl-inventory-dialog .dcl-inventory-uses>h3{font-size:12px;letter-spacing:0}
+.dcl-inventory-dialog .dcl-inventory-uses>span{line-height:1.55}
+@media(min-width:700px){.dcl-inventory .dcl-inventory-categories>button{display:flex;gap:6px;padding:7px 9px;font-size:11px}.dcl-inventory .dcl-inventory-item-art,.dcl-inventory .dcl-inventory-item-art>svg{width:96px;height:96px}.dcl-inventory .dcl-inventory-inspect{min-height:150px}.dcl-inventory .dcl-inventory-inspect h3{font-size:12px}}
+@media(max-width:350px){.dcl-inventory .dcl-inventory-categories>button{font-size:9px;column-gap:3px;padding-inline:4px}.dcl-inventory .dcl-inventory-categories>button>small{font-size:8px}.dcl-inventory-dialog .dcl-inventory-detail{gap:11px;padding:9px}.dcl-inventory-dialog .dcl-inventory-detail-art{width:104px;height:104px}.dcl-inventory-dialog .dcl-inventory-detail-art>svg{width:96px;height:96px}}
+@media(hover:hover) and (pointer:fine){.dcl-inventory .dcl-inventory-slot:has(.dcl-inventory-inspect:hover){border-color:var(--dcl-brass)}.dcl-inventory .dcl-inventory-inspect:active .dcl-inventory-item-art{transform:translateY(1px)}.dcl-inventory .dcl-inventory-sell:not(:disabled):active{box-shadow:inset 0 2px 0 var(--dcl-shadow)}}
+@media(prefers-reduced-motion:reduce){.dcl-inventory .dcl-inventory-item-art{transition:none!important;transform:none!important}}
+.deep-claim[data-reduced-motion=true] .dcl-inventory .dcl-inventory-item-art{transition:none!important;transform:none!important}
+@media(forced-colors:active){.dcl-inventory .dcl-inventory-slot,.dcl-inventory .dcl-inventory-capacity,.dcl-inventory .dcl-inventory-categories>button,.dcl-inventory .dcl-inventory-sell,.dcl-inventory-dialog .dcl-inventory-detail,.dcl-inventory-dialog .dcl-inventory-detail-art{background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none}.dcl-inventory .dcl-inventory-item-art{background:Canvas;box-shadow:none}.dcl-inventory .dcl-inventory-slot[data-empty=true] .dcl-inventory-item-art{opacity:1;filter:none}.dcl-inventory .dcl-inventory-item-art>svg,.dcl-inventory-dialog .dcl-inventory-detail-art>svg{filter:none}.dcl-inventory .dcl-inventory-quantity{background:Canvas;color:CanvasText;box-shadow:none}.dcl-inventory .dcl-inventory-categories>button[aria-pressed=true]{border:3px double Highlight;box-shadow:none}}

@@ -14,3 +14,39 @@
 @media(hover:hover) and (pointer:fine){.dcl-industry-recipe:hover .dcl-industry-recipe-art>svg{transform:translateY(-3px)}.dcl-industry-stations>button:hover{border-color:var(--dcl-brass)}}
 @media(prefers-reduced-motion:reduce){.dcl-industry-stations>button,.dcl-industry-recipe-art>svg{transition:none!important;transform:none!important}}
 [data-reduced-motion=true] .dcl-industry-stations>button,[data-reduced-motion=true] .dcl-industry-recipe-art>svg{transition:none!important;transform:none!important}
+
+/* Match the warehouse's specimen trays and keep work-state colors tied to real orders. */
+.dcl-industry-stations>button{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 12%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-industry-stations>button>span{border-radius:4px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-industry-stations>button svg{width:32px;height:32px}
+.dcl-industry-stations>button[aria-pressed=true]{background:var(--dcl-card);box-shadow:inset 0 -3px 0 var(--dcl-brass),0 3px 0 var(--dcl-shadow)}
+.dcl-industry-recipes .dcl-industry-recipe{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 10%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-industry-recipes .dcl-industry-recipe-art{min-height:105px;border-radius:4px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));border-color:var(--dcl-line);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-industry-recipes .dcl-industry-recipe-art>svg{width:64px;height:64px;filter:drop-shadow(0 3px 0 var(--dcl-shadow))}
+.dcl-industry-recipes .dcl-industry-recipe-art>span{padding:3px 7px;border-radius:2px;background:var(--dcl-bg);color:var(--dcl-text);letter-spacing:.06em}
+.dcl-industry-recipes .dcl-industry-recipe>header h3{font-size:12px;font-weight:800;line-height:1.35}
+.dcl-industry-recipes .dcl-material-costs>span{font-size:10px;padding:5px 4px;border-color:transparent;background:var(--dcl-bg);border-radius:3px}
+.dcl-industry-recipes .dcl-material-costs svg{width:32px;height:32px}
+.dcl-industry-recipes .dcl-industry-recipe>.dcl-button{font-size:11px}
+.dcl-industry-job{border-radius:6px;background:var(--dcl-panel);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 10%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-industry-job[data-production-state=queued]{border-left-color:var(--dcl-muted)}
+.dcl-industry-job[data-production-state=awaiting-confirmation]{border-left-color:var(--dcl-brass)}
+.dcl-industry-job[data-production-state=ready]{border-color:var(--dcl-line);border-left-color:var(--dcl-green)}
+.dcl-industry-job .dcl-industry-output-art{width:72px;height:72px;border-radius:4px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-industry-job .dcl-industry-output-art>svg{width:64px;height:64px;filter:drop-shadow(0 3px 0 var(--dcl-shadow))}
+.dcl-industry-job[data-production-state=ready] .dcl-industry-output-art{border-color:var(--dcl-green)}
+.dcl-industry-job .dcl-industry-progress-label{font-size:11px;line-height:1.4}
+.dcl-industry-job .dcl-industry-progress-label>b{font-family:'Space Grotesk',sans-serif;font-size:13px}
+.dcl-industry-job>.dcl-meter{height:10px;border-radius:3px;padding:1px;background:var(--dcl-bg)}
+.dcl-industry-job>.dcl-meter>span{border-radius:1px}
+.dcl-industry-review-identity{border-radius:6px;background:var(--dcl-panel)}
+.dcl-industry-review-identity>.dcl-industry-output-art{width:112px;height:112px;border-radius:4px;background:var(--dcl-art-stage,color-mix(in srgb,var(--dcl-panel) 65%,var(--dcl-muted) 35%));border-color:var(--dcl-line);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-industry-review-identity>.dcl-industry-output-art>svg{width:96px;height:96px}
+.dcl-industry-conversion>section{border-radius:5px;background:var(--dcl-panel);box-shadow:inset 0 2px 0 var(--dcl-shadow)}
+.dcl-industry-conversion h3{font-size:11px;letter-spacing:.01em}
+.dcl-industry-conversion .dcl-material-costs>span{background:transparent;border-color:transparent;padding:4px 0;font-size:10px}
+.dcl-industry-conversion .dcl-material-costs svg{width:32px;height:32px}
+.dcl-industry-conversion .dcl-industry-equipment-output>svg{width:64px;height:64px}
+@media(min-width:700px){.dcl-industry-recipes .dcl-industry-recipe-art{min-height:137px}.dcl-industry-recipes .dcl-industry-recipe-art>svg{width:96px;height:96px}.dcl-industry-recipes .dcl-industry-recipe>header h3{font-size:13px}}
+@media(max-width:350px){.dcl-industry-job>header{gap:8px}.dcl-industry-job>header>.dcl-badge{font-size:8px;padding-inline:4px}.dcl-industry-review-identity>.dcl-industry-output-art{width:104px;height:104px}}
+@media(forced-colors:active){.dcl-industry-stations>button,.dcl-industry-stations>button>span,.dcl-industry-recipes .dcl-industry-recipe,.dcl-industry-recipes .dcl-industry-recipe-art,.dcl-industry-job,.dcl-industry-job .dcl-industry-output-art,.dcl-industry-review-identity,.dcl-industry-review-identity>.dcl-industry-output-art,.dcl-industry-conversion>section{background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none}.dcl-industry-stations>button[aria-pressed=true]{border:3px double Highlight;box-shadow:none}.dcl-industry-job[data-production-state=ready]{border-left:4px double Highlight}.dcl-industry-recipes .dcl-material-costs>span{background:Canvas;color:CanvasText;border-color:CanvasText}}

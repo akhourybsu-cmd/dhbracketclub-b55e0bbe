@@ -1,6 +1,32 @@
 # Deep Claim implementation ledger
 
-## Current release — concise menus and research completion
+## Current release — unified visual finish
+
+This visual release builds on clean main `eb4abe0bf8771f8f30e35e91a6b17adbdb3aa110`. It keeps the concise menus, existing game behavior and original industrial-frontier artwork. No database, economic rule, asset installation, world-generation, atlas or dependency change is introduced.
+
+- Shared charcoal/brass/ivory surfaces, restrained hardware frames, stronger theme contrast, clearer state badges and readable disabled controls unify the HUD and dialogs. Map controls use the same solid instrument panels without backdrop blur. Fixed action footers and established safe-area behavior remain.
+- Inventory, workshop, workforce and settings use consistent recessed artwork stages, sharper native-grid artwork sizes, readable item quantities, aligned output/material displays and clearer selection. The actual production/research status still comes from the existing server snapshots and schedules.
+- Phone Office navigation uses one compact row of five labelled controls where 44px targets fit, with an extreme-narrow fallback. Research branch cards and active gauges are denser so more actual research content fits; all completion/Maxed and elapsed-versus-confirmed rules remain unchanged.
+- Raw clay, coal, copper and iron UI illustrations have distinct original pixel silhouettes and inclusions using the existing palette. Refined, gem and crystal artwork is preserved. Every resource illustration exposes a stable artwork ID and retains its labels/decorative accessibility. Building portraits, settlement, world tiles, title and prologue continue using the original shared painters and unchanged atlases.
+- Buildings, dispatch estimates, specimen reveals, public projects and reward framing receive the same visual treatment. Reduced motion, high contrast, touch targets and keyboard interaction remain part of the presentation boundary. No new menu prose is added.
+
+Implementation is scoped to eight existing stylesheets and `renderer/DeepClaimIcons.tsx`. The browser harness now waits for the real first-shift planner before pausing the guide, follows the current concise cash summary, and verifies the real pending-find priority without selling or discarding a specimen to force the upgrade prompt. These harness changes do not alter the game.
+
+| Verification | Evidence |
+|---|---|
+| Full app suite | **211 files / 2,145 tests passed** in 136.59 seconds with two workers; `/tmp/dc-polish-unit.log`. |
+| Native visual and interaction checks | **375 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-Nr2j5H/report.json`. Populated inventory, earned materials, worn equipment, worker profiles, settings, real research progress/completion, production queues, fixed transaction summaries, keyboard-scrolled details and finite underground discoveries are covered. The seven-case matrix includes 320px phones, 844px landscape, 1440px desktop, both themes and reduced motion. |
+| First-shift regression | **62 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-0GRYAr/report.json`. Native 30-second first-shift sale and Keep paths, real collection, optional help, retained stock, pending-find priority and title/reload recovery remain intact. |
+| Source checks | Application-project TypeScript, scoped ESLint, PostCSS parsing and whitespace checks passed. Phase 8 preserves all **27 frozen gameplay sources**, catalogs, SQL and original atlases; `/tmp/dc-polish-preservation-final.log`. |
+| Theme contrast | Core text, muted text and semantic foreground tokens exceed **4.5:1** against each of the four solid theme surfaces; `/tmp/dc-polish-contrast.log`. This numeric check does not claim an exhaustive audit of every composited selector. Phone, landscape and desktop screenshots were separately reviewed. |
+| Production build | Passed in **18.54 seconds**; `DeepClaimPage-CeY-zY_P.js` 758.89 KB / 179.47 KB gzip and `DeepClaimPage-Dxd3wYp8.css` 230.70 KB / 35.72 KB gzip. The existing large-chunk advisory remains. |
+| Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-0LbdDj/report.json`. This covers the production-build authentication boundary and PWA bootstrap, without claiming physical-device installation. |
+
+Native browser scenarios use production components with authoritative isolated local PostgreSQL transport. No live member stock, company or achievement was changed by QA. Independent final visual review found no material clipping, hidden action or art-style regression in the reviewed phone/landscape/desktop frames.
+
+Publication is pending the ordinary main update and public-asset verification. No SQL migration is required.
+
+## Previous release — concise menus and research completion
 
 This presentation release builds on clean main `069cf947e4c0476808426a1d60858271fdd29344`. Deep Claim menus use plain section names and actual operational information. Introductory slogans, branch-count prose and repeated explanations of what a menu contains are removed. Costs, materials, effects, prerequisites, irreversible choices, privacy controls and error recovery remain available. No database, catalog, ruleset, atlas, dependency, authentication or economic authority changes are introduced.
 

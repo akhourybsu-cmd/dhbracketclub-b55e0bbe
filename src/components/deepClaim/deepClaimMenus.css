@@ -42,3 +42,44 @@
 @media(prefers-reduced-motion:reduce){.dcl-meter>span,.dcl-segment button,.dcl-settings-tabs>button,.dcl-business-views>button,.dcl-club-viewbar>button{transition:none!important;transform:none!important}}
 body:has(.deep-claim[data-reduced-motion=true]) :is(.dcl-meter>span,.dcl-segment button,.dcl-settings-tabs>button,.dcl-business-views>button,.dcl-club-viewbar>button){transition:none!important;transform:none!important}
 @media(forced-colors:active){.dcl-meter>span{background:Highlight;background-image:none;box-shadow:none}.dcl-building-list button,.dcl-building-hero,.dcl-sale-identity,.dcl-ledger>li,.dcl-trade-summary{background:Canvas;box-shadow:none}.dcl-building-portrait{forced-color-adjust:none}}
+
+/* Shared camp instruments and specimen displays keep the original artwork. */
+.dcl-pane{background-image:none}
+.dcl-section-heading{border-bottom-color:color-mix(in srgb,var(--dcl-brass) 28%,var(--dcl-line))}
+.dcl-dialog>div:first-child:not(.dcl-business){border-bottom-color:color-mix(in srgb,var(--dcl-brass) 28%,var(--dcl-line))}
+.dcl-dialog-fixed-footer{border-top:0}.dcl-dialog-fixed-footer .dcl-dialog-actions{border-top-color:color-mix(in srgb,var(--dcl-brass) 30%,var(--dcl-line))}
+.dcl-dialog-footer-summary{color:var(--dcl-text)}.dcl-dialog-footer-summary>strong{font-size:19px;letter-spacing:-.025em}
+.dcl-dialog :is(input:not([type=range]):not([type=checkbox]),select){background:var(--dcl-bg);border-color:color-mix(in srgb,var(--dcl-brass) 26%,var(--dcl-line));box-shadow:inset 0 2px 0 var(--dcl-edge-dark);font-variant-numeric:tabular-nums}
+.dcl-building-list button{border-radius:6px;border-color:color-mix(in srgb,var(--dcl-brass) 22%,var(--dcl-line));background:var(--dcl-panel);box-shadow:inset 0 1px 0 var(--dcl-edge-light),0 2px 0 var(--dcl-edge-dark);transition:border-color .12s ease,background-color .12s ease}
+.dcl-building-list button>.dcl-building-portrait{border:0;border-radius:4px;background:var(--dcl-art-stage);outline:1px solid var(--dcl-line);outline-offset:-1px;box-shadow:inset 0 -3px 0 var(--dcl-shadow)}
+.dcl-building-list strong{font-size:13px;line-height:1.35}.dcl-building-list small{line-height:1.5;color:var(--dcl-muted)}
+.dcl-building-list button>svg:last-child{width:16px;height:16px;bottom:11px}
+.dcl-building-list button>span{padding-right:16px}
+.dcl-building-hero{border-radius:6px;background:var(--dcl-bg);border-color:color-mix(in srgb,var(--dcl-brass) 30%,var(--dcl-line));box-shadow:inset 0 1px 0 var(--dcl-edge-light)}
+.dcl-building-hero>.dcl-building-portrait{background:var(--dcl-art-stage);border-radius:4px;outline:1px solid var(--dcl-line);outline-offset:-1px}
+.dcl-trade-summary{background:var(--dcl-bg);border-radius:5px;box-shadow:inset 0 2px 0 var(--dcl-edge-dark),inset 0 -1px 0 var(--dcl-edge-light)}
+.dcl-dispatch-quote{border-radius:6px;border-color:color-mix(in srgb,var(--dcl-brass) 45%,var(--dcl-line));box-shadow:inset 0 2px 0 var(--dcl-brass)}
+.dcl-dispatch-quote dd{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.dcl-dispatch-quote dl>div{padding-bottom:7px;border-bottom:1px solid var(--dcl-line)}
+.dcl-field-operation-grid>button{border-radius:6px;background:var(--dcl-bg);box-shadow:inset 0 1px 0 var(--dcl-edge-light),0 2px 0 var(--dcl-edge-dark)}
+.dcl-find-card{border-radius:6px;background:var(--dcl-panel);border-color:color-mix(in srgb,var(--dcl-brass) 25%,var(--dcl-line))}
+.dcl-find-card>svg:first-child{width:54px;height:54px;filter:drop-shadow(0 3px 0 var(--dcl-edge-dark))}
+.dcl-find-showcase{border-radius:6px;background:var(--dcl-bg);box-shadow:inset 0 0 0 3px var(--dcl-panel),inset 0 0 0 4px var(--dcl-line)}
+.dcl-find-showcase>svg{width:108px;height:108px;filter:drop-shadow(0 4px 0 var(--dcl-edge-dark))}
+.dcl-find-reveal-art{border:1px solid color-mix(in srgb,var(--dcl-brass) 50%,var(--dcl-line));border-radius:6px;background:var(--dcl-art-stage);box-shadow:inset 0 0 0 3px var(--dcl-bg),inset 0 0 0 4px var(--dcl-line),0 4px 0 var(--dcl-edge-dark)}
+.dcl-find-reveal-art>svg{width:108px;height:108px;filter:drop-shadow(0 4px 0 var(--dcl-edge-dark))}
+.light .dcl-find-reveal.is-exceptional{--dcl-brass:#72538f}.light .dcl-find-reveal.is-flawless{--dcl-brass:#246960}
+.dcl-find-choices>button{border-radius:5px;box-shadow:inset 0 1px 0 var(--dcl-edge-light),0 2px 0 var(--dcl-edge-dark)}
+.dcl-find-choices>button[aria-pressed=true]{background:color-mix(in srgb,var(--dcl-brass) 8%,var(--dcl-bg));box-shadow:inset 0 3px 0 var(--dcl-brass),0 2px 0 var(--dcl-edge-dark)}
+.dcl-club-project-card{border-radius:6px;background:var(--dcl-bg);box-shadow:inset 0 1px 0 var(--dcl-edge-light),0 2px 0 var(--dcl-edge-dark)}
+.dcl-club-project-card:has([data-dc-project-status=completed]){border-color:var(--dcl-green)}
+.dcl-project-detail-art{border-radius:5px;background:var(--dcl-art-stage);border-color:color-mix(in srgb,var(--dcl-brass) 36%,var(--dcl-line))}
+.dcl-report-facts>span,.dcl-find-summary>span{border-radius:5px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 var(--dcl-edge-dark)}
+.dcl-ledger>li{border-radius:5px;background:var(--dcl-bg)}
+@media(hover:hover) and (pointer:fine){.dcl-building-list button:hover,.dcl-field-operation-grid>button:hover,.dcl-find-card:hover{border-color:var(--dcl-brass);background:var(--dcl-card)}}
+@media(min-width:700px){.dcl-find-showcase>svg{width:126px;height:126px}}
+@media(max-width:350px){.dcl-building-list strong{font-size:12px}.dcl-find-showcase>svg{width:90px;height:90px}}
+@media(min-width:600px) and (max-height:500px){.dcl-discovery-dialog .dcl-find-showcase>svg,.dcl-find-reveal-art>svg{width:72px;height:72px}.dcl-find-reveal-art{width:84px;height:84px}}
+@media(prefers-reduced-motion:reduce){.dcl-building-list button{transition:none}}
+body:has(.deep-claim[data-reduced-motion=true]) .dcl-building-list button{transition:none}
+@media(forced-colors:active){.dcl-building-list button,.dcl-building-hero,.dcl-field-operation-grid>button,.dcl-find-card,.dcl-find-showcase,.dcl-find-reveal-art,.dcl-find-choices>button,.dcl-club-project-card,.dcl-report-facts>span,.dcl-find-summary>span,.dcl-trade-summary{background:Canvas;box-shadow:none;border-color:ButtonBorder}.dcl-building-list button>.dcl-building-portrait,.dcl-building-hero>.dcl-building-portrait,.dcl-project-detail-art{background:Canvas;outline-color:ButtonBorder}.dcl-dialog :is(input,select){box-shadow:none}.dcl-find-choices>button[aria-pressed=true]{border:3px double Highlight;box-shadow:none}}

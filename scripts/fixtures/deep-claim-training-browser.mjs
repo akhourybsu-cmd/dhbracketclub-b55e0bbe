@@ -315,7 +315,14 @@ export async function runDeepClaimCampaignBrowser(h) {
     await h.fit(page,`training-first-shift-complete-${keep?'keep':'sale'}`);await h.shot(page,`training-first-shift-complete-${keep?'keep':'sale'}`);
     await page.getByRole('button',{name:'Continue Mining',exact:true}).click();
     await h.clearDialogs(page);
-    await h.expect(page.getByRole('button',{name:'Review camp upgrades',exact:true})).toBeVisible();
+    const pendingFinds=(await h.rpc(page,'dc_get')).discovery_summary?.pending??0;
+    await h.expect(page.getByRole('button',{name:pendingFinds?`Review finds · ${pendingFinds}`:'Review camp upgrades',exact:true})).toBeVisible();
+    if(pendingFinds){
+      await page.getByRole('button',{name:'Open camp buildings',exact:true}).click();
+      await h.expect(page.getByRole('dialog',{name:'Buildings',exact:true})).toBeVisible();
+      await h.clearDialogs(page);
+      h.checked(`training-pending-find-keeps-upgrades-accessible-${keep?'keep':'sale'}`,true);
+    }
     await h.expect(page.getByRole('button',{name:'Sell first haul',exact:true})).toHaveCount(0);
     h.checked(`training-upgrade-cue-does-not-require-emptying-the-warehouse-${keep?'keep':'sale'}`,snapshot.resources.coal>0&&snapshot.resources.stone>0);
     if(!keep){
