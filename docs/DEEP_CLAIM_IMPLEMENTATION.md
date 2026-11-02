@@ -1,6 +1,32 @@
 # Deep Claim implementation ledger
 
-## Current release — illustrated inventory and operational menus
+## Current release — first-shift guide and natural camp dialogue
+
+This refinement builds on clean main `004dc699704cdc07b9add464badef1672f4167ff`. It replaces the compulsory opening inspection sequence with six existing guided tasks: quote, dispatch, return, collection, sell-or-keep and upgrade inspection. The full 42-topic library remains available, with existing 84 step / 67 dialogue identities and saved records intact. No migration, economic rule, authored atlas, authentication or DH Score change is introduced.
+
+- Founding no longer points back at its missing name field. The new guide starts at a useful dispatch estimate. Actual actions advance the caption; intermediate chapter speeches and repeated Next clicks are removed from the first-shift track. Operation/receipt gating preserves the real result presentation before navigation.
+- Keep materials is an explicit alternative that records review without selling or inventing profit. A real partial sale also advances the Surface upgrade cue without requiring an empty warehouse. Upgrade guidance opens the actual building list; purchasing remains optional. Clicking an already selected Extraction mode preserves the 30-second induction.
+- The Journal presents one first-shift entry and an optional reference library. Topic details have a real guided-start action; examples and manual review are secondary. The concise guide reserves its own space inside dialogs, retaining readable instructions and a labelled Keep action without covering transaction controls. Landscape shares the footer row; the camp list scrolls above the guide. Keyboard, focus and reduced-motion behavior are preserved.
+- The opening falls from 294 to 180 words (about 50 seconds of optional reading); authored dialogue is shorter and the four speakers retain distinct voices. All lesson instructions/references, advice and 42 examples use plain player language. Immediate instructions are about a fifth shorter and at most fourteen words. The sale ending acknowledges actual revenue, and the general handover does not claim a sale or profit.
+- Pending operations and receipts defer both automatic progress and step navigation. Keep/Skip controls remain unavailable until the real operation and receipt finish; deferred navigation then resumes. No guide action cancels an economic request or invents a result.
+
+Implementation is in the existing tutorial Director, Journal, Overlay, dialogue/practice/advice components and data modules, with `firstShiftGuide.ts`, a focused guide regression suite, Page cue fixes and a selected-mode safety fix. Curriculum IDs/actions/predicates retain their original registry; the resolver repairs navigation at presentation time. The protocol and menu/tutorial document distinguish the six-task walkthrough from the retained full reference curriculum.
+
+| Verification | Evidence |
+|---|---|
+| Full app tests | All **211 files / 2,139 tests passed** in 127.34 seconds with two workers; `/tmp/dc-tutorial-unit-idle-final.log`. An earlier concurrent build/browser run hit two unrelated CPU-test timeouts; both isolated retries and the subsequent full run passed without changing their assertions or timeout limits. |
+| Focused guide and UI tests | **100 tests passed**, including 16 first-shift Director regressions, receipt/pending-sale navigation, genuine versus reviewed progress, reselected Extraction safety and retained-stock cues; `/tmp/dc-tutorial-focused-final.log`. |
+| Native first-shift and examples | **130 checks passed**, zero assertion/runtime errors; `/tmp/deep-claim-gEbNzJ/report.json`. Both paths use real 30-second server-time shifts, one actual dispatch/collection, a partial sale or Keep, and no automatic purchase. Reload and a second device preserve the identical paid job; receipts remain until dismissed. Thirty optional examples alter only training notes. |
+| Responsive review | Seven quote layouts cover 320px portrait, 844px landscape, 1440px desktop, light/dark and reduced motion. Native checks protect instruction readability and target/action geometry. Final phone Keep, Warehouse review and landscape quote screenshots were inspected. |
+| Source and contract checks | Application-project TypeScript and scoped ESLint passed. The 27-source Phase 8 preservation gate passed. Copy-only AST checks preserve dialogue identities/conditions, advice actions and practice mechanics. No migration, rule, catalog, dependency or atlas changes. |
+| Production build | Passed in **16.34 seconds**; `DeepClaimPage-Dy2X-krQ.js` 761.63 KB / 180.46 KB gzip. The existing large-chunk advisory remains. |
+| Built production PWA | All **12 checks passed**, zero runtime/assertion errors; `/tmp/deep-claim-pwa-XhUXbl/report.json`. This is a local production-build auth-boundary check, without authenticated production gameplay or physical-device installation claims. |
+
+The native browser scenarios use the production React components and authoritative local PostgreSQL operations through the existing isolated QA transport. They do not fabricate production companies, spend a member's stock or award live achievements. Existing saved curriculum IDs and economic authority remain intact.
+
+Publication is pending the ordinary main update and actual public-asset readback. No SQL deployment is required or claimed.
+
+## Previous release — illustrated inventory and operational menus
 
 This presentation release builds on clean main `02d0820e1c65cf849f00bce51efd49c0fca87ec1`. It preserves the publisher opening, all economic rules, server operations, saved progress and both original atlases. No migration, dependency or new economic authority is introduced.
 

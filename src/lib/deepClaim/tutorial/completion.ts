@@ -71,11 +71,11 @@ function productionMatches(predicate:Extract<TutorialPredicate,{kind:'production
  });
 }
 export function evaluateTutorialPredicate(predicate:TutorialPredicate,context:TutorialContext):TutorialCompletion{
- if(predicate.kind==='any')return predicate.predicates.map(item=>evaluateTutorialPredicate(item,context)).find(result=>result.complete)??{complete:false,basis:'pending',explanation:'Waiting for a matching real observation.'};
- if(predicate.kind==='production'){const complete=productionMatches(predicate,context);return {complete,basis:complete?'verified_snapshot':'pending',explanation:complete?'Verified actual production at the required station.':'Reviewing another station or assigning existing gear does not complete this production skill.'};}
- if(predicate.kind==='acknowledge')return {complete:true,basis:'explicit_review',explanation:'This is an educational review, not a paid action.'};
+ if(predicate.kind==='any')return predicate.predicates.map(item=>evaluateTutorialPredicate(item,context)).find(result=>result.complete)??{complete:false,basis:'pending',explanation:'Follow the highlighted control when you’re ready.'};
+ if(predicate.kind==='production'){const complete=productionMatches(predicate,context);return {complete,basis:complete?'verified_snapshot':'pending',explanation:complete?'This station’s work is recorded.':'Use this station to review the recipe or collect its finished batch.'};}
+ if(predicate.kind==='acknowledge')return {complete:true,basis:'explicit_review',explanation:'Read this note, then continue when you’re ready.'};
  const complete=predicate.kind==='company_exists'?!!tutorialSnapshot(context):predicate.kind==='event'?eventMatches(predicate,context):snapshotFact(predicate.fact,context);
- return {complete,basis:complete?(predicate.kind==='event'?(confirmed.has(predicate.type)?'verified_action':'ui_observation'):'verified_snapshot'):'pending',explanation:complete?'Verified in this company’s synchronized state or scoped interaction.':'Use the real control, wait for synchronization, or choose the clearly marked read-only alternative.'};
+ return {complete,basis:complete?(predicate.kind==='event'?(confirmed.has(predicate.type)?'verified_action':'ui_observation'):'verified_snapshot'):'pending',explanation:complete?'This step is ready.':'Follow the highlighted control. You can pause or open the notes anytime.'};
 }
 export function evaluateTutorialStep(step:TutorialStep,context:TutorialContext):TutorialCompletion{return evaluateTutorialPredicate(step.predicate,context);}
 export function hasVerifiedSale(context:TutorialContext):boolean{
@@ -94,6 +94,6 @@ export function lessonAvailability(id:TutorialLessonId|string,snapshot:DeepClaim
  const required=lesson.live_requires;
  if(required==='club'&&!clubAvailable)return {status:'available_for_practice',live:false,practice:true,reason:'Shared club systems are unavailable here. The private read-only lesson remains available.'};
  const schema=required?.startsWith('schema')?Number(required.slice(6)):1;
- if(snapshot.schema_version<schema)return {status:'not_yet_unlocked',live:false,practice:true,reason:'This synchronized save does not yet expose the required feature. Review its practice safely.'};
- return {status:'ready',live:true,practice:true,reason:'Open the current controls or use read-only practice. No purchase is required to review.'};
+ if(snapshot.schema_version<schema)return {status:'not_yet_unlocked',live:false,practice:true,reason:'This feature isn’t available for your company yet. You can still try its example.'};
+ return {status:'ready',live:true,practice:true,reason:'Open the guide or try an example. Reading the notes costs nothing.'};
 }

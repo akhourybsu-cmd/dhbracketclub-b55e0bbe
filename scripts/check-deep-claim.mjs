@@ -93,7 +93,9 @@ async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS
   await page.waitForFunction(() => window.deepClaimReady && window.deepClaimQa && window.deepClaimQueryClient);
   await settle(page);
   if (publisher === 'skip' && await page.getByTestId('dh-games-intro').isVisible()) {
-    await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
+    // The finite publisher card may finish its fade during pointer stability
+    // checks. Its native Escape shortcut is safe throughout that transition.
+    await page.keyboard.press('Escape');
     await expect(page.getByTestId('dh-games-intro')).toHaveCount(0);
   }
   await settle(page);
@@ -110,13 +112,19 @@ async function continueCompany(page, { required = true } = {}) {
   const publisher = page.getByTestId('dh-games-intro');
   await expect(company.or(resume).or(start).or(linkedOffice).or(publisher).first()).toBeVisible();
   if (await publisher.isVisible()) {
-    await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
+    await page.keyboard.press('Escape');
     await expect(publisher).toHaveCount(0);
   }
   if (await linkedOffice.isVisible()) return;
   if (await company.isVisible()) return;
   await expect(page.getByTestId('deep-claim-title')).toHaveAttribute('data-dc-menu-loading', 'false');
-  if (await resume.isEnabled()) { await resume.click(); await expect(company).toBeVisible(); }
+  if (await resume.isEnabled()) {
+    await resume.click();
+    // Resuming the live guide may immediately open its real planner or camp
+    // dialog. Verify the company shell mounted; each caller checks the intended
+    // foreground view, without interacting with aria-hidden navigation.
+    await expect(page.getByRole('tablist', { name: 'Company views', exact: true, includeHidden: true })).toBeAttached();
+  }
   else if (required) await expect(company).toBeVisible();
   await settle(page);
 }
@@ -135,6 +143,10 @@ async function dismissTutorial(page) {
   await exit.click();
   await expect(page.getByRole('region', { name: 'Tutorial guidance', exact: true })).toHaveCount(0);
   await expect.poll(async () => (await rpc(page, 'dc_tutorial_get')).campaign_status).toBe('paused');
+  // The first-shift guide opens the real planner. Pausing guidance leaves that
+  // unpaid draft intact; close it explicitly before testing company navigation.
+  const planner = page.getByRole('dialog', { name: 'Work a seam', exact: true });
+  if (await planner.isVisible()) await planner.getByRole('button', { name: 'Back', exact: true }).click();
   await settle(page);
 }
 async function settle(page) {

@@ -80,6 +80,8 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
     const dialog = screen.getByRole('dialog', { name: 'Work a seam' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Extraction' }));
+    expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(wire.dispatch).not.toHaveBeenCalled();
     fireEvent.click(await within(dialog).findByRole('button', { name: 'Dispatch crew' }));
@@ -176,6 +178,17 @@ describe('Deep Claim authoritative hauls and recovery', () => {
     fireEvent.click(within(building).getByRole('button', { name: 'Confirm upgrade' }));
     const reward = await screen.findByRole('dialog', { name: 'Mine Office upgraded.' }); fireEvent.click(within(reward).getByRole('button', { name: 'Back to the claim' }));
     expect(screen.getByRole('button', { name: 'Explore' })).toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Review camp upgrades' })).not.toBeInTheDocument();
+  });
+  it.each([false, true])('keeps retained ore while choosing the next cue from actual sale history: %s', sold => {
+    wire.data!.company!.tutorial_used = true;
+    wire.data!.company!.warehouse_used = 15;
+    wire.data!.resources = { copper_ore: 15 };
+    wire.data!.expeditions = [haul('collected')];
+    wire.data!.log = sold ? [{ id: 'real-sale', kind: 'sold', title: 'Sold 5 copper ore', created_at: at }] : [];
+    render(<Harness />); continueDeepClaimCompany();
+    expect(screen.getByRole('button', { name: sold ? 'Review camp upgrades' : 'Sell first haul' })).toBeInTheDocument();
+    expect(wire.data!.resources).toEqual({ copper_ore: 15 });
+    expect(wire.sell).not.toHaveBeenCalled(); expect(wire.upgrade).not.toHaveBeenCalled();
   });
   it('keeps an unconfirmed action read-only and retries the saved receipt instead of creating another action', async () => {
     wire.pending = 'Dispatch crew'; wire.readOnly = true;

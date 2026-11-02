@@ -1,6 +1,16 @@
 # Deep Claim — cinematic entry and Training Journal
 
-This release builds on main `94a4334b39626fb31365fb5d47753c1946dcfc94`. It changes entry, instruction and educational persistence around the existing company. Snapshot schema five, field configuration seven, generation four, production configuration four and every paid gameplay rule remain unchanged. Deployment and final verification belong in [the implementation ledger](DEEP_CLAIM_IMPLEMENTATION.md); the presence of this document or migration is not evidence of publication.
+The original journal release built on main `94a4334b39626fb31365fb5d47753c1946dcfc94`. The current first-shift refinement builds on `004dc699704cdc07b9add464badef1672f4167ff`, simplifying the learning route and dialogue without another migration. Snapshot schema five, field configuration seven, generation four, production configuration four and every paid gameplay rule remain unchanged. Deployment and final verification belong in [the implementation ledger](DEEP_CLAIM_IMPLEMENTATION.md); the presence of this document or migration is not evidence of publication.
+
+## Default first-shift guide
+
+The default guide now follows six existing steps: review the dispatch estimate, dispatch, wait for return, collect, sell or keep, and inspect an upgrade. Camp tours, three employee-file inspections and map exercises remain available as optional notes; they no longer delay the first shift. The welcome starts after the actual deed is signed, rather than pointing back to the absent name field.
+
+`firstShiftGuide.ts` maps this short route onto existing lesson/step identities. The quote advances its caption only when allowed; dispatch, return, collection and sale advance from actual company proof after busy operations and receipts settle. No guidance callback buys, dispatches, collects or sells. The upgrade step opens the building list and asks for inspection, not a purchase. Choosing Keep materials records review without a sale, practical sale mark or credit gain. The Surface action advances after a genuine partial sale or that deliberate review, while retained stock stays intact.
+
+Completion of this short guide is distinct from studying all twelve beginner references. All **42 lessons, 84 steps and 67 dialogue identities**, saved sets and legacy cursors remain valid. Intentionally skipped steps can finish the walkthrough without claiming real practical experience. Optional topics open as notes with one guided-start action; examples are clearly separate. Compact guidance keeps its action text visible, including a labelled Keep choice.
+
+The opening is approximately 180 words / 50 seconds of optional reading. Gus is practical and welcoming; Mara, Ivo and Tessa keep their individual roles. Forced jokes, backend terminology and the unsupported profit claim have been removed. There is no mandatory dialogue timer or a new mining-speed rule.
 
 ## Entry and save protection
 
@@ -33,7 +43,7 @@ Paths under `components` and `lib` in this table are relative to `src/`. These m
 
 Gus “Gravel” Calloway is the retiring owner and optional mentor. He has original pixel SVG portraits for neutral, amused, skeptical, excited, concerned and proud expressions. He is not an employee record, available hire, wage, expedition participant or source of resources. Mara Flint, Ivo Vale and Tessa Pike retain their established identities and distinct practical voices.
 
-The structured dialogue registry gives lines stable IDs, speaker/expression IDs and text keys. The opening deed, crew introduction, lesson conversations and graduation are separate from completion predicates. Conversation can advance immediately, go back, expose history or be skipped. Reading time is a pacing intention, not a forced timer or measured minimum playtime. The graduation uses a profit claim only when the current company's real sale history supports it; the review alternative uses different wording.
+The structured dialogue registry gives lines stable IDs, speaker/expression IDs and text keys. The opening deed, crew introduction, lesson conversations and graduation are separate from completion predicates. Conversation can advance immediately, go back, expose history or be skipped. Reading time is a pacing intention, not a forced timer or measured minimum playtime. The sale handover acknowledges revenue only when the current company's actual sale history supports it; the alternative does not claim that a sale occurred. Neither claims net profit.
 
 Ask Gus in the Office opens advice and the Training Journal. Personalized advice reads the current public company snapshot: available stock, crew, capacity, recorded work and unlocked systems. It cannot reveal a private seed, hidden ore, future find or unreconciled cargo. The company journal's Gus commentary setting controls optional chapter conversations; manual advice and instructional controls remain available. It is educational metadata, separate from global notification, sound and sharing preferences.
 

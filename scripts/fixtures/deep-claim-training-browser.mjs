@@ -50,7 +50,7 @@ export async function runDeepClaimMenuBrowser(h) {
     await journal(page).getByRole('combobox',{name:'Training section',exact:true}).selectOption('club');
     await journal(page).getByRole('searchbox',{name:'Search training lessons',exact:true}).fill('Privacy');
     await h.expect(journal(page).locator('[data-journal-lesson="club.privacy"]')).toBeVisible();
-    await journal(page).getByRole('button',{name:'Read Privacy',exact:true}).click();
+    await journal(page).getByRole('button',{name:'Open Privacy',exact:true}).click();
     await h.expect(journal(page).locator('[data-journal-detail="club.privacy"]')).toBeVisible();
     await h.fit(page,`training-journal-${width}x${height}-${theme}`);await h.shot(page,`training-journal-${width}x${height}-${theme}`);
     await journal(page).getByRole('button',{name:'Close Training Journal',exact:true}).click();
@@ -115,12 +115,12 @@ export async function runDeepClaimAcademyBrowser(h) {
     for(const key of keys){
       const id=`${section}.${key}`,card=journal(page).locator(`[data-journal-lesson="${id}"]`);
       if(!await card.count())await journal(page).getByRole('button',{name:'Next training page',exact:true}).click();
-      await h.expect(card).toBeVisible();await card.getByRole('button',{name:/^Read /}).click();
+      await h.expect(card).toBeVisible();await card.getByRole('button',{name:/^Open /}).click();
       await h.expect(journal(page).locator(`[data-journal-detail="${id}"]`)).toBeVisible();
-      await journal(page).getByRole('button',{name:'Practice safely',exact:true}).click();const practice=page.getByRole('region',{name:'Safe practice',exact:true});
-      await h.expect(practice).toHaveAttribute('data-practice-id',`practice.${id}`);await h.expect(practice.getByRole('button',{name:'Finish safe practice',exact:true})).toBeDisabled();
+      const examples=journal(page).locator('details').filter({has:page.getByText('Try an example',{exact:true})});await examples.locator('summary').click();await examples.getByRole('button',{name:'View example',exact:true}).click();const practice=page.getByRole('region',{name:'Safe practice',exact:true});
+      await h.expect(practice).toHaveAttribute('data-practice-id',`practice.${id}`);await h.expect(practice.getByRole('button',{name:'Finish example',exact:true})).toBeDisabled();
       await practice.getByRole('group',{name:'Try a decision',exact:true}).getByRole('button').first().click();
-      await h.expect(practice.locator('[role="status"].dct-practice-feedback')).toBeVisible();await h.fit(page,`training-practice-footer-${id}`);await practice.getByRole('button',{name:'Finish safe practice',exact:true}).click();
+      await h.expect(practice.locator('[role="status"].dct-practice-feedback')).toBeVisible();await h.fit(page,`training-practice-footer-${id}`);await practice.getByRole('button',{name:'Finish example',exact:true}).click();
       await h.expect(journal(page)).toBeVisible();await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).reviewed_lessons.includes(id)).toBe(true);
       if(await journal(page).locator('[data-journal-detail]').count())await journal(page).getByRole('button',{name:'Back to training lessons',exact:true}).click();
       h.checked(`training-safe-academy-review-${id}`,true);
@@ -151,134 +151,194 @@ async function assertGuideTarget(page,h,label) {
 }
 
 export async function runDeepClaimCampaignBrowser(h) {
-  const run='training-twelve-chapter-campaign',main=await h.setup(390,844,'dark','no-preference',{isMobile:true,runtimeProbe:true});
-  const {context,page}=main;const narrative=new Map(),visited=new Set();let dispatched=null,devicesChecked=false;
-  async function readLine(){
-    const scene=page.locator('[data-dialogue-scene]').filter({visible:true}).first();
-    const id=await scene.getAttribute('data-dialogue-line');narrative.set(id,await scene.innerText());
-    await scene.getByRole('button',{name:'Advance dialogue',exact:true}).click();
-  }
-  async function ensureIntroQuote(){
-    const dialog=page.getByRole('dialog',{name:'Work a seam',exact:true});await h.expect(dialog).toBeVisible();
-    const review=dialog.getByRole('button',{name:'Review dispatch',exact:true});
-    if(await review.count()){
-      const induction=dialog.locator('[data-dc-tutorial="dispatch-induction"] input');await h.expect(induction).toBeVisible();await induction.check();
-      await review.click();
-    }
-    await h.expect(dialog.getByRole('region',{name:'Verified dispatch estimate',exact:true})).toBeVisible();await h.expect(dialog.getByText('30s',{exact:true})).toBeVisible();
-    return dialog;
-  }
-  async function inspectBuilding(){
-    const existing=page.getByRole('dialog',{name:'Warehouse',exact:true});
-    const buildings=page.getByRole('dialog',{name:'The surface camp',exact:true});
-    const opener=page.getByRole('button',{name:'Open camp buildings',exact:true});
-    // The chapter may still be moving from Stores to Surface after dialogue.
-    // Wait for a real destination/control before choosing the ordinary route.
-    await h.expect(existing.or(buildings).or(opener).first()).toBeVisible();
-    if(await existing.isVisible())return existing;
-    if(!await buildings.isVisible())await opener.click();
-    await h.expect(buildings).toBeVisible();await buildings.getByRole('button',{name:/Warehouse/}).click();
-    await h.expect(existing).toBeVisible();return existing;
-  }
-  await h.go(page,{run,enter:false});await title(page).getByRole('button',{name:'New Game',exact:true}).click();
-  await h.expect(page.locator('[data-dialogue-scene="opening.deed"]')).toBeVisible();
-  await page.getByRole('button',{name:'Dialogue history',exact:true}).click();await h.expect(page.getByRole('region',{name:'Dialogue history',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Close dialogue history',exact:true}).click();
-  for(let line=0;line<16&&!await page.getByRole('textbox',{name:'Company name',exact:true}).isVisible();line++)await readLine();
-  await page.getByRole('textbox',{name:'Company name',exact:true}).fill('Gus’s Lantern Works');await page.getByRole('button',{name:'Review deed',exact:true}).click();
-  h.checked('training-full-campaign-narrative-never-precreates-the-company',!(await h.command(page,'calls')).some(call=>call.name==='dc_bootstrap'));
-  await page.getByRole('button',{name:'Found company',exact:true}).click();await h.expect(page.locator('[data-dialogue-scene="opening.crew"]')).toBeVisible();
-  for(let iteration=0;iteration<120;iteration++){
-    const complete=page.getByRole('region',{name:'The First Descent complete',exact:true});if(await complete.isVisible())break;
-    if(await page.locator('[data-dialogue-scene]:visible').count()){await readLine();continue;}
-    if(await journal(page).isVisible()){await journal(page).getByRole('button',{name:'Close Training Journal',exact:true}).click();continue;}
+  const core=['beginner.plan.quote','beginner.descent.confirmed','beginner.waiting.returned','beginner.haul.collected','beginner.sale.sale','beginner.upgrade.review'];
+  const optional=['beginner.camp','beginner.crew','beginner.mine','beginner.worksite'];
+  async function runFirstShift({run,keep=false}) {
+    const main=await h.setup(keep?320:390,keep?568:844,keep?'light':'dark',keep?'reduce':'no-preference',{isMobile:true,runtimeProbe:true});
+    const {context,page}=main,narrative=new Map(),visited=new Set();
     const overlay=page.locator('.dct-overlay');
-    await h.expect(overlay.or(page.locator('[data-dialogue-scene]')).or(complete).first()).toBeVisible();
-    if(!await overlay.isVisible())continue;
-    const step=await overlay.getAttribute('data-step-id'),lesson=await overlay.getAttribute('data-lesson-id');visited.add(lesson);
-    switch(step){
-      case 'beginner.claim.deed':case 'beginner.claim.founded':case 'beginner.camp.surface':case 'beginner.camp.mine':case 'beginner.crew.crew':case 'beginner.mine.enter':case 'beginner.worksite.difference':case 'beginner.worksite.planner':case 'beginner.waiting.stages':case 'beginner.sale.stock':case 'beginner.graduate.ready':break;
-      case 'beginner.camp.building':await inspectBuilding();break;
-      case 'beginner.crew.mara':case 'beginner.crew.ivo':case 'beginner.crew.tessa':{
-        const [name,stat,view]=step.endsWith('.mara')?['Mara Flint','Mining',[320,568]]:step.endsWith('.ivo')?['Ivo Vale','Geology',[844,390]]:['Tessa Pike','Logistics',[390,844]];
-        await page.setViewportSize({width:view[0],height:view[1]});const file=page.getByRole('dialog',{name,exact:true});await h.expect(file).toBeVisible();
-        const skill=file.getByRole('button',{name:`Inspect ${stat}`,exact:true});await skill.focus();await page.keyboard.press('Enter');
-        await h.fit(page,`training-crew-guidance-${name.split(' ')[0]}`);await h.shot(page,`training-crew-guidance-${name.split(' ')[0]}`);
-        const placement=await assertGuideTarget(page,h,step);h.checked(`training-worker-guidance-is-in-the-real-portaled-dialog-${stat}`,placement.portaled_in_dialog===true,placement);break;
-      }
-      case 'beginner.crew.conditions':{
-        const file=page.getByRole('dialog',{name:'Tessa Pike',exact:true});
-        if(!await file.isVisible())await h.workerFile(page,'Tessa Pike','Overview');
-        await h.expect(file).toBeVisible();
-        const energy=file.locator('[data-dc-tutorial="worker-energy"]'),traits=file.locator('[data-dc-tutorial="worker-traits"]');
-        await h.expect(energy).toHaveCount(1);await h.expect(traits).toHaveCount(1);
-        await energy.focus();await traits.focus();break;
-      }
-      case 'beginner.mine.control':await page.getByTestId('deep-claim-canvas').focus();await page.keyboard.press('ArrowRight');await page.keyboard.press('Equal');break;
-      case 'beginner.mine.inspect':{
-        await page.getByRole('button',{name:'Open mine operations',exact:true}).click();
-        await page.getByRole('dialog',{name:'Underground operations',exact:true}).getByRole('group',{name:'Mine operations',exact:true}).getByRole('button',{name:/^Extraction/}).click();
-        await page.getByRole('combobox',{name:'Expedition worksite',exact:true}).selectOption('47:1');break;
-      }
-      case 'beginner.plan.selection':{
-        const dialog=page.getByRole('dialog',{name:'Work a seam',exact:true});await h.selectCrew(dialog,['Mara Flint','Ivo Vale','Tessa Pike']);
-        const induction=dialog.locator('[data-dc-tutorial="dispatch-induction"] input');await induction.check();break;
-      }
-      case 'beginner.plan.quote':await ensureIntroQuote();await assertGuideTarget(page,h,step);await h.fit(page,'training-authoritative-intro-quote');await h.shot(page,'training-authoritative-intro-quote');break;
-      case 'beginner.descent.confirmed':{
-        const dialog=await ensureIntroQuote();await dialog.getByRole('button',{name:'Dispatch crew',exact:true}).click();await h.expect(dialog).toHaveCount(0);
-        const snapshot=await h.rpc(page,'dc_get');dispatched=snapshot.expeditions.find(job=>job.status==='active');
-        h.checked('training-campaign-commits-the-one-real-thirty-second-induction',dispatched?.tutorial===true&&dispatched.duration_seconds===30&&snapshot.company.cash===173&&snapshot.workers.every(worker=>worker.energy===5)&&dispatched.cargo===null);break;
-      }
-      case 'beginner.waiting.returned':{
-        h.assert.ok(dispatched);await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).active_step_id).toBe(step);
-        if(!devicesChecked){
-          await h.reloadCompany(page);await h.expect(page.locator('.dct-overlay')).toHaveAttribute('data-step-id',step);
-          const peer=await h.setup(390,844,'dark','reduce',{isMobile:true});await h.go(peer.page,{run,enter:false});await h.continueCompany(peer.page);
-          await h.expect(peer.page.locator('.dct-overlay')).toHaveAttribute('data-step-id',step);const resumed=await h.rpc(peer.page,'dc_get');
-          h.checked('training-mid-expedition-reload-and-fresh-device-resume-the-identical-paid-job',resumed.expeditions.length===1&&resumed.expeditions[0].id===dispatched.id&&resumed.company.cash===173&&resumed.workers.every(worker=>worker.energy===5));
-          await peer.context.close();await page.bringToFront();devicesChecked=true;
-        }
-        // This release includes a real-clock smoke: no advance_job command is
-        // used anywhere in this campaign. Other long-game regressions retain
-        // their explicit isolated owner clock controls.
-        await h.expect.poll(async()=>(await h.rpc(page,'dc_get')).expeditions.find(job=>job.id===dispatched.id)?.status,{timeout:45000,intervals:[1000,2000]}).toBe('ready');
-        const ready=await h.rpc(page,'dc_get');h.checked('training-induction-return-used-real-server-elapsed-time',Date.parse(ready.server_now)-Date.parse(dispatched.started_at)>=30000&&ready.expeditions.length===1);
-        await page.getByRole('button',{name:'Refresh company',exact:true}).click();await h.fit(page,'training-actual-thirty-second-return');await h.shot(page,'training-actual-thirty-second-return');break;
-      }
-      case 'beginner.haul.cargo':if(!await page.getByRole('button',{name:'Collect into storage',exact:true}).isVisible())await page.getByRole('button',{name:'Open haul',exact:true}).click();await h.expect(page.getByRole('button',{name:'Collect into storage',exact:true})).toBeVisible();break;
-      case 'beginner.haul.collected':{
-        if(!await page.getByRole('button',{name:'Collect into storage',exact:true}).isVisible())await page.getByRole('button',{name:'Open haul',exact:true}).click();
-        await page.getByRole('button',{name:'Collect into storage',exact:true}).click();await h.expect(page.getByRole('dialog',{name:'Haul secured.',exact:true})).toBeVisible();await h.closeReward(page);break;
-      }
-      case 'beginner.sale.sale':await page.getByRole('button',{name:'Sell Coal',exact:true}).click();await page.getByRole('spinbutton',{name:'Quantity to sell',exact:true}).fill('5');await page.getByRole('button',{name:'Confirm sale',exact:true}).click();await h.expect(page.getByRole('dialog',{name:'Trade recorded.',exact:true})).toBeVisible();await h.closeReward(page);break;
-      case 'beginner.upgrade.review':await inspectBuilding();await h.expect(page.getByRole('button',{name:'Confirm upgrade',exact:true})).toBeEnabled();break;
-      default:throw new Error(`Uncovered First Descent step: ${step}`);
+    async function readLine(){
+      const scene=page.locator('[data-dialogue-scene]:visible').first();
+      narrative.set(await scene.getAttribute('data-dialogue-line'),await scene.getByRole('button',{name:'Advance dialogue',exact:true}).innerText());
+      await scene.getByRole('button',{name:'Advance dialogue',exact:true}).click();
     }
-    await h.expect(page.getByRole('button',{name:'Next tutorial step',exact:true})).toBeVisible();await page.getByRole('button',{name:'Next tutorial step',exact:true}).click();
-    await h.expect.poll(async()=>!await page.locator(`.dct-overlay[data-step-id="${step}"]`).count()||await page.locator('[data-dialogue-scene]:visible').count()>0||await complete.isVisible()).toBe(true);
+    async function guide(step){
+      await h.expect(overlay).toHaveAttribute('data-step-id',step);
+      visited.add(step);
+      await h.expect(overlay.getByRole('region',{name:'Tutorial guidance',exact:true})).toBeVisible();
+      // The next task is visible on screen, including compact phone guidance.
+      const readable=await overlay.locator('.dct-guidance').evaluate(node=>{
+        const instruction=node.querySelector('.dct-guidance-copy>p')??node.querySelector('h2');
+        if(!instruction)return false;
+        const box=instruction.getBoundingClientRect(),panel=node.getBoundingClientRect(),style=getComputedStyle(instruction);
+        return box.width>20&&box.height>8&&style.visibility!=='hidden'&&style.display!=='none'
+          &&!instruction.closest('.sr-only')&&instruction.scrollHeight<=instruction.clientHeight+1
+          &&box.left>=-1&&box.right<=innerWidth+1&&box.top>=panel.top-1&&box.bottom<=panel.bottom+1&&box.bottom<=innerHeight+1;
+      });
+      h.checked(`training-readable-action-${keep?'keep':'sale'}-${step}`,readable);
+    }
+    async function quote(client){
+      const dialog=client.getByRole('dialog',{name:'Work a seam',exact:true});await h.expect(dialog).toBeVisible();
+      const review=dialog.getByRole('button',{name:'Review dispatch',exact:true});
+      if(await review.count()){
+        const induction=dialog.locator('[data-dc-tutorial="dispatch-induction"] input');await h.expect(induction).toBeChecked();
+        await review.click();
+      }
+      await h.expect(dialog.getByRole('region',{name:'Verified dispatch estimate',exact:true})).toBeVisible();
+      await h.expect(dialog.getByText('30s',{exact:true})).toBeVisible();
+      await h.expect(dialog.getByRole('button',{name:'Dispatch crew',exact:true})).toBeEnabled();
+      return dialog;
+    }
+    async function inspectBuilding(client){
+      const buildings=client.getByRole('dialog',{name:'The surface camp',exact:true});
+      await h.expect(buildings).toBeVisible();
+      await buildings.getByRole('button',{name:/Warehouse/}).click();
+      const detail=client.getByRole('dialog',{name:'Warehouse',exact:true});await h.expect(detail).toBeVisible();
+      await h.expect(detail.getByRole('button',{name:'Confirm upgrade',exact:true})).toBeEnabled();
+      return detail;
+    }
+    async function closeReceipt(name){
+      const receipt=page.getByRole('dialog',{name,exact:true});await h.expect(receipt).toBeVisible();
+      await receipt.getByRole('button',{name:'Back to the claim',exact:true}).click();
+    }
+    await h.go(page,{run,theme:keep?'light':'dark',enter:false});
+    await title(page).getByRole('button',{name:'New Game',exact:true}).click();
+    await h.expect(page.locator('[data-dialogue-scene="opening.deed"]')).toBeVisible();
+    if(keep)await page.getByRole('button',{name:'Skip introduction',exact:true}).click();
+    else {
+      await page.getByRole('button',{name:'Dialogue history',exact:true}).click();
+      await h.expect(page.getByRole('region',{name:'Dialogue history',exact:true})).toBeVisible();
+      await page.getByRole('button',{name:'Close dialogue history',exact:true}).click();
+      for(let line=0;line<16&&!await page.getByRole('textbox',{name:'Company name',exact:true}).isVisible();line++)await readLine();
+    }
+    await h.expect(page.getByRole('textbox',{name:'Company name',exact:true})).toBeVisible();
+    await page.getByRole('textbox',{name:'Company name',exact:true}).fill(keep?'The Kept Seam':'Gus’s Lantern Works');
+    await page.getByRole('button',{name:'Review deed',exact:true}).click();
+    h.checked(`training-first-shift-deed-does-not-precreate-${keep?'keep':'sale'}`,!(await h.command(page,'calls')).some(call=>call.name==='dc_bootstrap'));
+    await page.getByRole('button',{name:'Found company',exact:true}).click();
+    await h.expect(page.locator('[data-dialogue-scene="opening.crew"]')).toBeVisible();
+    if(keep)await page.getByRole('button',{name:'Skip dialogue',exact:true}).click();
+    else for(let line=0;line<8&&await page.locator('[data-dialogue-scene="opening.crew"]:visible').count();line++)await readLine();
+    await guide(core[0]);
+    h.checked(`training-first-shift-starts-at-actionable-plan-${keep?'keep':'sale'}`,!await page.locator('[data-dc-tutorial="company-name"]').count()
+      &&!await page.locator('.dct-overlay[data-step-id^="beginner.claim."]').count());
+    await quote(page);await guide(core[1]);
+    await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).active_step_id).toBe(core[1]);
+
+    if(!keep){
+      // The same pending company and real quote are inspected in every supported
+      // layout before any dispatch. No fake job or economic state is injected.
+      for(const [width,height,theme,motion] of h.visualCases??[]){
+        const peer=await h.setup(width,height,theme,motion,{isMobile:width<900});
+        await h.go(peer.page,{run,theme});await h.expect(peer.page.locator('.dct-overlay')).toHaveAttribute('data-step-id',core[1]);
+        await quote(peer.page);await assertGuideTarget(peer.page,h,`first-shift-quote-${width}x${height}-${theme}-${motion}`);
+        await h.fit(peer.page,`training-first-shift-quote-${width}x${height}-${theme}-${motion}`);await h.shot(peer.page,`training-first-shift-quote-${width}x${height}-${theme}-${motion}`);
+        await peer.context.close();
+      }
+      await page.bringToFront();
+    }
+    const dispatch=await quote(page);
+    await dispatch.getByRole('button',{name:'Dispatch crew',exact:true}).click();
+    await guide(core[2]);
+    let snapshot=await h.rpc(page,'dc_get');const job=snapshot.expeditions.find(value=>value.status==='active');
+    h.checked(`training-one-real-thirty-second-shift-${keep?'keep':'sale'}`,job?.tutorial===true&&job.duration_seconds===30&&snapshot.company.cash===173
+      &&snapshot.workers.every(worker=>worker.energy===5)&&job.cargo===null);
+    if(!keep){
+      await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).active_step_id).toBe(core[2]);
+      await h.reloadCompany(page);await guide(core[2]);
+      const peer=await h.setup(390,844,'dark','reduce',{isMobile:true});await h.go(peer.page,{run});
+      await h.expect(peer.page.locator('.dct-overlay')).toHaveAttribute('data-step-id',core[2]);
+      const resumed=await h.rpc(peer.page,'dc_get');
+      h.checked('training-first-shift-reload-and-second-device-keep-the-identical-paid-job',resumed.expeditions.length===1&&resumed.expeditions[0].id===job.id
+        &&resumed.company.cash===173&&resumed.workers.every(worker=>worker.energy===5));
+      await peer.context.close();await page.bringToFront();
+    }
+    // Both paths use the real30-second server window. No advance_job command
+    // accelerates mining work or educational proof here.
+    await h.expect.poll(async()=>(await h.rpc(page,'dc_get')).expeditions.find(value=>value.id===job.id)?.status,{timeout:45000,intervals:[1000,2000]}).toBe('ready');
+    snapshot=await h.rpc(page,'dc_get');
+    h.checked(`training-first-shift-real-elapsed-return-${keep?'keep':'sale'}`,Date.parse(snapshot.server_now)-Date.parse(job.started_at)>=30000&&snapshot.expeditions.length===1);
+    // Normal query refresh can already open the actual returned haul. Refresh
+    // only when that foreground transition has not happened yet.
+    const refresh=page.getByRole('button',{name:'Refresh company',exact:true});
+    if(await refresh.isVisible())await refresh.click();
+    await guide(core[3]);
+    await h.expect(page.getByRole('button',{name:'Collect into storage',exact:true})).toBeVisible();
+    await h.fit(page,`training-first-shift-collect-${keep?'keep':'sale'}`);await h.shot(page,`training-first-shift-collect-${keep?'keep':'sale'}`);
+    await page.getByRole('button',{name:'Collect into storage',exact:true}).click();
+    await h.expect(page.getByRole('dialog',{name:'Haul secured.',exact:true})).toBeVisible();
+    h.checked(`training-collection-receipt-stays-open-until-dismissed-${keep?'keep':'sale'}`,await page.getByRole('dialog',{name:'Haul secured.',exact:true}).isVisible());
+    await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).active_step_id).toBe(core[3]);
+    await closeReceipt('Haul secured.');await guide(core[4]);
+    const collected=economics(await h.rpc(page,'dc_get'));
+    if(keep){
+      await h.expect(page.getByRole('button',{name:'Keep materials',exact:true})).toBeVisible();
+      await h.fit(page,'training-keep-materials-choice-small-phone');await h.shot(page,'training-keep-materials-choice-small-phone');
+      await page.getByRole('button',{name:'Keep materials',exact:true}).click();await guide(core[5]);
+      h.assert.deepEqual(economics(await h.rpc(page,'dc_get')),collected);
+      await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).reviewed_lessons.includes('beginner.sale')).toBe(true);
+      const notes=await h.rpc(page,'dc_tutorial_get');
+      h.checked('training-keeping-ore-records-review-without-a-fake-sale',notes.reviewed_lessons.includes('beginner.sale')&&!notes.practiced_lessons.includes('beginner.sale')
+        &&!(await h.command(page,'calls')).some(call=>call.name==='dc_sell'));
+    }else{
+      await page.getByRole('button',{name:'Sell Coal',exact:true}).click();
+      await page.getByRole('spinbutton',{name:'Quantity to sell',exact:true}).fill('5');
+      await page.getByRole('button',{name:'Confirm sale',exact:true}).click();
+      await h.expect(page.getByRole('dialog',{name:'Trade recorded.',exact:true})).toBeVisible();
+      await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).active_step_id).toBe(core[4]);
+      await closeReceipt('Trade recorded.');await guide(core[5]);
+    }
+    await inspectBuilding(page);
+    await assertGuideTarget(page,h,`first-shift-upgrade-${keep?'keep':'sale'}`);
+    await h.fit(page,`training-first-shift-upgrade-${keep?'keep':'sale'}`);await h.shot(page,`training-first-shift-upgrade-${keep?'keep':'sale'}`);
+    await page.getByRole('button',{name:'Next tutorial step',exact:true}).click();
+    for(let line=0;line<8&&!await page.getByRole('region',{name:'First shift guide complete',exact:true}).isVisible();line++){
+      await h.expect(page.locator('[data-dialogue-scene]:visible')).toHaveCount(1);await readLine();
+    }
+    await h.expect(page.getByRole('region',{name:'First shift guide complete',exact:true})).toBeVisible();
+    await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).campaign_status).toBe('completed');
+    const progress=await h.rpc(page,'dc_tutorial_get');snapshot=await h.rpc(page,'dc_get');
+    h.checked(`training-six-step-guide-leaves-optional-topics-honest-${keep?'keep':'sale'}`,core.every(id=>visited.has(id))
+      &&optional.every(id=>!progress.reviewed_lessons.includes(id)&&!progress.practiced_lessons.includes(id))&&!progress.skipped_lessons.length);
+    h.checked(`training-only-real-work-gets-practical-marks-${keep?'keep':'sale'}`,['beginner.claim','beginner.descent','beginner.waiting','beginner.haul'].every(id=>progress.practiced_lessons.includes(id))
+      &&progress.practiced_lessons.includes('beginner.sale')===!keep&&!progress.practiced_lessons.includes('beginner.upgrade'));
+    h.checked(`training-completion-adds-no-fictitious-rewards-${keep?'keep':'sale'}`,snapshot.company.cash===(keep?173:193)&&snapshot.resources.coal===(keep?10:5)
+      &&snapshot.resources.stone===12&&snapshot.workers.length===3&&snapshot.workers.every(worker=>worker.energy===5&&!worker.name.includes('Gus'))&&snapshot.expeditions.length===1);
+    const calls=await h.command(page,'calls');
+    h.checked(`training-only-authorized-first-shift-economic-actions-${keep?'keep':'sale'}`,calls.filter(call=>call.name==='dc_bootstrap').length===1
+      &&calls.filter(call=>call.name==='dc_dispatch_operation').length===1&&calls.filter(call=>call.name==='dc_collect').length===1
+      &&calls.filter(call=>call.name==='dc_sell').length===(keep?0:1)
+      &&!calls.some(call=>['dc_upgrade','dc_hire','dc_train','dc_start_production','dc_resolve_discovery','dc_set_social_preferences','dc_contribute_project','dc_claim_project'].includes(call.name)));
+    if(keep)h.checked('training-kept-stock-ending-never-claims-a-sale',narrative.has('graduation.review.01')&&!narrative.has('graduation.sale.01'));
+    else h.checked('training-human-handover-uses-played-retirement-and-earned-sale-dialogue',narrative.get('opening.deed.02')?.includes('retiring')
+      &&narrative.get('graduation.sale.01')?.includes('made a sale')&&![...narrative.keys()].some(id=>id.startsWith('chapter.')));
+    await h.fit(page,`training-first-shift-complete-${keep?'keep':'sale'}`);await h.shot(page,`training-first-shift-complete-${keep?'keep':'sale'}`);
+    await page.getByRole('button',{name:'Continue Mining',exact:true}).click();
+    await h.clearDialogs(page);
+    await h.expect(page.getByRole('button',{name:'Review camp upgrades',exact:true})).toBeVisible();
+    await h.expect(page.getByRole('button',{name:'Sell first haul',exact:true})).toHaveCount(0);
+    h.checked(`training-upgrade-cue-does-not-require-emptying-the-warehouse-${keep?'keep':'sale'}`,snapshot.resources.coal>0&&snapshot.resources.stone>0);
+    if(!keep){
+      const beforeHelp=economics(await h.rpc(page,'dc_get'));
+      const file=await h.workerFile(page,'Mara Flint','Overview');await file.getByRole('button',{name:'Help: Worker skills',exact:true}).click();
+      await h.expect(journal(page).locator('[data-journal-detail="workforce.stats"]')).toBeVisible();
+      h.checked('training-contextual-worker-help-opens-the-matching-optional-topic',true);
+      await journal(page).getByRole('button',{name:'Close Training Journal',exact:true}).click();await h.clearDialogs(page);
+      await h.officeView(page,'Company');await page.getByRole('button',{name:'Ask Gus',exact:true}).click();
+      const advice=page.getByRole('region',{name:'Ask Gus',exact:true});await h.expect(advice).toBeVisible();
+      h.checked('training-gus-advice-stays-bounded-and-uses-real-company-records',await advice.getByRole('article').count()<=4);
+      await h.fit(page,'training-ask-gus');await h.shot(page,'training-ask-gus');
+      await advice.getByRole('button',{name:'Open related lesson',exact:true}).first().click();await h.expect(journal(page).locator('[data-journal-detail]')).toBeVisible();
+      await journal(page).getByRole('button',{name:'Close Training Journal',exact:true}).click();await h.clearDialogs(page);
+      h.assert.deepEqual(economics(await h.rpc(page,'dc_get')),beforeHelp);
+      h.checked('training-contextual-help-and-gus-never-alter-company-state',true);
+      await h.tab(page,'Settings');await page.getByRole('button',{name:'Return to Main Menu',exact:true}).click();await h.expect(title(page)).toBeVisible();
+      const before=economics(await h.rpc(page,'dc_get'));await h.continueCompany(page);h.assert.deepEqual(economics(await h.rpc(page,'dc_get')),before);
+      h.checked('training-completed-guide-stays-completed-after-title-and-continue',!(await page.locator('.dct-overlay').count()));
+    }
+    await context.close();
   }
-  await h.expect(page.getByRole('region',{name:'The First Descent complete',exact:true})).toBeVisible();
-  await h.expect.poll(async()=>(await h.rpc(page,'dc_tutorial_get')).campaign_status).toBe('completed');
-  const progress=await h.rpc(page,'dc_tutorial_get'),snapshot=await h.rpc(page,'dc_get');
-  h.checked('training-all-twelve-real-campaign-chapters-complete-without-skipping',visited.size===12&&progress.reviewed_lessons.filter(id=>id.startsWith('beginner.')).length===12&&!progress.skipped_lessons.length,{visited:[...visited]});
-  h.checked('training-real-transaction-marks-are-distinct-from-the-optional-upgrade-review',['beginner.claim','beginner.descent','beginner.waiting','beginner.haul','beginner.sale'].every(id=>progress.practiced_lessons.includes(id))&&!progress.practiced_lessons.includes('beginner.upgrade'));
-  h.checked('training-graduation-and-gus-create-no-extra-company-money-stock-energy-or-workers',snapshot.company.cash===193&&snapshot.resources.coal===5&&snapshot.resources.stone===12&&snapshot.workers.length===3&&snapshot.workers.every(worker=>worker.energy===5&&!worker.name.includes('Gus'))&&snapshot.expeditions.length===1);
-  const calls=await h.command(page,'calls');h.checked('training-full-campaign-has-exactly-the-authorized-economic-actions',calls.filter(call=>call.name==='dc_bootstrap').length===1&&calls.filter(call=>call.name==='dc_dispatch_operation').length===1&&calls.filter(call=>call.name==='dc_collect').length===1&&calls.filter(call=>call.name==='dc_sell').length===1&&!calls.some(call=>['dc_upgrade','dc_hire','dc_train','dc_start_production','dc_resolve_discovery','dc_set_social_preferences','dc_contribute_project','dc_claim_project'].includes(call.name)));
-  h.checked('training-gus-retirement-and-warm-graduation-are-actual-played-dialogue',[...narrative.values()].some(line=>line.includes('Forty-two years'))&&[...narrative.values()].some(line=>line.includes('turn a profit'))&&[...narrative.values()].some(line=>line.includes('arguing with a mule'))&&[...narrative.values()].some(line=>line.includes('She’s your mine now')));
-  await h.fit(page,'training-first-descent-graduation');await h.shot(page,'training-first-descent-graduation');await page.getByRole('button',{name:'Continue Mining',exact:true}).click();
-  const beforeHelp=economics(await h.rpc(page,'dc_get'));
-  const file=await h.workerFile(page,'Mara Flint','Overview');await file.getByRole('button',{name:'Help: Worker skills',exact:true}).click();
-  await h.expect(journal(page).locator('[data-journal-detail="workforce.stats"]')).toBeVisible();
-  h.checked('training-contextual-worker-help-opens-the-matching-lesson',true);await journal(page).getByRole('button',{name:'Close Training Journal',exact:true}).click();await h.clearDialogs(page);
-  await h.officeView(page,'Company');await page.getByRole('button',{name:'Ask Gus',exact:true}).click();
-  const advice=page.getByRole('region',{name:'Ask Gus',exact:true});await h.expect(advice).toBeVisible();
-  h.checked('training-gus-advice-is-a-bounded-public-record-reference',await advice.getByRole('article').count()<=4);await h.fit(page,'training-ask-gus');await h.shot(page,'training-ask-gus');
-  await advice.getByRole('button',{name:'Open related lesson',exact:true}).first().click();await h.expect(journal(page).locator('[data-journal-detail]')).toBeVisible();
-  await journal(page).getByRole('button',{name:'Close Training Journal',exact:true}).click();await h.clearDialogs(page);h.assert.deepEqual(economics(await h.rpc(page,'dc_get')),beforeHelp);
-  h.checked('training-contextual-help-and-gus-never-alter-company-state',true);
-  await h.tab(page,'Settings');await page.getByRole('button',{name:'Return to Main Menu',exact:true}).click();await h.expect(title(page)).toBeVisible();
-  const before=economics(await h.rpc(page,'dc_get'));await h.continueCompany(page);h.assert.deepEqual(economics(await h.rpc(page,'dc_get')),before);
-  h.checked('training-graduate-can-return-to-title-and-continue-without-restarting-the-campaign',true);await context.close();
-  console.log('PASS Deep Claim twelve-chapter campaign, real30-second induction and cross-device journal');
+  await runFirstShift({run:'training-guided-first-shift-sale'});
+  await runFirstShift({run:'training-guided-first-shift-keep',keep:true});
+  console.log('PASS Deep Claim six-stage first-shift guide, native30-second returns, partial sale and retained-stock paths');
 }
