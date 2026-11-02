@@ -2,7 +2,7 @@
 
 ## Current release — cinematic menu, Gus and the Training Journal
 
-This implementation builds on main `94a4334b39626fb31365fb5d47753c1946dcfc94`. Implementation and final local verification are complete. **The new code is not committed or deployed, and `0800` is not applied to production.** The current evidence below establishes the local release gates; earlier release records remain historical.
+This implementation builds on main `94a4334b39626fb31365fb5d47753c1946dcfc94`. Implementation, final local verification, production application of `0800` and public publication are complete. The feature is main commit `52a5308ef57058093e42aace838caf861eaedba6`; this production receipt is recorded in a follow-up documentation-only commit, whose own future SHA is not predicted here. Earlier release records remain historical.
 
 ### Implemented slice and preservation boundary
 
@@ -26,7 +26,7 @@ The new SQL is `supabase/migrations/20261102080000_deep_claim_training_journal.s
 | Unit/component regression | The final full run passed all 206 files and 2,079 tests with `--maxWorkers=2`; log `/tmp/deep-claim-menu-unit-final.log`. All 25 tutorial-integration tests passed, and the 16-test recovery/UI suite passed again after the type-correct test-regex refinement. | Passed. |
 | Retained gameplay/Feats SQL | All 158 core groups, 19 actual Feats integration groups and 14 native core groups passed. | Passed. |
 | Educational SQL | Twenty extension groups passed in the current runtime, preserving all 153 old critical function bodies and all old rows while verifying the new whitelist, ACL, revision, rollback and receipt rules. | Passed. |
-| Native journal concurrency/release | Fourteen groups passed on fresh PostgreSQL 17.11 with eight pooled connections, including rollback, concurrency and the exact guarded release. | Passed locally; production application remains pending. |
+| Native journal concurrency/release | Fourteen groups passed on fresh PostgreSQL 17.11 with eight pooled connections, including rollback, concurrency and the exact guarded release. | Passed; the exact native-tested transaction was subsequently applied successfully to production. |
 | Headless balance | The retained 210 scenarios and 648 Ancient Deep cases passed. | Passed; economic rules remain unchanged. |
 | Browser regression | All twelve sections are covered by explicit passing section runs: 477 distinct passing labels across 619 observations, with zero runtime errors. Campaign covers all twelve chapters without skips and the real thirty-second induction, reload/fresh device, help, advice and menu continuation; academy covers thirty lessons without economic or practical-progress changes. | Passed across the recorded section runs; this is not a claim that one uninterrupted run passed. |
 | Production-build PWA browser smoke | All 12 checks passed with zero assertion/runtime errors against the final local production build; `/tmp/deep-claim-pwa-2Rz19k/report.json`. Chromium was not in standalone display mode. | Passed within the stated cloud-browser boundary. |
@@ -34,25 +34,29 @@ The new SQL is `supabase/migrations/20261102080000_deep_claim_training_journal.s
 | Source/art preservation | Phase 8 preservation passed for 27 files; both atlas compilers passed `--check`. | Passed. |
 | Production build | Final build passed in 17.99 seconds: `DeepClaimPage-BMcgtOuh.js` 737.16 KB / 175.31 KB gzip; `DeepClaimPage-BXiDjE5L.css` 105.32 KB / 18.07 KB gzip. | Passed; these bundle metrics are not a hardware-performance claim. |
 
-The current-runtime educational SQL proof is recorded in `/tmp/deep-claim-menu-db-tutorial.log`. The native-tested release SQL is **101,153 bytes**, SHA256 `143ab335dabda0431015a1b9ad8a08561693d0c4171f3dfb40061f0d5fa5df46`, MD5 `b74129b41103204aa2ba0d05755726cc`. The exact transaction preserved the old function OIDs/security metadata and thirty-three old private table-row multisets, and established the fixture's intended `161/27/35` postcondition. These are isolated verification results, not a production cutover.
+The current-runtime educational SQL proof is recorded in `/tmp/deep-claim-menu-db-tutorial.log`. The native-tested release SQL is **101,153 bytes**, SHA256 `143ab335dabda0431015a1b9ad8a08561693d0c4171f3dfb40061f0d5fa5df46`, MD5 `b74129b41103204aa2ba0d05755726cc`. The exact transaction preserved the old function OIDs/security metadata and thirty-three old private table-row multisets, and established the fixture's intended `161/27/35` postcondition. The same tested transaction was subsequently applied successfully to production, with its independent postflight recorded below.
 
 The consolidated browser record is `/tmp/deep-claim-menu-browser-evidence.json`. The first seven retained sections passed 209 checks in `/tmp/deep-claim-S9IBSW/report.json` before its later social-layout failure. After that correction, the final four social/runtime/deep/menu sections passed all 213 checks in `/tmp/deep-claim-tHDr82/report.json`; the latest presentation section passed 135 checks in `/tmp/deep-claim-1zt3Jk/report.json`. The campaign's 27-check section is in `/tmp/deep-claim-0LgREP/report.json`, and the corrected academy's 35-check section is in `/tmp/deep-claim-Yl3Pqu/report.json`. The consolidated distinct-label/observation counts account for overlaps across these explicit runs; the failed partial run is not presented as wholly passing.
 
 The runtime restoration retained source but not the earlier temporary logs. Restoring files does not constitute a rerun; the passing gates above reflect fresh recorded runs. Remaining results must be recorded from actual completed commands, with native/PGlite/browser/physical-device evidence distinguished. No production QA account, fabricated company or invented reward is needed for these gates.
 
-### Migration and publication record — awaiting release
+### Migration and publication record — production verified
 
 | Release evidence | Current state |
 |---|---|
-| Reviewed original `0800` source | Frozen hashes above; production application pending. |
+| Reviewed original `0800` source | Applied successfully with SHA256 `787670491647a61f49ad967a980acf6805255c7ecbbc29c5d0b253699c81a670` and MD5 `8cdd87f5834c5bfaf91a7089f059b637`; history records the one exact original source. |
 | Final source checks and production build | Final unit/typecheck/lint/build/PWA gates, all browser sections, SQL/native proofs, headless balance and source/atlas preservation passed as recorded above. |
-| Guarded native release transaction | Exact-source transaction passed the fourteen-group native extension proof; production execution pending. |
-| Production preflight and locked live-row capture | Fresh read-only preflight matches all 153 baseline critical bodies and all eight original migration sources, with 33 private RLS tables, 25 member RPCs, zero direct anonymous/member CRUD, zero private Realtime tables, 51 installations and 219 awards. Transaction-locked capture remains pending and must capture current dynamic data. |
-| Applied migration/history and independent postflight | **Unapplied**; no new production result. |
-| Main commit and verified push SHA | **Not committed or pushed** for this release. |
-| Exact Lovable synchronization and public-site verification | **Not deployed**; pending actual evidence. |
+| Guarded native release transaction | The exact native-tested 101,153-byte transaction returned `ok` with 161 critical functions, 27 member RPCs and 35 private RLS tables. |
+| Production preflight and locked live-row capture | All 153 prior function bodies and all eight prior sources were verified. Locked old table-row multisets, including company revisions, were preserved exactly; all 219 awards and the fingerprint of all 51 installations remain unchanged. |
+| Applied migration/history and independent postflight | Independent read-only verification matches 161/161 expected critical bodies, 146 DC functions, 27 exact member signatures, 35 private RLS tables and all nine original migration-history sources. |
+| Main commit and verified push SHA | `52a5308ef57058093e42aace838caf861eaedba6`, tree `f05bd39fc33a36c220aff95ba88429a30503c3d9`; normal main update from `94a4334b39626fb31365fb5d47753c1946dcfc94`, with no force update or protection bypass. All 80 feature files matched the local blobs/tree; workspace import was clean. |
+| Exact Lovable synchronization and public-site verification | Lovable reported exact feature commit `52a5308ef57058093e42aace838caf861eaedba6`, ready with no project error. Actual public HTTPS assets were verified after publishing, as detailed below. |
 
-After the gates pass, the release record must include the exact commit/push SHA, original-source history receipt, guarded transaction result, independent `161/27/35` authorization/body/data postflight, verified Lovable commit and any separately checked public-site assets. A local build or ready preview alone is insufficient evidence of production publication. Physical Android/iOS PWA installation, real OS interruption/push and subjective audio review remain unverified in this cloud environment.
+The independent production postflight additionally confirms zero direct anonymous/member CRUD on private DC tables, zero anonymous DC execution, full expected service access, no private Realtime publication, both educational guard triggers and the exact **42 lesson / 84 step / 67 dialogue-line** registry. All nine source-history records and the `0800` SHA match their original files. The old thirty-three table-row multisets and 153 prior functions remain exact; 219 earned awards, 89 Feat definitions and all 51 installation choices retain their verified preservation boundary. The migration seeded **zero tutorial progress/request records**. No live QA player, fabricated company, paid game action or invented reward was created.
+
+Publishing used the existing Lovable deployment service, deployment `38606056-748e-4a5c-a4a6-02a73f8d6f6b`. Its initial pending response was followed by direct HTTPS verification of **https://dhbracketclub.lovable.app/** at **2026-11-02T14:11:08Z**. Public build record `1793628128268` served `DeepClaimPage-B8LRV895.js` and `DeepClaimPage-BXiDjE5L.css`, including the title/Gus, journal RPC and read-only practice markers; both atlas SHA values matched the tested files. The hosted JavaScript bundle name differs from the local build because Lovable rebuilt it; no equality of those JavaScript hashes is claimed. The build record is a timestamp identifier, not a Git commit SHA. Exact Lovable commit synchronization and actual public assets were verified separately rather than treating a ready preview as publication evidence.
+
+This ledger receipt belongs to a follow-up documentation-only main commit. Physical Android/iOS PWA installation, real OS interruption/push and subjective audio review remain unverified in this cloud environment.
 
 ## Phase 7 release record — Ancient Deep operations
 

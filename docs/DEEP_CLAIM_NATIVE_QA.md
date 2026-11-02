@@ -10,7 +10,7 @@ The run proved actual overlapping actor sessions, identical UUID replay, competi
 
 `scripts/lib/deep-claim-training-release.mjs` constructs the single transaction but never executes it. The transaction requires 153 prior critical functions and eight exact old migration-history sources, preserves all thirty-three original private table-row multisets and company revisions, adds only the educational source, validates `161` critical functions / `27` member RPCs / `35` private RLS tables, and stores the original `0800` source as one array entry. It returns aggregate counts/hashes only. No player training rows or awards are seeded by the migration.
 
-The frozen source is `20261102080000_deep_claim_training_journal.sql`, SHA256 `787670491647a61f49ad967a980acf6805255c7ecbbc29c5d0b253699c81a670`, MD5 `8cdd87f5834c5bfaf91a7089f059b637`. It is **not applied to production** at this checkpoint. A separate twenty-group actual-SQL extension pass ran in the previous PGlite runtime; it does not establish native parallel behavior or replace a fresh final release run.
+The frozen source is `20261102080000_deep_claim_training_journal.sql`, SHA256 `787670491647a61f49ad967a980acf6805255c7ecbbc29c5d0b253699c81a670`, MD5 `8cdd87f5834c5bfaf91a7089f059b637`. It was applied to production through the exact native-tested release transaction after the final application checks passed. The separate twenty-group actual-SQL extension suite also passed in the current runtime; its PGlite evidence is distinct from the native parallel checks.
 
 After preparing the disposable server using the setup below, the independently resetting journal command is:
 
@@ -19,6 +19,8 @@ node scripts/test-deep-claim-tutorial-native.mjs --reset --proof
 ```
 
 The fresh `--proof` run produced `/tmp/deep-claim-tutorial-native-report.json`, the baseline/expected body maps and `/tmp/deep-claim-tutorial-release.sql` only after all fourteen groups passed. The exact tested transaction is **101,153 bytes**, SHA256 `143ab335dabda0431015a1b9ad8a08561693d0c4171f3dfb40061f0d5fa5df46`, MD5 `b74129b41103204aa2ba0d05755726cc`. Independent construction reproduced those exact bytes from the frozen source and proof maps. These local checks do not apply `0800` to production or establish browser/publication readiness. No production URL substitution or live fixture write is authorized.
+
+The separate production runner subsequently executed those exact transaction bytes successfully. Its result preserved all 153 prior critical functions, all thirty-three old economic table-row multisets and company revisions, 219 earned awards and the eight original history sources, and seeded zero training records. Independent read-only postflight matched all 161 expected bodies, 27 exact member signatures, 35 private RLS tables, both guard triggers and the 42/84/67 content registry, with no anonymous execution, direct member/anonymous table access or private Realtime publication. All nine migration sources and the unchanged 51-installation fingerprint were verified. No native QA harness connected to production, and no live test player or simulated company was created. The [implementation ledger](DEEP_CLAIM_IMPLEMENTATION.md) records the source commit and separately verified public-site publication.
 
 ## Disposable setup and historical Phase 7 harness
 
