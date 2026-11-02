@@ -2,7 +2,7 @@
 
 ## Current release — tactile visual refinement
 
-This presentation pass builds on clean published main `c2e4cf57`. Implementation and final local verification are complete; **the changes remain uncommitted and publication is pending**. No gameplay, persistence, hooks, SQL, authentication, economy or dependencies change, and neither atlas is rebaked. No new migration or additional SQL/native run is required for this presentation-only release.
+This presentation pass builds on clean published main `c2e4cf57`. **Implementation, final verification and production publication are complete.** No gameplay, persistence, hooks, SQL, authentication, economy or dependencies change, and neither atlas is rebaked. No new migration or additional SQL/native run is required for this presentation-only release; saved progress is preserved.
 
 - Compact menu badges and one Skip action reduce competing text. Tactile buttons, six original 24px navigation emblems, a stock HUD bar and artwork for actual rewards strengthen the existing game shell.
 - Seven selectable worker-skill tiles show one explanation at a time. Shorter crew/Office/Club copy and compact dispatch facts retain visible costs, energy, storage, risk, privacy and irreversible-decision information before confirmation.
@@ -16,7 +16,11 @@ This presentation pass builds on clean published main `c2e4cf57`. Implementation
 | Final production build | Passed in 18.43 seconds: `DeepClaimPage-BX74XRLq.js` 744.99 KB / 177.13 KB gzip; `DeepClaimPage-MPp4Aqfu.css` 138.38 KB / 23.74 KB gzip. |
 | PWA smoke | All 12 checks passed with zero assertion/runtime errors; `/tmp/deep-claim-pwa-olB05J/report.json`. Chromium was not in standalone display mode. |
 
-The passing browser run includes the actual twelve-chapter campaign with its authoritative thirty-second induction, reload, second device, saved-action recovery and save protection, plus thirty read-only academy reviews without economic changes. Guide, Journal, Dialogue and Practice footers retain visible forty-four-pixel targets and pass native hit tests. All local release gates have passed; production remains the earlier `c2e4cf57` release until the actual commit/push and publication receipt is recorded. Physical-device installation and subjective audio quality are not established by these cloud checks.
+The passing browser run includes the actual twelve-chapter campaign with its authoritative thirty-second induction, reload, second device, saved-action recovery and save protection, plus thirty read-only academy reviews without economic changes. Guide, Journal, Dialogue and Practice footers retain visible forty-four-pixel targets and pass native hit tests. Physical-device installation and subjective audio quality are not established by these cloud checks.
+
+The 28-file feature was pushed normally to main as `1c2c8e8f7df300ec8d5079599d0959d1b31ef9d5`, tree `ae95eac4a60e6edddcb7f8b48d07a77a0761f2c8`, using the expected `c2e4cf57` parent without force updates. Exact local blobs/tree and push readback matched; workspace import was clean. Lovable reported that exact commit ready with no project error.
+
+Deployment `1689b38a-8287-45cb-806c-1dadfcd72b51` was verified through actual HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-02T14:57:30Z**, public build `1793631302037`. It serves `DeepClaimPage-w_Vc9frJ.js` and `DeepClaimPage-MPp4Aqfu.css` with the new navigation, HUD, skill tiles, guide and field-note markers. Public CSS SHA256 `6594a155d35d7c98c5b4917ea3eb4584036c0491eb5c3f7dcbe1867cd90a6ded` exactly matches the tested local CSS; both atlas SHA values remain unchanged. Hosted JavaScript differs from local `BX74XRLq` because Lovable rebuilt it; matching JavaScript hashes are not claimed. This receipt is captured in a follow-up documentation-only commit, not the feature commit, without predicting its own SHA.
 
 ## Menu/tutorial release record — cinematic menu, Gus and the Training Journal
 
