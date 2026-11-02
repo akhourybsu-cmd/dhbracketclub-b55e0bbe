@@ -20,12 +20,16 @@ Item and building inspectors use their actual quantities, effects, recipes and u
 | Final native browser | **170 checks passed**, zero assertion/runtime errors; `/tmp/deep-claim-qS0QL5/report.json`. Seven screen/theme/motion cases cover earned materials, worn equipped gear, settings, real research progress/completion, sequential work orders, sale/upgrade/batch totals, and keyboard-scrolled review details. Coal's flavor sentence is explicitly absent while its actual production uses and sale controls remain available. |
 | Navigation and tutorial regression | The title, save protection, native 30-second first-shift sale/Keep paths and the broader populated-menu pass also completed with **278 passing checks**; `/tmp/deep-claim-jd340r/report.json`. This run preceded only the final inspector subtitle removal; the final 170-check run covers those updated inspectors. |
 | Source checks | Application-project TypeScript, scoped ESLint and whitespace checks passed. The Phase 8 gate preserved all **27 frozen gameplay sources**, catalogs, SQL and original atlases; `/tmp/dc-concise-preservation-final.log`. |
-| Production build | Passed in **22.95 seconds**; `DeepClaimPage-Dg5i3rbv.js` 757.01 KB / 178.86 KB gzip. The existing large-chunk advisory remains. |
+| Production build | Passed in **22.95 seconds**; `DeepClaimPage-Dg5i3rbv.js` 757.01 KB / 178.86 KB gzip and `DeepClaimPage-Bx9-YKgV.css` 192.18 KB / 31.55 KB gzip. The existing large-chunk advisory remains. |
 | Built production PWA | All **12 checks passed**, no runtime/assertion errors; `/tmp/deep-claim-pwa-5M0taB/report.json`. This verifies local production-build authentication and PWA bootstrap, without claiming physical-device installation. |
 
 Native scenarios use the real production components and authoritative isolated local PostgreSQL transport. No live member stock, company or achievement was created or changed by QA. Final phone inspector, small-phone completed research, desktop active research and landscape transaction screenshots were visually reviewed.
 
-Publication is pending the ordinary main update and public-asset verification. No SQL migration is required.
+The 30-file feature was pushed normally to main as **`c8c7d2cfdd061b73df291eefa940a9bd85e437b7`**, tree `c85b7391e23ddbc75c5a09b2e7199209edadba24`, from the expected `069cf947` parent. All uploaded blob SHA values and the remote tree matched the tested workspace. Main readback and exact local commit import matched; no force update or protection bypass occurred. Lovable reported the exact source commit ready with no project error before publication.
+
+Deployment **`b24b5075-3992-48bc-bea8-d1bb95f44e7c`** was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-02T22:01:13Z**, build `1793656803305`. The site serves `DeepClaimPage-C-PSS_9e.js` and `DeepClaimPage-Bx9-YKgV.css`, including the research overview, branch tracks, recipe unlocks, Maxed states and simplified save-protection heading. The old Applied knowledge / Seven branches introduction is absent. Public CSS SHA256 **`f46cdb223a64a62be0b2c12826f4d2784b1e8f70934adfef6af28b1ebd5ab936`** exactly matches the tested build; both original atlas SHA values remain unchanged. Lovable rebuilds JavaScript, so local/hosted JavaScript byte equality is not claimed. The build ID is not a Git SHA; source synchronization and public content were independently verified. Proof: `/tmp/dc-concise-public-proof/proof.json`.
+
+This receipt is recorded in a documentation-only follow-up. No SQL migration is required or claimed. Public asset readback does not claim authenticated production-player testing, physical-device installation or hardware/audio QA.
 
 ## Previous release — first-shift guide and natural camp dialogue
 
