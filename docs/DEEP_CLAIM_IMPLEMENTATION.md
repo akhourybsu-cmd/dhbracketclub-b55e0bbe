@@ -21,7 +21,11 @@ The implementation comprises `src/components/games/{DHGamesLogo,DHGamesIntro}.ts
 
 Two initial full-suite runs each passed 2,104/2,105 tests, with different existing asynchronous assertion races. Test-only corrections now settle the Drop's mocked initial channel selection before sending and await Showdown's completed navigation. The original retry-identity and destination assertions remain intact; production Drop/Showdown code is unchanged. The isolated 12-test regression run and final full suite both passed.
 
-Commit/push and publication verification are pending. No migration is required or claimed. Physical-device installation and subjective audio review remain outside these cloud checks.
+The 13-file feature was pushed normally to main as `f5a84b28076fbb306da8ac07179c21711c352cd0`, tree `982ebeec241de51b076aca9ed5c7154e49864cf7`, from the expected `85e9635f` parent without force updates or protection bypass. All uploaded blobs and the tree matched the tested workspace; main readback matched and the local import was clean. Lovable reported that exact feature commit ready with no project error before publication.
+
+Deployment `846c3b1c-d1d8-416e-a041-9789a02531a2` was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-02T16:42:56Z**, public build `1793634401966`. It serves `DeepClaimPage-CHravQn-.js` and `DeepClaimPage-D0eMhcWc.css`, with the DH Games logo, intro and Skip markers. Public CSS SHA256 `4b39490663a0e9936311eeeaef0512e984151d4f57bb845fb3da12a3dafd90bc` exactly matches the tested build; both atlas SHA values remain unchanged. Hosted JavaScript was rebuilt by Lovable, so equality with the local JavaScript hash is not claimed. The public build timestamp is not a Git SHA; exact source synchronization and public assets were checked separately. The proof is `/tmp/dh-publisher-public-proof/proof.json`.
+
+This receipt is recorded in a follow-up documentation-only commit. No migration is required or claimed. Physical-device installation and subjective audio review remain outside these cloud checks.
 
 ## Previous release — tactile visual refinement
 
