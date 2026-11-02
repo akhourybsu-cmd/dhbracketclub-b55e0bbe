@@ -1,0 +1,77 @@
+/* Presentation only: portraits, owned gear and confirmed values retain their source data. */
+.dcl-workforce-menu,.dcl-worker-file{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dcl-workforce-menu .dcl-crew-card,.dcl-workforce-menu .dcl-candidate-card{position:relative;overflow:hidden;border-top:2px solid var(--dcl-brass);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 7%,transparent),0 5px 12px #00000012}
+.dcl-workforce-menu .dcl-crew-card>header,.dcl-workforce-menu .dcl-candidate-card>header{align-items:center;gap:12px}
+.dcl-workforce-menu .dcl-crew-card>header>svg,.dcl-workforce-menu .dcl-candidate-card>header>.dc-worker-portrait{width:72px;height:78px;border:1px solid var(--dcl-line);border-bottom:3px solid var(--dcl-brass);border-radius:10px;background:var(--dcl-bg);padding:5px;image-rendering:pixelated;flex:0 0 auto}
+.dcl-workforce-menu .dcl-crew-card header h3,.dcl-workforce-menu .dcl-candidate-card header h3{font-size:15px;line-height:1.25}
+.dcl-workforce-menu .dcl-worker-stats{gap:5px}
+.dcl-workforce-menu .dcl-worker-stats>div{border-radius:5px;border-top-color:color-mix(in srgb,var(--dcl-brass) 40%,var(--dcl-line))}
+.dcl-workforce-menu .dcl-worker-stats dd{font-variant-numeric:tabular-nums}
+.dcl-workforce-menu .dcl-candidate-card>footer{border-top:1px solid var(--dcl-line);padding-top:10px}
+.dcl-workforce-menu .dcl-candidate-card>footer>strong{font-size:18px;font-variant-numeric:tabular-nums}
+.dcl-housing-status{display:flex;align-items:center;gap:11px;padding:11px 13px;border:1px solid var(--dcl-line);border-radius:9px;background:var(--dcl-panel)}
+.dcl-housing-status>svg{color:var(--dcl-brass);flex:0 0 auto}
+.dcl-housing-status>div{min-width:0;flex:1}
+.dcl-housing-status>div>span{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--dcl-muted);margin-bottom:7px}
+.dcl-housing-status b{color:var(--dcl-text);font-variant-numeric:tabular-nums}
+.dcl-worker-file .dcl-crew-profile,.dcl-dialog .dcl-applicant-identity{padding:10px;border:1px solid var(--dcl-line);border-radius:11px;background:var(--dcl-bg);min-width:0;gap:12px}
+.dcl-worker-file .dcl-crew-profile>.dc-worker-portrait,.dcl-dialog .dcl-applicant-identity>.dc-worker-portrait{width:94px;height:100px;flex:0 0 auto;background:var(--dcl-card);border-radius:7px;border-bottom:3px solid var(--dcl-brass);image-rendering:pixelated;padding:3px}
+.dcl-worker-file .dcl-crew-profile>div,.dcl-dialog .dcl-applicant-identity>div{flex:1;min-width:0}
+.dcl-worker-rank{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.dcl-worker-rank>small{font-size:10px;color:var(--dcl-muted);font-variant-numeric:tabular-nums}
+.dcl-worker-file .dcl-crew-profile p{font-size:10px;line-height:1.5;margin-block:8px}
+.dcl-worker-file .dcl-crew-profile .dcl-meter{height:9px}
+.dcl-dialog .dcl-applicant-identity strong{display:block;font-size:19px;margin-top:7px;overflow-wrap:anywhere}
+.dcl-training-preview{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid color-mix(in srgb,var(--dcl-blue) 45%,var(--dcl-line));border-radius:10px;background:var(--dcl-bg)}
+.dcl-training-preview>svg{color:var(--dcl-brass);flex:0 0 auto}
+.dcl-training-preview>div{flex:1;min-width:0}
+.dcl-training-preview>div>span{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:11px;color:var(--dcl-muted);margin-bottom:8px}
+.dcl-training-preview b{font-size:23px;line-height:1;font-variant-numeric:tabular-nums;color:var(--dcl-text)}
+.dcl-training-preview b>small{font-size:9px;font-weight:500;color:var(--dcl-muted)}
+.dcl-training-preview>strong{display:flex;flex-direction:column;gap:5px;font-size:24px;line-height:1;color:var(--dcl-brass);font-variant-numeric:tabular-nums;text-align:center}
+.dcl-training-preview>strong>small{font-size:9px;font-weight:500;color:var(--dcl-muted)}
+.dcl-worker-file .dcl-gear-slots{gap:8px}
+.dcl-worker-file .dcl-gear-slots>span{padding:10px 4px;flex-direction:column;gap:6px;border-style:dashed;min-width:0}
+.dcl-worker-file .dcl-gear-slots>span[data-equipped=true]{border-style:solid;border-color:color-mix(in srgb,var(--dcl-brass) 65%,var(--dcl-line));background:var(--dcl-card)}
+.dcl-loadout-art{display:grid;place-items:center;width:54px;height:54px;color:var(--dcl-muted)}
+.dcl-loadout-art>.dc-equipment-icon{width:54px;height:54px;image-rendering:pixelated}
+.dcl-worker-file .dcl-gear-slots small{display:flex;align-items:center;gap:3px;justify-content:center;flex-basis:auto;font-size:9px}
+.dcl-worker-file .dcl-gear-inventory-card{grid-template-columns:64px minmax(0,1fr);align-items:start;padding:12px;gap:11px;border-radius:10px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 5%,transparent)}
+.dcl-gear-art{display:flex;align-items:center;flex-direction:column;justify-content:center;gap:5px;width:64px;min-height:78px;padding:5px 3px;background:var(--dcl-bg);border:1px solid var(--dcl-line);border-bottom:3px solid var(--dcl-brass);border-radius:8px}
+.dcl-gear-art>svg{width:56px;height:56px;image-rendering:pixelated}
+.dcl-gear-art>small{font-size:9px!important;color:var(--dcl-brass)!important;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.dcl-worker-file .dcl-gear-inventory-card[data-condition=broken] .dcl-gear-art{border-bottom-color:var(--dcl-red)}
+.dcl-worker-file .dcl-gear-inventory-card .dcl-equipment-title{min-height:44px;display:flex;align-items:center;line-height:1.3;font-size:13px;text-align:left}
+.dcl-worker-file .dcl-gear-inventory-card .dcl-meter{height:8px;margin-top:8px}
+.dcl-worker-file .dcl-gear-inventory-card .dcl-equipment-actions{grid-column:1/-1;display:flex;flex-direction:row;gap:8px;border-top:1px solid var(--dcl-line);padding-top:10px}
+.dcl-worker-file .dcl-gear-inventory-card .dcl-equipment-actions>.dcl-button{flex:1;min-height:44px}
+.dcl-settings-title{display:flex;align-items:center;gap:10px;min-width:0}
+.dcl-settings-title>svg{width:43px;height:43px;flex:0 0 auto;image-rendering:pixelated}
+.dcl-settings .dcl-settings-tabs>button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;border-bottom-width:3px}
+.dcl-settings .dcl-settings-tabs>button[aria-selected=true]{box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 8%,transparent)}
+.dcl-settings .dcl-settings-group{border-top:2px solid var(--dcl-brass)}
+.dcl-settings-group-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}
+.dcl-settings-group-title>h3{margin:0!important}
+.dcl-settings-group-title>span{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:var(--dcl-muted);border:1px solid var(--dcl-line);border-radius:5px;padding:4px 7px}
+.dcl-settings-group-title>span:before{content:'';width:5px;height:5px;background:currentColor;transform:rotate(45deg)}
+.dcl-settings-group-title>span[data-enabled=true]{color:var(--dcl-green)}
+.dcl-settings .dcl-sound-bus{background:var(--dcl-bg);border:1px solid var(--dcl-line);border-radius:8px;padding:6px 9px;margin-top:8px}
+.dcl-settings .dcl-setting-toggle>button i{display:grid;place-items:center;color:var(--dcl-bg)}
+.dcl-settings .dcl-setting-toggle>button[aria-checked=true] i{color:var(--dcl-brass)}
+.dcl-settings .dcl-volume>span{font-variant-numeric:tabular-nums;color:var(--dcl-brass);font-weight:700}
+.dcl-settings .dcl-volume input{appearance:none;-webkit-appearance:none;cursor:pointer;background:transparent;height:44px;min-height:44px}
+.dcl-settings .dcl-volume input::-webkit-slider-runnable-track{height:6px;border-radius:4px;background:linear-gradient(to right,var(--dcl-brass) 0,var(--dcl-brass) var(--dcl-volume-fill),var(--dcl-line) var(--dcl-volume-fill),var(--dcl-line) 100%)}
+.dcl-settings .dcl-volume input::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:21px;height:23px;margin-top:-8px;border:2px solid var(--dcl-brass);border-radius:4px;background:var(--dcl-card);box-shadow:0 2px 3px #00000024}
+.dcl-settings .dcl-volume input::-moz-range-track{height:6px;border-radius:4px;background:var(--dcl-line)}
+.dcl-settings .dcl-volume input::-moz-range-progress{height:6px;border-radius:4px;background:var(--dcl-brass)}
+.dcl-settings .dcl-volume input::-moz-range-thumb{width:17px;height:19px;border:2px solid var(--dcl-brass);border-radius:4px;background:var(--dcl-card)}
+.dcl-settings .dcl-volume input:focus-visible{outline:2px solid var(--dcl-brass);outline-offset:2px;border-radius:5px}
+.dcl-settings .dcl-settings-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;background:var(--dcl-panel)}
+.dcl-settings .dcl-settings-actions>.dcl-button{min-height:48px;line-height:1.35;white-space:normal;text-align:center}
+.dcl-settings .dcl-settings-actions>p{grid-column:1/-1;line-height:1.5}
+@media(min-width:650px){.dcl-worker-file .dcl-gear-inventory-card{grid-template-columns:76px minmax(0,1fr)}.dcl-gear-art{width:76px;min-height:88px}.dcl-gear-art>svg{width:65px;height:65px}.dcl-settings .dcl-settings-actions{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:350px){.dcl-workforce-menu .dcl-crew-card>header>svg,.dcl-workforce-menu .dcl-candidate-card>header>.dc-worker-portrait{width:60px;height:70px}.dcl-workforce-menu .dcl-crew-card>header,.dcl-workforce-menu .dcl-candidate-card>header{gap:8px}.dcl-workforce-menu .dcl-crew-card header h3,.dcl-workforce-menu .dcl-candidate-card header h3{font-size:13px}.dcl-workforce-menu .dcl-crew-card header>.dcl-badge{font-size:8px;padding-inline:5px}.dcl-worker-file .dcl-crew-profile>.dc-worker-portrait{width:78px;height:89px}.dcl-worker-file .dcl-gear-inventory-card{padding:10px;gap:9px;grid-template-columns:58px minmax(0,1fr)}.dcl-gear-art{width:58px}.dcl-gear-art>svg{width:50px;height:50px}.dcl-training-preview{gap:8px;padding:10px}.dcl-training-preview>svg{width:22px}.dcl-settings .dcl-settings-tabs>button{gap:5px;font-size:11px}}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){.dcl-workforce-menu .dcl-candidate-card{transition:transform .16s ease,border-color .16s ease}.dcl-workforce-menu .dcl-candidate-card:hover{transform:translateY(-2px);border-color:var(--dcl-brass)}}
+@media(prefers-reduced-motion:reduce){.dcl-workforce-menu *,.dcl-worker-file *,.dcl-settings *{scroll-behavior:auto!important}}
+.deep-claim[data-reduced-motion=true] .dcl-workforce-menu .dcl-candidate-card{transition:none!important;transform:none!important}
+@media(forced-colors:active){.dcl-settings .dcl-volume input{appearance:auto;-webkit-appearance:auto}.dcl-settings .dcl-setting-toggle>button i{forced-color-adjust:auto}.dcl-gear-art,.dcl-loadout-art{border-color:CanvasText}}

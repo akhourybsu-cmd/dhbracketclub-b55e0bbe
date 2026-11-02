@@ -1,6 +1,31 @@
 # Deep Claim implementation ledger
 
-## Current release — DH Games publisher opening
+## Current release — illustrated inventory and operational menus
+
+This presentation release builds on clean main `02d0820e1c65cf849f00bce51efd49c0fca87ec1`. It preserves the publisher opening, all economic rules, server operations, saved progress and both original atlases. No migration, dependency or new economic authority is introduced.
+
+- The warehouse now presents six illustrated item slots at a time, with category browsing, quantity badges, current prices and a large-art inspector. Item uses come from the actual recipe catalog. Selling still opens the existing confirmed transaction; no selection, inspection or page navigation spends stock. Staged cargo remains accessible.
+- Research uses persisted start/end times and the existing server-synced clock for its percentage gauge. A full elapsed bar explicitly awaits the completion report; only a fresh authoritative snapshot establishes completion and bonuses. Prerequisites, collected inputs, contracts, milestones and company development have distinct progress displays.
+- Workshop recipes and work orders lead with their real resource/equipment artwork. Production distinguishes queued, working, elapsed-awaiting-confirmation and server-ready output. Input-to-output reviews preserve bounded batches, costs, station requirements and collection safeguards.
+- Employees, applicants, equipped slots and equipment conditions gain larger framed artwork and actual energy/skill/durability displays. Settings retain their existing controls, now grouped visually with real volume-track fills. Camp-building menus reuse static renders of the same owned building and level shown in the settlement, including actual unbuilt plots.
+- Shared recessed gauges, tactile selectors, material sale shortcuts and illustrated building reviews finish the existing menu system. Review headers, actions and transaction totals remain visible while the keyboard-focusable detail panel scrolls. Atlas redraw subscriptions are bounded and cleaned up; building portraits have no animation loop. Reduced motion, focus, safe-area controls and the existing mobile shell remain in place.
+
+Implementation lives in the existing Business, Industry, Workforce, Settings, Primitives and Page modules, plus the extracted `DeepClaimInventory.tsx`, five scoped menu stylesheets and `renderer/DeepClaimBuildingPortrait.tsx`. Focused inventory, research and production tests cover inspection/sale handoff, protected state, schema-safe pagination and the distinction between elapsed time and confirmed completion. The old schema-compatibility UI test now browses the actual inventory pages instead of requiring every item to be mounted simultaneously.
+
+| Verification | Evidence |
+|---|---|
+| Final unit suite | All 210 files / 2,118 tests passed in 134.35 seconds with two workers; `/tmp/dc-menus-unit-final-quotes.log`. Inventory includes keyboard-focus and guarded sale handoff; research/production cover elapsed versus confirmed completion. |
+| Browser/menu matrix | All 438 checks passed with zero assertion/runtime errors; `/tmp/deep-claim-PYWSBp/report.json`. Real earned inventory, research, production, worn gear, settings and existing founding/crafting/business flows cover 320px phone, 844px landscape and 1440px desktop in both themes, plus reduced motion. |
+| Final fixed-cost review | All 50 additional checks passed; `/tmp/deep-claim-XDiCg8/report.json`. Seven layouts retain actual upgrade, sale and batch totals/actions while keyboard PageDown scrolls the details. Inspection and review preserve the earned economic snapshot. Final phone and landscape screenshots were visually reviewed. |
+| Application/source gates | Explicit application-project TypeScript, scoped ESLint, browser script syntax and the 27-source Phase 8 preservation gate passed. No rule, catalog, migration, atlas or dependency rewrite occurred. |
+| Final production build | Passed in 21.36 seconds: `DeepClaimPage-DCbOS1Hi.js` 765.39 KB / 182.91 KB gzip; `DeepClaimPage-BaeKGdps.css` 184.80 KB / 30.51 KB gzip. The existing large-chunk advisory remains. |
+| Final built PWA | All 12 checks passed with zero assertion/runtime errors; `/tmp/deep-claim-pwa-jOrnFp/report.json`. Chromium was not in standalone display mode. |
+
+The final full suite includes an existing Afterimage navigation assertion corrected to await the final URL rather than the earlier toast; the expected destination and game behavior remain unchanged. A new production-collection test mock was corrected to honor its asynchronous callback contract before the passing final runs. The workspace connection interruption did not require rebuilding the implementation or changing production data.
+
+Commit/push and public publication verification are pending. No database application is required or claimed. Physical-device installation and subjective audio/performance review remain unverified by these cloud checks.
+
+## Previous release — DH Games publisher opening
 
 This presentation-only release builds on clean main `85e9635f9fb21f693c3a1683bd489f0b35c60038`. It introduces an original, reusable DH Games SVG identity and publisher card, integrated into Deep Claim's authorized title entry. No SQL, economic rules, company data, installation gates, dependencies or atlas bytes change.
 

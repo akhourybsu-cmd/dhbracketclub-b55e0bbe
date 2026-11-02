@@ -1,0 +1,59 @@
+/* Company Office presentation only. Timed gauges visualize the server schedule. */
+.dcl-business-dialog .dcl-business-views>button{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text),transparent 94%),0 2px 0 #0002;transition:border-color .18s,background-color .18s,transform .18s}
+.dcl-business-dialog .dcl-business-views>button>svg{width:23px;height:23px;flex-shrink:0;image-rendering:pixelated}
+.dcl-business-dialog .dcl-business-views>button[aria-pressed=true]{border-color:var(--dcl-brass);background:color-mix(in srgb,var(--dcl-brass) 13%,var(--dcl-card));box-shadow:inset 0 -3px 0 var(--dcl-brass),0 2px 0 #0003}
+.dcl-business-dialog .dcl-business-company{padding:15px;border:1px solid var(--dcl-line);border-radius:13px;background:linear-gradient(110deg,color-mix(in srgb,var(--dcl-brass) 10%,var(--dcl-panel)),var(--dcl-bg));box-shadow:inset 0 1px 0 #ffffff0a}
+.dcl-business-dialog .dcl-business-company>svg{width:76px;height:76px;filter:drop-shadow(0 5px 0 #0002)}
+.dcl-business-dialog .dcl-business-kpis>span{position:relative;border-radius:8px;padding:12px 10px;gap:6px;background:var(--dcl-bg);box-shadow:inset 0 2px 0 color-mix(in srgb,var(--dcl-brass) 36%,transparent)}
+.dcl-business-dialog .dcl-office-shortcuts>.dcl-button{min-height:58px;background:color-mix(in srgb,var(--dcl-brass) 5%,var(--dcl-panel))}
+.dcl-business-dialog .dcl-office-completion{display:grid;gap:7px;padding:11px 12px;border:1px solid var(--dcl-line);border-radius:9px;background:var(--dcl-bg)}
+.dcl-business-dialog .dcl-office-completion>span,.dcl-business-dialog .dcl-research-dependency>span,.dcl-business-dialog .dcl-order-progress>div{display:flex;justify-content:space-between;gap:10px;font-size:10px;line-height:1.4;color:var(--dcl-muted)}
+.dcl-business-dialog .dcl-office-completion strong,.dcl-business-dialog .dcl-research-dependency strong,.dcl-business-dialog .dcl-order-progress strong{color:var(--dcl-text);font-variant-numeric:tabular-nums}
+.dcl-business-dialog .dcl-branch-art{display:grid;place-items:center;flex:0 0 auto;width:48px;height:48px;border:1px solid color-mix(in srgb,var(--dcl-brass) 23%,var(--dcl-line));border-radius:8px;background:radial-gradient(ellipse at 50% 28%,color-mix(in srgb,var(--dcl-brass) 13%,var(--dcl-panel)),var(--dcl-bg));box-shadow:inset 0 1px 0 #ffffff0b,0 3px 0 #0002}
+.dcl-business-dialog .dcl-branch-art>svg{display:block;width:39px;height:39px;image-rendering:pixelated;filter:drop-shadow(0 3px 0 #0002)}
+.dcl-business-dialog .dcl-research-branches{gap:6px;grid-template-columns:repeat(4,minmax(0,1fr))}
+.dcl-business-dialog .dcl-research-branches>button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;padding:7px 4px;min-height:76px;position:relative;border-radius:8px}
+.dcl-business-dialog .dcl-research-branches>button>.dcl-branch-art{width:28px;height:28px;border:0;background:none;box-shadow:none}
+.dcl-business-dialog .dcl-research-branches>button>.dcl-branch-art>svg{width:28px;height:28px}
+.dcl-business-dialog .dcl-research-branches small{margin:0;font-variant-numeric:tabular-nums}
+.dcl-business-dialog .dcl-research-branches>button[aria-pressed=true]{box-shadow:inset 0 -3px 0 var(--dcl-brass);background:color-mix(in srgb,var(--dcl-brass) 10%,var(--dcl-panel))}
+.dcl-business-dialog .dcl-research-node{gap:10px;border-radius:10px;border-top:2px solid var(--dcl-brass);box-shadow:0 3px 0 #0002;align-content:start}
+.dcl-business-dialog .dcl-research-node[data-research-state=complete]{border-top-color:var(--dcl-green)}
+.dcl-business-dialog .dcl-research-node[data-research-state=active]{border-top-color:var(--dcl-blue);background:color-mix(in srgb,var(--dcl-blue) 5%,var(--dcl-bg))}
+.dcl-business-dialog .dcl-research-node[data-research-state=locked]{border-top-color:var(--dcl-muted)}
+.dcl-business-dialog .dcl-research-node>header{align-items:center}
+.dcl-business-dialog .dcl-research-node>header>div{min-width:0}
+.dcl-business-dialog .dcl-research-tier{display:block;font-size:8px;letter-spacing:.13em;color:var(--dcl-muted);margin-bottom:5px;font-weight:700}
+.dcl-business-dialog .dcl-research-node h4{overflow-wrap:anywhere}
+.dcl-business-dialog .dcl-research-node .dcl-badge{display:inline-flex;align-items:center;gap:4px}
+.dcl-business-dialog .dcl-research-cost{display:flex;flex-wrap:wrap;gap:7px;font-size:10px;color:var(--dcl-muted);font-variant-numeric:tabular-nums}
+.dcl-business-dialog .dcl-research-cost>span{display:inline-flex;align-items:center;gap:4px}
+.dcl-business-dialog .dcl-research-cost svg{color:var(--dcl-brass)}
+.dcl-business-dialog .dcl-research-dependency,.dcl-business-dialog .dcl-order-progress{display:grid;gap:6px;min-width:0}
+.dcl-business-dialog .dcl-research-dependency>.dcl-meter,.dcl-business-dialog .dcl-order-progress>.dcl-meter{height:7px}
+.dcl-business-dialog .dcl-business-detail-heading>.dcl-branch-art{width:70px;height:70px}
+.dcl-business-dialog .dcl-business-detail-heading>.dcl-branch-art>svg{width:58px;height:58px}
+.dcl-business-dialog .dcl-active-research{padding:13px;background:color-mix(in srgb,var(--dcl-blue) 7%,var(--dcl-bg));border-color:color-mix(in srgb,var(--dcl-blue) 42%,var(--dcl-line));box-shadow:inset 0 2px 0 color-mix(in srgb,var(--dcl-blue) 55%,transparent)}
+.dcl-business-dialog .dcl-active-research>header{gap:11px;align-items:center}
+.dcl-business-dialog .dcl-research-active-art{display:grid;place-items:center;flex:0 0 auto;width:55px;height:55px;border:1px solid color-mix(in srgb,var(--dcl-blue) 27%,var(--dcl-line));border-radius:9px;background:var(--dcl-bg)}
+.dcl-business-dialog .dcl-research-active-art>svg{width:45px;height:45px;image-rendering:pixelated}
+.dcl-business-dialog .dcl-active-research .dcl-eyebrow{font-size:8px;letter-spacing:.1em;color:var(--dcl-blue);margin:0 0 4px}
+.dcl-business-dialog .dcl-research-gauge{display:grid;gap:7px;padding:10px;border:1px solid color-mix(in srgb,var(--dcl-blue) 20%,var(--dcl-line));border-radius:8px;background:var(--dcl-bg)}
+.dcl-business-dialog .dcl-research-gauge>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:10px;color:var(--dcl-muted)}
+.dcl-business-dialog .dcl-research-gauge strong{display:flex;align-items:baseline;font-family:'Space Grotesk',sans-serif;color:var(--dcl-text);font-size:25px;line-height:1;font-variant-numeric:tabular-nums}
+.dcl-business-dialog .dcl-research-gauge strong>small{font:inherit;font-size:11px;margin:0 0 0 2px;color:var(--dcl-muted)}
+.dcl-business-dialog .dcl-research-gauge>.dcl-meter{height:13px;border-radius:4px;border:1px solid color-mix(in srgb,var(--dcl-blue) 40%,var(--dcl-line));background:var(--dcl-panel);padding:2px}
+.dcl-business-dialog .dcl-research-gauge>.dcl-meter>span{border-radius:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--dcl-blue) 55%,var(--dcl-bg)),var(--dcl-blue));box-shadow:inset 0 1px 0 #ffffff3d;transition:width .8s linear}
+.dcl-business-dialog .dcl-research-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;font-size:8px;letter-spacing:.03em;color:var(--dcl-muted)}
+.dcl-business-dialog .dcl-research-stages>span{border-top:2px solid var(--dcl-line);padding-top:4px;text-align:center}
+.dcl-business-dialog .dcl-research-stages>span[data-reached=true]{border-color:var(--dcl-blue);color:var(--dcl-text)}
+.dcl-business-dialog .dcl-business-materials:not(.is-compact)>span{grid-template-columns:46px minmax(0,1fr);padding:9px;gap:4px 9px}
+.dcl-business-dialog .dcl-business-materials:not(.is-compact)>span>svg{width:43px;height:43px;grid-row:1/3;image-rendering:pixelated;filter:drop-shadow(0 3px 0 #0002)}
+.dcl-business-dialog .dcl-business-materials>span>.dcl-meter{grid-column:1/-1;height:6px;margin-top:5px}
+.dcl-business-dialog .dcl-contract-card>header>svg,.dcl-business-dialog .dcl-milestone-card>header>svg{width:49px;height:49px;image-rendering:pixelated;filter:drop-shadow(0 3px 0 #0002)}
+.dcl-business-dialog .dcl-contract-card,.dcl-business-dialog .dcl-milestone-card{border-radius:10px;box-shadow:0 3px 0 #0002;border-top:2px solid color-mix(in srgb,var(--dcl-brass) 50%,var(--dcl-line))}
+.dcl-business-dialog .dcl-business-stat-grid>span{position:relative;min-height:82px;border-radius:9px;padding-left:15px;box-shadow:inset 3px 0 0 color-mix(in srgb,var(--dcl-brass) 60%,transparent)}
+@media(max-width:450px){.dcl-business-dialog .dcl-business-views>button{flex-direction:row;gap:3px;padding:7px 3px}.dcl-business-dialog .dcl-business-views>button>svg{width:17px;height:17px}.dcl-business-dialog .dcl-research-node>header{flex-direction:column;align-items:flex-start;gap:8px}.dcl-business-dialog .dcl-research-node>header>.dcl-branch-art{width:48px;height:48px}.dcl-business-dialog .dcl-research-node>header>.dcl-branch-art>svg{display:block;width:39px;height:39px}.dcl-business-dialog .dcl-research-active-art{width:44px;height:44px}.dcl-business-dialog .dcl-research-active-art>svg{width:38px;height:38px}.dcl-business-dialog .dcl-active-research>header>.dcl-badge{font-size:8px;padding:4px}.dcl-business-dialog .dcl-business-materials:not(.is-compact)>span{grid-template-columns:32px minmax(0,1fr);gap:4px 6px;padding:8px}.dcl-business-dialog .dcl-business-materials:not(.is-compact)>span>svg{width:31px;height:31px}.dcl-business-dialog .dcl-business-company{padding:11px;gap:10px}.dcl-business-dialog .dcl-business-company>svg{width:62px;height:62px}}
+@media(min-width:600px) and (max-height:500px){.dcl-business-dialog .dcl-business-views>button{flex-direction:row;padding:5px}.dcl-business-dialog .dcl-research-branches>button{min-height:65px;display:grid;grid-template-columns:30px minmax(0,1fr);gap:2px 5px;align-items:center}.dcl-business-dialog .dcl-research-branches>button>.dcl-branch-art{grid-row:1/3}.dcl-business-dialog .dcl-research-branches small{text-align:left}.dcl-business-dialog .dcl-research-node>header{flex-direction:row}.dcl-business-dialog .dcl-office-completion{padding:8px 10px}}
+@media(prefers-reduced-motion:reduce){.dcl-business-dialog .dcl-business-views>button,.dcl-business-dialog .dcl-research-gauge>.dcl-meter>span{transition:none}}
+.deep-claim[data-reduced-motion=true] .dcl-research-gauge>.dcl-meter>span{transition:none}

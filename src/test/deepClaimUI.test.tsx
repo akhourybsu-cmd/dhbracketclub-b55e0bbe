@@ -198,13 +198,19 @@ describe('Deep Claim authoritative hauls and recovery', () => {
     render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('tab', { name: 'Stores' })); fireEvent.click(screen.getByRole('button', { name: 'Sell Stone' }));
     const dialog = screen.getByRole('dialog', { name: 'Sell Stone' }); fireEvent.change(within(dialog).getByLabelText('Quantity to sell'), { target: { value: '0' } });
     expect(within(dialog).getByRole('button', { name: 'Confirm sale' })).toBeDisabled();
-    fireEvent.change(within(dialog).getByLabelText('Quantity to sell'), { target: { value: '3' } }); fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm sale' }));
+    expect(within(dialog).getByRole('group', { name: 'Transaction summary' })).toHaveTextContent('— cr');
+    fireEvent.change(within(dialog).getByLabelText('Quantity to sell'), { target: { value: '3' } });
+    expect(within(dialog).getByRole('group', { name: 'Transaction summary' })).toHaveTextContent('Sale total · 3 units');
+    expect(within(dialog).getByRole('group', { name: 'Transaction summary' })).toHaveTextContent('3 cr');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm sale' }));
     await waitFor(() => expect(wire.sell).toHaveBeenCalledWith({ resource_key: 'stone', quantity: 3 }));
   });
   it('preserves the authoritative upgrade price plus two operating credits before enabling confirmation', () => {
     wire.data!.company!.cash = 50;
     const view = render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' })); fireEvent.click(screen.getByRole('button', { name: /Mine Office.*Level 1/ }));
     const dialog = screen.getByRole('dialog', { name: 'Mine Office' });
+    expect(within(dialog).getByRole('group', { name: 'Transaction summary' })).toHaveTextContent('50 cr');
+    expect(within(dialog).getByRole('group', { name: 'Transaction summary' })).toHaveTextContent('2 cr reserve');
     expect(within(dialog).getByRole('button', { name: 'Confirm upgrade' })).toBeDisabled(); expect(dialog).toHaveTextContent('earn 2 more credits');
     wire.data = { ...wire.data!, company: { ...wire.data!.company!, cash: 52 } }; view.rerender(<Harness />);
     expect(within(dialog).getByRole('button', { name: 'Confirm upgrade' })).toBeEnabled(); expect(wire.upgrade).not.toHaveBeenCalled();

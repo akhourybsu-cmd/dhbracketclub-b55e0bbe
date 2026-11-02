@@ -95,8 +95,22 @@ describe('Authoritative deep shift explanations', () => {
 
 describe('Deep industry, gear and readable reviews', () => {
   it('keeps new materials out of legacy catalogs while exposing actual schema5 stock', () => {
-    const props = { readOnly: false, busy: false, onSell: wire.noop }; const view = render(<DeepClaimStores snapshot={phaseFourSnapshot()} {...props} />); expect(screen.queryByRole('heading', { name: 'Nickel ore' })).not.toBeInTheDocument();
-    view.rerender(<DeepClaimStores snapshot={wire.data!} {...props} />); expect(screen.getByRole('heading', { name: 'Nickel ore' })).toBeInTheDocument(); expect(screen.getByRole('heading', { name: 'Sulfur' })).toBeInTheDocument(); expect(screen.getByRole('heading', { name: 'Nickel alloy' })).toBeInTheDocument();
+    const catalogNames = () => {
+      const names = new Set<string>();
+      for (let page = 0; page < 30 && !(screen.getByRole('button', { name: 'Previous materials' }) as HTMLButtonElement).disabled; page++) fireEvent.click(screen.getByRole('button', { name: 'Previous materials' }));
+      for (let page = 0; page < 30; page++) {
+        screen.getAllByRole('button', { name: /^Inspect / }).forEach(button => names.add(button.getAttribute('aria-label')!));
+        if ((screen.getByRole('button', { name: 'Next materials' }) as HTMLButtonElement).disabled) break;
+        fireEvent.click(screen.getByRole('button', { name: 'Next materials' }));
+      }
+      return names;
+    };
+    const props = { readOnly: false, busy: false, onSell: wire.noop }; const view = render(<DeepClaimStores snapshot={phaseFourSnapshot()} {...props} />);
+    const legacy = catalogNames();
+    for (const name of ['Nickel ore', 'Sulfur', 'Nickel alloy']) expect(legacy.has(`Inspect ${name}`)).toBe(false);
+    view.rerender(<DeepClaimStores snapshot={wire.data!} {...props} />);
+    const current = catalogNames();
+    for (const name of ['Nickel ore', 'Sulfur', 'Nickel alloy']) expect(current.has(`Inspect ${name}`)).toBe(true);
   });
   it('explains shield slot/condition/crew averaging and respects the real research gates', () => {
     render(<DeepClaimIndustry snapshot={wire.data!} view="workshop" onView={wire.noop} station="tool_station" onStation={wire.noop} busy={false} readOnly={false} now={Date.parse(wire.data!.server_now)} onRefresh={wire.noop} onBuild={wire.noop} onResearch={wire.research} onSell={wire.noop} onOpenHaul={wire.noop} startProduction={wire.production} collectProduction={wire.noop} onConfirmed={wire.confirmed} />);

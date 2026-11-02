@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, RefreshCw, Volume2, VolumeX } from 'lucide-react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { ArrowLeft, ArrowRight, Bell, BookOpen, Check, Minus, Palette, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import type { createDeepClaimAudio } from '@/lib/deepClaim/audio';
 import { ClaimButton, ClaimDialog } from './DeepClaimPrimitives';
 import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
+import { DeepClaimBusinessIcon } from './renderer/DeepClaimIcons';
+import './deepClaimWorkforceMenus.css';
 
 export interface ClaimVisualPreferences { reducedMotion: boolean; reducedGraphics: boolean }
 export interface ClaimSettingsViewRequest { id: string; view: 'sound' | 'visuals' | 'updates' }
@@ -77,11 +79,11 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
   useLayoutEffect(() => { if (guide && previousGuidePage.current !== page) guideHeading.current?.focus({ preventScroll: true }); previousGuidePage.current = page; }, [guide, page]);
   function turnGuide(next: number) { setGuidePage(next); }
   return <div className="dcl-settings">
-    <div className="dcl-section-heading"><div><h2>Camp settings</h2><p>Make the frontier feel right.</p></div><TutorialHelp lessonId={view === 'updates' ? 'club.updates' : 'settings.sound'} label={view === 'updates' ? 'Camp updates' : 'Sound and visuals'} /></div>
-    <div className="dcl-settings-tabs" role="tablist" aria-label="Camp settings views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = views.findIndex(item => item.key === view); const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + views.length) % views.length; setView(views[next].key); document.getElementById(`${id}-${views[next].key}`)?.focus(); }}>{views.map(item => <button key={item.key} data-dc-tutorial={`settings-${item.key}`} type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-settings-panel`} aria-selected={view === item.key} tabIndex={view === item.key ? 0 : -1} onClick={() => setView(item.key)}>{item.label}</button>)}</div>
+    <div className="dcl-section-heading"><div className="dcl-settings-title"><DeepClaimBusinessIcon kind="office" decorative /><div><h2>Camp settings</h2><p>Make the frontier feel right.</p></div></div><TutorialHelp lessonId={view === 'updates' ? 'club.updates' : 'settings.sound'} label={view === 'updates' ? 'Camp updates' : 'Sound and visuals'} /></div>
+    <div className="dcl-settings-tabs" role="tablist" aria-label="Camp settings views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = views.findIndex(item => item.key === view); const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + views.length) % views.length; setView(views[next].key); document.getElementById(`${id}-${views[next].key}`)?.focus(); }}>{views.map(item => <button key={item.key} data-dc-tutorial={`settings-${item.key}`} type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-settings-panel`} aria-selected={view === item.key} tabIndex={view === item.key ? 0 : -1} onClick={() => setView(item.key)}>{item.key === 'sound' ? <Volume2 size={16} aria-hidden="true" /> : item.key === 'visuals' ? <Palette size={16} aria-hidden="true" /> : <Bell size={16} aria-hidden="true" />}{item.label}</button>)}</div>
     <div className="dcl-settings-panel dcl-view-enter" key={view} role="tabpanel" id={`${id}-settings-panel`} aria-labelledby={`${id}-${view}`}>
       {view === 'sound' ? <section className="dcl-card dcl-settings-group" aria-label="Sound settings">
-        <h3>{settings.master ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />}Frontier sound</h3>
+        <header className="dcl-settings-group-title"><h3>{settings.master ? <Volume2 size={20} aria-hidden="true" /> : <VolumeX size={20} aria-hidden="true" />}Frontier sound</h3><span data-enabled={settings.master}>{settings.master ? 'On' : 'Off'}</span></header>
         <SettingToggle label="Enable sound" description="Only starts with your touch. Respects DH sound preferences." checked={settings.master} onChange={() => void toggleMaster()} />
         <VolumeControl label="Volume" accessibleLabel="Game sound volume" value={settings.volume} onChange={volume => audio.updateSettings({ volume })} />
         <div className="dcl-sound-bus"><SettingToggle label="Music" checked={settings.music} onChange={() => audio.updateSettings({ music: !settings.music })} /><VolumeControl label="Music mix" accessibleLabel="Music volume" value={settings.musicVolume ?? 1} onChange={musicVolume => audio.updateSettings({ musicVolume })} /></div>
@@ -102,7 +104,7 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
 }
 
 function SettingToggle({ label, description, checked, onChange, disabled = false }: { label: string; description?: string; checked: boolean; onChange: () => void; disabled?: boolean }) {
-  return <label className="dcl-setting-toggle"><span><strong>{label}</strong>{description && <small>{description}</small>}</span><button type="button" role="switch" disabled={disabled} aria-checked={checked} aria-label={label} onClick={onChange}><i /></button></label>;
+  return <label className="dcl-setting-toggle"><span><strong>{label}</strong>{description && <small>{description}</small>}</span><button type="button" role="switch" disabled={disabled} aria-checked={checked} aria-label={label} onClick={onChange}><i aria-hidden="true">{checked ? <Check size={12} /> : <Minus size={12} />}</i></button></label>;
 }
 
 function DeepClaimNotificationSetting() {
@@ -113,5 +115,5 @@ function DeepClaimNotificationSetting() {
 }
 
 function VolumeControl({ label, accessibleLabel, value, onChange }: { label: string; accessibleLabel: string; value: number; onChange: (value: number) => void }) {
-  return <label className="dcl-volume">{label}<span>{Math.round(value * 100)}%</span><input type="range" min="0" max="100" step="5" value={Math.round(value * 100)} onChange={event => onChange(Number(event.target.value) / 100)} aria-label={accessibleLabel} /></label>;
+  return <label className="dcl-volume" style={{ '--dcl-volume-fill': `${Math.max(0, Math.min(100, value * 100))}%` } as CSSProperties}>{label}<span>{Math.round(value * 100)}%</span><input type="range" min="0" max="100" step="5" value={Math.round(value * 100)} onChange={event => onChange(Number(event.target.value) / 100)} aria-label={accessibleLabel} /></label>;
 }

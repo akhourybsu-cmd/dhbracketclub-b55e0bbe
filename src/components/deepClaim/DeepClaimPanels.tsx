@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Clock3, Coins, FileText, Package, Pickaxe, Users, Zap } from 'lucide-react';
-import { resourceCatalogForSchema, SPECIALTY_INFO, STAT_INFO, TRAIT_INFO, resourceQuantity } from '@/lib/deepClaim/catalog';
-import { DEEP_CLAIM_STAT_IDS, type DeepClaimExpedition, type DeepClaimResourceId, type DeepClaimSnapshot, type DeepClaimStatId, type DeepClaimWorker } from '@/lib/deepClaim/types';
-import { DeepClaimPortrait, DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
+import { SPECIALTY_INFO, STAT_INFO, TRAIT_INFO } from '@/lib/deepClaim/catalog';
+import { DEEP_CLAIM_STAT_IDS, type DeepClaimSnapshot, type DeepClaimStatId, type DeepClaimWorker } from '@/lib/deepClaim/types';
+import { DeepClaimPortrait } from './renderer/DeepClaimIcons';
 import { ClaimBadge, ClaimButton, ClaimDialog, ClaimEmpty, ClaimMeter } from './DeepClaimPrimitives';
 import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
 
@@ -37,13 +37,7 @@ export function DeepClaimCrew({ snapshot, profileRenderer, inspectRequest }: { s
   </>;
 }
 
-export function DeepClaimStores({ snapshot, readOnly, busy, onSell, readyHauls = [], onOpenHaul, inStockOnly = false }: { snapshot: DeepClaimSnapshot; readOnly: boolean; busy: boolean; onSell: (resource: DeepClaimResourceId) => void; readyHauls?: DeepClaimExpedition[]; onOpenHaul?: (id: string) => void; inStockOnly?: boolean }) {
-  const tutorial = useDeepClaimTutorialEvents();
-  useTutorialView('stock_inspected', { view: 'stock' }, 'warehouse-stock');
-  const company = snapshot.company!;
-  const resources = resourceCatalogForSchema(snapshot.schema_version);
-  return <><div className="dcl-section-heading"><div><h2>The warehouse</h2><p>Collect. Store. Sell.</p></div><TutorialHelp lessonId="industry.warehouse" label="Warehouse" /><Package size={23} aria-hidden="true" /></div>{readyHauls.length > 0 && <section className="dcl-staged-hauls" aria-label="Staged hauls">{readyHauls.map(job => <ClaimButton key={job.id} onClick={() => onOpenHaul?.(job.id)}><Package size={16} aria-hidden="true" />Open haul from {job.target.y}m</ClaimButton>)}</section>}<section className="dcl-card dcl-storage-summary" data-dc-tutorial="stores-capacity"><div><strong>{company.warehouse_used.toLocaleString()}<small> / {company.warehouse_capacity.toLocaleString()} units</small></strong><ClaimBadge tone={company.warehouse_used >= company.warehouse_capacity ? 'red' : 'green'}>{company.warehouse_used >= company.warehouse_capacity ? 'Full' : `${company.warehouse_capacity - company.warehouse_used} space`}</ClaimBadge></div><ClaimMeter value={company.warehouse_used} max={company.warehouse_capacity} label="Warehouse capacity" tone={company.warehouse_used >= company.warehouse_capacity ? 'red' : 'green'} /><p>Collect what fits. The rest stays staged; sell stock or upgrade for more room.</p></section><div className="dcl-resource-grid" data-dc-tutorial="stores-stock">{resources.filter(resource => !inStockOnly || resourceQuantity(snapshot.resources, resource.id) > 0).map(resource => { const quantity = resourceQuantity(snapshot.resources, resource.id); return <article className="dcl-card dcl-resource-card" key={resource.id} data-dc-tutorial="stores-resource"><header><DeepClaimResourceIcon resourceId={resource.id} decorative /><div><h3>{resource.name}</h3><small>{resource.sell_price} cr / unit</small></div></header><strong>{quantity.toLocaleString()}<small> in storage</small></strong>{quantity > 0 ? <ClaimButton className="is-small" disabled={readOnly || busy} onClick={() => { tutorial.emit('stock_inspected', { view: 'stock', resource_key: resource.id }); onSell(resource.id); }} aria-label={`Sell ${resource.name}`}><Coins size={13} aria-hidden="true" />Sell</ClaimButton> : <p className="dcl-stock-empty">No stock yet</p>}</article>; })}</div>{inStockOnly && !resources.some(resource => resourceQuantity(snapshot.resources, resource.id) > 0) && <ClaimEmpty title="Your stores are clear." icon={<Package aria-hidden="true" />}>Collect a haul or a finished batch to add stored materials.</ClaimEmpty>}</>;
-}
+export { DeepClaimStores } from './DeepClaimInventory';
 
 export function DeepClaimLog({ snapshot }: { snapshot: DeepClaimSnapshot }) {
   return <><div className="dcl-section-heading"><div><h2>The company ledger</h2><p>Committed shifts, discoveries and trades.</p></div><FileText size={23} aria-hidden="true" /></div>{snapshot.log.length ? <ol className="dcl-ledger">{snapshot.log.map(entry => <li key={entry.id}><span aria-hidden="true">{entry.kind.includes('collect') || entry.kind.includes('sell') ? <Package size={16} /> : <Pickaxe size={16} />}</span><div><strong>{entry.title}</strong><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString()}</time></div></li>)}</ol> : <ClaimEmpty title="A clean ledger." icon={<FileText aria-hidden="true" />}>Your company’s first confirmed expedition will be recorded here.</ClaimEmpty>}</>;

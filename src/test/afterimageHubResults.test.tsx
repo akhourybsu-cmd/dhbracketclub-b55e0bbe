@@ -100,7 +100,7 @@ describe('Afterimage discovery and per-game records', () => {
     fireEvent.click(within(dialog).getByLabelText('Play my scenes now'));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Send challenge' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Your three scenes are ready');
-    expect(screen.getByTestId('memory-location')).toHaveTextContent('game=afterimage&tab=play');
+    await waitFor(() => expect(screen.getByTestId('memory-location')).toHaveTextContent('game=afterimage&tab=play'));
     const selectedRecord = screen.getByRole('group', { name: 'Afterimage record' });
     for (const label of ['7 wins', '4 losses', '1 draw']) expect(within(selectedRecord).getByText(label, { exact: true })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Ranks' }));
