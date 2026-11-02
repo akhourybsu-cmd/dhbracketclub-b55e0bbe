@@ -1,14 +1,14 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DeepClaimPage from '@/pages/DeepClaimPage';
-import { continueDeepClaimCompany } from './fixtures/deepClaimTutorialMock';
+import { continueDeepClaimCompany, skipDHGamesIntro } from './fixtures/deepClaimTutorialMock';
 import { ClaimState } from '@/components/deepClaim/DeepClaimPrimitives';
 import { STARTER_WORKERS, buildingEffect } from '@/lib/deepClaim/catalog';
 import type { DeepClaimExpedition, DeepClaimPreview, DeepClaimSnapshot } from '@/lib/deepClaim/types';
 
-const wire = vi.hoisted(() => ({ data: null as DeepClaimSnapshot | null, installed: true, readOnly: false, pending: null as string | null, hook: vi.fn(), preview: vi.fn(), dispatch: vi.fn(), collect: vi.fn(), sell: vi.fn(), upgrade: vi.fn(), refresh: vi.fn(), bootstrap: vi.fn(), retry: vi.fn(), unlock: vi.fn(), audioUpdate: vi.fn(), play: vi.fn(), dispose: vi.fn() }));
-vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'player' }, loading: false }) }));
+const wire = vi.hoisted(() => ({ data: null as DeepClaimSnapshot | null, installed: true, authLoading: false, readOnly: false, pending: null as string | null, hook: vi.fn(), preview: vi.fn(), dispatch: vi.fn(), collect: vi.fn(), sell: vi.fn(), upgrade: vi.fn(), refresh: vi.fn(), bootstrap: vi.fn(), retry: vi.fn(), unlock: vi.fn(), audioUpdate: vi.fn(), play: vi.fn(), dispose: vi.fn() }));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'player' }, loading: wire.authLoading }) }));
 vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: { id: 'club' }, loading: false }) }));
 vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false, isInstalled: () => wire.installed, refresh: wire.refresh }) }));
 // Pixel backdrop lifecycle is covered separately; keep these economic suites renderer-free.
@@ -31,8 +31,38 @@ function snapshot(): DeepClaimSnapshot {
 function quote(overrides: Partial<DeepClaimPreview> = {}): DeepClaimPreview { return { allowed: true, reasons: [], company_revision: 1, server_now: at, wages: 7, energy_per_worker: 1, duration_seconds: 30, estimated_yield: { min: 10, max: 20 }, cargo_capacity: 40, risk_level: 'low', accessible_depth: 49, expected_resources: ['copper_ore'], projected_completion_at: '2026-11-02T12:00:30Z', route: [{ x: 48, y: 1 }, { x: 47, y: 1 }], stages: ['travel', 'setup', 'work', 'haul', 'return'].map(key => ({ key, duration_seconds: 6 })) as DeepClaimPreview['stages'], ...overrides }; }
 function haul(status: DeepClaimExpedition['status'] = 'ready'): DeepClaimExpedition { return { id: 'shift-1', mode: 'extract', status, worker_ids: ['worker-0'], target: { x: 47, y: 1 }, path: [{ x: 48, y: 1 }, { x: 47, y: 1 }], stage: status === 'active' ? 'work' : status, started_at: '2026-11-02T11:59:30Z', completes_at: at, duration_minutes: 20, duration_seconds: 30, tutorial: true, wages: 3, energy_per_worker: 1, config_version: 1, cargo: status === 'active' ? null : { copper_ore: 20 }, stages: (['travel', 'setup', 'work', 'haul', 'return'] as const).map(key => ({ key, starts_at: '2026-11-02T11:59:30Z', ends_at: at })) }; }
 function Harness() { return <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DeepClaimPage /></MemoryRouter>; }
-beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.data = snapshot(); wire.installed = true; wire.readOnly = false; wire.pending = null; wire.preview.mockResolvedValue(quote()); wire.dispatch.mockResolvedValue(snapshot()); wire.unlock.mockResolvedValue(true); wire.retry.mockResolvedValue(snapshot()); });
+beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.data = snapshot(); wire.installed = true; wire.authLoading = false; wire.readOnly = false; wire.pending = null; wire.preview.mockResolvedValue(quote()); wire.dispatch.mockResolvedValue(snapshot()); wire.unlock.mockResolvedValue(true); wire.retry.mockResolvedValue(snapshot()); });
 afterEach(cleanup);
+
+describe('Deep Claim publisher entry', () => {
+  it('keeps the menu inert through the timed intro, then focuses it without founding or playing audio', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      render(<Harness />);
+      expect(screen.getByTestId('deep-claim-shell')).toHaveAttribute('aria-hidden', 'true');
+      expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+      act(() => vi.advanceTimersByTime(4800));
+      expect(screen.queryByTestId('dh-games-intro')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Continue' })).toHaveFocus();
+      expect(wire.bootstrap).not.toHaveBeenCalled(); expect(wire.unlock).not.toHaveBeenCalled(); expect(wire.play).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+  });
+  it('does not replay when returning from the game to its main menu', () => {
+    render(<Harness />); continueDeepClaimCompany();
+    fireEvent.click(screen.getByRole('tab', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Return to Main Menu' }));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    expect(screen.queryByTestId('dh-games-intro')).not.toBeInTheDocument();
+  });
+  it('does not restart an already shown intro after a transient authentication loading state', () => {
+    const view = render(<Harness />); skipDHGamesIntro();
+    wire.authLoading = true; view.rerender(<Harness />);
+    expect(screen.getByText('Finding the frontier')).toBeInTheDocument();
+    wire.authLoading = false; view.rerender(<Harness />);
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    expect(screen.queryByTestId('dh-games-intro')).not.toBeInTheDocument();
+  });
+});
 
 describe('Deep Claim first play and dispatch confirmation', () => {
   it('keeps the loading retry usable while an earlier fetch is still running', () => {
@@ -60,6 +90,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     wire.bootstrap.mockImplementation(async () => { wire.data = snapshot(); return wire.data; });
     render(<Harness />);
     expect(screen.queryByTestId('deep-claim-canvas')).not.toBeInTheDocument();
+    skipDHGamesIntro();
     fireEvent.click(screen.getByRole('button', { name: 'New Game' }));
     fireEvent.click(screen.getByRole('button', { name: 'Skip introduction' }));
     fireEvent.change(screen.getByLabelText('Company name'), { target: { value: 'Frontier Works' } });
@@ -107,6 +138,7 @@ describe('Deep Claim authoritative hauls and recovery', () => {
     wire.pending = 'Contribute to club project';
     render(<Harness />);
     expect(screen.getByTestId('deep-claim-title')).toBeInTheDocument();
+    skipDHGamesIntro();
     fireEvent.click(screen.getByRole('button', { name: /^Confirm sync$/ }));
     expect(await screen.findByRole('dialog', { name: /^Saved action confirmed\.$/ })).toBeInTheDocument();
     expect(screen.queryByTestId('deep-claim-title')).not.toBeInTheDocument();

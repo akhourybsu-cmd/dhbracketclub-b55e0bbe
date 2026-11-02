@@ -24,6 +24,12 @@ export function useDeepClaimTutorialMock({ scope }: { scope: TutorialScope; enab
 }
 
 /** Enter through the same title control as a returning player. */
+export function skipDHGamesIntro() {
+  const intro = screen.queryByRole('button', { name: 'Skip intro' });
+  if (intro) fireEvent.click(intro);
+}
+
 export function continueDeepClaimCompany() {
+  skipDHGamesIntro();
   fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }

@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -172,7 +173,8 @@ afterEach(() => {
 });
 describe("Drop sharing", () => {
   it("offers one postable active-club channel and safely confirms a retry", async () => {
-    render(<FindShareSheet open onOpenChange={vi.fn()} find={find} />);
+    // Settle the asynchronous channel selection before exercising a lost-ack retry.
+    await act(async () => { render(<FindShareSheet open onOpenChange={vi.fn()} find={find} />); });
     await waitFor(() =>
       expect(
         screen.getByRole("combobox", { name: "Drop chat channel" }),

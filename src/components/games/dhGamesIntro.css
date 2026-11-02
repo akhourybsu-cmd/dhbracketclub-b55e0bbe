@@ -1,0 +1,14 @@
+.dh-games-intro{position:fixed;inset:0;z-index:100;isolation:isolate;display:grid;place-items:center;overflow:hidden;background:#0b1011;color:#f1eddf;opacity:1;outline:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);transition:opacity var(--dh-games-fade,1800ms) cubic-bezier(.36,0,.26,1);touch-action:manipulation}
+.dh-games-intro:focus{outline:none}.dh-games-intro[data-phase=fade]{opacity:0}
+.dh-games-intro-light{position:absolute;inset:0;z-index:-1;background:radial-gradient(ellipse at 50% 43%,#39403924 0%,#1e2a2414 36%,transparent 68%);pointer-events:none}
+.dh-games-intro-art{position:relative;display:grid;justify-items:center;width:clamp(200px,34vw,340px);max-width:70vw;transform:translateY(-2vh);animation:dh-games-arrive var(--dh-games-reveal,600ms) cubic-bezier(.2,.65,.35,1) both}
+.dh-games-intro-art>svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 4px 18px #00000026)}
+.dh-games-intro-rule{display:block;width:32px;height:1px;margin-top:17px;background:#c7a66d;box-shadow:0 0 14px #d5b67a33;opacity:.7}
+.dh-games-intro-skip{position:absolute;bottom:max(17px,env(safe-area-inset-bottom));right:max(18px,env(safe-area-inset-right));display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:44px;min-height:44px;padding:10px 13px;border:1px solid #b8c3b52e;border-radius:6px;background:#11191a;color:#afb9ad;font-family:'DM Sans',sans-serif;font-size:11px;line-height:1.3;font-weight:600;cursor:pointer;transition:color .15s ease,border-color .15s ease,background-color .15s ease}
+.dh-games-intro-skip:focus-visible{outline:2px solid #e5c68c;outline-offset:3px;color:#f1eddf}.dh-games-intro-skip:active{background:#23302a;color:#f1eddf}
+@media(hover:hover) and (pointer:fine){.dh-games-intro-skip:hover{color:#f1eddf;border-color:#c7a66d80}}
+@media(max-height:460px){.dh-games-intro-art{width:200px;max-height:70dvh;transform:translateY(-2px)}.dh-games-intro-art>svg{max-height:60dvh}.dh-games-intro-rule{margin-top:8px}}
+@keyframes dh-games-arrive{from{opacity:0;transform:translateY(5px) scale(.98)}to{opacity:1;transform:translateY(-2vh) scale(1)}}
+.dh-games-intro[data-reduced-motion=true],.dh-games-intro[data-reduced-motion=true] *{animation:none!important;transition:none!important}.dh-games-intro[data-reduced-motion=true] .dh-games-intro-art{transform:none}
+@media(prefers-reduced-motion:reduce){.dh-games-intro,.dh-games-intro *{animation:none!important;transition:none!important}.dh-games-intro-art{transform:none}}
+@media(forced-colors:active){.dh-games-intro{forced-color-adjust:none;background:#0b1011}.dh-games-intro-skip{forced-color-adjust:auto;background:ButtonFace;color:ButtonText;border-color:ButtonText}.dh-games-intro-skip:focus-visible{outline-color:Highlight}}

@@ -24,6 +24,8 @@ The game can retain its own dark mine identity within either application theme. 
 
 | Source | Purpose |
 |---|---|
+| `src/components/games/DHGamesLogo.tsx` | Original reusable DH Games publisher artwork: inline SVG on a 480×378 viewBox, interlocking ivory DH monogram, brass inset and seven custom geometric wordmark glyphs. No font, image service or external asset dependency. |
+| `src/components/games/DHGamesIntro.tsx` / `dhGamesIntro.css` / `publisherIntroTiming.ts` | Charcoal publisher presentation, 600ms reveal / 2,400ms hold / 1,800ms menu crossfade, skippable without audio. Reduced motion shows a static 1,200ms card; Deep Claim's existing menu/art remain independently owned. |
 | `src/components/deepClaim/DeepClaimMark.tsx` | Original inline SVG shaft-and-ore emblem for the game and discovery surfaces. |
 | `src/components/deepClaim/DeepClaimNavEmblem.tsx` | Six original inline pixel SVG navigation emblems on 24×24 logical grids; no atlas rebake or external asset dependency. |
 | `src/components/deepClaim/DeepClaimDiscoveryCard.tsx` | Compete entry using the same emblem and restrained company palette. |

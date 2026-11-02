@@ -108,7 +108,7 @@ describe('Showdown selected-game integration', () => {
     fireEvent.change(within(dialog).getByLabelText('Club member'), { target: { value: 'blair' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Send challenge' }));
     await waitFor(() => expect(wire.create).toHaveBeenCalledWith({ recipientId: 'blair', gameKey: 'prism_break', requestId: expect.any(String) }));
-    expect(screen.getByTestId('selector-location')).toHaveTextContent('/showdown/created-challenge');
+    await waitFor(() => expect(screen.getByTestId('selector-location')).toHaveTextContent('/showdown/created-challenge'));
   });
   it('routes a Cipher choice to code creation without creating an invitation', async () => {
     render(<Harness />); fireEvent.click(screen.getByRole('button', { name: 'Challenge a member' }));

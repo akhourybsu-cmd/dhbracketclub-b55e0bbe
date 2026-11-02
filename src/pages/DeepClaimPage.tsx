@@ -34,6 +34,7 @@ import type { ClaimSettingsViewRequest } from '@/components/deepClaim/DeepClaimS
 import '@/components/deepClaim/deepClaim.css';
 import '@/components/deepClaim/deepClaimVisuals.css';
 import { DeepClaimNavEmblem } from '@/components/deepClaim/DeepClaimNavEmblem';
+import { DHGamesIntro } from '@/components/games/DHGamesIntro';
 
 const TABS = [{ key: 'surface', label: 'Surface' }, { key: 'mine', label: 'Mine' }, { key: 'crew', label: 'Crew' }, { key: 'stores', label: 'Stores' }, { key: 'log', label: 'Log' }, { key: 'settings', label: 'Settings' }] as const;
 type Tab = typeof TABS[number]['key'];
@@ -48,12 +49,14 @@ export default function DeepClaimPage() {
   const { user, loading: authLoading } = useAuth();
   const { club, loading: clubLoading } = useClub();
   const assets = useClubAssets();
+  const publisherEntry = useRef(false);
+  const markPublisherStarted = useCallback(() => { publisherEntry.current = true; }, []);
   if (authLoading || clubLoading || assets.loading) return <main className="deep-claim"><header className="dcl-topbar"><Link to="/compete" className="dcl-icon-button" aria-label="Return to DH" data-dc-tutorial="game-exit"><ArrowLeft size={19} aria-hidden="true" /></Link><div className="dcl-brand"><small>DEEP CLAIM</small><h1>A Prospector’s Empire</h1></div></header><ClaimState title="Finding the frontier" onRetry={() => void assets.refresh()} refreshing={assets.loading} /></main>;
   if (!user || !club || !assets.isInstalled('deep-claim')) return <main className="deep-claim"><ClaimState title="This claim is outside your camp">Deep Claim needs an active club with the game installed.</ClaimState><Link className="dcl-button" to="/compete"><ArrowLeft size={16} aria-hidden="true" />Return to DH</Link></main>;
-  return <DeepClaimCompany key={`${user.id}:${club.id}`} userId={user.id} clubId={club.id} clubName={club.name} />;
+  return <DeepClaimCompany key={`${user.id}:${club.id}`} userId={user.id} clubId={club.id} clubName={club.name} publisherAvailable={!publisherEntry.current} onPublisherStarted={markPublisherStarted} />;
 }
 
-function DeepClaimCompany({ userId, clubId, clubName }: { userId: string; clubId: string; clubName: string }) {
+function DeepClaimCompany({ userId, clubId, clubName, publisherAvailable, onPublisherStarted }: { userId: string; clubId: string; clubName: string; publisherAvailable: boolean; onPublisherStarted: () => void }) {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const query = params.toString();
@@ -63,6 +66,23 @@ function DeepClaimCompany({ userId, clubId, clubName }: { userId: string; clubId
   const company = data?.company;
   const companyPresent = !!company;
   const [screen, setScreen] = useState<'title' | 'founding' | 'game'>('title');
+  const [publisherOpening, setPublisherOpening] = useState(() => publisherAvailable && !requestedLink.office && !requestedLink.mismatch);
+  const [publisherRevealing, setPublisherRevealing] = useState(false);
+  const publisherVisible = publisherOpening && screen === 'title' && !requestedLink.office && !requestedLink.mismatch;
+  const mainSurface = useRef<HTMLElement>(null);
+  const publisherWasVisible = useRef(false);
+  useLayoutEffect(() => {
+    if (publisherOpening || requestedLink.office || requestedLink.mismatch) onPublisherStarted();
+    if (requestedLink.office || requestedLink.mismatch || screen !== 'title') setPublisherOpening(false);
+  }, [publisherOpening, requestedLink.office, requestedLink.mismatch, screen, onPublisherStarted]);
+  useLayoutEffect(() => {
+    const surface = mainSurface.current;
+    if (surface) surface.inert = publisherVisible;
+    if (!publisherVisible && publisherWasVisible.current && screen === 'title' && !requestedLink.office && !requestedLink.mismatch) {
+      surface?.querySelector<HTMLButtonElement>('[data-dc-menu-action]:not(:disabled)')?.focus({ preventScroll: true });
+    }
+    publisherWasVisible.current = publisherVisible;
+  }, [publisherVisible, screen, requestedLink.office, requestedLink.mismatch]);
   const [menuSettings, setMenuSettings] = useState(false);
   const [trainingModal, setTrainingModal] = useState(false);
   const [trainingRequest, setTrainingRequest] = useState<DeepClaimTrainingRequest | null>(null);
@@ -145,7 +165,7 @@ function DeepClaimCompany({ userId, clubId, clubName }: { userId: string; clubId
   useLayoutEffect(() => { setRevealTarget(null); revealReceipt.current = null; revealedThisVisit.current = false; }, [revealScope]);
   const ownDialogOpen = !!(office || fieldOperations || dispatch || buildings || building || sale || haul || reward || revealedFind);
   const occluded = ownDialogOpen || dialogOpen;
-  useEffect(() => { audio.setBackgroundPaused?.(screen === 'game' && (occluded || !sceneVisible)); if (screen !== 'game') audio.setScene({ view: 'surface', depth: 0 }); }, [audio, occluded, sceneVisible, screen]);
+  useEffect(() => { audio.setBackgroundPaused?.(publisherVisible || screen === 'game' && (occluded || !sceneVisible)); if (screen !== 'game') audio.setScene({ view: 'surface', depth: 0 }); }, [audio, occluded, sceneVisible, screen, publisherVisible]);
   useLayoutEffect(() => { setTutorialEvents([]); }, [scope.company_id]);
   const currentError = localError || operation.error;
   const freeCrewSlot = !!company && live.filter(job => job.status === 'active').length < company.crew_slots;
@@ -323,7 +343,7 @@ function DeepClaimCompany({ userId, clubId, clubName }: { userId: string; clubId
 
   return <DeepClaimTutorialEventsProvider value={{ emit: observe, openJournal: lessonId => trainingCommand('journal', lessonId), askGus: () => trainingCommand('advice'), mainMenu,
     ...(company ? { commentaryEnabled: training.progress.commentary_enabled, onCommentaryChange: (enabled: boolean) => training.update({ commentary_enabled: enabled }) } : {}),
-    scopeKey: `${userId}:${clubId}:${company?.id ?? ''}:${training.progress.active_step_id ?? ''}` }}><ClaimDialogScope onOpenChange={setDialogOpen}><main className="deep-claim" data-testid="deep-claim-shell" data-reduced-motion={visuals.reducedMotion}>
+    scopeKey: `${userId}:${clubId}:${company?.id ?? ''}:${training.progress.active_step_id ?? ''}` }}><ClaimDialogScope onOpenChange={setDialogOpen}><main ref={mainSurface} aria-hidden={publisherVisible || undefined} className="deep-claim" data-testid="deep-claim-shell" data-reduced-motion={visuals.reducedMotion}>
     {screen === 'game' ? <>
     <header className="dcl-topbar"><Link to="/compete" className="dcl-icon-button" aria-label="Return to DH" data-dc-tutorial="game-exit"><ArrowLeft size={19} aria-hidden="true" /></Link><div className="dcl-brand"><small>DEEP CLAIM</small><h1>{company?.name ?? 'A Prospector’s Empire'}</h1></div>{company && <div className="dcl-top-money"><strong aria-label={`${company.cash.toLocaleString()} company credits`}><Coins size={14} aria-hidden="true" />{company.cash.toLocaleString()}</strong><small>{company.warehouse_used}/{company.warehouse_capacity} stored</small><span className="dcl-hud-stock" aria-hidden="true"><i style={{ width: `${Math.min(100, 100 * company.warehouse_used / Math.max(1, company.warehouse_capacity))}%` }} /></span></div>}<button type="button" className="dcl-icon-button" aria-label="Refresh company" disabled={operation.refreshing || operation.busy} onClick={() => void operation.refresh()}><RefreshCw size={17} className={operation.refreshing ? 'dcl-spin' : ''} aria-hidden="true" /></button></header>
     {linkMessage && <div className="dcl-action-error" role="status"><span>{linkMessage}</span><button type="button" onClick={clearNotificationLink}>Return to current company</button></div>}
@@ -355,15 +375,15 @@ function DeepClaimCompany({ userId, clubId, clubName }: { userId: string; clubId
       {operation.pendingAction && <div className="dcl-offline" role="status"><span>Saved action: {operation.pendingAction}</span><button type="button" disabled={operation.busy} onClick={() => void retrySaved()}>Confirm sync</button></div>}
       {screen === 'founding' && !company ? <DeepClaimPrologue identity={`${userId}:${clubId}`} clubName={clubName} reducedMotion={visuals.reducedMotion} reducedGraphics={visuals.reducedGraphics} busy={operation.busy} blocked={operation.readOnly} error={localError || operation.error} onBack={() => setScreen('title')} onFound={bootstrap} onInteraction={() => void menuInteraction()} />
         : <DeepClaimTitleScreen summary={company ? { companyName: company.name, supportedDepth: data?.world?.max_depth ?? 0, employeeCount: data?.workers.length ?? 0, activeExpeditions: live.filter(job => job.status === 'active').length, readyCollections: ready.length + productionReady.length, lastSyncedAt: data?.server_now } : null}
-          loading={!data} busy={operation.busy || !company && operation.readOnly} cached={operation.readOnly && !!data} error={localError || operation.error || linkMessage} active={!menuSettings && !trainingModal && !dialogOpen} reducedMotion={visuals.reducedMotion} reducedGraphics={visuals.reducedGraphics}
+          loading={!data} busy={operation.busy || !company && operation.readOnly} cached={operation.readOnly && !!data} error={localError || operation.error || linkMessage} active={(!publisherVisible || publisherRevealing) && !menuSettings && !trainingModal && !dialogOpen} reducedMotion={visuals.reducedMotion} reducedGraphics={visuals.reducedGraphics}
           onContinue={() => { if (company) setScreen('game'); }} onNewGame={() => { if (!company && data && !operation.readOnly) setScreen('founding'); }}
           onJournal={() => trainingCommand('journal')} onSettings={() => setMenuSettings(true)} onExit={() => navigate('/compete')} onRetry={() => void operation.refresh()} onInteraction={() => void menuInteraction()} />}
     </>}
     <ClaimDialog open={menuSettings} onClose={() => setMenuSettings(false)} title="Camp settings" description="The same sound and visual preferences used in your mine." className="dcm-settings-dialog">
       <DeepClaimSettings audio={audio} visuals={visuals} onVisualsChange={changeVisuals} onRefresh={() => void operation.refresh()} refreshing={operation.refreshing} serverTime={data?.server_now} industry={phase2} field={phase3} business={phase4 && !!company} deep={!!deep} onOpenJournal={() => { setMenuSettings(false); trainingCommand('journal'); }} />
     </ClaimDialog>
-  </main><DeepClaimTutorialDirector snapshot={data} scope={scope} progress={training.progress} events={tutorialEvents} update={training.update} request={trainingRequest}
-    active={screen === 'game' && !!company} reducedMotion={visuals.reducedMotion} navigate={tutorialNavigate} onModalChange={setTrainingModal} audio={audio} saving={training.saving} error={training.error}
+  </main>{publisherVisible && <DHGamesIntro reducedMotion={visuals.reducedMotion} onReveal={() => setPublisherRevealing(true)} onComplete={() => setPublisherOpening(false)} />}<DeepClaimTutorialDirector snapshot={data} scope={scope} progress={training.progress} events={tutorialEvents} update={training.update} request={trainingRequest}
+    active={screen === 'game' && !!company && !publisherVisible} reducedMotion={visuals.reducedMotion} navigate={tutorialNavigate} onModalChange={setTrainingModal} audio={audio} saving={training.saving} error={training.error}
     onRetry={() => void training.refresh()} onContinue={() => { if (company) setScreen('game'); }} />
   </ClaimDialogScope></DeepClaimTutorialEventsProvider>;
 }

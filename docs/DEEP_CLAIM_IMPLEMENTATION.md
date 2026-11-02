@@ -1,6 +1,29 @@
 # Deep Claim implementation ledger
 
-## Current release — tactile visual refinement
+## Current release — DH Games publisher opening
+
+This presentation-only release builds on clean main `85e9635f9fb21f693c3a1683bd489f0b35c60038`. It introduces an original, reusable DH Games SVG identity and publisher card, integrated into Deep Claim's authorized title entry. No SQL, economic rules, company data, installation gates, dependencies or atlas bytes change.
+
+- The original ivory DH monogram, brass detail and custom geometric wordmark reveal for 600ms, hold for 2,400ms and fade over 1,800ms into the actual animated menu. Skip, Enter, Space and Escape enter the menu immediately. Reduced motion uses a static 1,200ms card and immediate transition.
+- The opening runs once per route entry, including across temporary authentication/loading gates. Returning to the title within the game does not replay it. Recognized Office notifications and club-mismatch notices bypass the card. It never creates a company or starts/unlocks audio.
+- The menu remains inert and hidden from assistive technology until the card exits, then receives keyboard focus. Timers use a monotonic deadline, reconcile background/resume events and clean up on exit. The existing title Canvas starts during the crossfade; no additional render loop, external artwork or network request is introduced.
+
+The implementation comprises `src/components/games/{DHGamesLogo,DHGamesIntro}.tsx`, `publisherIntroTiming.ts`, `dhGamesIntro.css` and the existing `DeepClaimPage.tsx` shell. Regression coverage is in `dhGamesIntro.test.tsx`, `deepClaimUI.test.tsx`, the shared tutorial fixture and the `publisher` browser section, included in the standard browser command. Original artwork dimensions and ownership are recorded in the asset specification.
+
+| Verification | Current evidence |
+|---|---|
+| Publisher and shell tests | All 18 intro and 19 Deep Claim Page tests passed, including exact timing, skipping, reduced motion, StrictMode, background/resume, inert/focus, no startup audio and no replay across transient loading. |
+| Browser proof | All 86 publisher/menu checks passed with zero assertion/runtime errors; `/tmp/deep-claim-IoIk2K/report.json`. Actual logo and crossfade screenshots were reviewed at 320px phone and 1440px desktop; landscape/light and reduced-motion cases also passed. |
+| Source checks | Application TypeScript and scoped ESLint passed with zero errors/warnings. The Phase 8 gate preserved all 27 protected source fingerprints and both atlases; browser harness syntax passed. |
+| Production build | Passed in 22.64 seconds: `DeepClaimPage-DCor-ekn.js` 751.28 KB / 179.31 KB gzip; `DeepClaimPage-D0eMhcWc.css` 141.23 KB / 24.36 KB gzip. The existing large-chunk advisory remains. |
+| Production PWA | All 12 checks passed with zero assertion/runtime errors; `/tmp/deep-claim-pwa-yxq9Bk/report.json`. Chromium did not report standalone display mode. |
+| Final full suite | All 207 files / 2,105 tests passed with two workers in 140.64 seconds; `/tmp/dh-games-full-unit-final.log`. Final application typechecking and scoped ESLint also passed after the test synchronization changes. |
+
+Two initial full-suite runs each passed 2,104/2,105 tests, with different existing asynchronous assertion races. Test-only corrections now settle the Drop's mocked initial channel selection before sending and await Showdown's completed navigation. The original retry-identity and destination assertions remain intact; production Drop/Showdown code is unchanged. The isolated 12-test regression run and final full suite both passed.
+
+Commit/push and publication verification are pending. No migration is required or claimed. Physical-device installation and subjective audio review remain outside these cloud checks.
+
+## Previous release — tactile visual refinement
 
 This presentation pass builds on clean published main `c2e4cf57`. **Implementation, final verification and production publication are complete.** No gameplay, persistence, hooks, SQL, authentication, economy or dependencies change, and neither atlas is rebaked. No new migration or additional SQL/native run is required for this presentation-only release; saved progress is preserved.
 

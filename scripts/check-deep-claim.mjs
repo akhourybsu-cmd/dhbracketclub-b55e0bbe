@@ -20,7 +20,7 @@ const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime,deep,menu,training').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'publisher,presentation,journey,reliability,industry,field,caverns,business,social,runtime,deep,menu,training').split(','));
 const visualMatrix = process.env.DEEP_CLAIM_QA_VISUAL_MATRIX === '1';
 const visualCases = visualMatrix
   ? [[320,568,'dark','no-preference'],[320,568,'light','no-preference'],[844,390,'dark','no-preference'],[844,390,'light','no-preference'],[1440,900,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']]
@@ -86,11 +86,16 @@ async function setup(width = 390, height = 844, theme = 'dark', motion = 'no-pre
     ...(options.deviceScaleFactor ? { deviceScaleFactor: options.deviceScaleFactor } : {}), ...(options.isMobile ? { isMobile: true } : {}) });
   return { context, page: await pageFor(context, options), theme };
 }
-async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex, route = '/deep-claim', enter = true } = {}) {
+async function go(page, { run = 'main', theme = 'dark', user = DEEP_CLAIM_ACTORS.alex, route = '/deep-claim', enter = true, publisher = 'skip' } = {}) {
   currentPage = page;
   const params = new URLSearchParams({ run, theme, user, token, route });
   await page.goto(`${base}/scripts/fixtures/deep-claim.html?${params}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.deepClaimReady && window.deepClaimQa && window.deepClaimQueryClient);
+  await settle(page);
+  if (publisher === 'skip' && await page.getByTestId('dh-games-intro').isVisible()) {
+    await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
+    await expect(page.getByTestId('dh-games-intro')).toHaveCount(0);
+  }
   await settle(page);
   if (enter && route.split('?')[0] === '/deep-claim') await continueCompany(page, { required: false });
 }
@@ -102,7 +107,12 @@ async function continueCompany(page, { required = true } = {}) {
   // Authorized notification links deliberately open the actual Office. Radix
   // hides the background tablist from accessibility while that dialog is open.
   const linkedOffice = page.getByRole('dialog', { name: 'Company Office', exact: true });
-  await expect(company.or(resume).or(start).or(linkedOffice).first()).toBeVisible();
+  const publisher = page.getByTestId('dh-games-intro');
+  await expect(company.or(resume).or(start).or(linkedOffice).or(publisher).first()).toBeVisible();
+  if (await publisher.isVisible()) {
+    await page.getByRole('button', { name: 'Skip intro', exact: true }).click();
+    await expect(publisher).toHaveCount(0);
+  }
   if (await linkedOffice.isVisible()) return;
   if (await company.isVisible()) return;
   await expect(page.getByTestId('deep-claim-title')).toHaveAttribute('data-dc-menu-loading', 'false');
@@ -241,6 +251,45 @@ async function canvasIsDrawn(page, label) {
   });
   checked(`mine-canvas-drawn-and-contained-${label}`, result.width > 200 && result.height > 100 && result.colors > 12 && result.inView, result);
 }
+async function publisherIntro() {
+  for (const [width, height, theme, motion, mode] of [[320,568,'dark','no-preference','auto'],[844,390,'light','no-preference','keyboard'],[1440,900,'dark','no-preference','button'],[390,844,'dark','reduce','reduced']]) {
+    const { context, page } = await setup(width, height, theme, motion, { runtimeProbe: true, isMobile: width < 900 });
+    await go(page, { run: 'publisher-opening', theme, enter: false, publisher: 'watch' });
+    const intro = page.getByTestId('dh-games-intro'), skip = page.getByRole('button', { name: 'Skip intro', exact: true });
+    await expect(intro).toBeVisible();
+    await expect(page.getByTestId('deep-claim-shell')).toHaveAttribute('aria-hidden', 'true');
+    await expect(page.getByRole('button', { name: 'New Game', exact: true })).toHaveCount(0);
+    const visible = await skip.evaluate(node => {
+      const box = node.getBoundingClientRect();
+      return { width: box.width, height: box.height, hit: node.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
+        inert: document.querySelector('[data-testid="deep-claim-shell"]').inert, overflow: document.documentElement.scrollWidth > innerWidth + 2 };
+    });
+    checked(`publisher-brand-and-skip-fit-${width}x${height}`, visible.width >= 44 && visible.height >= 44 && visible.hit && visible.inert && !visible.overflow, visible);
+    await expect(intro.locator('[data-dh-games-logo]')).toBeVisible();
+    await page.screenshot({ path: join(output, `publisher-${width}x${height}.png`) });
+    checked(`publisher-no-autoplay-or-bootstrap-${width}x${height}`, await page.evaluate(() => window.deepClaimRuntime.contexts.length === 0) && !(await command(page, 'calls')).some(call => call.name === 'dc_bootstrap'));
+    if (mode === 'auto') {
+      await expect(intro).toHaveAttribute('data-phase', 'fade', { timeout: 5000 });
+      await page.waitForTimeout(650);
+      const opacity = await intro.evaluate(node => Number(getComputedStyle(node).opacity));
+      checked('publisher-crossfade-reveals-the-real-menu', opacity > 0 && opacity < 1, { opacity });
+      await page.screenshot({ path: join(output, 'publisher-crossfade.png') });
+      await expect(intro).toHaveCount(0, { timeout: 3500 });
+    } else if (mode === 'reduced') {
+      await expect(intro).toHaveAttribute('data-reduced-motion', 'true');
+      await expect(intro).toHaveCount(0, { timeout: 2500 });
+    } else if (mode === 'keyboard') await page.keyboard.press('Escape');
+    else await skip.click();
+    await expect(intro).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'New Game', exact: true })).toBeFocused();
+    await expect(page.getByTestId('deep-claim-shell')).not.toHaveAttribute('aria-hidden', 'true');
+    await fit(page, `publisher-menu-${width}x${height}`);
+    checked(`publisher-hands-off-to-usable-menu-${width}x${height}`, true);
+    await context.close();
+  }
+  console.log('PASS DH Games publisher opening, crossfade, skip and reduced motion');
+}
+
 async function presentation() {
   const cases = visualCases;
   for (const [index, [width, height, theme, motion]] of cases.entries()) {
@@ -804,7 +853,8 @@ async function business() {
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime', 'deep', 'menu', 'training', 'campaign', 'academy'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['publisher', 'presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime', 'deep', 'menu', 'training', 'campaign', 'academy'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  if (sections.has('publisher')) await publisherIntro();
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
