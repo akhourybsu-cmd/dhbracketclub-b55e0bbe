@@ -9,12 +9,16 @@ import { buildingActivity, workerEquipmentPaint } from '@/components/deepClaim/r
 import { fieldMarkerAt, indexPublicField, infrastructureInstalled, knownRoomNeighbors, visibleFieldEntries } from '@/components/deepClaim/renderer/fieldVisuals';
 import { DISCOVERY_ART, infrastructureSprite } from '@/components/deepClaim/renderer/fieldSprites';
 import { paintInfrastructureCoverage } from '@/components/deepClaim/renderer/fieldAtlas';
-import { ALL_EQUIPMENT_CATALOG, BUILDING_INFO, EQUIPMENT_CATALOG, FIELD_CATALOG } from '@/lib/deepClaim/catalog';
+import { DEEP_EQUIPMENT_CATALOG, BUILDING_INFO, EQUIPMENT_CATALOG, FIELD_CATALOG } from '@/lib/deepClaim/catalog';
 import { DEEP_CLAIM_BUILDING_IDS, DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_RESOURCE_IDS, DEEP_CLAIM_SPECIALTIES, type DeepClaimDiscovery, type DeepClaimExpedition, type DeepClaimInfrastructure, type DeepClaimProductionJob, type DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import { companySnapshot } from './fixtures/deepClaim';
 import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
+import { phaseSevenSnapshot } from './fixtures/deepClaimPhase7';
+import * as ancientArt from '@/components/deepClaim/renderer/ancientArt';
 
 vi.mock('@/components/deepClaim/renderer/authoredAtlas', () => ({ preloadDeepClaimAtlas: () => Promise.resolve('failed'), subscribeDeepClaimAtlas: () => () => {}, getDeepClaimAtlasDiagnostics: () => ({ state: 'failed', width: 0, height: 0, spriteCount: 0, decodedBytes: 0, draws: 0 }), drawAuthoredSprite: () => false }));
+const addonWire = vi.hoisted(() => ({ listeners: new Set<() => void>(), state: 'failed' }));
+vi.mock('@/components/deepClaim/renderer/ancientAtlas', () => ({ preloadDeepClaimAddon: () => Promise.resolve('failed'), subscribeDeepClaimAddon: (listener: () => void) => { addonWire.listeners.add(listener); return () => addonWire.listeners.delete(listener); }, getDeepClaimAddonDiagnostics: () => ({ state: addonWire.state, width: 512, height: 384, spriteCount: 1043, decodedBytes: 0, draws: 0 }), drawDeepClaimAddon: () => false }));
 
 const viewport = { width: 390, height: 500 }, bounds = { width: 96, depth: 149 };
 const legacyBuildingArt = ['mine_office','mine_shaft','warehouse','tool_station'].map(key => BUILDING_ART[key as keyof typeof BUILDING_ART]);
@@ -40,6 +44,7 @@ function pointer(element: HTMLElement, type: string, x: number, y: number, point
   Object.assign(event, { pointerId, clientX: x, clientY: y, pointerType: 'touch', isPrimary: pointerId === 1 }); fireEvent(element, event);
 }
 beforeEach(() => {
+  addonWire.listeners.clear(); addonWire.state = 'failed';
   contexts.length = 0; frames.clear(); frameId = 0; frameTime = 0; visibility = 'visible';
   vi.useFakeTimers({ toFake: ['setTimeout','clearTimeout'] });
   vi.spyOn(performance, 'now').mockImplementation(() => frameTime);
@@ -49,6 +54,64 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(box);
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function () { return new MockContext() as unknown as CanvasRenderingContext2D; } as unknown as typeof HTMLCanvasElement.prototype.getContext);
   Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
+});
+
+describe('Ancient Deep known-ground presentation', () => {
+  it('keeps legacy and Ancient Deep textures separate even when material, neighbors, and variant match', () => {
+    const snapshot = phaseSevenSnapshot(); snapshot.world!.max_depth = 999;
+    snapshot.buildings.find(building => building.key === 'mine_shaft')!.level = 6;
+    snapshot.world!.tiles = [599, 603].map(y => ({ x: 48, y, terrain: 'stone', material: null, remaining: 0, initial_amount: 0 }));
+    render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} focusRequest={{ id: 'region-boundary', point: { x: 48, y: 600 } }} reducedMotion />);
+    frame();
+    const colors = contexts.flatMap(context => context.fills);
+    expect(colors).toContain('#414143'); expect(colors).toContain('#242b31');
+  });
+  it('never paints the new region or hidden minerals into an unrevealed viewport', () => {
+    const snapshot = phaseSevenSnapshot(); snapshot.world!.max_depth = 999;
+    snapshot.buildings.find(building => building.key === 'mine_shaft')!.level = 6;
+    snapshot.world!.tiles = [{ x: 48, y: 1, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }];
+    render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} focusRequest={{ id: 'unrevealed-deep', point: { x: 48, y: 800 } }} reducedMotion />);
+    frame();
+    const colors = contexts.flatMap(context => context.fills);
+    expect(colors).not.toContain('#242b31'); expect(colors).not.toContain('#829e88'); expect(colors).not.toContain('#c4b05a');
+  });
+  it('shows a powered lift only after the actual upgrade and research, and never bridges an unknown edge', () => {
+    const snapshot = phaseSevenSnapshot(); snapshot.world!.max_depth = 999;
+    snapshot.world!.tiles = [600, 601, 603].map(y => ({ x: 48, y, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }));
+    snapshot.buildings.find(building => building.key === 'mine_shaft')!.level = 5;
+    const lift = vi.spyOn(ancientArt, 'paintKnownLiftEdge'), props = { view: 'mine' as const, selectedTile: null, onSelectTile: vi.fn(), onSelectBuilding: vi.fn(), focusRequest: { id: 'known-lift', point: { x: 48, y: 600 } }, reducedMotion: true };
+    const root = render(<DeepClaimCanvas {...props} snapshot={snapshot} />); frame(); expect(lift).not.toHaveBeenCalled();
+    const built = { ...snapshot, buildings: snapshot.buildings.map(building => building.key === 'mine_shaft' ? { ...building, level: 6 } : building) };
+    root.rerender(<DeepClaimCanvas {...props} snapshot={built} />); frame(2000); expect(lift).not.toHaveBeenCalled();
+    const researched = { ...built, business: { ...built.business!, research: [{ key: 'deep_operations_2', status: 'completed' as const, started_at: '2026-11-01T11:00:00Z', completes_at: '2026-11-01T11:20:00Z', completed_at: '2026-11-01T11:20:00Z' }] } };
+    root.rerender(<DeepClaimCanvas {...props} snapshot={researched} />); frame(3000);
+    expect(lift).toHaveBeenCalledExactlyOnceWith(expect.anything(), 600);
+  });
+  it('invalidates the static canvas when the add-on loads and removes its listener on unmount', () => {
+    const snapshot = phaseSevenSnapshot(); snapshot.world!.max_depth = 999;
+    const root = render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} reducedMotion />);
+    frame(); expect(frames.size).toBe(0); expect(addonWire.listeners.size).toBe(1);
+    act(() => { addonWire.state = 'ready'; for (const listener of addonWire.listeners) listener(); });
+    expect(frames.size).toBe(1); frame(2000); expect(frames.size).toBe(0);
+    root.unmount(); expect(addonWire.listeners.size).toBe(0);
+  });
+  it('keeps an old running crew visually normal after a lift upgrade and requires a frozen lift benefit for new cars', () => {
+    const snapshot = phaseSevenSnapshot(); snapshot.world!.max_depth = 999;
+    snapshot.world!.tiles = [600, 601].map(y => ({ x: 48, y, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 }));
+    snapshot.buildings.find(building => building.key === 'mine_shaft')!.level = 5;
+    snapshot.business!.research = [{ key: 'deep_operations_2', status: 'completed', started_at: '2026-11-01T11:00:00Z', completes_at: '2026-11-01T11:20:00Z', completed_at: '2026-11-01T11:20:00Z' }];
+    const old: DeepClaimExpedition = { id: 'old-running-trip', mode: 'explore', status: 'active', worker_ids: [snapshot.workers[0].id], target: { x: 48, y: 601 }, path: [{ x: 48, y: 600 }, { x: 48, y: 601 }], stage: 'travel', stages: [{ key: 'travel', starts_at: '2026-11-01T11:59:50Z', ends_at: '2026-11-01T12:00:10Z' }], started_at: '2026-11-01T11:59:50Z', completes_at: '2026-11-01T12:20:00Z', duration_minutes: 20, duration_seconds: 1200, tutorial: false, wages: 1, energy_per_worker: 1, config_version: 3, cargo: null };
+    snapshot.expeditions = [old]; snapshot.workers[0].assigned_job_id = old.id;
+    const cab = vi.spyOn(ancientArt, 'paintKnownLiftCab'), props = { view: 'mine' as const, selectedTile: null, onSelectTile: vi.fn(), onSelectBuilding: vi.fn(), focusRequest: { id: 'travelling-crew', point: { x: 48, y: 600 } }, reducedMotion: true };
+    const root = render(<DeepClaimCanvas {...props} snapshot={snapshot} />); frame(); expect(cab).not.toHaveBeenCalled();
+    const upgraded = { ...snapshot, buildings: snapshot.buildings.map(building => building.key === 'mine_shaft' ? { ...building, level: 6 } : building) };
+    root.rerender(<DeepClaimCanvas {...props} snapshot={upgraded} />); frame(2000); expect(cab).not.toHaveBeenCalled();
+    const modifiers = { lift_discount_percent: 0, thermal_load_percent: 0, engineering_mitigation_percent: 0, ventilation_mitigation_percent: 0, gear_mitigation_percent: 0, heat_penalty_percent: 0, raw_work_seconds: 600, effective_work_seconds: 600 };
+    const newTrip = { ...upgraded, expeditions: [{ ...old, config_version: 7 as const, deep_modifiers: modifiers }] };
+    root.rerender(<DeepClaimCanvas {...props} snapshot={newTrip} />); frame(3000); expect(cab).not.toHaveBeenCalled();
+    root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...newTrip, expeditions: [{ ...newTrip.expeditions[0], deep_modifiers: { ...modifiers, lift_discount_percent: 75 } }] }} />); frame(4000);
+    expect(cab).toHaveBeenCalledOnce();
+  });
 });
 afterEach(() => {
   cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); frames.clear();
@@ -191,9 +254,9 @@ describe('Deep Claim Phase 2 industry artwork and compatibility', () => {
     expect(silhouettes[0]).not.toBe(silhouettes[1]); expect(silhouettes[2]).not.toBe(silhouettes[3]);
   });
   it('covers every actual equipment definition with five original archetypes and a readable broken state', () => {
-    expect(Object.keys(EQUIPMENT_ART).sort()).toEqual(ALL_EQUIPMENT_CATALOG.map(item => item.key).sort());
-    const { container } = render(<>{ALL_EQUIPMENT_CATALOG.map(item => <DeepClaimEquipmentIcon key={item.key} archetype={item.key} tier={item.tier} durability={item.key === 'iron_pickaxe' ? 0 : 10} />)}</>);
-    expect(container.querySelectorAll('svg')).toHaveLength(ALL_EQUIPMENT_CATALOG.length);
+    expect(Object.keys(EQUIPMENT_ART).sort()).toEqual(DEEP_EQUIPMENT_CATALOG.map(item => item.key).sort());
+    const { container } = render(<>{DEEP_EQUIPMENT_CATALOG.map(item => <DeepClaimEquipmentIcon key={item.key} archetype={item.key} tier={item.tier} durability={item.key === 'iron_pickaxe' ? 0 : 10} />)}</>);
+    expect(container.querySelectorAll('svg')).toHaveLength(DEEP_EQUIPMENT_CATALOG.length);
     expect(new Set([...container.querySelectorAll('[data-dc-equipment-art]')].map(svg => svg.getAttribute('data-dc-equipment-art'))).size).toBe(5);
     expect(screen.getByRole('img', { name: 'Broken Iron pickaxe' })).toHaveAttribute('data-dc-equipment-broken', 'true');
     expect(container.querySelector('image,img')).toBeNull();
@@ -298,8 +361,8 @@ describe('Deep Claim Phase 4 company artwork', () => {
       expect(DEEP_CLAIM_ART_MANIFEST.inventory).toContain(`stock_${key}`);
       expect(DEEP_CLAIM_ART_MANIFEST.terrain).not.toContain(`deposit_${key}`);
     }
-    expect(DEEP_CLAIM_MINERAL_IDS).toHaveLength(10);
-    expect(DEEP_CLAIM_RESOURCE_IDS).toHaveLength(19);
+    expect(DEEP_CLAIM_MINERAL_IDS).toHaveLength(12);
+    expect(DEEP_CLAIM_RESOURCE_IDS).toHaveLength(22);
   });
   it('gives steel tools and cargo a reinforced silhouette while retaining a clearly named broken state', () => {
     const { container } = render(<><DeepClaimEquipmentIcon archetype="iron_pickaxe" /><DeepClaimEquipmentIcon archetype="steel_pickaxe" /><DeepClaimEquipmentIcon archetype="hauler_frame" /><DeepClaimEquipmentIcon archetype="steel_cargo_harness" durability={0} /></>);

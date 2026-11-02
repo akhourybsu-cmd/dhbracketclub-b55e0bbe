@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { createFeatsFixture } from '../dh-feats-fixture.mjs';
 
-export async function createDeepClaimFeatsDatabase({ phase = 5, integration = true, integrate } = {}) {
-  assert.ok([4, 5].includes(phase), 'Composed Deep Claim fixtures support the pre-social and current schemas');
+export async function createDeepClaimFeatsDatabase({ phase = 7, integration = true, integrate, database } = {}) {
+  assert.ok([4, 5, 7].includes(phase), 'Composed Deep Claim fixtures support the released and current schemas');
   if (integrate !== undefined) integration = integrate;
-  const base = await createFeatsFixture(), { db, id } = base, sources = new Map();
+  const base = await createFeatsFixture({ database }), { db, id } = base, sources = new Map();
   const source = async path => { const text = await readFile(path, 'utf8'); sources.set(path, text); await db.exec(text); };
   try {
     await db.exec(`create role service_role bypassrls;grant usage on schema auth,public to service_role;
@@ -74,7 +74,15 @@ export async function createDeepClaimFeatsDatabase({ phase = 5, integration = tr
     for (const path of migrations.filter(path => path < ceiling)) await source(`supabase/migrations/${path}`);
     await db.exec("insert into public.club_installed_assets(club_id,asset_id,enabled,visible_to_members) select c.id,a.id,true,true from public.clubs c cross join public.platform_assets a where a.slug='deep-claim'");
     const integrationPath = 'supabase/migrations/20261102061000_deep_claim_dh_integration.sql';
-    async function applyIntegration() { assert.ok(!sources.has(integrationPath)); await source(integrationPath); }
+    const expansionPath = 'supabase/migrations/20261102070000_deep_claim_ancient_deep.sql';
+    async function applyExpansion() {
+      assert.ok(sources.has(integrationPath), 'Expansion must follow the actual released Feats integration');
+      assert.ok(!sources.has(expansionPath)); await source(expansionPath);
+    }
+    async function applyIntegration() {
+      assert.ok(!sources.has(integrationPath)); await source(integrationPath);
+      if (phase === 7) await applyExpansion();
+    }
     if (integration) await applyIntegration();
     async function rpc(user, name, args = {}) {
       const signature = (await db.query("select p.proargnames names,array(select format_type(t,null) from unnest(p.proargtypes::oid[])t) types from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname=$1", [name])).rows;
@@ -113,6 +121,6 @@ export async function createDeepClaimFeatsDatabase({ phase = 5, integration = tr
         await transaction.exec('alter table public.dc_research_orders enable trigger dc_research_order_guard');
       });
     }
-    return { ...base, sources, applyIntegration, rpc, assertSourcesUnchanged, advanceJob, advanceProduction, advanceResearch };
+    return { ...base, sources, applyIntegration, applyExpansion, rpc, assertSourcesUnchanged, advanceJob, advanceProduction, advanceResearch };
   } catch (error) { await base.close(); throw error; }
 }

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createDeepClaimFeatsDatabase } from './fixtures/deep-claim-feats-db.mjs';
+import { runPhase7FeatsTests } from './fixtures/deep-claim-phase7-feats.mjs';
 
 const fixture = await createDeepClaimFeatsDatabase({ integration: false });
 const { db, id, rpc } = fixture, A = id(1), B = id(2), C = id(3), CLUB = id(10);
@@ -210,13 +211,16 @@ try {
     const branch = trigger.slice(trigger.indexOf("tg_table_name='dc_club_projects'"), trigger.indexOf("tg_table_name='dc_expeditions'"));
     assert.ok(branch.includes('dc_mark_feat_dirty_v5(contributor,true)')); assert.ok(!branch.includes('dc_queue_notification')); assert.ok(!/insert\s+into|update\s+public\.dc_companies/i.test(branch));
     const reconcile = (await one("select prosrc from pg_proc where oid='public.dc_reconcile_v1(uuid,timestamptz)'::regprocedure")).prosrc;
-    assert.ok(reconcile.includes('dc_queue_notification_v5(p_company')); assert.ok(reconcile.includes('dc_club_contributions'));
+    assert.ok(reconcile.includes('dc_reconcile_v1_pre_v7'));
+    const retained = (await one("select prosrc from pg_proc where oid='public.dc_reconcile_v1_pre_v7(uuid,timestamptz)'::regprocedure")).prosrc;
+    assert.ok(retained.includes('dc_queue_notification_v5(p_company')); assert.ok(retained.includes('dc_club_contributions'));
   });
+  await runPhase7FeatsTests({ fixture, db, id, rpc, A, B, C, CLUB, request, one, get, bootstrap, upgrade, check, metrics, notifications, unlocks, board, catalog });
   await fixture.assertSourcesUnchanged();
   if (process.argv.includes('--proof')) {
     const bodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) md5 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname ~ '^(dc_|dh_feat|dh_feats|dh_home_progress|dh_public_member|dh_visible)' order by signature")).rows;
-    await writeFile('/tmp/deep-claim-phase5-integrated-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.md5])), null, 2));
-    await writeFile('/tmp/deep-claim-phase5-integrated-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].map(([path, text]) => [path, { sha256: createHash('sha256').update(text).digest('hex'), md5: createHash('md5').update(text).digest('hex') }])), null, 2));
+    await writeFile('/tmp/deep-claim-phase7-integrated-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.md5])), null, 2));
+    await writeFile('/tmp/deep-claim-phase7-integrated-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].map(([path, text]) => [path, { sha256: createHash('sha256').update(text).digest('hex'), md5: createHash('md5').update(text).digest('hex') }])), null, 2));
     console.log(`PASS integrated proof: ${bodies.length} DC/Feats/privacy function bodies`);
   }
   console.log(`${checks} actual Deep Claim DH Feats and notification groups passed.`);

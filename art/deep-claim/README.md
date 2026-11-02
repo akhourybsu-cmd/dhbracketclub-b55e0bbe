@@ -1,12 +1,16 @@
-# Frontier Pixel Pack v1
+# Frontier Pixel Packs
 
 This is original source-authored pixel artwork for Deep Claim. It is compiled pixel geometry, not a commissioned or commercially painted sprite pack. It contains no stock art, emoji, runtime image generation, private world seeds or player state.
 
-`pack-v1.json` is the editable palette-coordinate source for distinct mineral veins, building joinery, worker stitching and small atmospheric props. The existing `pixelArt.ts` and `fieldSprites.ts` files author the underlying silhouettes, upgrade stages, worker poses and field assets. All are recorded as explicit source dependencies in the generated manifest.
+Released `pack-v1.json` defines distinct mineral veins, building joinery, worker stitching and small atmospheric props. Its exact original compiler and source-painter dependencies are preserved under `v1-source/`, with a baseline commit and individual hashes. Live types and regional content can therefore evolve without changing the released v1 PNG or metadata.
 
-Run `node scripts/build-deep-claim-atlas.mjs` after editing the source. Commit both `public/deep-claim/atlas-v1.png` and `src/components/deepClaim/renderer/generated/atlas-v1.json`. Run the same command with `--check` to verify byte-for-byte reproducibility. The compiler uses the repository's existing TypeScript development dependency and Node built-ins, including its own small RGBA rasterizer and PNG encoder. It needs no image editor, native graphics library or new package.
+Run `node scripts/build-deep-claim-atlas.mjs --check` to reproduce and verify the unchanged v1 runtime artifacts. The router executes the archived compiler without modifying its source bytes or provenance. Do not rebake new content into v1.
+
+`pack-v2.json` and `renderer/ancientArt.ts` author the independent Ancient Deep add-on: known 600–999 metre rock, nickel and sulfur veins, shaft six and eligible powered-lift artwork. Run `node scripts/build-deep-claim-addon.mjs` after editing this add-on, commit `atlas-v2.png` and its generated metadata, then run the same command with `--check`. The source SHA includes the immutable v1 base used to compose the upgraded shaft. No image editor, native graphics library or new package is required; both compilers use the existing TypeScript development dependency and Node built-ins.
 
 The atlas is 1,024 pixels wide, has one pixel of transparent padding, and cannot exceed 2,048 pixels high or 8 MiB of decoded RGBA memory. Identical frames share source rectangles. Registered frame references and unique pixel rectangles are different counts. Metadata includes the source SHA-256, compressed size and exact frame bounds.
+
+The v2 add-on is separately bounded to 512×1,024 pixels and 2 MiB decoded RGBA. It loads when the public company unlocks the deeper region. Its observable decode/failure state independently invalidates static canvases; failed loading retains the authored source fallback. Regional identity participates in the texture cache key, and unknown terrain keeps its original fog. Lift edges come from the shared engine's actual known, excavated shaft-edge set; a car follows an actual projected travelling crew. The client neither constructs a shaft nor changes travel or rewards by drawing it.
 
 Terrain uses 16×16 logical pixels. Worker bodies use 24×32 frames anchored at 12,28; four 220 ms frames cover each of seven roles, seven declared poses and four existing appearance variants. Actual tools, helmets, utility gear, damage and small activity effects are composed over these bodies without multiplying every equipment combination into a new image. Building bases cover all nine real buildings and supported levels; unbuilt structures remain marked plots. Furnace light, research light, ready crates and other operational overlays continue to use actual server state.
 

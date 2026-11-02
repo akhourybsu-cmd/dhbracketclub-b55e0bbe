@@ -130,7 +130,7 @@ export async function runPhase3WorldTests(h) {
     assert.equal((await one('select count(*)::int n from public.dc_chunks where company_id=$1 and chunk_x=0 and chunk_y=9', [company])).n, 0);
     const beforeTiles = snapshot.world.tiles;
     const started = await dispatchOperation(A, snapshot, { workers: [worker.id], mode: 'explore', x: 33, y: 299, duration: 180 });
-    const job = started.expeditions.find(operation => operation.status === 'active'); assert.equal(job.config_version, 3);
+    const job = started.expeditions.find(operation => operation.status === 'active'); assert.equal(job.config_version, h.currentFieldRules);
     assert.deepEqual(started.world.tiles, beforeTiles, 'Chunk pinning must not publish a hidden future worksite');
     const plan = (await one('select content from public.dc_plans where job_id=$1', [job.id])).content;
     const future = [...plan.reveals, ...plan.extractions]; assert.ok(future.some(point => Math.floor(point.x / 32) === 0));

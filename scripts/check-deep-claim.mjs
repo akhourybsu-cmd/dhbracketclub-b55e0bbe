@@ -13,12 +13,13 @@ import { createDeepClaimMiddleware } from './fixtures/deep-claim-server.mjs';
 import { DEEP_CLAIM_ACTORS } from './fixtures/deep-claim-db.mjs';
 import { runPhase5Browser } from './fixtures/deep-claim-phase5-browser.mjs';
 import { installDeepClaimRuntimeProbe, runPhase6Browser } from './fixtures/deep-claim-phase6-browser.mjs';
+import { runPhase7Browser } from './fixtures/deep-claim-phase7-browser.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'presentation,journey,reliability,industry,field,caverns,business,social,runtime,deep').split(','));
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
   optionalRareRevealDismissals: 0,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
@@ -526,7 +527,7 @@ async function field() {
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
   snapshot = await rpc(page, 'dc_get'); job = snapshot.expeditions.find(value => value.status === 'active');
   const structure = snapshot.infrastructure[0];
-  checked('installation-charges-inputs-before-real-timed-work', job.mode === 'infrastructure' && job.config_version === 3 && structure.status === 'building'
+  checked('installation-charges-inputs-before-real-timed-work', job.mode === 'infrastructure' && job.config_version === 7 && structure.status === 'building'
     && structure.installed_at === null && snapshot.company.cash === beforeBuild.company.cash - 19 && snapshot.resources.stone === 4 && snapshot.resources.clay === 14
     && snapshot.workers.every(value => value.energy === 3) && !snapshot.field_reports.some(value => value.job_id === job.id));
   await page.reload({ waitUntil: 'domcontentloaded' }); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
@@ -736,7 +737,7 @@ async function business() {
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['presentation', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime','deep'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('presentation')) await presentation();
   if (sections.has('journey')) await journey();
   if (sections.has('reliability')) await reliability();
@@ -746,6 +747,7 @@ async function main() {
   if (sections.has('business')) await business();
   if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
   if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
+  if (sections.has('deep')) await runPhase7Browser({ setup, pageFor, go, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, processRecipe, workerFile, expect, assert, actors: DEEP_CLAIM_ACTORS });
 }
 
 try {

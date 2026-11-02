@@ -40,13 +40,15 @@ afterEach(()=>{
 });
 
 describe('Deep Claim original authored score and deterministic material palette',()=>{
- it('contains five distinct sixteen-bar written arrangements with melody, bass, pads, rests and answers',()=>{
-  const compositions=Object.values(DEEP_CLAIM_COMPOSITIONS);expect(compositions).toHaveLength(5);expect(new Set(compositions.map(score=>score.name)).size).toBe(5);expect(new Set(compositions.map(score=>JSON.stringify(score.events))).size).toBe(5);
+ it('contains six distinct sixteen-bar written arrangements with melody, bass, pads, rests and answers',()=>{
+  const compositions=Object.values(DEEP_CLAIM_COMPOSITIONS);expect(compositions).toHaveLength(6);expect(new Set(compositions.map(score=>score.name)).size).toBe(6);expect(new Set(compositions.map(score=>JSON.stringify(score.events))).size).toBe(6);
   for(const score of compositions){expect(score.beats).toBe(64);expect(score.tempo).toBeGreaterThanOrEqual(64);expect(score.events.length).toBeGreaterThan(80);expect(score.events.every(event=>event.beat>=0&&event.beat<64&&event.midi>0&&event.beats>0&&event.gain<=.03)).toBe(true);expect(score.events.some(event=>event.instrument==='bass')).toBe(true);expect(score.events.some(event=>event.instrument==='pad')).toBe(true);expect(score.events.some(event=>event.instrument==='bell')).toBe(true);expect(score.events.map(event=>event.beat)).toEqual(score.events.map(event=>event.beat).sort((a,b)=>a-b));}
  });
  it('maps public depth and known formation context without any hidden-world or random input',()=>{
   expect([0,49,50,159,160,319,320,599].map(depth=>deepClaimAudioRegion('mine',depth))).toEqual(['shallow','shallow','ironworks','ironworks','crystal','crystal','forgotten','forgotten']);expect(deepClaimAudioRegion('surface',599)).toBe('surface');
+  expect([600,608,999,1000].map(depth=>deepClaimAudioRegion('mine',depth))).toEqual(['ancient_deep','ancient_deep','ancient_deep','forgotten']);expect(deepClaimAudioRegion('surface',999)).toBe('surface');
   expect(['stone','clay','coal','iron_ore','quartz'].map(material=>deepClaimMaterialTimbre(material).kind)).toEqual(['stone','earth','carbon','metal','crystal']);expect(deepClaimMaterialTimbre('unrevealed')).toEqual(deepClaimMaterialTimbre('stone'));
+  expect(deepClaimMaterialTimbre('nickel_ore').kind).toBe('metal');expect(deepClaimMaterialTimbre('sulfur').kind).toBe('earth');
  });
 });
 

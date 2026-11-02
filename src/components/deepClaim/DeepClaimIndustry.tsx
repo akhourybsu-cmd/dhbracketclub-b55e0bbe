@@ -10,7 +10,7 @@ import { claimTimeLeft } from './display';
 export function DeepClaimIndustry({ snapshot, view, onView, station, onStation, busy, readOnly, now, onRefresh, onBuild, onResearch, onSell, onOpenHaul, startProduction, collectProduction, onConfirmed }: {
   snapshot: DeepClaimSnapshot; view: 'stock' | 'workshop'; onView: (view: 'stock' | 'workshop') => void;
   station: DeepClaimProductionStation; onStation: (station: DeepClaimProductionStation) => void; busy: boolean; readOnly: boolean; now: number;
-  onRefresh: () => void; onBuild: (key: DeepClaimBuildingId) => void; onResearch?: () => void; onSell: (key: DeepClaimResourceId) => void; onOpenHaul: (id: string) => void;
+  onRefresh: () => void; onBuild: (key: DeepClaimBuildingId) => void; onResearch?: (key?: string) => void; onSell: (key: DeepClaimResourceId) => void; onOpenHaul: (id: string) => void;
   startProduction: (recipe: string, batches: number) => Promise<DeepClaimSnapshot>;
   collectProduction: (job: DeepClaimProductionJob) => Promise<void>;
   onConfirmed: (title: string, description: string) => void;
@@ -22,6 +22,7 @@ export function DeepClaimIndustry({ snapshot, view, onView, station, onStation, 
   const [stockFilter, setStockFilter] = useState<'all' | 'in_stock'>('in_stock');
   const jobs = snapshot.production_jobs?.filter(job => job.status !== 'collected') ?? [];
   const recipe = snapshot.recipes?.find(item => item.key === recipeKey);
+  const producedGear = snapshot.equipment_catalog?.find(item => item.key === recipe?.equipment_output);
   const stationBuilding = snapshot.buildings.find(item => item.key === station);
   const equipmentCatalog = snapshot.equipment_catalog ?? [];
   const validBatches = !!recipe && Number.isSafeInteger(batches) && batches >= 1 && batches <= recipe.max_batches;
@@ -60,10 +61,10 @@ export function DeepClaimIndustry({ snapshot, view, onView, station, onStation, 
     {error && !recipeKey && <p className="dcl-error" role="alert">{error}</p>}
     <ClaimDialog open={!!recipeKey} onClose={() => setRecipeKey(null)} busy={busy} title={recipe?.name ?? 'Production recipe'} description={reviewed === null ? 'Choose a bounded batch, then review the complete cost.' : 'Confirm the inputs, station and expected output before starting.'}>{recipe && <>
       <div className="dcl-recipe-identity">{recipe.equipment_output ? <DeepClaimEquipmentIcon archetype={recipe.equipment_output} decorative /> : <Hammer size={45} aria-hidden="true" />}<div><ClaimBadge>{BUILDING_INFO[recipe.station].name}</ClaimBadge><p>Recipe version {recipe.version} · station level {recipe.required_station_level}+</p></div></div>
-      <label>Production batches<input aria-label="Production batches" type="number" min="1" max={recipe.max_batches} step="1" value={Number.isNaN(batches) ? '' : batches} disabled={busy || reviewed !== null} onChange={event => setBatches(Number(event.target.value))} /></label>
+      {!!producedGear?.thermal_reduction_percent && <p className="dcl-note">Heat protection: up to {producedGear.thermal_reduction_percent} percentage points per working, assigned shield, averaged across the crew. It shares the head slot with helmets. Broken, unassigned or another worker’s gear gives no protection.</p>}<label>Production batches<input aria-label="Production batches" type="number" min="1" max={recipe.max_batches} step="1" value={Number.isNaN(batches) ? '' : batches} disabled={busy || reviewed !== null} onChange={event => setBatches(Number(event.target.value))} /></label>
       <section className="dcl-batch-review"><h3>Inputs committed now</h3><Materials resources={inputs} /><div className="dcl-trade-summary"><span>Batch cost<small>Plus 2 credits kept for operating reserve</small></span><strong>{validBatches ? recipe.cash_cost * batches : '—'} cr</strong></div><h3>Finished output</h3><Materials resources={output} />{recipe.equipment_output && <p className="dcl-note">{validBatches ? batches : '—'} × {equipmentCatalog.find(item => item.key === recipe.equipment_output)?.name ?? recipe.equipment_output} · created as owned items on collection</p>}<p className="dcl-note">Processing time: {validBatches ? productionTime(recipe.effective_duration_seconds * batches) : '—'}, after earlier work on this station. Output stays unavailable until collected.</p></section>
       {reasons.length > 0 && <ul className="dcl-blocked-reasons">{reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}{!validBatches && <p className="dcl-error">Choose a whole batch count from 1 to {recipe.max_batches}.</p>}{stale && <p className="dcl-note">Your company changed. Review this batch again.</p>}{error && <p className="dcl-error" role="alert">{error}</p>}
-      {missingResearch.length > 0 && onResearch && <ClaimButton onClick={() => { setRecipeKey(null); onResearch(); }}>View required research</ClaimButton>}
+      {missingResearch.length > 0 && onResearch && <ClaimButton onClick={() => { setRecipeKey(null); onResearch(missingResearch[0]); }}>View required research</ClaimButton>}
       {currentBuilding && currentBuilding.level < recipe.required_station_level && <ClaimButton onClick={() => { setRecipeKey(null); onBuild(recipe.station); }}>{currentBuilding.level === 0 ? 'Build' : 'Upgrade'} {BUILDING_INFO[recipe.station].name}</ClaimButton>}
       <div className="dcl-dialog-actions"><ClaimButton disabled={busy} onClick={() => { if (reviewed !== null) setReviewed(null); else setRecipeKey(null); }}>Back</ClaimButton>{reviewed === null || stale ? <ClaimButton primary disabled={!validBatches || busy} onClick={() => setReviewed(snapshot.revision)}>Review batch</ClaimButton> : <ClaimButton primary pending={busy} disabled={reasons.length > 0 || !validBatches || readOnly} onClick={() => void start()}>Start production</ClaimButton>}</div>
     </>}</ClaimDialog>

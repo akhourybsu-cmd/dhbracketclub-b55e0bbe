@@ -1,11 +1,10 @@
 // Actual deployed SQL protocol in isolated PostgreSQL; no live user records.
 import { readFile } from "node:fs/promises";
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-export async function createFeatsFixture() {
-  const { PGlite } = await import(
+export async function createFeatsFixture({ database } = {}) {
+  const db = database ?? new (await import(
     process.env.PGLITE_MODULE || "@electric-sql/pglite"
-  );
-  const db = new PGlite();
+  )).PGlite();
   let queue = Promise.resolve(),
     seq = 1000;
   const run = (fn) => {

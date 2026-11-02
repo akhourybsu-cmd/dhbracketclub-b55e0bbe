@@ -3,6 +3,8 @@ import { BUILDING_ART, FORMATION_ART, FRONTIER_PALETTE as P, RESOURCE_ART, SPECI
 import type { BuildingActivity, WorkerEquipmentPaint } from './productionVisuals';
 import authoredPack from '../../../../art/deep-claim/pack-v1.json';
 import { drawAuthoredSprite } from './authoredAtlas';
+import { drawDeepClaimAddon } from './ancientAtlas';
+import { paintAncientShaftOverlay, paintAncientTerrain, type DeepClaimTerrainRegion } from './ancientArt';
 
 export type WorkerPose = 'idle' | 'walk' | 'mine' | 'haul' | 'setup' | 'survey' | 'build';
 const rect = (c: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number) => { c.fillStyle = color; c.fillRect(Math.round(x), Math.round(y), w, h); };
@@ -18,7 +20,8 @@ export function paintFog(c: CanvasRenderingContext2D, x: number, y: number) {
 }
 
 export const terrainSpriteKey = (resource: DeepClaimMineralId | null, dug: boolean, variant: number, detailed: boolean, soil: boolean, formation: DeepClaimFormation | null, neighbors: number) => `terrain:${dug ? 'dug' : soil || resource === 'clay' ? 'soil' : 'stone'}:${resource ?? 'none'}:${variant % 4}:${detailed ? 1 : 0}:${formation ?? 'none'}:${formation && dug ? neighbors & 15 : 0}`;
-export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, resource: DeepClaimMineralId | null, dug = false, variant = 0, detailed = true, soilBase = false, formation: DeepClaimFormation | null = null, neighbors = 0) {
+export function paintTerrain(c: CanvasRenderingContext2D, x: number, y: number, resource: DeepClaimMineralId | null, dug = false, variant = 0, detailed = true, soilBase = false, formation: DeepClaimFormation | null = null, neighbors = 0, region: DeepClaimTerrainRegion = 'legacy') {
+  if (region === 'ancient_deep' || resource === 'nickel_ore' || resource === 'sulfur') { paintAncientTerrain(c, x, y, resource, dug, variant, detailed, formation, neighbors); return; }
   if (drawAuthoredSprite(c, terrainSpriteKey(resource, dug, variant, detailed, soilBase, formation, neighbors), x, y, 16, 16)) return;
   if (dug) {
     const room = formation ? FORMATION_ART[formation] : null;
@@ -191,9 +194,10 @@ export function paintBuildingSource(c: CanvasRenderingContext2D, id: DeepClaimBu
 
 /** Static bases are pre-rendered once; small actual activity overlays remain explicit. */
 export function paintBuilding(c: CanvasRenderingContext2D, id: DeepClaimBuildingId, level: number, time: number, animate: boolean, selected = false, activity: BuildingActivity = { working: false, ready: false }) {
-  const a = BUILDING_ART[id], tier = Math.max(0, Math.min(id === 'mine_shaft' ? 5 : id === 'research_office' ? 2 : 3, Math.floor(level)));
+  const a = BUILDING_ART[id], tier = Math.max(0, Math.min(id === 'mine_shaft' ? 6 : id === 'research_office' ? 2 : 3, Math.floor(level)));
   const x = a.x * 16, y = a.y * 16, w = a.width * 16, h = a.height * 16;
-  if (!drawAuthoredSprite(c, `building:${id}:${tier}`, x - 8, y - 16, w + 16, h + 24)) { paintBuildingSource(c, id, level, time, animate, selected, activity); return; }
+  const painted = id === 'mine_shaft' && tier === 6 ? drawDeepClaimAddon(c, 'deep:building:mine_shaft:6', x - 8, y - 16, w + 16, h + 24) : drawAuthoredSprite(c, `building:${id}:${tier}`, x - 8, y - 16, w + 16, h + 24);
+  if (!painted) { paintBuildingSource(c, id, id === 'mine_shaft' ? Math.min(5, level) : level, time, animate, selected, activity); if (id === 'mine_shaft' && tier === 6) paintAncientShaftOverlay(c, x - 8, y - 16); return; }
   if (selected) { c.strokeStyle = '#ead09a'; c.lineWidth = 2; c.strokeRect(x - 4, tier > 0 ? y - 5 : -30, w + 8, tier > 0 ? h + 7 : 32); }
   if (!tier) return;
   if (id === 'mine_office' && animate) for (let puff = 0; puff < 3; puff++) { const rise = (time / 150 + puff * 8) % 27; rect(c, '#d0c9aa66', x + w - 21 + puff * 3, y - 15 - rise, 7 + puff * 2, 5); }
@@ -232,6 +236,7 @@ export function paintWorker(c: CanvasRenderingContext2D, x: number, y: number, s
   if (!drawAuthoredSprite(c, `worker:${specialty}:${pose}:${Math.abs(variant) % 4}:${frame}`, -12, -28, 24, 32)) paintWorkerBodySource(c, specialty, pose, elapsedMs, variant, animate);
   if (gear.headTier) { rect(c, gear.headTier >= 2 ? '#b1c0b5' : '#c09361', -4, -21 + bob, 8, 4); rect(c, '#e0c881', -3, -21 + bob, 5, 1); }
   if (gear.headTier === 2) rect(c, '#667d79', -5, -17 + bob, 3, 4);
+  if (gear.headTier === 3) { rect(c, gear.headBroken ? '#8c7655' : '#8ea997', -5, -17 + bob, 11, 7); rect(c, gear.headBroken ? '#6d6b50' : '#c2cdb0', -4, -16 + bob, 10, 3); rect(c, '#597d73', -2, -15 + bob, 7, 1); rect(c, '#dce0bc', -4, -11 + bob, 2, 1); }
   if (gear.headBroken) rect(c, '#a65e3c', -1, -21 + bob, 1, 5);
   if (pose === 'survey') {
     rect(c, '#ccbc8b', 4, -12 + bob, 8, 7); rect(c, '#75886c', 5, -10 + bob, 5, 1); rect(c, '#75886c', 7, -11 + bob, 1, 5);

@@ -1,3 +1,4 @@
+import phase7Catalog from '../../../supabase/seed/deep-claim-phase7-catalog.json';
 import phase5Catalog from '../../../supabase/seed/deep-claim-phase5-catalog.json';
 import phase4Catalog from '../../../supabase/seed/deep-claim-phase4-catalog.json';
 import phase3Catalog from '../../../supabase/seed/deep-claim-phase3-catalog.json';
@@ -34,6 +35,7 @@ export const RESOURCE_CATALOG: readonly DeepClaimResourceDefinition[] = [
   { id: 'cut_amethyst', name: 'Cut amethyst', sell_price: 125, color: '#cba6ed', description: 'A cut deep crystal for advanced instruments.' },
 
   ...phase4Catalog.resources as DeepClaimResourceDefinition[],
+  ...phase7Catalog.resources.map(({mineral: _mineral,hardness_tenths: _hardness,...resource})=>resource) as DeepClaimResourceDefinition[],
 ];
 export const RESOURCE_BY_ID = Object.fromEntries(RESOURCE_CATALOG.map(resource => [resource.id, resource])) as Record<DeepClaimResourceId, DeepClaimResourceDefinition>;
 export const STAT_INFO: Record<DeepClaimStatId, { name: string; description: string }> = {
@@ -93,14 +95,14 @@ export const STARTER_WORKERS = [
     stats: { mining: 48, geology: 45, engineering: 58, logistics: 83, safety: 56, endurance: 76, leadership: 51 } },
 ] as const;
 export const BUILDING_UPGRADE_COSTS: Record<DeepClaimBuildingId, readonly number[]> = {
-  mine_office: [90,1200], mine_shaft: [80,2000,5000,12000], warehouse: [60,1000], tool_station: [50,1600],
+  mine_office: [90,1200], mine_shaft: [80,2000,5000,12000,24000], warehouse: [60,1000], tool_station: [50,1600],
   workers_quarters: [90,450,1200], smeltery: [90,350,900], gem_workshop: [120,450,1100],research_office:[80,250],trading_post:[60,200,500],
 };
 export function buildingBenefits(key: DeepClaimBuildingId, level: number): { crew_slots?: number; max_depth?: number; shaft_depth?: number; warehouse_capacity?: number; yield_bonus_percent?: number; worker_capacity?: number; processing_speed_percent?: number; research_tier?:number; contract_tier?:number } {
   const added = ['workers_quarters','smeltery','gem_workshop','research_office','trading_post'].includes(key);
-  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 5 : key==='research_office'?2:3)) throw new Error('Invalid Deep Claim building level.');
+  if (!Number.isInteger(level) || level < (added ? 0 : 1) || level > (key === 'mine_shaft' ? 6 : key==='research_office'?2:3)) throw new Error('Invalid Deep Claim building level.');
   if (key === 'mine_office') return { crew_slots: level };
-  if (key === 'mine_shaft') return { max_depth: [49,99,149,299,599][level - 1], shaft_depth: [6,56,106,256,556][level - 1] };
+  if (key === 'mine_shaft') return { max_depth: [49,99,149,299,599,999][level - 1], shaft_depth: [6,56,106,256,556,956][level - 1] };
   if (key === 'warehouse') return { warehouse_capacity: 120 * 2 ** (level - 1) };
   if (key === 'tool_station') return { yield_bonus_percent: 25 * (level - 1), processing_speed_percent:[100,85,70][level-1] };
   if(key==='research_office')return {research_tier:level};
@@ -125,10 +127,12 @@ export function buildingEffect(key: DeepClaimBuildingId, level: number): string 
 export const PHASE2_CATALOG = phase2Catalog;
 export const EQUIPMENT_CATALOG = phase2Catalog.equipment as DeepClaimEquipmentDefinition[];
 export const ALL_EQUIPMENT_CATALOG = [...EQUIPMENT_CATALOG,...phase4Catalog.equipment as DeepClaimEquipmentDefinition[]];
-export const EQUIPMENT_BY_KEY = Object.fromEntries(ALL_EQUIPMENT_CATALOG.map(item => [item.key,item])) as Record<string, DeepClaimEquipmentDefinition>;
+export const DEEP_EQUIPMENT_CATALOG=[...ALL_EQUIPMENT_CATALOG,...phase7Catalog.equipment as DeepClaimEquipmentDefinition[]];
+export const EQUIPMENT_BY_KEY = Object.fromEntries(DEEP_EQUIPMENT_CATALOG.map(item => [item.key,item])) as Record<string, DeepClaimEquipmentDefinition>;
 export const RECIPE_CATALOG = phase2Catalog.recipes.map(recipe => ({ ...recipe, effective_duration_seconds: recipe.duration_seconds })) as DeepClaimRecipe[];
 export const ALL_RECIPE_CATALOG = [...RECIPE_CATALOG,...phase4Catalog.recipes.map(recipe=>({...recipe,effective_duration_seconds:recipe.duration_seconds})) as DeepClaimRecipe[]];
-export const RECIPE_BY_KEY = Object.fromEntries(ALL_RECIPE_CATALOG.map(recipe => [recipe.key,recipe])) as Record<string, DeepClaimRecipe>;
+export const DEEP_RECIPE_CATALOG=[...ALL_RECIPE_CATALOG,...phase7Catalog.recipes.map(recipe=>({...recipe,effective_duration_seconds:recipe.duration_seconds})) as DeepClaimRecipe[]];
+export const RECIPE_BY_KEY = Object.fromEntries(DEEP_RECIPE_CATALOG.map(recipe => [recipe.key,recipe])) as Record<string, DeepClaimRecipe>;
 export const CANDIDATE_PROFILES = phase2Catalog.candidate_profiles;
 export const TRAINING_COST = phase2Catalog.training.cash_cost;
 export const TRAINING_GAIN = phase2Catalog.training.stat_gain;
@@ -151,3 +155,11 @@ export const MILESTONE_BY_KEY=Object.fromEntries(BUSINESS_CATALOG.milestones.map
 /** Shared finite project definitions; membership/consent and authoritative progress remain server-owned. */
 export const SOCIAL_CATALOG=phase5Catalog as import('./types').DeepClaimSocialCatalog;
 export const CLUB_PROJECT_BY_KEY=Object.fromEntries(SOCIAL_CATALOG.projects.map(project=>[project.key,project]));
+
+/** The Ancient Deep is additive: legacy field/business/social catalogs above remain exact. */
+export const DEEP_CATALOG=phase7Catalog as import('./types').DeepClaimDeepCatalog;
+export function recipeCatalogForSchema(schemaVersion:number):readonly DeepClaimRecipe[]{return schemaVersion>=5?DEEP_RECIPE_CATALOG:schemaVersion>=4?ALL_RECIPE_CATALOG:RECIPE_CATALOG;}
+export function equipmentCatalogForSchema(schemaVersion:number):readonly DeepClaimEquipmentDefinition[]{return schemaVersion>=5?DEEP_EQUIPMENT_CATALOG:schemaVersion>=4?ALL_EQUIPMENT_CATALOG:EQUIPMENT_CATALOG;}
+export function hasDeepOperations(snapshot:import('./types').DeepClaimSnapshot):snapshot is import('./types').DeepClaimDeepSnapshot{return snapshot.schema_version===5&&!!snapshot.deep_catalog&&!!snapshot.deep_operations;}
+
+export function resourceCatalogForSchema(schemaVersion:number):readonly DeepClaimResourceDefinition[]{return schemaVersion>=5?RESOURCE_CATALOG:RESOURCE_CATALOG.filter(resource=>!DEEP_CATALOG.resources.some(added=>added.id===resource.id));}

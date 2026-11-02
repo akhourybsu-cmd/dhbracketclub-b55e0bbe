@@ -1,13 +1,13 @@
 import metadata from './generated/atlas-v1.json';
 
 export interface AuthoredFrame { x: number; y: number; width: number; height: number }
+export interface AuthoredAtlasMetadata { version: number; width: number; height: number; sourceHash: string; pngBytes: number; frames: Record<string, AuthoredFrame> }
 export type DeepClaimAtlasState = 'idle' | 'loading' | 'ready' | 'failed';
 export interface DeepClaimAtlasDiagnostics {
   state: DeepClaimAtlasState; width: number; height: number; spriteCount: number; decodedBytes: number; draws: number;
 }
 export const DEEP_CLAIM_ATLAS_URL = '/deep-claim/atlas-v1.png';
-export const DEEP_CLAIM_ATLAS_METADATA = metadata as { version: number; width: number; height: number; sourceHash: string; pngBytes: number; frames: Record<string, AuthoredFrame> };
-const registeredFrameCount = Object.keys(DEEP_CLAIM_ATLAS_METADATA.frames).length;
+export const DEEP_CLAIM_ATLAS_METADATA = metadata as AuthoredAtlasMetadata;
 
 /** One bounded, shared decoded image. Loading never blocks controls or the source-art fallback. */
 export class DeepClaimAtlas {
@@ -16,13 +16,19 @@ export class DeepClaimAtlas {
   private pending: Promise<'ready' | 'failed'> | null = null;
   private listeners = new Set<() => void>();
   private draws = 0;
-  constructor(private readonly createImage: () => HTMLImageElement = () => new Image(), private readonly timeoutMs = 10_000) {}
+  private readonly metadata: AuthoredAtlasMetadata;
+  private readonly url: string;
+  private readonly registeredFrameCount: number;
+  constructor(private readonly createImage: () => HTMLImageElement = () => new Image(), private readonly timeoutMs = 10_000, configuration?: { metadata: AuthoredAtlasMetadata; url: string }) {
+    this.metadata = configuration?.metadata ?? DEEP_CLAIM_ATLAS_METADATA; this.url = configuration?.url ?? DEEP_CLAIM_ATLAS_URL;
+    this.registeredFrameCount = Object.keys(this.metadata.frames).length;
+  }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   private notify() { for (const listener of this.listeners) listener(); }
   getDiagnostics(): DeepClaimAtlasDiagnostics {
-    const { width, height } = DEEP_CLAIM_ATLAS_METADATA;
+    const { width, height } = this.metadata;
     // spriteCount counts registered frame references; identical pixels share a rectangle.
-    return { state: this.state, width, height, spriteCount: registeredFrameCount, decodedBytes: this.state === 'ready' ? width * height * 4 : 0, draws: this.draws };
+    return { state: this.state, width, height, spriteCount: this.registeredFrameCount, decodedBytes: this.state === 'ready' ? width * height * 4 : 0, draws: this.draws };
   }
   preload(): Promise<'ready' | 'failed'> {
     if (this.state === 'ready' || this.state === 'failed') return Promise.resolve(this.state);
@@ -41,12 +47,12 @@ export class DeepClaimAtlas {
       try {
         image = this.createImage(); image.decoding = 'async';
         image.onload = () => {
-          if (image.naturalWidth !== DEEP_CLAIM_ATLAS_METADATA.width || image.naturalHeight !== DEEP_CLAIM_ATLAS_METADATA.height) { finish('failed'); return; }
+          if (image.naturalWidth !== this.metadata.width || image.naturalHeight !== this.metadata.height) { finish('failed'); return; }
           const decode = typeof image.decode === 'function' ? image.decode() : Promise.resolve();
           void decode.then(() => finish('ready'), () => finish('failed'));
         };
         image.onerror = () => finish('failed');
-        image.src = DEEP_CLAIM_ATLAS_URL;
+        image.src = this.url;
       } catch { finish('failed'); }
     });
     this.notify();
@@ -54,7 +60,7 @@ export class DeepClaimAtlas {
   }
   draw(context: CanvasRenderingContext2D, key: string, x: number, y: number, width?: number, height?: number): boolean {
     if (this.state !== 'ready' || !this.image) return false;
-    const frame = DEEP_CLAIM_ATLAS_METADATA.frames[key];
+    const frame = this.metadata.frames[key];
     if (!frame || ![x, y, width ?? frame.width, height ?? frame.height].every(Number.isFinite) || (width ?? frame.width) <= 0 || (height ?? frame.height) <= 0) return false;
     try {
       context.drawImage(this.image, frame.x, frame.y, frame.width, frame.height, x, y, width ?? frame.width, height ?? frame.height);

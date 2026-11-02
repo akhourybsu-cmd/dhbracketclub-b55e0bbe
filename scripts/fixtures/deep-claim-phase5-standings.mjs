@@ -98,7 +98,7 @@ export async function runPhase5StandingsTests(h){
   await setSocialPreferences(A,snapshot,{showcase:false,featured:[]});assert.deepEqual((await getClub(A)).own.featured_specimens,[]);
  });
  await check('Phase5 private accounts retain solo work but cannot read or mutate shared settings, boards or projects',async()=>{
-  const hidden=await bootstrap(actors.private);assert.equal(hidden.schema_version,4);await assert.rejects(()=>getClub(actors.private),denied);
+  const hidden=await bootstrap(actors.private);assert.equal(hidden.schema_version,h.currentSchema);await assert.rejects(()=>getClub(actors.private),denied);
   await assert.rejects(()=>setSocialPreferences(actors.private,hidden,{standings:true,showcase:true}),denied);
   const view=await getClub(A);assert.ok(!JSON.stringify(view).includes(actors.private));assert.ok(!view.standings.some(row=>row.user_id===actors.private));
  });

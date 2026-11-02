@@ -9,7 +9,7 @@ export function claimIntroAvailable(snapshot: DeepClaimSnapshot): boolean {
     && !snapshot.expeditions.some(job => job.status === 'active' && job.target.y === 1 && [47, 49].includes(job.target.x));
 }
 
-export function claimTargets(snapshot: DeepClaimSnapshot, mode: DeepClaimMode): DeepClaimPoint[] {
+export function claimTargets(snapshot: Pick<DeepClaimSnapshot, 'world' | 'infrastructure'>, mode: DeepClaimMode): DeepClaimPoint[] {
   const world = snapshot.world;
   if (!world) return [];
   const revealed = new Map(world.tiles.map(tile => [`${tile.x}:${tile.y}`, tile]));

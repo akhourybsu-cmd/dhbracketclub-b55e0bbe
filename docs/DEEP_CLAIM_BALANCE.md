@@ -4,6 +4,8 @@ Version-one mining, version-two workforce/production, version-three underground 
 
 Phase 5's separate social catalog is `supabase/seed/deep-claim-phase5-catalog.json`. It changes neither the private snapshot schema nor existing mining/research/production formulas. DH Feat definitions live in `src/lib/feats/deepClaimCatalog.json` and extend the existing permanent score ledger.
 
+Phase 7 adds `supabase/seed/deep-claim-phase7-catalog.json` as a separate versioned field extension. Earlier catalogs and paid definitions retain their bytes and values; no old reward target or point snapshot is rebalanced.
+
 ## Session rhythm
 
 | Shift | Server duration | Energy per worker |
@@ -281,3 +283,46 @@ The reachable progression remains 599 meters of supported depth, fourteen resear
 Existing headless evidence covers 210 mining combinations, finite industry/research reachability and eighteen one/two/three-member project partitions. The earned starter-to-bronze route spans two operating days with its specified crew and legal finite inputs. These checks bound concrete strategies and detect conservation/arbitrage errors; they do not establish fifty hours of content, a minimum number of sessions for every seed or commercial-length retention. Broader longitudinal balancing and physical-device profiling remain separate future measurements.
 
 Presentation release checks must preserve the economic source baseline before interpreting new performance measurements. PNG download size, decoded atlas memory, cache limits, scheduler wakeups and audio voice counts are runtime budgets, not gameplay multipliers or a reason to recalculate a frozen job.
+
+## Phase 7 Ancient Deep access and lift
+
+Shaft level six costs 24,000 company credits, requires existing `deep_operations_2`, supports 999m and constructs central access through 956m. It raises infrastructure capacity from 128 to 192. Other building levels/prices, daily energy, wages, crew/housing/equipment caps and production queues remain unchanged. The original fourteen research nodes, twelve deliveries, eight milestones, six club projects and seven Deep Claim Feat families remain finite and unchanged.
+
+The new region spans 600–999m. New generation-four nickel/sulfur clusters begin only in previously absent chunk rows nineteen and deeper, at 608m. A pre-existing row-eighteen chunk retains its complete 576–607m geology, including unseen cells below the earlier technology cap. Nickel has an eight-percent cluster share with 18–36 finite units per cell; sulfur has fourteen percent with 24–48. Remaining clusters use the established deep distributions. No raw resource regenerates.
+
+Powered-lift discount is `floor(75 × eligible shaft-edge length / total route Manhattan length)`. Eligible unit edges are vertical at x48, within constructed depth 0–956, with both endpoints known and excavated. Unknown gaps, solid cells, branches and below-corridor segments contribute no eligible length. An empty route has zero discount. Apply the discount to ordinary forward/return base travel with a ceiling, then apply the existing route-weighted rail reduction with another ceiling, retaining the twenty-second stage minimum. Actual travel savings become work time inside the selected base preset rather than free cargo.
+
+The server's fixed surface landing at `(48, 0)` is known constructed access even though public underground tiles start at depth one. Public explanatory math recognizes that landing only after the shaft and research gates; every underground endpoint still requires an actual known excavated tile.
+
+## Phase 7 thermal productivity
+
+Heat applies only to new configuration-seven mining/exploration at target depths at least 600. Surveys and infrastructure retain their useful work so preparation remains possible. The elapsed work stage is unchanged; these formulas describe productive capacity only.
+
+| Component | Exact calculation |
+|---|---|
+| Thermal load | `min(40, 30 + 2 × floor((depth − 600) / 100))` |
+| Engineering mitigation | `floor(effective crew-average Engineering / 10)` |
+| Ventilation mitigation | Strongest installed covering ventilation strength; no same-type stacking |
+| Gear mitigation | `min(15, floor(sum(working assigned shield thermal percentages) / crew count))` |
+| Remaining penalty | `max(0, load − Engineering − ventilation − gear)` |
+| Useful mining work | `floor(raw work seconds × (100 − penalty) / 100)` |
+
+Loads at 600/700/800/900m are 30/32/34/36 percent. Gear is averaged over the selected crew: one working fifteen-percent shield contributes fifteen points to a solo crew, seven to two workers and five to three. Two shields on a three-person crew supply ten. Broken, retired, unassigned or another worker/company's gear cannot improve the selected crew's quote. The head-slot tradeoff with existing helmets remains real.
+
+Extraction uses the floored effective seconds once in the existing rational capacity calculation, then obeys finite remainder and carrying limits. Exploration reduces its bounded raw withdrawal quota once, with a minimum of one when the original quota was positive. Heat never removes already-earned cargo or changes daily energy, duration presets, paid wages or wear per energy. Existing bounded setup-delay incidents remain separate. Freeze every modifier at dispatch; an item wearing out on return affects the next job, not the completed plan.
+
+## Phase 7 nickel industry
+
+| Good | Sale price | Terrain / hardness |
+|---|---:|---|
+| Nickel ore | 28 | Finite raw mineral; 2.6 hardness |
+| Sulfur | 6 | Finite raw mineral; 1.2 hardness |
+| Nickel alloy | 195 | Processed inventory only |
+
+Smelt three nickel ore, one iron bar and two coal with ten credits into one nickel alloy at smeltery level three. Base time is 780 seconds; existing station and completed Processing research modifiers apply only when starting a new order. Input opportunity value is 162 credits, producing a 23-credit net added sale value after the ten-credit fee. This recipe requires existing Processing 2 and Deep Operations 2.
+
+Craft a Nickel Heat Shield from two alloy, two polished quartz, two sulfur and eighty credits at tool-station level three. Base time is 900 seconds; existing Deep Operations 2 and Safety 2 gate the recipe. It has 180 durability, fifteen-percent thermal protection, +10 Safety and +6 Endurance in the head slot. Missing-durability repairs cost `ceil(missing × 0.50)` credits plus one alloy and two sulfur. It has no resale/refund path. The new chain contains no reverse recipe, input purchase or recurring award loop.
+
+Inventory expands from nineteen to twenty-two identities; raw minerals from ten to twelve; recipes from twenty-one to twenty-three; owned gear definitions from twelve to thirteen. Production configuration four, its three-job queue and the combined forty-eight-item gear limit remain the same. Original recipe/equipment definitions and all old sale prices are preserved.
+
+Weekly haul valuation gives new configuration-seven nickel/sulfur their fixed 28/6 values while retaining the original ten mineral prices. Unknown material keys do not become client-priced rewards. Existing records and plans are not repriced through a future market helper. The 999m expansion does not change the earlier 599m Feat target or its points; existing source-backed volume records naturally include legitimate new work under their current budgets.

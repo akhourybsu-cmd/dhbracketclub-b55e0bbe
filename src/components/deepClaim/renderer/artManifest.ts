@@ -40,6 +40,9 @@ export const RESOURCE_ART: Record<DeepClaimResourceId, { label: string; dark: st
   bronze_bar: { label: 'Bronze bar', dark: '#765331', mid: '#b7904f', light: '#ddc18b', shape: 'bar' },
   steel_bar: { label: 'Steel bar', dark: '#364d58', mid: '#839ba4', light: '#d0ded9', shape: 'bar' },
   gold_bar: { label: 'Gold bar', dark: '#8c612e', mid: '#d3aa4f', light: '#f5dda0', shape: 'bar' },
+  nickel_ore: { label: 'Nickel ore', dark: '#405952', mid: '#a3b9a5', light: '#d3dfbf', shape: 'rock' },
+  sulfur: { label: 'Sulfur', dark: '#7c7139', mid: '#d4bd63', light: '#f2e1a1', shape: 'crystal' },
+  nickel_alloy: { label: 'Nickel alloy', dark: '#657b72', mid: '#b9c1ac', light: '#e1e4c9', shape: 'bar' },
 };
 export const SPECIALTY_ART: Record<DeepClaimSpecialty, { coat: string; helmet: string; tool: 'pick' | 'map' | 'pack' | 'wrench' | 'scope' | 'charge' | 'lamp' }> = {
   miner: { coat: '#a66c43', helmet: '#d3b362', tool: 'pick' }, geologist: { coat: '#77836b', helmet: '#d5c6a0', tool: 'map' },
@@ -68,14 +71,16 @@ export const EQUIPMENT_ART = {
   survey_kit: { label: 'Survey kit', kind: 'survey', tier: 1 }, prism_survey_kit: { label: 'Prism survey kit', kind: 'survey', tier: 2 },
   steel_pickaxe: { label: 'Steel pickaxe', kind: 'pickaxe', tier: 3 },
   steel_cargo_harness: { label: 'Steel cargo harness', kind: 'cargo', tier: 3 },
+  nickel_heatshield: { label: 'Nickel heat shield', kind: 'helmet', tier: 3 },
 } satisfies Record<string, { label: string; kind: EquipmentSilhouette; tier: 1 | 2 | 3 }>;
 export type EquipmentArtKey = keyof typeof EQUIPMENT_ART;
 export const equipmentArtwork = (key: string) => EQUIPMENT_ART[key as EquipmentArtKey];
 export const DEEP_CLAIM_ART_MANIFEST = {
   atlas: { version: 1, image: '/deep-claim/atlas-v1.png', metadata: 'renderer/generated/atlas-v1.json', source: 'art/deep-claim/pack-v1.json', regenerate: 'node scripts/build-deep-claim-atlas.mjs' },
+  addon: { version: 2, image: '/deep-claim/atlas-v2.png', metadata: 'renderer/generated/atlas-v2.json', source: 'art/deep-claim/pack-v2.json', region: 'ancient_deep', regenerate: 'node scripts/build-deep-claim-addon.mjs' },
   terrain: ['surface_grass', 'fog_rock', 'dug_tunnel', ...Object.keys(FORMATION_ART).map(id => `formation_${id}`), ...DEEP_CLAIM_MINERAL_IDS.map(id => `deposit_${id}`)],
   inventory: Object.keys(RESOURCE_ART).map(id => `stock_${id}`), equipment: Object.keys(EQUIPMENT_ART),
-  workers: Object.keys(SPECIALTY_ART).map(id => `crew_${id}`), buildings: Object.keys(BUILDING_ART).map(id => `${id}_levels_${id === 'research_office' ? '0_2' : ['workers_quarters','smeltery','gem_workshop','trading_post'].includes(id) ? '0_3' : id === 'mine_shaft' ? '1_5' : '1_3'}`),
+  workers: Object.keys(SPECIALTY_ART).map(id => `crew_${id}`), buildings: Object.keys(BUILDING_ART).map(id => `${id}_levels_${id === 'research_office' ? '0_2' : ['workers_quarters','smeltery','gem_workshop','trading_post'].includes(id) ? '0_3' : id === 'mine_shaft' ? '1_6' : '1_3'}`),
   business: ['research', 'contract', 'milestone', 'office'],
   club: ['club', 'project', 'standings', 'showcase', 'company_identity', 'empty_or_published_specimen_case'],
   projects: ['camp_supply', 'haul_extension', 'clean_air', 'assay_observatory', 'deep_freight', 'geological_pavilion'],

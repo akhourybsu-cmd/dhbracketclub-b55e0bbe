@@ -2,7 +2,7 @@
 
 Deep Claim is a persistent, personal mining company inside DH Club. The player makes business and crew decisions, then returns to see the consequences in a mine that changes permanently. The company belongs to one member within one club; it is not a shared club treasury or a live multiplayer mine.
 
-This document records the design and integration contracts through Phase 6 original presentation and runtime polish. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
+This document records the design and integration contracts through Phase 7, the Ancient Deep. [DEEP_CLAIM_IMPLEMENTATION.md](DEEP_CLAIM_IMPLEMENTATION.md) is the delivery ledger for what has actually been verified. [DEEP_CLAIM_PROTOCOL.md](DEEP_CLAIM_PROTOCOL.md) owns the transport, authorization and transaction details; [DEEP_CLAIM_BALANCE.md](DEEP_CLAIM_BALANCE.md) owns exact calculations and costs. Later systems below are plans, not unlocked features or completed work.
 
 ## Player promise and first session
 
@@ -169,6 +169,32 @@ Camera and sprite feedback remain short and interruptible. Reduced motion preser
 
 Performance claims require recorded budgets and measurements. Viewport culling, bounded texture/path caches, frame scheduling, audio cleanup and graceful atlas failure are checked independently. Browser timing and headless interaction checks are useful evidence, but do not establish physical-device frame rates or battery behavior. Presentation also cannot establish a universal playtime: the current world, research, contracts and project goals are finite versioned content, with no asserted fifty-hour minimum.
 
+## Phase 7: the Ancient Deep
+
+The Ancient Deep extends playable operations from 600 through 999 meters with hydrothermal basalt, finite nickel-bearing seams and sulfur beds. It is one complete region rather than an indefinite depth multiplier. A sixth shaft level supplies constructed central access through 956 meters and a functioning powered lift. Existing Deep Operations 2 research gates the upgrade; its 24,000-credit price uses no below-cap mineral, so entry does not depend on a resource the upgrade itself must unlock.
+
+### Travel and useful work are different decisions
+
+The lift discounts the actual constructed, known shaft portion of a route. Only vertical center-shaft edges with both endpoints known and excavated, within the built corridor, qualify. Their length is weighted against the complete Manhattan route. Branching tunnels and ground below the corridor do not inherit a blanket seventy-five-percent reduction. Existing weighted rail then reduces the remaining travel/return cost, with the established minimum stage duration. The result is a practical reason to prepare access and transport rather than teleporting a crew through unknown rock.
+
+Deep mining also introduces a predictable heat penalty to useful work. Below 600 meters, heat has no effect. At deeper mining/exploration sites, effective Engineering, the strongest installed applicable ventilation and functioning heat shields assigned to the selected crew mitigate the quoted load. A larger crew averages shield protection, so one specialist item does not protect every worker at full strength. Broken, unassigned or another crew's equipment supplies no thermal benefit.
+
+Heat reduces productive output rather than destroying earned cargo, injuring workers or extending every server clock. Survey and infrastructure work remain unaffected so a company can prepare a difficult site with its current crew. The quote explains raw work, mitigation and effective work before payment. The server freezes the applied modifiers into configuration-seven plans; later gear wear, assignment changes or construction cannot rewrite that expedition's outcome. Existing configuration-one/two/three expeditions retain their own travel, yield, wear and receipts.
+
+### A short, real industrial chain
+
+Nickel ore and sulfur are finite new raw minerals; nickel alloy is processed inventory only. Existing research unlocks two paid recipes: nickel-alloy smelting and a specialized head-slot Nickel Heat Shield. The shield competes with other real head gear and supplies thermal protection plus bounded Safety/Endurance bonuses. Smelting consumes actual nickel, an iron bar, coal, cash and station time. Crafting and repairs require real alloy/sulfur, making both new resources useful without an NPC input-purchase or recursive conversion loop.
+
+This slice adds no research tree, contract, milestone, cooperative project or DH Feat family. The original fourteen research nodes, twelve deliveries, eight company milestones, six club projects and 590-point Deep Claim Feat budget remain intact. Existing source-backed volume records can recognize legitimate new work without rewriting an earlier threshold or permanent award. The sixth shaft raises infrastructure capacity from 128 to 192 while other company caps remain unchanged.
+
+### Preserve the old mine
+
+Generation four applies only to previously absent chunks from row nineteen, at 608 meters. The region begins at 600 meters, but 600–607 is inside the existing 576–607 chunk: its recorded generation and all unseen cells remain authoritative. Every old seed, chunk, revealed/depleted tile and frozen plan stays intact. Cutover pins pending legacy work before changing the chooser; no terrain is revealed early. The seven released migrations and five old canonical catalogs remain byte-for-byte preserved under an additive migration.
+
+Private snapshot schema five adds the Ancient Deep catalog and capacity/lift presentation while retaining older schema adapters, field catalog three, business catalog four, production configuration four and the same twenty-five member RPC signatures. New configuration-seven cargo has explicit nickel/sulfur weekly valuation; original mineral prices and earlier records remain fixed.
+
+Known-ground depth navigation and mode changes preserve a legal selected worksite. Hidden cells are not promoted into selectable jobs by a camera control. Original art pack v1 and its published bytes remain frozen; a small v2 add-on supplies the sixth shaft and known Ancient Deep/resource/shield art. No new main navigation layer or client-generated terrain is introduced. Content below 999 meters, broader automation and additional regions remain future work.
+
 ## Crew decisions
 
 The specialty framework supports Miner, Geologist, Hauler, Engineer, Surveyor, Demolitionist and Safety Officer. Phase 1 starts with mining, geology and hauling specialists; Phase 2’s daily candidate system makes the broader workforce available without replacing those starters.
@@ -225,7 +251,7 @@ Phase 4 adds dependency-based research, finite delivery contracts, source-backed
 
 Phase 5 adds opt-in club standings/showcases, finite shared projects, existing-ledger DH Feats and batched in-app updates. Company credits and worker energy remain isolated resources; DH Score is never spendable, and there is no cross-game combined ranking or public mine save.
 
-Phase 6 supplies the current original pixel pack and composed synthesized presentation, with local painter fallbacks. Additional authored animation, recorded music, future asset packs and physical-device profiling remain further work; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md). This release does not claim a commissioned commercial atlas, a recorded soundtrack or proof of a fixed minimum game length.
+Phase 6 supplies the original pixel pack and composed synthesized presentation, with local painter fallbacks; Phase 7 adds a separately versioned Ancient Deep pack. Additional authored animation, recorded music, content beyond 999 meters and physical-device profiling remain further work; see [DEEP_CLAIM_ASSETS.md](DEEP_CLAIM_ASSETS.md). This release does not claim a commissioned commercial atlas, a recorded soundtrack or proof of a fixed minimum game length.
 
 ## Verification gates
 
@@ -240,5 +266,7 @@ Phase 4 verifies research prerequisites, one active order, exact costs, elapsed 
 Phase 5 additionally verifies opt-in/out, private-account and cross-club isolation; exact public-field allowlists and retained old featured finds; frozen weekly cargo, ties and calendar boundaries; whole-donation rollback, individual/global caps and once-only qualified claims; old metrics/receipts preserved by real Feats composition; historical import versus new monthly awards; lifetime history across club/install changes; notification preferences, cooldowns, daily limits, dismissal-safe dedupe and owner-only project notification queueing. Shared-project/account locks and foreign-key locks require explicit review; the isolated harness remains insufficient evidence of native parallel stress behavior.
 
 Phase 6 verifies reproducible original atlas outputs and byte/decoded-memory budgets; stable rule/catalog/migration hashes; disclosed-state-only art/audio; old preference migration and independent sound levels; gesture-only audio startup, background/mute/disposal cleanup and resume races; bounded rendering/caches; native pointer/wheel/keyboard cancellation; reduced-motion invalidation; focus restoration and atlas-failure fallback. Performance reports distinguish measured browser behavior from untested physical hardware, and every gameplay/retry/privacy regression remains required.
+
+Phase 7 verifies frozen old sources/art and old plans through cutover; absent-chunk-only generation and the 600/608 boundary; actual known-edge lift weighting and rail order; quoted/server heat parity, crew-average protection, broken/foreign gear exclusion and frozen effects through wear; finite nickel production/crafting/repair; 128/192 infrastructure limits; unchanged legacy catalogs, score receipts and RPC security; known-ground navigation, forced-colors/focus behavior and production PWA caching. Browser emulation remains distinct from physical-device testing, and serialized PostgreSQL fixtures do not prove native parallel stress behavior.
 
 Installation, migration, commit, push and deployment status must be recorded from actual evidence in the implementation ledger. This design document does not assert that a live deployment or live database migration has occurred.

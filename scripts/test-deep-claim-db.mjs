@@ -14,6 +14,9 @@ import { runPhase4ExtraTests } from './fixtures/deep-claim-phase4-extra.mjs';
 import { runPhase5SocialTests } from './fixtures/deep-claim-phase5-social.mjs';
 import { runPhase5PreservationTests } from './fixtures/deep-claim-phase5-preservation.mjs';
 import { runPhase5StandingsTests } from './fixtures/deep-claim-phase5-standings.mjs';
+import { runPhase7PreservationTests } from './fixtures/deep-claim-phase7-preservation.mjs';
+import { runPhase7WorldTests } from './fixtures/deep-claim-phase7-world.mjs';
+import { runPhase7ExtraTests } from './fixtures/deep-claim-phase7-extra.mjs';
 
 const fixture = await createDeepClaimDatabase();
 for (const [suffix, hash] of [
@@ -22,9 +25,11 @@ for (const [suffix, hash] of [
   ['20261102030000_deep_claim_workforce_production.sql', 'c27b82ed2f5f5daf41b6ac2a514cfa44832b0ddec37d8a3b7e0abaa1f2927d12'],
   ['20261102040000_deep_claim_underground_operations.sql', 'f5cd959948231619d1396bed64592f1623a6e5939bbde8842c83a56733b85063'],
   ['20261102050000_deep_claim_business_development.sql', '0c5b2ad128cd41aecca0c4ede5a3faa6d58f872825070abd30e1d16c6962ad24'],
-]) assert.equal(createHash('sha256').update(fixture.sources.get(`supabase/migrations/${suffix}`)).digest('hex'), hash, 'Published migrations must remain immutable');
+  ['20261102060000_deep_claim_club_operations.sql', 'a33881f242be6795c21f81e17d2840f8726f412c1cac68f214588808966032bf'],
+  ['20261102061000_deep_claim_dh_integration.sql', 'ddd9dc22f3fb305cf94795784086ad4d02c1b77241c21e57018be240c2dac925'],
+]) assert.equal(createHash('sha256').update(await readFile(`supabase/migrations/${suffix}`)).digest('hex'), hash, 'Published migrations must remain immutable');
 const { db, rpc: rawRpc, actorQuery } = fixture;
-const enginePaths = ['src/lib/deepClaim/simulation.ts', 'src/lib/deepClaim/world.ts', 'src/lib/deepClaim/field.ts', 'src/lib/deepClaim/business.ts', 'src/lib/deepClaim/production.ts', 'src/lib/deepClaim/social.ts', 'src/lib/deepClaim/catalog.ts', 'src/lib/deepClaim/types.ts'];
+const enginePaths = ['src/lib/deepClaim/simulation.ts', 'src/lib/deepClaim/world.ts', 'src/lib/deepClaim/field.ts', 'src/lib/deepClaim/business.ts', 'src/lib/deepClaim/production.ts', 'src/lib/deepClaim/social.ts', 'src/lib/deepClaim/deepOperations.ts', 'src/lib/deepClaim/catalog.ts', 'src/lib/deepClaim/types.ts'];
 for (const path of enginePaths) fixture.sources.set(path, await readFile(path, 'utf8'));
 const catalogPath = 'supabase/seed/deep-claim-phase2-catalog.json';
 fixture.sources.set(catalogPath, await readFile(catalogPath, 'utf8'));
@@ -34,7 +39,9 @@ const businessCatalogPath = 'supabase/seed/deep-claim-phase4-catalog.json';
 fixture.sources.set(businessCatalogPath, await readFile(businessCatalogPath, 'utf8'));
 const socialCatalogPath = 'supabase/seed/deep-claim-phase5-catalog.json';
 fixture.sources.set(socialCatalogPath, await readFile(socialCatalogPath, 'utf8'));
-const built = await build({ entryPoints: enginePaths.slice(0, 6), bundle: true, platform: 'node', format: 'esm', write: false, outdir: '/tmp/deep-claim-db-engine' });
+const deepCatalogPath = 'supabase/seed/deep-claim-phase7-catalog.json';
+fixture.sources.set(deepCatalogPath, await readFile(deepCatalogPath, 'utf8'));
+const built = await build({ entryPoints: enginePaths.slice(0, 7), bundle: true, platform: 'node', format: 'esm', write: false, outdir: '/tmp/deep-claim-db-engine' });
 const load = suffix => import(`data:text/javascript;base64,${Buffer.from(built.outputFiles.find(file => file.path.endsWith(suffix)).text).toString('base64')}`);
 const { calculateCrewPlan, calendarEnergyDay } = await load('/simulation.js');
 const { validateDeepClaimSnapshot, validateDeepClaimPreview } = await load('/world.js');
@@ -42,6 +49,8 @@ const fieldEngine = await load('/field.js');
 const businessEngine = await load('/business.js');
 const productionEngine = await load('/production.js');
 const socialEngine = await load('/social.js');
+const deepEngine = await load('/deepOperations.js');
+const CURRENT_SCHEMA = 5, CURRENT_FIELD_RULES = 7;
 async function rpc(user, name, parameters = {}, role = 'authenticated') {
   const result = await rawRpc(user, name, parameters, role);
   if (name === 'dc_get_club') socialEngine.validateDeepClaimClubView(result);
@@ -131,8 +140,8 @@ async function proof() {
   await fixture.assertSourcesUnchanged();
   if (!process.argv.includes('--proof')) return;
   const bodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body_md5 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname ~ '^(dc_|deep_claim_)' order by signature")).rows;
-  await writeFile('/tmp/deep-claim-phase5-core-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.body_md5])), null, 2));
-  await writeFile('/tmp/deep-claim-phase5-core-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].filter(([path]) => path.includes('20261102')).map(([path, source]) => [path, { sha256: createHash('sha256').update(source).digest('hex'), md5: createHash('md5').update(source).digest('hex') }])), null, 2));
+  await writeFile('/tmp/deep-claim-phase7-core-expected-bodies.json', JSON.stringify(Object.fromEntries(bodies.map(row => [row.signature, row.body_md5])), null, 2));
+  await writeFile('/tmp/deep-claim-phase7-core-expected-sources.json', JSON.stringify(Object.fromEntries([...fixture.sources].filter(([path]) => path.includes('20261102')).map(([path, source]) => [path, { sha256: createHash('sha256').update(source).digest('hex'), md5: createHash('md5').update(source).digest('hex') }])), null, 2));
   const literal = value => `'${value.replaceAll("'", "''")}'`;
   const expected = bodies.map(row => `(${literal(row.signature)},${literal(row.body_md5)})`).join(',\n');
   const postflight = `-- READ ONLY. Compare the installed release with the independently tested SQL.
@@ -168,7 +177,7 @@ join pg_class c on c.oid=k.conrelid join pg_namespace n on n.oid=c.relnamespace
 where n.nspname='public' and c.relname in('dc_companies','dc_worlds','dc_chunks','dc_tiles','dc_expeditions','dc_inventory')
 order by c.relname,k.conname;
 `;
-  await writeFile('/tmp/deep-claim-phase5-core-postflight.sql', postflight);
+  await writeFile('/tmp/deep-claim-phase7-core-postflight.sql', postflight);
   console.log(`PASS proof: ${bodies.length} installed function bodies and exact Deep Claim migration sources`);
 }
 
@@ -199,7 +208,7 @@ try {
       assert.deepEqual(empty.discovery_summary, { pending: 0, kept: 0, sold: 0, salvaged: 0 });
       const first = await bootstrap(); noPrivateState(first);
       for (const privateCopy of [{ milestones: [] }, { business: { nested: { milestones: [] } } }, { business: { milestones: [{ seed: 'hidden' }] } }]) assert.throws(() => noPrivateState(privateCopy), /Private field leaked/);
-      assert.equal(first.schema_version, 4); assert.equal(first.company.user_id, A); assert.equal(first.company.club_id, CLUB);
+      assert.equal(first.schema_version, CURRENT_SCHEMA); assert.equal(first.company.user_id, A); assert.equal(first.company.club_id, CLUB);
       assert.equal(first.company.name, 'Frontier & Sons'); assert.equal(first.company.cash, 180); assert.equal(first.company.timezone, 'America/New_York');
       assert.equal(first.company.crew_slots, 1); assert.equal(first.company.tutorial_used, false);
       assert.equal(first.workers.length, 3); assert.equal(new Set(first.workers.map(worker => worker.name)).size, 3);
@@ -704,7 +713,7 @@ try {
           for (const previous of saved[table]) assert.ok(rows.some(current => Object.entries(previous.record).every(([field, value]) => JSON.stringify(current.record[field]) === JSON.stringify(value))), `${table} must preserve every existing field`);
         }
         const migrated = await legacy.rpc(A, 'dc_get'); validateDeepClaimSnapshot(migrated);
-        assert.equal(migrated.schema_version, 4); assert.equal(migrated.company.id, first.company.id); assert.equal(migrated.company.cash, started.company.cash);
+        assert.equal(migrated.schema_version, CURRENT_SCHEMA); assert.equal(migrated.company.id, first.company.id); assert.equal(migrated.company.cash, started.company.cash);
         const { stage: _previousStage, ...frozenJob } = job, { stage: _currentStage, ...migratedJob } = migrated.expeditions.find(value => value.id === job.id);
         for (const [field, value] of Object.entries(frozenJob)) assert.deepEqual(migratedJob[field], value);
         assert.equal((await legacy.db.query('select public.dc_chunk_version_v2($1,30,171) version', [first.company.id])).rows[0].version, 1);
@@ -718,7 +727,7 @@ try {
         assert.equal((await legacy.db.query('select count(*)::int n from public.dc_job_equipment where job_id=$1', [job.id])).rows[0].n, 0);
         const collected = await legacy.rpc(A, 'dc_collect', { p_job_id: job.id, p_request_id: request() });
         const next = await legacy.rpc(A, 'dc_dispatch', { ...previewArgs([collected.workers[0].id], { mode: 'extract', x: 47, y: 2 }), p_expected_revision: collected.revision, p_request_id: request() });
-        assert.equal(next.expeditions.find(value => value.status === 'active').config_version, 3);
+        assert.equal(next.expeditions.find(value => value.status === 'active').config_version, CURRENT_FIELD_RULES);
       } finally { await legacy.close(); }
     });
 
@@ -854,12 +863,12 @@ try {
       const oreEyes = initial.workers.filter(worker => worker.traits.includes('ore_eye')).length;
       const expectedPlan = fieldEngine.surveyPlan(20, geology, oreEyes), selected = fieldEngine.selectSurveyTiles(target, initial.world.tiles, initial.world.max_depth, expectedPlan);
       const quote = await previewOperation(A, initial, { workers, mode: 'survey', x: target.x, y: target.y });
-      assert.equal(quote.allowed, true, JSON.stringify(quote.reasons)); assert.equal(quote.operation_version, 3); assert.deepEqual(quote.survey, expectedPlan);
+      assert.equal(quote.allowed, true, JSON.stringify(quote.reasons)); assert.equal(quote.operation_version, CURRENT_FIELD_RULES); assert.deepEqual(quote.survey, expectedPlan);
       assert.deepEqual(quote.materials_cost, {}); assert.equal(quote.operation_cost, 0); assert.deepEqual(quote.estimated_yield, { min: 0, max: 0 });
       assert.equal(quote.conditions.incident_chance_percent, 0); assert.equal(quote.conditions.max_delay_seconds, 0);
       assert.deepEqual(economicState(await get()), economicState(initial));
       const started = await dispatchOperation(A, initial, { workers, mode: 'survey', x: target.x, y: target.y }), job = started.expeditions.find(job => job.status === 'active');
-      assert.equal(job.config_version, 3); assert.equal(job.cargo, null); assert.deepEqual(started.world.tiles, initial.world.tiles); noPrivateState(started);
+      assert.equal(job.config_version, CURRENT_FIELD_RULES); assert.equal(job.cargo, null); assert.deepEqual(started.world.tiles, initial.world.tiles); noPrivateState(started);
       assert.equal(started.company.cash, initial.company.cash - quote.wages); assert.ok(started.workers.every(worker => worker.energy === 5));
       const plan = (await one('select content from public.dc_plans where job_id=$1', [job.id])).content;
       assert.deepEqual(plan.extractions, []); assert.deepEqual(plan.cargo, {}); assert.deepEqual(plan.reveals, selected);
@@ -951,6 +960,7 @@ try {
     });
 
     const harness = { check, db, rpc, one, A, B, CLUB, actors, request, bootstrap, get, preview, dispatch, previewOperation, dispatchOperation, resolveDiscovery, startResearch, fulfillContract, claimMilestone, getClub, setSocialPreferences, contributeProject, claimProject, collect, sell, upgrade, finish, collectAndSell, fixture,
+      currentSchema: CURRENT_SCHEMA, currentFieldRules: CURRENT_FIELD_RULES, deepEngine,
       engine: { calculateCrewPlan, calendarEnergyDay, validateDeepClaimSnapshot, validateDeepClaimPreview, ...fieldEngine, ...businessEngine, ...productionEngine, ...socialEngine } };
     await runPhase2ExtraTests(harness);
     await runPhase3PreservationTests(harness);
@@ -962,6 +972,9 @@ try {
     await runPhase5PreservationTests(harness);
     await runPhase5SocialTests(harness);
     await runPhase5StandingsTests(harness);
+    await runPhase7PreservationTests(harness);
+    await runPhase7WorldTests(harness);
+    await runPhase7ExtraTests(harness);
   }
   await proof();
   console.log(`${checks} Deep Claim database integration checks passed.`);

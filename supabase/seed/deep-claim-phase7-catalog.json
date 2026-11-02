@@ -1,0 +1,142 @@
+{
+  "version": 7,
+  "name": "The Ancient Deep",
+  "shaft": {
+    "max_level": 6,
+    "upgrade_cost": 24000,
+    "max_depth": 999,
+    "corridor_depth": 956,
+    "required_research": [
+      "deep_operations_2"
+    ],
+    "lift_discount_percent": 75
+  },
+  "regions": [
+    {
+      "key": "ancient",
+      "name": "Ancient Deep",
+      "min_depth": 600,
+      "max_depth": 999,
+      "description": "Hydrothermal basalt, nickel-bearing seams and sulfur beds. Engineering, installed ventilation and heat shields preserve productive work."
+    }
+  ],
+  "infrastructure": {
+    "base_capacity": 128,
+    "deep_capacity": 192
+  },
+  "thermal": {
+    "min_depth": 600,
+    "base_percent": 30,
+    "step_depth": 100,
+    "step_percent": 2,
+    "cap_percent": 40,
+    "engineering_divisor": 10,
+    "ventilation_multiplier": 1,
+    "gear_reduction_cap": 15
+  },
+  "generation": {
+    "version": 4,
+    "min_chunk_y": 19,
+    "cluster_width": 4,
+    "cluster_height": 3,
+    "nickel_percent": 8,
+    "sulfur_percent": 14,
+    "nickel_min_units": 18,
+    "nickel_unit_range": 19,
+    "sulfur_min_units": 24,
+    "sulfur_unit_range": 25
+  },
+  "resources": [
+    {
+      "id": "nickel_ore",
+      "name": "Nickel ore",
+      "sell_price": 28,
+      "color": "#a3b9a5",
+      "description": "Finite nickel-bearing rock from hydrothermal formations below the old claim.",
+      "mineral": true,
+      "hardness_tenths": 26
+    },
+    {
+      "id": "sulfur",
+      "name": "Sulfur",
+      "sell_price": 6,
+      "color": "#d4bd63",
+      "description": "Sulfur beds supply industrial protection and equipment maintenance.",
+      "mineral": true,
+      "hardness_tenths": 12
+    },
+    {
+      "id": "nickel_alloy",
+      "name": "Nickel alloy",
+      "sell_price": 195,
+      "color": "#b9c1ac",
+      "description": "A heat-resistant alloy refined using nickel, iron and coal.",
+      "mineral": false
+    }
+  ],
+  "equipment": [
+    {
+      "key": "nickel_heatshield",
+      "name": "Nickel Heat Shield",
+      "slot": "head",
+      "tier": 3,
+      "max_durability": 180,
+      "bonuses": {
+        "safety": 10,
+        "endurance": 6
+      },
+      "repair_rate": 0.5,
+      "repair_materials": {
+        "nickel_alloy": 1,
+        "sulfur": 2
+      },
+      "thermal_reduction_percent": 15
+    }
+  ],
+  "recipes": [
+    {
+      "key": "smelt_nickel_alloy",
+      "version": 1,
+      "name": "Smelt Nickel Alloy",
+      "station": "smeltery",
+      "required_station_level": 3,
+      "duration_seconds": 780,
+      "cash_cost": 10,
+      "inputs": {
+        "nickel_ore": 3,
+        "iron_bar": 1,
+        "coal": 2
+      },
+      "outputs": {
+        "nickel_alloy": 1
+      },
+      "equipment_output": null,
+      "max_batches": 10,
+      "required_research": [
+        "processing_2",
+        "deep_operations_2"
+      ]
+    },
+    {
+      "key": "craft_nickel_heatshield",
+      "version": 1,
+      "name": "Craft Nickel Heat Shield",
+      "station": "tool_station",
+      "required_station_level": 3,
+      "duration_seconds": 900,
+      "cash_cost": 80,
+      "inputs": {
+        "nickel_alloy": 2,
+        "polished_quartz": 2,
+        "sulfur": 2
+      },
+      "outputs": {},
+      "equipment_output": "nickel_heatshield",
+      "max_batches": 10,
+      "required_research": [
+        "deep_operations_2",
+        "safety_2"
+      ]
+    }
+  ]
+}

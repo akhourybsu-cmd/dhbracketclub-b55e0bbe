@@ -3,6 +3,7 @@ import { ArrowUpToLine, Crosshair, Minus, Plus } from 'lucide-react';
 import { projectWorkers, tileKey } from '@/lib/deepClaim/world';
 import type { DeepClaimBuildingId, DeepClaimPoint, DeepClaimSnapshot, DeepClaimTile, DeepClaimInfrastructure, DeepClaimDiscovery } from '@/lib/deepClaim/types';
 import { indexRevealedWorld } from '@/lib/deepClaim/visualProjection';
+import { poweredLiftEdges } from '@/lib/deepClaim/deepOperations';
 import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
 import { BUILDING_ART, workerAppearanceVariant } from './artManifest';
 import { constrainCamera, fitSurfaceCamera, initialMineCamera, mineToScreen, panMine, screenToMine, visibleMineCells, zoomMineAt, type DeepClaimCamera, type MineBounds, type ViewportSize } from './camera';
@@ -12,6 +13,8 @@ import { fieldMarkerAt, indexPublicField, infrastructureInstalled, visibleFieldE
 import { FieldAtlas, paintInfrastructureCoverage } from './fieldAtlas';
 import { CanvasFrameScheduler } from './frameScheduler';
 import { getDeepClaimAtlasDiagnostics, preloadDeepClaimAtlas, subscribeDeepClaimAtlas } from './authoredAtlas';
+import { getDeepClaimAddonDiagnostics, preloadDeepClaimAddon, subscribeDeepClaimAddon } from './ancientAtlas';
+import { knownTerrainRegion, paintKnownLiftCab, paintKnownLiftEdge } from './ancientArt';
 import './deepClaimCanvas.css';
 
 export interface DeepClaimCanvasDiagnostics {
@@ -23,6 +26,7 @@ export interface DeepClaimCanvasDiagnostics {
   viewport: { width: number; height: number; backing_width: number; backing_height: number; dpr: number };
   mode: 'normal' | 'reduced' | 'static'; active: boolean; visible: boolean;
   atlas: ReturnType<typeof getDeepClaimAtlasDiagnostics>;
+  addon: ReturnType<typeof getDeepClaimAddonDiagnostics>;
 }
 const EMPTY_WORLD_INDEX = { chunks: new Map<string, DeepClaimTile[]>(), known: new Map<string, DeepClaimTile>(), roomNeighbors: new WeakMap<DeepClaimTile, number>(), totalTiles: 0 };
 
@@ -49,18 +53,19 @@ class TerrainTextures {
   draw(c: CanvasRenderingContext2D, tile: DeepClaimTile, detailed: boolean, neighbors = 0) {
     const resource = tile.remaining > 0 ? tile.material : null;
     const variant = (tile.x + tile.y) % 4, dug = tile.terrain === 'excavated';
-    const key = `${tile.terrain}:${resource}:${tile.formation ?? 'none'}:${neighbors}:${variant}:${detailed}`;
+    const region = knownTerrainRegion(tile);
+    const key = `${region}:${tile.terrain}:${resource}:${tile.formation ?? 'none'}:${neighbors}:${variant}:${detailed}`;
     let texture = this.cache.get(key);
     if (!texture) {
       const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
       const context = canvas.getContext('2d');
       if (context) {
-        paintTerrain(context, 0, 0, resource, dug, variant, detailed, tile.terrain === 'soil', tile.formation ?? null, neighbors);
+        paintTerrain(context, 0, 0, resource, dug, variant, detailed, tile.terrain === 'soil', tile.formation ?? null, neighbors, region);
         texture = { canvas, key }; if (this.cache.size >= 384) this.cache.delete(this.cache.keys().next().value!); this.cache.set(key, texture);
       }
     }
     if (texture) c.drawImage(texture.canvas, tile.x * 16, tile.y * 16, 16, 16);
-    else paintTerrain(c, tile.x * 16, tile.y * 16, resource, dug, variant, detailed, tile.terrain === 'soil', tile.formation ?? null, neighbors);
+    else paintTerrain(c, tile.x * 16, tile.y * 16, resource, dug, variant, detailed, tile.terrain === 'soil', tile.formation ?? null, neighbors, region);
   }
   get size() { return this.cache.size; }
   clear() { this.cache.clear(); }
@@ -91,12 +96,15 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   const workersById = useMemo(() => new Map(snapshot.workers.map(worker => [worker.id, worker])), [snapshot.workers]);
   const jobsById = useMemo(() => new Map(snapshot.expeditions.map(job => [job.id, job])), [snapshot.expeditions]);
   const equipmentByWorker = useMemo(() => new Map(snapshot.workers.map(worker => [worker.id, workerEquipmentPaint(snapshot, worker.id)])), [snapshot]);
+  const shaftLevel = snapshot.buildings.find(building => building.key === 'mine_shaft')?.level ?? 0;
+  const liftEdges = useMemo(() => poweredLiftEdges(snapshot.world?.tiles ?? [], shaftLevel, snapshot.business?.research.filter(order => order.status === 'completed').map(order => order.key) ?? []), [snapshot.world, shaftLevel, snapshot.business?.research]);
+  const needsDeepAssets = shaftLevel >= 6 || (snapshot.world?.max_depth ?? 0) >= 600;
   const visibleCache = useRef<{ source: Map<string, DeepClaimTile[]>; key: string; tiles: Map<number, DeepClaimTile>; chunkCount: number } | null>(null);
   const overlays = useRef<{ source: typeof fieldIndex; key: string; infrastructure: DeepClaimInfrastructure[]; discoveries: DeepClaimDiscovery[] } | null>(null);
   const ownedBuildings = snapshot.buildings.filter(building => building.level > 0).map(building => building.key).sort().join(':');
   const lastOwnedBuildings = useRef(ownedBuildings);
-  const latest = useRef({ snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics });
-  latest.current = { snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics };
+  const latest = useRef({ snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, liftEdges, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics });
+  latest.current = { snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, liftEdges, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics };
   if (observation.current.time !== snapshot.server_now) {
     const now = performance.now(), previousEstimate = observation.current.server + Math.max(0, now - observation.current.at);
     observation.current = { time: snapshot.server_now, server: Math.max(Date.parse(snapshot.server_now), previousEstimate), at: now };
@@ -138,6 +146,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       if (tile) texture.current.draw(c, tile, !data.reducedGraphics && cam.scale >= 8, data.worldIndex.roomNeighbors.get(tile) ?? 0);
       else if (cam.scale >= 8 && !data.reducedGraphics) paintFog(c, x * 16, y * 16);
     }
+    if (visible.minX <= 48 && visible.maxX >= 48) for (let y = Math.max(0, visible.minY - 1); y <= visible.maxY; y++) if (data.liftEdges.has(y)) paintKnownLiftEdge(c, y);
     const overlayPadding = Math.ceil(22 / cam.scale) + 1;
     const overlayKey = `${visibleKey}:${overlayPadding}`;
     if (overlays.current?.source !== data.fieldIndex || overlays.current.key !== overlayKey) overlays.current = { source: data.fieldIndex, key: overlayKey,
@@ -161,6 +170,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       }
     }
     const projected = projectWorkers(data.snapshot, estimatedAt);
+    const paintedCabs = new Set<string>();
     for (const point of projected) {
       const screen = mineToScreen(point, cam, viewport);
       if (screen.x < -40 || screen.x > viewport.width + 40 || screen.y < -35 || screen.y > viewport.height + 35) continue;
@@ -171,6 +181,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       const crew = job?.worker_ids;
       const crewIndex = crew?.indexOf(worker.id) ?? 0;
       const separation = crew ? (crewIndex - (crew.length - 1) / 2) * .55 : 0;
+      if (point.job_id && job?.config_version === 7 && (job.deep_modifiers?.lift_discount_percent ?? 0) > 0 && !paintedCabs.has(point.job_id) && Math.abs(point.x - 48) < .01 && data.liftEdges.has(Math.floor(point.y)) && (point.stage === 'travel' || point.stage === 'return')) { paintKnownLiftCab(c, point.x, point.y); paintedCabs.add(point.job_id); }
       paintWorker(c, point.x + separation, point.y, worker.specialty, pose, point.elapsed_seconds * 1000, point.stage === 'return' ? -1 : 1, workerAppearanceVariant(worker.id), !data.reducedMotion && point.progress < 1, data.equipmentByWorker.get(worker.id) ?? {});
       if (!data.reducedGraphics && point.y > 0) {
         c.fillStyle = '#ead09a15'; c.fillRect(point.x * 16 - 12, point.y * 16 - 27, 30, 25);
@@ -213,7 +224,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
         visible_chunk_count: visibleChunkCount, total_chunk_count: data.chunks.size, world_index_builds: indexBuilds.current.count,
         terrain_cache_entries: texture.current.size, field_cache_entries: fieldAtlas.current.size,
         camera: { x: cam.x, y: cam.y, scale: cam.scale }, viewport: { width: viewport.width, height: viewport.height, backing_width: element.width, backing_height: element.height, dpr },
-        mode: data.reducedMotion ? 'static' : data.reducedGraphics ? 'reduced' : 'normal', active: data.active, visible: true, atlas: getDeepClaimAtlasDiagnostics(),
+        mode: data.reducedMotion ? 'static' : data.reducedGraphics ? 'reduced' : 'normal', active: data.active, visible: true, atlas: getDeepClaimAtlasDiagnostics(), addon: getDeepClaimAddonDiagnostics(),
       };
       try { data.onDiagnostics(sample); } catch { /* Optional instrumentation cannot interrupt play. */ }
     }
@@ -241,6 +252,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     context.current = c; setSupported(!!c);
     scheduler.current = new CanvasFrameScheduler({ now: () => performance.now(), requestFrame: callback => requestAnimationFrame(callback), cancelFrame: id => cancelAnimationFrame(id), setTimer: (callback, delay) => window.setTimeout(callback, delay), clearTimer: id => clearTimeout(id) }, draw);
     const unsubscribeAtlas = subscribeDeepClaimAtlas(() => { textures.clear(); sprites.clear(); invalidate(); });
+    const unsubscribeAddon = subscribeDeepClaimAddon(() => { textures.clear(); invalidate(); });
     void preloadDeepClaimAtlas().catch(() => { /* Procedural drawing remains available. */ });
     const resize = () => {
       const rect = parent.getBoundingClientRect();
@@ -263,9 +275,11 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     element.addEventListener('wheel', wheel, { passive: false });
     return () => {
       mounted.current = false; observer?.disconnect(); window.removeEventListener('resize', resize); element.removeEventListener('wheel', wheel);
-      unsubscribeAtlas(); cancelPointers(); scheduler.current?.dispose(); scheduler.current = null; context.current = null; textures.clear(); sprites.clear(); visibleCache.current = null; overlays.current = null;
+      unsubscribeAtlas(); unsubscribeAddon(); cancelPointers(); scheduler.current?.dispose(); scheduler.current = null; context.current = null; textures.clear(); sprites.clear(); visibleCache.current = null; overlays.current = null;
     };
   }, [focusMine, focusSurface, invalidate, draw, cancelPointers]);
+
+  useEffect(() => { if (needsDeepAssets) void preloadDeepClaimAddon().catch(() => { /* Known terrain remains source-painted. */ }); }, [needsDeepAssets]);
 
   useEffect(() => {
     if (lastCompany.current !== snapshot.company?.id) {

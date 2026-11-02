@@ -105,7 +105,7 @@ export async function runPhase2ExtraTests(h) {
     assert.ok(snapshot.workers.find(person => person.id === worker.id).stats.mining > worker.stats.mining);
     assert.ok(geared.estimated_yield.max > plain.estimated_yield.max);
     snapshot = await dispatch(A, snapshot, { mode: 'extract', x: 47, y: 5, workers: [worker.id] });
-    const job = snapshot.expeditions.find(job => job.status === 'active'); assert.equal(job.config_version, 3);
+    const job = snapshot.expeditions.find(job => job.status === 'active'); assert.equal(job.config_version, h.currentFieldRules);
     const frozen = await one('select content from public.dc_plans where job_id=$1', [job.id]);
     const frozenBefore = JSON.stringify(frozen.content);
     await assert.rejects(assign(A, snapshot, item.id, null), /busy|away|expedition|idle|return/i);
@@ -268,7 +268,9 @@ export async function runPhase2ExtraTests(h) {
     const snapshot = await bootstrap(), recipes = snapshot.recipes;
     const legacy = (await one("select config->'recipes' recipes from public.dc_rules where version=2")).recipes;
     assert.equal(legacy.length, 16);
-    const authored = [...legacy, ...(snapshot.business_catalog?.recipes ?? [])];
+    assert.equal(snapshot.business_catalog.recipes.length, 5);
+    assert.equal(snapshot.deep_catalog.recipes.length, 2);
+    const authored = [...legacy, ...snapshot.business_catalog.recipes, ...snapshot.deep_catalog.recipes];
     assert.equal(recipes.length, authored.length);
     const producers = new Map();
     for (const recipe of recipes) {

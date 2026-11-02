@@ -1,0 +1,114 @@
+{
+  "version": 5,
+  "projects": [
+    {
+      "key": "camp_supply",
+      "name": "Camp Supply",
+      "description": "Equip the shared frontier camp with construction stock.",
+      "requires": [],
+      "goals": {
+        "stone": 80,
+        "coal": 40,
+        "clay": 30
+      },
+      "reward_pool": 90
+    },
+    {
+      "key": "haul_extension",
+      "name": "Haul Extension",
+      "description": "Extend shared freight works with structural iron and fuel.",
+      "requires": [
+        "camp_supply"
+      ],
+      "goals": {
+        "iron_bar": 12,
+        "coal": 40,
+        "stone": 100
+      },
+      "reward_pool": 330
+    },
+    {
+      "key": "clean_air",
+      "name": "Clean Air Works",
+      "description": "Build club ventilation works with metal fittings and fuel.",
+      "requires": [
+        "haul_extension"
+      ],
+      "goals": {
+        "copper_bar": 10,
+        "iron_bar": 8,
+        "coal": 50
+      },
+      "reward_pool": 393
+    },
+    {
+      "key": "assay_observatory",
+      "name": "Assay Observatory",
+      "description": "Prepare shared instruments for the club geological archive.",
+      "requires": [
+        "clean_air"
+      ],
+      "goals": {
+        "polished_quartz": 24,
+        "silver_bar": 6,
+        "bronze_bar": 12
+      },
+      "reward_pool": 750
+    },
+    {
+      "key": "deep_freight",
+      "name": "Deep Freight Works",
+      "description": "Assemble a shared freight exhibit from advanced structural metals.",
+      "requires": [
+        "assay_observatory"
+      ],
+      "goals": {
+        "steel_bar": 16,
+        "bronze_bar": 12,
+        "iron_bar": 16
+      },
+      "reward_pool": 1128
+    },
+    {
+      "key": "geological_pavilion",
+      "name": "Geological Pavilion",
+      "description": "Finish the club geological pavilion with crystals and refined gold.",
+      "requires": [
+        "deep_freight"
+      ],
+      "goals": {
+        "cut_amethyst": 12,
+        "gold_bar": 6,
+        "polished_quartz": 30
+      },
+      "reward_pool": 1080
+    }
+  ],
+  "standings": [
+    {
+      "key": "weekly_mining_value",
+      "name": "Weekly Mining Value",
+      "description": "Original finite haul value from recorded crew returns in this club-local week. Other returns appear when their companies sync.",
+      "unit": "credits of haul"
+    },
+    {
+      "key": "operational_depth",
+      "name": "Operational Depth",
+      "description": "Deepest recorded completed mining or exploration expedition.",
+      "unit": "m"
+    },
+    {
+      "key": "best_find",
+      "name": "Best Find",
+      "description": "Highest frozen sale value among recovered discoveries; specimen identity stays private.",
+      "unit": "credits of find value"
+    }
+  ],
+  "caps": {
+    "standings_limit": 50,
+    "showcase_page_size": 24,
+    "showcase_max_page": 19,
+    "featured_specimens": 3,
+    "qualified_percent": 5
+  }
+}

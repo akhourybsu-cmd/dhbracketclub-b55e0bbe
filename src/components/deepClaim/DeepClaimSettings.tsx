@@ -5,7 +5,7 @@ import type { createDeepClaimAudio } from '@/lib/deepClaim/audio';
 import { ClaimButton, ClaimDialog } from './DeepClaimPrimitives';
 
 export interface ClaimVisualPreferences { reducedMotion: boolean; reducedGraphics: boolean }
-export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, refreshing, serverTime, industry = false, field = false, business = false }: {
+export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, refreshing, serverTime, industry = false, field = false, business = false, deep = false }: {
   audio: ReturnType<typeof createDeepClaimAudio>;
   visuals: ClaimVisualPreferences;
   onVisualsChange: (patch: Partial<ClaimVisualPreferences>) => void;
@@ -15,6 +15,7 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
   industry?: boolean;
   field?: boolean;
   business?: boolean;
+  deep?: boolean;
 }) {
   const [guide, setGuide] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
@@ -53,6 +54,7 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
       { title: 'Deliver and recognize progress', text: 'Trading Post orders consume the complete listed collected stock once for a fixed company payout. Orders do not expire. Recorded milestones can be claimed once, including qualifying work completed before the office opened.' },
       { title: 'Choose what the club sees', text: 'Sharing is off until you choose it in the Office’s Club view. Standings publish your company on all three ranking boards. Showcase sharing displays only the kept finds you select. Project contributions commit real stored materials after your review.' },
     ] : []),
+    ...(deep ? [{ title: 'Work the Ancient Deep', text: 'Deep Cutting Systems research and Mine Shaft level 6 open supported depth to 999m. The powered lift saves travel only on the known, constructed central shaft. Hot mining reduces productive work, not cargo or crew safety. Engineering, installed ventilation and working crew heat shields reduce the penalty. Survey and installation work are unaffected by heat.' }] : []),
   ];
   const page = Math.min(guidePage, chapters.length - 1);
   const previousGuidePage = useRef(page);

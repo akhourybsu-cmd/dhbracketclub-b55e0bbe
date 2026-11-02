@@ -196,3 +196,26 @@ body:has(.deep-claim[data-reduced-motion=true]) .dcl-dialog,.deep-claim[data-red
 
 /* Keep the reviewed project identity ahead of decorative art in a short camp desk. */
 @media(max-width:450px) and (max-height:700px){.dcl-club-body>.dcl-project-detail-art{height:64px}}
+/* The deeper frontier stays in the same operation desk and system controls. */
+.dcl-depth-navigation{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 9px;align-items:end;padding:10px;border:1px solid var(--dcl-line);border-radius:10px;background:var(--dcl-bg)}
+.dcl-depth-navigation>label{min-width:0}.dcl-depth-navigation>.dcl-button{font-size:10px;min-width:44px;padding-inline:10px}.dcl-depth-navigation>p{grid-column:1/-1;font-size:10px;line-height:1.5;color:var(--dcl-muted)}
+.dcl-business-detail-heading h3[tabindex]{outline:none}
+@media(forced-colors:active){
+.deep-claim,.dcl-dialog{--dcl-bg:Canvas;--dcl-panel:Canvas;--dcl-panel-2:Canvas;--dcl-card:Canvas;--dcl-text:CanvasText;--dcl-muted:CanvasText;--dcl-line:ButtonBorder;--dcl-brass:Highlight;--dcl-green:CanvasText;--dcl-blue:CanvasText;--dcl-red:CanvasText}
+.deep-claim :is(button,a,input,select):focus-visible,.dcl-dialog :is(button,a,input,select):focus-visible{outline:3px solid Highlight;outline-offset:2px}
+.deep-claim [aria-pressed=true],.deep-claim [aria-selected=true],.dcl-dialog [aria-pressed=true],.dcl-dialog [aria-selected=true]{border:3px double Highlight;box-shadow:none}
+.dcl-dialog{background:Canvas;border-color:CanvasText;box-shadow:none}
+/* Opt out as one unit to avoid Blink's text backplate. Canvas colors stay
+   opaque, unlike the translucent system Highlight in some browser palettes. */
+.dcl-button.is-primary{forced-color-adjust:none;background:CanvasText;color:Canvas;border-color:CanvasText;box-shadow:none;text-shadow:none}
+.dcl-button.is-primary *{forced-color-adjust:none;color:inherit;background-color:transparent}
+.dcl-meter{border:1px solid CanvasText}.dcl-meter>span{background:Highlight;forced-color-adjust:none}
+.dcl-setting-toggle>button:before{background:Canvas;border-color:CanvasText}.dcl-setting-toggle>button i{background:CanvasText}.dcl-setting-toggle>button[aria-checked=true]:before{background:Highlight}.dcl-setting-toggle>button[aria-checked=true] i{background:HighlightText}
+.deep-claim button:disabled,.dcl-dialog button:disabled{opacity:1;color:GrayText;border-color:GrayText}
+.dcl-button.is-primary:disabled{background:ButtonFace;color:GrayText;border-color:GrayText}
+}
+.dcl-deep-modifiers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px;padding:10px;border:1px solid var(--dcl-line);border-radius:9px;background:var(--dcl-panel)}
+.dcl-deep-modifiers>div{min-width:0}.dcl-deep-modifiers span{display:block;font-size:10px;color:var(--dcl-muted)}.dcl-deep-modifiers strong{display:block;font-size:12px;line-height:1.5;color:var(--dcl-brass);margin-top:3px}.dcl-deep-modifiers small{display:block;font-size:10px;line-height:1.5;color:var(--dcl-muted);margin-top:3px}.dcl-deep-modifiers>p{grid-column:1/-1;font-size:10px;line-height:1.5;color:var(--dcl-muted);margin:0!important}
+.dcl-condition-details>h4{font-size:12px;color:var(--dcl-brass);margin-block:12px 7px}
+.dcl-deep-frontier,.dcl-deep-upgrade{display:grid;gap:10px;padding:12px;border:1px solid var(--dcl-line);border-radius:11px;background:var(--dcl-bg)}.dcl-deep-frontier>header{display:flex;align-items:center;gap:10px}.dcl-deep-frontier>header>svg{width:38px;height:38px}.dcl-deep-frontier h4,.dcl-deep-upgrade h3{font-size:15px;font-weight:800}.dcl-deep-frontier small{font-size:10px;color:var(--dcl-brass);display:block;margin-top:4px}.dcl-deep-frontier p,.dcl-deep-upgrade p{font-size:11px;line-height:1.6;color:var(--dcl-muted)}.dcl-deep-frontier>div{display:flex;gap:7px}.dcl-deep-frontier>div>*{flex:1;min-width:0}.dcl-deep-upgrade p[data-complete=true]{color:var(--dcl-green)}
+.dcl-equipment-card .dcl-heat-perk{color:var(--dcl-brass);font-size:10px}.dcl-expedition-deep{display:block;font-size:9px;line-height:1.5;color:#d9c492;margin-top:6px}

@@ -11,8 +11,8 @@ export const DEEP_CLAIM_ACTORS = {
   club: fixtureId(1001), otherClub: fixtureId(1002), privateClub: fixtureId(1003),
 };
 
-export async function createDeepClaimDatabase({ install = true, phase = 5, notificationPreferences = false } = {}) {
-  const db = new PGlite();
+export async function createDeepClaimDatabase({ install = true, phase = 7, notificationPreferences = false, database } = {}) {
+  const db = database ?? new PGlite();
   const sources = new Map();
   async function source(path) {
     const contents = await readFile(path, 'utf8');
@@ -51,10 +51,13 @@ export async function createDeepClaimDatabase({ install = true, phase = 5, notif
     // Use the application's actual asset schema, RLS policies and catalog.
     await source('supabase/migrations/20260509210000_platform-assets.sql');
     const migrations = (await readdir('supabase/migrations')).filter(path => /^20261102\d+_deep_claim.*\.sql$/.test(path)).sort();
-    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_', 4: '20261102060000_', 5: '20261102061000_' };
+    const phaseCeilings = { 1: '20261102030000_', 2: '20261102040000_', 3: '20261102050000_', 4: '20261102060000_', 5: '20261102061000_', 7: '20261102071000_' };
     assert.ok(phaseCeilings[phase], `Unsupported Deep Claim fixture phase ${phase}`);
     assert.ok(migrations.length, 'Deep Claim migrations must exist before running this fixture');
-    for (const path of migrations.filter(path => path < phaseCeilings[phase])) await source(`supabase/migrations/${path}`);
+    //0610 composes the real DH Feats ledger and runs in the separate composed
+    // fixture. Core/browser PostgreSQL still executes every gameplay migration.
+    const coreMigrations = migrations.filter(path => path !== '20261102061000_deep_claim_dh_integration.sql');
+    for (const path of coreMigrations.filter(path => path < phaseCeilings[phase])) await source(`supabase/migrations/${path}`);
     const initialInstallations = (await db.query("select count(*)::int n from public.club_installed_assets i join public.platform_assets a on a.id=i.asset_id where a.slug='deep-claim'")).rows[0].n;
     if (install) await db.exec(`
       insert into public.club_installed_assets(club_id,asset_id,enabled,visible_to_members)
@@ -80,9 +83,9 @@ export async function createDeepClaimDatabase({ install = true, phase = 5, notif
       installedBodies = (await db.query("select p.oid::regprocedure::text signature,md5(p.prosrc) body from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname like 'dc_%' order by signature")).rows;
     }
     await refreshFunctions();
-    async function applyPendingMigrations({ phase: targetPhase = 5 } = {}) {
+    async function applyPendingMigrations({ phase: targetPhase = 7 } = {}) {
       assert.ok(phaseCeilings[targetPhase], `Unsupported Deep Claim fixture phase ${targetPhase}`);
-      for (const path of migrations.filter(path => path < phaseCeilings[targetPhase])) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
+      for (const path of coreMigrations.filter(path => path < phaseCeilings[targetPhase])) if (!sources.has(`supabase/migrations/${path}`)) await source(`supabase/migrations/${path}`);
       await refreshFunctions();
     }
     async function actorQuery(user, sql, values = [], role = 'authenticated') {

@@ -1,13 +1,13 @@
 // Deterministic, offline v1 economy guardrails. No production accounts, writes or hidden geography.
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
-const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts'; export * from './src/lib/deepClaim/business.ts'; export * from './src/lib/deepClaim/social.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
+const built = await build({ stdin: { contents: `export * from './src/lib/deepClaim/types.ts'; export * from './src/lib/deepClaim/catalog.ts'; export * from './src/lib/deepClaim/simulation.ts'; export * from './src/lib/deepClaim/production.ts'; export * from './src/lib/deepClaim/field.ts'; export * from './src/lib/deepClaim/business.ts'; export * from './src/lib/deepClaim/social.ts'; export * from './src/lib/deepClaim/deepOperations.ts';`, resolveDir: process.cwd() }, bundle: true, platform: 'node', format: 'esm', write: false });
 const engine = await import(`data:text/javascript;base64,${Buffer.from(built.outputFiles[0].text).toString('base64')}`);
-const { STARTER_WORKERS, RESOURCE_CATALOG, DEEP_CLAIM_MINERAL_IDS, RECIPE_CATALOG, EQUIPMENT_CATALOG, productionQuote, recipeValueAdded, availableEquipmentCapacity, calculateCrewPlan, withdrawFinite, collectCargo, sellResource, retainsOperatingCapital, canUpgrade, BUILDING_UPGRADE_COSTS } = engine;
+const { STARTER_WORKERS, RESOURCE_CATALOG, DEEP_CLAIM_LEGACY_MINERAL_IDS, RECIPE_CATALOG, EQUIPMENT_CATALOG, productionQuote, recipeValueAdded, availableEquipmentCapacity, calculateCrewPlan, withdrawFinite, collectCargo, sellResource, retainsOperatingCapital, canUpgrade, BUILDING_UPGRADE_COSTS } = engine;
 const workers = STARTER_WORKERS.map((worker,index) => ({ ...worker, id: `benchmark-${index}`, traits: [...worker.traits], stats: { ...worker.stats }, xp: 0, level: 1, energy: 6, assigned_job_id: null }));
 const crews = [[workers[0]],[workers[1]],[workers[2]],[workers[0],workers[1]],[workers[0],workers[2]],[workers[1],workers[2]],workers];
 let scenarios = 0;
-for (const crew of crews) for (const duration_minutes of [20,60,180]) for (const resource of RESOURCE_CATALOG.filter(resource=>DEEP_CLAIM_MINERAL_IDS.includes(resource.id))) {
+for (const crew of crews) for (const duration_minutes of [20,60,180]) for (const resource of RESOURCE_CATALOG.filter(resource=>DEEP_CLAIM_LEGACY_MINERAL_IDS.includes(resource.id))) {
   const plan = calculateCrewPlan({ workers: crew, mode: 'extract', duration_minutes, path_edges: 20, target_depth: 20, tool_level: 1, material: resource.id, remaining: 150 });
   assert(plan.feasible_work_time); assert(plan.quantity >= 1); assert(plan.quantity <= 150); assert(plan.quantity <= plan.capacity);
   assert(plan.estimated_yield.max <= Math.min(150,plan.capacity));
@@ -25,8 +25,9 @@ assert.equal(Object.values(starterInventory).reduce((sum,quantity)=>sum+quantity
 assert.equal(cash,229);
 assert(canUpgrade(cash,'tool_station',1)); assert(canUpgrade(cash,'mine_office',1));
 const allUpgradeCost = ['mine_office','mine_shaft','warehouse','tool_station'].flatMap(key=>BUILDING_UPGRADE_COSTS[key].slice(0,2)).reduce((sum,cost)=>sum+cost,0);
-const phase4UpgradeCost=Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost)=>sum+cost,0);
-const phase3UpgradeCost=Object.entries(BUILDING_UPGRADE_COSTS).filter(([key])=>!['research_office','trading_post'].includes(key)).flatMap(([,costs])=>costs).reduce((sum,cost)=>sum+cost,0);
+const phase7UpgradeCost=Object.values(BUILDING_UPGRADE_COSTS).flat().reduce((sum,cost)=>sum+cost,0);
+const phase4UpgradeCost=phase7UpgradeCost-engine.DEEP_CATALOG.shaft.upgrade_cost;
+const phase3UpgradeCost=phase4UpgradeCost-[...BUILDING_UPGRADE_COSTS.research_office,...BUILDING_UPGRADE_COSTS.trading_post].reduce((sum,cost)=>sum+cost,0);
 const phase2UpgradeCost=phase3UpgradeCost-12000;
 const starterAssay = {stone:12,clay:16,coal:10,copper_ore:18,tin_ore:12,iron_ore:15,quartz:8,silver_ore:3};
 const assayValue = engine.resourceSaleValue(starterAssay);
@@ -137,6 +138,28 @@ assert.equal(effectiveProjectCap(40,1),100);assert.equal(effectiveProjectCap(100
 const sharedGoalValue=SOCIAL_CATALOG.projects.reduce((sum,project)=>sum+engine.resourceSaleValue(project.goals),0),sharedRewardPool=SOCIAL_CATALOG.projects.reduce((sum,project)=>sum+project.reward_pool,0);
 assert.equal(sharedGoalValue,12572);assert.equal(sharedRewardPool,3771);assert(sharedRewardPool*100<=sharedGoalValue*40);
 const socialProof={catalogVersion:5,finiteProjects:6,sharedGoalValue,sharedRewardPool,maximumPoolSharePercent:40,actualPoolSharePercent:Number((sharedRewardPool*100/sharedGoalValue).toFixed(3)),cooperativePartitions:cooperative,qualifiedParticipantsMax:20,shrinkingClubMayRaiseCap:true,creditRewardPoolFinite:true,resourceRewardsGranted:false};
-console.log(JSON.stringify({ rulesVersion:3,businessCatalogVersion:4,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,phase4AllBuildingCashCost:phase4UpgradeCost,productionRecipes:ALL_RECIPE_CATALOG.length,equipmentDefinitions:ALL_EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,businessProof,socialProof,
+// Phase7 explicit late-game route benchmarks. These known finite test seams
+// measure costs and useful work; they do not predict hidden geology or playtime.
+const {DEEP_CATALOG,calculateDeepCrewPlan,crewThermalReduction,applyResearchBonuses,workerStatsWithEquipment}=engine;
+const completedResearch=BUSINESS_CATALOG.research.map(node=>node.key),bonuses=researchEffects(completedResearch).stat_bonuses;
+const deepMatrix=[];let deepScenarios=0;
+for(const depth of [599,600,608,999])for(const preset of [20,60,180])for(const size of [1,3])for(const loadout of ['basic','equipped'])for(const protection of ['none','shield','shield+vent'])for(const remaining of [1,18,36])for(const material of depth>=608?['nickel_ore','sulfur']:['iron_ore']){
+ const members=operationCrew.slice(0,size),gear=protection==='none'?[]:members.map(worker=>({id:`shield-${worker.id}`,definition_key:'nickel_heatshield',worker_id:worker.id,durability:180,max_durability:180,repair_cost:0,repair_materials:{}}));
+ if(loadout==='equipped')for(const worker of members)for(const key of ['steel_pickaxe','steel_cargo_harness'])gear.push({id:`${key}-${worker.id}`,definition_key:key,worker_id:worker.id,durability:180,max_durability:180,repair_cost:0,repair_materials:{}});
+ if(loadout==='equipped'&&protection==='none')for(const worker of members)gear.push({id:`helmet-${worker.id}`,definition_key:'iron_helmet',worker_id:worker.id,durability:140,max_durability:140,repair_cost:0,repair_materials:{}});
+ const equipped=members.map(worker=>({...worker,xp:540,level:10,stats:applyResearchBonuses(workerStatsWithEquipment(worker.stats,540,gear.filter(item=>item.worker_id===worker.id)),bonuses)}));
+ const route=[{x:48,y:0},{x:48,y:depth},{x:47,y:depth}],tiles=Array.from({length:Math.max(956,depth)+1},(_,y)=>({x:48,y,terrain:'excavated',material:null,remaining:0,initial_amount:0}));
+ const infrastructure=protection==='shield+vent'?[{id:'paid-ventilation',key:'ventilation',grade:3,x:47,y:depth,radius:12,strength:13,status:'installed',job_id:'previously-paid-work',installed_at:'2026-11-01T00:00:00Z'}]:[];
+ const plan=calculateDeepCrewPlan({workers:equipped,mode:'extract',duration_minutes:preset,route,tiles,shaft_level:6,completed_research:completedResearch,equipment:gear,infrastructure,tool_level:3,material,remaining});
+ if(plan.feasible_work_time)assert.equal(plan.stages.reduce((sum,stage)=>sum+stage.duration_seconds,0),preset*60);else assert.equal(plan.quantity,0);assert(plan.quantity<=remaining&&plan.quantity<=plan.capacity);assert(plan.deep_modifiers.effective_work_seconds<=plan.deep_modifiers.raw_work_seconds);
+ assert.equal(plan.energy_per_worker,preset===20?1:preset===60?2:3);assert.equal(crewThermalReduction(equipped.map(worker=>worker.id),gear),protection==='none'?0:15);
+ if(depth<600)assert.equal(plan.deep_modifiers.heat_penalty_percent,0);if(protection==='shield+vent')assert.equal(plan.deep_modifiers.heat_penalty_percent,Math.max(0,plan.deep_modifiers.thermal_load_percent-Math.floor(plan.averages.engineering/10)-13-15));
+ const withdrawal=withdrawFinite(remaining,plan.quantity);assert.equal(withdrawal.quantity+withdrawal.remaining,remaining);
+ const positiveReturnValue=plan.quantity*engine.RESOURCE_BY_ID[material].sell_price;assert(retainsOperatingCapital(plan.wages+2,plan.wages,{}, {[material]:plan.quantity}));
+ deepScenarios++;if(remaining===36&&material!=='sulfur')deepMatrix.push({depth,minutes:preset,crew:size,loadout,protection,feasible:plan.feasible_work_time,liftPercent:plan.deep_modifiers.lift_discount_percent,heatPenalty:plan.deep_modifiers.heat_penalty_percent,quantity:plan.quantity,wages:plan.wages,haulValue:positiveReturnValue});
+}
+const alloy=engine.RECIPE_BY_KEY.smelt_nickel_alloy;assert.equal(recipeValueAdded(alloy),23);assert.equal(engine.equipmentRepairQuote(engine.EQUIPMENT_BY_KEY.nickel_heatshield,0).cash_cost,90);
+const ancientDeepProof={catalogVersion:7,schemaVersion:5,fieldRulesVersion:7,maximumDepth:999,constructedCorridor:956,infrastructureCapacity:192,depthScenarios:deepScenarios,nickelAlloyMargin:23,legacyFieldCatalogVersion:FIELD_CATALOG.version,legacyBusinessCatalogVersion:BUSINESS_CATALOG.version,finiteDepositConservation:true,heatChangesUsefulWorkNotElapsedStages:true,conditionalLateGameBenchmarks:deepMatrix,note:'Each benchmark assumes an already paid shaft6/research/crew/known-route setup; equipped cases additionally own existing steel tool/cargo items and compare the existing ironhelmet against the new shield in the headslot. Impossible quick routes remain rejected; no ore is generated by this script and no universal number of play hours is claimed.'};
+console.log(JSON.stringify({ rulesVersion:7,businessCatalogVersion:4,scenarios,resources:RESOURCE_CATALOG.length,starterCash:180,tutorialSeconds:30,cashAfterTutorial:cash,tutorialProfit:cash-180,firstToolUpgradeReachable:true,phase1UpgradeCashCost:allUpgradeCost,phase2AllBuildingCashCost:phase2UpgradeCost,phase3AllBuildingCashCost:phase3UpgradeCost,phase4AllBuildingCashCost:phase4UpgradeCost,phase7AllBuildingCashCost:phase7UpgradeCost,productionRecipes:ALL_RECIPE_CATALOG.length,equipmentDefinitions:ALL_EQUIPMENT_CATALOG.length,materialProcessingMargins:margins,recipeGraphAcyclic:true,firstSmelterAndCopperPickaxeCashRemaining:craftingCash,equipment48CapacityRetirable:true,phase3FieldProof,businessProof,socialProof,ancientDeepProof,
   starterAssaySaleValue:assayValue,starterAssayCannotMaxCompanyWithin24h:true,finiteDepositConservation:true,partialCollectionConservation:true,bankruptcyCounterexampleBlocked:true,
   controlledRichSeamBenchmark:benchmarks,note:'Starter assay is permanently finite and cannot fund all upgrades. Later funds require genuine exploration; no claim of a universal24-hour minimum across all generated worlds.' },null,2));

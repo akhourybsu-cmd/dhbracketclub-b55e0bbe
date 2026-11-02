@@ -1,0 +1,26 @@
+{
+  "baseline": "e2498e9a313a7d26c1b3eb4da6dbbf6548af42e9",
+  "archive_root": "art/deep-claim/v1-source",
+  "frozen_art_v1": {
+    "art/deep-claim/pack-v1.json": "be772c5d52d63d1ac715e245e6d6c1ecc2771d67317bdefa924e0a96d2736391",
+    "public/deep-claim/atlas-v1.png": "6bc1fbb52d3e1024d75917c5bfdc4f0ecd3ef53ad2d1220ed7a64db5a3a29180",
+    "src/components/deepClaim/renderer/generated/atlas-v1.json": "702db8f28b67048f7f0823b5f2ee0df02b0eaaf545355e8fb198d1310a45695b"
+  },
+  "archived_v1_resolution": {
+    "src/components/deepClaim/renderer/authoredAtlas.ts": "87a8e1302113e73577d043ec90d36a889e2cc9a93606c2aebaa96e924672630a"
+  },
+  "archived_v1_sources": {
+    "art/deep-claim/pack-v1.json": "be772c5d52d63d1ac715e245e6d6c1ecc2771d67317bdefa924e0a96d2736391",
+    "scripts/build-deep-claim-atlas.mjs": "ae73d3e4ad716c357de50351b16e7e77b518323a195c6958fef7dc9de6b32b43",
+    "src/components/deepClaim/renderer/artManifest.ts": "c0b48767328cd4362ac1d100b66082df779988a8e8329e20bfe6fc6fb8df245b",
+    "src/components/deepClaim/renderer/fieldAtlas.ts": "61acf97883b14e683cb6a1c9e0d2f4aa6dee856f02e87a0895fd69be54af8766",
+    "src/components/deepClaim/renderer/fieldSprites.ts": "8fa130959057f66856ca345b9d2b11118e392f5637e7096f01ad8d3ffb3bbb38",
+    "src/components/deepClaim/renderer/pixelArt.ts": "9ef0acc7069d84085a9553303e89986453e202effacb3ad7a1c485343405cf44",
+    "src/lib/deepClaim/catalog.ts": "ddfbb3a90466ec5d8ff4a8942df02bf41fbeec048541c131b3d0b93af79765c1",
+    "src/lib/deepClaim/types.ts": "a9a4f191d018b82cde89d18e65e7d3cfbcfce406b8df6b3b6eee57a6c208a9e2",
+    "supabase/seed/deep-claim-phase2-catalog.json": "9321c5e67096cf1b34d6d2b2354314ce7ef97ae64276186f3dc86c7a1527068e",
+    "supabase/seed/deep-claim-phase3-catalog.json": "347c9c0bb4ff429a6e7fe3842cbcb212e6c79f2b2943431cc3b4cb94cf44a13f",
+    "supabase/seed/deep-claim-phase4-catalog.json": "caf8c362b60c1a339974b9239a41381cbdb8623b117c595d74ef0cc55f51800a",
+    "supabase/seed/deep-claim-phase5-catalog.json": "e0839a5ed8398ec79fb56183d11889d0035e83549f538db70250947b79f5ff99"
+  }
+}

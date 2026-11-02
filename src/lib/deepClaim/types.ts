@@ -1,5 +1,5 @@
 /** Deep Claim public v1 identities. World seeds and unrevealed plans are server-private. */
-export const DEEP_CLAIM_RULES_VERSION = 3;
+export const DEEP_CLAIM_RULES_VERSION = 7;
 export const DEEP_CLAIM_WORLD_WIDTH = 96;
 export const DEEP_CLAIM_CHUNK_SIZE = 32;
 export const DEEP_CLAIM_DAILY_ENERGY = 6;
@@ -10,9 +10,10 @@ export type DeepClaimStatId = typeof DEEP_CLAIM_STAT_IDS[number];
 export type DeepClaimStats = Record<DeepClaimStatId, number>;
 export const DEEP_CLAIM_SPECIALTIES = ['miner','geologist','hauler','engineer','surveyor','demolitionist','safety_officer'] as const;
 export type DeepClaimSpecialty = typeof DEEP_CLAIM_SPECIALTIES[number];
-export const DEEP_CLAIM_MINERAL_IDS = ['stone','clay','coal','copper_ore','tin_ore','iron_ore','quartz','silver_ore','amethyst','gold_ore'] as const;
+export const DEEP_CLAIM_LEGACY_MINERAL_IDS = ['stone','clay','coal','copper_ore','tin_ore','iron_ore','quartz','silver_ore','amethyst','gold_ore'] as const;
+export const DEEP_CLAIM_MINERAL_IDS = [...DEEP_CLAIM_LEGACY_MINERAL_IDS,'nickel_ore','sulfur'] as const;
 export type DeepClaimMineralId = typeof DEEP_CLAIM_MINERAL_IDS[number];
-export const DEEP_CLAIM_RESOURCE_IDS = [...DEEP_CLAIM_MINERAL_IDS,'copper_bar','tin_bar','iron_bar','silver_bar','polished_quartz','cut_amethyst','bronze_bar','steel_bar','gold_bar'] as const;
+export const DEEP_CLAIM_RESOURCE_IDS = [...DEEP_CLAIM_LEGACY_MINERAL_IDS,'copper_bar','tin_bar','iron_bar','silver_bar','polished_quartz','cut_amethyst','bronze_bar','steel_bar','gold_bar','nickel_ore','sulfur','nickel_alloy'] as const;
 export type DeepClaimResourceId = typeof DEEP_CLAIM_RESOURCE_IDS[number];
 export type DeepClaimResources = Partial<Record<DeepClaimResourceId, number>>;
 export const DEEP_CLAIM_BUILDING_IDS = ['mine_office','mine_shaft','warehouse','tool_station','workers_quarters','smeltery','gem_workshop','research_office','trading_post'] as const;
@@ -90,7 +91,8 @@ export interface DeepClaimExpedition {
   tutorial: boolean;
   wages: number;
   energy_per_worker: number;
-  config_version: 1 | 2 | 3;
+  config_version: 1 | 2 | 3 | 7;
+  deep_modifiers?: DeepClaimDeepModifiers;
   cargo: DeepClaimResources | null;
 }
 export interface DeepClaimBuilding {
@@ -102,7 +104,7 @@ export interface DeepClaimBuilding {
 }
 export interface DeepClaimLogEntry { id: string; kind: string; title: string; created_at: string }
 export interface DeepClaimSnapshot {
-  schema_version: 1 | 2 | 3 | 4;
+  schema_version: 1 | 2 | 3 | 4 | 5;
   server_now: string;
   revision: number;
   company: DeepClaimCompany | null;
@@ -124,6 +126,8 @@ export interface DeepClaimSnapshot {
   field_catalog?: DeepClaimFieldCatalog;
   business_catalog?: DeepClaimBusinessCatalog;
   business?: DeepClaimBusiness;
+  deep_catalog?: DeepClaimDeepCatalog;
+  deep_operations?: DeepClaimDeepOperations;
 }
 export interface DeepClaimPreview {
   allowed: boolean;
@@ -141,7 +145,8 @@ export interface DeepClaimPreview {
   expected_resources: DeepClaimMineralId[];
   projected_completion_at: string;
   stages: { key: DeepClaimStageKey; duration_seconds: number }[];
-  operation_version?: 3;
+  operation_version?: 3 | 7;
+  deep_modifiers?: DeepClaimDeepModifiers;
   operation_cost?: number;
   materials_cost?: DeepClaimResources;
   conditions?: DeepClaimConditions;
@@ -179,6 +184,7 @@ export interface DeepClaimCandidate {
 export interface DeepClaimEquipmentDefinition {
   key: string; name: string; slot: DeepClaimEquipmentSlot; tier: 1 | 2 | 3; max_durability: number;
   bonuses: Partial<DeepClaimStats>; repair_rate: number; repair_materials: DeepClaimResources;
+  thermal_reduction_percent?: number;
 }
 export interface DeepClaimEquipment {
   id: string; definition_key: string; worker_id: string | null; durability: number; max_durability: number;
@@ -314,3 +320,22 @@ export interface DeepClaimClubView {
 export interface DeepClaimSocialPreferencesInput {standings_enabled:boolean;showcase_enabled:boolean;featured_discovery_ids:string[]}
 export interface DeepClaimProjectContributionInput {project_key:string;resources:DeepClaimResources}
 export interface DeepClaimProjectClaimInput {project_key:string}
+
+/** Version7 field extension; previous catalogs and in-flight job configurations stay immutable. */
+export interface DeepClaimDeepModifiers {
+ lift_discount_percent:number;thermal_load_percent:number;engineering_mitigation_percent:number;ventilation_mitigation_percent:number;
+ gear_mitigation_percent:number;heat_penalty_percent:number;raw_work_seconds:number;effective_work_seconds:number;
+}
+export interface DeepClaimDeepOperations {infrastructure_capacity:number;lift_discount_percent:number}
+export interface DeepClaimDeepCatalog {
+ version:7;name:string;
+ shaft:{max_level:6;upgrade_cost:number;max_depth:number;corridor_depth:number;required_research:string[];lift_discount_percent:number};
+ regions:{key:string;name:string;min_depth:number;max_depth:number;description:string}[];
+ infrastructure:{base_capacity:number;deep_capacity:number};
+ thermal:{min_depth:number;base_percent:number;step_depth:number;step_percent:number;cap_percent:number;engineering_divisor:number;ventilation_multiplier:number;gear_reduction_cap:number};
+ generation:{version:4;min_chunk_y:number;cluster_width:number;cluster_height:number;nickel_percent:number;sulfur_percent:number;nickel_min_units:number;nickel_unit_range:number;sulfur_min_units:number;sulfur_unit_range:number};
+ resources:{id:DeepClaimResourceId;name:string;sell_price:number;color:string;description:string;mineral:boolean;hardness_tenths?:number}[];
+ equipment:DeepClaimEquipmentDefinition[];recipes:DeepClaimRecipeSnapshot[];
+}
+
+export type DeepClaimDeepSnapshot=DeepClaimSnapshot&{schema_version:5;deep_catalog:DeepClaimDeepCatalog;deep_operations:DeepClaimDeepOperations};

@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "name": "The Ancient Deep — original authored add-on",
+  "grade": "Original source-authored pixel geometry; not commercial painted artwork.",
+  "region": {"key":"ancient_deep","name":"The Ancient Deep","minimum_depth":600,"maximum_depth":999},
+  "specifications": {"logical_tile_pixels":16,"atlas_width":512,"maximum_atlas_height":1024,"padding_pixels":1},
+  "rock": {"dark":"#242b31","mid":"#3d4850","light":"#68787b","seam":"#a38c69","void":"#172127"},
+  "mineral_palettes": {
+    "stone":{"dark":"#3b4142","mid":"#758080","light":"#a6af9c"},
+    "clay":{"dark":"#6f3e32","mid":"#ad6b4e","light":"#d09b6e"},
+    "coal":{"dark":"#0b1115","mid":"#303c42","light":"#626b69"},
+    "copper_ore":{"dark":"#653b2c","mid":"#b8774d","light":"#e0b476"},
+    "tin_ore":{"dark":"#3c5357","mid":"#91b4ae","light":"#d4e0ca"},
+    "iron_ore":{"dark":"#663b32","mid":"#a66b4e","light":"#d6a775"},
+    "quartz":{"dark":"#716b79","mid":"#bab9c9","light":"#f4e8e0"},
+    "silver_ore":{"dark":"#3d5867","mid":"#a4b9c6","light":"#e2e5cf"},
+    "amethyst":{"dark":"#503e68","mid":"#9274ae","light":"#d0b7df"},
+    "gold_ore":{"dark":"#725332","mid":"#c49d50","light":"#f0d38b"},
+    "nickel_ore":{"dark":"#405952","mid":"#829e88","light":"#c2d1ac"},
+    "sulfur":{"dark":"#7c7139","mid":"#c4b05a","light":"#ebd68a"}
+  },
+  "new_veins": {
+    "nickel_ore":[["dark",2,3,12,11],["mid",3,4,5,4],["mid",8,9,5,4],["mid",10,3,3,3],["light",4,4,3,1],["light",9,9,3,1],["light",11,3,1,2],["dark",6,7,3,3],["mid",3,11,3,3],["light",3,11,2,1]],
+    "sulfur":[["dark",2,5,12,9],["mid",3,7,4,6],["mid",7,4,3,9],["mid",10,8,4,5],["light",4,7,2,1],["light",8,4,1,6],["light",11,8,2,1],["mid",3,3,3,2],["light",3,3,2,1]]
+  },
+  "rooms": {
+    "cavern":{"dark":"#18242b","wall":"#43565a","detail":"#8b9690"},
+    "wet_cavern":{"dark":"#18282e","wall":"#3c5f62","detail":"#8aada4"},
+    "crystal_cavern":{"dark":"#262835","wall":"#545b72","detail":"#b0a5be"},
+    "ruins":{"dark":"#24292b","wall":"#686a5a","detail":"#b2a883"}
+  },
+  "shaft6_overlay": [
+    ["#526f70",15,21,5,120],["#a6c2b5",16,22,2,117],["#526f70",108,21,5,120],["#a6c2b5",109,22,2,117],
+    ["#c8d2b6",22,24,84,4],["#547a76",28,30,6,22],["#547a76",94,30,6,22],
+    ["#3f5e60",76,74,27,60],["#aac4b5",78,75,23,4],["#243d40",81,83,17,17],["#cfc28c",84,87,11,3],
+    ["#769b91",80,105,19,3],["#769b91",80,111,19,3],["#769b91",80,117,19,3],["#d6d9b4",84,128,10,3],
+    ["#c4ae76",39,25,3,6],["#c4ae76",86,25,3,6],["#56776f",21,135,86,4]
+  ],
+  "lift_edge": [["#405e60",3,0,2,16],["#b4c2aa",4,0,1,16],["#405e60",12,0,2,16],["#b4c2aa",12,0,1,16],["#7b8270",8,0,1,16],["#c3b17d",2,12,4,2],["#c3b17d",11,12,4,2]],
+  "lift_cab": [["#2c4645",4,1,16,30],["#aac0ae",4,1,16,2],["#83a092",4,3,2,25],["#83a092",18,3,2,25],["#596f61",6,28,12,3],["#dac389",8,3,8,2],["#435e54",6,7,12,2]],
+  "notes": "Only revealed public tiles select this regional treatment. The unchanged v1 pack owns old terrain, buildings and worker bodies. Two raw mineral illustrations and one alloy icon never imply hidden deposits or rewards. Lift rails are shown only on eligible, known excavated central shaft edges."
+}

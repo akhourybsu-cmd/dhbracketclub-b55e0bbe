@@ -2,7 +2,7 @@
 
 Deep Claim uses an original industrial-frontier identity: a working company and an inhabited mine, with restrained pixel geometry, warm metal, worn earth and readable equipment. The game should feel physical and useful, with ore and the active crew carrying the brightest accents.
 
-This is the art direction and Phase 1–6 asset contract. Phase 6 introduces **Frontier Pixel Pack v1**, compiled from original source-authored pixel primitives and detail definitions, plus five composed Web Audio miniatures. The implementation ledger records actual verification and release status. These are original project assets, not commissioned commercial painting or recorded orchestration. Existing local painters remain a functional fallback when atlas loading or decoding fails.
+This is the art direction and Phase 1–7 asset contract. Phase 6 introduces **Frontier Pixel Pack v1**, compiled from original source-authored pixel primitives and detail definitions, plus five composed Web Audio miniatures. Phase 7 adds a separate Ancient Deep atlas and one regional miniature while preserving v1 bytes, its compiler inputs and the five earlier compositions. The implementation ledger records actual verification and release status. These are original project assets, not commissioned commercial painting or recorded orchestration. Existing local painters remain a functional fallback when atlas loading or decoding fails.
 
 ## Palette and geometry
 
@@ -39,10 +39,13 @@ The game can retain its own dark mine identity within either application theme. 
 | `public/deep-claim/atlas-v1.png` | Committed compiled RGBA pixel atlas, loaded from the application itself. |
 | `src/components/deepClaim/renderer/generated/atlas-v1.json` | Generated sprite rectangles, dimensions, source fingerprint and compressed-byte metadata. |
 | `src/components/deepClaim/renderer/authoredAtlas.ts` | One shared asynchronous atlas decode, bounded loading and local-painter fallback. |
+| `art/deep-claim/v1-source/` | Twelve byte-frozen original inputs including the Phase 6 compiler, plus one import-resolution support file, mapped to baseline commit `e2498e9`. |
+| `art/deep-claim/pack-v2.json` | Original additive Ancient Deep, sixth-shaft, nickel/sulfur/alloy and heat-shield source art. |
+| `public/deep-claim/atlas-v2.png` / `src/components/deepClaim/renderer/generated/atlas-v2.json` | Separate small add-on image and generated frame metadata; v1 remains unchanged. |
 | `src/components/deepClaim/renderer/frameScheduler.ts` | Visibility-aware, bounded rendering cadence and explicit reduced-motion invalidation. |
 | `src/lib/deepClaim/visualProjection.ts` | Reusable indexes and path geometry from immutable validated public arrays only. |
 | `src/components/deepClaim/renderer/DeepClaimClubArt.tsx` / `clubSprites.ts` | Static sanitized club emblems, project illustrations, identity crests and specimen cases. |
-| `src/lib/deepClaim/audioScore.ts` | Five original written MIDI arrangements, material timbres and explicit audio budgets. |
+| `src/lib/deepClaim/audioScore.ts` | Six original written MIDI arrangements, including the additive Ancient Deep score, material timbres and explicit audio budgets. |
 | `src/lib/deepClaim/audio.ts` | Gesture-gated Web Audio score, ambience and cues with independent gain buses and lifecycle cleanup. |
 
 Renderer and audio filenames are integration contracts. Check their actual committed contents and the implementation ledger before treating a listed capability as delivered. There are no stock-image, runtime image-generation or external audio-service dependencies in this pack.
@@ -66,7 +69,17 @@ The current compiled pack has 2,255 registered frame references sharing 454 uniq
 | Fallback terrain / field texture caches | 384 / 72 entries |
 | Render cadence | Targets at most 30 paints/s normally, 12 with reduced graphics; reduced motion paints on explicit invalidation |
 
-Reproduce the authored outputs with `node scripts/build-deep-claim-atlas.mjs`; verify committed outputs without rewriting them with `node scripts/build-deep-claim-atlas.mjs --check`. The independent `node scripts/check-deep-claim-presentation.mjs` checks all seven migration hashes, six rule/math modules and five canonical catalogs against the Phase 5 baseline, then inspects actual PNG dimensions, bounded decompression, byte budgets and every sprite rectangle. These source/art checks do not replace browser decoding, functional gameplay tests or physical-device measurement.
+Reproduce v1 with `node scripts/build-deep-claim-atlas.mjs`; verify its committed outputs without rewriting them with `node scripts/build-deep-claim-atlas.mjs --check`. The router executes the archived original compiler against its frozen inputs, retaining original source fingerprints and output bytes even when current gameplay gains new materials. Build/check the separate add-on with `node scripts/build-deep-claim-addon.mjs` and `node scripts/build-deep-claim-addon.mjs --check`.
+
+The independent `node scripts/check-deep-claim-presentation.mjs --phase=6` retains the original strict eighteen-source presentation gate. For the authorized Ancient Deep rule extension, use `node scripts/check-deep-claim-presentation.mjs --phase=7`: it checks seven old migration hashes and five old canonical catalogs, allows only the additive `0700` migration, freezes the original v1 pack/PNG/metadata and archived compiler inputs, then audits both PNGs' dimensions, bounded decompression, byte budgets and sprite bounds. It does not silently rewrite the Phase 6 baseline to excuse new rules. These source/art checks do not replace browser decoding, functional gameplay tests or physical-device measurement.
+
+## Phase 7 Ancient Deep add-on
+
+The Ancient Deep has known-ground basalt and hydrothermal detail, pale nickel seams and distinct sulfur beds. The nickel-alloy inventory icon is processed metal, never a generated terrain resource. A sixth-shaft appearance communicates constructed powered access; working Nickel Heat Shield art follows the actual owned head-slot item and its condition. The larger region introduces no hidden room prediction, speculative ore painting or decorative claim of installed ventilation.
+
+V2 has 1,043 registered frame references sharing 345 unique pixel rectangles. Its committed dimensions are 512×384, compressed size is 8,782 bytes and base RGBA pixels occupy 786,432 bytes. The independent gate bounds it to 512×1024, 2MiB decoded pixels, 128KiB compressed and 2,048 registered references. The two committed atlases together use 4,063,232 base RGBA bytes (3.875MiB), excluding browser/GPU copies and object overhead.
+
+This is an original additive source-art pack, not a replacement or rebake of the published v1 image. Cache keys include the known regional style so shallow and Ancient Deep rock cannot reuse an incorrect cached texture. Both images load without blocking play and retain observable failure/painter fallback. Regional rendering and audio consume public view context only; content below the supported 999m limit remains future work.
 
 Small-phone review must verify both detailed and reduced-graphics output, real building hit regions and accessible list alternatives. Static public club illustrations continue to receive sanitized public data only; the authored private-mine atlas is not a reason to pass another member's save to a showcase.
 
@@ -131,8 +144,9 @@ Phase 1 introduced a short synthesized frontier motif and mining/company cues. P
 | Ironworks | The Copper Counterweight | 78 BPM | About 49.23s |
 | Crystal region | A Prism Keeps the Light | 68 BPM | About 56.47s |
 | Forgotten region | The Archive Below | 64 BPM | 60s |
+| Ancient Deep | A Lantern in the Ancient Deep | 64 BPM | 60s |
 
-These are adaptive looping arrangements, not five simultaneous tracks or a claimed recorded album. Scene selection uses the visible surface/mine view and public depth, with known formation ambience only. Stone, earth, carbon, metal and crystal material families have distinct mining timbres. Unknown or undisclosed materials use a generic stone cue.
+Phase 7 adds the Ancient Deep miniature without changing the five earlier composition fingerprints. These are adaptive looping arrangements, with one scene score at a time. Scene selection uses the visible surface/mine view and public depth, with known formation ambience only. Stone, earth, carbon, metal and crystal material families have distinct mining timbres; disclosed nickel and sulfur receive the new material treatments. Unknown or undisclosed materials use a generic stone cue.
 
 Audio starts only after a user gesture and opt-in. Master volume is supplemented by independent `musicVolume`, `ambientVolume` and `sfxVolume` settings between zero and one. Older saved settings default each new bus to one and retain their existing master choice and volume. Existing application master/category gates remain authoritative. Menus pause scene music/ambience while permitted source-confirmed interface/reward cues can remain available. Hidden/inactive pages, mute and disposal stop scheduling and release voices; a delayed context resume cannot revive muted or disposed playback.
 

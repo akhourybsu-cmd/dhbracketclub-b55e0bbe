@@ -1,0 +1,6289 @@
+{
+  "version": 2,
+  "width": 512,
+  "height": 384,
+  "pngBytes": 8782,
+  "uniqueSprites": 345,
+  "sourceHash": "75e94fd07664695d426d4daeaa76c0c8fc3d135850086ac4fa37bcb1344a74bc",
+  "region": {
+    "key": "ancient_deep",
+    "name": "The Ancient Deep",
+    "minimum_depth": 600,
+    "maximum_depth": 999
+  },
+  "specifications": {
+    "logical_tile_pixels": 16,
+    "atlas_width": 512,
+    "maximum_atlas_height": 1024,
+    "padding_pixels": 1
+  },
+  "sources": [
+    "art/deep-claim/pack-v1.json",
+    "art/deep-claim/pack-v2.json",
+    "public/deep-claim/atlas-v1.png",
+    "scripts/build-deep-claim-addon.mjs",
+    "scripts/lib/deep-claim-pixels.mjs",
+    "src/components/deepClaim/renderer/ancientArt.ts",
+    "src/components/deepClaim/renderer/generated/atlas-v1.json"
+  ],
+  "frames": {
+    "deep:building:mine_shaft:6": {
+      "x": 1,
+      "y": 1,
+      "width": 128,
+      "height": 152
+    },
+    "deep:lift:cab": {
+      "x": 131,
+      "y": 1,
+      "width": 24,
+      "height": 32
+    },
+    "deep:lift:edge": {
+      "x": 157,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:0": {
+      "x": 175,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:1": {
+      "x": 193,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:10": {
+      "x": 211,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:11": {
+      "x": 229,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:12": {
+      "x": 247,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:14": {
+      "x": 283,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:2": {
+      "x": 319,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:3": {
+      "x": 337,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:4": {
+      "x": 355,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:6": {
+      "x": 391,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:8": {
+      "x": 427,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:cavern:9": {
+      "x": 445,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:0": {
+      "x": 463,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:1": {
+      "x": 481,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:10": {
+      "x": 1,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:11": {
+      "x": 19,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:12": {
+      "x": 37,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:14": {
+      "x": 73,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:2": {
+      "x": 109,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:3": {
+      "x": 127,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:4": {
+      "x": 145,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:6": {
+      "x": 181,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:8": {
+      "x": 217,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:crystal_cavern:9": {
+      "x": 235,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:none:0": {
+      "x": 253,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:0": {
+      "x": 271,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:1": {
+      "x": 289,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:10": {
+      "x": 307,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:11": {
+      "x": 325,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:12": {
+      "x": 343,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:14": {
+      "x": 379,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:2": {
+      "x": 415,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:3": {
+      "x": 433,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:4": {
+      "x": 451,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:5": {
+      "x": 469,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:6": {
+      "x": 487,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:7": {
+      "x": 1,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:8": {
+      "x": 19,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:ruins:9": {
+      "x": 37,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:0": {
+      "x": 55,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:1": {
+      "x": 73,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:10": {
+      "x": 91,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:11": {
+      "x": 109,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:12": {
+      "x": 127,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:14": {
+      "x": 163,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:2": {
+      "x": 199,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:3": {
+      "x": 217,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:4": {
+      "x": 235,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:6": {
+      "x": 271,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:8": {
+      "x": 307,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:0:wet_cavern:9": {
+      "x": 325,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:0": {
+      "x": 343,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:1": {
+      "x": 361,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:10": {
+      "x": 379,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:11": {
+      "x": 397,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:12": {
+      "x": 415,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:14": {
+      "x": 433,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:2": {
+      "x": 451,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:3": {
+      "x": 469,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:4": {
+      "x": 487,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:6": {
+      "x": 1,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:8": {
+      "x": 19,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:cavern:9": {
+      "x": 37,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:0": {
+      "x": 55,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:1": {
+      "x": 73,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:10": {
+      "x": 91,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:11": {
+      "x": 109,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:12": {
+      "x": 127,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:14": {
+      "x": 145,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:2": {
+      "x": 163,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:3": {
+      "x": 181,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:4": {
+      "x": 199,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:6": {
+      "x": 217,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:8": {
+      "x": 235,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:crystal_cavern:9": {
+      "x": 253,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:none:0": {
+      "x": 271,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:0": {
+      "x": 289,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:1": {
+      "x": 307,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:10": {
+      "x": 325,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:11": {
+      "x": 343,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:12": {
+      "x": 361,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:14": {
+      "x": 379,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:2": {
+      "x": 397,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:3": {
+      "x": 415,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:4": {
+      "x": 433,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:5": {
+      "x": 451,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:6": {
+      "x": 469,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:7": {
+      "x": 487,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:8": {
+      "x": 1,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:ruins:9": {
+      "x": 19,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:0": {
+      "x": 37,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:1": {
+      "x": 55,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:10": {
+      "x": 73,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:11": {
+      "x": 91,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:12": {
+      "x": 109,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:14": {
+      "x": 127,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:2": {
+      "x": 145,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:3": {
+      "x": 163,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:4": {
+      "x": 181,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:6": {
+      "x": 199,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:8": {
+      "x": 217,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:0:1:wet_cavern:9": {
+      "x": 235,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:0": {
+      "x": 175,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:1": {
+      "x": 193,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:10": {
+      "x": 211,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:11": {
+      "x": 229,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:12": {
+      "x": 247,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:14": {
+      "x": 283,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:2": {
+      "x": 319,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:3": {
+      "x": 337,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:4": {
+      "x": 355,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:6": {
+      "x": 391,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:8": {
+      "x": 427,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:cavern:9": {
+      "x": 445,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:0": {
+      "x": 463,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:1": {
+      "x": 481,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:10": {
+      "x": 1,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:11": {
+      "x": 19,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:12": {
+      "x": 37,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:14": {
+      "x": 73,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:2": {
+      "x": 109,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:3": {
+      "x": 127,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:4": {
+      "x": 145,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:6": {
+      "x": 181,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:8": {
+      "x": 217,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:crystal_cavern:9": {
+      "x": 235,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:none:0": {
+      "x": 253,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:0": {
+      "x": 271,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:1": {
+      "x": 289,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:10": {
+      "x": 307,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:11": {
+      "x": 325,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:12": {
+      "x": 343,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:14": {
+      "x": 379,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:2": {
+      "x": 415,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:3": {
+      "x": 433,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:4": {
+      "x": 451,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:5": {
+      "x": 469,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:6": {
+      "x": 487,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:7": {
+      "x": 1,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:8": {
+      "x": 19,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:ruins:9": {
+      "x": 37,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:0": {
+      "x": 55,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:1": {
+      "x": 73,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:10": {
+      "x": 91,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:11": {
+      "x": 109,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:12": {
+      "x": 127,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:14": {
+      "x": 163,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:2": {
+      "x": 199,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:3": {
+      "x": 217,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:4": {
+      "x": 235,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:6": {
+      "x": 271,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:8": {
+      "x": 307,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:0:wet_cavern:9": {
+      "x": 325,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:0": {
+      "x": 253,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:1": {
+      "x": 361,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:10": {
+      "x": 271,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:11": {
+      "x": 397,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:12": {
+      "x": 289,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:14": {
+      "x": 307,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:2": {
+      "x": 325,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:3": {
+      "x": 469,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:4": {
+      "x": 343,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:6": {
+      "x": 361,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:8": {
+      "x": 379,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:cavern:9": {
+      "x": 37,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:0": {
+      "x": 397,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:1": {
+      "x": 73,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:10": {
+      "x": 415,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:11": {
+      "x": 109,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:12": {
+      "x": 433,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:14": {
+      "x": 451,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:2": {
+      "x": 469,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:3": {
+      "x": 181,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:4": {
+      "x": 487,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:6": {
+      "x": 1,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:8": {
+      "x": 19,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:crystal_cavern:9": {
+      "x": 253,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:none:0": {
+      "x": 37,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:0": {
+      "x": 55,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:1": {
+      "x": 307,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:10": {
+      "x": 73,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:11": {
+      "x": 343,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:12": {
+      "x": 91,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:14": {
+      "x": 109,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:2": {
+      "x": 127,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:3": {
+      "x": 415,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:4": {
+      "x": 145,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:5": {
+      "x": 451,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:6": {
+      "x": 163,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:7": {
+      "x": 487,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:8": {
+      "x": 181,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:ruins:9": {
+      "x": 19,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:0": {
+      "x": 199,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:1": {
+      "x": 55,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:10": {
+      "x": 217,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:11": {
+      "x": 91,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:12": {
+      "x": 235,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:14": {
+      "x": 253,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:2": {
+      "x": 271,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:3": {
+      "x": 163,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:4": {
+      "x": 289,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:6": {
+      "x": 307,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:8": {
+      "x": 325,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:1:1:wet_cavern:9": {
+      "x": 235,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:0": {
+      "x": 175,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:1": {
+      "x": 193,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:10": {
+      "x": 211,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:11": {
+      "x": 229,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:12": {
+      "x": 247,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:14": {
+      "x": 283,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:2": {
+      "x": 319,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:3": {
+      "x": 337,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:4": {
+      "x": 355,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:6": {
+      "x": 391,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:8": {
+      "x": 427,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:cavern:9": {
+      "x": 445,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:0": {
+      "x": 463,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:1": {
+      "x": 481,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:10": {
+      "x": 1,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:11": {
+      "x": 19,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:12": {
+      "x": 37,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:14": {
+      "x": 73,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:2": {
+      "x": 109,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:3": {
+      "x": 127,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:4": {
+      "x": 145,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:6": {
+      "x": 181,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:8": {
+      "x": 217,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:crystal_cavern:9": {
+      "x": 235,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:none:0": {
+      "x": 253,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:0": {
+      "x": 271,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:1": {
+      "x": 289,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:10": {
+      "x": 307,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:11": {
+      "x": 325,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:12": {
+      "x": 343,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:14": {
+      "x": 379,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:2": {
+      "x": 415,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:3": {
+      "x": 433,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:4": {
+      "x": 451,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:5": {
+      "x": 469,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:6": {
+      "x": 487,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:7": {
+      "x": 1,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:8": {
+      "x": 19,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:ruins:9": {
+      "x": 37,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:0": {
+      "x": 55,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:1": {
+      "x": 73,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:10": {
+      "x": 91,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:11": {
+      "x": 109,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:12": {
+      "x": 127,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:14": {
+      "x": 163,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:2": {
+      "x": 199,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:3": {
+      "x": 217,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:4": {
+      "x": 235,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:6": {
+      "x": 271,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:8": {
+      "x": 307,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:0:wet_cavern:9": {
+      "x": 325,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:0": {
+      "x": 343,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:1": {
+      "x": 361,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:10": {
+      "x": 361,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:11": {
+      "x": 397,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:12": {
+      "x": 379,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:14": {
+      "x": 397,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:2": {
+      "x": 415,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:3": {
+      "x": 469,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:4": {
+      "x": 433,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:6": {
+      "x": 451,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:8": {
+      "x": 469,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:cavern:9": {
+      "x": 37,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:0": {
+      "x": 487,
+      "y": 227,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:1": {
+      "x": 73,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:10": {
+      "x": 1,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:11": {
+      "x": 109,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:12": {
+      "x": 19,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:14": {
+      "x": 37,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:2": {
+      "x": 55,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:3": {
+      "x": 181,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:4": {
+      "x": 73,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:6": {
+      "x": 91,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:8": {
+      "x": 109,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:crystal_cavern:9": {
+      "x": 253,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:none:0": {
+      "x": 127,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:0": {
+      "x": 145,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:1": {
+      "x": 307,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:10": {
+      "x": 163,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:11": {
+      "x": 343,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:12": {
+      "x": 181,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:14": {
+      "x": 199,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:2": {
+      "x": 217,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:3": {
+      "x": 415,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:4": {
+      "x": 235,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:5": {
+      "x": 451,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:6": {
+      "x": 253,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:7": {
+      "x": 487,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:8": {
+      "x": 271,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:ruins:9": {
+      "x": 19,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:0": {
+      "x": 289,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:1": {
+      "x": 55,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:10": {
+      "x": 307,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:11": {
+      "x": 91,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:12": {
+      "x": 325,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:14": {
+      "x": 343,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:2": {
+      "x": 361,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:3": {
+      "x": 163,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:4": {
+      "x": 379,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:6": {
+      "x": 397,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:8": {
+      "x": 415,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:2:1:wet_cavern:9": {
+      "x": 235,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:0": {
+      "x": 175,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:1": {
+      "x": 193,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:10": {
+      "x": 211,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:11": {
+      "x": 229,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:12": {
+      "x": 247,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:14": {
+      "x": 283,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:2": {
+      "x": 319,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:3": {
+      "x": 337,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:4": {
+      "x": 355,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:6": {
+      "x": 391,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:8": {
+      "x": 427,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:cavern:9": {
+      "x": 445,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:0": {
+      "x": 463,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:1": {
+      "x": 481,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:10": {
+      "x": 1,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:11": {
+      "x": 19,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:12": {
+      "x": 37,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:14": {
+      "x": 73,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:2": {
+      "x": 109,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:3": {
+      "x": 127,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:4": {
+      "x": 145,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:6": {
+      "x": 181,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:8": {
+      "x": 217,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:crystal_cavern:9": {
+      "x": 235,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:none:0": {
+      "x": 253,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:0": {
+      "x": 271,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:1": {
+      "x": 289,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:10": {
+      "x": 307,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:11": {
+      "x": 325,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:12": {
+      "x": 343,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:14": {
+      "x": 379,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:2": {
+      "x": 415,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:3": {
+      "x": 433,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:4": {
+      "x": 451,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:5": {
+      "x": 469,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:6": {
+      "x": 487,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:7": {
+      "x": 1,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:8": {
+      "x": 19,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:ruins:9": {
+      "x": 37,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:0": {
+      "x": 55,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:1": {
+      "x": 73,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:10": {
+      "x": 91,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:11": {
+      "x": 109,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:12": {
+      "x": 127,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:14": {
+      "x": 163,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:2": {
+      "x": 199,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:3": {
+      "x": 217,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:4": {
+      "x": 235,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:6": {
+      "x": 271,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:8": {
+      "x": 307,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:0:wet_cavern:9": {
+      "x": 325,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:0": {
+      "x": 433,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:1": {
+      "x": 361,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:10": {
+      "x": 451,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:11": {
+      "x": 397,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:12": {
+      "x": 469,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:13": {
+      "x": 265,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:14": {
+      "x": 487,
+      "y": 245,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:15": {
+      "x": 301,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:2": {
+      "x": 1,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:3": {
+      "x": 469,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:4": {
+      "x": 19,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:5": {
+      "x": 373,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:6": {
+      "x": 37,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:7": {
+      "x": 409,
+      "y": 1,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:8": {
+      "x": 55,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:cavern:9": {
+      "x": 37,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:0": {
+      "x": 73,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:1": {
+      "x": 73,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:10": {
+      "x": 91,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:11": {
+      "x": 109,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:12": {
+      "x": 109,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:13": {
+      "x": 55,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:14": {
+      "x": 127,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:15": {
+      "x": 91,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:2": {
+      "x": 145,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:3": {
+      "x": 181,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:4": {
+      "x": 163,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:5": {
+      "x": 163,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:6": {
+      "x": 181,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:7": {
+      "x": 199,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:8": {
+      "x": 199,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:crystal_cavern:9": {
+      "x": 253,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:none:0": {
+      "x": 217,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:0": {
+      "x": 235,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:1": {
+      "x": 307,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:10": {
+      "x": 253,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:11": {
+      "x": 343,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:12": {
+      "x": 271,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:13": {
+      "x": 361,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:14": {
+      "x": 289,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:15": {
+      "x": 397,
+      "y": 155,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:2": {
+      "x": 307,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:3": {
+      "x": 415,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:4": {
+      "x": 325,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:5": {
+      "x": 451,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:6": {
+      "x": 343,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:7": {
+      "x": 487,
+      "y": 191,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:8": {
+      "x": 361,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:ruins:9": {
+      "x": 19,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:0": {
+      "x": 379,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:1": {
+      "x": 55,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:10": {
+      "x": 397,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:11": {
+      "x": 91,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:12": {
+      "x": 415,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:13": {
+      "x": 145,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:14": {
+      "x": 433,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:15": {
+      "x": 181,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:2": {
+      "x": 451,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:3": {
+      "x": 163,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:4": {
+      "x": 469,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:5": {
+      "x": 253,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:6": {
+      "x": 487,
+      "y": 263,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:7": {
+      "x": 289,
+      "y": 173,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:8": {
+      "x": 1,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:dug:none:3:1:wet_cavern:9": {
+      "x": 235,
+      "y": 209,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:0:cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:0:crystal_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:0:none:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:0:ruins:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:0:wet_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:1:cavern:0": {
+      "x": 37,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:1:crystal_cavern:0": {
+      "x": 55,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:1:none:0": {
+      "x": 73,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:1:ruins:0": {
+      "x": 91,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:0:1:wet_cavern:0": {
+      "x": 109,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:0:cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:0:crystal_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:0:none:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:0:ruins:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:0:wet_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:1:cavern:0": {
+      "x": 127,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:1:crystal_cavern:0": {
+      "x": 145,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:1:none:0": {
+      "x": 163,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:1:ruins:0": {
+      "x": 181,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:1:1:wet_cavern:0": {
+      "x": 199,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:0:cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:0:crystal_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:0:none:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:0:ruins:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:0:wet_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:1:cavern:0": {
+      "x": 217,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:1:crystal_cavern:0": {
+      "x": 235,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:1:none:0": {
+      "x": 253,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:1:ruins:0": {
+      "x": 271,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:2:1:wet_cavern:0": {
+      "x": 289,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:0:cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:0:crystal_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:0:none:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:0:ruins:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:0:wet_cavern:0": {
+      "x": 19,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:1:cavern:0": {
+      "x": 307,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:1:crystal_cavern:0": {
+      "x": 325,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:1:none:0": {
+      "x": 343,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:1:ruins:0": {
+      "x": 361,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:amethyst:3:1:wet_cavern:0": {
+      "x": 379,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:0:cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:0:crystal_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:0:none:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:0:ruins:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:0:wet_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:1:cavern:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:1:crystal_cavern:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:1:none:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:1:ruins:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:0:1:wet_cavern:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:0:cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:0:crystal_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:0:none:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:0:ruins:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:0:wet_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:1:cavern:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:1:crystal_cavern:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:1:none:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:1:ruins:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:1:1:wet_cavern:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:0:cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:0:crystal_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:0:none:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:0:ruins:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:0:wet_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:1:cavern:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:1:crystal_cavern:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:1:none:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:1:ruins:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:2:1:wet_cavern:0": {
+      "x": 415,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:0:cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:0:crystal_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:0:none:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:0:ruins:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:0:wet_cavern:0": {
+      "x": 397,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:1:cavern:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:1:crystal_cavern:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:1:none:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:1:ruins:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:clay:3:1:wet_cavern:0": {
+      "x": 433,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:0:cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:0:crystal_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:0:none:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:0:ruins:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:0:wet_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:1:cavern:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:1:crystal_cavern:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:1:none:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:1:ruins:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:0:1:wet_cavern:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:0:cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:0:crystal_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:0:none:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:0:ruins:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:0:wet_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:1:cavern:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:1:crystal_cavern:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:1:none:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:1:ruins:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:1:1:wet_cavern:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:0:cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:0:crystal_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:0:none:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:0:ruins:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:0:wet_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:1:cavern:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:1:crystal_cavern:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:1:none:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:1:ruins:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:2:1:wet_cavern:0": {
+      "x": 469,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:0:cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:0:crystal_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:0:none:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:0:ruins:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:0:wet_cavern:0": {
+      "x": 451,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:1:cavern:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:1:crystal_cavern:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:1:none:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:1:ruins:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:coal:3:1:wet_cavern:0": {
+      "x": 487,
+      "y": 281,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:0:cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:0:crystal_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:0:none:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:0:ruins:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:0:wet_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:1:cavern:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:1:crystal_cavern:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:1:none:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:1:ruins:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:0:1:wet_cavern:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:0:cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:0:crystal_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:0:none:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:0:ruins:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:0:wet_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:1:cavern:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:1:crystal_cavern:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:1:none:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:1:ruins:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:1:1:wet_cavern:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:0:cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:0:crystal_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:0:none:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:0:ruins:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:0:wet_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:1:cavern:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:1:crystal_cavern:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:1:none:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:1:ruins:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:2:1:wet_cavern:0": {
+      "x": 19,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:0:cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:0:crystal_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:0:none:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:0:ruins:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:0:wet_cavern:0": {
+      "x": 1,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:1:cavern:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:1:crystal_cavern:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:1:none:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:1:ruins:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:copper_ore:3:1:wet_cavern:0": {
+      "x": 37,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:0:cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:0:crystal_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:0:none:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:0:ruins:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:0:wet_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:1:cavern:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:1:crystal_cavern:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:1:none:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:1:ruins:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:0:1:wet_cavern:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:0:cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:0:crystal_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:0:none:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:0:ruins:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:0:wet_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:1:cavern:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:1:crystal_cavern:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:1:none:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:1:ruins:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:1:1:wet_cavern:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:0:cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:0:crystal_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:0:none:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:0:ruins:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:0:wet_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:1:cavern:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:1:crystal_cavern:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:1:none:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:1:ruins:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:2:1:wet_cavern:0": {
+      "x": 73,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:0:cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:0:crystal_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:0:none:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:0:ruins:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:0:wet_cavern:0": {
+      "x": 55,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:1:cavern:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:1:crystal_cavern:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:1:none:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:1:ruins:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:gold_ore:3:1:wet_cavern:0": {
+      "x": 91,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:0:cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:0:none:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:0:ruins:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:0:wet_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:1:cavern:0": {
+      "x": 127,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:1:crystal_cavern:0": {
+      "x": 145,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:1:none:0": {
+      "x": 163,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:1:ruins:0": {
+      "x": 181,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:0:1:wet_cavern:0": {
+      "x": 199,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:0:cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:0:none:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:0:ruins:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:0:wet_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:1:cavern:0": {
+      "x": 217,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:1:crystal_cavern:0": {
+      "x": 235,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:1:none:0": {
+      "x": 253,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:1:ruins:0": {
+      "x": 271,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:1:1:wet_cavern:0": {
+      "x": 289,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:0:cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:0:none:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:0:ruins:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:0:wet_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:1:cavern:0": {
+      "x": 127,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:1:crystal_cavern:0": {
+      "x": 145,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:1:none:0": {
+      "x": 163,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:1:ruins:0": {
+      "x": 181,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:2:1:wet_cavern:0": {
+      "x": 199,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:0:cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:0:none:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:0:ruins:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:0:wet_cavern:0": {
+      "x": 109,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:1:cavern:0": {
+      "x": 217,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:1:crystal_cavern:0": {
+      "x": 235,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:1:none:0": {
+      "x": 253,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:1:ruins:0": {
+      "x": 271,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:iron_ore:3:1:wet_cavern:0": {
+      "x": 289,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:0:cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:0:crystal_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:0:none:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:0:ruins:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:0:wet_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:1:cavern:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:1:crystal_cavern:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:1:none:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:1:ruins:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:0:1:wet_cavern:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:0:cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:0:crystal_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:0:none:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:0:ruins:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:0:wet_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:1:cavern:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:1:crystal_cavern:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:1:none:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:1:ruins:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:1:1:wet_cavern:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:0:cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:0:crystal_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:0:none:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:0:ruins:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:0:wet_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:1:cavern:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:1:crystal_cavern:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:1:none:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:1:ruins:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:2:1:wet_cavern:0": {
+      "x": 325,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:0:cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:0:crystal_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:0:none:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:0:ruins:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:0:wet_cavern:0": {
+      "x": 307,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:1:cavern:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:1:crystal_cavern:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:1:none:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:1:ruins:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:nickel_ore:3:1:wet_cavern:0": {
+      "x": 343,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:0:cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:0:crystal_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:0:none:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:0:ruins:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:0:wet_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:1:cavern:0": {
+      "x": 379,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:1:crystal_cavern:0": {
+      "x": 397,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:1:none:0": {
+      "x": 415,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:1:ruins:0": {
+      "x": 433,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:0:1:wet_cavern:0": {
+      "x": 451,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:0:cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:0:crystal_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:0:none:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:0:ruins:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:0:wet_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:1:cavern:0": {
+      "x": 469,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:1:crystal_cavern:0": {
+      "x": 487,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:1:none:0": {
+      "x": 1,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:1:ruins:0": {
+      "x": 19,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:1:1:wet_cavern:0": {
+      "x": 37,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:0:cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:0:crystal_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:0:none:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:0:ruins:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:0:wet_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:1:cavern:0": {
+      "x": 55,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:1:crystal_cavern:0": {
+      "x": 73,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:1:none:0": {
+      "x": 91,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:1:ruins:0": {
+      "x": 109,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:2:1:wet_cavern:0": {
+      "x": 127,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:0:cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:0:crystal_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:0:none:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:0:ruins:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:0:wet_cavern:0": {
+      "x": 361,
+      "y": 299,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:1:cavern:0": {
+      "x": 145,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:1:crystal_cavern:0": {
+      "x": 163,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:1:none:0": {
+      "x": 181,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:1:ruins:0": {
+      "x": 199,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:none:3:1:wet_cavern:0": {
+      "x": 217,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:0:cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:0:crystal_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:0:none:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:0:ruins:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:0:wet_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:1:cavern:0": {
+      "x": 253,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:1:crystal_cavern:0": {
+      "x": 271,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:1:none:0": {
+      "x": 289,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:1:ruins:0": {
+      "x": 307,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:0:1:wet_cavern:0": {
+      "x": 325,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:0:cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:0:crystal_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:0:none:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:0:ruins:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:0:wet_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:1:cavern:0": {
+      "x": 343,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:1:crystal_cavern:0": {
+      "x": 361,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:1:none:0": {
+      "x": 379,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:1:ruins:0": {
+      "x": 397,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:1:1:wet_cavern:0": {
+      "x": 415,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:0:cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:0:crystal_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:0:none:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:0:ruins:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:0:wet_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:1:cavern:0": {
+      "x": 433,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:1:crystal_cavern:0": {
+      "x": 451,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:1:none:0": {
+      "x": 469,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:1:ruins:0": {
+      "x": 487,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:2:1:wet_cavern:0": {
+      "x": 1,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:0:cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:0:crystal_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:0:none:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:0:ruins:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:0:wet_cavern:0": {
+      "x": 235,
+      "y": 317,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:1:cavern:0": {
+      "x": 19,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:1:crystal_cavern:0": {
+      "x": 37,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:1:none:0": {
+      "x": 55,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:1:ruins:0": {
+      "x": 73,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:quartz:3:1:wet_cavern:0": {
+      "x": 91,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:0:cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:0:none:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:0:ruins:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:0:wet_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:1:cavern:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:1:crystal_cavern:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:1:none:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:1:ruins:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:0:1:wet_cavern:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:0:cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:0:none:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:0:ruins:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:0:wet_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:1:cavern:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:1:crystal_cavern:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:1:none:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:1:ruins:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:1:1:wet_cavern:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:0:cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:0:none:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:0:ruins:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:0:wet_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:1:cavern:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:1:crystal_cavern:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:1:none:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:1:ruins:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:2:1:wet_cavern:0": {
+      "x": 127,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:0:cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:0:crystal_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:0:none:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:0:ruins:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:0:wet_cavern:0": {
+      "x": 109,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:1:cavern:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:1:crystal_cavern:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:1:none:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:1:ruins:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:silver_ore:3:1:wet_cavern:0": {
+      "x": 145,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:0:cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:0:crystal_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:0:none:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:0:ruins:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:0:wet_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:1:cavern:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:1:crystal_cavern:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:1:none:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:1:ruins:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:0:1:wet_cavern:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:0:cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:0:crystal_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:0:none:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:0:ruins:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:0:wet_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:1:cavern:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:1:crystal_cavern:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:1:none:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:1:ruins:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:1:1:wet_cavern:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:0:cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:0:crystal_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:0:none:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:0:ruins:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:0:wet_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:1:cavern:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:1:crystal_cavern:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:1:none:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:1:ruins:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:2:1:wet_cavern:0": {
+      "x": 181,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:0:cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:0:crystal_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:0:none:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:0:ruins:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:0:wet_cavern:0": {
+      "x": 163,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:1:cavern:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:1:crystal_cavern:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:1:none:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:1:ruins:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:stone:3:1:wet_cavern:0": {
+      "x": 199,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:0:cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:0:crystal_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:0:none:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:0:ruins:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:0:wet_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:1:cavern:0": {
+      "x": 235,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:1:crystal_cavern:0": {
+      "x": 253,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:1:none:0": {
+      "x": 271,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:1:ruins:0": {
+      "x": 289,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:0:1:wet_cavern:0": {
+      "x": 307,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:0:cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:0:crystal_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:0:none:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:0:ruins:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:0:wet_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:1:cavern:0": {
+      "x": 325,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:1:crystal_cavern:0": {
+      "x": 343,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:1:none:0": {
+      "x": 361,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:1:ruins:0": {
+      "x": 379,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:1:1:wet_cavern:0": {
+      "x": 397,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:0:cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:0:crystal_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:0:none:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:0:ruins:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:0:wet_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:1:cavern:0": {
+      "x": 415,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:1:crystal_cavern:0": {
+      "x": 433,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:1:none:0": {
+      "x": 451,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:1:ruins:0": {
+      "x": 469,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:2:1:wet_cavern:0": {
+      "x": 487,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:0:cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:0:crystal_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:0:none:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:0:ruins:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:0:wet_cavern:0": {
+      "x": 217,
+      "y": 335,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:1:cavern:0": {
+      "x": 1,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:1:crystal_cavern:0": {
+      "x": 19,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:1:none:0": {
+      "x": 37,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:1:ruins:0": {
+      "x": 55,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:sulfur:3:1:wet_cavern:0": {
+      "x": 73,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:0:cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:0:crystal_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:0:none:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:0:ruins:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:0:wet_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:1:cavern:0": {
+      "x": 109,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:1:crystal_cavern:0": {
+      "x": 127,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:1:none:0": {
+      "x": 145,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:1:ruins:0": {
+      "x": 163,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:0:1:wet_cavern:0": {
+      "x": 181,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:0:cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:0:crystal_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:0:none:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:0:ruins:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:0:wet_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:1:cavern:0": {
+      "x": 199,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:1:crystal_cavern:0": {
+      "x": 217,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:1:none:0": {
+      "x": 235,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:1:ruins:0": {
+      "x": 253,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:1:1:wet_cavern:0": {
+      "x": 271,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:0:cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:0:crystal_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:0:none:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:0:ruins:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:0:wet_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:1:cavern:0": {
+      "x": 109,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:1:crystal_cavern:0": {
+      "x": 127,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:1:none:0": {
+      "x": 145,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:1:ruins:0": {
+      "x": 163,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:2:1:wet_cavern:0": {
+      "x": 181,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:0:cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:0:crystal_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:0:none:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:0:ruins:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:0:wet_cavern:0": {
+      "x": 91,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:1:cavern:0": {
+      "x": 199,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:1:crystal_cavern:0": {
+      "x": 217,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:1:none:0": {
+      "x": 235,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:1:ruins:0": {
+      "x": 253,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    },
+    "deep:terrain:rock:tin_ore:3:1:wet_cavern:0": {
+      "x": 271,
+      "y": 353,
+      "width": 16,
+      "height": 16
+    }
+  }
+}

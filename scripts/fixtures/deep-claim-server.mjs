@@ -1,5 +1,6 @@
 // Loopback-only browser harness endpoint backed by real isolated PostgreSQL.
 import { createDeepClaimDatabase } from './deep-claim-db.mjs';
+import { randomUUID } from 'node:crypto';
 
 export function createDeepClaimMiddleware(token) {
   const runs = new Map();
@@ -74,6 +75,46 @@ export function createDeepClaimMiddleware(token) {
       if (input.operation === 'command') {
         const options = input.input ?? {};
         if (input.command === 'calls') return reply(response, { data: state.calls });
+        if (input.command === 'prepare_ancient_deep') {
+          // Explicit local late-game history preconditions, never a production
+          // account or a claim that this test earned an entire campaign. New
+          // minerals/alloy/gear remain ZERO and must be mined/crafted via UI.
+          let snapshot = await state.database.rpc(input.user, 'dc_get', {}), company = snapshot.company?.id;
+          if (!company || snapshot.expeditions.some(job => job.status === 'active')) throw new Error('A fresh owned local company is required');
+          await state.database.db.query('update public.dc_companies set cash=200000,office_level=3,shaft_level=5,warehouse_level=3,tool_level=3,quarters_level=3,smeltery_level=3,gem_workshop_level=3,research_office_level=2,trading_post_level=3 where id=$1', [company]);
+          await state.database.db.query('update public.dc_workers set stats=$2::jsonb where company_id=$1', [company, JSON.stringify({mining:100,geology:100,engineering:100,logistics:100,safety:100,endurance:100,leadership:100})]);
+          await state.database.db.query("update public.dc_inventory set quantity=case when resource_key in('nickel_ore','sulfur','nickel_alloy') then 0 else 10 end where company_id=$1", [company]);
+          // Existing shaft5 history includes its actually constructed passage.
+          for (let y=7;y<=556;y++) await state.database.db.query('select public.dc_reveal_v1($1,48,$2)', [company,y]);
+          snapshot=await state.database.rpc(input.user,'dc_get',{});
+          const pending=new Set(snapshot.business_catalog.research.filter(node=>options.unlock||node.key!=='deep_operations_2').map(node=>node.key));
+          while(pending.size){
+            const completed=new Set(snapshot.business.research.filter(order=>order.status==='completed').map(order=>order.key));
+            const next=snapshot.business_catalog.research.find(node=>pending.has(node.key)&&node.requires.every(key=>completed.has(key)));if(!next)throw new Error('Late research prerequisites could not be prepared');
+            if(Object.keys(next.inputs).some(key=>['nickel_ore','sulfur','nickel_alloy'].includes(key)))throw new Error('Old research may not require unearned new minerals');
+            await state.database.db.query('update public.dc_inventory set quantity=coalesce(($2::jsonb->>resource_key)::integer,0) where company_id=$1',[company,JSON.stringify(next.inputs)]);
+            snapshot=await state.database.rpc(input.user,'dc_get',{});
+            snapshot=await state.database.rpc(input.user,'dc_start_research',{p_research_key:next.key,p_expected_revision:snapshot.revision,p_request_id:randomUUID()});
+            await state.database.advanceResearch(input.user,next.key,next.duration_seconds+1);snapshot=await state.database.rpc(input.user,'dc_get',{});pending.delete(next.key);
+          }
+          await state.database.db.query("update public.dc_inventory set quantity=case when resource_key in('nickel_ore','sulfur','nickel_alloy') then 0 else 10 end where company_id=$1",[company]);snapshot=await state.database.rpc(input.user,'dc_get',{});
+          if(options.unlock)snapshot=await state.database.rpc(input.user,'dc_upgrade',{p_building_key:'mine_shaft',p_expected_revision:snapshot.revision,p_request_id:randomUUID()});
+          return reply(response,{data:{snapshot,scope:'Explicit isolated late-game old-stock/building preconditions; paid research orders. No new ore, alloy or equipment fabricated.'}});
+        }
+        if(input.command==='deep_worksite'){
+          if(!['nickel_ore','sulfur'].includes(options.resource))throw new Error('Invalid deep fixture material');
+          const snapshot=await state.database.rpc(input.user,'dc_get',{}),company=snapshot.company?.id;
+          if(!company||snapshot.world.max_depth!==999)throw new Error('An owned upgraded local shaft is required');
+          const candidates=(await state.database.db.query("select x,y,public.dc_cell_v1($1,x,y) cell from(values(47),(49))v(x) cross join generate_series(608,956)y order by y,x",[company])).rows;
+          const worker=snapshot.workers.find(worker=>worker.name==='Mara Flint'&&!worker.assigned_job_id&&worker.energy>=2);
+          if(!worker)return reply(response,{data:null});
+          for(const point of candidates){
+            if(point.cell.material!==options.resource||snapshot.world.tiles.some(tile=>tile.x===point.x&&tile.y===point.y))continue;
+            const quote=await state.database.rpc(input.user,'dc_preview_operation',{p_worker_ids:[worker.id],p_mode:'explore',p_target_x:point.x,p_target_y:point.y,p_duration_minutes:60,p_tutorial:false,p_infrastructure_key:null});
+            if(quote.allowed&&quote.estimated_yield.max>=6)return reply(response,{data:{x:point.x,y:point.y}});
+          }
+          return reply(response,{data:null});
+        }
         if (input.command === 'advance_job') {
           await state.database.advanceJob(input.user, options.job_id, options.seconds);
           return reply(response, { data: true });

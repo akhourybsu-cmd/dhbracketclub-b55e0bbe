@@ -3,7 +3,7 @@ import { DeepClaimAtlas, DEEP_CLAIM_ATLAS_METADATA as metadata, DEEP_CLAIM_ATLAS
 import * as atlasModule from '@/components/deepClaim/renderer/authoredAtlas';
 import { BUILDING_ART } from '@/components/deepClaim/renderer/artManifest';
 import { paintBuilding, paintTerrain, paintWorker, terrainSpriteKey } from '@/components/deepClaim/renderer/pixelArt';
-import { DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_MINERAL_IDS, DEEP_CLAIM_SPECIALTIES } from '@/lib/deepClaim/types';
+import { DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_FORMATIONS, DEEP_CLAIM_INFRASTRUCTURE_KEYS, DEEP_CLAIM_LEGACY_MINERAL_IDS, DEEP_CLAIM_SPECIALTIES } from '@/lib/deepClaim/types';
 
 class ImageStub {
   naturalWidth = metadata.width; naturalHeight = metadata.height; decoding = ''; src = '';
@@ -107,7 +107,7 @@ describe('Deep Claim authored pack coverage and authoritative visual layers', ()
     }
     for (const role of DEEP_CLAIM_SPECIALTIES) for (const pose of ['idle','walk','mine','haul','setup','survey','build']) for (let appearance = 0; appearance < 4; appearance++) for (let frame = 0; frame < 4; frame++) expect(metadata.frames[`worker:${role}:${pose}:${appearance}:${frame}`]).toMatchObject({ width: 24, height: 32 });
     expect(Object.keys(metadata.frames).filter(key => key.startsWith('worker:'))).toHaveLength(784);
-    for (const material of DEEP_CLAIM_MINERAL_IDS) expect(metadata.frames[terrainSpriteKey(material, false, 0, true, false, null, 0)]).toBeDefined();
+    for (const material of DEEP_CLAIM_LEGACY_MINERAL_IDS) expect(metadata.frames[terrainSpriteKey(material, false, 0, true, false, null, 0)]).toBeDefined();
     expect(Object.keys(metadata.frames).some(key => key.startsWith('terrain:') && /_bar|cut_amethyst|polished_quartz/.test(key))).toBe(false);
   });
 

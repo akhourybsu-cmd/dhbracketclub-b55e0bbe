@@ -1,5 +1,5 @@
 /** Optional public club projection and explanatory project math. Every economic change remains server-authorized. */
-import { CLUB_PROJECT_BY_KEY, SOCIAL_CATALOG, resourceSaleValue } from './catalog';
+import { CLUB_PROJECT_BY_KEY, DEEP_CATALOG, SOCIAL_CATALOG, resourceSaleValue } from './catalog';
 import { discoverySpecimen } from './field';
 import { DEEP_CLAIM_DISCOVERY_KINDS, DEEP_CLAIM_DISCOVERY_QUALITIES, DEEP_CLAIM_STANDING_METRICS, type DeepClaimClubProjectDefinition, type DeepClaimClubView, type DeepClaimDiscoveryKind, type DeepClaimDiscoveryQuality,  type DeepClaimPublicSpecimen, type DeepClaimResources } from './types';
 export type {DeepClaimClubView,DeepClaimStandingMetric,DeepClaimSocialPreferencesInput} from './types';
@@ -83,7 +83,7 @@ export function validateDeepClaimClubView(value:unknown,expected?:{clubId:string
   if(!integer(row.value)||!integer(row.rank,1)||typeof row.is_you!=='boolean'||row.is_you!==(row.user_id===value.user_id)||standingIds.has(String(row.user_id))||row.value>lastValue||row.is_you&&!own.standings_enabled||i===50&&!row.is_you)fail('Invalid unique club ranking.');
   if(i<50){if(row.value<lastValue)groupRank=i+1;if(row.rank!==groupRank)fail('Club standings must retain true tied ranks.');}
   else if(row.rank<1+value.standings.slice(0,50).filter(previous=>(previous as {value:number}).value>Number(row.value)).length)fail('Invalid own outside-top ranking.');
-  if(value.metric==='operational_depth'&&row.value>599||value.metric==='best_find'&&row.value>maximumRecoveredFindValue)fail('Invalid source-backed standings value.');
+  if(value.metric==='operational_depth'&&row.value>DEEP_CATALOG.shaft.max_depth||value.metric==='best_find'&&row.value>maximumRecoveredFindValue)fail('Invalid source-backed standings value.');
   standingIds.add(String(row.user_id));lastValue=row.value;
  }
  if(!Array.isArray(value.projects)||value.projects.length!==6)fail('The club view requires all six finite projects.');

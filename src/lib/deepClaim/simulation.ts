@@ -21,7 +21,7 @@ function ratio(numerators: number[], denominators: number[], up = false): number
   const result = Number(up ? (top + bottom - 1n) / bottom : top / bottom);
   return whole(result);
 }
-const hardnessTenths: Record<DeepClaimMineralId, number> = { stone: 10, clay: 7, coal: 10, copper_ore: 12, tin_ore: 12, iron_ore: 15, quartz: 13, silver_ore: 18, amethyst: 20, gold_ore: 22 };
+const hardnessTenths: Record<DeepClaimMineralId, number> = { stone: 10, clay: 7, coal: 10, copper_ore: 12, tin_ore: 12, iron_ore: 15, quartz: 13, silver_ore: 18, amethyst: 20, gold_ore: 22, nickel_ore:26,sulfur:12 };
 export const DEEP_CLAIM_HARDNESS = Object.fromEntries(DEEP_CLAIM_MINERAL_IDS.map(id => [id, hardnessTenths[id] / 10])) as Record<DeepClaimMineralId, number>;
 export function workerLevel(xp: number): number { return Math.min(10, 1 + Math.floor(whole(xp) / 60)); }
 export function effectiveWorkerStats(base: DeepClaimStats, xp: number): DeepClaimStats {
@@ -100,11 +100,7 @@ export function calculateCrewPlan(input: DeepClaimCrewPlanInput): DeepClaimCrewP
     haul = Math.max(20, ratio([total, 4], [70 + averages.logistics], true));
     work = total - travel - setup - haul - back;
     const material = input.material ?? 'stone';
-    mining_capacity = ratio([
-      Math.max(0, work), n, 20 + averages.mining, 70 + averages.safety, 360 + averages.geology,
-      500 - (energy - 1) * Math.max(0, 80 - averages.endurance), 1000 + max_leadership * (n - 1),
-      100 + 25 * (input.tool_level - 1), 100 * n + 10 * swing - 5 * deliberate, 10,
-    ], [60, 100, 100, 400, 500, 1000, 100, 100 * n, hardnessTenths[material]]);
+    mining_capacity = calculateMiningCapacity({work_seconds:Math.max(0,work),crew_count:n,averages,max_leadership,energy,tool_level:input.tool_level,material,sure_swing:swing,deliberate});
     const raw = input.mode === 'explore'
       ? wages + 2 * n + Math.floor(averages.mining / 20) + Math.floor(averages.geology / 30) + Math.floor(averages.endurance / 30)
       : Math.max(1, mining_capacity);
@@ -118,6 +114,18 @@ export function calculateCrewPlan(input: DeepClaimCrewPlanInput): DeepClaimCrewP
     reveal_count: 3 + Math.floor(averages.geology / 20) + Math.floor(averages.safety / 30) + count('ore_eye'),
     risk_level: risk < 8 ? 'low' : risk < 16 ? 'moderate' : 'high',
     estimated_yield: { min: ratio([quantity,8],[10]), max: Math.min(ratio([quantity,12],[10],true), capacity, input.tutorial || input.remaining === undefined ? Number.MAX_SAFE_INTEGER : input.remaining) } };
+}
+export interface DeepClaimMiningCapacityInput {work_seconds:number;crew_count:number;averages:DeepClaimStats;max_leadership:number;energy:number;tool_level:number;material:DeepClaimMineralId;sure_swing:number;deliberate:number}
+/** The exact legacy integer-rational yield calculation, reusable with newly frozen productive seconds. */
+export function calculateMiningCapacity(input:DeepClaimMiningCapacityInput):number{
+ const {work_seconds,crew_count:n,averages,max_leadership,energy,tool_level,material,sure_swing:swing,deliberate}=input;
+ whole(work_seconds);whole(n,1,3);whole(energy,1,3);whole(tool_level,1,3);whole(swing,0,n);whole(deliberate,0,n);whole(max_leadership,1,100);
+ if(!DEEP_CLAIM_MINERAL_IDS.includes(material))throw new Error('Unsupported mining material.');
+ return ratio([
+  work_seconds,n,20+averages.mining,70+averages.safety,360+averages.geology,
+  500-(energy-1)*Math.max(0,80-averages.endurance),1000+max_leadership*(n-1),
+  100+25*(tool_level-1),100*n+10*swing-5*deliberate,10,
+ ],[60,100,100,400,500,1000,100,100*n,hardnessTenths[material]]);
 }
 /** A previously depleted deposit cannot be renewed by this operation. */
 export function withdrawFinite(remaining: number, requested: number): { quantity: number; remaining: number } {
@@ -149,7 +157,7 @@ export function retainsOperatingCapital(cash: number, wages: number, inventory: 
 }
 export function canUpgrade(cash: number, building: DeepClaimBuildingId, currentLevel: number): boolean {
   const added = ['workers_quarters','smeltery','gem_workshop','research_office','trading_post'].includes(building);
-  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 5 : building==='research_office'?2:3);
+  whole(cash); whole(currentLevel, added ? 0 : 1, building === 'mine_shaft' ? 6 : building==='research_office'?2:3);
   const price = BUILDING_UPGRADE_COSTS[building]?.[added ? currentLevel : currentLevel - 1];
   return price !== undefined && cash - price >= 2;
 }

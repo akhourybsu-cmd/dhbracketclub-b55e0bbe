@@ -1,8 +1,42 @@
 # Deep Claim implementation ledger
 
-## Current release — Phase 6 original presentation and runtime polish
+## Current release — Phase 7 Ancient Deep operations
 
-Phase 6 builds on main `e2df6d9f67a02b87280eb48897e7d165143b5577`. It is a presentation release: private snapshot schema four, field rules three, business catalog four, social catalog five and all seven applied migrations remain unchanged. Original authored sprite frames and composed Web Audio arrangements are versioned independently of the authoritative game. The final release SHA and verified GitHub/Lovable synchronization will be reported after publishing; this document does not invent its future commit hash.
+This expansion builds on published main `e2498e9a313a7d26c1b3eb4da6dbbf6548af42e9`, whose exact Lovable preview synchronization was verified. The playable slice and local release verification are complete; publication is pending. A migration file on disk is not a deployment claim.
+
+### Implemented slice and boundaries
+
+- Shaft six extends supported work to 999 metres and the actual constructed corridor to 956. It costs 24,000 company credits and requires the existing Deep Cutting Systems research. The powered lift discounts only known, excavated central-shaft route edges; branches retain their ordinary cost. Existing twenty/sixty/180-minute shifts, wages and energy remain.
+- Ancient Deep mining has a deterministic, quoted heat productivity penalty. Actual effective Engineering, the strongest installed covering ventilation and working heat shields mitigate it. Useful extraction time or the exploration quota scales exactly once; elapsed work stages stay unchanged. Surveys and infrastructure remain available for preparation. No incident destroys cargo or kills staff.
+- Finite nickel and sulfur deposits, nickel-alloy smelting and a specialized head-slot heat shield add three goods, two recipes and one equipment definition. These use the existing paid production/repair pipeline. Heat protection remains useful at the ordinary statistic cap. Existing research, contracts, company milestones, club pools and Feat definitions retain their original values.
+- Snapshot five adds a separate public deep catalog and operations summary; older schemas remain readable. Field rules seven, generation four and production configuration four have distinct roles. The seven prior migration files and five prior canonical catalogs remain unchanged. Existing generation metadata wins, including unseen cells in the 576–607-metre chunk; new geology starts only in previously absent chunks from 608 metres.
+- Known-ground depth navigation, preserved legal worksites, memoized target scans, explicit review focus and high-contrast states extend the existing menus. An independently loaded authored sprite add-on and sixth original music arrangement distinguish the revealed deep region. The original atlas, metadata and five earlier arrangements remain preserved.
+
+### Changed modules
+
+`src/lib/deepClaim/deepOperations.ts` holds the pure lift/heat calculation beside the extended catalog, types, world, simulation, production and social-value modules. Existing Page, dispatch, field, industry, building, workforce and settings components expose those authoritative capabilities. Renderer changes live in `ancientArt.ts`, `ancientAtlas.ts` and the existing Canvas/painter/icon modules; `audioScore.ts` adds the sixth arrangement. `art/deep-claim/v1-source` archives the exact original compiler inputs, while `pack-v2.json`, its compiler and `public/deep-claim/atlas-v2.png` form the independent add-on.
+
+The SQL source and canonical content are `supabase/migrations/20261102070000_deep_claim_ancient_deep.sql` and `supabase/seed/deep-claim-phase7-catalog.json`. Scoped unit, SQL, Feats, balance, browser and production-PWA harnesses verify the slice. `scripts/lib/deep-claim-release.mjs`, the guarded native adapter and native runner provide independently tested cutover construction and concurrency/rollback evidence. Existing authentication, club installation, global score and notification systems retain their ownership boundaries.
+
+### Verification and migration status
+
+- All **158 core database groups** and **19 actual DH Feats/inbox integration groups** passed. The composed backend matches **153 exact function bodies**, including all fifteen unchanged critical non-DC functions. The seven previous migration sources and five older canonical catalogs remain unchanged.
+- A disposable, marker-verified local PostgreSQL **17.11** instance passed **14 real multi-connection groups** using eight connections: overlapping sessions, exact bootstrap/dispatch/collection/upgrade retry, migration waiting for a company lock with legacy state preserved, mixed old/new completion, finite competing sales and role boundaries. A deliberately wrong release postcondition rolled back schema, data and migration history. The valid release transaction passed under contention and a repeat application was rejected. This adds native concurrency evidence to the PGlite suites; it does not establish exhaustive deadlock freedom or physical-device behavior. See [native QA](DEEP_CLAIM_NATIVE_QA.md).
+- Full unit/component suite: **200 files, 1,957 tests passed**, run alone in 79.71 seconds. Scoped ESLint passed for **65 changed TypeScript/TSX/MJS files**. The final production build passed in **14.50 seconds**, including the opaque system-color correction. The original atlas, independent add-on and Phase 7 source-preservation checks passed.
+- The headless balance runner passed the existing **210 scenarios** and **648 Ancient Deep depth/loadout/protection cases**. It verifies finite deposits and the 23-credit alloy processing margin. At 999 metres, an already paid one-worker standard-shift setup with the existing steel tool/cargo harness extracts ten nickel with the iron helmet, twelve with the heat shield and fourteen with shield plus installed ventilation; each remains one elapsed hour and six credits in wages. Those conditional cases show useful specialization, not a claimed universal progression time.
+- The final focused Ancient Deep browser journey passed **37 checks** against the actual Page/hooks and local authoritative SQL functions. It pays for research and shaft six, mines finite nickel and sulfur, smelts three alloys, crafts/equips/wears/repairs the shield, survives a lost production acknowledgement and reload, and checks phone/landscape quotes, forced colors and add-on failure recovery. Its final high-contrast assertions verify opaque system-colored surfaces, readable headings/instructions and a 21:1 primary-button contrast. Finite CSS transitions settle before measurement; the browser's translucent Highlight color is not used as the primary background. Late-game preconditions are explicitly labeled local fixtures, with zero initial new goods. No production player data is created for QA.
+
+`20261102070000_deep_claim_ancient_deep.sql` is additive and currently unapplied to production. It introduces no new public RPC or private table: the intended boundaries remain twenty-five member RPCs and thirty-three private RLS tables. Thirteen existing function bodies change and twenty private helpers/aliases are added. Old jobs, private plans, receipts, installations and dynamic earned awards are release-preservation requirements.
+
+The initial read-only production preflight matched all 133 baseline function bodies and the original ACL/catalog/privacy boundaries. One real company and 218 earned awards existed at that observation; these are legitimate player data, not QA records. Cutover must capture current data under its transaction locks rather than assume the older zero-company/216-award counts. No live test account or invented reward is authorized or needed.
+
+### Remaining work and scope
+
+The complete ten-section browser regression passed **361 checks (355 unique labels)** with no assertion or runtime errors. The actual application typecheck (`npx tsc --noEmit -p tsconfig.app.json`) passed. A production-build PWA smoke passed **12 checks** against real local Chromium: protected deep-link startup, declared viewport/manifest/icon dimensions, native push-worker registration, zero notification-permission requests and no response cache or horizontal overflow. Headless Chromium began with notification permission denied; a native forwarding probe counts requests without inventing permission state. It did not run in standalone display mode. The focused 37-check rerun adds two explicit high-contrast assertions to the complete regression, for 357 unique passing labels across the runs. Publication and production migration evidence remain to be recorded. The shipped region is bounded at 999 metres; 1,000-metre-plus content, automated industry, trading and an expanded lifetime museum remain future extensions. Physical Android/iOS installation, OS background interruption and subjective audio review are unavailable in this cloud environment. Production PWA smoke tests describe the actual local build and the existing push-only worker; cold offline launch or real push delivery is not implied.
+
+## Phase 6 release record — original presentation and runtime polish
+
+Phase 6 was published to main as `e2498e9a313a7d26c1b3eb4da6dbbf6548af42e9`, building on `e2df6d9f67a02b87280eb48897e7d165143b5577`. It is a presentation release: private snapshot schema four, field rules three, business catalog four, social catalog five and all seven applied migrations remain unchanged. Original authored sprite frames and composed Web Audio arrangements are versioned independently of the authoritative game. Exact GitHub/Lovable preview synchronization was verified.
 
 ### Working presentation slice
 
@@ -33,7 +67,7 @@ No new migration is required or applied for this presentation release. The seven
 
 ### Publication and next work
 
-The tested source is prepared for a normal main-branch publication; the final commit SHA, verified push and exact Lovable preview synchronization are reported after that operation. A ready preview is separate from public-site publishing. The next recommended work is physical Android/iOS PWA and audio-quality review, then deeper geological/content expansion using the existing version boundaries.
+The tested source was published normally to main as `e2498e9a313a7d26c1b3eb4da6dbbf6548af42e9`, and exact Lovable preview synchronization was verified. That ready preview did not itself establish public-site publishing. Physical Android/iOS PWA and audio-quality review remained outstanding; Phase 7 continues deeper geological/content expansion using the existing version boundaries.
 
 ### Scope and genuine limits
 

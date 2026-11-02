@@ -27,10 +27,12 @@ export async function runPhase4ResearchTests(h) {
   }
 
   await check('Phase4 research: fresh snapshots publish canonical business definitions without free unlocks, goods or credits', async () => {
-    const empty = await get(); assert.equal(empty.schema_version, 4); assert.equal(empty.company, null);
+    const empty = await get(); assert.equal(empty.schema_version, h.currentSchema); assert.equal(empty.company, null);
     assert.equal(empty.business_catalog.research.length, 14); assert.equal(empty.business_catalog.contracts.length, 12); assert.equal(empty.business_catalog.milestones.length, 8);
     assert.deepEqual(empty.business.research, []); assert.equal(empty.business.processing_speed_percent, 0); assert.deepEqual(empty.business.research_bonuses, {});
-    const snapshot = await bootstrap(); assert.equal(snapshot.company.cash, 180); assert.equal(snapshot.recipes.length, 21); assert.equal(snapshot.equipment_catalog.length, 12); assert.equal(snapshot.buildings.length, 9);
+    const snapshot = await bootstrap(); assert.equal(snapshot.company.cash, 180); assert.equal(snapshot.recipes.length, 23); assert.equal(snapshot.equipment_catalog.length, 13); assert.equal(snapshot.buildings.length, 9);
+    assert.equal(snapshot.recipes.filter(recipe => !['smelt_nickel_alloy','craft_nickel_heatshield'].includes(recipe.key)).length, 21);
+    assert.equal(snapshot.equipment_catalog.filter(item => item.key !== 'nickel_heatshield').length, 12);
     for (const key of ['bronze_bar','steel_bar','gold_bar']) assert.equal(snapshot.resources[key], 0);
     for (const key of ['research_office','trading_post']) assert.equal(snapshot.buildings.find(building => building.key === key).level, 0);
     assert.ok(snapshot.business.milestones.every(milestone => milestone.progress === 0 && milestone.claimed_at === null));
@@ -93,7 +95,7 @@ export async function runPhase4ResearchTests(h) {
     assert.deepEqual(await one('select to_jsonb(e) ticket,p.content from public.dc_expeditions e join public.dc_plans p on p.job_id=e.id where e.id=$1', [job.id]), frozen);
     assert.equal(snapshot.workers.find(worker => worker.id === tessa.id).stats.mining, oldStats.mining + 4);
     const begun = await dispatchOperation(A, snapshot, { workers: [tessa.id], mode: 'extract', x: 47, y: 2 });
-    const later = begun.expeditions.find(operation => operation.id !== job.id && operation.status === 'active'); assert.ok(later); assert.equal(later.config_version, 3);
+    const later = begun.expeditions.find(operation => operation.id !== job.id && operation.status === 'active'); assert.ok(later); assert.equal(later.config_version, h.currentFieldRules);
     assert.deepEqual((await one('select content from public.dc_plans where job_id=$1', [job.id])).content, frozen.content);
   });
 
