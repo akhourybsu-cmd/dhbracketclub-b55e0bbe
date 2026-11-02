@@ -24,7 +24,11 @@ Implementation is scoped to eight existing stylesheets and `renderer/DeepClaimIc
 
 Native browser scenarios use production components with authoritative isolated local PostgreSQL transport. No live member stock, company or achievement was changed by QA. Independent final visual review found no material clipping, hidden action or art-style regression in the reviewed phone/landscape/desktop frames.
 
-Publication is pending the ordinary main update and public-asset verification. No SQL migration is required.
+The 13-file feature was pushed normally to main as **`90defd1fa242ab5addfb1e25fd6af82c2f58a21c`**, tree `d561f48636851c6ec3ca9fca85dd4a5fb3c50660`, from the expected `eb4abe0b` parent. Uploaded blob SHA values and the remote tree match the tested workspace; remote main readback and hash-verified local commit import agree. No force update or protection bypass occurred. Lovable reported this exact source revision ready with no project error before publication.
+
+Deployment **`686d16d4-c864-44b8-bbc8-eb04f3fecd5c`** was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-02T23:08:42Z**, build `1793660858454`. The public game serves `DeepClaimPage-Pjv3gh5_.js` and `DeepClaimPage-Dxd3wYp8.css`, including the new original clay/coal SVG paths, stable resource-art IDs, recessed artwork stages, hardware dialog frames and research states. Public CSS SHA256 **`96abe654d06ee9f2d784a66f7a68a7aadb83245dd6772d0789c3a09241c0e67b`** exactly matches the tested build. Both original atlas hashes remain unchanged, and the earlier introductory menu prose remains absent. Proof: `/tmp/dc-polish-public-proof/proof.json`.
+
+Lovable rebuilds JavaScript, so local/hosted JavaScript byte equality is not claimed. The public build ID is not a Git SHA; source synchronization and served content were verified separately. This receipt is a documentation-only follow-up. No SQL migration is required or claimed. Public asset verification does not claim authenticated production-player testing, physical-device installation or hardware/audio QA.
 
 ## Previous release — concise menus and research completion
 
