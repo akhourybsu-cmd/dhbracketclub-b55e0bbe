@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       DEEP_CLAIM_QA_OUTPUT: /tmp/deep-claim-browser-artifacts
