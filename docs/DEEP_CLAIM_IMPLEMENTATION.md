@@ -18,7 +18,13 @@ This presentation release builds on clean main `862993fe1ed327c33bc0f6d5f4b2e3eb
 | Production build | Passed in **30.64 seconds**; `DeepClaimPage-QGac5IKp.js` 764.31 KB / 181.00 KB gzip and `DeepClaimPage-DbzdRCM6.css` 240.06 KB / 37.09 KB gzip. The existing large-chunk advisory remains. |
 | Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-gXj3L7/report.json`. This verifies production-build authentication and PWA bootstrap without claiming physical-device installation. |
 
-Native QA uses real production components and authoritative isolated local PostgreSQL transport. No live member company, stock or achievement was changed. Publication and public-asset verification are pending; no SQL migration is required.
+Native QA uses real production components and authoritative isolated local PostgreSQL transport. No live member company, stock or achievement was changed. No SQL migration is required.
+
+The 21-file feature was pushed normally to main as **`4ac758aa770e30d994d594406363e3a8256853ae`**, tree `f590be5669ffb61d50ec3f0d59189e2aa3741bf7`, from the expected `862993fe` parent. Uploaded blobs and the remote tree match the tested workspace; main readback and hash-verified local import agree. No force update or protection bypass occurred. Lovable reported the exact source revision ready with no project error before publication.
+
+Deployment **`11d72576-2a34-4563-a381-92c3e83a5493`** was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-02T23:59:43Z**, build `1793663923059`. The public game serves `DeepClaimPage-Be_bfSBd.js` and `DeepClaimPage-DbzdRCM6.css`, with all five selector identities, the worksite map/card, lift-stop and journal-rail styles. Old coordinate-search placeholder and pinned-selection explanatory prose are absent. Public CSS SHA256 **`1a07110ba572271cc92b5b4892e0ea874b6d652aafa01460ee0fc039b47f2edb`** exactly matches the tested build; both original atlas hashes remain unchanged. Proof: `/tmp/dc-selectors-public-proof/proof.json`.
+
+Lovable rebuilds JavaScript, so local/hosted JavaScript byte equality is not claimed. Source synchronization and public content were verified separately; the build ID is not a Git SHA. This receipt is recorded in a documentation-only follow-up. Public verification does not claim authenticated production-player testing, physical-device installation or hardware/audio QA.
 
 ## Previous release — unified visual finish
 
