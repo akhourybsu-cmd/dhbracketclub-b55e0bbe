@@ -28,7 +28,7 @@ jobs:
         run: npm run lint:member
 
       - name: Deterministic unit tests
-        run: npm run test:unit
+        run: npm run test:unit -- --maxWorkers=1
 
       - name: Production build
         run: npm run build
