@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint .",
     "lint:member": "eslint src/App.tsx src/components/member src/hooks/useChatMessages.ts src/hooks/useNotifications.ts src/lib/memberData.ts src/lib/memberWorkflows.ts src/pages/ChatPage.tsx src/pages/ClubPage.tsx src/pages/CreatePollPage.tsx src/pages/CreateRankingPage.tsx src/pages/DashboardPage.tsx src/pages/EventsPage.tsx src/pages/FeedPage.tsx src/pages/LorePage.tsx src/pages/NotificationsPage.tsx src/pages/PollsListPage.tsx src/pages/PostsPage.tsx src/pages/RankingsListPage.tsx src/pages/CelebrationsPage.tsx src/test/appNavigation.test.ts src/test/memberData.test.ts src/test/memberWorkflows.test.ts src/test/memberRouteErrorBoundary.test.tsx",
     "preview": "vite preview",
