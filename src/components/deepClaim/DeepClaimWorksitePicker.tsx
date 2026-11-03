@@ -40,9 +40,12 @@ export function DeepClaimWorksitePicker({ world, sites, selected, mode, disabled
   const tiles = useMemo(() => new Map(world?.tiles.map(tile => [keyOf(tile), tile]) ?? []), [world]);
   const filtered = useMemo(() => {
     const words = search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    return sites.length <= PAGE_SIZE || !words.length ? sites : sites.filter(point => {
-      const text = `${worksiteName(point, mode, tiles)} ${point.y}m ${worksiteBranch(point)} ${keyOf(point)}`.toLocaleLowerCase();
-      return words.every(word => text.includes(word));
+    const depthOnly = words.length === 1 && /^\d+m?$/.test(words[0]);
+    return !words.length ? sites : sites.filter(point => {
+      const text = (depthOnly ? `${point.y}m` : `${worksiteName(point, mode, tiles)} ${point.y}m ${worksiteBranch(point)}`).toLocaleLowerCase();
+      // Explicit coordinate lookups remain available without letting the hidden
+      // shaft x-coordinate match every ordinary depth search.
+      return words.every(word => word.includes(':') ? keyOf(point) === word : text.includes(word));
     });
   }, [sites, search, mode, tiles]);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -70,7 +73,7 @@ export function DeepClaimWorksitePicker({ world, sites, selected, mode, disabled
   }
   return <section className="dcl-worksites" role="group" aria-label="Expedition worksite" data-dc-tutorial="dispatch-target">
     <header><h3>{mode === 'extract' ? 'Choose a deposit' : mode === 'explore' ? 'Choose a tunnel frontier' : mode === 'survey' ? 'Scout from' : 'Build at'}</h3><span>{sites.length} {sites.length === 1 ? 'site' : 'sites'}</span></header>
-    {sites.length > PAGE_SIZE && <label className="dcl-site-search" htmlFor={id}><Search size={16} aria-hidden="true" /><span className="sr-only">Depth or material</span><input id={id} type="search" aria-label="Depth or material" placeholder="Material or depth" value={search} disabled={disabled} onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>}
+    {(sites.length > PAGE_SIZE || search.length > 0) && <label className="dcl-site-search" htmlFor={id}><Search size={16} aria-hidden="true" /><span className="sr-only">Depth or material</span><input id={id} type="search" aria-label="Depth or material" placeholder="Material or depth" value={search} disabled={disabled} onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>}
     {pinned && <div className="dcl-site-pinned"><span>Selected</span>{card(pinned)}</div>}
     <div className="dcl-worksite-grid">{visible.map(card)}</div>
     {!sites.length ? <p className="dcl-note">{mode === 'extract' ? 'Expand tunnels to reach a deposit.' : 'No connected worksite.'}</p> : !filtered.length && <p className="dcl-note" role="status">No matching sites</p>}

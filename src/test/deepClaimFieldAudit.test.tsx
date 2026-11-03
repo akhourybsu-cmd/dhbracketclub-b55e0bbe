@@ -128,13 +128,18 @@ describe('Deep Claim dispatch crew recovery', () => {
 });
 
 describe('Deep Claim mine lift recovery', () => {
-  it('never retains an invisible search when the refreshed list has only a few stops', () => {
+  it('retains a visible search when fewer stops remain and clears it without moving the selected depth', () => {
     const view = render(<Operations snapshot={mine()} />);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find depth' }), { target: { value: '19' } });
     view.rerender(<Operations snapshot={mine(4)} />);
-    expect(screen.queryByRole('searchbox', { name: 'Find depth' })).not.toBeInTheDocument();
-    expect(within(screen.getByRole('group', { name: 'Known mine depth' })).getAllByRole('button')).toHaveLength(4);
-    expect(screen.queryByText('No matching depth')).not.toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Find depth' })).toHaveValue('19');
+    expect(screen.getByText('No matching depth')).toBeInTheDocument();
+    const stops = screen.getByRole('group', { name: 'Known mine depth' });
+    expect(within(stops).getByRole('button', { name: '2 metres' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear depth search' }));
+    expect(within(stops).getAllByRole('button')).toHaveLength(4);
+    expect(within(stops).getByRole('button', { name: '2 metres' })).toHaveAttribute('aria-pressed', 'true');
+    expect(locate).not.toHaveBeenCalled();
   });
 
   it('retains manual lift browsing on a refresh and follows a newly selected map site', () => {

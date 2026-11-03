@@ -1,6 +1,14 @@
 # Deep Claim implementation ledger
 
-## Current release — production, workforce and menu recovery
+## Current work — discoveries and expedition planning recovery
+
+Discovery reviews use the existing fixed-footer dialog shell. Back and explicit confirmation remain separate from the scroll body; compact original-art identity keeps more of each find visible. The footer names the selected outcome and displays stale-company, storage, connection or retry blockers beside the action. Initial confirmation is disabled, closed/reopened reviews reset, in-flight navigation remains locked and kept specimens offer no second decision. All final-choice, revision, server-action and all-or-nothing salvage guards remain intact.
+
+First-shift selection now uses the same real eligibility helper as its visible control, including after refreshed starter-stock/assignment changes; ordinary Quick shifts do not silently submit an unavailable bonus. Worksite searches match disclosed depth/material/branch labels without interpreting a bare number as a hidden horizontal coordinate. The supported exact `x:y` shortcut remains. Worksite and lift filters stay visible/applied when fewer choices remain, with explicit clear recovery and selected-site preservation.
+
+Focused field/planning suites pass 72/72, and the full Deep Claim suite passes 70 files / 1,061 tests. The production build passes in 19.33s; app-project types, scoped lint and Phase 8 preservation pass. Native QA extends the existing earned field scenario: four phone/landscape/theme cases inspect real recovered geode choices and sticky actions, then an independent device makes a real one-unit sale to invalidate the first draft. It retains lost-acknowledgment replay and final resolved-history checks. Exact-source app CI/browser execution and public publication are pending. No SQL migration, economic/rules change, atlas replacement, new dependency or save reset is required.
+
+## Previous release — production, workforce and menu recovery
 
 Finished production has image-forward station shortcuts above inventory, ready counts and ready-first queue ordering. Only server-ready orders are collectable. Production quantities use large −/+ controls around the validated input, with minimum/maximum and reviewed-quantity locking. Opening a shortcut does not collect output.
 

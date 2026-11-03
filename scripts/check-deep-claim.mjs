@@ -18,6 +18,7 @@ import { runDeepClaimAcademyBrowser, runDeepClaimCampaignBrowser, runDeepClaimMe
 import { runDeepClaimSessionBrowser } from './fixtures/deep-claim-session-browser.mjs';
 import { runDeepClaimMomentsBrowser } from './fixtures/deep-claim-moments-browser.mjs';
 import { runDeepClaimNavigationBrowser } from './fixtures/deep-claim-navigation-browser.mjs';
+import { runDeepClaimFindFooterBrowser } from './fixtures/deep-claim-field-browser.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
@@ -1122,6 +1123,9 @@ async function field() {
   checked('returned-mining-recovers-a-single-real-specimen', find.kind === 'banded_geode' && find.status === 'pending' && snapshot.discovery_summary.pending === pendingBeforeQuartz + 1
     && snapshot.world.tiles.find(value => value.x === 47 && value.y === 3).remaining === 0);
   await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
+  await runDeepClaimFindFooterBrowser({ setup, go, tab, rpc, command, sale, checked, fit, shot, expect, assert }, run, find);
+  currentPage = page;
+  await page.evaluate(() => window.deepClaimQueryClient.refetchQueries({ queryKey: ['deep-claim'], type: 'active' }));
   await tab(page, 'Surface'); await page.getByRole('button', { name: /^Review finds · \d+$/ }).click();
   await page.locator(`[data-dc-find="${find.id}"]`).click();
   dialog = page.getByRole('dialog', { name: find.name, exact: true });

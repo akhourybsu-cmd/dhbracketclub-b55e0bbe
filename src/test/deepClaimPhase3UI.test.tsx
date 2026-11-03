@@ -77,10 +77,13 @@ describe('Deep Claim field planning', () => {
     resolve(quote()); await screen.findByRole('button', { name: 'Dispatch crew' }); expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Edit plan' })); expect(chosenSite()).toHaveAttribute('data-dc-worksite', '47:299');
   });
-  it('does not retain a hidden filter when a refreshed mine has only a few sites', () => {
+  it('keeps a filter visible and lets the player clear it when a refreshed mine has only a few sites', () => {
     const data = manySites(), view = render(<Dispatch snapshot={data} />);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Depth or material' }), { target: { value: 'no matches' } });
     view.rerender(<Dispatch snapshot={{ ...data, revision: 4, world: { ...data.world!, tiles: data.world!.tiles.slice(0, 4) } }} />);
+    expect(screen.getByRole('searchbox')).toHaveValue('no matches'); expect(siteButtons()).toHaveLength(1);
+    expect(within(worksiteGroup()).getByRole('status')).toHaveTextContent('No matching sites');
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument(); expect(siteButtons()).toHaveLength(4);
     expect(chosenSite()).toHaveAttribute('data-dc-worksite', '48:1');
   });
@@ -135,7 +138,7 @@ describe('Deep Claim finite discoveries and committed reports', () => {
     const view = render(<FieldLog />); fireEvent.click(screen.getByRole('button', { name: /^Sell specimen/ })); view.rerender(<FieldLog data={{ ...wire.data!, revision: 4 }} />); expect(screen.getByRole('button', { name: 'Confirm sale' })).toBeDisabled(); fireEvent.click(screen.getByRole('button', { name: /^Sell specimen/ })); expect(screen.getByRole('button', { name: 'Confirm sale' })).toBeEnabled(); expect(wire.resolve).not.toHaveBeenCalled();
   });
   it('does not carry a selected decision into another specimen', () => {
-    wire.data!.discoveries!.push(find({ id: 'find-2', name: 'Second Geode' })); const view = render(<FieldLog />); fireEvent.click(screen.getByRole('button', { name: /^Sell specimen/ })); view.rerender(<FieldLog selected="find-2" />); expect(screen.getByRole('button', { name: 'Choose a decision' })).toBeDisabled(); expect(wire.resolve).not.toHaveBeenCalled();
+    wire.data!.discoveries!.push(find({ id: 'find-2', name: 'Second Geode' })); const view = render(<FieldLog />); fireEvent.click(screen.getByRole('button', { name: /^Sell specimen/ })); view.rerender(<FieldLog selected="find-2" />); expect(screen.getByRole('button', { name: 'Confirm decision' })).toBeDisabled(); expect(wire.resolve).not.toHaveBeenCalled();
   });
   it('keeps decisions disabled while offline but permits finding the public site', () => {
     render(<FieldLog readOnly />); expect(screen.getByRole('button', { name: /^Keep in cabinet/ })).toBeDisabled(); fireEvent.click(screen.getByRole('button', { name: 'Locate find site' })); expect(locate).toHaveBeenCalledWith(expect.objectContaining({ x: 47, y: 3 })); expect(wire.resolve).not.toHaveBeenCalled();

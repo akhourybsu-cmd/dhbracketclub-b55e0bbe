@@ -24,6 +24,7 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
 }) {
   const tutorialEvents = useDeepClaimTutorialEvents();
   const field = snapshot.schema_version >= 3;
+  const introAvailable = claimIntroAvailable(snapshot);
   const [mode, setMode] = useState(initialMode);
   const initialMinutes = DURATION_OPTIONS.some(option => option.minutes === initialPlan?.durationMinutes) ? initialPlan!.durationMinutes : 20;
   const [workers, setWorkers] = useState(() => {
@@ -43,7 +44,7 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   const [crewPage, setCrewPage] = useState(0);
   const [minutes, setMinutes] = useState<DeepClaimDuration>(initialMinutes);
   const [project, setProject] = useState<InfrastructureKey>('supports');
-  const [tutorial, setTutorial] = useState(!initialPlan?.ordinary && !snapshot.company?.tutorial_used && initialMode === 'extract' && initialTarget?.x === 47 && initialTarget?.y === 1);
+  const [tutorial, setTutorial] = useState(!initialPlan?.ordinary && introAvailable && initialMode === 'extract' && initialTarget?.x === 47 && initialTarget?.y === 1);
   const [quote, setQuote] = useState<DeepClaimPreview | null>(null);
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
@@ -52,6 +53,11 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (tutorial && !introAvailable) {
+      setTutorial(false); setQuote(null); setError(''); setConditionsOpen(false);
+    }
+  }, [tutorial, introAvailable]);
   const targets = useMemo(() => claimTargets({ world: snapshot.world, infrastructure: snapshot.infrastructure }, mode), [snapshot.world, snapshot.infrastructure, mode]);
   const revealed = useMemo(() => new Map(snapshot.world?.tiles.map(tile => [`${tile.x}:${tile.y}`, tile]) ?? []), [snapshot.world]);
   const sites = useMemo(() => target && !targets.some(point => point.x === target.x && point.y === target.y) ? [target, ...targets] : targets, [target, targets]);
@@ -59,7 +65,6 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   const input: DeepClaimDispatchInput | null = target ? { worker_ids: [...workers].sort(), mode, target_x: target.x, target_y: target.y, duration_minutes: minutes, tutorial, ...(field ? { infrastructure_key: mode === 'infrastructure' ? project : null } : {}) } : null;
   const stale = !!quote && quote.company_revision < snapshot.revision;
   const quoteReasons = [...new Set(quote?.reasons ?? [])];
-  const introAvailable = claimIntroAvailable(snapshot);
   const reviewed = field && !!quote?.allowed && !stale;
   const auxiliary = mode === 'survey' || mode === 'infrastructure';
   const selected = useMemo(() => snapshot.workers.filter(worker => workers.includes(worker.id)), [snapshot.workers, workers]);
