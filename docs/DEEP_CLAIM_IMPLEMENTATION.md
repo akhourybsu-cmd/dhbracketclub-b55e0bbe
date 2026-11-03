@@ -1,14 +1,27 @@
 # Deep Claim implementation ledger
 
-## Current release — reliability pass (pending-action journal)
+## Current release — menu, interaction and recovery audit
 
-Built on main `3dfd021b` (+ auto-generated types commit `83b6bf29`). No migration, economy, catalog, atlas or dependency change. Details and limits: [audit](DEEP_CLAIM_AUDIT.md).
+This release integrates the complete saved UI audit on verified main `5b375b28f85f9e60d1db54700d9fd59eca90ea85`. The [audit matrix](DEEP_CLAIM_AUDIT.md) records every inspected area, implemented correction, changed module and verification limit. Existing generated Supabase types and the repaired portable npm lock are preserved. Mining rules, catalogs, SQL, earned saves and original atlases retain the Phase 8 preservation contract.
 
-- Per-request pending-action journal compatible with the existing pointer key; multi-hook/tab safe clearing; foreign returned snapshots stay uncertain; monotonic replay results.
-- Page: synchronous double-tap latch for collect/production/sale/upgrade; building review frozen at open with explicit Review current upgrade; stale haul reviews close; zero-transfer production no longer says Production secured or plays the deposit sound; partial staging explained.
-- Company goals: Back closes an invalidated inspector in one tap. Worksite/depth search: redundant inner input focus outline suppressed with scoped specificity.
+- Fixed-footed workforce reviews, six-worker/tool pages and explicit equipment replacements make management easier to navigate. Hiring/training/gear and building reviews revalidate current state and prevent duplicate or stale purchases.
+- Funded research shows actual progress/effects; milestone cards show their specific objectives and depth units. Production handles invalid batches, full/partial storage, equipment-only output, missing recipes and full queues. Receipts reflect observed positive transfers and do not celebrate zero-output collection.
+- Dispatch rechecks selected crew energy/assignments; field decisions lock while saving, recover after failure and ignore stale callbacks. Depth navigation follows explicit contextual selections and clears hidden stale filters. Search focus retains one visible outer indicator, including forced colors.
+- Founding/audio controls prevent duplicate requests, retain retry after failure and isolate account/controller changes. Tutorial history closes correctly with Escape and restores focus; protected saves and unavailable settings views retain working navigation.
+- A single bounded per-request journal protects uncertain UUIDs across open tabs, scoped events, reload, old pointer entries and the connected preview format. Exact retries, monotonic returned snapshots and existing backend authority remain intact. No new database structure or economic authority is introduced.
 
-## Current release — crews and confirmed game moments
+| Verification | Actual evidence |
+|---|---|
+| Full application suite | **228 files / 2,398 tests passed** in 156.09 seconds; `unit.log`. |
+| Application types and lint | Actual app-project `npm run typecheck`, scoped ESLint, CSS parsing and whitespace checks passed. |
+| Preservation | Unchanged Phase 8 rules/catalogs/migrations/atlas gate passed; `preservation.log`. |
+| Production build | Passed in **16.49 seconds**; `DeepClaimPage-BpSbJpWm.js` (823.68 KB / 198.32 KB gzip), `DeepClaimPage-h7kg4hyk.css` (272.23 KB / 41.63 KB gzip). Existing chunk advisory remains. |
+| Clean install / parent CI | Portable lock was generated using normal npm/TLS with unchanged dependency ranges; clean install of 533 packages passed. Parent CI run **41636733534** passed install, real app typecheck, member lint, unit tests and build. Final source CI is pending the normal push. |
+| Native browser evidence | Pre-interruption staged source checks and independent image review cover the populated game and seven viewport/theme/motion cases. Final post-reconnect native/PWA reruns are **unrun** because the sandbox denies localhost, HTTPS and Docker access. See the audit for exact scope and limits. |
+
+Current evidence is retained outside the repository at `/workspace/checkpoints/deep-claim-audit-final/`. No live company, resource, employee, achievement or notification record was altered by QA. No migration is required. Feature commit/push, final CI and actual publication are pending at this entry's source freeze; they will be recorded only after verification.
+
+## Previous release — crews and confirmed game moments
 
 This presentation release builds on clean main `90762a0efc95c9f6fe76e1c6e9e00a6266500e86`. It connects existing dispatch, mining, collection and building growth with clearer game moments. No SQL migration, economic rule, hidden terrain, atlas, dependency or rendering-engine change is introduced.
 

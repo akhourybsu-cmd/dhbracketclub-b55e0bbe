@@ -37,6 +37,9 @@
 .dcl-industry-job[data-production-state=ready] .dcl-industry-output-art{border-color:var(--dcl-green)}
 .dcl-industry-job .dcl-industry-progress-label{font-size:11px;line-height:1.4}
 .dcl-industry-job .dcl-industry-progress-label>b{font-family:'Space Grotesk',sans-serif;font-size:13px}
+.dcl-industry-storage{display:grid;gap:7px;margin-top:9px;padding:9px;border:1px solid var(--dcl-line);border-radius:4px;background:var(--dcl-bg)}
+.dcl-industry-storage>p{font-size:11px;line-height:1.45;color:var(--dcl-brass);overflow-wrap:anywhere}
+.dcl-industry-storage>.dcl-button{width:100%;min-height:44px;white-space:normal}
 .dcl-industry-job>.dcl-meter{height:10px;border-radius:3px;padding:1px;background:var(--dcl-bg)}
 .dcl-industry-job>.dcl-meter>span{border-radius:1px}
 .dcl-industry-review-identity{border-radius:6px;background:var(--dcl-panel)}

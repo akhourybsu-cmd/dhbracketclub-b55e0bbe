@@ -6,6 +6,7 @@ import { DeepClaimDiscoveryIcon, DeepClaimInfrastructureIcon, DeepClaimResourceI
 import { DeepClaimLog } from './DeepClaimPanels';
 import { claimTargets } from './display';
 import { CLAIM_OPERATION_NAMES, CLAIM_PROJECT_NAMES } from './fieldLabels';
+import { worksiteBranch } from './worksiteLabels';
 import { ClaimBadge, ClaimButton, ClaimDialog, ClaimEmpty } from './DeepClaimPrimitives';
 import { TutorialHelp, TutorialToolbar, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
 import './deepClaimDepthPicker.css';
@@ -25,9 +26,19 @@ export function DeepClaimOperations({ snapshot, point, onClose, onDispatch, onLo
   const knownDepth = knownDepths.find(([depth]) => depth === chosenDepth) ?? knownDepths[knownDepths.length - 1];
   const [depthSearch, setDepthSearch] = useState('');
   const [depthPage, setDepthPage] = useState(() => Math.floor(Math.max(0, knownDepths.findIndex(([depth]) => depth === (point?.y ?? knownDepths[knownDepths.length - 1]?.[0]))) / 6));
+  const pointKey = point ? `${point.x}:${point.y}` : null;
+  const previousPoint = useRef(pointKey);
+  useLayoutEffect(() => {
+    if (previousPoint.current === pointKey) return;
+    previousPoint.current = pointKey;
+    if (!point) return;
+    const index = knownDepths.findIndex(([depth]) => depth === point.y);
+    if (index < 0) return;
+    setChosenDepth(point.y); setDepthSearch(''); setDepthPage(Math.floor(index / 6));
+  }, [point, pointKey, knownDepths]);
   const filteredDepths = useMemo(() => {
     const search = depthSearch.trim().toLocaleLowerCase().replace(/(?:metres|meters|m)$/, '').trim();
-    return search ? knownDepths.filter(([depth]) => String(depth).includes(search)) : knownDepths;
+    return knownDepths.length > 6 && search ? knownDepths.filter(([depth]) => String(depth).includes(search)) : knownDepths;
   }, [knownDepths, depthSearch]);
   const depthPages = Math.max(1, Math.ceil(filteredDepths.length / 6));
   const shownDepthPage = Math.min(depthPage, depthPages - 1);
@@ -77,6 +88,13 @@ export function DeepClaimFieldLog({ snapshot, view, onView, selectedFindId, onSe
   const [choice, setChoice] = useState<DeepClaimDiscoveryChoice | null>(null);
   const [reviewedRevision, setReviewedRevision] = useState<number | null>(null);
   const [error, setError] = useState('');
+  const [resolving, setResolving] = useState(false);
+  const resolutionInFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const latestSelection = useRef({ view, selectedFindId });
+  latestSelection.current = { view, selectedFindId };
+  const committing = busy || resolving;
   const previousView = useRef(view);
   const internalView = useRef<ClaimFieldView | null>(null);
   const currentView = previousView.current === view || internalView.current === view;
@@ -104,13 +122,16 @@ export function DeepClaimFieldLog({ snapshot, view, onView, selectedFindId, onSe
     internalView.current = next; setReportId(null); selectFind(null); onView(next);
   }
   async function resolve() {
-    if (!selected || selected.status !== 'pending' || !choice || stale || reviewedRevision === null || busy || readOnly || choice === 'salvage' && !salvageFits) return;
-    setError('');
+    if (!selected || selected.status !== 'pending' || !choice || stale || reviewedRevision === null || committing || resolutionInFlight.current || readOnly || choice === 'salvage' && !salvageFits) return;
+    resolutionInFlight.current = true; setResolving(true); setError('');
     try {
       await resolveDiscovery(selected.id, choice, reviewedRevision);
-      selectFind(null);
+      if (!mounted.current) return;
+      if (latestSelection.current.view === 'finds' && latestSelection.current.selectedFindId === selected.id) selectFind(null);
       onConfirmed(choice === 'keep' ? 'Added to the cabinet.' : choice === 'sell' ? 'Specimen sold.' : 'Materials recovered.', choice === 'keep' ? `${selected.name} is permanently recorded in your company’s collection.` : choice === 'sell' ? `${selected.name} sold for ${selected.sale_value} company credits.` : `The displayed materials from ${selected.name} are now in your warehouse.`);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'This decision could not be confirmed. Check the saved action.'); }
+    } catch (failure) {
+      if (mounted.current && latestSelection.current.view === 'finds' && latestSelection.current.selectedFindId === selected.id) setError(failure instanceof Error ? failure.message : 'This decision could not be confirmed. Check the saved action.');
+    } finally { resolutionInFlight.current = false; if (mounted.current) setResolving(false); }
   }
   return <>
     <TutorialToolbar lessonId={view === 'finds' ? 'field.discoveries' : 'field.reports'} label={view === 'finds' ? 'Discoveries' : 'Field reports'}><div className="dcl-segment" data-dc-tutorial="field-log" role="group" aria-label="Field log views"><button type="button" aria-pressed={view === 'finds'} onClick={() => changeView('finds')}>Finds{summary.pending > 0 && <small>{summary.pending}</small>}</button><button type="button" aria-pressed={view === 'reports'} onClick={() => changeView('reports')}>Reports</button><button type="button" aria-pressed={view === 'ledger'} onClick={() => changeView('ledger')}>Ledger</button></div></TutorialToolbar>
@@ -118,7 +139,7 @@ export function DeepClaimFieldLog({ snapshot, view, onView, selectedFindId, onSe
       <div className="dcl-section-heading"><div><h2>Discoveries</h2></div><Sparkles size={24} aria-hidden="true" /></div>
       <div className="dcl-find-summary"><span><strong>{summary.pending}</strong>Pending</span><span><strong>{summary.kept}</strong>Kept</span><span><strong>{summary.sold + summary.salvaged}</strong>Resolved</span></div>
       <div className="dcl-stock-filter dcl-find-filter" role="group" aria-label="Find collection"><button type="button" aria-pressed={filter === 'pending'} onClick={() => { setFilter('pending'); setFindPage(0); }}>Pending</button><button type="button" aria-pressed={filter === 'kept'} onClick={() => { setFilter('kept'); setFindPage(0); }}>Cabinet</button><button type="button" aria-pressed={filter === 'resolved'} onClick={() => { setFilter('resolved'); setFindPage(0); }}>Resolved</button></div>
-      <div className="dcl-find-grid" data-dc-tutorial="field-finds">{visibleFinds.slice(shownFindPage * 6, shownFindPage * 6 + 6).map(item => <button type="button" className="dcl-card dcl-find-card" key={item.id} aria-label={`Inspect ${item.name}`} onClick={() => selectFind(item.id)}><DeepClaimDiscoveryIcon kind={item.kind} quality={item.quality} decorative /><span><strong>{item.name}</strong><small>{item.quality} · x{item.x} · {item.y}m</small></span><ClaimBadge tone={item.status === 'pending' ? 'brass' : 'green'}>{item.status}</ClaimBadge><ArrowRight size={14} aria-hidden="true" /></button>)}</div>
+      <div className="dcl-find-grid" data-dc-tutorial="field-finds">{visibleFinds.slice(shownFindPage * 6, shownFindPage * 6 + 6).map(item => <button type="button" className="dcl-card dcl-find-card" key={item.id} data-dc-find={item.id} aria-label={`Inspect ${item.name}`} onClick={() => selectFind(item.id)}><DeepClaimDiscoveryIcon kind={item.kind} quality={item.quality} decorative /><span><strong>{item.name}</strong><small>{item.quality} · {item.y}m · {worksiteBranch(item)}</small></span><ClaimBadge tone={item.status === 'pending' ? 'brass' : 'green'}>{item.status}</ClaimBadge><ArrowRight size={14} aria-hidden="true" /></button>)}</div>
       {visibleFinds.length > 6 && <FieldPagination page={shownFindPage} total={visibleFinds.length} label="finds" onPage={setFindPage} />}
       {!visibleFinds.length && <ClaimEmpty title={filter === 'pending' ? 'No pending discoveries' : filter === 'kept' ? 'No kept specimens' : 'No resolved discoveries'} icon={<Sparkles aria-hidden="true" />}>{filter === 'pending' ? 'A depleted deposit may yield a specimen when the crew returns. Surveys do not recover specimens.' : filter === 'kept' ? 'Choose Keep on a discovery to add it here.' : 'Sold and salvaged discoveries appear here.'}</ClaimEmpty>}
       <p className="dcl-note">{filter === 'kept' ? 'Latest 24 kept specimens.' : filter === 'resolved' ? 'Latest 12 sold or salvaged discoveries.' : 'At 24 pending discoveries, resolve one before dispatching another crew.'}</p>
@@ -129,14 +150,14 @@ export function DeepClaimFieldLog({ snapshot, view, onView, selectedFindId, onSe
       {!reports.length && <ClaimEmpty title="No reports yet" icon={<FileText aria-hidden="true" />}>Survey, infrastructure and incident reports appear here.</ClaimEmpty>}
       <p className="dcl-note">Latest 24 reports.</p>
     </> : <DeepClaimLog snapshot={snapshot} />}
-    <ClaimDialog open={!!selected} onClose={() => selectFind(null)} busy={busy} title={selected?.name ?? 'Recovered find'} description={selected ? `${selected.quality} specimen · x${selected.x} · ${selected.y}m` : undefined} className="dcl-discovery-dialog">{selected && <>
+    <ClaimDialog open={!!selected} onClose={() => { if (!resolutionInFlight.current) selectFind(null); }} busy={committing} title={selected?.name ?? 'Recovered find'} description={selected ? `${selected.quality} specimen · ${selected.y}m · ${worksiteBranch(selected)}` : undefined} className="dcl-discovery-dialog">{selected && <>
       <div className={`dcl-find-showcase is-${selected.quality}`} data-dc-tutorial="discovery-review"><DeepClaimDiscoveryIcon kind={selected.kind} quality={selected.quality} decorative /><ClaimBadge>{selected.quality}</ClaimBadge></div><p className="dcl-find-detail">{selected.detail}</p>
-      <ClaimButton className="is-small" onClick={() => { selectFind(null); onLocate(selected); }}><MapPin size={14} aria-hidden="true" />Locate find site</ClaimButton>
+      <ClaimButton className="is-small" disabled={committing} onClick={() => { if (resolutionInFlight.current) return; selectFind(null); onLocate(selected); }}><MapPin size={14} aria-hidden="true" />Locate find site</ClaimButton>
       {selected.status === 'pending' ? <>
-        <div className="dcl-find-choices" role="group" aria-label="Find decision">{([{ key: 'keep', name: 'Keep in cabinet', text: 'Permanent specimen record', icon: Sparkles }, { key: 'sell', name: 'Sell specimen', text: `${selected.sale_value} company credits`, icon: Coins }, { key: 'salvage', name: 'Salvage materials', text: `${resourceTotal(selected.salvage)} storage units`, icon: HardHat }] as const).map(item => <button type="button" key={item.key} aria-pressed={choice === item.key} disabled={readOnly || busy} onClick={() => { setChoice(item.key); setReviewedRevision(snapshot.revision); setError(''); }}><item.icon size={18} aria-hidden="true" /><strong>{item.name}</strong><small>{item.text}</small></button>)}</div>
+        <div className="dcl-find-choices" role="group" aria-label="Find decision">{([{ key: 'keep', name: 'Keep in cabinet', text: 'Permanent specimen record', icon: Sparkles }, { key: 'sell', name: 'Sell specimen', text: `${selected.sale_value} company credits`, icon: Coins }, { key: 'salvage', name: 'Salvage materials', text: `${resourceTotal(selected.salvage)} storage units`, icon: HardHat }] as const).map(item => <button type="button" key={item.key} aria-pressed={choice === item.key} disabled={readOnly || committing} onClick={() => { setChoice(item.key); setReviewedRevision(snapshot.revision); setError(''); }}><item.icon size={18} aria-hidden="true" /><strong>{item.name}</strong><small>{item.text}</small></button>)}</div>
         {choice && <section className="dcl-find-decision-review" aria-label="Reviewed find decision"><ShieldCheck size={17} aria-hidden="true" /><strong>{choice === 'keep' ? 'Keep this specimen permanently.' : choice === 'sell' ? `Sell once for ${selected.sale_value} company credits.` : 'Consume this specimen for these materials.'}</strong>{choice === 'salvage' && <><FieldMaterials resources={selected.salvage} /><p>Needs {resourceTotal(selected.salvage)} free units · {room} available. All materials must fit together.</p>{!salvageFits && <p className="dcl-error">Make room in Stores first. The find stays pending until the entire salvage fits.</p>}</>}<p>This decision is final.</p></section>}
         {stale && <p className="dcl-note">Your company changed. Select the decision again to review the current storage and balance.</p>}{readOnly && <p className="dcl-note">Reconnect or confirm the saved action before deciding.</p>}{error && <p className="dcl-error" role="alert">{error}</p>}
-        <ClaimButton primary pending={busy} disabled={!choice || stale || readOnly || choice === 'salvage' && !salvageFits} onClick={() => void resolve()}>{choice === 'keep' ? 'Confirm keep' : choice === 'sell' ? 'Confirm sale' : choice === 'salvage' ? 'Confirm salvage' : 'Choose a decision'}</ClaimButton>
+        <ClaimButton primary pending={committing} disabled={!choice || stale || readOnly || choice === 'salvage' && !salvageFits} onClick={() => void resolve()}>{choice === 'keep' ? 'Confirm keep' : choice === 'sell' ? 'Confirm sale' : choice === 'salvage' ? 'Confirm salvage' : 'Choose a decision'}</ClaimButton>
       </> : <><ClaimBadge tone="green">{selected.status}</ClaimBadge><p className="dcl-note">{selected.status === 'kept' ? 'This specimen is preserved in your company’s cabinet.' : 'This specimen was already sold or salvaged.'}</p></>}
     </>}</ClaimDialog>
     <ClaimDialog open={!!report} onClose={() => setReportId(null)} title={report?.title ?? 'Field report'} description={report ? new Date(report.occurred_at).toLocaleString() : undefined}>{report && <><ClaimBadge tone={report.kind === 'incident' ? 'brass' : 'green'}>{report.kind}</ClaimBadge><p className="dcl-find-detail">{report.description}</p><div className="dcl-report-facts"><span><strong>{report.point.y}m</strong>Depth</span>{report.kind === 'incident' && <span><strong>{report.delay_seconds}s</strong>Setup delay</span>}{report.kind === 'survey' && <span><strong>{report.tiles_revealed}</strong>Tiles revealed</span>}</div><ClaimButton onClick={() => { setReportId(null); onLocate(report.point); }}><MapPin size={15} aria-hidden="true" />Locate report site</ClaimButton>{report.discovery_id && finds.some(item => item.id === report.discovery_id) && <ClaimButton onClick={() => { changeView('finds'); selectFind(report.discovery_id); }}>Inspect recovered find</ClaimButton>}</>}</ClaimDialog>

@@ -69,7 +69,7 @@ export function DeepClaimTitleScreen({ summary, loading = false, busy = false, e
     </div>
     <ClaimDialog open={protectSave} onClose={() => setProtectSave(false)} title="Existing company" description="New Game will not replace your save." className="dc-title-save-dialog">
       <div className="dcl-dialog-body"><div className="dc-title-protected-save"><ShieldCheck size={25} aria-hidden="true" /><div><span>Save protected</span><strong>{summary?.companyName}</strong></div></div><p>One company per member, per club. Continue your save or review the tutorial.</p></div>
-      <div className="dcl-dialog-actions"><ClaimButton onClick={() => { setProtectSave(false); choose(onContinue); }} primary>Continue</ClaimButton><ClaimButton onClick={() => { setProtectSave(false); choose(onJournal); }}>Replay tutorial</ClaimButton><ClaimButton onClick={() => { setProtectSave(false); interact(); }}>Back</ClaimButton></div>
+      <div className="dcl-dialog-actions"><ClaimButton disabled={!hasCompany || loading || busy} onClick={() => { setProtectSave(false); choose(onContinue); }} primary>Continue</ClaimButton><ClaimButton onClick={() => { setProtectSave(false); choose(onJournal); }}>Replay tutorial</ClaimButton><ClaimButton onClick={() => { setProtectSave(false); interact(); }}>Back</ClaimButton></div>
     </ClaimDialog>
   </section>;
 }

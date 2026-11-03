@@ -28,27 +28,54 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
   const [guide, setGuide] = useState(false);
   const [guidePage, setGuidePage] = useState(0);
   const [view, setView] = useState<'sound' | 'visuals' | 'updates'>('sound');
+  const activeView = view === 'updates' && !business ? 'sound' : view;
+  useEffect(() => { if (!business) setView(current => current === 'updates' ? 'sound' : current); }, [business]);
   const handledView = useRef<string | null>(null);
   useEffect(() => {
     if (!viewRequest || handledView.current === viewRequest.id || viewRequest.view === 'updates' && !business) return;
     handledView.current = viewRequest.id;
     setGuide(false); setView(viewRequest.view);
   }, [viewRequest, business]);
-  useTutorialView('settings_opened', { view }, `settings:${view}`);
+  useTutorialView('settings_opened', { view: activeView }, `settings:${activeView}`);
   const openJournal = onOpenJournal ?? (tutorial.available ? () => tutorial.openJournal() : undefined);
   const mainMenu = onMainMenu ?? tutorial.mainMenu;
   const guideHeading = useRef<HTMLHeadingElement>(null);
   const id = useId();
   const [soundError, setSoundError] = useState('');
+  const [soundStarting, setSoundStarting] = useState(false);
+  const soundPending = useRef(false);
+  const soundLifetime = useRef({ active: true });
+  const currentAudio = useRef(audio); currentAudio.current = audio;
+  useEffect(() => {
+    const lifetime = { active: true }; soundLifetime.current = lifetime;
+    soundPending.current = false; setSoundStarting(false); setSoundError('');
+    return () => { lifetime.active = false; };
+  }, [audio]);
   const subscribe = useCallback((listener: () => void) => audio.subscribe(listener), [audio]);
   const snapshot = useCallback(() => audio.getSnapshot(), [audio]);
   const settings = useSyncExternalStore(subscribe, snapshot, snapshot);
   async function toggleMaster() {
+    if (soundPending.current) return;
     setSoundError('');
-    if (settings.master) { audio.updateSettings({ master: false }); return; }
+    if (audio.getSnapshot().master) { audio.updateSettings({ master: false }); return; }
+    const lifetime = soundLifetime.current;
+    const isCurrent = () => lifetime.active && currentAudio.current === audio;
+    soundPending.current = true; setSoundStarting(true);
     audio.updateSettings({ master: true });
     // This function runs directly from a user gesture. Sound never auto-unlocks.
-    if (!await audio.unlock()) { audio.updateSettings({ master: false }); setSoundError('Sound could not start on this device. Tap Enable sound to try again.'); }
+    try {
+      if (!await audio.unlock() && isCurrent()) {
+        audio.updateSettings({ master: false });
+        setSoundError('Sound could not start on this device. Tap Enable sound to try again.');
+      }
+    } catch {
+      if (isCurrent()) {
+        audio.updateSettings({ master: false });
+        setSoundError('Sound could not start on this device. Tap Enable sound to try again.');
+      }
+    } finally {
+      if (isCurrent()) { soundPending.current = false; setSoundStarting(false); }
+    }
   }
   const views: { key: 'sound' | 'visuals' | 'updates'; label: string }[] = [{ key: 'sound', label: 'Sound' }, { key: 'visuals', label: 'Visuals' }, ...(business ? [{ key: 'updates' as const, label: 'Updates' }] : [])];
   const chapters = [
@@ -79,18 +106,18 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
   useLayoutEffect(() => { if (guide && previousGuidePage.current !== page) guideHeading.current?.focus({ preventScroll: true }); previousGuidePage.current = page; }, [guide, page]);
   function turnGuide(next: number) { setGuidePage(next); }
   return <div className="dcl-settings">
-    <div className="dcl-section-heading"><div className="dcl-settings-title"><DeepClaimBusinessIcon kind="office" decorative /><div><h2>Settings</h2></div></div><TutorialHelp lessonId={view === 'updates' ? 'club.updates' : 'settings.sound'} label={view === 'updates' ? 'Camp updates' : 'Sound and visuals'} /></div>
-    <div className="dcl-settings-tabs" role="tablist" aria-label="Camp settings views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = views.findIndex(item => item.key === view); const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + views.length) % views.length; setView(views[next].key); document.getElementById(`${id}-${views[next].key}`)?.focus(); }}>{views.map(item => <button key={item.key} data-dc-tutorial={`settings-${item.key}`} type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-settings-panel`} aria-selected={view === item.key} tabIndex={view === item.key ? 0 : -1} onClick={() => setView(item.key)}>{item.key === 'sound' ? <Volume2 size={16} aria-hidden="true" /> : item.key === 'visuals' ? <Palette size={16} aria-hidden="true" /> : <Bell size={16} aria-hidden="true" />}{item.label}</button>)}</div>
-    <div className="dcl-settings-panel dcl-view-enter" key={view} role="tabpanel" id={`${id}-settings-panel`} aria-labelledby={`${id}-${view}`}>
-      {view === 'sound' ? <section className="dcl-card dcl-settings-group" aria-label="Sound settings">
-        <header className="dcl-settings-group-title"><h3>{settings.master ? <Volume2 size={20} aria-hidden="true" /> : <VolumeX size={20} aria-hidden="true" />}Sound</h3><span data-enabled={settings.master}>{settings.master ? 'On' : 'Off'}</span></header>
-        <SettingToggle label="Enable sound" description="Starts on tap; follows DH sound preferences." checked={settings.master} onChange={() => void toggleMaster()} />
+    <div className="dcl-section-heading"><div className="dcl-settings-title"><DeepClaimBusinessIcon kind="office" decorative /><div><h2>Settings</h2></div></div><TutorialHelp lessonId={activeView === 'updates' ? 'club.updates' : 'settings.sound'} label={activeView === 'updates' ? 'Camp updates' : 'Sound and visuals'} /></div>
+    <div className="dcl-settings-tabs" role="tablist" aria-label="Camp settings views" onKeyDown={event => { if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return; event.preventDefault(); const current = views.findIndex(item => item.key === activeView); const next = event.key === 'Home' ? 0 : event.key === 'End' ? views.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + views.length) % views.length; setView(views[next].key); document.getElementById(`${id}-${views[next].key}`)?.focus(); }}>{views.map(item => <button key={item.key} data-dc-tutorial={`settings-${item.key}`} type="button" role="tab" id={`${id}-${item.key}`} aria-controls={`${id}-settings-panel`} aria-selected={activeView === item.key} tabIndex={activeView === item.key ? 0 : -1} onClick={() => setView(item.key)}>{item.key === 'sound' ? <Volume2 size={16} aria-hidden="true" /> : item.key === 'visuals' ? <Palette size={16} aria-hidden="true" /> : <Bell size={16} aria-hidden="true" />}{item.label}</button>)}</div>
+    <div className="dcl-settings-panel dcl-view-enter" key={activeView} role="tabpanel" id={`${id}-settings-panel`} aria-labelledby={`${id}-${activeView}`}>
+      {activeView === 'sound' ? <section className="dcl-card dcl-settings-group" aria-label="Sound settings">
+        <header className="dcl-settings-group-title"><h3>{settings.master ? <Volume2 size={20} aria-hidden="true" /> : <VolumeX size={20} aria-hidden="true" />}Sound</h3><span data-enabled={settings.master} role="status">{soundStarting ? 'Starting…' : settings.master ? 'On' : 'Off'}</span></header>
+        <SettingToggle label="Enable sound" description="Starts on tap; follows DH sound preferences." checked={settings.master} disabled={soundStarting} pending={soundStarting} onChange={() => void toggleMaster()} />
         <VolumeControl label="Volume" accessibleLabel="Game sound volume" value={settings.volume} onChange={volume => audio.updateSettings({ volume })} />
         <div className="dcl-sound-bus"><SettingToggle label="Music" checked={settings.music} onChange={() => audio.updateSettings({ music: !settings.music })} /><VolumeControl label="Music mix" accessibleLabel="Music volume" value={settings.musicVolume ?? 1} onChange={musicVolume => audio.updateSettings({ musicVolume })} /></div>
         <div className="dcl-sound-bus"><SettingToggle label="Mining effects" checked={settings.sfx} onChange={() => audio.updateSettings({ sfx: !settings.sfx })} /><VolumeControl label="Effects mix" accessibleLabel="Mining effects volume" value={settings.sfxVolume ?? 1} onChange={sfxVolume => audio.updateSettings({ sfxVolume })} /></div>
         <div className="dcl-sound-bus"><SettingToggle label="Camp ambience" checked={settings.ambient} onChange={() => audio.updateSettings({ ambient: !settings.ambient })} /><VolumeControl label="Ambience mix" accessibleLabel="Camp ambience volume" value={settings.ambientVolume ?? 1} onChange={ambientVolume => audio.updateSettings({ ambientVolume })} /></div>
         {soundError && <p className="dcl-error" role="alert">{soundError}</p>}
-      </section> : view === 'visuals' ? <section className="dcl-card dcl-settings-group" aria-label="Visual settings"><h3>Graphics</h3>{typeof tutorial.commentaryEnabled === 'boolean' && tutorial.onCommentaryChange && <SettingToggle label="Gus commentary" description="Conversations only. Guidance and Ask Gus stay available." checked={tutorial.commentaryEnabled} onChange={() => tutorial.onCommentaryChange?.(!tutorial.commentaryEnabled)} />}<SettingToggle label="Reduced motion" description="Fewer animations; mining continues." checked={visuals.reducedMotion} onChange={() => onVisualsChange({ reducedMotion: !visuals.reducedMotion })} /><SettingToggle label="Reduced graphics" description="Lower detail to improve performance." checked={visuals.reducedGraphics} onChange={() => onVisualsChange({ reducedGraphics: !visuals.reducedGraphics })} /></section> : <DeepClaimNotificationSetting />}
+      </section> : activeView === 'visuals' ? <section className="dcl-card dcl-settings-group" aria-label="Visual settings"><h3>Graphics</h3>{typeof tutorial.commentaryEnabled === 'boolean' && tutorial.onCommentaryChange && <SettingToggle label="Gus commentary" description="Conversations only. Guidance and Ask Gus stay available." checked={tutorial.commentaryEnabled} onChange={() => tutorial.onCommentaryChange?.(!tutorial.commentaryEnabled)} />}<SettingToggle label="Reduced motion" description="Fewer animations; mining continues." checked={visuals.reducedMotion} onChange={() => onVisualsChange({ reducedMotion: !visuals.reducedMotion })} /><SettingToggle label="Reduced graphics" description="Lower detail to improve performance." checked={visuals.reducedGraphics} onChange={() => onVisualsChange({ reducedGraphics: !visuals.reducedGraphics })} /></section> : <DeepClaimNotificationSetting />}
     </div>
     <section className="dcl-card dcl-settings-actions">{openJournal && <ClaimButton data-dc-tutorial="training-journal" onClick={openJournal}><BookOpen size={16} aria-hidden="true" />Training Journal</ClaimButton>}<ClaimButton onClick={() => { setGuidePage(0); setGuide(true); }}><BookOpen size={16} aria-hidden="true" />Field guide</ClaimButton><ClaimButton onClick={onRefresh} pending={refreshing}><RefreshCw size={16} aria-hidden="true" />Refresh camp</ClaimButton>{mainMenu && <ClaimButton data-dc-tutorial="settings-main-menu" onClick={mainMenu}>Return to Main Menu</ClaimButton>}{mainMenu && <p>Shifts keep running. Finish pending actions before leaving.</p>}{serverTime && <p>Last synced: {new Date(serverTime).toLocaleString()}</p>}</section>
     <ClaimDialog open={guide} onClose={() => setGuide(false)} title="Field guide" className="dcl-guide-dialog">
@@ -103,8 +130,8 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
 
 }
 
-function SettingToggle({ label, description, checked, onChange, disabled = false }: { label: string; description?: string; checked: boolean; onChange: () => void; disabled?: boolean }) {
-  return <label className="dcl-setting-toggle"><span><strong>{label}</strong>{description && <small>{description}</small>}</span><button type="button" role="switch" disabled={disabled} aria-checked={checked} aria-label={label} onClick={onChange}><i aria-hidden="true">{checked ? <Check size={12} /> : <Minus size={12} />}</i></button></label>;
+function SettingToggle({ label, description, checked, onChange, disabled = false, pending = false }: { label: string; description?: string; checked: boolean; onChange: () => void; disabled?: boolean; pending?: boolean }) {
+  return <label className="dcl-setting-toggle"><span><strong>{label}</strong>{description && <small>{description}</small>}</span><button type="button" role="switch" disabled={disabled} aria-busy={pending || undefined} aria-checked={checked} aria-label={label} onClick={onChange}><i aria-hidden="true">{checked ? <Check size={12} /> : <Minus size={12} />}</i></button></label>;
 }
 
 function DeepClaimNotificationSetting() {

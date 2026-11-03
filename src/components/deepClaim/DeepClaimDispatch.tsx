@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, Coins, Clock3, HardHat, Pickaxe, Radar, ShieldCheck, Users, Zap } from 'lucide-react';
 import { DURATION_OPTIONS, RESOURCE_BY_ID, SPECIALTY_INFO } from '@/lib/deepClaim/catalog';
 import type { DeepClaimDispatchInput, DeepClaimDuration, DeepClaimMode, DeepClaimPoint, DeepClaimPreview, DeepClaimSnapshot } from '@/lib/deepClaim/types';
@@ -39,6 +39,9 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   const [quote, setQuote] = useState<DeepClaimPreview | null>(null);
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
+  const actionInFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [error, setError] = useState('');
   const targets = useMemo(() => claimTargets({ world: snapshot.world, infrastructure: snapshot.infrastructure }, mode), [snapshot.world, snapshot.infrastructure, mode]);
@@ -51,6 +54,13 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   const reviewed = field && !!quote?.allowed && !stale;
   const auxiliary = mode === 'survey' || mode === 'infrastructure';
   const selected = snapshot.workers.filter(worker => workers.includes(worker.id));
+  const energyNeeded = tutorial ? 1 : DURATION_OPTIONS.find(option => option.minutes === minutes)!.energy;
+  const missingCrew = selected.length !== workers.length;
+  const assignedWorker = selected.find(worker => worker.assigned_job_id);
+  const tiredWorker = selected.find(worker => worker.energy < energyNeeded);
+  const crewIssue = missingCrew ? 'A selected employee is no longer available.'
+    : assignedWorker ? `${assignedWorker.name} is already on a shift.`
+    : tiredWorker ? `${tiredWorker.name} needs ${energyNeeded} energy for this shift.` : '';
   useTutorialView('dispatch_opened', { mode }, `dispatch:${mode}`);
   useTutorialView('quote_reviewed', quote ? { mode, allowed: quote.allowed, company_revision: quote.company_revision } : null,
     `quote:${quote?.server_now}:${quote?.company_revision}:${quote?.allowed}`);
@@ -58,18 +68,20 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   const currentPage = Math.min(crewPage, pages - 1);
   const change = (callback: () => void) => { callback(); setQuote(null); setError(''); setConditionsOpen(false); };
   async function review() {
-    if (!input || !workers.length || frozen) return;
+    if (!input || !workers.length || crewIssue || frozen || actionInFlight.current) return;
+    actionInFlight.current = true;
     setChecking(true); setError('');
-    try { setQuote(await preview(input)); setCrewOpen(false); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : 'The foreman could not verify this shift. Try again.'); }
-    finally { setChecking(false); }
+    try { const estimate = await preview(input); if (mounted.current) { setQuote(estimate); setCrewOpen(false); } }
+    catch (failure) { if (mounted.current) setError(failure instanceof Error ? failure.message : 'The foreman could not verify this shift. Try again.'); }
+    finally { actionInFlight.current = false; if (mounted.current) setChecking(false); }
   }
   async function confirm() {
-    if (!input || !quote?.allowed || stale || frozen) return;
+    if (!input || !quote?.allowed || stale || crewIssue || frozen || actionInFlight.current) return;
+    actionInFlight.current = true;
     setSending(true); setError('');
-    try { await dispatch(input, quote.company_revision); onClose(); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : 'Dispatch could not be confirmed. Check the saved action before trying again.'); }
-    finally { setSending(false); }
+    try { await dispatch(input, quote.company_revision); if (mounted.current) onClose(); }
+    catch (failure) { if (mounted.current) setError(failure instanceof Error ? failure.message : 'Dispatch could not be confirmed. Check the saved action before trying again.'); }
+    finally { actionInFlight.current = false; if (mounted.current) setSending(false); }
   }
   const title = CLAIM_OPERATION_NAMES[mode];
   return <ClaimDialog open onClose={onClose} busy={checking || sending || busy} title={title} description="" className={`dcl-dispatch-dialog ${field ? 'is-field-operation' : ''}`} headerActions={<TutorialHelp lessonId={mode === 'survey' ? 'field.survey' : mode === 'infrastructure' ? 'field.infrastructure' : 'beginner.plan'} label="Dispatch" />}>
@@ -79,7 +91,7 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
         <DeepClaimWorksitePicker key={mode} world={snapshot.world} sites={sites} selected={target} mode={mode} disabled={frozen} onSelect={point => change(() => { setTarget(point); tutorialEvents.emit('worksite_inspected', { mode, record_id: `${point.x}:${point.y}`, view: 'dispatch' }); if (point.x !== 47 || point.y !== 1) setTutorial(false); })} />
         {mode === 'infrastructure' && <section data-dc-tutorial="field-infrastructure" role="group" aria-label="Infrastructure project"><h3>Project</h3><div className="dcl-choice-grid">{Object.entries(CLAIM_PROJECT_NAMES).map(([key, name]) => <button type="button" className="dcl-choice" key={key} data-dc-project={key} aria-pressed={project === key} disabled={frozen} onClick={() => change(() => setProject(key as InfrastructureKey))}><span className="dcl-choice-art"><DeepClaimInfrastructureIcon infrastructureKey={key as InfrastructureKey} decorative /></span><span className="dcl-choice-copy"><strong>{name}</strong><small>{key === 'rail' ? 'Faster hauling' : key === 'pump' ? 'Water protection' : key === 'ventilation' ? 'Gas and heat protection' : 'Rockfall protection'}</small></span></button>)}</div></section>}
         {field && <div className="dcl-selected-crew" data-dc-tutorial="dispatch-crew" role="group" aria-label="Selected crew"><div>{selected.length ? selected.map(worker => <span key={worker.id}><DeepClaimPortrait worker={worker} /><b>{worker.name}</b></span>) : <p>No crew selected</p>}</div><ClaimButton className="is-small" disabled={frozen} onClick={() => { if (crewOpen && workers.length) tutorialEvents.emit('crew_selected', { mode, quantity: workers.length }); setCrewOpen(value => !value); }} aria-expanded={crewOpen}><Users size={14} aria-hidden="true" />{crewOpen ? 'Done' : 'Change crew'}</ClaimButton></div>}
-        {(crewOpen || !workers.length) && <fieldset className={`dcl-worker-picker ${field ? 'is-paged' : ''}`} data-dc-tutorial={field ? undefined : 'dispatch-crew'}><legend>Your crew <small>{workers.length}/3 selected</small></legend>{snapshot.workers.slice(currentPage * 6, currentPage * 6 + 6).map(worker => <label className="dcl-worker-choice" key={worker.id} data-selected={workers.includes(worker.id)}><input type="checkbox" aria-label={`Send ${worker.name}`} checked={workers.includes(worker.id)} disabled={frozen || !workers.includes(worker.id) && (!!worker.assigned_job_id || workers.length >= 3 || worker.energy === 0)} onChange={() => change(() => { const next = workers.includes(worker.id) ? workers.filter(id => id !== worker.id) : [...workers, worker.id]; setWorkers(next); tutorialEvents.emit('crew_selected', { worker_id: worker.id, quantity: next.length, mode }); })} /><DeepClaimPortrait worker={worker} /><span><strong>{worker.name}</strong><small>{SPECIALTY_INFO[worker.specialty].name} · {worker.assigned_job_id ? 'On a shift' : `${worker.energy}/6 energy`}</small><ClaimMeter value={worker.energy} max={6} label={`${worker.name} energy`} tone="green" /></span></label>)}{pages > 1 && <div className="dcl-crew-pagination"><ClaimButton className="is-small" aria-label="Previous crew page" disabled={frozen || currentPage === 0} onClick={() => setCrewPage(value => Math.max(0, value - 1))}><ArrowLeft size={15} aria-hidden="true" /></ClaimButton><span aria-live="polite">Crew {currentPage + 1}/{pages}</span><ClaimButton className="is-small" aria-label="Next crew page" disabled={frozen || currentPage === pages - 1} onClick={() => setCrewPage(value => Math.min(pages - 1, value + 1))}><ArrowRight size={15} aria-hidden="true" /></ClaimButton></div>}</fieldset>}
+        {(crewOpen || !workers.length) && <fieldset className={`dcl-worker-picker ${field ? 'is-paged' : ''}`} data-dc-tutorial={field ? undefined : 'dispatch-crew'}><legend>Your crew <small>{workers.length}/3 selected</small></legend>{snapshot.workers.slice(currentPage * 6, currentPage * 6 + 6).map(worker => <label className="dcl-worker-choice" key={worker.id} data-selected={workers.includes(worker.id)}><input type="checkbox" aria-label={`Send ${worker.name}`} checked={workers.includes(worker.id)} disabled={frozen || !workers.includes(worker.id) && (!!worker.assigned_job_id || workers.length >= 3 || worker.energy < energyNeeded)} onChange={() => change(() => { const next = workers.includes(worker.id) ? workers.filter(id => id !== worker.id) : [...workers, worker.id]; setWorkers(next); tutorialEvents.emit('crew_selected', { worker_id: worker.id, quantity: next.length, mode }); })} /><DeepClaimPortrait worker={worker} /><span><strong>{worker.name}</strong><small>{SPECIALTY_INFO[worker.specialty].name} · {worker.assigned_job_id ? 'On a shift' : `${worker.energy}/6 energy`}</small><ClaimMeter value={worker.energy} max={6} label={`${worker.name} energy`} tone="green" /></span></label>)}{pages > 1 && <div className="dcl-crew-pagination"><ClaimButton className="is-small" aria-label="Previous crew page" disabled={frozen || currentPage === 0} onClick={() => setCrewPage(value => Math.max(0, value - 1))}><ArrowLeft size={15} aria-hidden="true" /></ClaimButton><span aria-live="polite">Crew {currentPage + 1}/{pages}</span><ClaimButton className="is-small" aria-label="Next crew page" disabled={frozen || currentPage === pages - 1} onClick={() => setCrewPage(value => Math.min(pages - 1, value + 1))}><ArrowRight size={15} aria-hidden="true" /></ClaimButton></div>}</fieldset>}
         <div className="dcl-duration-picker" data-dc-tutorial="dispatch-duration" role="group" aria-label="Shift duration">{DURATION_OPTIONS.map((option, index) => <button type="button" key={option.minutes} aria-pressed={!tutorial && minutes === option.minutes} disabled={frozen} onClick={() => change(() => { setMinutes(option.minutes); setTutorial(false); })}><b>{option.label}</b><span>{option.minutes} min{auxiliary ? ` · grade ${index + 1}` : ''}</span><small><Zap size={10} aria-hidden="true" />{option.energy} each</small></button>)}</div>
         {auxiliary && <p className="dcl-note">{mode === 'survey' ? 'Reveal ground, not cargo. Geology improves coverage; the report arrives on return.' : 'Build on connected ground. Engineering improves coverage; active when the crew returns.'}</p>}
         {introAvailable && !initialPlan?.ordinary && !auxiliary && <label className="dcl-intro-shift" data-dc-tutorial="dispatch-induction"><input type="checkbox" checked={tutorial} disabled={frozen} onChange={event => change(() => { setTutorial(event.target.checked); if (event.target.checked) { setMinutes(20); setMode('extract'); setTarget({ x: 47, y: 1 }); } })} /><span><strong>First shift · 30 seconds</strong><small>1m starter seam · once per company · 1 energy each</small></span></label>}
@@ -95,9 +107,10 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
         {quote.reasons.length > 0 && <ul className="dcl-blocked-reasons">{quote.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
       </section>}
       {stale && <p className="dcl-note">Your camp changed. Review this shift again before confirming.</p>}
+      {crewIssue && <div className="dcl-note" role="status"><p>{crewIssue}</p>{missingCrew && <ClaimButton className="is-small" disabled={frozen} onClick={() => change(() => { setWorkers(selected.map(worker => worker.id)); setCrewOpen(true); })}>Remove unavailable crew</ClaimButton>}</div>}
       {readOnly && <p className="dcl-note">Reconnect or confirm the saved action before dispatching.</p>}
       {error && <p className="dcl-error" role="alert">{error}</p>}
     </div>
-    <div className="dcl-dialog-actions dcl-dispatch-footer"><ClaimButton onClick={() => { if (reviewed) setQuote(null); else onClose(); }} disabled={checking || sending || busy}>{reviewed ? 'Edit plan' : 'Back'}</ClaimButton>{quote?.allowed && !stale ? <ClaimButton primary pending={sending} disabled={readOnly || busy} data-dc-tutorial="dispatch-confirm" onClick={() => void confirm()}>Dispatch crew<ArrowRight size={15} aria-hidden="true" /></ClaimButton> : <ClaimButton primary pending={checking} disabled={readOnly || busy || !input || !workers.length} data-dc-tutorial="dispatch-review" onClick={() => void review()}>Review dispatch</ClaimButton>}</div>
+    <div className="dcl-dialog-actions dcl-dispatch-footer"><ClaimButton onClick={() => { if (reviewed) setQuote(null); else onClose(); }} disabled={checking || sending || busy}>{reviewed ? 'Edit plan' : 'Back'}</ClaimButton>{quote?.allowed && !stale ? <ClaimButton primary pending={sending} disabled={readOnly || busy || !!crewIssue} data-dc-tutorial="dispatch-confirm" onClick={() => void confirm()}>Dispatch crew<ArrowRight size={15} aria-hidden="true" /></ClaimButton> : <ClaimButton primary pending={checking} disabled={readOnly || busy || !input || !workers.length || !!crewIssue} data-dc-tutorial="dispatch-review" onClick={() => void review()}>Review dispatch</ClaimButton>}</div>
   </ClaimDialog>;
 }

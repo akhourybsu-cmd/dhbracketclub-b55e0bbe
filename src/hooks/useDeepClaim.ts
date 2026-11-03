@@ -3,13 +3,15 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
-import { DEEP_CLAIM_MUTATIONS, DeepClaimError, deepClaimDispatchArgs, deepClaimOperationArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot, type DeepClaimMutation } from '@/lib/deepClaim/service';
-import { clearPendingJournal, pendingRequestId, readPendingJournal, subscribePendingJournal, writePendingJournal, type DeepClaimPending } from '@/lib/deepClaim/pendingJournal';
+import { DeepClaimError, deepClaimDispatchArgs, deepClaimOperationArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot } from '@/lib/deepClaim/service';
 import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimResources, DeepClaimSellInput, DeepClaimSnapshot, DeepClaimSocialPreferencesInput, DeepClaimStatId } from '@/lib/deepClaim/types';
+import { forgetPendingAction, pendingStorageKeyMatches, readPendingActions, rememberPendingAction, type DeepClaimPendingAction as Pending } from '@/lib/deepClaim/pendingActions';
 
-type Pending = DeepClaimPending;
+const PENDING_CHANGE = 'dh:deep-claim:pending-change';
 const online = () => typeof navigator === 'undefined' || navigator.onLine;
 const listenOnline = (listener: () => void) => { window.addEventListener('online', listener); window.addEventListener('offline', listener); return () => { window.removeEventListener('online', listener); window.removeEventListener('offline', listener); }; };
+function readPending(key: string): Pending | null { return readPendingActions(key)[0] ?? null; }
+function notifyPending(key: string) { window.dispatchEvent(new CustomEvent(PENDING_CHANGE, { detail: key })); }
 
 export function useDeepClaim() {
   const { user, loading: authLoading } = useAuth();
@@ -24,9 +26,8 @@ export function useDeepClaim() {
   const activeIdentity = useRef(identity); activeIdentity.current = identity;
   const generation = useRef(0);
   const write = useRef(false);
-  const pendingRef = useRef<Pending | null>(readPendingJournal(receiptKey)[0] ?? null);
+  const pendingRef = useRef<Pending | null>(readPending(receiptKey));
   const [pendingState, setPending] = useState(pendingRef.current);
-  const syncPending = useCallback(() => { const next = readPendingJournal(receiptKey)[0] ?? null; pendingRef.current = next; setPending(next); return next; }, [receiptKey]);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const clock = useRef({ server: Date.now(), received: performance.now() });
@@ -41,9 +42,20 @@ export function useDeepClaim() {
   const refetch = query.refetch;
   useLayoutEffect(() => {
     generation.current++; write.current = false; setBusy(false); setActionError(null);
-    syncPending();
-    return subscribePendingJournal(receiptKey, syncPending);
-  }, [receiptKey, syncPending]);
+    pendingRef.current = readPending(receiptKey); setPending(pendingRef.current);
+  }, [receiptKey]);
+  useEffect(() => {
+    const sync = () => {
+      if (write.current || activeIdentity.current !== identity) return;
+      const entries = readPendingActions(receiptKey);
+      const next = entries.find(entry => entry.args.p_request_id === pendingRef.current?.args.p_request_id) ?? entries[0] ?? null;
+      pendingRef.current = next; setPending(next);
+    };
+    const external = (event: StorageEvent) => { if (pendingStorageKeyMatches(receiptKey, event.key)) sync(); };
+    const local = (event: Event) => { if ((event as CustomEvent).detail === receiptKey) sync(); };
+    window.addEventListener('storage', external); window.addEventListener(PENDING_CHANGE, local);
+    return () => { window.removeEventListener('storage', external); window.removeEventListener(PENDING_CHANGE, local); };
+  }, [identity, receiptKey]);
   useLayoutEffect(() => { if (query.data) clock.current = { server: Date.parse(query.data.server_now), received: performance.now() }; }, [query.data]);
   useEffect(() => {
     const refresh = () => { if (ready && online() && document.visibilityState === 'visible') void refetch(); };
@@ -57,33 +69,31 @@ export function useDeepClaim() {
     if (write.current) throw new DeepClaimError('Another company action is still saving.', 'rule');
     const attempt = generation.current;
     const fingerprint = JSON.stringify([operation, args]);
-    // Re-read durable state: another tab or mounted hook may have recorded an uncertain intent since mount.
-    const journal = readPendingJournal(receiptKey);
-    const oldest = journal[0] ?? null;
-    const pending = resume ? oldest : journal.find(entry => entry.fingerprint === fingerprint) ?? null;
-    if (journal.length && !pending) throw new DeepClaimError('An earlier action still needs to sync. Retry it before making another change.', 'rule');
-    if (resume && !pending) return cache.getQueryData<DeepClaimSnapshot>(key) ?? null;
-    const intent: Pending = pending ?? { operation, args: { ...args, p_request_id: crypto.randomUUID() }, fingerprint, label, createdAt: Date.now() };
-    const requestId = pendingRequestId(intent);
-    if (!pending) writePendingJournal(receiptKey, intent);
-    pendingRef.current = journal[0] ?? intent; setPending(pendingRef.current);
+    const previous = pendingRef.current ?? readPending(receiptKey);
+    if (previous && !resume && previous.fingerprint !== fingerprint) {
+      pendingRef.current = previous; setPending(previous);
+      throw new DeepClaimError('An earlier action still needs to sync. Retry it before making another change.', 'rule');
+    }
+    const pending = previous ?? { operation, args: { ...args, p_request_id: crypto.randomUUID() }, fingerprint, label };
     write.current = true; setBusy(true); setActionError(null);
+    pendingRef.current = pending; setPending(pending); rememberPendingAction(receiptKey, pending); notifyPending(receiptKey);
+    const settle = () => {
+      forgetPendingAction(receiptKey, String(pending.args.p_request_id));
+      const next = readPending(receiptKey); pendingRef.current = next; setPending(next); notifyPending(receiptKey);
+    };
     try {
-      const updated = await mutateDeepClaim(intent.operation, intent.args);
+      const updated = await mutateDeepClaim(pending.operation, pending.args);
       if (activeIdentity.current !== identity || generation.current !== attempt) throw new DeepClaimError('Your account or club changed. Reopen the operation in its original club.', 'access');
-      // A snapshot for another member/club cannot prove the transaction outcome: keep the receipt for a safe retry.
-      if (!updated || (updated.company && (updated.company.user_id !== user?.id || updated.company.club_id !== club?.id)))
-        throw new DeepClaimError('The confirmation could not be verified for your company. Retry sync to confirm it safely.', 'data');
-      clearPendingJournal(receiptKey, requestId); syncPending();
-      cache.setQueryData(key, (before: DeepClaimSnapshot | undefined) => shareDeepClaimSnapshot(before, updated));
+      if (updated.company && (updated.company.user_id !== user?.id || updated.company.club_id !== club?.id)) throw new DeepClaimError('The returned company could not be verified. Confirm sync before another action.', 'data');
+      const current = cache.setQueryData<DeepClaimSnapshot>(key, before => shareDeepClaimSnapshot(before, updated));
+      settle();
       void cache.invalidateQueries({ queryKey: ['deep-claim-club', user?.id, club?.id] });
-      // Monotonic: a replayed old receipt returns the accepted newer cache snapshot rather than stale data.
-      return cache.getQueryData<DeepClaimSnapshot>(key) ?? updated;
+      return current ?? updated;
     } catch (error) {
       if (activeIdentity.current === identity && generation.current === attempt) {
         // These errors are guaranteed server transaction rejection, so the intent can be reviewed anew.
         if (error instanceof DeepClaimError && ['access','rule','conflict'].includes(error.code)) {
-          clearPendingJournal(receiptKey, requestId); syncPending();
+          settle();
           void refetch();
           void cache.invalidateQueries({ queryKey: ['deep-claim-club', user?.id, club?.id] });
         }
@@ -91,7 +101,7 @@ export function useDeepClaim() {
       }
       throw error;
     } finally { if (activeIdentity.current === identity && generation.current === attempt) { write.current = false; setBusy(false); } }
-  }, [ready, identity, receiptKey, cache, key, user?.id, club?.id, refetch, syncPending]);
+  }, [ready, identity, receiptKey, cache, key, user?.id, club?.id, refetch]);
   const revision = data?.revision ?? 0;
   return {
     data, loading: ready && connected && query.isLoading, refreshing: query.isFetching, busy,
@@ -121,6 +131,11 @@ export function useDeepClaim() {
     setSocialPreferences: (input: DeepClaimSocialPreferencesInput, expectedRevision = revision) => perform('dc_set_social_preferences', { p_standings: input.standings_enabled, p_showcase: input.showcase_enabled, p_featured_discovery_ids: [...input.featured_discovery_ids], p_expected_revision: expectedRevision }, 'Update company sharing'),
     contributeProject: (projectKey: string, resources: DeepClaimResources, expectedRevision = revision) => perform('dc_contribute_project', { p_project_key: projectKey, p_resources: { ...resources }, p_expected_revision: expectedRevision }, 'Contribute materials'),
     claimProject: (projectKey: string, expectedRevision = revision) => perform('dc_claim_project', { p_project_key: projectKey, p_expected_revision: expectedRevision }, 'Claim club project'),
-    retryPending: () => { const oldest = readPendingJournal(receiptKey)[0]; return oldest ? perform(oldest.operation, {}, oldest.label, true) : Promise.resolve(data); },
+    retryPending: () => {
+      const pending = pendingRef.current ?? readPending(receiptKey);
+      if (!pending) return Promise.resolve(data);
+      pendingRef.current = pending; setPending(pending);
+      return perform(pending.operation, {}, pending.label, true);
+    },
   };
 }

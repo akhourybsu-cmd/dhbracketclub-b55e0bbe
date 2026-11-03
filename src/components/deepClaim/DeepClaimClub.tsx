@@ -49,6 +49,9 @@ export function DeepClaimClub({ snapshot, data, loading, refreshing, error, refr
   const [featuredPage, setFeaturedPage] = useState(0);
   const [featured, setFeatured] = useState<string[]>([]);
   const [actionError, setActionError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const submission = useRef(false);
+  const working = busy || submitting;
   useLayoutEffect(() => {
     if (internalView.current === view) { previousView.current = view; internalView.current = null; return; }
     if (previousView.current === view) return;
@@ -64,7 +67,7 @@ export function DeepClaimClub({ snapshot, data, loading, refreshing, error, refr
   const definition = current?.catalog.projects.find(item => item.key === project?.key);
   const requested = useMemo(() => Object.fromEntries(Object.entries(quantities).filter(([, value]) => value !== '' && Number(value) !== 0).map(([key, value]) => [key, Number(value)])) as DeepClaimResources, [quantities]);
   const pendingSync = !!current && current.own_revision > snapshot.revision;
-  const frozen = readOnly || busy || refreshing || !!error || pendingSync;
+  const frozen = readOnly || working || refreshing || !!error || pendingSync;
   const stale = !!review && 'revision' in review && review.revision < snapshot.revision;
   const reasons = project && definition ? projectContributionReasons({ project: definition, requested, stock: snapshot.resources, cash: snapshot.company?.cash ?? 0, progress: project.progress, own: project.own_contribution, cap_percent: project.effective_cap_percent }) : [];
   if (project && project.status !== 'open') reasons.unshift('This project is not open for contributions.');
@@ -85,7 +88,9 @@ export function DeepClaimClub({ snapshot, data, loading, refreshing, error, refr
     setActionError(''); setReview({ kind: 'privacy', revision: snapshot.revision, confirmed: false });
   }
   async function submit() {
-    if (!current || !review || review.kind === 'company' || frozen || stale) return;
+    if (!current || !review || review.kind === 'company' || frozen || stale || submission.current) return;
+    submission.current = true;
+    setSubmitting(true);
     setActionError('');
     try {
       if (review.kind === 'privacy' && confirmedReview) {
@@ -99,13 +104,14 @@ export function DeepClaimClub({ snapshot, data, loading, refreshing, error, refr
         onConfirmed('Contribution recorded.', `${Object.entries(requested).map(([key, count]) => `${count} ${RESOURCE_BY_ID[key as keyof DeepClaimResources].name}`).join(', ')} permanently contributed from collected stock.`, updated);
       }
     } catch (failure) { setActionError(failure instanceof Error ? failure.message : 'The club action could not be confirmed. Check the saved action before retrying.'); }
+    finally { submission.current = false; setSubmitting(false); }
   }
   const projects = current?.projects ?? [];
   const shownProjectPage = Math.min(projectPage, Math.max(0, Math.ceil(projects.length / 3) - 1));
   const hasClaim = !!project && project.status === 'completed' && project.qualified && !project.claimed_at;
   const projectInvalid = !project || project.status !== 'open' || reasons.length > 0;
   return <div className="dcl-club">
-    <TutorialToolbar lessonId={review?.kind === 'privacy' ? 'club.privacy' : view === 'standings' ? 'club.standings' : view === 'showcase' ? 'club.showcase' : 'club.projects'} label={review?.kind === 'privacy' ? 'Sharing privacy' : view === 'standings' ? 'Standings' : view === 'showcase' ? 'Showcases' : 'Club projects'}><div className="dcl-club-viewbar" role="group" aria-label="Club office views">{(['projects', 'standings', 'showcase'] as const).map(key => <button type="button" key={key} aria-pressed={view === key} disabled={busy} onClick={() => changeView(key)}><DeepClaimClubIcon kind={key === 'projects' ? 'project' : key === 'standings' ? 'standings' : 'showcase'} decorative />{key === 'projects' ? 'Projects' : key === 'standings' ? 'Standings' : 'Showcase'}</button>)}</div></TutorialToolbar>
+    <TutorialToolbar lessonId={review?.kind === 'privacy' ? 'club.privacy' : view === 'standings' ? 'club.standings' : view === 'showcase' ? 'club.showcase' : 'club.projects'} label={review?.kind === 'privacy' ? 'Sharing privacy' : view === 'standings' ? 'Standings' : view === 'showcase' ? 'Showcases' : 'Club projects'}><div className="dcl-club-viewbar" role="group" aria-label="Club office views">{(['projects', 'standings', 'showcase'] as const).map(key => <button type="button" key={key} aria-pressed={view === key} disabled={working} onClick={() => changeView(key)}><DeepClaimClubIcon kind={key === 'projects' ? 'project' : key === 'standings' ? 'standings' : 'showcase'} decorative />{key === 'projects' ? 'Projects' : key === 'standings' ? 'Standings' : 'Showcase'}</button>)}</div></TutorialToolbar>
     <div ref={body} className="dcl-club-body">
       {!current ? <ClaimState title={error ? 'Club board unavailable' : 'Opening the club board'} error={error} onRetry={() => void refresh()} refreshing={loading || refreshing}>Your private company remains available.</ClaimState> : <>
         {error && <div className="dcl-error" role="alert"><p>{error}</p><ClaimButton className="is-small" onClick={() => void refresh()}>Retry club records</ClaimButton></div>}
@@ -154,7 +160,7 @@ export function DeepClaimClub({ snapshot, data, loading, refreshing, error, refr
         {stale && <p className="dcl-note">Your company changed. Review the current stock and choices before confirming.</p>}{actionError && <p className="dcl-error" role="alert">{actionError}</p>}
       </>}
     </div>
-    <div className="dcl-club-footer dcl-dialog-actions">{review ? <><ClaimButton disabled={busy} onClick={() => { if ('confirmed' in review && confirmedReview) setReview({ ...review, confirmed: false }); else reset(); }}><ArrowLeft size={14} aria-hidden="true" />Back</ClaimButton>{review.kind !== 'company' && current && (review.kind === 'privacy' || hasClaim || project?.status === 'open') && (stale ? <ClaimButton primary disabled={frozen} onClick={() => setReview({ ...review, revision: snapshot.revision, confirmed: false })}>Review current stock</ClaimButton> : 'confirmed' in review && !confirmedReview && !hasClaim ? <ClaimButton primary disabled={frozen || review.kind === 'project' && projectInvalid} onClick={() => setReview({ ...review, revision: snapshot.revision, confirmed: true })}>{review.kind === 'privacy' ? 'Review sharing' : 'Review contribution'}</ClaimButton> : <ClaimButton primary pending={busy} disabled={frozen || review.kind === 'project' && !hasClaim && projectInvalid} onClick={() => void submit()}>{review.kind === 'privacy' ? 'Confirm sharing preferences' : hasClaim ? 'Claim project credits' : 'Confirm contribution'}</ClaimButton>)}</> : <ClaimButton onClick={onClose} disabled={busy}>Back to camp</ClaimButton>}</div>
+    <div className="dcl-club-footer dcl-dialog-actions">{review ? <><ClaimButton disabled={working} onClick={() => { if ('confirmed' in review && confirmedReview) setReview({ ...review, confirmed: false }); else reset(); }}><ArrowLeft size={14} aria-hidden="true" />Back</ClaimButton>{review.kind !== 'company' && current && (review.kind === 'privacy' || hasClaim || project?.status === 'open') && (stale ? <ClaimButton primary disabled={frozen} onClick={() => setReview({ ...review, revision: snapshot.revision, confirmed: false })}>Review current stock</ClaimButton> : 'confirmed' in review && !confirmedReview && !hasClaim ? <ClaimButton primary disabled={frozen || review.kind === 'project' && projectInvalid} onClick={() => setReview({ ...review, revision: snapshot.revision, confirmed: true })}>{review.kind === 'privacy' ? 'Review sharing' : 'Review contribution'}</ClaimButton> : <ClaimButton primary pending={working} disabled={frozen || review.kind === 'project' && !hasClaim && projectInvalid} onClick={() => void submit()}>{review.kind === 'privacy' ? 'Confirm sharing preferences' : hasClaim ? 'Claim project credits' : 'Confirm contribution'}</ClaimButton>)}</> : <ClaimButton onClick={onClose} disabled={working}>Back to camp</ClaimButton>}</div>
   </div>;
 }
 
@@ -162,6 +168,9 @@ function ClubMaterials({ resources, progress }: { resources: DeepClaimResources;
   return <div className="dcl-club-materials">{Object.entries(resources).map(([key, quantity]) => <span key={key}><DeepClaimResourceIcon resourceId={key as keyof DeepClaimResources} decorative /><b>{progress ? `${resourceQuantity(progress, key as keyof DeepClaimResources)}/` : ''}{quantity}</b><small>{RESOURCE_BY_ID[key as keyof DeepClaimResources].name}</small></span>)}</div>;
 }
 function projectFraction(project: DeepClaimClubView['projects'][number]) { const goals = Object.entries(project.goals); return goals.length ? goals.reduce((sum, [key, goal]) => sum + Math.min(1, resourceQuantity(project.progress, key as keyof DeepClaimResources) / (goal || 1)), 0) / goals.length : 0; }
-function PublicAvatar({ name, url }: { name: string; url: string | null }) { return <span className="dcl-public-avatar" aria-hidden="true">{name.trim().slice(0, 1).toLocaleUpperCase()}{url && <img src={url} alt="" onError={event => { event.currentTarget.style.display = 'none'; }} />}</span>; }
+function PublicAvatar({ name, url }: { name: string; url: string | null }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  return <span className="dcl-public-avatar" aria-hidden="true">{name.trim().slice(0, 1).toLocaleUpperCase()}{url && failedUrl !== url && <img src={url} alt="" onError={() => setFailedUrl(url)} />}</span>;
+}
 function PublicCompanyHeader({ company }: { company: DeepClaimPublicCompany }) { return <div className="dcl-public-company"><DeepClaimCompanyCrest userId={company.user_id} companyName={company.company_name} decorative /><span><strong>{company.company_name}</strong><small>{company.display_name}</small></span></div>; }
 function formatWeek(value: string, timezone: string) { try { return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: timezone }).format(new Date(value)); } catch { return value.slice(0, 10); } }

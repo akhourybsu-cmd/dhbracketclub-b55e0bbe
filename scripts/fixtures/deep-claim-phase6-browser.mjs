@@ -147,6 +147,8 @@ export async function runPhase6Browser(h) {
     await page.getByRole('switch', { name: 'Camp ambience', exact: true }).click();
 
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('deep-claim-title')).toBeAttached();
+    await expect(page.getByTestId('dh-games-intro')).toHaveCount(0, { timeout: 10_000 });
     await expect(page.getByTestId('deep-claim-title').getByRole('button', { name: 'Continue', exact: true })).toBeEnabled();
     checked('runtime-saved-opt-in-never-autoplays-on-reload', await page.evaluate(() => window.deepClaimRuntime.contexts.length === 0));
     // Continue is now an actual user gesture. Check silence on the title

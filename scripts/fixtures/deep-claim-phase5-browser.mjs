@@ -124,7 +124,7 @@ export async function runPhase5Browser(h) {
           assert.ok(recovered?.kind === 'banded_geode', 'The original finite quartz seam must recover its genuine geode after mining');
           await h.tab(player.page, 'Log');
           await player.page.getByRole('group', { name: 'Field log views', exact: true }).getByRole('button', { name: /^Finds/ }).click();
-          await player.page.getByRole('button', { name: `Inspect ${recovered.name}`, exact: true }).filter({ hasText: 'x47 · 3m' }).click();
+          await player.page.locator(`[data-dc-find="${recovered.id}"]`).click();
           await player.page.getByRole('button', { name: /^Keep in cabinet/ }).click();
           await player.page.getByRole('button', { name: 'Confirm keep', exact: true }).click(); await h.closeReward(player.page);
           keptFind = recovered;
@@ -156,7 +156,7 @@ export async function runPhase5Browser(h) {
       await fit(a, 'social-earned-permanent-contribution-review'); await shot(a, 'social-earned-permanent-contribution-review');
       await h.command(a, 'fail_next', { name: 'dc_contribute_project', after_commit: true });
       await office.getByRole('button', { name: 'Confirm contribution', exact: true }).click(); await expect(office.getByRole('alert')).toBeVisible();
-      await a.reload({ waitUntil: 'domcontentloaded' }); await expect(a.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+      await h.reloadCompany(a); await expect(a.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
       await a.getByRole('button', { name: 'Confirm sync', exact: true }).click(); await expect(a.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await h.closeReward(a);
       const afterA = await h.rpc(a, 'dc_get'), donationCalls = (await h.command(a, 'calls')).filter(call => call.user === actors.alex && call.name === 'dc_contribute_project');
       checked('contribution-lost-ack-reuses-one-immutable-request-and-stock-debit', donationCalls.length === 2 && donationCalls[0].args.p_request_id === donationCalls[1].args.p_request_id

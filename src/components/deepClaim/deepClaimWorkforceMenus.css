@@ -117,3 +117,11 @@
 @media(max-width:350px){.dcl-worker-file .dcl-gear-inventory-card{grid-template-columns:72px minmax(0,1fr);padding:10px;gap:8px}.dcl-worker-file .dcl-crew-profile{gap:11px}}
 @media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){.dcl-workforce-menu .dcl-candidate-card:hover{transform:translateY(-1px);border-color:var(--dcl-brass)}.dcl-worker-file .dcl-equipment-title:hover{color:var(--dcl-brass)}}
 @media(forced-colors:active){.dcl-workforce-menu .dcl-crew-card,.dcl-workforce-menu .dcl-candidate-card,.dcl-workforce-menu .dcl-worker-stats>div,.dcl-workforce-menu .dcl-housing-status,.dcl-worker-file .dcl-crew-profile,.dcl-dialog .dcl-applicant-identity,.dcl-worker-file .dcl-training-preview,.dcl-worker-file .dcl-gear-slots>span,.dcl-worker-file .dcl-gear-art,.dcl-worker-file .dcl-loadout-art,.dcl-worker-file .dcl-gear-inventory-card,.dcl-settings .dcl-settings-group,.dcl-settings .dcl-settings-actions{background:Canvas;color:CanvasText;border-color:CanvasText;box-shadow:none}.dcl-worker-file .dcl-gear-slots>span[data-equipped=true]{border:3px double Highlight;box-shadow:none}.dcl-settings .dcl-setting-toggle>button:before,.dcl-settings .dcl-setting-toggle>button i{box-shadow:none}.dcl-workforce-menu .dc-worker-portrait,.dcl-worker-file .dc-worker-portrait,.dcl-dialog .dcl-applicant-identity>.dc-worker-portrait{forced-color-adjust:none}}
+
+/* Bounded roster and tool pages keep each review within reach on a phone. */
+.dcl-workforce-pages{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;padding-block:4px}
+.dcl-workforce-pages>.dcl-button{min-height:44px;white-space:normal;line-height:1.2}
+.dcl-workforce-pages>span{min-width:44px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;color:var(--dcl-muted)}
+.dcl-workforce-review{display:flex;flex-direction:column;gap:8px;border:1px solid var(--dcl-brass);border-radius:6px;padding:10px;background:var(--dcl-bg)}
+.dcl-workforce-review>p{margin:0;color:var(--dcl-text);font-size:12px;line-height:1.5}
+.dcl-workforce-review>.dcl-button{min-height:44px}

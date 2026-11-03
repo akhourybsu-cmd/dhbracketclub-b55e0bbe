@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, FileSignature, Pickaxe, ShieldCheck, Timer, Users } from 'lucide-react';
 import { getDialogueScene } from '@/lib/deepClaim/tutorial/dialogue';
 import { DeepClaimTutorialDialogue } from '../tutorial/DeepClaimTutorialDialogue';
@@ -11,33 +11,51 @@ function draft(key: string): Draft {
   try { const value = JSON.parse(localStorage.getItem(key) ?? 'null'); return { name: typeof value?.name === 'string' ? value.name.slice(0, 40) : '', line: Number.isSafeInteger(value?.line) ? Math.max(0, value.line) : 0, stage: ['name', 'review'].includes(value?.stage) ? value.stage : 'story' }; }
   catch { return { name: '', line: 0, stage: 'story' }; }
 }
-export function DeepClaimPrologue({ identity, clubName, reducedMotion, reducedGraphics, busy, blocked, error, onBack, onFound, onInteraction }: {
+interface DeepClaimPrologueProps {
   identity: string; clubName: string; reducedMotion: boolean; reducedGraphics: boolean; busy: boolean; blocked: boolean;
   error?: string | null; onBack: () => void; onFound: (name: string) => Promise<void>; onInteraction: () => void;
-}) {
+}
+export function DeepClaimPrologue(props: DeepClaimPrologueProps) {
+  return <DeepClaimDeed key={props.identity} {...props} />;
+}
+function DeepClaimDeed({ identity, clubName, reducedMotion, reducedGraphics, busy, blocked, error, onBack, onFound, onInteraction }: DeepClaimPrologueProps) {
   const key = `dh:deep-claim:deed-draft:v1:${identity}`;
   const [value, setValue] = useState(() => draft(key));
   const [failure, setFailure] = useState('');
+  const [signing, setSigning] = useState(false);
+  const signingPending = useRef(false);
+  const mounted = useRef(true);
+  const root = useRef<HTMLElement>(null);
+  const nameInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const working = busy || signing;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useLayoutEffect(() => {
+    const target = value.stage === 'story' ? root.current?.querySelector<HTMLElement>('.dct-dialogue') : value.stage === 'name' && !blocked ? nameInput.current : heading.current;
+    target?.focus({ preventScroll: true });
+  }, [value.stage, blocked]);
   const scene = useMemo(() => getDialogueScene('opening.deed')!, []);
   function change(patch: Partial<Draft>) { setValue(before => { const next = { ...before, ...patch }; try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* Optional draft storage never blocks founding. */ } return next; }); }
   const valid = value.name.trim().length >= 2 && value.name.trim().length <= 40;
   async function found() {
-    if (!valid || busy || blocked) return;
-    setFailure(''); onInteraction();
-    try { await onFound(value.name.trim()); try { localStorage.removeItem(key); } catch { /* The real company is already persisted. */ } }
-    catch (issue) { setFailure(issue instanceof Error ? issue.message : 'We couldn’t confirm the deed. Check your connection and try again.'); }
+    if (!valid || busy || blocked || signingPending.current) return;
+    signingPending.current = true; setSigning(true);
+    setFailure('');
+    try { onInteraction(); await onFound(value.name.trim()); try { localStorage.removeItem(key); } catch { /* The real company is already persisted. */ } }
+    catch (issue) { if (mounted.current) setFailure(issue instanceof Error ? issue.message : 'We couldn’t confirm the deed. Check your connection and try again.'); }
+    finally { signingPending.current = false; if (mounted.current) setSigning(false); }
   }
-  return <section className="dcm-prologue" data-stage={value.stage} aria-label="Chapter One — Stake Your Claim" data-reduced-motion={reducedMotion}>
-    <DeepClaimMenuBackdrop variant="founding" active={!busy} reducedMotion={reducedMotion} reducedGraphics={reducedGraphics} />
-    <header><button type="button" className="dct-button" onClick={onBack} disabled={busy}><ArrowLeft size={17} aria-hidden="true" />Main menu</button><span><b>01</b>Stake your claim</span></header>
+  return <section ref={root} className="dcm-prologue" data-stage={value.stage} aria-label="Chapter One — Stake Your Claim" data-reduced-motion={reducedMotion}>
+    <DeepClaimMenuBackdrop variant="founding" active={!working} reducedMotion={reducedMotion} reducedGraphics={reducedGraphics} />
+    <header><button type="button" className="dct-button" onClick={onBack} disabled={working}><ArrowLeft size={17} aria-hidden="true" />Main menu</button><span><b>01</b>Stake your claim</span></header>
     {value.stage === 'story' ? <div className="dcm-prologue-story"><DeepClaimTutorialDialogue scene={scene} lineIndex={Math.min(value.line, scene.lines.length - 1)} history={scene.lines.slice(0, value.line)} reducedMotion={reducedMotion}
       onAdvance={() => { onInteraction(); if (value.line >= scene.lines.length - 1) change({ stage: 'name' }); else change({ line: value.line + 1 }); }}
       onBack={value.line > 0 ? () => change({ line: value.line - 1 }) : undefined} onSkip={() => change({ stage: 'name' })} skipLabel="Skip introduction" /></div>
-      : <div className="dcm-deed"><div className="dcm-deed-gus"><DeepClaimPortrait speaker="gus" expression={value.stage === 'review' ? 'skeptical' : 'amused'} decorative /></div><form onSubmit={event => { event.preventDefault(); if (value.stage === 'name') { if (valid) change({ stage: 'review' }); } else void found(); }}>
-        <span className="dct-kicker">GUS “GRAVEL” CALLOWAY</span><h1>{value.stage === 'name' ? 'Name your company.' : 'Sign the deed.'}</h1>
+      : <div className="dcm-deed"><div className="dcm-deed-gus"><DeepClaimPortrait speaker="gus" expression={value.stage === 'review' ? 'skeptical' : 'amused'} decorative /></div><form aria-busy={working || undefined} onSubmit={event => { event.preventDefault(); if (working || blocked) return; if (value.stage === 'name') { if (valid) change({ stage: 'review' }); } else void found(); }}>
+        <span className="dct-kicker">GUS “GRAVEL” CALLOWAY</span><h1 ref={heading} tabIndex={-1}>{value.stage === 'name' ? 'Name your company.' : 'Sign the deed.'}</h1>
         <p className="dcm-gus-line">{value.stage === 'name' ? '“What would you like to call it?”' : '“Check the details before you sign.”'}</p>
-        {value.stage === 'name' ? <><label htmlFor="deep-claim-company-name">Company name</label><input id="deep-claim-company-name" data-dc-tutorial="company-name" autoComplete="organization" placeholder="Your frontier company" maxLength={40} minLength={2} value={value.name} disabled={busy || blocked} onChange={event => change({ name: event.target.value })} /><button type="submit" className="dct-button is-primary" disabled={!valid || busy || blocked}>Review deed<ArrowRight size={17} aria-hidden="true" /></button></>
-          : <><dl><div><dt>Company</dt><dd>{value.name.trim()}</dd></div><div><dt>Home club</dt><dd>{clubName}</dd></div></dl><div className="dcm-deed-facts" role="group" aria-label="Starting company"><span><Users size={18} aria-hidden="true" /><b>3 crew</b></span><span><Pickaxe size={18} aria-hidden="true" /><b>Persistent mine</b></span><span><Timer size={18} aria-hidden="true" /><b>30s first shift</b></span></div><p className="dcm-deed-protection"><ShieldCheck size={16} aria-hidden="true" /><span>One company per member, per club. Your crew keeps working while you’re away.</span></p><div className="dcm-deed-actions"><button type="button" className="dct-button" disabled={busy} onClick={() => change({ stage: 'name' })}>Edit name</button><button data-dc-tutorial="company-found" type="submit" className="dct-button is-primary" disabled={!valid || busy || blocked} aria-busy={busy || undefined}><FileSignature size={17} aria-hidden="true" />{busy ? 'Signing the deed…' : 'Found company'}</button></div></>}
+        {value.stage === 'name' ? <><label htmlFor="deep-claim-company-name">Company name</label><input ref={nameInput} id="deep-claim-company-name" data-dc-tutorial="company-name" autoComplete="organization" placeholder="Your frontier company" maxLength={40} minLength={2} value={value.name} disabled={working || blocked} onChange={event => change({ name: event.target.value })} /><button type="submit" className="dct-button is-primary" disabled={!valid || working || blocked}>Review deed<ArrowRight size={17} aria-hidden="true" /></button></>
+          : <><dl><div><dt>Company</dt><dd>{value.name.trim()}</dd></div><div><dt>Home club</dt><dd>{clubName}</dd></div></dl><div className="dcm-deed-facts" role="group" aria-label="Starting company"><span><Users size={18} aria-hidden="true" /><b>3 crew</b></span><span><Pickaxe size={18} aria-hidden="true" /><b>Persistent mine</b></span><span><Timer size={18} aria-hidden="true" /><b>30s first shift</b></span></div><p className="dcm-deed-protection"><ShieldCheck size={16} aria-hidden="true" /><span>One company per member, per club. Your crew keeps working while you’re away.</span></p><div className="dcm-deed-actions"><button type="button" className="dct-button" disabled={working} onClick={() => change({ stage: 'name' })}>Edit name</button><button data-dc-tutorial="company-found" type="submit" className="dct-button is-primary" disabled={!valid || working || blocked} aria-busy={working || undefined}><FileSignature size={17} aria-hidden="true" />{working ? 'Signing the deed…' : 'Found company'}</button></div></>}
         {(failure || error) && <p className="dct-error" role="alert">{failure || error}</p>}
       </form></div>}
   </section>;

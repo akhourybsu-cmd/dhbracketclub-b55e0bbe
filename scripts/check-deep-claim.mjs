@@ -130,9 +130,20 @@ async function continueCompany(page, { required = true } = {}) {
   else if (required) await expect(company).toBeVisible();
   await settle(page);
 }
-async function reloadCompany(page) {
+async function reloadCompany(page, { acknowledgeReport = true } = {}) {
   await page.reload({ waitUntil: 'domcontentloaded' });
   await continueCompany(page);
+  // The live return report was added after these economy scenarios. Ordinary
+  // work resumes via its real acknowledgement; report-specific scenarios opt
+  // out so unexpected repeat reports still fail their original assertions.
+  if (acknowledgeReport) await acknowledgeReturnReport(page);
+}
+async function acknowledgeReturnReport(page) {
+  const report = page.getByRole('dialog', { name: 'Shift report', exact: true });
+  if (await report.isVisible()) {
+    await report.getByRole('button', { name: 'Back to camp', exact: true }).click();
+    await expect(report).toHaveCount(0); await settle(page);
+  }
 }
 async function dismissTutorial(page) {
   // Founding acknowledges the actual bootstrap before the crew introduction
@@ -253,6 +264,9 @@ async function tab(page, label) {
 async function closeReward(page) {
   await page.getByRole('button', { name: 'Back to the claim', exact: true }).click();
   await settle(page);
+  // Resolving an uncertain saved action can release a return report that had
+  // been held behind the receipt. Acknowledge only that known presentation.
+  await acknowledgeReturnReport(page);
   // The exact optional-reveal handler also runs before this auto-wait assertion.
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
@@ -556,7 +570,10 @@ async function journey() {
 }
 async function reliability() {
   const run = 'reliability', { context, page } = await setup();
-  await found(page, { run }); await intro(page, { confirm: false });
+  await found(page, { run });
+  const sibling = await pageFor(context); await go(sibling, { run });
+  await expect(sibling.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  await intro(page, { confirm: false });
   await command(page, 'fail_next', { name: 'dc_dispatch_operation', after_commit: true });
   await page.getByRole('dialog', { name: 'Extraction' }).getByRole('button', { name: 'Dispatch crew', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
@@ -564,6 +581,13 @@ async function reliability() {
   await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
   let saved = await rpc(page, 'dc_get'); const job = saved.expeditions[0];
   checked('lost-ack-commits-one-dispatch', saved.expeditions.length === 1 && saved.company.cash === 173);
+  await expect(sibling.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
+  await sibling.getByRole('button', { name: 'Open camp buildings', exact: true }).click();
+  await sibling.getByRole('dialog', { name: 'Buildings' }).getByRole('button', { name: /Warehouse/ }).click();
+  await expect(sibling.getByRole('button', { name: 'Confirm upgrade', exact: true })).toBeDisabled();
+  const journal = await sibling.evaluate(() => Object.entries(localStorage).filter(([key]) => key.startsWith('dh:deep-claim:pending:v1:')).map(([key, value]) => ({ key, request: JSON.parse(value).args.p_request_id })));
+  checked('already-open-tab-preserves-uncertain-request-and-blocks-new-spending', journal.length === 2 && journal.every(entry => entry.request === journal[0].request) && journal.some(entry => entry.key.endsWith(`:request:${entry.request}`)));
+  await sibling.close();
   await reloadCompany(page); await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Confirm sync', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Saved action confirmed.', exact: true })).toBeVisible(); await closeReward(page);
@@ -579,7 +603,9 @@ async function reliability() {
   await expect(page.getByText('Saved camp · read-only until reconnected', { exact: true })).toHaveCount(0);
   await command(page, 'advance_job', { job_id: job.id, seconds: 31 }); await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
   await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
-  const peer = await pageFor(context); await go(peer, { run }); await expect(peer.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  // Independent browser storage models another device. Tabs sharing storage
+  // deliberately observe the pending receipt and cannot start another write.
+  const { context: peerContext, page: peer } = await setup(); await go(peer, { run }); await expect(peer.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   await tab(page, 'Stores'); await page.getByRole('button', { name: 'Sell Coal', exact: true }).click();
   await tab(peer, 'Stores'); await peer.getByRole('button', { name: 'Sell Coal', exact: true }).click();
   await command(page, 'hold', { name: 'dc_sell' });
@@ -591,7 +617,7 @@ async function reliability() {
   saved = await rpc(page, 'dc_get'); checked('two-device-sale-never-double-spends', saved.resources.coal === 0 && saved.company.cash === 213);
   const sales = (await command(page, 'calls')).filter(value => value.name === 'dc_sell'); checked('stale-device-sale-conflicts', sales.filter(value => value.status === 'completed').length === 1 && sales.filter(value => value.status === 'rejected').length === 1);
   await shot(page, 'reliability-first-device'); await shot(peer, 'reliability-second-device');
-  await context.close(); console.log('PASS Deep Claim reliability');
+  await peerContext.close(); await context.close(); console.log('PASS Deep Claim reliability');
 }
 async function clearDialogs(page) {
   for (let attempt = 0; attempt < 4 && await page.getByRole('dialog').count(); attempt++) { await page.keyboard.press('Escape'); await settle(page); }
@@ -729,7 +755,8 @@ async function processRecipe(page, key, { loseAcknowledgement = false } = {}) {
   assert.ok(job); checked(`production-not-created-before-collection-${key}`, recipe.equipment_output
     ? JSON.stringify(snapshot.equipment.map(item => item.id).sort()) === JSON.stringify(ownedBefore)
     : Object.entries(outputBefore).every(([resource, quantity]) => (snapshot.resources[resource] || 0) === quantity));
-  await reloadCompany(page); await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
+  await reloadCompany(page);
+  await expect(page.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   checked(`production-reload-keeps-job-${key}`, (await rpc(page, 'dc_get')).production_jobs.filter(value => value.id === job.id).length === 1);
   await command(page, 'advance_production', { job_id: job.id, seconds: job.duration_seconds + 1 });
   await page.getByRole('button', { name: 'Refresh company', exact: true }).click(); await workshop(page, names[recipe.station]);
@@ -1037,7 +1064,7 @@ async function field() {
     && snapshot.world.tiles.find(value => value.x === 47 && value.y === 3).remaining === 0);
   await page.getByRole('button', { name: 'Open haul', exact: true }).click(); await page.getByRole('button', { name: 'Collect into storage', exact: true }).click(); await closeReward(page);
   await tab(page, 'Surface'); await page.getByRole('button', { name: /^Review finds · \d+$/ }).click();
-  await page.getByRole('button', { name: `Inspect ${find.name}`, exact: true }).filter({ hasText: 'x47 · 3m' }).click();
+  await page.locator(`[data-dc-find="${find.id}"]`).click();
   dialog = page.getByRole('dialog', { name: find.name, exact: true });
   await expect(dialog.getByRole('group', { name: 'Find decision' }).getByRole('button')).toHaveCount(3);
   await dialog.getByRole('group', { name: 'Find decision' }).getByRole('button', { name: /^Sell specimen/ }).click();
@@ -1105,6 +1132,14 @@ async function caverns() {
     await expect(page.getByTestId('deep-claim-map')).toHaveAttribute('data-dc-view', 'mine');
     await fit(page, 'caverns-earned-survey-focused-mine'); await canvasIsDrawn(page, 'caverns-earned-survey-focused-mine'); await shot(page, 'caverns-earned-survey-focused-mine');
     await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
+    const depthSearch = page.getByRole('searchbox', { name: 'Find depth', exact: true });
+    if (await depthSearch.isVisible()) {
+      await depthSearch.focus();
+      const focus = await depthSearch.evaluate(input => ({ active: document.activeElement === input,
+        inner: getComputedStyle(input).outlineStyle, outer: getComputedStyle(input.closest('.dcl-depth-search')).outlineStyle,
+        width: parseFloat(getComputedStyle(input.closest('.dcl-depth-search')).outlineWidth) }));
+      checked('depth-search-has-one-visible-keyboard-focus-ring', focus.active && focus.inner === 'none' && focus.outer !== 'none' && focus.width >= 2, focus);
+    }
     await fit(page, 'caverns-deep-site-operations'); await shot(page, 'caverns-deep-site-operations'); await page.keyboard.press('Escape');
     const followup = await operationPlan(page, 'Survey', { review: false });
     const siteCount = await followup.getByRole('group', { name: 'Expedition worksite', exact: true }).locator('[data-dc-worksite]').count();
@@ -1112,6 +1147,10 @@ async function caverns() {
     const search = followup.getByRole('searchbox', { name: 'Depth or material', exact: true });
     if (await search.isVisible()) {
       await search.fill(`48:${candidate.site.y}`);
+      const focus = await search.evaluate(input => ({ active: document.activeElement === input,
+        inner: getComputedStyle(input).outlineStyle, outer: getComputedStyle(input.closest('.dcl-site-search')).outlineStyle,
+        width: parseFloat(getComputedStyle(input.closest('.dcl-site-search')).outlineWidth) }));
+      checked('worksite-search-has-one-visible-keyboard-focus-ring', focus.active && focus.inner === 'none' && focus.outer !== 'none' && focus.width >= 2, focus);
       await expect(followup.getByRole('group', { name: 'Expedition worksite', exact: true }).locator(`[data-dc-worksite="48:${candidate.site.y}"]`)).toHaveCount(1);
       await expect(followup.getByRole('group', { name: 'Worksite pages', exact: true })).toBeVisible();
       await fit(page, 'caverns-worksite-search'); await shot(page, 'caverns-worksite-search');
@@ -1198,7 +1237,20 @@ async function business() {
     await fit(page, 'business-earned-records-review'); await shot(page, 'business-earned-records-review'); await page.keyboard.press('Escape');
     office = await officeView(page, 'Records'); await office.getByRole('group', { name: 'Company records', exact: true }).getByRole('button', { name: 'Operations', exact: true }).click();
     await fit(page, 'business-source-backed-operations'); await shot(page, 'business-source-backed-operations');
-    await context.close(); console.log('PASS Deep Claim earned business development'); return;
+    await context.close();
+    for (const [width, height, theme] of [[320,568,'dark'],[844,390,'light'],[1440,900,'dark']]) {
+      const client = await setup(width, height, theme);
+      try {
+        await go(client.page, { run, theme });
+        const records = await officeView(client.page, 'Records');
+        await expect(records.locator('.dcl-milestone-card').first()).toContainText('Mining shifts completed');
+        await expect(records).not.toContainText('Complete the recorded company objective');
+        await fit(client.page, `audit-records-${width}x${height}-${theme}`);
+        await shot(client.page, `audit-records-${width}x${height}-${theme}`);
+        checked(`audit-records-show-the-real-objective-${width}x${height}-${theme}`, true);
+      } finally { await client.context.close(); }
+    }
+    console.log('PASS Deep Claim earned business development'); return;
   }
   assert.fail('QA sampling gap: no suitable legal finite stone frontier in24 independent worlds; no economy or world was fabricated');
 }

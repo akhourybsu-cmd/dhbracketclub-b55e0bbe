@@ -73,7 +73,7 @@ export async function runDeepClaimSessionBrowser(h) {
     await expect(planner.getByRole('list', { name: 'Goal requirements', exact: true })).toContainText(`${Math.min(beforeGoal.company.cash, warehouseCost + 2)} / ${warehouseCost + 2}`);
     await planner.getByRole('button', { name: 'Pin goal', exact: true }).click();
     await expect(planner).toHaveCount(0);
-    await h.reloadCompany(page);
+    await h.reloadCompany(page, { acknowledgeReport: false });
     await expect(report(page)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Review pinned goal', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Review pinned goal', exact: true }).click();
