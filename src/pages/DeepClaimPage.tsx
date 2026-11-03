@@ -439,7 +439,7 @@ function DeepClaimCompany({ userId, clubId, clubName, publisherAvailable, onPubl
       const remaining = updatedHaul?.status === 'ready' ? updatedHaul.cargo ?? {} : {};
       const moved = Object.fromEntries(DEEP_CLAIM_RESOURCE_IDS.map(key => [key, Math.max(0, Math.min(resourceQuantity(original, key) - resourceQuantity(remaining, key), resourceQuantity(updated.resources, key) - resourceQuantity(data.resources, key)))]).filter(([, amount]) => Number(amount) > 0)) as DeepClaimResources;
       if (resourceTotal(moved) > 0) confirmed('haul_collected', updated, { job_id: chosenHaul.id, moved, quantity: resourceTotal(moved) });
-      setHaul(null); setReward({ title: resourceTotal(moved) ? 'Haul secured.' : 'Camp updated.', description: resourceTotal(moved) ? 'Cargo added to your warehouse.' : 'No cargo moved. Check your staged haul.', resources: moved, remaining: resourceTotal(remaining), ...(resourceTotal(moved) > 0 && !resourceTotal(remaining) && updatedHaul?.status === 'collected' ? { nextShiftId: updatedHaul.id } : {}) }); audio.play('deposit');
+      setHaul(null); setReward({ title: resourceTotal(moved) ? 'Haul secured.' : 'Camp updated.', description: resourceTotal(moved) ? 'Cargo added to your warehouse.' : 'No cargo moved. Check your staged haul.', resources: moved, remaining: resourceTotal(remaining), ...(resourceTotal(moved) > 0 && !resourceTotal(remaining) && updatedHaul?.status === 'collected' ? { nextShiftId: updatedHaul.id } : {}) }); audio.play(resourceTotal(moved) > 0 ? 'deposit' : 'menu_select');
     } catch (error) { if (active.current) setLocalError(error instanceof Error ? error.message : 'The haul could not be confirmed. Retry sync.'); }
     finally { pageWrite.current = false; }
   }

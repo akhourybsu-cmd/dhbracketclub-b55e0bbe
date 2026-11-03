@@ -133,7 +133,20 @@ describe('Deep Claim Page authoritative collection receipts', () => {
     const items = within(receipt).getAllByRole('listitem');
     expect(items).toHaveLength(1); expect(items[0]).toHaveAttribute('data-dc-receipt-resource', 'copper_ore');
     expect(within(items[0]).getByText('4')).toBeInTheDocument();
+    expect(wire.play).toHaveBeenCalledWith('deposit');
     expect(screen.queryByRole('dialog', { name: 'The haul is home' })).not.toBeInTheDocument();
+  });
+
+  it('acknowledges a no-transfer haul without an acquisition sound or invented cargo', async () => {
+    wire.data!.expeditions = [readyHaul()];
+    const updated = structuredClone(wire.data!); updated.revision++; updated.expeditions[0].status = 'collected';
+    wire.collect.mockResolvedValue(updated);
+    render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Open haul' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Collect into storage' }));
+    const receipt = await screen.findByRole('dialog', { name: 'Camp updated.' });
+    expect(within(receipt).queryAllByRole('listitem')).toHaveLength(0);
+    expect(wire.play).not.toHaveBeenCalledWith('deposit');
+    expect(wire.play).toHaveBeenCalledWith('menu_select');
   });
 
   it.each(['collected', 'removed'] as const)('closes an open haul after a source refresh marks it %s', status => {
