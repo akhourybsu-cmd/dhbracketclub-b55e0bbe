@@ -38,3 +38,6 @@
 @media(hover:hover){.dcl-worksite:not(:disabled):hover,.dcl-choice:not(:disabled):hover{border-color:var(--dcl-brass)}.dcl-worksite:not(:disabled):active,.dcl-choice:not(:disabled):active{transform:translateY(1px)}}
 @media(prefers-reduced-motion:reduce){.dcl-worksite,.dcl-choice{transition:none;transform:none!important}}
 @media(forced-colors:active){.dcl-worksite,.dcl-choice,.dcl-site-search{border-color:ButtonText;background:Canvas;color:CanvasText;box-shadow:none}.dcl-worksite[aria-pressed=true],.dcl-choice[aria-pressed=true]{outline:2px solid Highlight;outline-offset:-3px}.dcl-site-check{color:Highlight}.dcl-site-copy small,.dcl-site-copy>span,.dcl-choice-copy small{color:CanvasText}}
+/* Outer focus-within ring is the keyboard indicator; suppress only the redundant inner input outline, out-ranking generic dialog focus CSS. */
+.deep-claim .dcl-site-search input:focus-visible,.dcl-dialog .dcl-site-search input:focus-visible,.deep-claim .dcl-depth-search input:focus-visible,.dcl-dialog .dcl-depth-search input:focus-visible{outline:0;box-shadow:none}
+@media(forced-colors:active){.dcl-site-search:focus-within{outline-color:Highlight}}
