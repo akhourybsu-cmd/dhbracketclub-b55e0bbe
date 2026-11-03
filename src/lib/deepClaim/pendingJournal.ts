@@ -72,12 +72,12 @@ export function readPendingJournal(pointer: string): DeepClaimPending[] {
 /** Persist a new intent: leaf first, then the compatibility pointer (only if it is empty or invalid). */
 export function writePendingJournal(pointer: string, pending: DeepClaimPending) {
   const id = pendingRequestId(pending), raw = JSON.stringify(pending);
-  remember(pointer).set(id, pending);
   const store = storage();
   try {
-    store?.setItem(leafKey(pointer, id), raw);
-    if (!parsePending(store?.getItem(pointer) ?? null)) store?.setItem(pointer, raw);
-  } catch { /* in-memory receipt still protects this session */ }
+    if (!store) throw new Error('storage unavailable');
+    store.setItem(leafKey(pointer, id), raw);
+    if (!parsePending(store.getItem(pointer))) store.setItem(pointer, raw);
+  } catch { remember(pointer).set(id, pending); /* in-memory receipt still protects this session */ }
   notify(pointer);
 }
 
