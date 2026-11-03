@@ -51,21 +51,25 @@ Source changes are concentrated in:
 
 ## Verified integrated release checks
 
-- Full application unit/component run: **228 files / 2,398 tests passed**, 156.09 seconds. This run includes all eight new audit suites, 32 journal tests including 14 preview-format migration cases, and the preserved remote generated Supabase types.
-- `npm run typecheck` now runs `tsc --noEmit -p tsconfig.app.json`; the actual application project passed.
-- Scoped ESLint, CSS parsing and `git diff --check` passed. The unchanged Phase 8 gate preserved frozen rules, catalogs, migrations and original atlases.
-- Production build passed in **16.49 seconds**. Deep Claim remains lazy loaded; its existing large-chunk advisory remains (823.68 KB JavaScript / 198.32 KB gzip).
-- The existing npm lock was repaired without changing declared dependency ranges. A separate clean `npm ci --ignore-scripts --no-audit --no-fund` installed 533 packages successfully. The exact repaired parent `5b375b28` then passed GitHub CI's actual `npm ci`, application typecheck, member lint, unit tests and build. Final feature-commit CI and publication evidence are recorded in the implementation ledger after push.
+- Final exact-source GitHub CI: **228 files / 2,399 tests passed**, 236.78 seconds, followed by a successful production build in 14.61 seconds. Release source: `58f0cb280a7ada1c2df9f9697289ee606a84d89c`; CI run `41641698847`, job `125936547426`.
+- Local full run: 228 files / 2,398 tests passed in 156.09 seconds. The last haul-audio correction then passed 37 focused receipt/Page/moment checks, adding the final no-transfer regression. Positive hauls retain the acquisition sound; empty hauls use a neutral acknowledgement.
+- Actual app-project typecheck, scoped ESLint, CSS parsing, whitespace checks and the unchanged Phase 8 preservation gate passed. Final local production build passed in **22.60 seconds**, with the existing large-chunk advisory (823.70 KB JavaScript / 198.33 KB gzip).
+- The portable npm lock was repaired with unchanged declared dependency ranges. A separate clean install of 533 packages and GitHub's actual `npm ci` passed. The typecheck script now explicitly compiles `tsconfig.app.json`.
+- An initial CI run hit four 5-second CPU timeouts in unchanged Nexus/Rune simulation suites. CI now schedules unit files with one worker. Both affected suites passed 53/53 in isolation, and the complete final CI run passed all 2,399 tests. No game algorithms, assertions, test limits or skip lists were changed.
 
-Evidence retained under `/workspace/checkpoints/deep-claim-audit-final/`: `unit.log`, `typecheck.log`, `lint.log`, `build.log`, `preservation.log`, original audit backup/manifest and the verified remote-object import receipt. No old local test count is substituted for this integrated source run.
+Local evidence is retained under `/workspace/checkpoints/deep-claim-audit-final/`, including unit/typecheck/lint/build logs, original source backup, verified Git-object import, `verification.json` and `publication-receipt.json`. Public deployment details belong in the implementation ledger.
 
-## Browser verification and limits
+## Fresh browser verification
 
-Before the execution interruption, staged native runs exercised the actual components and isolated SQL. **431 passing checks** covered the publisher, populated inventory/research/work orders/gear/settings, all seven viewport/theme/motion cases, fixed transaction summaries and the core mining journey. Additional staged runs passed lost acknowledgement/reload, an already-open sibling tab, offline protection, independent-device conflicts, complete workforce/production operations, field discoveries, genuine cavern surveying, research/contracts/milestones, three Records layouts, and social privacy/earned finite stock/fair contribution caps. Independent image review found no blocking clipping, overlap or contrast problems across representative 320px phone, 844px landscape and 1440px desktop frames.
+The reconnected root sandbox denied localhost, HTTPS and the Docker socket with `EPERM`. The same existing QA scripts were therefore executed read-only in the connected Lovable editor, without editing the project or writing live member data.
 
-Several older harness assumptions were corrected: ordinary reload/reward helpers acknowledge the real Shift report; report-specific tests explicitly opt out; find selection follows its actual public identity; recovery passes through the publisher/title shell; and the audio reload check waits for the finite publisher before inspecting silence. None of those adjustments fabricates stock, terrain, energy, completion or rewards.
+- **126/126 game checks passed** on exact final source `58f0cb28`, with zero errors or browser runtime errors. Existing session and moments sections used real isolated SQL and local identities. They exercised company goals, honest return reports, ordinary next-shift drafts, actual collection/building receipts, crew departure/following and reachable controls.
+- The seven-case visual matrix covered 320×568 dark/light, 844×390 dark/light, 1440×900 dark/light, and 390×844 dark with reduced motion. Report: connected execution `/tmp/dc-final-game-qa/report.json`, summarized in local `verification.json`.
+- **12/12 built-PWA checks passed** on `5f572b73`, preceding only the final haul-audio correction. They covered signed-out `/deep-claim`→`/auth`, viewport/safe-area metadata, manifest/icons, worker registration, no worker fetch cache, no cold notification prompt, landscape overflow and zero browser runtime errors. Chromium 155.0.8059.84; 390×844 portrait and 844×390 landscape. The auth/PWA shell was unchanged by the subsequent audio-only correction. Report: connected execution `/tmp/pwa-qa/report.json`.
 
-The final native-browser and built-PWA reruns after reconnect were **not completed**: the execution sandbox rejected localhost binding, public HTTPS and the Docker socket with `EPERM`. Therefore the pre-interruption browser evidence is not represented as a fresh full-browser pass for the final preview-migration and focus refinements. Those changes passed the integrated regression suite and source checks. Physical-device installation, hardware/audio performance and authenticated production-player testing are not claimed.
+Earlier pre-interruption staged native runs also produced 431 passing publisher/populated-menu/layout/transaction checks and additional passes through workforce, production, field, caverns, business, multi-tab/lost-ACK/offline recovery and social privacy/earned-stock caps. Independent image review found no blocking clipping, overlap or contrast defects on representative phone, landscape and desktop frames. These older checks are distinguished from the fresh exact-source 126-check run; the entire all-section matrix was not repeated after reconnect.
+
+Older harness assumptions were corrected through real UI controls: ordinary reload/reward helpers acknowledge the real Shift report while report-specific tests opt out; find selection uses its public identity; recovery enters through publisher/title; audio reload waits for the finite publisher before inspecting silence. No fixture fabricates stock, terrain, energy, completion or rewards.
 
 ## Remaining limits
 
@@ -73,4 +77,4 @@ Browser storage can be blocked or cleared. An active hook retains its in-memory 
 
 The short-lived connected-editor preview's alternate UUID leaves and optional timestamp are normalized safely into the single journal. Original request arguments are preserved; an unrelated request is never cleared by another acknowledgement. Its redundant helper/test implementation is consolidated into the source-backed journal and regression suites.
 
-No new progression content, economy rebalance, migration, save reset, new production artwork or replacement mining simulation is claimed by this refinement release. Commit/push/publication status must be checked in the implementation ledger.
+No new progression content, economy rebalance, migration, save reset, new production artwork or replacement mining simulation is claimed. Physical-device installation, installed standalone behaviour, hardware audio/performance and authenticated production-player testing remain outside this evidence. The implementation ledger records the verified source, CI and public deployment.
