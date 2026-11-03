@@ -84,6 +84,50 @@ export async function runDeepClaimCrewBrowser(h) {
     await expect.poll(async () => (await frame(page))?.followed_job_id).toBe(jobId);
     return freshFrame(page, before);
   }
+  async function assertFollowGeometry(page, label) {
+    const stop = page.getByRole('button', { name: 'Stop following crew', exact: true });
+    await expect(stop).toBeVisible();
+    const chrome = await stop.evaluate(button => {
+      const rect = node => { const box = node.getBoundingClientRect(); return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height }; };
+      const box = rect(button), hud = rect(document.querySelector('[data-testid="crew-tracking"]'));
+      const controls = rect(document.querySelector('.dc-mine-controls'));
+      const hit = document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2);
+      const overlap = (a, b) => Math.min(a.right, b.right) > Math.max(a.left, b.left)
+        && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+      return { button: box, hud, controls,
+        visible: box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+        reachable: !!hit && (hit === button || button.contains(hit)), overlap: overlap(hud, controls) };
+    });
+    checked(`crews-tracking-stop-is-reachable-and-separate-from-map-controls-${label}`,
+      chrome.visible && chrome.reachable && chrome.button.width >= 44 && chrome.button.height >= 44 && !chrome.overlap, chrome);
+    // The tracking header can resize the real map. Compare body/marker geometry
+    // only after the renderer has completed a paint at those actual dimensions.
+    await expect.poll(() => page.evaluate(() => {
+      const viewport = window.deepClaimRuntime.samples.at(-1)?.viewport;
+      const canvas = document.querySelector('.dc-mine-canvas').getBoundingClientRect();
+      return !!viewport && Math.round(viewport.width) === Math.round(canvas.width) && Math.round(viewport.height) === Math.round(canvas.height);
+    })).toBe(true);
+    const current = await frame(page);
+    assert.ok(Array.isArray(current.bodies), 'The opt-in frame supplies actual painted body envelopes');
+    assert.deepEqual(current.markers.map(marker => marker.job_id).sort(), current.crews.map(crew => crew.job_id).sort(),
+      'Both nearby earned crews keep a discoverable marker after camera focus');
+    assert.deepEqual(current.bodies.map(body => body.worker_id).sort(),
+      current.workers.filter(worker => worker.painted).map(worker => worker.worker_id).sort());
+    const overlap = (a, b) => Math.min(a.right, b.right) > Math.max(a.left, b.left)
+      && Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+    const covering = [];
+    for (const marker of current.markers) {
+      const centerY = (marker.top + marker.bottom) / 2;
+      const visual = { left: marker.left, right: marker.right, top: centerY - 11, bottom: centerY + 11 };
+      for (const body of current.bodies) {
+        assert.ok([body.left, body.top, body.right, body.bottom].every(Number.isFinite) && body.right > body.left && body.bottom > body.top);
+        if (overlap(visual, body) || overlap(marker, body)) covering.push({ job_id: marker.job_id, worker_id: body.worker_id, marker, visual, body });
+      }
+    }
+    checked(`crews-marker-art-and-touch-targets-leave-painted-workers-clear-${label}`, covering.length === 0,
+      { bodies: current.bodies, markers: current.markers, covering });
+    return current;
+  }
 
   let client = await h.setup(390, 844, 'dark', 'no-preference', { runtimeProbe: true });
   let earned, jobIds;
@@ -147,6 +191,7 @@ export async function runDeepClaimCrewBrowser(h) {
       const first = jobs[0], second = jobs[1];
       sample = await followCard(page, first.id);
       assert.equal(sample.followed_job_id, first.id);
+      sample = await assertFollowGeometry(page, `card-${label}`);
       assert.ok(sample.workers.some(worker => worker.job_id === first.id && worker.painted));
       await expect(page.getByTestId('crew-tracking')).toHaveAttribute('role', 'group');
       const marker = sample.markers.find(entry => entry.job_id === second.id); assert.ok(marker);
@@ -159,15 +204,28 @@ export async function runDeepClaimCrewBrowser(h) {
       await page.mouse.click(canvas.x + markerPoint.x, canvas.y + markerPoint.y);
       await expect.poll(async () => (await frame(page))?.followed_job_id).toBe(second.id);
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      sample = await frame(page);
+      sample = await assertFollowGeometry(page, `marker-${label}`);
       assert.ok(sample.workers.some(worker => worker.job_id === second.id && worker.painted));
       await expect(page.getByRole('button', { name: /^Stop following/ })).toBeVisible();
       await fit(page, `crews-follow-${label}`); await shot(page, `crews-follow-${label}`);
       checked(`crews-cards-and-markers-follow-the-selected-expedition-${label}`, true, { followed: sample.followed_job_id, camera: sample.camera });
 
-      const after = sample.observed_at;
-      await page.getByTestId('deep-claim-canvas').focus(); await page.keyboard.press('ArrowRight');
-      sample = await freshFrame(page, after); assert.equal(sample.followed_job_id, null);
+      await page.getByTestId('deep-claim-canvas').focus();
+      await expect(page.getByTestId('deep-claim-canvas')).toBeFocused();
+      const manualBefore = await frame(page);
+      await page.keyboard.press('ArrowRight');
+      // The earlier follow sample predates screenshot/layout work and may
+      // already have many newer following frames queued before this key. Wait
+      // for the actual manual-input transition, not merely any newer paint.
+      await expect.poll(async () => (await frame(page))?.followed_job_id).toBe(null);
+      const manualAt = await page.evaluate(() => window.deepClaimRuntime.mapInteractionAt);
+      await expect.poll(async () => {
+        const current = await frame(page);
+        return !!current && current.followed_job_id === null && current.observed_at >= manualAt;
+      }).toBe(true);
+      sample = await frame(page);
+      assert.equal(sample.followed_job_id, null);
+      assert.ok(sample.camera.x - manualBefore.camera.x >= .5, 'ArrowRight actually moves the camera after ending follow');
       await expect(page.getByRole('button', { name: /^Stop following/ })).toHaveCount(0);
       checked(`crews-manual-camera-navigation-ends-continuous-follow-${label}`, true);
 

@@ -127,6 +127,20 @@ describe('Deep Claim crew tracking in the real canvas', () => {
     expect(latest().followed_job_id).toBeNull(); expect(screen.queryByRole('group', { name: 'Crew tracking' })).not.toBeInTheDocument();
   });
 
+  it('portals tracking into a stable explicit target and clears its selected paint on Stop', () => {
+    const target = document.createElement('div'); target.className = 'test-crew-tracking-target'; document.body.append(target);
+    const { root, props, latest } = harness(crews(), { trackingTarget: target });
+    fireEvent.click(screen.getByRole('button', { name: 'Focus crew' })); frame();
+    const hud = screen.getByRole('group', { name: 'Crew tracking' });
+    expect(target).toContainElement(hud); expect(hud).toHaveClass('is-docked');
+    expect(screen.getByTestId('deep-claim-map')).not.toContainElement(hud);
+    root.rerender(<DeepClaimCanvas {...props} selectedTile={{ x: 48, y: 1 }} />); frame();
+    expect(target).toContainElement(screen.getByRole('group', { name: 'Crew tracking' }));
+    fireEvent.click(within(hud).getByRole('button', { name: 'Stop following crew' })); frame();
+    expect(target).toBeEmptyDOMElement(); expect(latest().followed_job_id).toBeNull();
+    root.unmount(); target.remove();
+  });
+
   it.each(['completion', 'company switch'] as const)('clears stale tracking on %s', change => {
     const { root, props, latest } = harness(); fireEvent.click(screen.getByRole('button', { name: 'Focus crew' })); frame();
     const next = structuredClone(props.snapshot);

@@ -21,9 +21,9 @@ Crew numbers are cosmetic ordinals over retained snapshot history, ordered by st
 
 ## Navigation and legibility
 
-Map markers show objective, crew number and worker count. Their 54×44 hit areas are placed in separate lanes around HUD/control rectangles and connect to the actual crew location. At distant zoom the marker replaces unreadable tiny bodies. The existing crew button and `C` key provide a keyboard alternative to tapping a marker; operation cards retain their Follow crew action.
+Map markers show objective, crew number and worker count. Their 54×44 hit areas are placed in separate lanes around actual painted worker bodies and control rectangles, and connect to the actual crew location. Both label artwork and its larger touch area stay clear of helmets and bodies. At distant zoom the marker replaces unreadable tiny bodies. The existing crew button and `C` key provide a keyboard alternative to tapping a marker; operation cards retain their Follow crew action.
 
-Following fits and continuously tracks the displayed crew, including safe approaches to undisclosed worksites. A compact HUD names the crew, action, stage and depth. Manual pan, zoom, Home or Stop following releases the camera. Company changes and completed jobs clear tracking. Reduced motion paints only on invalidation rather than introducing an animation loop.
+Following fits and continuously tracks the displayed crew, including safe approaches to undisclosed worksites. A compact HUD names the crew, action, stage and depth. In the game it docks in the existing map heading, replacing its title while following; it cannot cover the camera toolbar or mine. The heading portal target remains mounted across tab changes. Standalone Canvas consumers retain a compact bottom overlay. Manual pan, zoom, Home or Stop following releases the camera. Company changes and completed jobs clear tracking. Reduced motion paints only on invalidation rather than introducing an animation loop.
 
 The hook requests one authoritative refresh at each current stage boundary. Attempts are scoped and bounded; simultaneous deadlines share a read, in-flight requests are joined, and a stale/error response cannot cause a tight retry loop. Existing normal polling remains recovery. Hidden/offline/uninstalled scopes and unmounts cancel timers.
 
@@ -31,6 +31,6 @@ The hook requests one authoritative refresh at each current stage boundary. Atte
 
 Immutable world, roster and route arrays key weak caches. Route expansion and nearby workspot planning occur when disclosed state changes, not on every frame. Frame work is bounded by actual staff and at most seven crew labels. Overlay rectangles are measured during layout/resize, outside the drawing loop.
 
-Aggregate diagnostics remain anonymous. An optional `onWorkerFrame` callback observes already-authorized scene data for local QA only; production does not publish worker IDs or positions through telemetry. The native harness retains a bounded frame history and uses paid, real SQL expeditions.
+Aggregate diagnostics remain anonymous. An optional `onWorkerFrame` callback observes already-authorized scene data and actual painted body envelopes for local QA only; production does not publish worker IDs or positions through telemetry. The native harness retains a bounded frame history and uses paid, real SQL expeditions.
 
 Unit and integration coverage includes narrow shafts, solid/fogged targets, facing in both directions, simultaneous crews, persistent appearances and gear, exhausted ore, camera continuity, marker taps, manual cancellation, company changes, reduced motion, stage refreshes and immutable state. Release results and public deployment evidence are recorded in the implementation ledger.

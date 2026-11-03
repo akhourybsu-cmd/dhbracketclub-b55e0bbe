@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CrewPresentation, CrewWorkerPresentation } from '@/lib/deepClaim/crewPresentation';
+import { crewFootPoint, type CrewPresentation, type CrewWorkerPresentation } from '@/lib/deepClaim/crewPresentation';
 import { layoutCrewMarkers, trackingCamera } from '@/components/deepClaim/renderer/crewTracking';
 import { constrainCamera, mineToScreen, screenToMine, type DeepClaimCamera, type ViewportSize } from '@/components/deepClaim/renderer/camera';
 
@@ -167,6 +167,30 @@ describe('Deep Claim reachable crew markers', () => {
     expect(result.some(item => item.center.x > 210)).toBe(true);
     expect({ crews, reservedRects }).toEqual(original);
     expect(layoutCrewMarkers(crews, camera, view, { reservedRects: [{ left: 0, top: 0, right: 320, bottom: 300 }] })).toEqual([]);
+  });
+
+  it.each([{ width: 320, height: 195 }, { width: 844, height: 100 }])('keeps both close crews selectable without covering physical bodies or controls in $width×$height', view => {
+    const followed = { ...camera, scale: 34 };
+    const crews = [0, 1].map(index => {
+      const foot = screenToMine({ x: (view.width >= 700 ? view.width - 130 : 150) + index * 8, y: view.height / 2 + 20 }, followed, view);
+      return crew(`visible-${index}`, foot.x - .5, foot.y - .94, index + 1);
+    });
+    const bodies = crews.map(leader => {
+      const foot = mineToScreen(crewFootPoint(leader), followed, view);
+      return { left: foot.x - .25 * followed.scale, right: foot.x + .25 * followed.scale, top: foot.y - .98 * followed.scale, bottom: foot.y };
+    });
+    const controls = { left: view.width - 200, right: view.width, top: 0, bottom: 60 };
+    const result = layoutCrewMarkers(crews, followed, view, { reservedRects: [controls, ...bodies] });
+    expect(result).toHaveLength(2);
+    for (const { center } of result) {
+      const target = { left: center.x - 27, right: center.x + 27, top: center.y - 22, bottom: center.y + 22 };
+      expect(target.left).toBeGreaterThanOrEqual(6);
+      expect(target.right).toBeLessThanOrEqual(view.width - 6);
+      expect(target.top).toBeGreaterThanOrEqual(6);
+      expect(target.bottom).toBeLessThanOrEqual(view.height - 6);
+      for (const reserved of [controls, ...bodies]) expect(target.right <= reserved.left - 6 || target.left >= reserved.right + 6 || target.bottom <= reserved.top - 6 || target.top >= reserved.bottom + 6).toBe(true);
+    }
+    expect(Math.abs(result[0].center.x - result[1].center.x) >= 60 || Math.abs(result[0].center.y - result[1].center.y) >= 50).toBe(true);
   });
 
   it('never overlaps buttons when a tiny viewport cannot fit every crew', () => {
