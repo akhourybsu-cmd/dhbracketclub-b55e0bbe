@@ -1,9 +1,9 @@
 {
   "url": "https://dryhorse.app/",
-  "source_sha": "d0314c903a3782c88c4ef3a710d75fab64b0234c",
+  "source_sha": "3380902f34f7ecc2c2c7cd8575181fd7619c17d2",
   "css": {
-    "filename": "DeepClaimPage-Bxrf01vh.css",
-    "sha256": "5bc84c89119a607fd5317a64919aece3f81c19d42d5ab0be55305637a029636c"
+    "filename": "DeepClaimPage-Dag7nwRK.css",
+    "sha256": "f9cc5bf665a10299188058ecc078b0755c9b2eb95a8107273effc36610dd3115"
   },
   "js_markers": [
     "Expand tunnels",
@@ -12,14 +12,21 @@
     "Improve the mine",
     "Planning & improvements",
     "No water risk here yet",
-    "dcl-operation-advice"
+    "dcl-operation-advice",
+    "Stop following crew",
+    "Crew tracking",
+    "dc-crew-tracking",
+    "Updating crew position"
   ],
   "css_styles": [
     ".dcl-intent-picker",
     ".dcl-intent-outcome",
     ".dcl-operation-advice",
     ".dcl-camera-tools",
-    ".dcl-activity-control-row"
+    ".dcl-activity-control-row",
+    ".dc-crew-tracking",
+    ".dc-crew-tracking.is-docked",
+    ".dcl-crew-status-target"
   ],
   "atlases": [
     {
