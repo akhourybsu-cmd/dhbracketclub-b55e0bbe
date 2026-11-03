@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      DEEP_CLAIM_QA_OUTPUT: ${{ runner.temp }}/deep-claim-browser-artifacts
+      DEEP_CLAIM_QA_OUTPUT: /tmp/deep-claim-browser-artifacts
       DEEP_CLAIM_QA_VISUAL_MATRIX: '1'
       DEEP_CLAIM_QA_SECTION: navigation,presentation,moments
     steps:
