@@ -19,7 +19,13 @@ This presentation release builds on clean main `90762a0efc95c9f6fe76e1c6e9e00a62
 | Production build | Passed in **23.21 seconds**; `DeepClaimPage-To7_uI7G.js` 810.22 KB / 194.58 KB gzip and `DeepClaimPage-J42TEcz_.css` 271.07 KB / 41.44 KB gzip. The existing large-chunk advisory remains. |
 | Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-JOhw7c/report.json`. This verifies the production-build authentication boundary and PWA bootstrap without claiming physical-device installation. |
 
-Native scenarios use production components and authoritative isolated PostgreSQL; no live member company, stock or achievement is changed. Publication and public-asset verification are pending. No SQL migration is required.
+Native scenarios use production components and authoritative isolated PostgreSQL; no live member company, stock or achievement is changed. No SQL migration is required.
+
+The 20-file feature was pushed normally to main as **`ca7c7720458c023faa2798582f24825779b374db`**, tree `897dd475d61def8ac4152446c857313db51e9fa2`, from the expected `90762a0e` parent. All uploaded blob SHA values and the remote tree match the tested workspace; main readback and hash-verified local commit import agree. No force update or protection bypass occurred. Lovable reported this exact source revision ready with no project error before publication.
+
+Deployment **`21961daa-0042-4a3c-be31-28daec2ff10b`** was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-03T03:31:38Z**, build `1793675838152`. The public game serves `DeepClaimPage-CFZdwEPJ.js` and `DeepClaimPage-J42TEcz_.css`, including the operation/stage identities, Follow crew, confirmed departure, building comparisons and Company balance wording. Public CSS SHA256 **`ee593c29484df878c5320f9d5240b5b514266417535669069553c9f736d1734e`** exactly matches the tested build. Both original atlas hashes remain unchanged. Proof: `/tmp/dc-feel-public-proof/proof.json`.
+
+Lovable rebuilds JavaScript, so local/hosted JavaScript byte equality is not claimed. Source synchronization and served content were verified separately; the public build ID is not a Git SHA. This receipt is a documentation-only follow-up. Public asset verification does not claim authenticated production-player testing, physical-device installation or hardware/audio QA.
 
 ## Previous release — connected mobile company loop
 
