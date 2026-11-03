@@ -1304,7 +1304,7 @@ try {
     if (page.isClosed()) continue;
     await page.screenshot({ path: join(output, `failure-${index}.png`) }).catch(() => {});
     await writeFile(join(output, `failure-${index}.json`), JSON.stringify(await page.evaluate(() => ({ text: document.body.innerText, route: document.querySelector('[data-qa-route]')?.getAttribute('data-qa-route'),
-      runtime: window.deepClaimRuntime ? { samples: window.deepClaimRuntime.samples.slice(-12), menu_samples: window.deepClaimRuntime.menuSamples?.slice(-12),
+      runtime: window.deepClaimRuntime ? { samples: window.deepClaimRuntime.samples.slice(-12), worker_frames: window.deepClaimRuntime.workerFrames?.slice(-6), menu_samples: window.deepClaimRuntime.menuSamples?.slice(-12),
         audio: window.deepClaimRuntime.controllers.map(controller => controller.getDiagnostics?.()),
         native_contexts: window.deepClaimRuntime.contexts.map(context => context.state),
         context_calls: window.deepClaimRuntime.contextCalls.slice(-30), visibility_mode: window.deepClaimRuntime.visibilityMode } : null })).catch(() => ({})), null, 2));

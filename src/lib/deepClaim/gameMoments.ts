@@ -1,5 +1,5 @@
 import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimExpedition, DeepClaimPoint, DeepClaimSnapshot, DeepClaimWorker } from './types';
-import { projectWorkers } from './world';
+import { projectCrewPresentation } from './crewPresentation';
 
 export interface CrewDepartureMoment { job: DeepClaimExpedition; workers: DeepClaimWorker[]; companyId: string }
 export interface BuildingChangeMoment { key: DeepClaimBuildingId; fromLevel: number; toLevel: number; effect: string }
@@ -40,7 +40,7 @@ export function crewFocusPoint(snapshot: DeepClaimSnapshot, source: Pick<DeepCla
     return cell.x >= 0 && cell.x < world!.width && cell.y >= 0 && (cell.y === 0 || known.has(`${cell.x}:${cell.y}`)) ? cell : null;
   }
   if (job.status === 'active') {
-    const worker = projectWorkers(snapshot, now).find(worker => worker.job_id === job.id);
+    const worker = projectCrewPresentation(snapshot, now).crews.find(crew => crew.job_id === job.id);
     const point = worker && visible(worker);
     if (point) return point;
   }

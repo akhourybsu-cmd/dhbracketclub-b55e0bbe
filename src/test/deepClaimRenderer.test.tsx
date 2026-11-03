@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DeepClaimCanvas } from '@/components/deepClaim/renderer/DeepClaimCanvas';
+import { DeepClaimCanvas, type DeepClaimWorkerFrame } from '@/components/deepClaim/renderer/DeepClaimCanvas';
 import { DeepClaimBusinessIcon, DeepClaimDiscoveryIcon, DeepClaimEquipmentIcon, DeepClaimInfrastructureIcon, DeepClaimPortrait, DeepClaimResourceIcon } from '@/components/deepClaim/renderer/DeepClaimIcons';
 import { BUILDING_ART, DEEP_CLAIM_ART_MANIFEST, EQUIPMENT_ART, RESOURCE_ART } from '@/components/deepClaim/renderer/artManifest';
 import { constrainCamera, fitSurfaceCamera, mineToScreen, panMine, screenToMine, visibleMineCells, zoomMineAt } from '@/components/deepClaim/renderer/camera';
@@ -221,7 +221,7 @@ describe('Original pixel artwork and authoritative viewport', () => {
     const canvas = screen.getByTestId('deep-claim-canvas');
     fireEvent.keyDown(canvas, { key: 'ArrowDown' }); fireEvent.keyDown(canvas, { key: '+' }); fireEvent.keyDown(canvas, { key: 'Home' });
     fireEvent.click(screen.getByRole('button', { name: 'Focus crew' }));
-    expect(screen.getByText(/Worker a, idle, depth 0 metres/)).toBeInTheDocument();
+    expect(screen.getByText('Worker a, available at camp.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Zoom into mine' })); fireEvent.click(screen.getByRole('button', { name: 'Zoom out of mine' }));
     frame(); expect(tile).not.toHaveBeenCalled(); expect(building).not.toHaveBeenCalled();
     expect(screen.getByRole('group', { name: 'Mine view controls' }).querySelectorAll('button')).toHaveLength(4);
@@ -505,8 +505,22 @@ describe('Deep Claim Phase 3 committed underground artwork', () => {
     frame(1000); expect(audio.play).not.toHaveBeenCalled();
     root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...snapshot, expeditions: [{ ...job, mode: 'infrastructure' }] }} />);
     frame(2000); expect(audio.play).not.toHaveBeenCalled();
-    root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...snapshot, expeditions: [{ ...job, mode: 'extract' }] }} />);
-    frame(3000); expect(audio.play).toHaveBeenCalledWith('pickaxe', expect.any(Number), undefined);
+    const mining: DeepClaimSnapshot = { ...snapshot, expeditions: [{ ...job, mode: 'extract' }], world: { ...snapshot.world!, tiles: [
+      ...snapshot.world!.tiles.filter(tile => !(tile.x === 48 && tile.y >= 2 && tile.y <= 4)),
+      ...[2, 3].map(y => ({ x: 48, y, terrain: 'excavated' as const, material: null, remaining: 0, initial_amount: 0 })),
+      { x: 48, y: 4, terrain: 'stone', material: 'coal', remaining: 20, initial_amount: 20 },
+    ] } };
+    const samples: DeepClaimWorkerFrame[] = [];
+    root.rerender(<DeepClaimCanvas {...props} snapshot={mining} onWorkerFrame={sample => samples.push(sample)} />);
+    frame(3000); expect(audio.play).toHaveBeenCalledWith('pickaxe', expect.any(Number), 'coal');
+    expect(samples.at(-1)!.workers.find(worker => worker.worker_id === 'worker-a')).toMatchObject({ x: 48, y: 3, pose: 'mine', painted: true });
+    audio.play.mockClear();
+    const depleted: DeepClaimSnapshot = { ...mining, world: { ...mining.world!, tiles: mining.world!.tiles.map(tile => tile.x === 48 && tile.y === 4 ? { ...tile, terrain: 'excavated', material: null, remaining: 0 } : tile) } };
+    const saved = JSON.stringify(depleted);
+    root.rerender(<DeepClaimCanvas {...props} snapshot={depleted} onWorkerFrame={sample => samples.push(sample)} />);
+    frame(5000); expect(audio.play).not.toHaveBeenCalled();
+    expect(samples.at(-1)!.workers.filter(worker => worker.job_id === job.id).every(worker => worker.pose !== 'mine')).toBe(true);
+    expect(JSON.stringify(depleted)).toBe(saved); expect(depleted.expeditions[0].stage).toBe('work');
   });
   it('provides four infrastructure silhouettes and six original specimen icons with named qualities', () => {
     const { container } = render(<>{DEEP_CLAIM_INFRASTRUCTURE_KEYS.map(infrastructureKey => <DeepClaimInfrastructureIcon key={infrastructureKey} infrastructureKey={infrastructureKey} grade={2} />)}{DEEP_CLAIM_DISCOVERY_KINDS.map(kind => <DeepClaimDiscoveryIcon key={kind} kind={kind} quality="exceptional" />)}</>);
@@ -637,9 +651,17 @@ describe('Deep Claim runtime lifetime safeguards', () => {
     const snapshot = companySnapshot(), start = snapshot.server_now;
     const job = { id: 'focus-travel', mode: 'extract', status: 'active', stage: 'travel', worker_ids: [snapshot.workers[0].id], path: [{ x:48,y:0 },{ x:48,y:1 },{ x:47,y:1 }], target: { x:47,y:1 }, stages: [{ key:'travel',starts_at:start,ends_at:new Date(Date.parse(start)+5000).toISOString() }] } as DeepClaimExpedition;
     snapshot.expeditions = [job]; snapshot.workers[0].assigned_job_id = job.id;
-    const diagnostics = vi.fn(); render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} reducedMotion onDiagnostics={diagnostics} />);
+    const saved = JSON.stringify(snapshot), samples: DeepClaimWorkerFrame[] = [];
+    const diagnostics = vi.fn(); render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} reducedMotion onDiagnostics={diagnostics} onWorkerFrame={sample => samples.push(sample)} />);
     frame(2500); fireEvent.click(screen.getByRole('button', { name:'Focus crew' })); frame(2500);
-    expect(diagnostics.mock.calls.at(-1)![0].camera).toMatchObject({ x:48,y:3 });
+    const sample = samples.at(-1)!, worker = sample.workers.find(worker => worker.worker_id === snapshot.workers[0].id)!;
+    expect(worker).toMatchObject({ x: 48, stage: 'travel', progress: .5, painted: true });
+    expect(worker.y).toBeGreaterThanOrEqual(0); expect(worker.y).toBeLessThanOrEqual(1);
+    const feet = mineToScreen({ x: worker.x + .5, y: worker.y + .94 }, sample.camera, viewport);
+    expect(feet.x).toBeGreaterThan(0); expect(feet.x).toBeLessThan(viewport.width);
+    expect(feet.y).toBeGreaterThan(40); expect(feet.y).toBeLessThan(viewport.height);
+    expect(diagnostics.mock.calls.at(-1)![0].camera).toEqual(sample.camera); expect(sample.followed_job_id).toBe(job.id);
+    expect(JSON.stringify(snapshot)).toBe(saved);
     expect(job.stage).toBe('travel'); expect(job.status).toBe('active'); expect(frames.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
   });
 });

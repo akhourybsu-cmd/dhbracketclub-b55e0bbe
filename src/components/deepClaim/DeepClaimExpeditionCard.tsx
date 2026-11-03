@@ -1,4 +1,5 @@
 import { MapPin, RefreshCw, Thermometer, TramFront, Users } from 'lucide-react';
+import { projectCrewPresentation } from '@/lib/deepClaim/crewPresentation';
 import { RESOURCE_BY_ID } from '@/lib/deepClaim/catalog';
 import type { DeepClaimExpedition, DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import { ClaimBadge, ClaimButton, ClaimMeter } from './DeepClaimPrimitives';
@@ -18,10 +19,11 @@ export function DeepClaimExpeditionCard({ job, snapshot, now, onRefresh, onColle
   const shortNames = state.crew.map(worker => worker.name.trim().split(/\s+/)[0]).join(' · ');
   const allStepsDone = source?.status === 'ready' || source?.status === 'collected';
   const followLabel = source?.status === 'active' ? 'Follow crew' : 'View worksite';
+  const crewNumber = source?.status === 'active' ? projectCrewPresentation(snapshot, now).crews.find(crew => crew.job_id === source.id)?.number : null;
   return <article className="dcl-expedition-card dcl-operation-card"
     data-dc-tutorial={source?.status === 'ready' ? 'jobs-ready' : source?.status === 'active' ? 'jobs-active' : undefined}
-    data-dc-expedition={source?.id} data-operation-state={source?.status ?? 'unavailable'} data-dc-operation-stage={source?.stage}>
-    <header><strong>{state.title}</strong>{modifiers && <small className="dcl-expedition-deep" aria-label={`Lift ${deep.lift_discount_percent} percent, heat penalty ${deep.heat_penalty_percent} percent`}><TramFront size={10} aria-hidden="true" />{deep.lift_discount_percent}%<Thermometer size={10} aria-hidden="true" />{deep.heat_penalty_percent}%</small>}<ClaimBadge tone={state.ready ? 'green' : state.canCheckReturn ? 'brass' : 'blue'}>{state.status}</ClaimBadge></header>
+    data-dc-expedition={source?.id} data-dc-crew-number={crewNumber ?? undefined} data-operation-state={source?.status ?? 'unavailable'} data-dc-operation-stage={source?.stage}>
+    <header><strong>{state.title}</strong>{crewNumber && <ClaimBadge tone="brass">Crew {crewNumber}</ClaimBadge>}{modifiers && <small className="dcl-expedition-deep" aria-label={`Lift ${deep.lift_discount_percent} percent, heat penalty ${deep.heat_penalty_percent} percent`}><TramFront size={10} aria-hidden="true" />{deep.lift_discount_percent}%<Thermometer size={10} aria-hidden="true" />{deep.heat_penalty_percent}%</small>}<ClaimBadge tone={state.ready ? 'green' : state.canCheckReturn ? 'brass' : 'blue'}>{state.status}</ClaimBadge></header>
     <div className="dcl-operation-crewline">
       <div className="dcl-operation-portraits" role="group" aria-label={crewNames ? `Assigned crew: ${crewNames}` : 'Assigned crew'}>
         {state.crew.map(worker => <DeepClaimPortrait key={worker.id} worker={worker} />)}

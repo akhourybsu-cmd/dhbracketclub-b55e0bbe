@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeepClaimCanvas, type DeepClaimCanvasDiagnostics } from '@/components/deepClaim/renderer/DeepClaimCanvas';
 import { BUILDING_ART } from '@/components/deepClaim/renderer/artManifest';
 import { fitSurfaceCamera, mineToScreen, pinchMine, screenToMine } from '@/components/deepClaim/renderer/camera';
+import { projectCrewPresentation } from '@/lib/deepClaim/crewPresentation';
 import type { DeepClaimExpedition } from '@/lib/deepClaim/types';
 import { companySnapshot } from './fixtures/deepClaim';
 
@@ -48,6 +49,7 @@ afterEach(() => {
 
 function workingCrews() {
   const snapshot = companySnapshot();
+  snapshot.world!.tiles = Array.from({ length: 30 }, (_, index) => ({ x: 48, y: index + 1, terrain: 'excavated' as const, material: null, remaining: 0, initial_amount: 0 }));
   snapshot.workers.push(...snapshot.workers.map(worker => ({ ...worker, id: `${worker.id}-second`, name: `${worker.name} second` })));
   snapshot.expeditions = [10, 30].map((depth, index): DeepClaimExpedition => ({
     id: `crew-${index}`, mode: 'explore', status: 'active', worker_ids: snapshot.workers.slice(index * 3, index * 3 + 3).map(worker => worker.id),
@@ -58,6 +60,15 @@ function workingCrews() {
   }));
   snapshot.workers.forEach((worker, index) => { worker.assigned_job_id = snapshot.expeditions[Math.floor(index / 3)].id; });
   return snapshot;
+}
+function expectCrewVisible(snapshot: ReturnType<typeof workingCrews>, jobId: string, camera: ReturnType<typeof screenToMine> & { scale: number }) {
+  const members = projectCrewPresentation(snapshot, Date.parse(snapshot.server_now) + frameTime).workers.filter(worker => worker.job_id === jobId);
+  expect(members).toHaveLength(3);
+  for (const member of members) {
+    const feet = mineToScreen({ x: member.x + .5, y: member.y + .94 }, camera, viewport);
+    expect(feet.x).toBeGreaterThan(0); expect(feet.x).toBeLessThan(viewport.width);
+    expect(feet.y).toBeGreaterThan(22); expect(feet.y).toBeLessThan(viewport.height);
+  }
 }
 function cameraProbe() {
   const samples: DeepClaimCanvasDiagnostics[] = [];
@@ -112,18 +123,22 @@ describe('Deep Claim crew navigation', () => {
     const snapshot = workingCrews(), saved = JSON.stringify(snapshot), probe = cameraProbe();
     render(<DeepClaimCanvas snapshot={snapshot} view="mine" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} onDiagnostics={probe.record} reducedMotion />);
     const focus = screen.getByRole('button', { name: 'Focus crew' });
-    fireEvent.click(focus); frame(); expect(probe.latest().y).toBe(12); expect(screen.getByText(/Worker a and crew, work, depth 10 metres/)).toBeInTheDocument();
-    fireEvent.click(focus); frame(2000); expect(probe.latest().y).toBe(32);
-    fireEvent.click(focus); frame(3000); expect(probe.latest().y).toBe(12);
+    fireEvent.click(focus); frame(); const first = { ...probe.latest() }; expectCrewVisible(snapshot, 'crew-0', first);
+    expect(screen.getByText(/Following Crew 1: Worker a, Worker b, Worker c/)).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Crew tracking' })).toHaveTextContent('Crew 1 · 3 workers');
+    fireEvent.click(focus); frame(2000); expectCrewVisible(snapshot, 'crew-1', probe.latest()); expect(probe.latest().y).toBeGreaterThan(first.y + 15);
+    expect(screen.getByRole('group', { name: 'Crew tracking' })).toHaveTextContent('Crew 2 · 3 workers');
+    fireEvent.click(focus); frame(3000); expect(probe.latest()).toEqual(first); expectCrewVisible(snapshot, 'crew-0', probe.latest());
     expect(JSON.stringify(snapshot)).toBe(saved);
   });
   it('keeps the last focused identity across reordered workers and moves to the other crew', () => {
     const snapshot = workingCrews(), probe = cameraProbe();
     const props = { view: 'mine' as const, selectedTile: null, onSelectTile: vi.fn(), onSelectBuilding: vi.fn(), onDiagnostics: probe.record, reducedMotion: true };
     const root = render(<DeepClaimCanvas {...props} snapshot={snapshot} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Focus crew' })); frame(); expect(probe.latest().y).toBe(12);
+    fireEvent.click(screen.getByRole('button', { name: 'Focus crew' })); frame(); expectCrewVisible(snapshot, 'crew-0', probe.latest());
     root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...snapshot, workers: [...snapshot.workers].reverse() }} />);
-    fireEvent.keyDown(screen.getByTestId('deep-claim-canvas'), { key: 'c' }); frame(2000); expect(probe.latest().y).toBe(32);
+    fireEvent.keyDown(screen.getByTestId('deep-claim-canvas'), { key: 'c' }); frame(2000); expectCrewVisible(snapshot, 'crew-1', probe.latest());
+    expect(screen.getByRole('group', { name: 'Crew tracking' })).toHaveTextContent('Crew 2 · 3 workers');
   });
   it('docks the same functional camera controls in the shell toolbar and disables them while occluded', () => {
     const target = document.createElement('div'); target.setAttribute('data-testid', 'shell-toolbar'); document.body.append(target);
@@ -142,8 +157,8 @@ describe('Deep Claim crew navigation', () => {
   it('falls back to distinct idle workers when no expeditions are active', () => {
     render(<DeepClaimCanvas snapshot={companySnapshot()} view="surface" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} reducedMotion />);
     const focus = screen.getByRole('button', { name: 'Focus crew' });
-    fireEvent.click(focus); expect(screen.getByText('Worker a, idle, depth 0 metres.')).toBeInTheDocument();
-    fireEvent.click(focus); expect(screen.getByText('Worker b, idle, depth 0 metres.')).toBeInTheDocument();
+    fireEvent.click(focus); expect(screen.getByText('Worker a, available at camp.')).toBeInTheDocument();
+    fireEvent.click(focus); expect(screen.getByText('Worker b, available at camp.')).toBeInTheDocument();
   });
   it.each([1, 2])('ignores mouse button %s without capturing, selecting or panning', button => {
     const select = vi.fn(), building = vi.fn(), interacted = vi.fn(), canvasCapture = vi.fn();

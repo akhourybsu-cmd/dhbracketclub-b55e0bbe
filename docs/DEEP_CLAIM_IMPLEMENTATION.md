@@ -1,6 +1,12 @@
 # Deep Claim implementation ledger
 
-## Current release — operation clarity
+## Current work — worker staging, animation and tracking
+
+Workers use one renderer-only projection for safe route placement, real facing, distinct crew work positions and specialty assistance. Shared crew numbers/markers match operation cards. Following is continuous, stops on manual camera control and never focuses hidden future excavation. Stage-deadline refreshes reconcile through the existing authoritative query; no client timer advances gameplay. Original rules, SQL, terrain history, economy and atlases remain frozen. [Presentation protocol](DEEP_CLAIM_CREW_VISUALS.md).
+
+Model, painter, camera, tracking and stage-deadline regressions pass. Application TypeScript, scoped lint, production build (17.42s) and Phase 8 preservation pass. The full local run passed 2,559 tests and caught one legacy assertion that expected following to focus inside solid ore; that test now checks the open approach and actual continuous-follow job ID, and the connected-page/tracking suites pass. After the shaft-entry continuity refinement, all **64 Deep Claim files / 1,017 tests** pass, including the connected-page follow regression. Final app-wide CI and native SQL-backed visual verification are pending. Publication is not yet verified for this revision.
+
+## Previous release — operation clarity
 
 The four existing operations have distinct purposes. Their shared illustrated selector now presents **Expand tunnels** and **Mine a deposit** under Mining, with **Scout the area** and **Improve the mine** under optional Planning & improvements. Field operations and dispatch use the same action names, original pixel vignettes, accessible descriptions, selected/focus states and reduced-motion behavior. Crew cards, tutorial dialogue, practice, help and next-shift recovery use the same vocabulary.
 

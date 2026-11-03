@@ -1,6 +1,7 @@
 // Navigation-only verification against the real game and isolated SQL. Every
 // ledger record below comes from an actual paid/collected operation.
 import { runDeepClaimOperationsBrowser } from './deep-claim-operations-browser.mjs';
+import { runDeepClaimCrewBrowser } from './deep-claim-crew-browser.mjs';
 
 export async function runDeepClaimNavigationBrowser(h) {
   const { assert, expect, checked, fit, shot } = h;
@@ -166,4 +167,5 @@ export async function runDeepClaimNavigationBrowser(h) {
     } finally { await client.context.close(); }
   }
   await runDeepClaimOperationsBrowser(h, run);
+  await runDeepClaimCrewBrowser(h);
 }

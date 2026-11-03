@@ -2,7 +2,7 @@
 // are the actual application implementations; probes only observe their APIs.
 export async function installDeepClaimRuntimeProbe(page) {
   await page.addInitScript(() => {
-    const runtime = { samples: [], menuSamples: [], controllers: [], contexts: [], contextCalls: [], visibilityMode: 'native', mapInteractionAt: 0 };
+    const runtime = { samples: [], workerFrames: [], menuSamples: [], controllers: [], contexts: [], contextCalls: [], visibilityMode: 'native', mapInteractionAt: 0 };
     Object.assign(window, { deepClaimRuntime: runtime });
     const Native = window.AudioContext || window.webkitAudioContext;
     if (Native) {
@@ -32,6 +32,10 @@ export async function installDeepClaimRuntimeProbe(page) {
           const runtime=window.deepClaimRuntime;
           if(runtime)runtime.mapInteractionAt=performance.now();
           props.onInteraction?.(interaction);
+        },onWorkerFrame:sample=>{
+          const runtime=window.deepClaimRuntime;
+          if(runtime){runtime.workerFrames.push({...sample,observed_at:performance.now()});if(runtime.workerFrames.length>100)runtime.workerFrames.shift();}
+          props.onWorkerFrame?.(sample);
         },onDiagnostics:sample=>{
           const runtime=window.deepClaimRuntime;
           if(runtime){runtime.samples.push({...sample,observed_at:performance.now()});if(runtime.samples.length>400)runtime.samples.shift();}

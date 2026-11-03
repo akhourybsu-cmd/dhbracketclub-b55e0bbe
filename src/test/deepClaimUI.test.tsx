@@ -16,7 +16,7 @@ vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false
 vi.mock('@/components/deepClaim/menu/DeepClaimMenuBackdrop', () => ({ DeepClaimMenuBackdrop: () => null }));
 vi.mock('@/hooks/useDeepClaimTutorial', async () => ({ useDeepClaimTutorial: (await import('./fixtures/deepClaimTutorialMock')).useDeepClaimTutorialMock }));
 vi.mock('@/hooks/useDeepClaim', () => ({ useDeepClaim: () => { wire.hook(); return { data: wire.data, loading: false, refreshing: false, error: null, busy: false, readOnly: wire.readOnly, pendingAction: wire.pending, serverNow: () => Date.parse('2026-11-02T12:00:00Z'), refresh: wire.refresh, bootstrap: wire.bootstrap, preview: wire.preview, dispatch: wire.dispatch, collect: wire.collect, sell: wire.sell, upgrade: wire.upgrade, retryPending: wire.retry }; } }));
-vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: ({ focusRequest }: { focusRequest?: { point: { x: number; y: number } } }) => <div data-testid="deep-claim-canvas" data-focus={focusRequest ? `${focusRequest.point.x}:${focusRequest.point.y}` : ''} /> }));
+vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: ({ focusRequest }: { focusRequest?: { point: { x: number; y: number }; jobId?: string } }) => <div data-testid="deep-claim-canvas" data-follow={focusRequest?.jobId} data-focus={focusRequest ? `${focusRequest.point.x}:${focusRequest.point.y}` : ''} /> }));
 vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const snapshot = { master: false, music: true, ambient: true, sfx: true, volume: .65 }; return { getSnapshot: () => snapshot, subscribe: () => () => {}, setScene: vi.fn(), updateSettings: wire.audioUpdate, unlock: wire.unlock, play: wire.play, setActive: vi.fn(), dispose: wire.dispose }; } }));
 const at = '2026-11-02T12:00:00Z';
 function snapshot(): DeepClaimSnapshot {
@@ -69,7 +69,7 @@ describe('Deep Claim connected session loop', () => {
     const card = document.querySelector('[data-dc-expedition="shift-1"]')!;
     fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Follow crew' }));
     expect(screen.getByRole('tab', { name: 'Mine' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByTestId('deep-claim-canvas')).toHaveAttribute('data-focus', '47:1'); expect(wire.dispatch).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('deep-claim-canvas')).toHaveAttribute('data-focus', '48:1'); expect(screen.getByTestId('deep-claim-canvas')).toHaveAttribute('data-follow', 'shift-1'); expect(wire.dispatch).toHaveBeenCalledOnce();
   });
   it('pins an investment across reload and opens its actual review without a purchase', async () => {
     wire.data!.company!.tutorial_used = true;

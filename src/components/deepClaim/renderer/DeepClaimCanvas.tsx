@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpToLine, Crosshair, Minus, Plus } from 'lucide-react';
+import { ArrowUpToLine, Crosshair, Minus, Plus, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { projectWorkers, tileKey } from '@/lib/deepClaim/world';
+import { tileKey } from '@/lib/deepClaim/world';
 import type { DeepClaimBuildingId, DeepClaimPoint, DeepClaimSnapshot, DeepClaimTile, DeepClaimInfrastructure, DeepClaimDiscovery } from '@/lib/deepClaim/types';
 import { indexRevealedWorld } from '@/lib/deepClaim/visualProjection';
+import { crewFootPoint, projectCrewPresentation, type CrewPresentation, type CrewWorkerPresentation } from '@/lib/deepClaim/crewPresentation';
+import { CLAIM_OPERATION_NAMES } from '../fieldLabels';
+import { paintCrewWorker, paintCrewMarker, CREW_DETAIL_MIN_SCALE, type CrewMarkerHitBounds } from './crewPaint';
+import { trackingCamera, layoutCrewMarkers } from './crewTracking';
 import { poweredLiftEdges } from '@/lib/deepClaim/deepOperations';
 import type { DeepClaimAudio } from '@/lib/deepClaim/audio';
 import { BUILDING_ART, workerAppearanceVariant } from './artManifest';
 import { constrainCamera, fitSurfaceCamera, initialMineCamera, mineToScreen, panMine, pinchMine, screenToMine, visibleMineCells, zoomMineAt, type DeepClaimCamera, type MineBounds, type ViewportSize } from './camera';
-import { paintBuilding, paintFog, paintRail, paintSky, paintSurface, paintTerrain, paintWorker, type WorkerPose } from './pixelArt';
+import { paintBuilding, paintFog, paintRail, paintSky, paintSurface, paintTerrain } from './pixelArt';
 import { buildingActivity, workerEquipmentPaint } from './productionVisuals';
 import { fieldMarkerAt, indexPublicField, infrastructureInstalled, visibleFieldEntries } from './fieldVisuals';
 import { FieldAtlas, paintInfrastructureCoverage } from './fieldAtlas';
@@ -32,6 +36,14 @@ export interface DeepClaimCanvasDiagnostics {
 const EMPTY_WORLD_INDEX = { chunks: new Map<string, DeepClaimTile[]>(), known: new Map<string, DeepClaimTile>(), roomNeighbors: new WeakMap<DeepClaimTile, number>(), totalTiles: 0 };
 export type DeepClaimMapInteraction = 'pan' | 'zoom' | 'keyboard' | 'focus';
 
+/** Opt-in observation of already-authorized scene data; never included in aggregate telemetry. */
+export interface DeepClaimWorkerFrame {
+  workers: (CrewWorkerPresentation & { painted: boolean })[];
+  crews: CrewPresentation[];
+  markers: CrewMarkerHitBounds[];
+  followed_job_id: string | null;
+  camera: DeepClaimCamera;
+}
 export interface DeepClaimCanvasProps {
   snapshot: DeepClaimSnapshot;
   controlsTarget?: HTMLElement | null;
@@ -43,7 +55,9 @@ export interface DeepClaimCanvasProps {
   reducedMotion?: boolean;
   reducedGraphics?: boolean;
   audio?: DeepClaimAudio;
-  focusRequest?: { id: string; point: DeepClaimPoint; scale?: number } | null;
+  focusRequest?: { id: string; point: DeepClaimPoint; scale?: number; jobId?: string } | null;
+  onCrewFocus?: (jobId: string) => void;
+  onWorkerFrame?: (sample: DeepClaimWorkerFrame) => void;
   selectedInfrastructureId?: string | null;
   onDiagnostics?: (sample: DeepClaimCanvasDiagnostics) => void;
   onInteraction?: (interaction: DeepClaimMapInteraction) => void;
@@ -76,7 +90,7 @@ class TerrainTextures {
 }
 
 export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
-  const { controlsTarget, snapshot, view, selectedTile, onSelectTile, onSelectBuilding, active = true, reducedMotion = false, reducedGraphics = false, audio, focusRequest, selectedInfrastructureId, onDiagnostics, onInteraction } = props;
+  const { controlsTarget, snapshot, view, selectedTile, onSelectTile, onSelectBuilding, active = true, reducedMotion = false, reducedGraphics = false, audio, focusRequest, selectedInfrastructureId, onDiagnostics, onInteraction, onCrewFocus, onWorkerFrame } = props;
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null);
   const context = useRef<CanvasRenderingContext2D | null>(null);
   const size = useRef<ViewportSize>({ width: 1, height: 1 });
@@ -88,6 +102,12 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   const cameraReady = useRef(false), lastView = useRef(view), lastCompany = useRef(snapshot.company?.id);
   const pointers = useRef(new Map<number, PointerState>()), gesture = useRef(false);
   const scheduler = useRef<CanvasFrameScheduler | null>(null), mounted = useRef(false);
+  const followedCrew = useRef<string | null>(null);
+  const markerHits = useRef<CrewMarkerHitBounds[]>([]);
+  const controlElement = useRef<HTMLDivElement>(null);
+  const controlRects = useRef<{ left: number; top: number; right: number; bottom: number }[]>([]);
+  const [followingJobId, setFollowingJobId] = useState<string | null>(null);
+  const stopFollowing = useCallback(() => { followedCrew.current = null; setFollowingJobId(null); }, []);
   const focusedCrew = useRef<string | null>(null), lastMiningSound = useRef(-Infinity);
   const lastFocusRequest = useRef<string | null>(null);
   const observation = useRef({ time: snapshot.server_now, server: Date.parse(snapshot.server_now), at: performance.now() });
@@ -107,8 +127,8 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   const overlays = useRef<{ source: typeof fieldIndex; key: string; infrastructure: DeepClaimInfrastructure[]; discoveries: DeepClaimDiscovery[] } | null>(null);
   const ownedBuildings = snapshot.buildings.filter(building => building.level > 0).map(building => building.key).sort().join(':');
   const lastOwnedBuildings = useRef(ownedBuildings);
-  const latest = useRef({ snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, liftEdges, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics, onInteraction });
-  latest.current = { snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, liftEdges, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics, onInteraction };
+  const latest = useRef({ snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, liftEdges, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics, onInteraction, onCrewFocus, onWorkerFrame });
+  latest.current = { snapshot, view, selectedTile, active, reducedMotion, reducedGraphics, audio, chunks, worldIndex, workersById, jobsById, equipmentByWorker, fieldIndex, liftEdges, onSelectTile, onSelectBuilding, selectedInfrastructureId, onDiagnostics, onInteraction, onCrewFocus, onWorkerFrame };
   if (observation.current.time !== snapshot.server_now) {
     const now = performance.now(), previousEstimate = observation.current.server + Math.max(0, now - observation.current.at);
     observation.current = { time: snapshot.server_now, server: Math.max(Date.parse(snapshot.server_now), previousEstimate), at: now };
@@ -127,6 +147,9 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     const c = context.current, element = canvas.current, data = latest.current;
     if (!c || !element || !mounted.current || !data.active || document.visibilityState === 'hidden') return;
     const began = performance.now(), estimatedAt = estimatedServerNow();
+    const presentation = projectCrewPresentation(data.snapshot, estimatedAt);
+    const tracking = presentation.crews.find(crew => crew.job_id === followedCrew.current);
+    if (tracking) camera.current = trackingCamera(tracking, presentation.workers, camera.current, size.current, bounds.current);
     const viewport = size.current, cam = camera.current, dpr = element.width / Math.max(1, viewport.width);
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
     c.fillStyle = '#17191b'; c.fillRect(0, 0, viewport.width, viewport.height);
@@ -150,7 +173,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       if (tile) texture.current.draw(c, tile, !data.reducedGraphics && cam.scale >= 8, data.worldIndex.roomNeighbors.get(tile) ?? 0);
       else if (cam.scale >= 8 && !data.reducedGraphics) paintFog(c, x * 16, y * 16);
     }
-    if (visible.minX <= 48 && visible.maxX >= 48) for (let y = Math.max(0, visible.minY - 1); y <= visible.maxY; y++) if (data.liftEdges.has(y)) paintKnownLiftEdge(c, y);
+    if (visible.minX <= 48 && visible.maxX >= 48) { c.save(); c.translate(8, 0); for (let y = Math.max(0, visible.minY - 1); y <= visible.maxY; y++) if (data.liftEdges.has(y)) paintKnownLiftEdge(c, y); c.restore(); }
     const overlayPadding = Math.ceil(22 / cam.scale) + 1;
     const overlayKey = `${visibleKey}:${overlayPadding}`;
     if (overlays.current?.source !== data.fieldIndex || overlays.current.key !== overlayKey) overlays.current = { source: data.fieldIndex, key: overlayKey,
@@ -173,23 +196,17 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
         paintBuilding(c, building.key, building.level, timestamp, !data.reducedMotion && !data.reducedGraphics, false, buildingActivity(data.snapshot, building.key, estimatedAt));
       }
     }
-    const projected = projectWorkers(data.snapshot, estimatedAt);
+    const projected = presentation.workers;
+    const painted = data.onWorkerFrame ? new Set<string>() : null;
     const paintedCabs = new Set<string>();
     for (const point of projected) {
-      const screen = mineToScreen(point, cam, viewport);
+      const screen = mineToScreen(crewFootPoint(point), cam, viewport);
       if (screen.x < -40 || screen.x > viewport.width + 40 || screen.y < -35 || screen.y > viewport.height + 35) continue;
-      const worker = data.workersById.get(point.worker_id);
-      if (!worker) continue;
+      if (point.job_id && cam.scale < CREW_DETAIL_MIN_SCALE) continue;
       const job = point.job_id ? data.jobsById.get(point.job_id) : null;
-      const pose: WorkerPose = point.stage === 'work' ? job?.mode === 'survey' ? 'survey' : job?.mode === 'infrastructure' ? 'build' : 'mine' : point.pose === 'work' ? 'setup' : point.pose;
-      const crew = job?.worker_ids;
-      const crewIndex = crew?.indexOf(worker.id) ?? 0;
-      const separation = crew ? (crewIndex - (crew.length - 1) / 2) * .55 : 0;
-      if (point.job_id && job?.config_version === 7 && (job.deep_modifiers?.lift_discount_percent ?? 0) > 0 && !paintedCabs.has(point.job_id) && Math.abs(point.x - 48) < .01 && data.liftEdges.has(Math.floor(point.y)) && (point.stage === 'travel' || point.stage === 'return')) { paintKnownLiftCab(c, point.x, point.y); paintedCabs.add(point.job_id); }
-      paintWorker(c, point.x + separation, point.y, worker.specialty, pose, point.elapsed_seconds * 1000, point.stage === 'return' ? -1 : 1, workerAppearanceVariant(worker.id), !data.reducedMotion && point.progress < 1, data.equipmentByWorker.get(worker.id) ?? {});
-      if (!data.reducedGraphics && point.y > 0) {
-        c.fillStyle = '#ead09a15'; c.fillRect(point.x * 16 - 12, point.y * 16 - 27, 30, 25);
-      }
+      if (point.job_id && job?.config_version === 7 && (job.deep_modifiers?.lift_discount_percent ?? 0) > 0 && !paintedCabs.has(point.job_id) && Math.abs(point.x - 48) < .01 && data.liftEdges.has(Math.floor(point.y)) && (point.stage === 'travel' || point.stage === 'return')) { paintKnownLiftCab(c, crewFootPoint(point).x, crewFootPoint(point).y); paintedCabs.add(point.job_id); }
+      paintCrewWorker(c, point, workerAppearanceVariant(point.worker_id), data.equipmentByWorker.get(point.worker_id) ?? {}, { underground: point.y > 0, animate: !data.reducedMotion && point.progress < 1, focused: point.job_id !== null && point.job_id === followedCrew.current });
+      painted?.add(point.worker_id);
     }
     if (data.selectedTile) {
       const { x, y } = data.selectedTile;
@@ -197,6 +214,16 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       c.fillStyle = '#ead09a2a'; c.fillRect(x * 16 + 2, y * 16 + 2, 12, 12);
     }
     c.restore();
+    markerHits.current = [];
+    for (const { crew, center } of layoutCrewMarkers(presentation.crews, cam, viewport, { topInset: tracking ? 58 : 0, reservedRects: controlRects.current })) {
+      const source = mineToScreen(crewFootPoint(crew), cam, viewport);
+      c.strokeStyle = crew.job_id === followedCrew.current ? '#e6bd74' : '#a7b798'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(source.x, source.y - 3); c.lineTo(center.x, center.y + 11); c.stroke();
+      markerHits.current.push(paintCrewMarker(c, crew, center, cam.scale, crew.job_id === followedCrew.current));
+    }
+    if (data.onWorkerFrame) {
+      try { data.onWorkerFrame({ workers: projected.map(point => ({ ...point, painted: painted!.has(point.worker_id) })), crews: presentation.crews, markers: markerHits.current, followed_job_id: followedCrew.current, camera: { ...cam } }); } catch { /* Optional local observation cannot interrupt the game. */ }
+    }
     for (const discovery of discoveries) {
       const point = mineToScreen({ x: discovery.x + .5, y: discovery.y + .5 }, cam, viewport);
       if (point.x < -22 || point.x > viewport.width + 22 || point.y < -22 || point.y > viewport.height + 22) continue;
@@ -205,7 +232,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     // Quiet, distance-attenuated mining cues reflect a current visible work
     // stage. No timer changes deposits, cargo, energy, XP or company balances.
     if (data.audio && timestamp - lastMiningSound.current > 1450) {
-      const work = projected.find(worker => worker.stage === 'work' && worker.progress < 1 && worker.x >= visible.minX && worker.x <= visible.maxX && worker.y >= visible.minY && worker.y <= visible.maxY
+      const work = projected.find(worker => worker.pose === 'mine' && !worker.awaiting_sync && worker.progress < 1 && worker.x >= visible.minX && worker.x <= visible.maxX && worker.y >= visible.minY && worker.y <= visible.maxY
         && data.snapshot.expeditions.some(job => job.id === worker.job_id && (job.mode === 'explore' || job.mode === 'extract')));
       if (work) {
         const publicJob = work.job_id ? data.jobsById.get(work.job_id) : null;
@@ -240,6 +267,15 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     current.configure({ enabled: mounted.current && !!context.current && latest.current.active && document.visibilityState !== 'hidden', reducedMotion: latest.current.reducedMotion, reducedGraphics: latest.current.reducedGraphics });
     current.invalidate();
   }, []);
+  useEffect(() => { invalidate(); }, [followingJobId, invalidate]);
+  // Measure UI only after React layout, never in the animation loop. Portaled
+  // controls outside the viewport (camp) do not reserve underground map space.
+  const measureControls = useCallback(() => {
+    const map = canvas.current?.getBoundingClientRect(), controls = controlElement.current?.getBoundingClientRect();
+    controlRects.current = map && controls && controls.right > map.left && controls.left < map.right && controls.bottom > map.top && controls.top < map.bottom
+      ? [{ left: controls.left - map.left, top: controls.top - map.top, right: controls.right - map.left, bottom: controls.bottom - map.top }] : [];
+  }, []);
+  useLayoutEffect(measureControls);
   const cancelPointers = useCallback(() => {
     const element = canvas.current;
     for (const id of pointers.current.keys()) if (element?.hasPointerCapture?.(id)) { try { element.releasePointerCapture(id); } catch { /* Already released by the browser. */ } }
@@ -248,8 +284,9 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   const interacted = useCallback((interaction: DeepClaimMapInteraction, before: DeepClaimCamera) => {
     const after = camera.current;
     if (!latest.current.active || document.visibilityState === 'hidden' || before.x === after.x && before.y === after.y && before.scale === after.scale) return;
+    if (interaction === 'pan' || interaction === 'zoom' || interaction === 'keyboard') stopFollowing();
     try { latest.current.onInteraction?.(interaction); } catch { /* Optional educational observations cannot interrupt the map. */ }
-  }, []);
+  }, [stopFollowing]);
 
   useLayoutEffect(() => {
     mounted.current = true;
@@ -271,13 +308,13 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       element.width = Math.round(rect.width * ratio); element.height = Math.round(rect.height * ratio);
       if (!cameraReady.current) { camera.current = initialMineCamera(size.current, bounds.current); if (lastView.current === 'surface') focusSurface(); else focusMine(); cameraReady.current = true; }
       else if (camera.current.minimumScale !== undefined) focusSurface();
-      camera.current = constrainCamera(camera.current, size.current, bounds.current); invalidate();
+      camera.current = constrainCamera(camera.current, size.current, bounds.current); measureControls(); invalidate();
     };
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
     observer?.observe(parent); window.addEventListener('resize', resize); resize();
     const wheel = (event: WheelEvent) => {
       if (!latest.current.active) return;
-      event.preventDefault(); const rect = element.getBoundingClientRect();
+      event.preventDefault(); stopFollowing(); const rect = element.getBoundingClientRect();
       const before = camera.current;
       camera.current = zoomMineAt(camera.current, Math.exp(-Math.max(-500, Math.min(500, event.deltaY)) * .002), { x: event.clientX - rect.left, y: event.clientY - rect.top }, size.current, bounds.current);
       interacted('zoom', before);
@@ -288,16 +325,17 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
       mounted.current = false; observer?.disconnect(); window.removeEventListener('resize', resize); element.removeEventListener('wheel', wheel);
       unsubscribeAtlas(); unsubscribeAddon(); cancelPointers(); scheduler.current?.dispose(); scheduler.current = null; context.current = null; textures.clear(); sprites.clear(); visibleCache.current = null; overlays.current = null;
     };
-  }, [focusMine, focusSurface, invalidate, draw, cancelPointers, interacted]);
+  }, [focusMine, focusSurface, invalidate, draw, cancelPointers, interacted, stopFollowing, measureControls]);
 
   useEffect(() => { if (needsDeepAssets) void preloadDeepClaimAddon().catch(() => { /* Known terrain remains source-painted. */ }); }, [needsDeepAssets]);
 
   useEffect(() => {
     if (lastCompany.current !== snapshot.company?.id) {
-      lastCompany.current = snapshot.company?.id; focusedCrew.current = null; texture.current.clear(); fieldAtlas.current.clear();
+      lastCompany.current = snapshot.company?.id; focusedCrew.current = null; stopFollowing(); texture.current.clear(); fieldAtlas.current.clear();
       if (view === 'surface') focusSurface(); else focusMine();
     }
-    if (lastView.current !== view) { lastView.current = view; if (view === 'surface') focusSurface(); else focusMine(); }
+    if (lastView.current !== view) { lastView.current = view; if (view === 'surface') { stopFollowing(); focusSurface(); } else focusMine(); }
+    if (followedCrew.current && !snapshot.expeditions.some(job => job.id === followedCrew.current && job.status === 'active')) stopFollowing();
     if (lastOwnedBuildings.current !== ownedBuildings) { lastOwnedBuildings.current = ownedBuildings; if (camera.current.minimumScale !== undefined) focusSurface(); }
     const element = canvas.current;
     if (element) {
@@ -307,7 +345,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     }
     if (!active) cancelPointers();
     invalidate();
-  }, [snapshot, view, selectedTile, selectedInfrastructureId, active, reducedMotion, reducedGraphics, ownedBuildings, focusMine, focusSurface, invalidate, cancelPointers]);
+  }, [snapshot, view, selectedTile, selectedInfrastructureId, active, reducedMotion, reducedGraphics, ownedBuildings, focusMine, focusSurface, invalidate, cancelPointers, stopFollowing]);
   useEffect(() => {
     const visibility = () => { if (document.visibilityState === 'hidden') cancelPointers(); invalidate(); };
     document.addEventListener('visibilitychange', visibility);
@@ -319,10 +357,11 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     const { point } = focusRequest;
     if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.x >= bounds.current.width || point.y < 0 || point.y > bounds.current.depth) return;
     lastFocusRequest.current = focusRequest.id;
+    if (focusRequest.jobId && snapshot.expeditions.some(job => job.id === focusRequest.jobId && job.status === 'active')) { followedCrew.current = focusRequest.jobId; focusedCrew.current = `crew:${focusRequest.jobId}`; setFollowingJobId(focusRequest.jobId); } else stopFollowing();
     camera.current = constrainCamera({ x: point.x + .5, y: point.y + 2, scale: focusRequest.scale ?? Math.max(24, camera.current.scale) }, size.current, bounds.current);
     setAnnouncement(`Located mine tile ${Math.floor(point.x)}, depth ${Math.floor(point.y)} metres.`);
     invalidate();
-  }, [focusRequest, snapshot.world?.max_depth, invalidate]);
+  }, [focusRequest, snapshot.world?.max_depth, snapshot.expeditions, invalidate, stopFollowing]);
 
   function local(event: { clientX: number; clientY: number }) { const rect = canvas.current!.getBoundingClientRect(); return { x: event.clientX - rect.left, y: event.clientY - rect.top }; }
   // A saved opt-in may resume on a new real interaction after reloading. It
@@ -330,6 +369,9 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
   function resumeAudioFromGesture() { const controller = latest.current.audio; if (controller?.getSnapshot().master) void controller.unlock(); }
   function tap(point: DeepClaimPoint) {
     if (!latest.current.active || document.visibilityState === 'hidden') return;
+    const hit = markerHits.current.find(marker => point.x >= marker.left && point.x <= marker.right && point.y >= marker.top && point.y <= marker.bottom);
+    if (hit) { trackCrew(hit.job_id); return; }
+    stopFollowing();
     const world = screenToMine(point, camera.current, size.current), data = latest.current;
     if (world.y >= 1) {
       const range = visibleMineCells(camera.current, size.current, bounds.current), padding = Math.ceil(22 / camera.current.scale) + 1;
@@ -349,32 +391,44 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     if (tile.x < 0 || tile.x >= bounds.current.width || tile.y < 1 || tile.y > bounds.current.depth) return;
     data.onSelectTile(tile); setAnnouncement(`Mine tile ${tile.x}, depth ${tile.y} metres selected. Use the operation panel to inspect safe options.`);
   }
-  function zoom(factor: number, interaction: DeepClaimMapInteraction = 'zoom') { const before = camera.current; resumeAudioFromGesture(); camera.current = zoomMineAt(camera.current, factor, { x: size.current.width / 2, y: size.current.height / 2 }, size.current, bounds.current); interacted(interaction, before); invalidate(); }
+  function zoom(factor: number, interaction: DeepClaimMapInteraction = 'zoom') { stopFollowing(); const before = camera.current; resumeAudioFromGesture(); camera.current = zoomMineAt(camera.current, factor, { x: size.current.width / 2, y: size.current.height / 2 }, size.current, bounds.current); interacted(interaction, before); invalidate(); }
+  function trackCrew(jobId: string) {
+    const data = latest.current, scene = projectCrewPresentation(data.snapshot, estimatedServerNow());
+    const crew = scene.crews.find(entry => entry.job_id === jobId);
+    if (!crew) return;
+    resumeAudioFromGesture(); followedCrew.current = jobId; focusedCrew.current = `crew:${jobId}`; setFollowingJobId(jobId);
+    camera.current = trackingCamera(crew, scene.workers, camera.current, size.current, bounds.current);
+    data.onCrewFocus?.(jobId);
+    const names = scene.workers.filter(worker => worker.job_id === jobId).map(worker => worker.name).join(', ');
+    setAnnouncement(`Following Crew ${crew.number}: ${names}. ${CLAIM_OPERATION_NAMES[crew.mode]}, ${crew.stage}, depth ${Math.round(crew.y)} metres.`);
+    invalidate();
+  }
   function crewFocus(interaction: DeepClaimMapInteraction = 'focus') {
     resumeAudioFromGesture();
-    const positions = projectWorkers(latest.current.snapshot, estimatedServerNow());
-    const seenJobs = new Set<string>();
-    const activeCrew = positions.filter(worker => {
-      if (!worker.job_id || seenJobs.has(worker.job_id)) return false;
-      seenJobs.add(worker.job_id); return true;
-    });
-    const pool = activeCrew.length ? activeCrew : positions;
-    if (!pool.length) return;
-    const identity = (worker: typeof pool[number]) => worker.job_id ? `crew:${worker.job_id}` : `worker:${worker.worker_id}`;
-    const previous = pool.findIndex(worker => identity(worker) === focusedCrew.current);
-    const worker = pool[(previous + 1) % pool.length]; focusedCrew.current = identity(worker);
+    const scene = projectCrewPresentation(latest.current.snapshot, estimatedServerNow());
+    if (scene.crews.length) {
+      const previous = scene.crews.findIndex(crew => `crew:${crew.job_id}` === focusedCrew.current);
+      trackCrew(scene.crews[(previous + 1) % scene.crews.length].job_id);
+      return;
+    }
+    const pool = scene.workers; if (!pool.length) return;
+    stopFollowing();
+    const previous = pool.findIndex(worker => `worker:${worker.worker_id}` === focusedCrew.current);
+    const worker = pool[(previous + 1) % pool.length]; focusedCrew.current = `worker:${worker.worker_id}`;
     const before = camera.current;
-    camera.current = constrainCamera({ x: worker.x, y: worker.y + 2, scale: Math.max(camera.current.scale, 25) }, size.current, bounds.current);
+    camera.current = constrainCamera({ x: worker.x + .5, y: worker.y + 2, scale: Math.max(camera.current.scale, 25) }, size.current, bounds.current);
     interacted(interaction, before);
-    const name = latest.current.snapshot.workers.find(entry => entry.id === worker.worker_id)?.name ?? 'Worker';
-    const crewSize = worker.job_id ? latest.current.jobsById.get(worker.job_id)?.worker_ids.length ?? 1 : 1;
-    setAnnouncement(`${name}${crewSize > 1 ? ' and crew' : ''}, ${worker.stage}, depth ${Math.round(worker.y)} metres.`); invalidate();
+    setAnnouncement(`${worker.name}, available at camp.`); invalidate();
   }
+  const trackingScene = followingJobId ? projectCrewPresentation(snapshot, estimatedServerNow()) : null;
+  const trackingCrew = trackingScene?.crews.find(crew => crew.job_id === followingJobId);
+  const trackingNames = trackingScene?.workers.filter(worker => worker.job_id === followingJobId).map(worker => worker.name).join(', ');
+  const stageLabel = trackingCrew?.awaiting_sync ? 'Updating crew position' : ({ travel: 'Travelling', setup: 'Preparing', work: 'Working', haul: 'Loading', return: 'Returning', ready: 'Returned' }[trackingCrew?.stage ?? 'work']);
 
-  const controls = <div className={`dc-mine-controls${controlsTarget ? ' is-docked' : ''}`} data-dc-tutorial="map-controls" role="group" aria-label="Mine view controls"><button type="button" aria-label="Focus surface buildings" disabled={!active} onClick={() => { const before = camera.current; resumeAudioFromGesture(); focusSurface(); interacted('focus', before); invalidate(); }}><ArrowUpToLine size={18} aria-hidden="true" /></button><button type="button" aria-label="Focus crew" disabled={!active || snapshot.workers.length === 0} onClick={() => crewFocus()}><Crosshair size={18} aria-hidden="true" /></button><button type="button" aria-label="Zoom into mine" disabled={!active} onClick={() => zoom(1.28)}><Plus size={19} aria-hidden="true" /></button><button type="button" aria-label="Zoom out of mine" disabled={!active} onClick={() => zoom(1 / 1.28)}><Minus size={19} aria-hidden="true" /></button></div>;
+  const controls = <div ref={controlElement} className={`dc-mine-controls${controlsTarget ? ' is-docked' : ''}`} data-dc-tutorial="map-controls" role="group" aria-label="Mine view controls"><button type="button" aria-label="Focus surface buildings" disabled={!active} onClick={() => { const before = camera.current; resumeAudioFromGesture(); stopFollowing(); focusSurface(); interacted('focus', before); invalidate(); }}><ArrowUpToLine size={18} aria-hidden="true" /></button><button type="button" aria-label="Focus crew" disabled={!active || snapshot.workers.length === 0} onClick={() => crewFocus()}><Crosshair size={18} aria-hidden="true" /></button><button type="button" aria-label="Zoom into mine" disabled={!active} onClick={() => zoom(1.28)}><Plus size={19} aria-hidden="true" /></button><button type="button" aria-label="Zoom out of mine" disabled={!active} onClick={() => zoom(1 / 1.28)}><Minus size={19} aria-hidden="true" /></button></div>;
 
   return <div className="dc-mine-renderer" ref={host} data-testid="deep-claim-map" data-dc-view={view} data-dc-active={active ? 'true' : 'false'}>
-    <canvas ref={canvas} className="dc-mine-canvas" data-testid="deep-claim-canvas" tabIndex={active ? 0 : -1} role="img" aria-label="Your Deep Claim mine. Drag to pan, pinch or scroll to zoom. Arrow keys pan, plus and minus zoom, Home focuses the surface, C focuses crew. Operation lists provide an accessible alternative."
+    <canvas ref={canvas} className="dc-mine-canvas" data-testid="deep-claim-canvas" tabIndex={active ? 0 : -1} role="img" aria-label="Your Deep Claim mine. Drag to pan, pinch or scroll to zoom. Arrow keys pan, plus and minus zoom, Home focuses the surface, C focuses crew. Tap a crew marker to follow it; C cycles crews. Operation lists provide an accessible alternative."
       onPointerDown={event => { if (!active || event.pointerType === 'mouse' && event.button !== 0) return; resumeAudioFromGesture(); event.currentTarget.focus({ preventScroll: true }); const point = local(event); if (pointers.current.size === 0) gesture.current = false; pointers.current.set(event.pointerId, { ...point, startX: point.x, startY: point.y }); event.currentTarget.setPointerCapture?.(event.pointerId); if (pointers.current.size > 1) gesture.current = true; }}
       onPointerMove={event => {
         if (!latest.current.active) { cancelPointers(); return; }
@@ -395,11 +449,12 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) { event.preventDefault(); const movement = { x: event.key === 'ArrowLeft' ? step * camera.current.scale : event.key === 'ArrowRight' ? -step * camera.current.scale : 0, y: event.key === 'ArrowUp' ? step * camera.current.scale : event.key === 'ArrowDown' ? -step * camera.current.scale : 0 }; camera.current = panMine(camera.current, movement, size.current, bounds.current); }
         else if (event.key === '+' || event.key === '=') { event.preventDefault(); zoom(1.22, 'keyboard'); return; }
         else if (event.key === '-') { event.preventDefault(); zoom(1 / 1.22, 'keyboard'); return; }
-        else if (event.key === 'Home') { event.preventDefault(); focusSurface(); }
+        else if (event.key === 'Home') { event.preventDefault(); stopFollowing(); focusSurface(); }
         else if (event.key.toLowerCase() === 'c') { event.preventDefault(); crewFocus('keyboard'); return; }
         else return;
         resumeAudioFromGesture(); interacted('keyboard', before); invalidate();
       }} />
+    {trackingCrew && <div className="dc-crew-tracking" data-testid="crew-tracking" role="group" aria-label="Crew tracking"><div><strong>Crew {trackingCrew.number} · {trackingCrew.worker_ids.length} {trackingCrew.worker_ids.length === 1 ? 'worker' : 'workers'}</strong><span>{CLAIM_OPERATION_NAMES[trackingCrew.mode]}</span><small>{stageLabel} · {Math.round(trackingCrew.y)}m</small><span className="sr-only">{trackingNames}</span></div><button type="button" aria-label="Stop following crew" onClick={stopFollowing}><X size={17} aria-hidden="true" /></button></div>}
     {!supported && <p className="dc-canvas-unavailable" role="status">The illustrated mine is unavailable on this device. Your company and operation controls remain available.</p>}
     {controlsTarget ? createPortal(controls, controlsTarget) : controls}
     <p className="sr-only" aria-live="polite">{announcement}</p>

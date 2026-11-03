@@ -10,8 +10,21 @@ import { forgetPendingAction, pendingStorageKeyMatches, readPendingActions, reme
 const PENDING_CHANGE = 'dh:deep-claim:pending-change';
 const online = () => typeof navigator === 'undefined' || navigator.onLine;
 const listenOnline = (listener: () => void) => { window.addEventListener('online', listener); window.addEventListener('offline', listener); return () => { window.removeEventListener('online', listener); window.removeEventListener('offline', listener); }; };
+const foreground = () => typeof document === 'undefined' || document.visibilityState === 'visible';
+const listenVisibility = (listener: () => void) => { document.addEventListener('visibilitychange', listener); return () => document.removeEventListener('visibilitychange', listener); };
 function readPending(key: string): Pending | null { return readPendingActions(key)[0] ?? null; }
 function notifyPending(key: string) { window.dispatchEvent(new CustomEvent(PENDING_CHANGE, { detail: key })); }
+function currentStageBoundary(job: DeepClaimSnapshot['expeditions'][number]) {
+  if (job.status !== 'active') return null;
+  const stage = job.stages.find(entry => entry.key === job.stage);
+  if (!stage) return null;
+  const ends = Date.parse(stage.ends_at);
+  return Number.isFinite(ends) ? { key: JSON.stringify([job.id, stage.key, stage.ends_at]), ends } : null;
+}
+function rememberStageRefresh(attempted: Set<string>, key: string) {
+  attempted.add(key);
+  if (attempted.size > 64) attempted.delete(attempted.values().next().value!);
+}
 
 export function useDeepClaim() {
   const { user, loading: authLoading } = useAuth();
@@ -23,6 +36,7 @@ export function useDeepClaim() {
   const receiptKey = `dh:deep-claim:pending:v1:${identity}`;
   const cache = useQueryClient();
   const connected = useSyncExternalStore(listenOnline, online, () => true);
+  const visible = useSyncExternalStore(listenVisibility, foreground, () => true);
   const activeIdentity = useRef(identity); activeIdentity.current = identity;
   const generation = useRef(0);
   const write = useRef(false);
@@ -31,6 +45,7 @@ export function useDeepClaim() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const clock = useRef({ server: Date.now(), received: performance.now() });
+  const stageRefreshes = useRef({ scope: '', attempted: new Set<string>() });
   const query = useQuery({ queryKey: key, enabled: ready, queryFn: async () => {
     const data = await fetchDeepClaim();
     if (data.company && (data.company.user_id !== user?.id || data.company.club_id !== club?.id)) throw new DeepClaimError('The company does not belong to your active club.', 'access');
@@ -58,11 +73,50 @@ export function useDeepClaim() {
   }, [identity, receiptKey]);
   useLayoutEffect(() => { if (query.data) clock.current = { server: Date.parse(query.data.server_now), received: performance.now() }; }, [query.data]);
   useEffect(() => {
-    const refresh = () => { if (ready && online() && document.visibilityState === 'visible') void refetch(); };
+    const refresh = () => {
+      if (!ready || !online() || !foreground()) return;
+      const scope = `${identity}:${query.data?.company?.id ?? ''}`;
+      if (stageRefreshes.current.scope === scope) {
+        const now = clock.current.server + Math.max(0, performance.now() - clock.current.received);
+        for (const job of query.data?.expeditions ?? []) {
+          const boundary = currentStageBoundary(job);
+          if (boundary && boundary.ends <= now) rememberStageRefresh(stageRefreshes.current.attempted, boundary.key);
+        }
+      }
+      void refetch({ cancelRefetch: false });
+    };
     document.addEventListener('visibilitychange', refresh); window.addEventListener('online', refresh);
     return () => { document.removeEventListener('visibilitychange', refresh); window.removeEventListener('online', refresh); };
-  }, [ready, refetch]);
+  }, [ready, identity, query.data, refetch]);
   const data = ready && query.error instanceof DeepClaimError && query.error.code === 'access' ? null : ready ? query.data ?? null : null;
+  useEffect(() => {
+    const scope = `${identity}:${data?.company?.id ?? ''}`;
+    if (stageRefreshes.current.scope !== scope) stageRefreshes.current = { scope, attempted: new Set() };
+    if (!ready || !connected || !visible || !data?.company) return;
+    const attempted = stageRefreshes.current.attempted;
+    let nearest: { key: string; ends: number } | null = null;
+    for (const job of data.expeditions) {
+      const boundary = currentStageBoundary(job);
+      if (!boundary || attempted.has(boundary.key)) continue;
+      if (!nearest || boundary.ends < nearest.ends) nearest = boundary;
+    }
+    if (!nearest) return;
+    const next = nearest;
+    const now = clock.current.server + Math.max(0, performance.now() - clock.current.received);
+    const timer = window.setTimeout(() => {
+      if (activeIdentity.current !== identity || stageRefreshes.current.scope !== scope || !online() || !foreground() || attempted.has(next.key)) return;
+      // One read per declared boundary, including stale/error responses. The
+      // normal poll remains recovery; never advance stages or retry in a loop.
+      rememberStageRefresh(attempted, next.key);
+      const now = clock.current.server + Math.max(0, performance.now() - clock.current.received);
+      for (const job of data.expeditions) {
+        const boundary = currentStageBoundary(job);
+        if (boundary && boundary.ends <= now) rememberStageRefresh(attempted, boundary.key);
+      }
+      void refetch({ cancelRefetch: false });
+    }, Math.min(2_147_483_647, Math.max(0, Math.ceil(next.ends - now))));
+    return () => window.clearTimeout(timer);
+  }, [identity, data, ready, connected, visible, query.isFetching, query.dataUpdatedAt, query.errorUpdatedAt, refetch]);
   const perform = useCallback(async (operation: Pending['operation'], args: Record<string, unknown>, label: string, resume = false) => {
     if (!ready || activeIdentity.current !== identity) throw new DeepClaimError('Sign in to your club before managing a company.', 'access');
     if (!online()) throw new DeepClaimError('Connect to the internet to confirm company actions.');

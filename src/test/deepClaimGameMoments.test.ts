@@ -48,8 +48,8 @@ describe('Deep Claim confirmed game moments', () => {
 });
 
 describe('Follow a disclosed crew location', () => {
-  it('focuses the projected owned worker in known ground', () => {
-    const { after, job } = setup(); expect(crewFocusPoint(after, job, Date.parse(after.server_now))).toEqual(job.target);
+  it('focuses the worker on the excavated approach rather than inside the solid deposit', () => {
+    const { after, job } = setup(); expect(crewFocusPoint(after, job, Date.parse(after.server_now))).toEqual({ x: 48, y: 1 });
   });
   it('uses the revealed approach when the worksite is still fogged and preserves the route', () => {
     const { after, job } = setup(); after.world!.tiles = after.world!.tiles.filter(tile => !(tile.x === 47 && tile.y === 1));

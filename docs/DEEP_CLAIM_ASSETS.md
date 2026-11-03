@@ -209,6 +209,10 @@ Production effects derive activity from the public job’s real start/end timest
 
 Audio settings use `dh:deep-claim:audio:v1:<encoded-user-id>`. Graphics/motion preferences use `dh:deep-claim:visuals:v1:<user-id>`. Discovery presentation receipts use `dh:deep-claim:reveals:v1:<user-id>:<club-id>:<company-id>` and contain only reveal bookkeeping, never ownership or a keep/sell/salvage decision. These are device preferences, separate from company state and the pending-transaction recovery namespace. Audio attenuates distant effects and honors the existing app sound gate. Its native browser scheduling tests do not establish performance on physical phones or audio hardware.
 
+## Crew placement and map identity
+
+`renderer/crewPaint.ts` reuses original worker poses and real equipment at a shared cell-foot anchor. Underground scale .7 keeps bodies inside narrow passages; surface scale remains full size. Stable worker-ID phases stagger movement. Source-drawn objective glyphs, crew numbers and a small helmet/count form screen-space crew markers. Lighting no longer accumulates opaque rectangles over adjacent workers. Lift graphics use the same centered shaft/foot convention. No new atlas, stock art, audio recording or engine dependency is introduced. See [crew presentation](DEEP_CLAIM_CREW_VISUALS.md) for coordinate and state contracts.
+
 ## Attribution and future replacement
 
 The operation selector adds four original inline pixel vignettes in `DeepClaimOperationPicker.tsx`: frontier pickaxe/passages, mineral cart, field map/compass and braced worksite. Each uses a 64×40 logical SVG viewBox, integer geometry and the existing warm earth/brass/forest palette. Compact UI frames preserve the illustration's aspect ratio. These are decorative action illustrations, not previews of generated terrain or promised discoveries. Names, benefit text and selection indicators carry their meaning independently of art/color. Hover/press movement honors reduced motion; no new atlas, downloaded image, audio or engine is introduced.
