@@ -125,6 +125,41 @@ export async function runDeepClaimCrewBrowser(h) {
     });
     checked(`crews-tracking-stop-is-reachable-and-separate-from-map-controls-${label}`,
       chrome.visible && chrome.reachable && chrome.button.width >= 44 && chrome.button.height >= 44 && !chrome.overlap, chrome);
+    const contrast = await page.getByTestId('crew-tracking').evaluate(hud => {
+      const swatch = document.createElement('canvas'); swatch.width = swatch.height = 1;
+      const paint = swatch.getContext('2d');
+      const rgba = css => {
+        paint.clearRect(0, 0, 1, 1); paint.fillStyle = css; paint.fillRect(0, 0, 1, 1);
+        const value = paint.getImageData(0, 0, 1, 1).data;
+        return [value[0], value[1], value[2], value[3] / 255];
+      };
+      const over = (front, back) => [0, 1, 2].map(channel => front[channel] * front[3] + back[channel] * (1 - front[3])).concat(1);
+      const luminance = color => color.slice(0, 3).map(channel => {
+        const value = channel / 255;
+        return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+      }).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+      return [...hud.querySelectorAll('strong,small')].map(node => {
+        const ancestors = []; for (let current = node; current; current = current.parentElement) ancestors.push(current);
+        let background = [255, 255, 255, 1], opacity = 1;
+        // Resolve the real solid surface through translucent ancestors instead
+        // of assuming the light theme's panel token behind the dark mine HUD.
+        for (const ancestor of [...ancestors].reverse()) {
+          const style = getComputedStyle(ancestor), layer = rgba(style.backgroundColor);
+          layer[3] *= Number(style.opacity); background = over(layer, background);
+          opacity *= Number(style.opacity);
+        }
+        const style = getComputedStyle(node), foreground = rgba(style.color);
+        foreground[3] *= opacity;
+        const effective = over(foreground, background), first = luminance(effective), second = luminance(background);
+        const box = node.getBoundingClientRect();
+        return { element: node.tagName.toLowerCase(), text: node.textContent, color: style.color, opacity,
+          background: background.slice(0, 3), effective: effective.slice(0, 3),
+          visible: box.width > 0 && box.height > 0 && style.visibility === 'visible',
+          ratio: (Math.max(first, second) + .05) / (Math.min(first, second) + .05) };
+      });
+    });
+    checked(`crews-tracking-name-and-stage-have-readable-rendered-contrast-${label}`,
+      contrast.length === 2 && contrast.every(text => text.visible && text.ratio >= 4.5), contrast);
     // The tracking header can resize the real map. Compare body/marker geometry
     // only after the renderer has completed a paint at those actual dimensions.
     await expect.poll(() => page.evaluate(() => {
