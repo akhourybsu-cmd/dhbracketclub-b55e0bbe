@@ -12,7 +12,11 @@ The field scenario covers 320×568 phones and 844×390 landscape in both themes,
 
 Locally, focused field/planning suites pass **72/72** and the full Deep Claim suite passes **70 files / 1,061 tests**. The final local application build passes in **15.68s**; application types, scoped lint, script/CSS parsing, whitespace and Phase 8 preservation pass. The existing large-chunk advisory remains. No SQL migration, economic/rules change, atlas replacement, new dependency or save reset is required.
 
-Lovable reported exact source `4de37d4` ready with the build finished and no project error. Publication was requested through deployment **`295ce6e6-c1ae-48c5-842e-0835bc9eca08`**. Independent public-content verification is pending; publication is not yet claimed as live.
+Published through Lovable deployment **`295ce6e6-c1ae-48c5-842e-0835bc9eca08`**, after hosting reported exact source `4de37d4` ready with the build finished and no project error. Independent normal-TLS public verification succeeded on its first attempt at **2026-11-03 21:39:22 UTC**: all seven requests returned HTTP 200. [Public proof](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41723689366), job `126222780504`, receipt artifact `13271834207`. Canonical host: **https://dryhorse.app/**.
+
+Hosted CSS **`DeepClaimPage-D52MFwK1.css`** exactly matches the tested build: SHA-256 **`2aeb5c0a8b7df8a69da63dd6f7762dc19ce9f74bb1977e55ece3abc558a4292e`**. All 20 required JS markers and 14 CSS selectors are present, including the new discovery identity, confirmation and stale-review states. Both original atlas hashes match. Hosted game JS `DeepClaimPage-OWvW9LmY.js` has observed SHA-256 `113756135cc8462ac6a7d4d5bc5aeb66d001be0e03812555a7c6d9fce8abf159`; version metadata reports `1793741082375`. The receipt explicitly records `source_sha_observed_from_server: false`: the source SHA is release metadata, while readiness plus independently observed served content provide publication evidence.
+
+The source and release metadata were pushed through normal expected-parent main updates with verified blob/tree hashes and exact local imports. This receipt is a documentation-only follow-up; application source is unchanged after its passing CI/browser checks. Public verification helpers also pass 25 offline checks. No production member/company, reward, achievement or notification data was written by QA.
 
 ## Previous release — production, workforce and menu recovery
 
