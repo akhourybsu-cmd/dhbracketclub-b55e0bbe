@@ -77,7 +77,7 @@ export function DeepClaimGoalPlanner({ snapshot, selected, onPin, onReview, onCl
   const pages = Math.max(1, Math.ceil(filtered.length / 4));
   const currentPage = Math.min(page, pages - 1);
   const current = filtered.slice(currentPage * 4, currentPage * 4 + 4);
-  function back() { if (inspectedRef) setInspectedRef(null); else onClose(); }
+  function back() { if (inspected) setInspectedRef(null); else { setInspectedRef(null); onClose(); } }
   return <ClaimDialog open title="Company goals" onClose={onClose} className="dcl-goal-planner" footer={<div className="dcl-dialog-actions"><ClaimButton onClick={back}>{inspected ? 'Back to goals' : 'Back to camp'}</ClaimButton>{inspected && <ClaimButton primary disabled={selectedId === inspected.id || inspected.state === 'complete'} onClick={() => onPin(inspected.ref)}><Pin size={15} aria-hidden="true" />{selectedId === inspected.id ? 'Pinned' : 'Pin goal'}</ClaimButton>}</div>}>
     <div ref={content} className="dcl-goal-planner-body">
       <div className="dcl-goal-categories" role="group" aria-label="Goal categories">{CATEGORIES.map(item => <button type="button" key={item.kind} aria-label={item.label} aria-pressed={category === item.kind} onClick={() => { setCategory(item.kind); setPage(0); setInspectedRef(null); }}><span aria-hidden="true">{item.kind === 'building' ? <Flag size={18} /> : <DeepClaimBusinessIcon kind={item.kind} decorative />}</span><strong>{item.label}</strong><small>{goals.filter(goal => goal.ref.kind === item.kind).length}</small></button>)}</div>

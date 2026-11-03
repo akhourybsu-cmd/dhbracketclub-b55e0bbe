@@ -4,21 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useClubAssets } from '@/hooks/useClubAssets';
 import { DEEP_CLAIM_MUTATIONS, DeepClaimError, deepClaimDispatchArgs, deepClaimOperationArgs, fetchDeepClaim, mutateDeepClaim, previewDeepClaim, shareDeepClaimSnapshot, type DeepClaimMutation } from '@/lib/deepClaim/service';
+import { clearPendingJournal, pendingRequestId, readPendingJournal, subscribePendingJournal, writePendingJournal, type DeepClaimPending } from '@/lib/deepClaim/pendingJournal';
 import type { DeepClaimBuildingId, DeepClaimDispatchInput, DeepClaimResources, DeepClaimSellInput, DeepClaimSnapshot, DeepClaimSocialPreferencesInput, DeepClaimStatId } from '@/lib/deepClaim/types';
 
-type Pending = { operation: DeepClaimMutation; args: Record<string, unknown>; fingerprint: string; label: string };
+type Pending = DeepClaimPending;
 const online = () => typeof navigator === 'undefined' || navigator.onLine;
 const listenOnline = (listener: () => void) => { window.addEventListener('online', listener); window.addEventListener('offline', listener); return () => { window.removeEventListener('online', listener); window.removeEventListener('offline', listener); }; };
-function storage(): Storage | null { try { return window.localStorage; } catch { return null; } }
-function readPending(key: string): Pending | null {
-  try {
-    const value = JSON.parse(storage()?.getItem(key) ?? 'null');
-    return value && DEEP_CLAIM_MUTATIONS.includes(value.operation)
-      && typeof value.args?.p_request_id === 'string' && /^[a-f\d-]{36}$/i.test(value.args.p_request_id)
-      && typeof value.fingerprint === 'string' && typeof value.label === 'string' ? value as Pending : null;
-  } catch { return null; }
-}
-function savePending(key: string, pending: Pending | null) { try { if (pending) storage()?.setItem(key, JSON.stringify(pending)); else storage()?.removeItem(key); } catch { /* In-memory receipt still protects this session. */ } }
 
 export function useDeepClaim() {
   const { user, loading: authLoading } = useAuth();
@@ -33,8 +24,9 @@ export function useDeepClaim() {
   const activeIdentity = useRef(identity); activeIdentity.current = identity;
   const generation = useRef(0);
   const write = useRef(false);
-  const pendingRef = useRef<Pending | null>(readPending(receiptKey));
+  const pendingRef = useRef<Pending | null>(readPendingJournal(receiptKey)[0] ?? null);
   const [pendingState, setPending] = useState(pendingRef.current);
+  const syncPending = useCallback(() => { const next = readPendingJournal(receiptKey)[0] ?? null; pendingRef.current = next; setPending(next); return next; }, [receiptKey]);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const clock = useRef({ server: Date.now(), received: performance.now() });
@@ -49,8 +41,9 @@ export function useDeepClaim() {
   const refetch = query.refetch;
   useLayoutEffect(() => {
     generation.current++; write.current = false; setBusy(false); setActionError(null);
-    pendingRef.current = readPending(receiptKey); setPending(pendingRef.current);
-  }, [receiptKey]);
+    syncPending();
+    return subscribePendingJournal(receiptKey, syncPending);
+  }, [receiptKey, syncPending]);
   useLayoutEffect(() => { if (query.data) clock.current = { server: Date.parse(query.data.server_now), received: performance.now() }; }, [query.data]);
   useEffect(() => {
     const refresh = () => { if (ready && online() && document.visibilityState === 'visible') void refetch(); };
@@ -64,24 +57,33 @@ export function useDeepClaim() {
     if (write.current) throw new DeepClaimError('Another company action is still saving.', 'rule');
     const attempt = generation.current;
     const fingerprint = JSON.stringify([operation, args]);
-    const previous = pendingRef.current;
-    if (previous && !resume && previous.fingerprint !== fingerprint) throw new DeepClaimError('An earlier action still needs to sync. Retry it before making another change.', 'rule');
-    const pending = previous ?? { operation, args: { ...args, p_request_id: crypto.randomUUID() }, fingerprint, label };
-    pendingRef.current = pending; setPending(pending); savePending(receiptKey, pending);
+    // Re-read durable state: another tab or mounted hook may have recorded an uncertain intent since mount.
+    const journal = readPendingJournal(receiptKey);
+    const oldest = journal[0] ?? null;
+    const pending = resume ? oldest : journal.find(entry => entry.fingerprint === fingerprint) ?? null;
+    if (journal.length && !pending) throw new DeepClaimError('An earlier action still needs to sync. Retry it before making another change.', 'rule');
+    if (resume && !pending) return cache.getQueryData<DeepClaimSnapshot>(key) ?? null;
+    const intent: Pending = pending ?? { operation, args: { ...args, p_request_id: crypto.randomUUID() }, fingerprint, label, createdAt: Date.now() };
+    const requestId = pendingRequestId(intent);
+    if (!pending) writePendingJournal(receiptKey, intent);
+    pendingRef.current = journal[0] ?? intent; setPending(pendingRef.current);
     write.current = true; setBusy(true); setActionError(null);
     try {
-      const updated = await mutateDeepClaim(pending.operation, pending.args);
+      const updated = await mutateDeepClaim(intent.operation, intent.args);
       if (activeIdentity.current !== identity || generation.current !== attempt) throw new DeepClaimError('Your account or club changed. Reopen the operation in its original club.', 'access');
-      if (updated.company && (updated.company.user_id !== user?.id || updated.company.club_id !== club?.id)) throw new DeepClaimError('The company does not belong to your active club.', 'access');
-      pendingRef.current = null; setPending(null); savePending(receiptKey, null);
+      // A snapshot for another member/club cannot prove the transaction outcome: keep the receipt for a safe retry.
+      if (!updated || (updated.company && (updated.company.user_id !== user?.id || updated.company.club_id !== club?.id)))
+        throw new DeepClaimError('The confirmation could not be verified for your company. Retry sync to confirm it safely.', 'data');
+      clearPendingJournal(receiptKey, requestId); syncPending();
       cache.setQueryData(key, (before: DeepClaimSnapshot | undefined) => shareDeepClaimSnapshot(before, updated));
       void cache.invalidateQueries({ queryKey: ['deep-claim-club', user?.id, club?.id] });
-      return updated;
+      // Monotonic: a replayed old receipt returns the accepted newer cache snapshot rather than stale data.
+      return cache.getQueryData<DeepClaimSnapshot>(key) ?? updated;
     } catch (error) {
       if (activeIdentity.current === identity && generation.current === attempt) {
         // These errors are guaranteed server transaction rejection, so the intent can be reviewed anew.
         if (error instanceof DeepClaimError && ['access','rule','conflict'].includes(error.code)) {
-          pendingRef.current = null; setPending(null); savePending(receiptKey, null);
+          clearPendingJournal(receiptKey, requestId); syncPending();
           void refetch();
           void cache.invalidateQueries({ queryKey: ['deep-claim-club', user?.id, club?.id] });
         }
@@ -89,7 +91,7 @@ export function useDeepClaim() {
       }
       throw error;
     } finally { if (activeIdentity.current === identity && generation.current === attempt) { write.current = false; setBusy(false); } }
-  }, [ready, identity, receiptKey, cache, key, user?.id, club?.id, refetch]);
+  }, [ready, identity, receiptKey, cache, key, user?.id, club?.id, refetch, syncPending]);
   const revision = data?.revision ?? 0;
   return {
     data, loading: ready && connected && query.isLoading, refreshing: query.isFetching, busy,
@@ -119,6 +121,6 @@ export function useDeepClaim() {
     setSocialPreferences: (input: DeepClaimSocialPreferencesInput, expectedRevision = revision) => perform('dc_set_social_preferences', { p_standings: input.standings_enabled, p_showcase: input.showcase_enabled, p_featured_discovery_ids: [...input.featured_discovery_ids], p_expected_revision: expectedRevision }, 'Update company sharing'),
     contributeProject: (projectKey: string, resources: DeepClaimResources, expectedRevision = revision) => perform('dc_contribute_project', { p_project_key: projectKey, p_resources: { ...resources }, p_expected_revision: expectedRevision }, 'Contribute materials'),
     claimProject: (projectKey: string, expectedRevision = revision) => perform('dc_claim_project', { p_project_key: projectKey, p_expected_revision: expectedRevision }, 'Claim club project'),
-    retryPending: () => pendingRef.current ? perform(pendingRef.current.operation, {}, pendingRef.current.label, true) : Promise.resolve(data),
+    retryPending: () => { const oldest = readPendingJournal(receiptKey)[0]; return oldest ? perform(oldest.operation, {}, oldest.label, true) : Promise.resolve(data); },
   };
 }

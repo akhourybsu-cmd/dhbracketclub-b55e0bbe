@@ -1070,6 +1070,1569 @@ export type Database = {
           },
         ]
       }
+      dc_candidates: {
+        Row: {
+          company_id: string
+          hired_at: string | null
+          hired_worker_id: string | null
+          id: string
+          operating_day: string
+          position: number
+          profile: Json
+        }
+        Insert: {
+          company_id: string
+          hired_at?: string | null
+          hired_worker_id?: string | null
+          id?: string
+          operating_day: string
+          position: number
+          profile: Json
+        }
+        Update: {
+          company_id?: string
+          hired_at?: string | null
+          hired_worker_id?: string | null
+          id?: string
+          operating_day?: string
+          position?: number
+          profile?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_candidates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_candidates_hired_worker_id_fkey"
+            columns: ["hired_worker_id"]
+            isOneToOne: true
+            referencedRelation: "dc_workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_chunks: {
+        Row: {
+          chunk_x: number
+          chunk_y: number
+          company_id: string
+          seed: string
+          world_version: number
+        }
+        Insert: {
+          chunk_x: number
+          chunk_y: number
+          company_id: string
+          seed: string
+          world_version: number
+        }
+        Update: {
+          chunk_x?: number
+          chunk_y?: number
+          company_id?: string
+          seed?: string
+          world_version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_chunks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_club_claims: {
+        Row: {
+          claimed_at: string
+          club_id: string
+          company_id: string
+          project_key: string
+          request_id: string
+          reward: number
+        }
+        Insert: {
+          claimed_at?: string
+          club_id: string
+          company_id: string
+          project_key: string
+          request_id: string
+          reward: number
+        }
+        Update: {
+          claimed_at?: string
+          club_id?: string
+          company_id?: string
+          project_key?: string
+          request_id?: string
+          reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_club_claims_club_id_project_key_fkey"
+            columns: ["club_id", "project_key"]
+            isOneToOne: false
+            referencedRelation: "dc_club_projects"
+            referencedColumns: ["club_id", "project_key"]
+          },
+          {
+            foreignKeyName: "dc_club_claims_company_id_club_id_fkey"
+            columns: ["company_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id", "club_id"]
+          },
+          {
+            foreignKeyName: "dc_club_claims_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "dc_requests"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      dc_club_contributions: {
+        Row: {
+          club_id: string
+          company_id: string
+          created_at: string
+          frozen_value: number
+          project_key: string
+          request_id: string
+          resources: Json
+        }
+        Insert: {
+          club_id: string
+          company_id: string
+          created_at?: string
+          frozen_value: number
+          project_key: string
+          request_id: string
+          resources: Json
+        }
+        Update: {
+          club_id?: string
+          company_id?: string
+          created_at?: string
+          frozen_value?: number
+          project_key?: string
+          request_id?: string
+          resources?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_club_contributions_club_id_project_key_fkey"
+            columns: ["club_id", "project_key"]
+            isOneToOne: false
+            referencedRelation: "dc_club_projects"
+            referencedColumns: ["club_id", "project_key"]
+          },
+          {
+            foreignKeyName: "dc_club_contributions_company_id_club_id_fkey"
+            columns: ["company_id", "club_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id", "club_id"]
+          },
+          {
+            foreignKeyName: "dc_club_contributions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "dc_requests"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      dc_club_projects: {
+        Row: {
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          definition_snapshot: Json
+          frozen_cap_percent: number
+          frozen_member_count: number
+          progress: Json
+          project_key: string
+          reward_pool: number
+          total_value: number
+          unit_values: Json
+        }
+        Insert: {
+          club_id: string
+          completed_at?: string | null
+          created_at?: string
+          definition_snapshot: Json
+          frozen_cap_percent: number
+          frozen_member_count: number
+          progress?: Json
+          project_key: string
+          reward_pool: number
+          total_value: number
+          unit_values: Json
+        }
+        Update: {
+          club_id?: string
+          completed_at?: string | null
+          created_at?: string
+          definition_snapshot?: Json
+          frozen_cap_percent?: number
+          frozen_member_count?: number
+          progress?: Json
+          project_key?: string
+          reward_pool?: number
+          total_value?: number
+          unit_values?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_club_projects_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_companies: {
+        Row: {
+          cash: number
+          club_id: string
+          created_at: string
+          energy_day: string
+          energy_reset_at: string
+          gem_workshop_level: number
+          id: string
+          name: string
+          office_level: number
+          quarters_level: number
+          research_office_level: number
+          revision: number
+          rules_version: number
+          shaft_level: number
+          smeltery_level: number
+          timezone: string
+          tool_level: number
+          trading_post_level: number
+          tutorial_used: boolean
+          user_id: string
+          warehouse_level: number
+        }
+        Insert: {
+          cash?: number
+          club_id: string
+          created_at?: string
+          energy_day: string
+          energy_reset_at: string
+          gem_workshop_level?: number
+          id?: string
+          name: string
+          office_level?: number
+          quarters_level?: number
+          research_office_level?: number
+          revision?: number
+          rules_version?: number
+          shaft_level?: number
+          smeltery_level?: number
+          timezone: string
+          tool_level?: number
+          trading_post_level?: number
+          tutorial_used?: boolean
+          user_id: string
+          warehouse_level?: number
+        }
+        Update: {
+          cash?: number
+          club_id?: string
+          created_at?: string
+          energy_day?: string
+          energy_reset_at?: string
+          gem_workshop_level?: number
+          id?: string
+          name?: string
+          office_level?: number
+          quarters_level?: number
+          research_office_level?: number
+          revision?: number
+          rules_version?: number
+          shaft_level?: number
+          smeltery_level?: number
+          timezone?: string
+          tool_level?: number
+          trading_post_level?: number
+          tutorial_used?: boolean
+          user_id?: string
+          warehouse_level?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_companies_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_companies_rules_version_fkey"
+            columns: ["rules_version"]
+            isOneToOne: false
+            referencedRelation: "dc_rules"
+            referencedColumns: ["version"]
+          },
+          {
+            foreignKeyName: "dc_companies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_company_contracts: {
+        Row: {
+          company_id: string
+          completed_at: string | null
+          contract_key: string
+          definition_snapshot: Json
+        }
+        Insert: {
+          company_id: string
+          completed_at?: string | null
+          contract_key: string
+          definition_snapshot: Json
+        }
+        Update: {
+          company_id?: string
+          completed_at?: string | null
+          contract_key?: string
+          definition_snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_company_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_discoveries: {
+        Row: {
+          company_id: string
+          detail: string
+          discovered_at: string | null
+          id: string
+          job_id: string
+          kind: string
+          name: string
+          quality: string
+          resolved_at: string | null
+          sale_value: number
+          salvage: Json
+          status: string
+          x: number
+          y: number
+        }
+        Insert: {
+          company_id: string
+          detail: string
+          discovered_at?: string | null
+          id?: string
+          job_id: string
+          kind: string
+          name: string
+          quality: string
+          resolved_at?: string | null
+          sale_value: number
+          salvage: Json
+          status?: string
+          x: number
+          y: number
+        }
+        Update: {
+          company_id?: string
+          detail?: string
+          discovered_at?: string | null
+          id?: string
+          job_id?: string
+          kind?: string
+          name?: string
+          quality?: string
+          resolved_at?: string | null
+          sale_value?: number
+          salvage?: Json
+          status?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_discoveries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_discoveries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_equipment: {
+        Row: {
+          company_id: string
+          created_at: string
+          definition_key: string
+          definition_snapshot: Json
+          definition_version: number
+          durability: number
+          id: string
+          max_durability: number
+          production_job_id: string | null
+          retired_at: string | null
+          slot: string
+          worker_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          definition_key: string
+          definition_snapshot: Json
+          definition_version?: number
+          durability: number
+          id?: string
+          max_durability: number
+          production_job_id?: string | null
+          retired_at?: string | null
+          slot: string
+          worker_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          definition_key?: string
+          definition_snapshot?: Json
+          definition_version?: number
+          durability?: number
+          id?: string
+          max_durability?: number
+          production_job_id?: string | null
+          retired_at?: string | null
+          slot?: string
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_equipment_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_equipment_definition_key_definition_version_fkey"
+            columns: ["definition_key", "definition_version"]
+            isOneToOne: false
+            referencedRelation: "dc_equipment_catalog"
+            referencedColumns: ["definition_key", "version"]
+          },
+          {
+            foreignKeyName: "dc_equipment_production_job_id_fkey"
+            columns: ["production_job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_production_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_equipment_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "dc_workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_equipment_catalog: {
+        Row: {
+          definition: Json
+          definition_key: string
+          version: number
+        }
+        Insert: {
+          definition: Json
+          definition_key: string
+          version: number
+        }
+        Update: {
+          definition?: Json
+          definition_key?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      dc_expedition_workers: {
+        Row: {
+          job_id: string
+          worker_id: string
+        }
+        Insert: {
+          job_id: string
+          worker_id: string
+        }
+        Update: {
+          job_id?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_expedition_workers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_expedition_workers_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "dc_workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_expeditions: {
+        Row: {
+          cargo: Json
+          collected_at: string | null
+          company_id: string
+          completes_at: string
+          config_version: number
+          deep_modifiers: Json | null
+          duration_minutes: number
+          duration_seconds: number
+          energy_per_worker: number
+          id: string
+          mode: string
+          path: Json
+          stages: Json
+          started_at: string
+          status: string
+          target_x: number
+          target_y: number
+          tutorial: boolean
+          wages: number
+        }
+        Insert: {
+          cargo?: Json
+          collected_at?: string | null
+          company_id: string
+          completes_at: string
+          config_version: number
+          deep_modifiers?: Json | null
+          duration_minutes: number
+          duration_seconds: number
+          energy_per_worker: number
+          id?: string
+          mode: string
+          path: Json
+          stages: Json
+          started_at: string
+          status?: string
+          target_x: number
+          target_y: number
+          tutorial: boolean
+          wages: number
+        }
+        Update: {
+          cargo?: Json
+          collected_at?: string | null
+          company_id?: string
+          completes_at?: string
+          config_version?: number
+          deep_modifiers?: Json | null
+          duration_minutes?: number
+          duration_seconds?: number
+          energy_per_worker?: number
+          id?: string
+          mode?: string
+          path?: Json
+          stages?: Json
+          started_at?: string
+          status?: string
+          target_x?: number
+          target_y?: number
+          tutorial?: boolean
+          wages?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_expeditions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_expeditions_config_version_fkey"
+            columns: ["config_version"]
+            isOneToOne: false
+            referencedRelation: "dc_rules"
+            referencedColumns: ["version"]
+          },
+        ]
+      }
+      dc_field_events: {
+        Row: {
+          applied_at: string | null
+          company_id: string
+          due_at: string
+          event_key: string
+          id: string
+          job_id: string
+          kind: string
+          payload: Json
+          result: Json
+        }
+        Insert: {
+          applied_at?: string | null
+          company_id: string
+          due_at: string
+          event_key: string
+          id?: string
+          job_id: string
+          kind: string
+          payload: Json
+          result?: Json
+        }
+        Update: {
+          applied_at?: string | null
+          company_id?: string
+          due_at?: string
+          event_key?: string
+          id?: string
+          job_id?: string
+          kind?: string
+          payload?: Json
+          result?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_field_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_field_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_infrastructure: {
+        Row: {
+          company_id: string
+          grade: number
+          id: string
+          installed_at: string | null
+          job_id: string
+          key: string
+          radius: number
+          status: string
+          strength: number
+          x: number
+          y: number
+        }
+        Insert: {
+          company_id: string
+          grade: number
+          id?: string
+          installed_at?: string | null
+          job_id: string
+          key: string
+          radius: number
+          status?: string
+          strength: number
+          x: number
+          y: number
+        }
+        Update: {
+          company_id?: string
+          grade?: number
+          id?: string
+          installed_at?: string | null
+          job_id?: string
+          key?: string
+          radius?: number
+          status?: string
+          strength?: number
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_infrastructure_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_infrastructure_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_inventory: {
+        Row: {
+          company_id: string
+          quantity: number
+          resource_key: string
+        }
+        Insert: {
+          company_id: string
+          quantity?: number
+          resource_key: string
+        }
+        Update: {
+          company_id?: string
+          quantity?: number
+          resource_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_inventory_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_job_equipment: {
+        Row: {
+          applied_at: string | null
+          initial_durability: number
+          item_id: string
+          job_id: string
+          wear_amount: number
+        }
+        Insert: {
+          applied_at?: string | null
+          initial_durability: number
+          item_id: string
+          job_id: string
+          wear_amount: number
+        }
+        Update: {
+          applied_at?: string | null
+          initial_durability?: number
+          item_id?: string
+          job_id?: string
+          wear_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_job_equipment_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "dc_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_job_equipment_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          kind: string
+          title: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          title: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_milestone_receipts: {
+        Row: {
+          claimed_at: string
+          company_id: string
+          definition_snapshot: Json
+          milestone_key: string
+          request_id: string
+          reward: number
+        }
+        Insert: {
+          claimed_at: string
+          company_id: string
+          definition_snapshot: Json
+          milestone_key: string
+          request_id: string
+          reward: number
+        }
+        Update: {
+          claimed_at?: string
+          company_id?: string
+          definition_snapshot?: Json
+          milestone_key?: string
+          request_id?: string
+          reward?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_milestone_receipts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_milestone_receipts_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "dc_requests"
+            referencedColumns: ["request_id"]
+          },
+        ]
+      }
+      dc_milestones: {
+        Row: {
+          applied_at: string | null
+          company_id: string
+          due_at: string
+          job_id: string
+          kind: string
+          payload: Json
+          sequence: number
+        }
+        Insert: {
+          applied_at?: string | null
+          company_id: string
+          due_at: string
+          job_id: string
+          kind: string
+          payload: Json
+          sequence: number
+        }
+        Update: {
+          applied_at?: string | null
+          company_id?: string
+          due_at?: string
+          job_id?: string
+          kind?: string
+          payload?: Json
+          sequence?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_milestones_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_milestones_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_notification_events: {
+        Row: {
+          company_id: string
+          consumed_at: string | null
+          event_key: string
+          kind: string
+          notification_id: string | null
+          occurred_at: string
+          project_key: string | null
+        }
+        Insert: {
+          company_id: string
+          consumed_at?: string | null
+          event_key: string
+          kind: string
+          notification_id?: string | null
+          occurred_at: string
+          project_key?: string | null
+        }
+        Update: {
+          company_id?: string
+          consumed_at?: string | null
+          event_key?: string
+          kind?: string
+          notification_id?: string | null
+          occurred_at?: string
+          project_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_notification_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_notification_events_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_notification_state: {
+        Row: {
+          company_id: string
+          eligible_after: string
+          last_sent_at: string | null
+          last_sent_day: string | null
+          sent_count: number
+          suppressed_through: string | null
+        }
+        Insert: {
+          company_id: string
+          eligible_after?: string
+          last_sent_at?: string | null
+          last_sent_day?: string | null
+          sent_count?: number
+          suppressed_through?: string | null
+        }
+        Update: {
+          company_id?: string
+          eligible_after?: string
+          last_sent_at?: string | null
+          last_sent_day?: string | null
+          sent_count?: number
+          suppressed_through?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_notification_state_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_plans: {
+        Row: {
+          content: Json
+          job_id: string
+        }
+        Insert: {
+          content: Json
+          job_id: string
+        }
+        Update: {
+          content?: Json
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_plans_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_production_jobs: {
+        Row: {
+          batches: number
+          cash_cost: number
+          collected_at: string | null
+          company_id: string
+          completes_at: string
+          config_version: number
+          duration_seconds: number
+          equipment_collected: boolean
+          equipment_outputs: Json
+          equipment_snapshot: Json | null
+          id: string
+          inputs: Json
+          outputs: Json
+          recipe_key: string
+          recipe_snapshot: Json
+          recipe_version: number
+          research_speed_percent: number
+          started_at: string
+          station: string
+          status: string
+        }
+        Insert: {
+          batches: number
+          cash_cost: number
+          collected_at?: string | null
+          company_id: string
+          completes_at: string
+          config_version?: number
+          duration_seconds: number
+          equipment_collected?: boolean
+          equipment_outputs: Json
+          equipment_snapshot?: Json | null
+          id?: string
+          inputs: Json
+          outputs: Json
+          recipe_key: string
+          recipe_snapshot: Json
+          recipe_version: number
+          research_speed_percent?: number
+          started_at: string
+          station: string
+          status?: string
+        }
+        Update: {
+          batches?: number
+          cash_cost?: number
+          collected_at?: string | null
+          company_id?: string
+          completes_at?: string
+          config_version?: number
+          duration_seconds?: number
+          equipment_collected?: boolean
+          equipment_outputs?: Json
+          equipment_snapshot?: Json | null
+          id?: string
+          inputs?: Json
+          outputs?: Json
+          recipe_key?: string
+          recipe_snapshot?: Json
+          recipe_version?: number
+          research_speed_percent?: number
+          started_at?: string
+          station?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_production_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_production_jobs_config_version_fkey"
+            columns: ["config_version"]
+            isOneToOne: false
+            referencedRelation: "dc_rules"
+            referencedColumns: ["version"]
+          },
+          {
+            foreignKeyName: "dc_production_jobs_recipe_key_recipe_version_fkey"
+            columns: ["recipe_key", "recipe_version"]
+            isOneToOne: false
+            referencedRelation: "dc_recipes"
+            referencedColumns: ["recipe_key", "version"]
+          },
+        ]
+      }
+      dc_recipes: {
+        Row: {
+          definition: Json
+          recipe_key: string
+          version: number
+        }
+        Insert: {
+          definition: Json
+          recipe_key: string
+          version: number
+        }
+        Update: {
+          definition?: Json
+          recipe_key?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      dc_requests: {
+        Row: {
+          club_id: string
+          company_id: string
+          created_at: string
+          operation: string
+          payload: Json
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          club_id: string
+          company_id: string
+          created_at?: string
+          operation: string
+          payload: Json
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          club_id?: string
+          company_id?: string
+          created_at?: string
+          operation?: string
+          payload?: Json
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_research_orders: {
+        Row: {
+          cash_cost: number
+          company_id: string
+          completed_at: string | null
+          completes_at: string
+          definition_snapshot: Json
+          inputs: Json
+          research_key: string
+          started_at: string
+        }
+        Insert: {
+          cash_cost: number
+          company_id: string
+          completed_at?: string | null
+          completes_at: string
+          definition_snapshot: Json
+          inputs: Json
+          research_key: string
+          started_at: string
+        }
+        Update: {
+          cash_cost?: number
+          company_id?: string
+          completed_at?: string | null
+          completes_at?: string
+          definition_snapshot?: Json
+          inputs?: Json
+          research_key?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_research_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_reservations: {
+        Row: {
+          company_id: string
+          job_id: string
+          x: number
+          y: number
+        }
+        Insert: {
+          company_id: string
+          job_id: string
+          x: number
+          y: number
+        }
+        Update: {
+          company_id?: string
+          job_id?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_reservations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_reservations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_rules: {
+        Row: {
+          config: Json
+          created_at: string
+          version: number
+        }
+        Insert: {
+          config: Json
+          created_at?: string
+          version: number
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      dc_social_preferences: {
+        Row: {
+          company_id: string
+          featured_discovery_ids: string[]
+          showcase_enabled: boolean
+          standings_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          featured_discovery_ids?: string[]
+          showcase_enabled?: boolean
+          standings_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          featured_discovery_ids?: string[]
+          showcase_enabled?: boolean
+          standings_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_social_preferences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_tiles: {
+        Row: {
+          company_id: string
+          formation: string | null
+          initial_amount: number
+          material: string | null
+          remaining: number
+          revealed_at: string
+          x: number
+          y: number
+        }
+        Insert: {
+          company_id: string
+          formation?: string | null
+          initial_amount: number
+          material?: string | null
+          remaining: number
+          revealed_at?: string
+          x: number
+          y: number
+        }
+        Update: {
+          company_id?: string
+          formation?: string | null
+          initial_amount?: number
+          material?: string | null
+          remaining?: number
+          revealed_at?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_tiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_training: {
+        Row: {
+          cash_cost: number
+          created_at: string
+          new_value: number
+          old_value: number
+          operating_day: string
+          request_id: string
+          stat: string
+          worker_id: string
+        }
+        Insert: {
+          cash_cost: number
+          created_at?: string
+          new_value: number
+          old_value: number
+          operating_day: string
+          request_id: string
+          stat: string
+          worker_id: string
+        }
+        Update: {
+          cash_cost?: number
+          created_at?: string
+          new_value?: number
+          old_value?: number
+          operating_day?: string
+          request_id?: string
+          stat?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_training_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "dc_requests"
+            referencedColumns: ["request_id"]
+          },
+          {
+            foreignKeyName: "dc_training_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "dc_workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_tutorial_progress: {
+        Row: {
+          active_lesson_id: string | null
+          active_step_id: string | null
+          campaign_status: string
+          commentary_enabled: boolean
+          company_id: string
+          completed_steps: string[]
+          created_at: string
+          practiced_lessons: string[]
+          reviewed_lessons: string[]
+          revision: number
+          seen_dialogue: string[]
+          skipped_lessons: string[]
+          updated_at: string | null
+          version: number
+        }
+        Insert: {
+          active_lesson_id?: string | null
+          active_step_id?: string | null
+          campaign_status?: string
+          commentary_enabled?: boolean
+          company_id: string
+          completed_steps?: string[]
+          created_at?: string
+          practiced_lessons?: string[]
+          reviewed_lessons?: string[]
+          revision?: number
+          seen_dialogue?: string[]
+          skipped_lessons?: string[]
+          updated_at?: string | null
+          version?: number
+        }
+        Update: {
+          active_lesson_id?: string | null
+          active_step_id?: string | null
+          campaign_status?: string
+          commentary_enabled?: boolean
+          company_id?: string
+          completed_steps?: string[]
+          created_at?: string
+          practiced_lessons?: string[]
+          reviewed_lessons?: string[]
+          revision?: number
+          seen_dialogue?: string[]
+          skipped_lessons?: string[]
+          updated_at?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_tutorial_progress_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_tutorial_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          payload: Json
+          request_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          payload: Json
+          request_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          payload?: Json
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_tutorial_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_tutorial_progress"
+            referencedColumns: ["company_id"]
+          },
+        ]
+      }
+      dc_workers: {
+        Row: {
+          assigned_job_id: string | null
+          company_id: string
+          energy: number
+          id: string
+          name: string
+          specialty: string
+          stats: Json
+          template_key: string
+          traits: string[]
+          wage: number
+          xp: number
+        }
+        Insert: {
+          assigned_job_id?: string | null
+          company_id: string
+          energy?: number
+          id?: string
+          name: string
+          specialty: string
+          stats: Json
+          template_key: string
+          traits: string[]
+          wage: number
+          xp?: number
+        }
+        Update: {
+          assigned_job_id?: string | null
+          company_id?: string
+          energy?: number
+          id?: string
+          name?: string
+          specialty?: string
+          stats?: Json
+          template_key?: string
+          traits?: string[]
+          wage?: number
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_worker_assignment"
+            columns: ["assigned_job_id"]
+            isOneToOne: false
+            referencedRelation: "dc_expeditions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dc_workers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dc_worlds: {
+        Row: {
+          company_id: string
+          seed: string
+          version: number
+        }
+        Insert: {
+          company_id: string
+          seed?: string
+          version?: number
+        }
+        Update: {
+          company_id?: string
+          seed?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dc_worlds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "dc_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dh_feat_accounts: {
         Row: {
           dirty: boolean
@@ -7925,6 +9488,7 @@ export type Database = {
           chat_messages: boolean
           club_id: string
           created_at: string
+          deep_claim: boolean
           drafts: boolean
           events: boolean
           id: string
@@ -7950,6 +9514,7 @@ export type Database = {
           chat_messages?: boolean
           club_id?: string
           created_at?: string
+          deep_claim?: boolean
           drafts?: boolean
           events?: boolean
           id?: string
@@ -7975,6 +9540,7 @@ export type Database = {
           chat_messages?: boolean
           club_id?: string
           created_at?: string
+          deep_claim?: boolean
           drafts?: boolean
           events?: boolean
           id?: string
@@ -11444,6 +13010,567 @@ export type Database = {
           },
         ]
       }
+      showdown_attempts: {
+        Row: {
+          challenge_id: string
+          finished_at: string | null
+          rotations: number
+          solved_count: number
+          started_at: string | null
+          total_score: number
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          finished_at?: string | null
+          rotations?: number
+          solved_count?: number
+          started_at?: string | null
+          total_score?: number
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          finished_at?: string | null
+          rotations?: number
+          solved_count?: number
+          started_at?: string | null
+          total_score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_attempts_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "showdown_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showdown_challenge_rounds: {
+        Row: {
+          challenge_id: string
+          definition: Json
+          difficulty: string
+          minimum_rotations: number | null
+          puzzle_id: string
+          puzzle_version: number
+          round_number: number
+          title: string
+        }
+        Insert: {
+          challenge_id: string
+          definition: Json
+          difficulty: string
+          minimum_rotations?: number | null
+          puzzle_id: string
+          puzzle_version: number
+          round_number: number
+          title: string
+        }
+        Update: {
+          challenge_id?: string
+          definition?: Json
+          difficulty?: string
+          minimum_rotations?: number | null
+          puzzle_id?: string
+          puzzle_version?: number
+          round_number?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_challenge_rounds_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "showdown_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showdown_challenges: {
+        Row: {
+          challenger_id: string
+          closed_reason: string | null
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          game_key: string
+          gameplay_expires_at: string | null
+          gameplay_started_at: string | null
+          id: string
+          invitation_expires_at: string | null
+          outcome: string | null
+          recipient_id: string
+          rematch_of: string | null
+          rules_version: number
+          status: string
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_id: string
+          closed_reason?: string | null
+          club_id: string
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          game_key: string
+          gameplay_expires_at?: string | null
+          gameplay_started_at?: string | null
+          id?: string
+          invitation_expires_at?: string | null
+          outcome?: string | null
+          recipient_id: string
+          rematch_of?: string | null
+          rules_version: number
+          status?: string
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_id?: string
+          closed_reason?: string | null
+          club_id?: string
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          game_key?: string
+          gameplay_expires_at?: string | null
+          gameplay_started_at?: string | null
+          id?: string
+          invitation_expires_at?: string | null
+          outcome?: string | null
+          recipient_id?: string
+          rematch_of?: string | null
+          rules_version?: number
+          status?: string
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_challenges_challenger_id_fkey"
+            columns: ["challenger_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_challenges_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_challenges_game_key_rules_version_fkey"
+            columns: ["game_key", "rules_version"]
+            isOneToOne: false
+            referencedRelation: "showdown_rules"
+            referencedColumns: ["game_key", "rules_version"]
+          },
+          {
+            foreignKeyName: "showdown_challenges_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_challenges_rematch_of_fkey"
+            columns: ["rematch_of"]
+            isOneToOne: false
+            referencedRelation: "showdown_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_challenges_winner_id_fkey"
+            columns: ["winner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showdown_cipher_codes: {
+        Row: {
+          challenge_id: string
+          code: string[]
+          locked_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          code: string[]
+          locked_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          code?: string[]
+          locked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_cipher_codes_challenge_id_user_id_fkey"
+            columns: ["challenge_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "showdown_attempts"
+            referencedColumns: ["challenge_id", "user_id"]
+          },
+        ]
+      }
+      showdown_cipher_guesses: {
+        Row: {
+          challenge_id: string
+          color_only: number
+          created_at: string
+          exact: number
+          guess: string[]
+          guess_number: number
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          color_only: number
+          created_at?: string
+          exact: number
+          guess: string[]
+          guess_number: number
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          color_only?: number
+          created_at?: string
+          exact?: number
+          guess?: string[]
+          guess_number?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_cipher_guesses_challenge_id_user_id_fkey"
+            columns: ["challenge_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "showdown_cipher_states"
+            referencedColumns: ["challenge_id", "user_id"]
+          },
+        ]
+      }
+      showdown_cipher_states: {
+        Row: {
+          challenge_id: string
+          guess_count: number
+          status: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          guess_count?: number
+          status?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          guess_count?: number
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_cipher_states_challenge_id_user_id_fkey"
+            columns: ["challenge_id", "user_id"]
+            isOneToOne: true
+            referencedRelation: "showdown_attempts"
+            referencedColumns: ["challenge_id", "user_id"]
+          },
+        ]
+      }
+      showdown_events: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          event: string
+          notification_id: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          event: string
+          notification_id?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          event?: string
+          notification_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_events_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "showdown_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_events_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showdown_games: {
+        Row: {
+          current_rules_version: number
+          description: string
+          enabled: boolean
+          game_key: string
+          name: string
+        }
+        Insert: {
+          current_rules_version: number
+          description: string
+          enabled?: boolean
+          game_key: string
+          name: string
+        }
+        Update: {
+          current_rules_version?: number
+          description?: string
+          enabled?: boolean
+          game_key?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      showdown_puzzles: {
+        Row: {
+          created_at: string
+          definition: Json
+          difficulty: string
+          game_key: string
+          minimum_rotations: number | null
+          published: boolean
+          puzzle_id: string
+          puzzle_version: number
+          rules_version: number
+          sealed: boolean
+          title: string
+          validation: Json
+        }
+        Insert: {
+          created_at?: string
+          definition: Json
+          difficulty: string
+          game_key: string
+          minimum_rotations?: number | null
+          published?: boolean
+          puzzle_id: string
+          puzzle_version: number
+          rules_version: number
+          sealed?: boolean
+          title: string
+          validation: Json
+        }
+        Update: {
+          created_at?: string
+          definition?: Json
+          difficulty?: string
+          game_key?: string
+          minimum_rotations?: number | null
+          published?: boolean
+          puzzle_id?: string
+          puzzle_version?: number
+          rules_version?: number
+          sealed?: boolean
+          title?: string
+          validation?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_puzzles_game_key_rules_version_fkey"
+            columns: ["game_key", "rules_version"]
+            isOneToOne: false
+            referencedRelation: "showdown_rules"
+            referencedColumns: ["game_key", "rules_version"]
+          },
+        ]
+      }
+      showdown_requests: {
+        Row: {
+          challenge_id: string
+          club_id: string
+          created_at: string
+          operation: string
+          payload: Json
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          club_id: string
+          created_at?: string
+          operation: string
+          payload: Json
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          club_id?: string
+          created_at?: string
+          operation?: string
+          payload?: Json
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_requests_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "showdown_challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showdown_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showdown_round_states: {
+        Row: {
+          actions: Json
+          challenge_id: string
+          correct_count: number | null
+          perfect: boolean | null
+          placements: Json
+          revision: number
+          rotations: number
+          round_number: number
+          score: number | null
+          skipped: boolean
+          solved: boolean
+          study_expires_at: string | null
+          study_started_at: string | null
+          submitted: boolean
+          submitted_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actions?: Json
+          challenge_id: string
+          correct_count?: number | null
+          perfect?: boolean | null
+          placements?: Json
+          revision?: number
+          rotations?: number
+          round_number: number
+          score?: number | null
+          skipped?: boolean
+          solved?: boolean
+          study_expires_at?: string | null
+          study_started_at?: string | null
+          submitted?: boolean
+          submitted_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actions?: Json
+          challenge_id?: string
+          correct_count?: number | null
+          perfect?: boolean | null
+          placements?: Json
+          revision?: number
+          rotations?: number
+          round_number?: number
+          score?: number | null
+          skipped?: boolean
+          solved?: boolean
+          study_expires_at?: string | null
+          study_started_at?: string | null
+          submitted?: boolean
+          submitted_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_round_states_challenge_id_round_number_fkey"
+            columns: ["challenge_id", "round_number"]
+            isOneToOne: false
+            referencedRelation: "showdown_challenge_rounds"
+            referencedColumns: ["challenge_id", "round_number"]
+          },
+          {
+            foreignKeyName: "showdown_round_states_challenge_id_user_id_fkey"
+            columns: ["challenge_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "showdown_attempts"
+            referencedColumns: ["challenge_id", "user_id"]
+          },
+        ]
+      }
+      showdown_rules: {
+        Row: {
+          game_key: string
+          round_count: number
+          rules_version: number
+          scoring_key: string
+        }
+        Insert: {
+          game_key: string
+          round_count: number
+          rules_version: number
+          scoring_key: string
+        }
+        Update: {
+          game_key?: string
+          round_count?: number
+          rules_version?: number
+          scoring_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showdown_rules_game_key_fkey"
+            columns: ["game_key"]
+            isOneToOne: false
+            referencedRelation: "showdown_games"
+            referencedColumns: ["game_key"]
+          },
+        ]
+      }
       standings: {
         Row: {
           correct_picks: number | null
@@ -12353,6 +14480,81 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      afterimage_finish_attempt_v1: {
+        Args: { p_id: string; p_user: string }
+        Returns: undefined
+      }
+      afterimage_lock_challenge_v1: {
+        Args: { p_id: string }
+        Returns: {
+          challenger_id: string
+          closed_reason: string | null
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          game_key: string
+          gameplay_expires_at: string | null
+          gameplay_started_at: string | null
+          id: string
+          invitation_expires_at: string | null
+          outcome: string | null
+          recipient_id: string
+          rematch_of: string | null
+          rules_version: number
+          status: string
+          winner_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "showdown_challenges"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      afterimage_round_view_v1: {
+        Args: { p_id: string; p_round: number; p_user: string }
+        Returns: Json
+      }
+      afterimage_scene_view_v1: {
+        Args: {
+          p_completed: boolean
+          p_definition: Json
+          p_expires_at: string
+          p_server_now: string
+          p_started_at: string
+          p_submitted: boolean
+        }
+        Returns: Json
+      }
+      afterimage_score_v1: {
+        Args: { p_definition: Json; p_placements: Json }
+        Returns: Json
+      }
+      afterimage_snapshot_v1: {
+        Args: { p_id: string; p_server_now: string }
+        Returns: Json
+      }
+      afterimage_trim_v1: { Args: { p_value: string }; Returns: string }
+      afterimage_validate_placements_v1: {
+        Args: { p_definition: Json; p_placements: Json }
+        Returns: undefined
+      }
+      afterimage_validate_v1: {
+        Args: { p_definition: Json }
+        Returns: undefined
+      }
+      afterimage_write_reconstruction_v1: {
+        Args: {
+          p_challenge_id: string
+          p_expected_revision: number
+          p_finish: boolean
+          p_placements: Json
+          p_request_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
       apply_draft_pick_regrade_atomic: {
         Args: {
           _dispute_id: string
@@ -12400,6 +14602,77 @@ export type Database = {
         Returns: boolean
       }
       cancel_club_request: { Args: never; Returns: undefined }
+      cipher_attempt_view_v1: {
+        Args: { p_id: string; p_user: string }
+        Returns: Json
+      }
+      cipher_code_valid_v1: { Args: { p_code: string[] }; Returns: boolean }
+      cipher_feat_metrics_v1: {
+        Args: { p_club: string; p_user: string }
+        Returns: Json
+      }
+      cipher_feedback_v1: {
+        Args: { p_guess: string[]; p_secret: string[] }
+        Returns: Json
+      }
+      cipher_finish_attempt_v1: {
+        Args: { p_id: string; p_user: string }
+        Returns: undefined
+      }
+      cipher_guesses_view_v1: {
+        Args: { p_id: string; p_user: string }
+        Returns: Json
+      }
+      cipher_lock_challenge_v1: {
+        Args: { p_id: string }
+        Returns: {
+          challenger_id: string
+          closed_reason: string | null
+          club_id: string
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          game_key: string
+          gameplay_expires_at: string | null
+          gameplay_started_at: string | null
+          id: string
+          invitation_expires_at: string | null
+          outcome: string | null
+          recipient_id: string
+          rematch_of: string | null
+          rules_version: number
+          status: string
+          winner_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "showdown_challenges"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cipher_snapshot_v1: {
+        Args: { p_id: string; p_server_now: string }
+        Returns: Json
+      }
+      cipher_statistics_v1: {
+        Args: { p_club: string; p_opponent?: string; p_user: string }
+        Returns: Json
+      }
+      cipher_validate_code_v1: {
+        Args: { p_code: string[] }
+        Returns: undefined
+      }
+      cipher_write_guess_v1: {
+        Args: {
+          p_challenge_id: string
+          p_expected_guess_count: number
+          p_guess: string[]
+          p_request_id: string
+          p_surrender: boolean
+        }
+        Returns: Json
+      }
       consume_ai_quota: {
         Args: {
           _function_name: string
@@ -12469,6 +14742,714 @@ export type Database = {
         }
       }
       current_user_club_id: { Args: never; Returns: string }
+      dc_access_v1: { Args: never; Returns: string }
+      dc_assign_equipment: {
+        Args: {
+          p_expected_revision: number
+          p_item_id: string
+          p_request_id: string
+          p_worker_id: string
+        }
+        Returns: Json
+      }
+      dc_bootstrap: {
+        Args: { p_name: string; p_request_id: string }
+        Returns: Json
+      }
+      dc_bootstrap_phase3_base: {
+        Args: { p_name: string; p_request_id: string }
+        Returns: Json
+      }
+      dc_building_level_v2: {
+        Args: {
+          p_company: Database["public"]["Tables"]["dc_companies"]["Row"]
+          p_key: string
+        }
+        Returns: number
+      }
+      dc_buildings_v2: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_buildings_v2_phase2_base: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_buildings_v3: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_buildings_v4: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_buildings_v7: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_business_catalog_v4: { Args: never; Returns: Json }
+      dc_business_stats_v4: { Args: { p_company: string }; Returns: Json }
+      dc_business_view_v4: { Args: { p_company: string }; Returns: Json }
+      dc_calendar_v1: { Args: { p_now: string; p_zone: string }; Returns: Json }
+      dc_cell_v1: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_cell_v1_phase1_base: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_cell_v2: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_cell_v3: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_cell_v4: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_chunk_version_v2: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: number
+      }
+      dc_claim_milestone: {
+        Args: {
+          p_expected_revision: number
+          p_milestone_key: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_claim_project: {
+        Args: {
+          p_expected_revision: number
+          p_project_key: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_club_week_v5: {
+        Args: { p_club: string; p_now: string }
+        Returns: Json
+      }
+      dc_collect: {
+        Args: { p_job_id: string; p_request_id: string }
+        Returns: Json
+      }
+      dc_collect_production: {
+        Args: { p_job_id: string; p_request_id: string }
+        Returns: Json
+      }
+      dc_completed_activity_v5: { Args: { p_user: string }; Returns: string[] }
+      dc_conditions_v3: {
+        Args: {
+          p_company: string
+          p_energy: number
+          p_route: Json
+          p_safety: number
+          p_tutorial: boolean
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_contribute_project: {
+        Args: {
+          p_expected_revision: number
+          p_project_key: string
+          p_request_id: string
+          p_resources: Json
+        }
+        Returns: Json
+      }
+      dc_crew_v3: {
+        Args: { p_company: string; p_workers: string[] }
+        Returns: Json
+      }
+      dc_deep_catalog_v7: { Args: never; Returns: Json }
+      dc_deep_modifiers_v7: {
+        Args: {
+          p_company: string
+          p_mode: string
+          p_raw_work: number
+          p_route: Json
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_dispatch: {
+        Args: {
+          p_duration_minutes: number
+          p_expected_revision: number
+          p_mode: string
+          p_request_id: string
+          p_target_x: number
+          p_target_y: number
+          p_tutorial: boolean
+          p_worker_ids: string[]
+        }
+        Returns: Json
+      }
+      dc_dispatch_operation: {
+        Args: {
+          p_duration_minutes: number
+          p_expected_revision: number
+          p_infrastructure_key: string
+          p_mode: string
+          p_request_id: string
+          p_target_x: number
+          p_target_y: number
+          p_tutorial: boolean
+          p_worker_ids: string[]
+        }
+        Returns: Json
+      }
+      dc_dispatch_v3_impl: {
+        Args: {
+          p_duration_minutes: number
+          p_expected_revision: number
+          p_infrastructure_key: string
+          p_mode: string
+          p_request_id: string
+          p_target_x: number
+          p_target_y: number
+          p_tutorial: boolean
+          p_worker_ids: string[]
+        }
+        Returns: Json
+      }
+      dc_dispatch_v7_impl: {
+        Args: {
+          p_duration_minutes: number
+          p_expected_revision: number
+          p_infrastructure_key: string
+          p_mode: string
+          p_request_id: string
+          p_target_x: number
+          p_target_y: number
+          p_tutorial: boolean
+          p_worker_ids: string[]
+        }
+        Returns: Json
+      }
+      dc_ensure_business_v4: { Args: { p_company: string }; Returns: boolean }
+      dc_ensure_candidates_v2: {
+        Args: { p_company: string; p_day: string }
+        Returns: boolean
+      }
+      dc_ensure_projects_v5: { Args: { p_club: string }; Returns: undefined }
+      dc_feat_company_v5: { Args: { p_company: string }; Returns: boolean }
+      dc_feat_metrics_v5: { Args: { p_user: string }; Returns: Json }
+      dc_field_catalog_v3: { Args: never; Returns: Json }
+      dc_flush_notifications_v5: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_formation_v3: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: string
+      }
+      dc_freeze_equipment_v2: {
+        Args: {
+          p_company: string
+          p_energy: number
+          p_job: string
+          p_workers: string[]
+        }
+        Returns: undefined
+      }
+      dc_freeze_equipment_v7: {
+        Args: {
+          p_company: string
+          p_energy: number
+          p_job: string
+          p_workers: string[]
+        }
+        Returns: undefined
+      }
+      dc_fulfill_contract: {
+        Args: {
+          p_contract_key: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_get: { Args: never; Returns: Json }
+      dc_get_club: {
+        Args: { p_metric?: string; p_page?: number }
+        Returns: Json
+      }
+      dc_hardness_v1: { Args: { p_key: string }; Returns: number }
+      dc_hardness_v1_pre_v7: { Args: { p_key: string }; Returns: number }
+      dc_hash_v3: {
+        Args: {
+          p_company: string
+          p_namespace: string
+          p_x: number
+          p_y: number
+        }
+        Returns: number
+      }
+      dc_hire: {
+        Args: {
+          p_candidate_id: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_incident_kind_v3: {
+        Args: { p_company: string; p_conditions: Json }
+        Returns: string
+      }
+      dc_incident_roll_v3: {
+        Args: { p_chance: number; p_seed: string }
+        Returns: boolean
+      }
+      dc_infrastructure_capacity_v7: {
+        Args: { p_company: string }
+        Returns: number
+      }
+      dc_lift_discount_v7: {
+        Args: { p_company: string; p_route: Json }
+        Returns: number
+      }
+      dc_lock_v1: { Args: never; Returns: string }
+      dc_mark_feat_dirty_v5: {
+        Args: { p_company: string; p_skip_busy?: boolean }
+        Returns: undefined
+      }
+      dc_member_cap_v5: { Args: { p_club: string }; Returns: number }
+      dc_minerals_v2: { Args: never; Returns: string[] }
+      dc_mining_value_v5: { Args: { p_cargo: Json }; Returns: number }
+      dc_mining_value_v5_pre_v7: { Args: { p_cargo: Json }; Returns: number }
+      dc_phase2_config_v2: { Args: never; Returns: Json }
+      dc_pin_chunks_v3: {
+        Args: { p_company: string; p_coordinates: Json }
+        Returns: undefined
+      }
+      dc_preview: {
+        Args: {
+          p_duration_minutes: number
+          p_mode: string
+          p_target_x: number
+          p_target_y: number
+          p_tutorial?: boolean
+          p_worker_ids: string[]
+        }
+        Returns: Json
+      }
+      dc_preview_operation: {
+        Args: {
+          p_duration_minutes: number
+          p_infrastructure_key: string
+          p_mode: string
+          p_target_x: number
+          p_target_y: number
+          p_tutorial: boolean
+          p_worker_ids: string[]
+        }
+        Returns: Json
+      }
+      dc_preview_operation_v3: {
+        Args: {
+          p_company: string
+          p_infrastructure_key: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_preview_operation_v3_pre_v7: {
+        Args: {
+          p_company: string
+          p_infrastructure_key: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_preview_operation_v7: {
+        Args: {
+          p_company: string
+          p_infrastructure_key: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_preview_operation_v7_base: {
+        Args: {
+          p_company: string
+          p_infrastructure_key: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_preview_v1: {
+        Args: {
+          p_company: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_preview_v1_phase2_base: {
+        Args: {
+          p_company: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_preview_v1_phase2_base_pre_v7: {
+        Args: {
+          p_company: string
+          p_minutes: number
+          p_mode: string
+          p_now: string
+          p_tutorial: boolean
+          p_workers: string[]
+          p_x: number
+          p_y: number
+        }
+        Returns: Json
+      }
+      dc_price_v1: { Args: { p_key: string }; Returns: number }
+      dc_price_v1_phase1_base: { Args: { p_key: string }; Returns: number }
+      dc_price_v1_phase3_base: { Args: { p_key: string }; Returns: number }
+      dc_price_v1_pre_v7: { Args: { p_key: string }; Returns: number }
+      dc_processing_speed_v4: { Args: { p_company: string }; Returns: number }
+      dc_projects_view_v5: {
+        Args: { p_club: string; p_company: string }
+        Returns: Json
+      }
+      dc_public_company_v5: {
+        Args: { p_club: string; p_company: string }
+        Returns: boolean
+      }
+      dc_public_specimens_v5: {
+        Args: { p_company: string; p_ids: string[] }
+        Returns: Json
+      }
+      dc_queue_notification_v5: {
+        Args: {
+          p_company: string
+          p_key: string
+          p_kind: string
+          p_occurred: string
+          p_project?: string
+        }
+        Returns: undefined
+      }
+      dc_receipt_v1: {
+        Args: {
+          p_company: string
+          p_operation: string
+          p_payload: Json
+          p_request: string
+        }
+        Returns: boolean
+      }
+      dc_recipes_view_v2: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_recipes_view_v4: {
+        Args: { p_company: Database["public"]["Tables"]["dc_companies"]["Row"] }
+        Returns: Json
+      }
+      dc_reconcile: { Args: never; Returns: Json }
+      dc_reconcile_v1: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_reconcile_v1_phase1_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_reconcile_v1_phase2_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_reconcile_v1_phase3_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_reconcile_v1_phase5_core_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_reconcile_v1_pre_v7: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_reconcile_v7_fields: {
+        Args: { p_company: string; p_now: string }
+        Returns: undefined
+      }
+      dc_repair_equipment: {
+        Args: {
+          p_expected_revision: number
+          p_item_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_replace_required_v3: {
+        Args: { p_anchor: string; p_replacement: string; p_source: string }
+        Returns: string
+      }
+      dc_research_bonuses_v4: { Args: { p_company: string }; Returns: Json }
+      dc_resolve_discovery: {
+        Args: {
+          p_choice: string
+          p_discovery_id: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_resources_v1: { Args: never; Returns: string[] }
+      dc_retire_equipment: {
+        Args: {
+          p_expected_revision: number
+          p_item_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_reveal_v1: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: undefined
+      }
+      dc_route_v1: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_sell: {
+        Args: {
+          p_expected_revision: number
+          p_quantity: number
+          p_request_id: string
+          p_resource_key: string
+        }
+        Returns: Json
+      }
+      dc_server_entropy_v3: { Args: never; Returns: string }
+      dc_set_social_preferences: {
+        Args: {
+          p_expected_revision: number
+          p_featured_discovery_ids: string[]
+          p_request_id: string
+          p_showcase: boolean
+          p_standings: boolean
+        }
+        Returns: Json
+      }
+      dc_setup_field_operation_v3: {
+        Args: {
+          p_company: string
+          p_delay: number
+          p_extractions: Json
+          p_incident_kind: string
+          p_job: string
+          p_quote: Json
+          p_seed: string
+        }
+        Returns: undefined
+      }
+      dc_shared_club_v5: { Args: never; Returns: string }
+      dc_showcases_v5: {
+        Args: { p_club: string; p_page: number }
+        Returns: Json
+      }
+      dc_snapshot_v1: {
+        Args: { p_company: string; p_now: string }
+        Returns: Json
+      }
+      dc_snapshot_v1_phase1_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: Json
+      }
+      dc_snapshot_v1_phase2_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: Json
+      }
+      dc_snapshot_v1_phase3_base: {
+        Args: { p_company: string; p_now: string }
+        Returns: Json
+      }
+      dc_snapshot_v1_pre_v7: {
+        Args: { p_company: string; p_now: string }
+        Returns: Json
+      }
+      dc_social_catalog_v5: { Args: never; Returns: Json }
+      dc_specimen_v3: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: Json
+      }
+      dc_standings_v5: {
+        Args: { p_club: string; p_metric: string; p_week: Json }
+        Returns: Json
+      }
+      dc_start_production: {
+        Args: {
+          p_batches: number
+          p_expected_revision: number
+          p_recipe_key: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_start_production_phase3_base: {
+        Args: {
+          p_batches: number
+          p_expected_revision: number
+          p_recipe_key: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_start_research: {
+        Args: {
+          p_expected_revision: number
+          p_request_id: string
+          p_research_key: string
+        }
+        Returns: Json
+      }
+      dc_stats_v1: {
+        Args: { p_worker: Database["public"]["Tables"]["dc_workers"]["Row"] }
+        Returns: Json
+      }
+      dc_stats_v1_phase3_base: {
+        Args: { p_worker: Database["public"]["Tables"]["dc_workers"]["Row"] }
+        Returns: Json
+      }
+      dc_store_receipt_v1: {
+        Args: {
+          p_company: string
+          p_operation: string
+          p_payload: Json
+          p_request: string
+        }
+        Returns: undefined
+      }
+      dc_timezone_v1: { Args: { p_club: string }; Returns: string }
+      dc_train: {
+        Args: {
+          p_expected_revision: number
+          p_request_id: string
+          p_stat: string
+          p_worker_id: string
+        }
+        Returns: Json
+      }
+      dc_tutorial_get: { Args: never; Returns: Json }
+      dc_tutorial_ids_v1: { Args: { p_kind: string }; Returns: string[] }
+      dc_tutorial_ids_valid_v1: {
+        Args: { p_ids: string[]; p_kind: string; p_limit: number }
+        Returns: boolean
+      }
+      dc_tutorial_save: {
+        Args: {
+          p_expected_revision: number
+          p_patch: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_tutorial_snapshot_v1: {
+        Args: {
+          p_club: string
+          p_company: string
+          p_now: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      dc_tutorial_union_v1: {
+        Args: { p_added: Json; p_before: string[] }
+        Returns: string[]
+      }
+      dc_tutorial_validate_patch_v1: {
+        Args: { p_patch: Json }
+        Returns: undefined
+      }
+      dc_upgrade: {
+        Args: {
+          p_building_key: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_upgrade_phase2_base: {
+        Args: {
+          p_building_key: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_upgrade_phase3_base: {
+        Args: {
+          p_building_key: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_upgrade_pre_v7: {
+        Args: {
+          p_building_key: string
+          p_expected_revision: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      dc_world_hash_v1: {
+        Args: { p_company: string; p_x: number; p_y: number }
+        Returns: number
+      }
       delete_unassigned_draft: {
         Args: { p_draft_id: string }
         Returns: undefined
@@ -12930,6 +15911,16 @@ export type Database = {
       nfl_tiebreaker_unlocked: { Args: { _week_id: string }; Returns: boolean }
       nfl_week_lock_at: { Args: { _week_id: string }; Returns: string }
       normalize_pick_text: { Args: { t: string }; Returns: string }
+      prism_minimum_v1: { Args: { p_definition: Json }; Returns: number }
+      prism_replay_v1: {
+        Args: { p_actions: Json; p_definition: Json }
+        Returns: Json
+      }
+      prism_trace_v1: {
+        Args: { p_definition: Json; p_orientations?: Json }
+        Returns: Json
+      }
+      prism_validate_v1: { Args: { p_definition: Json }; Returns: undefined }
       publish_nfl_chain_board: {
         Args: {
           _availability: Json
@@ -13245,6 +16236,174 @@ export type Database = {
         Returns: Json
       }
       shares_club_with: { Args: { _a: string; _b: string }; Returns: boolean }
+      showdown_act: {
+        Args: { p_action: string; p_challenge_id: string; p_request_id: string }
+        Returns: Json
+      }
+      showdown_actor_club: { Args: never; Returns: string }
+      showdown_create: {
+        Args: {
+          p_game_key: string
+          p_recipient_id: string
+          p_rematch_of?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      showdown_create_cipher: {
+        Args: {
+          p_code: string[]
+          p_recipient_id: string
+          p_rematch_of?: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      showdown_get: {
+        Args: { p_challenge_id: string; p_start?: boolean }
+        Returns: Json
+      }
+      showdown_get_v2_base: {
+        Args: { p_challenge_id: string; p_start?: boolean }
+        Returns: Json
+      }
+      showdown_lobby: {
+        Args: { p_cursor?: Json; p_game_key?: string; p_limit?: number }
+        Returns: Json
+      }
+      showdown_lobby_v2_base: {
+        Args: { p_cursor?: Json; p_game_key?: string; p_limit?: number }
+        Returns: Json
+      }
+      showdown_lock_cipher_code: {
+        Args: { p_challenge_id: string; p_code: string[]; p_request_id: string }
+        Returns: Json
+      }
+      showdown_lock_members: {
+        Args: { p_club: string; p_first: string; p_second: string }
+        Returns: undefined
+      }
+      showdown_maintenance: { Args: never; Returns: undefined }
+      showdown_member_metrics: {
+        Args: { p_club_id: string; p_user_id: string }
+        Returns: Json
+      }
+      showdown_member_valid: {
+        Args: { p_club: string; p_user: string }
+        Returns: boolean
+      }
+      showdown_notify: {
+        Args: {
+          p_body: string
+          p_event: string
+          p_id: string
+          p_title: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      showdown_profile: {
+        Args: { p_club: string; p_user: string }
+        Returns: Json
+      }
+      showdown_reconcile: { Args: { p_id: string }; Returns: undefined }
+      showdown_record: {
+        Args: {
+          p_club: string
+          p_game: string
+          p_opponent?: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      showdown_round_view: {
+        Args: { p_id: string; p_round: number; p_user: string }
+        Returns: Json
+      }
+      showdown_save_reconstruction: {
+        Args: {
+          p_challenge_id: string
+          p_expected_revision: number
+          p_placements: Json
+          p_request_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      showdown_save_round: {
+        Args: {
+          p_actions: Json
+          p_challenge_id: string
+          p_expected_revision: number
+          p_request_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      showdown_snapshot: { Args: { p_id: string }; Returns: Json }
+      showdown_snapshot_v1_base: { Args: { p_id: string }; Returns: Json }
+      showdown_snapshot_v2_base: { Args: { p_id: string }; Returns: Json }
+      showdown_start_study: {
+        Args: {
+          p_challenge_id: string
+          p_request_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      showdown_submit_cipher_guess: {
+        Args: {
+          p_challenge_id: string
+          p_expected_guess_count: number
+          p_guess: string[]
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      showdown_submit_reconstruction: {
+        Args: {
+          p_challenge_id: string
+          p_expected_revision: number
+          p_placements: Json
+          p_request_id: string
+          p_round_number: number
+        }
+        Returns: Json
+      }
+      showdown_submit_round: {
+        Args: {
+          p_actions: Json
+          p_challenge_id: string
+          p_expected_revision: number
+          p_request_id: string
+          p_round_number: number
+          p_skip?: boolean
+        }
+        Returns: Json
+      }
+      showdown_summary: { Args: { p_id: string }; Returns: Json }
+      showdown_summary_v1_base: { Args: { p_id: string }; Returns: Json }
+      showdown_summary_v2_base: { Args: { p_id: string }; Returns: Json }
+      showdown_surrender_cipher: {
+        Args: {
+          p_challenge_id: string
+          p_expected_guess_count: number
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      showdown_write_round: {
+        Args: {
+          p_actions: Json
+          p_challenge_id: string
+          p_expected_revision: number
+          p_finish: boolean
+          p_request_id: string
+          p_round_number: number
+          p_skip: boolean
+        }
+        Returns: Json
+      }
       submit_operation_contribution: {
         Args: {
           _boss_damage: number
