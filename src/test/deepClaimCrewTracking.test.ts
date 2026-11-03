@@ -193,6 +193,26 @@ describe('Deep Claim reachable crew markers', () => {
     expect(Math.abs(result[0].center.x - result[1].center.x) >= 60 || Math.abs(result[0].center.y - result[1].center.y) >= 50).toBe(true);
   });
 
+  it.each([58, 188])('retains shallow crews beside full painted body envelopes with a real %ipx map height', height => {
+    const view = { width: 844, height };
+    const crews = [crew('near-a', 49, 1), crew('near-b', 47, 1, 2)];
+    const people = [worker('a', 49, 1, 'near-a'), worker('b', 48, 1, 'near-a'), worker('c', 47, 1, 'near-b')];
+    const followed = trackingCamera(crews[0], people, camera, view, bounds);
+    const bodies = people.map(person => {
+      const foot = mineToScreen(crewFootPoint(person), followed, view), bodyScale = .7;
+      return { left: foot.x - .75 * bodyScale * followed.scale, right: foot.x + bodyScale * followed.scale, top: foot.y - 1.4 * bodyScale * followed.scale, bottom: foot.y + .12 * followed.scale };
+    });
+    const controls = { left: 627, right: 828, top: 12, bottom: 66 };
+    const result = layoutCrewMarkers(crews, followed, view, { reservedRects: [...bodies, controls] });
+    expect(result.map(item => item.crew.job_id)).toEqual(['near-a', 'near-b']);
+    for (const { center } of result) {
+      const target = { left: center.x - 27, right: center.x + 27, top: center.y - 22, bottom: center.y + 22 };
+      expect(target.top).toBeGreaterThanOrEqual(6);
+      expect(target.bottom).toBeLessThanOrEqual(height - 6);
+      for (const reserved of [...bodies, controls]) expect(target.right <= reserved.left - 6 || target.left >= reserved.right + 6 || target.bottom <= reserved.top - 6 || target.top >= reserved.bottom + 6).toBe(true);
+    }
+  });
+
   it('never overlaps buttons when a tiny viewport cannot fit every crew', () => {
     const crews = Array.from({ length: 7 }, (_, index) => crewAtScreen(`job-${index}`, 160, 120, index + 1));
     const result = layoutCrewMarkers(crews, camera, { width: 320, height: 120 }, { topInset: 56 });

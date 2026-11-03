@@ -54,4 +54,15 @@
   .dcl-session-goal .dcl-goal-dock-copy>strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
   .dcl-scene>.dcl-map-actions{padding-block:6px}
   .dcl-scene>.dcl-map-actions>.dcl-button{min-height:44px}
+  /* Live crews need a mine to watch. Keep the existing card carousel beside
+     the map on short, wide screens rather than consuming its entire height. */
+  .dcl-scene[data-dc-scene=mine]:not([hidden]):has(>.dcl-map-actions>.dcl-operation-dock){display:grid;grid-template-columns:minmax(0,1fr) 280px;grid-template-rows:auto minmax(0,1fr)}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dc-mine-renderer{grid-column:1;grid-row:2}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dcl-map-heading{grid-column:1/-1;grid-row:1;grid-template-columns:minmax(0,1fr) auto auto}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dcl-map-heading>div:first-child{grid-column:1;grid-row:1}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dcl-map-heading>.dcl-map-tools{grid-column:2;grid-row:1}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dcl-map-heading>.dcl-camera-tools{position:static;grid-column:3;grid-row:1}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dcl-map-actions{grid-column:2;grid-row:2;align-items:stretch;min-height:0;padding:6px;border-top:0;border-left:1px solid var(--dcl-line);overflow:hidden}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock)>.dcl-map-actions>.dcl-operation-dock{width:100%;align-items:flex-start}
+  .dcl-scene[data-dc-scene=mine]:has(>.dcl-map-actions>.dcl-operation-dock) .dcl-operation-dock>.dcl-button{min-height:122px}
 }

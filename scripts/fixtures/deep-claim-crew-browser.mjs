@@ -11,6 +11,31 @@ export async function runDeepClaimCrewBrowser(h) {
     await expect.poll(async () => (await frame(page))?.observed_at ?? -1).toBeGreaterThan(after);
     return frame(page);
   }
+  async function sceneEvidence(page) {
+    return page.evaluate(() => {
+      const rect = selector => {
+        const node = document.querySelector(selector); if (!node) return null;
+        const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+        return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height,
+          display: style.display, flex: style.flex, overflow: style.overflow };
+      };
+      const runtime = window.deepClaimRuntime;
+      return { viewport: { width: innerWidth, height: innerHeight },
+        canvas: rect('.dc-mine-canvas'), renderer: rect('.dc-mine-renderer'), scene: rect('.dcl-scene'),
+        header: rect('.dcl-topbar'), heading: rect('.dcl-map-heading'), actions: rect('.dcl-map-actions'),
+        navigation: rect('.dcl-tabs'), tracking: rect('[data-testid="crew-tracking"]'), controls: rect('.dc-mine-controls'),
+        workerFrame: runtime?.workerFrames.at(-1) ?? null, paint: runtime?.samples.at(-1) ?? null,
+        focus: document.activeElement?.getAttribute('aria-label') || document.activeElement?.getAttribute('data-testid') || document.activeElement?.tagName };
+    });
+  }
+  async function captureFailure(page, label) {
+    // Each scenario owns its context. Save evidence before its finally block
+    // closes the page; the runner can no longer screenshot it after that point.
+    try { checked(`crews-failure-evidence-captured-${label}`, true, { note: 'Diagnostics only; the original scenario error remains a failure.', ...await sceneEvidence(page) }); }
+    catch { /* Evidence collection must not replace the original assertion. */ }
+    try { await shot(page, `crews-failure-${label}`); }
+    catch { /* Preserve the original failure even if screenshot capture fails. */ }
+  }
   async function refresh(page) {
     await page.getByRole('button', { name: 'Refresh company', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Refresh company', exact: true })).toBeEnabled();
@@ -107,10 +132,13 @@ export async function runDeepClaimCrewBrowser(h) {
       const canvas = document.querySelector('.dc-mine-canvas').getBoundingClientRect();
       return !!viewport && Math.round(viewport.width) === Math.round(canvas.width) && Math.round(viewport.height) === Math.round(canvas.height);
     })).toBe(true);
-    const current = await frame(page);
+    const evidence = await sceneEvidence(page), current = evidence.workerFrame;
+    if (evidence.viewport.width >= 600 && evidence.viewport.height <= 500) {
+      checked(`crews-landscape-retains-a-readable-mine-${label}`, evidence.canvas.width >= 300 && evidence.canvas.height >= 160, evidence.canvas);
+    }
     assert.ok(Array.isArray(current.bodies), 'The opt-in frame supplies actual painted body envelopes');
     assert.deepEqual(current.markers.map(marker => marker.job_id).sort(), current.crews.map(crew => crew.job_id).sort(),
-      'Both nearby earned crews keep a discoverable marker after camera focus');
+      `Both nearby earned crews keep a discoverable marker after camera focus. Scene evidence: ${JSON.stringify(evidence)}`);
     assert.deepEqual(current.bodies.map(body => body.worker_id).sort(),
       current.workers.filter(worker => worker.painted).map(worker => worker.worker_id).sort());
     const overlap = (a, b) => Math.min(a.right, b.right) > Math.max(a.left, b.left)
@@ -169,7 +197,8 @@ export async function runDeepClaimCrewBrowser(h) {
     await refresh(page);
     earned = await h.rpc(page, 'dc_get');
     assert.ok(earned.expeditions.filter(job => jobIds.includes(job.id)).every(job => job.stage === 'work'));
-  } finally { await client.context.close(); }
+  } catch (error) { await captureFailure(client.page, 'setup'); throw error; }
+  finally { await client.context.close(); }
 
   let numbers;
   for (const [width, height, theme, motion] of h.visualCases) {
@@ -253,7 +282,8 @@ export async function runDeepClaimCrewBrowser(h) {
         checked(`crews-reduced-motion-retains-static-rendering-${label}`, true);
       }
       await fit(page, `crews-reloaded-${label}`); await shot(page, `crews-reloaded-${label}`);
-    } finally { await client.context.close(); }
+    } catch (error) { await captureFailure(page, label); throw error; }
+    finally { await client.context.close(); }
   }
 
   // A real return stage makes continuous movement measurable without requiring
@@ -287,5 +317,6 @@ export async function runDeepClaimCrewBrowser(h) {
     checked('crews-return-facing-matches-the-actual-horizontal-route-tangent', true);
     await fit(page, 'crews-moving-return'); await shot(page, 'crews-moving-return');
     assert.ok(earned.company.id === latest.company.id && latest.workers.length === 3);
-  } finally { await client.context.close(); }
+  } catch (error) { await captureFailure(client.page, 'moving-return'); throw error; }
+  finally { await client.context.close(); }
 }
