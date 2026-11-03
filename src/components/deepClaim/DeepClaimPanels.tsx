@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Clock3, Coins, FileText, Package, Pickaxe, Users, Zap } from 'lucide-react';
+import { Clock3, Coins, Users, Zap } from 'lucide-react';
 import { SPECIALTY_INFO, STAT_INFO, TRAIT_INFO } from '@/lib/deepClaim/catalog';
 import { DEEP_CLAIM_STAT_IDS, type DeepClaimSnapshot, type DeepClaimStatId, type DeepClaimWorker } from '@/lib/deepClaim/types';
 import { DeepClaimPortrait } from './renderer/DeepClaimIcons';
-import { ClaimBadge, ClaimButton, ClaimDialog, ClaimEmpty, ClaimMeter } from './DeepClaimPrimitives';
+import { ClaimBadge, ClaimButton, ClaimDialog, ClaimMeter } from './DeepClaimPrimitives';
 import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
 
 export interface ClaimWorkerInspectRequest { id: string; workerId: string; view?: 'overview' | 'training' | 'gear' }
@@ -45,6 +45,4 @@ export function DeepClaimCrew({ snapshot, profileRenderer, inspectRequest, busy 
 
 export { DeepClaimStores } from './DeepClaimInventory';
 
-export function DeepClaimLog({ snapshot }: { snapshot: DeepClaimSnapshot }) {
-  return <><div className="dcl-section-heading"><div><h2>Ledger</h2></div><FileText size={23} aria-hidden="true" /></div>{snapshot.log.length ? <ol className="dcl-ledger">{snapshot.log.map(entry => <li key={entry.id}><span aria-hidden="true">{entry.kind.includes('collect') || entry.kind.includes('sell') ? <Package size={16} /> : <Pickaxe size={16} />}</span><div><strong>{entry.title}</strong><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString()}</time></div></li>)}</ol> : <ClaimEmpty title="No activity yet" icon={<FileText aria-hidden="true" />} />}</>;
-}
+export { DeepClaimLog } from './DeepClaimLedger';

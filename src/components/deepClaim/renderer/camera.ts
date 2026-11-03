@@ -32,6 +32,16 @@ export function zoomMineAt(camera: DeepClaimCamera, factor: number, anchor: Deep
 export function panMine(camera: DeepClaimCamera, movement: DeepClaimPoint, size: ViewportSize, bounds: MineBounds) {
   return constrainCamera({ ...camera, x: camera.x - movement.x / camera.scale, y: camera.y - movement.y / camera.scale }, size, bounds);
 }
+/** Preserve the mine point between both fingers as their midpoint moves and their distance changes. */
+export function pinchMine(camera: DeepClaimCamera, before: readonly [DeepClaimPoint, DeepClaimPoint], after: readonly [DeepClaimPoint, DeepClaimPoint], size: ViewportSize, bounds: MineBounds): DeepClaimCamera {
+  const midpoint = (pair: readonly [DeepClaimPoint, DeepClaimPoint]) => ({ x: (pair[0].x + pair[1].x) / 2, y: (pair[0].y + pair[1].y) / 2 });
+  const previous = midpoint(before), next = midpoint(after), anchored = screenToMine(previous, camera, size);
+  const previousDistance = Math.hypot(before[0].x - before[1].x, before[0].y - before[1].y);
+  const nextDistance = Math.hypot(after[0].x - after[1].x, after[0].y - after[1].y);
+  const factor = previousDistance > 0 && nextDistance > 0 ? nextDistance / previousDistance : 1;
+  const scale = clamp(camera.scale * factor, camera.minimumScale ?? MIN_MINE_SCALE, MAX_MINE_SCALE);
+  return constrainCamera({ ...camera, scale, x: anchored.x - (next.x - size.width / 2) / scale, y: anchored.y - (next.y - size.height / 2) / scale }, size, bounds);
+}
 export function visibleMineCells(camera: DeepClaimCamera, size: ViewportSize, bounds: MineBounds) {
   const a = screenToMine({ x: 0, y: 0 }, camera, size), b = screenToMine(size.width === 0 ? { x: 0, y: 0 } : { x: size.width, y: size.height }, camera, size);
   return { minX: Math.max(0, Math.floor(a.x) - 1), maxX: Math.min(bounds.width - 1, Math.ceil(b.x) + 1), minY: Math.max(1, Math.floor(a.y) - 1), maxY: Math.min(bounds.depth, Math.ceil(b.y) + 1) };
@@ -42,11 +52,16 @@ export function initialMineCamera(size: ViewportSize, bounds: MineBounds): DeepC
 }
 
 /** Fit the actual owned camp, rather than cropping the outer buildings on phones. */
-export function fitSurfaceCamera(size: ViewportSize, bounds: MineBounds, buildings: readonly { x: number; width: number }[]): DeepClaimCamera {
+export function fitSurfaceCamera(size: ViewportSize, bounds: MineBounds, buildings: readonly { x: number; width: number; y?: number; height?: number }[]): DeepClaimCamera {
   if (!buildings.length) return constrainCamera({ x: 48, y: -1.2, scale: 8 }, size, bounds);
   const left = Math.min(...buildings.map(building => building.x)), right = Math.max(...buildings.map(building => building.x + building.width));
-  const fitScale = (size.width - 24) / Math.max(1, right - left);
+  const top = Math.min(...buildings.map(building => building.y ?? -8));
+  const bottom = Math.max(...buildings.map(building => (building.y ?? -8) + (building.height ?? 8)));
+  // Reserve space for the heading and operation dock, including short landscape
+  // viewports. Fitting width alone can cut the shaft roof off a wide window.
+  const verticalPadding = Math.min(72, size.height * .3);
+  const fitScale = Math.min((size.width - 24) / Math.max(1, right - left), (size.height - verticalPadding * 2) / Math.max(1, bottom - top));
   const minimumScale = fitScale < 4 ? 3 : 4;
   const scale = clamp(fitScale, minimumScale, 21);
-  return constrainCamera({ x: (left + right) / 2, y: -1.2, scale, minimumScale }, size, bounds);
+  return constrainCamera({ x: (left + right) / 2, y: (top + bottom) / 2, scale, minimumScale }, size, bounds);
 }

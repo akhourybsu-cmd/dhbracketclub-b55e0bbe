@@ -1,5 +1,17 @@
 # Deep Claim UI, interaction and recovery audit
 
+## Follow-up — ledger and mine navigation
+
+The next presentation slice builds on released main `d41c4ebf`. It adds an illustrated recent-activity ledger and corrects map navigation without changing economic or world authority.
+
+- Six illustrated filters distinguish Mine, Crew, Workshop, Company and Trade from All activity. Six receipts appear per page; the latest-record count describes only the server's bounded recent feed, not lifetime totals. All 20 existing receipt kinds have explicit mappings, including `sold`. Unknown future kinds remain visible in All. Exact recorded titles and timestamp attributes are retained; displayed dates use the company timezone, with UTC fallback. Stable ordering never mutates the source snapshot. Refreshed records reset the displayed page while retaining its category; paging announces the range and focuses its reading heading.
+- Focus crew now cycles distinct active expedition identities rather than stopping on every member of the same crew. Idle workers remain individually discoverable when no expedition is active. Identity tracking tolerates roster reordering and resets with a company change.
+- Surface framing fits both the horizontal and vertical owned-building bounds, including short landscape windows. Two-finger gestures preserve the mine point beneath the moving midpoint while zooming. Scale/boundary limits remain in place; moving one finger after the other lifts remains a pan. Secondary and middle mouse buttons no longer select buildings or drag the mine.
+- No migration, RPC, economic rule, hidden-world data, art atlas, dependency or completed save changes are included. Rendering remains an illustration of the existing authoritative snapshots.
+
+Source: `DeepClaimLedger.tsx`, `deepClaimLedger.css`, `lib/deepClaim/ledger.ts`, the preserved Panels export, and renderer `camera.ts` / `DeepClaimCanvas.tsx`. Focused regressions cover all receipt categories, unknown/prototype kinds, page refresh, source immutability, timezone/DST behavior, two multi-worker expeditions, idle fallback, pointer continuation, zoom limits and all nine building bounds at phone/short landscape/desktop sizes. The added native `navigation` section obtains its records from a real isolated tutorial haul and seven actual one-unit coal sales, then checks filtering, keyboard input, pagination, camera touch anchoring, layout and unchanged company state. Final verification and release evidence are recorded in the implementation ledger.
+
+
 Audit date: 2026-11-03. Original audit baseline: `3dfd021b779c0b583a2b652e1ff5aeb4322d5406`. Integrated release parent: `5b375b28f85f9e60d1db54700d9fd59eca90ea85`.
 
 This release refines the existing game rather than adding a new progression phase. The matrix records source inspection, implemented corrections and targeted regression evidence. It does not mean every device, game state or production account has been exercised. The final integrated checks, browser evidence, commit and deployment status belong in `DEEP_CLAIM_IMPLEMENTATION.md`.
