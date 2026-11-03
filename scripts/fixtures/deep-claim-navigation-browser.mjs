@@ -3,6 +3,16 @@
 export async function runDeepClaimNavigationBrowser(h) {
   const { assert, expect, checked, fit, shot } = h;
   const run = 'ledger-and-mine-navigation';
+  async function observedCamera(page) {
+    // The production renderer deliberately sleeps between paints. Two RAFs do
+    // not guarantee that a scheduled 30/12fps paint has reached its deadline.
+    // Observe the actual interaction callback and wait for its completed paint.
+    await expect.poll(() => page.evaluate(() => {
+      const runtime = window.deepClaimRuntime, sample = runtime.samples.at(-1);
+      return !!sample && sample.observed_at >= runtime.mapInteractionAt;
+    })).toBe(true);
+    return page.evaluate(() => window.deepClaimRuntime.samples.at(-1).camera);
+  }
   const economic = snapshot => ({ company: snapshot.company, resources: snapshot.resources,
     workers: snapshot.workers, expeditions: snapshot.expeditions, buildings: snapshot.buildings,
     equipment: snapshot.equipment, production: snapshot.production_jobs, business: snapshot.business,
@@ -114,7 +124,7 @@ export async function runDeepClaimNavigationBrowser(h) {
       for (let step = 0; step < 20; step++) await page.keyboard.press('ArrowDown');
       await h.settle(page);
       const box = await canvas.boundingBox(); assert.ok(box);
-      const before = await page.evaluate(() => window.deepClaimRuntime.samples.at(-1).camera);
+      const before = await observedCamera(page);
       const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
       const touch = await client.context.newCDPSession(page);
       try {
@@ -124,7 +134,7 @@ export async function runDeepClaimNavigationBrowser(h) {
         await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       } finally { await touch.detach(); }
       await h.settle(page);
-      const after = await page.evaluate(() => window.deepClaimRuntime.samples.at(-1).camera);
+      const after = await observedCamera(page);
       const under = { x: after.x + 20 / after.scale, y: after.y + 8 / after.scale };
       checked(`navigation-two-finger-translation-keeps-anchor-${label}`,
         Math.abs(under.x - before.x) < .12 && Math.abs(under.y - before.y) < .12 && Math.abs(after.scale - before.scale) < .1,

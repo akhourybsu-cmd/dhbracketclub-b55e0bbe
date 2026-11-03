@@ -106,3 +106,16 @@ jobs:
           path: ${{ env.DEEP_CLAIM_QA_OUTPUT }}/
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Upload review frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-claim-review-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/deep-claim-browser-artifacts/navigation-*.png
+            /tmp/deep-claim-browser-artifacts/failure-*.png
+            /tmp/deep-claim-browser-artifacts/report.json
+            /tmp/deep-claim-browser-artifacts/context.json
+          if-no-files-found: warn
+          retention-days: 7

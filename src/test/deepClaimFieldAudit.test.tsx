@@ -46,6 +46,24 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Deep Claim dispatch crew recovery', () => {
+  it('shows repeated backend blocking reasons once without changing distinct reasons or allowing dispatch', async () => {
+    const blocked = { ...estimate(), allowed: false, reasons: ['Storage is full.', 'Crew slots are full.', 'Storage is full.', 'Storage is full!'] };
+    const original = structuredClone(blocked);
+    preview.mockResolvedValue(blocked);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<Planner snapshot={phaseThreeSnapshot()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' }));
+      const quote = await screen.findByRole('region', { name: 'Verified dispatch estimate' });
+      expect(within(quote).getAllByRole('listitem').map(item => item.textContent)).toEqual(['Storage is full.', 'Crew slots are full.', 'Storage is full!']);
+      expect(screen.getAllByText('Storage is full.', { exact: true })).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument();
+      expect(dispatch).not.toHaveBeenCalled();
+      expect(blocked).toEqual(original);
+      expect(errors.mock.calls.some(call => call.some(value => String(value).includes('same key')))).toBe(false);
+    } finally { errors.mockRestore(); }
+  });
+
   it('preserves the chosen crew but blocks a longer shift when a worker needs more energy', async () => {
     const snapshot = phaseThreeSnapshot(); snapshot.workers[0].energy = 1;
     render(<Planner snapshot={snapshot} />);
