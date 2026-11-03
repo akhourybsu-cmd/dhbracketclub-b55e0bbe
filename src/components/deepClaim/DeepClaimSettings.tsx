@@ -137,8 +137,18 @@ function SettingToggle({ label, description, checked, onChange, disabled = false
 function DeepClaimNotificationSetting() {
   const { prefs, loading, saving, error, update, refresh } = useNotificationPreferences();
   const [failure, setFailure] = useState('');
-  async function toggle() { setFailure(''); try { await update('deep_claim', !prefs.deep_claim); } catch (issue) { setFailure(issue instanceof Error ? issue.message : 'Notification preferences could not sync. Retry the setting.'); } }
-  return <section className="dcl-card dcl-settings-group" aria-label="Deep Claim notification settings"><h3>Notifications</h3><SettingToggle label="Deep Claim notifications" description="Returns, production, research and club projects. Sharing is separate." checked={prefs.deep_claim} disabled={loading || saving} onChange={() => void toggle()} />{(failure || error) && <><p className="dcl-error" role="alert">{failure || error}</p><ClaimButton className="is-small" onClick={() => void refresh()}>Retry notification preferences</ClaimButton></>}</section>;
+  const [retrying, setRetrying] = useState(false);
+  const retryFlight = useRef(false), mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  async function toggle() { if (retryFlight.current) return; setFailure(''); try { await update('deep_claim', !prefs.deep_claim); } catch (issue) { if (mounted.current) setFailure(issue instanceof Error ? issue.message : 'Notification preferences could not sync. Retry the setting.'); } }
+  async function retry() {
+    if (retryFlight.current) return;
+    retryFlight.current = true; setRetrying(true); setFailure('');
+    try { await refresh(); }
+    catch (issue) { if (mounted.current) setFailure(issue instanceof Error ? issue.message : 'Notification preferences could not load. Try again.'); }
+    finally { retryFlight.current = false; if (mounted.current) setRetrying(false); }
+  }
+  return <section className="dcl-card dcl-settings-group" aria-label="Deep Claim notification settings"><h3>Notifications</h3><SettingToggle label="Deep Claim notifications" description="Returns, production, research and club projects. Sharing is separate." checked={prefs.deep_claim} disabled={loading || saving || retrying} onChange={() => void toggle()} />{(failure || error || retrying) && <>{failure || error ? <p className="dcl-error" role="alert">{failure || error}</p> : <p role="status">Refreshing preferences…</p>}<ClaimButton className="is-small" pending={retrying} onClick={() => void retry()}>Retry notification preferences</ClaimButton></>}</section>;
 }
 
 function VolumeControl({ label, accessibleLabel, value, onChange }: { label: string; accessibleLabel: string; value: number; onChange: (value: number) => void }) {

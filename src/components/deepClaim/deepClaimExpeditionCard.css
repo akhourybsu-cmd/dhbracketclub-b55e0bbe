@@ -26,6 +26,7 @@
 .dcl-operation-actions>.dcl-button{min-height:44px;height:44px;min-width:0;padding:6px;font-size:11px;line-height:1.15;gap:5px}
 .dcl-operation-actions>.dcl-button>svg{flex:none}
 .dcl-operation-card[data-operation-state=ready] .dcl-operation-clock{color:var(--dcl-green)}
+.dcl-operation-card[data-dc-followed=true]{border-color:var(--dcl-brass);box-shadow:inset 0 0 0 1px var(--dcl-brass)}
 @keyframes dcl-operation-lamp{0%,100%{opacity:.5}50%{opacity:1}}
 @media(min-width:600px) and (max-height:500px){.dcl-expedition-card.dcl-operation-card{grid-template-rows:14px 22px 12px 3px 44px;height:122px;padding:6px;gap:3px}.dcl-operation-portraits>.dc-worker-portrait{width:22px;height:22px}.dcl-operation-portraits>.dc-worker-portrait+svg{margin-left:-6px}.dcl-operation-route>li{font-size:7px;padding-bottom:2px}.dcl-operation-site>strong{font-size:9px}.dcl-operation-site>small{font-size:8px}.dcl-operation-clock{font-size:9px}.dcl-operation-card>header .dcl-badge{padding:2px 4px}}
 .deep-claim[data-reduced-motion=true] .dcl-operation-route>li[aria-current=step]>i{animation:none}

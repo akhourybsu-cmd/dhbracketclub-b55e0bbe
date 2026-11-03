@@ -148,10 +148,10 @@ describe('Deep industry, gear and readable reviews', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Crew file' })[0]); fireEvent.click(screen.getByRole('button', { name: 'Gear' })); expect(screen.getByText('Heat protection: inactive · broken')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Repair Nickel Heat Shield' })); const repair = screen.getByRole('dialog', { name: 'Repair Nickel Heat Shield' }); expect(repair).toHaveTextContent('1 Nickel alloy'); expect(repair).toHaveTextContent('2 Sulfur'); expect(wire.repair).not.toHaveBeenCalled(); await act(async () => { fireEvent.click(within(repair).getByRole('button', { name: 'Confirm repair' })); }); expect(wire.repair).toHaveBeenCalledWith('shield');
   });
-  it('resets and focuses explicit Office reviews, restores the opener, and preserves scroll on polling/revisions', () => {
+  it('resets explicit Office reviews, restores list position and opener, and preserves review scroll on polling', () => {
     const view = render(<Office />); const body = screen.getByRole('dialog', { name: 'Company Office' }).querySelector<HTMLDivElement>('.dcl-business-body')!; const opener = screen.getByRole('button', { name: 'Review Cutting Methods' }); body.scrollTop = 180; opener.focus(); fireEvent.click(opener);
     expect(body.scrollTop).toBe(0); expect(screen.getByRole('heading', { name: 'Cutting Methods' })).toHaveFocus(); body.scrollTop = 80;
     wire.data = { ...wire.data!, revision: 8, server_now: '2026-11-01T12:01:00Z' }; view.rerender(<Office data={wire.data} />); expect(body.scrollTop).toBe(80);
-    fireEvent.click(screen.getByRole('button', { name: 'Back' })); expect(body.scrollTop).toBe(0); expect(screen.getByRole('button', { name: 'Review Cutting Methods' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' })); expect(body.scrollTop).toBe(180); expect(screen.getByRole('button', { name: 'Review Cutting Methods' })).toHaveFocus();
   });
 });

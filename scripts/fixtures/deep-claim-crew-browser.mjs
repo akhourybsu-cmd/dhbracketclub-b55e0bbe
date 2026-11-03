@@ -103,10 +103,36 @@ export async function runDeepClaimCrewBrowser(h) {
     }
     checked(label, true, { workers: sample.workers, crews: sample.crews });
   }
-  async function followCard(page, jobId) {
+  const outerScroll = page => page.evaluate(() => ({ x: scrollX, y: scrollY,
+    document: document.documentElement.scrollTop, body: document.body.scrollTop,
+    pane: document.querySelector('.dcl-pane')?.scrollTop ?? null }));
+  async function assertSelectedCard(page, jobId, beforeScroll, label) {
+    const card = page.locator(`[data-dc-expedition="${jobId}"]`);
+    await expect(card).toHaveAttribute('data-dc-followed', 'true');
+    await expect(page.locator('[data-dc-expedition][data-dc-followed="true"]')).toHaveCount(1);
+    const measure = () => card.evaluate(node => {
+      const card = node.getBoundingClientRect(), carousel = node.closest('.dcl-operation-dock');
+      const box = carousel.getBoundingClientRect();
+      const hit = document.elementFromPoint(card.x + card.width / 2, card.y + card.height / 2);
+      return { card: { left: card.left, right: card.right, top: card.top, bottom: card.bottom },
+        carousel: { left: box.left, right: box.right, top: box.top, bottom: box.bottom, scrollLeft: carousel.scrollLeft, scrollTop: carousel.scrollTop },
+        within: card.left >= Math.max(0, box.left) - 1 && card.right <= Math.min(innerWidth, box.right) + 1,
+        reachable: !!hit && (hit === node || node.contains(hit)) };
+    });
+    // The test never scrolls or clicks the selected card to reveal it. Following
+    // through the canvas marker must move only the existing horizontal carousel.
+    await expect.poll(async () => { const result = await measure(); return result.within && result.reachable; }).toBe(true);
+    const geometry = await measure();
+    assert.deepEqual(await outerScroll(page), beforeScroll, 'Following a crew never scrolls the page or another panel');
+    assert.equal(geometry.carousel.scrollTop, 0);
+    checked(`crews-follow-selects-and-reveals-only-the-matching-operation-card-${label}`, true, { job_id: jobId, ...geometry });
+  }
+  async function followCard(page, jobId, label = 'moving-return') {
+    const beforeScroll = await outerScroll(page);
     const before = (await frame(page))?.observed_at ?? -1;
     await page.locator(`[data-dc-expedition="${jobId}"]`).getByRole('button', { name: 'Follow crew', exact: true }).click();
     await expect.poll(async () => (await frame(page))?.followed_job_id).toBe(jobId);
+    await assertSelectedCard(page, jobId, beforeScroll, label);
     return freshFrame(page, before);
   }
   async function assertFollowGeometry(page, label) {
@@ -253,7 +279,7 @@ export async function runDeepClaimCrewBrowser(h) {
         await expect(card.getByText(`Crew ${currentNumbers[job.id]}`, { exact: true })).toBeVisible();
       }
       const first = jobs[0], second = jobs[1];
-      sample = await followCard(page, first.id);
+      sample = await followCard(page, first.id, `card-${label}`);
       assert.equal(sample.followed_job_id, first.id);
       sample = await assertFollowGeometry(page, `card-${label}`);
       assert.ok(sample.workers.some(worker => worker.job_id === first.id && worker.painted));
@@ -265,8 +291,10 @@ export async function runDeepClaimCrewBrowser(h) {
         'The other active crew marker remains inside the actual mine viewport');
       // These are the actual painted marker hit bounds, observed only through
       // the optional callback. A native pointer must hit the production canvas.
+      const markerScroll = await outerScroll(page);
       await page.mouse.click(canvas.x + markerPoint.x, canvas.y + markerPoint.y);
       await expect.poll(async () => (await frame(page))?.followed_job_id).toBe(second.id);
+      await assertSelectedCard(page, second.id, markerScroll, `marker-${label}`);
       await expect(page.getByRole('dialog')).toHaveCount(0);
       sample = await assertFollowGeometry(page, `marker-${label}`);
       assert.ok(sample.workers.some(worker => worker.job_id === second.id && worker.painted));
@@ -291,7 +319,17 @@ export async function runDeepClaimCrewBrowser(h) {
       assert.equal(sample.followed_job_id, null);
       assert.ok(sample.camera.x - manualBefore.camera.x >= .5, 'ArrowRight actually moves the camera after ending follow');
       await expect(page.getByRole('button', { name: /^Stop following/ })).toHaveCount(0);
+      await expect(page.locator('[data-dc-expedition][data-dc-followed="true"]')).toHaveCount(0);
       checked(`crews-manual-camera-navigation-ends-continuous-follow-${label}`, true);
+
+      await followCard(page, first.id, `before-stop-${label}`);
+      const stopScroll = await outerScroll(page);
+      await page.getByRole('button', { name: 'Stop following crew', exact: true }).click();
+      await expect.poll(async () => (await frame(page))?.followed_job_id).toBe(null);
+      await expect(page.getByTestId('crew-tracking')).toHaveCount(0);
+      await expect(page.locator('[data-dc-expedition][data-dc-followed="true"]')).toHaveCount(0);
+      assert.deepEqual(await outerScroll(page), stopScroll);
+      checked(`crews-stop-following-clears-the-operation-highlight-without-page-scroll-${label}`, true);
 
       await h.reloadCompany(page); await h.tab(page, 'Mine');
       sample = await freshFrame(page);

@@ -68,6 +68,39 @@ beforeEach(() => {
 afterEach(() => { cleanup(); frames.clear(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); if (originalVisibility) Object.defineProperty(document, 'visibilityState', originalVisibility); });
 
 describe('Deep Claim actual Page crew header integration', () => {
+  it('keeps the followed operation card visible while only scrolling its carousel, and clears selection on Stop', () => {
+    render(<App />); continueDeepClaimCompany(); frame();
+    const dock = document.querySelector('.dcl-operation-dock') as HTMLDivElement;
+    let offset = 0;
+    dock.scrollTo = vi.fn((options: ScrollToOptions) => { offset = options.left ?? 0; dock.scrollLeft = offset; }) as typeof dock.scrollTo;
+    vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function (this: HTMLElement) {
+      if (this === dock) return { ...box, height: 150, bottom: 150 };
+      if (this.dataset.dcExpedition) {
+        const left = 8 + (this.dataset.dcExpedition === 'crew-1' ? 262 : 0) - offset;
+        return { ...box, x: left, left, right: left + 254, width: 254, height: 140, bottom: 140 };
+      }
+      return this.classList.contains('dc-mine-controls') ? { ...box, y: -50, top: -50, bottom: -4, left: 120, x: 120, width: 200, height: 46 } : box;
+    });
+    document.documentElement.scrollTop = 37;
+    const canvas = screen.getByTestId('deep-claim-canvas');
+    fireEvent.keyDown(canvas, { key: 'c' }); frame();
+    expect(document.querySelector('[data-dc-expedition="crew-0"]')).toHaveAttribute('aria-current', 'true');
+    expect(dock.scrollTo).not.toHaveBeenCalled();
+    fireEvent.keyDown(canvas, { key: 'c' }); frame();
+    const selected = document.querySelector('[data-dc-expedition="crew-1"]') as HTMLElement;
+    expect(selected).toHaveAttribute('data-dc-followed', 'true'); expect(selected).toHaveAttribute('aria-current', 'true');
+    expect(document.querySelector('[data-dc-expedition="crew-0"]')).not.toHaveAttribute('data-dc-followed');
+    expect(dock.scrollTo).toHaveBeenCalledExactlyOnceWith({ left: 237, behavior: 'auto' });
+    expect(selected.getBoundingClientRect().left).toBeGreaterThanOrEqual(0);
+    expect(selected.getBoundingClientRect().right).toBeLessThanOrEqual(320);
+    expect(document.documentElement.scrollTop).toBe(37);
+    fireEvent.click(screen.getByRole('button', { name: 'Stop following crew' })); frame();
+    expect(document.querySelector('[data-dc-followed]')).not.toBeInTheDocument();
+    expect(document.querySelector('.dcl-operation-card[aria-current]')).not.toBeInTheDocument();
+    expect(dock.scrollTo).toHaveBeenCalledTimes(1);
+    document.documentElement.scrollTop = 0;
+  });
+
   it('docks Follow crew in the Page header apart from camera controls, and Stop redraws in reduced motion', () => {
     render(<App />); continueDeepClaimCompany(); frame(); const hud = follow();
     const target = document.querySelector('.dcl-crew-status-target'); expect(target).toBeInTheDocument(); expect(target).toContainElement(hud);

@@ -1,6 +1,16 @@
 # Deep Claim implementation ledger
 
-## Current release — worker staging, animation and tracking
+## Current work — production, workforce and menu recovery
+
+Finished production has image-forward station shortcuts above inventory, ready counts and ready-first queue ordering. Only server-ready orders are collectable. Production quantities use large −/+ controls around the validated input, with minimum/maximum and reviewed-quantity locking. Opening a shortcut does not collect output.
+
+Applicants remain inspectable when housing, credits or connection prevent hiring. Equipment repair reviews expose actual requirements even when unaffordable; confirmation retains ownership, assignment, resource, credit-reserve and revision guards. Training exposes the exact credit shortfall. No purchase is performed merely by inspecting a worker or requirement.
+
+Office Back restores reading position and its visible opener; page/branch changes reveal the first new card within the Office scroller. Notification retries clear stale local errors, preserve fresh failures and prevent duplicate retries. Following a map crew reveals and highlights the corresponding operation card using only horizontal carousel scrolling; Stop and manual camera control clear selection. The map and page stay in place.
+
+The local full Deep Claim run passed 1,046 tests and caught one legacy assertion expecting Office Back to reset scrolling. Its updated assertion preserves the initial review/polling checks and now requires the saved 180px list position and opener focus; the connected Office suites pass 28/28. Crew/card integration passes 37/37, workforce passes 55/55, and industry-related suites pass 52/52. Application types and scoped lint are being finalized. Production build passes in 17.98s; Phase 8 preservation passes. Native QA extends the existing real-SQL workforce/industry journey and crew scenario. Exact-source app CI, screenshots and public deployment verification are pending. The existing economic rules, SQL, terrain versions, atlases, saves and authoritative actions are unchanged; no migration or dependency is required.
+
+## Previous release — worker staging, animation and tracking
 
 Game source: **`3380902f34f7ecc2c2c7cd8575181fd7619c17d2`**. Workers use one renderer-only projection for safe route placement, real facing, distinct crew work positions and specialty assistance. Feet and size blend continuously through the shaft entrance; individual phase offsets break synchronized steps/swings. Depleted extraction sites use cargo/support poses. Shared crew numbers and tappable markers match operation cards. Following is continuous, stops on manual camera control and never focuses hidden future excavation. Stage-deadline refreshes reconcile through the existing authoritative query; no client timer advances gameplay. [Presentation protocol](DEEP_CLAIM_CREW_VISUALS.md).
 

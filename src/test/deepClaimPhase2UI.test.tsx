@@ -86,8 +86,16 @@ describe('Deep Claim workforce operations', () => {
     const equip = screen.getByRole('button', { name: 'Equip Copper Pickaxe' }); expect(equip).toHaveTextContent('Replace slot'); fireEvent.click(equip); expect(state.assignEquipment).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole('button', { name: 'Confirm equipment' })); await waitFor(() => expect(state.assignEquipment).toHaveBeenCalledWith('replacement', 'worker-a'));
   });
   it('requires both cash reserve and listed materials before repairing owned equipment', async () => {
-    const data = phaseTwoSnapshot(); data.equipment = [gear(data)]; data.resources = {}; const view = render(workforce(data)); openWorker('Gear'); expect(screen.getByRole('button', { name: 'Repair Copper Pickaxe' })).toBeDisabled();
-    data.resources = { stone: 2 }; data.company!.cash = 12; view.rerender(workforce(data)); expect(screen.getByRole('button', { name: 'Repair Copper Pickaxe' })).toBeDisabled();
+    const data = phaseTwoSnapshot(); data.equipment = [gear(data)]; data.resources = {}; const view = render(workforce(data)); openWorker('Gear');
+    fireEvent.click(screen.getByRole('button', { name: 'Repair Copper Pickaxe' }));
+    expect(screen.getByRole('dialog', { name: 'Repair Copper Pickaxe' })).toHaveTextContent('Missing: 2 Stone.');
+    expect(screen.getByRole('button', { name: 'Confirm repair' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    data.resources = { stone: 2 }; data.company!.cash = 12; view.rerender(workforce(data));
+    fireEvent.click(screen.getByRole('button', { name: 'Repair Copper Pickaxe' }));
+    expect(screen.getByRole('dialog', { name: 'Repair Copper Pickaxe' })).toHaveTextContent('Need 1 more credit · 2 cr reserve.');
+    expect(screen.getByRole('button', { name: 'Confirm repair' })).toBeDisabled(); expect(state.repairEquipment).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     data.company!.cash = 13; view.rerender(workforce(data)); fireEvent.click(screen.getByRole('button', { name: 'Repair Copper Pickaxe' })); const dialog = screen.getByRole('dialog', { name: 'Repair Copper Pickaxe' }); expect(dialog).toHaveTextContent('Stone'); fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm repair' })); await waitFor(() => expect(state.repairEquipment).toHaveBeenCalledWith('gear-1'));
   });
   it('keeps retirement inside unassigned item details and requires permanent no-refund confirmation', async () => {

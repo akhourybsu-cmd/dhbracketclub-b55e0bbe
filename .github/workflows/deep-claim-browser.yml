@@ -34,7 +34,7 @@ jobs:
     env:
       DEEP_CLAIM_QA_OUTPUT: /tmp/deep-claim-browser-artifacts
       DEEP_CLAIM_QA_VISUAL_MATRIX: '1'
-      DEEP_CLAIM_QA_SECTION: navigation,presentation,moments
+      DEEP_CLAIM_QA_SECTION: navigation,presentation,moments,industry
     steps:
       - uses: actions/checkout@v4
 
@@ -116,6 +116,7 @@ jobs:
             /tmp/deep-claim-browser-artifacts/navigation-*.png
             /tmp/deep-claim-browser-artifacts/operations-*.png
             /tmp/deep-claim-browser-artifacts/crews-*.png
+            /tmp/deep-claim-browser-artifacts/industry-*.png
             /tmp/deep-claim-browser-artifacts/failure-*.png
             /tmp/deep-claim-browser-artifacts/report.json
             /tmp/deep-claim-browser-artifacts/context.json

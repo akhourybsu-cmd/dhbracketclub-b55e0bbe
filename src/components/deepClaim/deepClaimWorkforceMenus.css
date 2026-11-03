@@ -125,3 +125,8 @@
 .dcl-workforce-review{display:flex;flex-direction:column;gap:8px;border:1px solid var(--dcl-brass);border-radius:6px;padding:10px;background:var(--dcl-bg)}
 .dcl-workforce-review>p{margin:0;color:var(--dcl-text);font-size:12px;line-height:1.5}
 .dcl-workforce-review>.dcl-button{min-height:44px}
+
+/* Applicant details remain available while saving for hiring or expanding housing. */
+.dcl-candidate-card>footer>.dcl-applicant-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0}
+.dcl-applicant-actions>.dcl-button{min-width:44px;min-height:44px;padding:7px 10px;font-size:11px}
+@media(max-width:350px){.dcl-candidate-card>footer{gap:7px}.dcl-applicant-actions>.dcl-button{padding-inline:8px}}

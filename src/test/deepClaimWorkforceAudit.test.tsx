@@ -27,6 +27,49 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Deep Claim workforce refresh and request safety', () => {
+  it.each(['housing', 'credits', 'read-only'] as const)('keeps applicant details inspectable when hiring is blocked by %s', blockedBy => {
+    const data = phaseTwoSnapshot(); data.company!.worker_capacity = blockedBy === 'housing' ? 3 : 6;
+    data.company!.cash = blockedBy === 'credits' ? 5 : 180;
+    data.candidates = [{ ...applicant(data), traits: ['ore_eye'] }];
+    const saved = JSON.stringify(data);
+    render(workforce(data, { readOnly: blockedBy === 'read-only' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hire' }));
+    expect(screen.getByRole('button', { name: 'Hire Iris Slate' })).toBeDisabled();
+    const details = screen.getByRole('button', { name: 'View applicant Iris Slate' }); expect(details).toBeEnabled();
+    fireEvent.click(details);
+    const dialog = screen.getByRole('dialog', { name: 'Hire Iris Slate' });
+    expect(dialog).toHaveTextContent('Reveals one additional cell while exploring.');
+    expect(within(dialog).getByRole('button', { name: 'Confirm hire' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm hire' }));
+    expect(actions.hire).not.toHaveBeenCalled(); expect(JSON.stringify(data)).toBe(saved);
+  });
+
+  it('opens repair requirements without funds and rechecks the paid action after resources arrive', async () => {
+    const data = phaseTwoSnapshot(); data.company!.cash = 5; data.resources = { stone: 1 }; data.equipment = [gear(data)];
+    const view = render(workforce(data)); openWorker('Gear');
+    const repair = screen.getByRole('button', { name: 'Repair Copper Pickaxe' }); expect(repair).toBeEnabled(); fireEvent.click(repair);
+    const dialog = screen.getByRole('dialog', { name: 'Repair Copper Pickaxe' });
+    expect(dialog).toHaveTextContent('Missing: 1 Stone.'); expect(dialog).toHaveTextContent('Need 8 more credits · 2 cr reserve.');
+    expect(within(dialog).getByRole('button', { name: 'Confirm repair' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm repair' })); expect(actions.repairEquipment).not.toHaveBeenCalled();
+    const replenished = structuredClone(data); replenished.revision++; replenished.company!.cash = 13; replenished.resources = { stone: 2 };
+    view.rerender(workforce(replenished));
+    expect(within(dialog).getByRole('button', { name: 'Confirm repair' })).toBeDisabled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Review current details' }));
+    expect(within(dialog).getByRole('button', { name: 'Confirm repair' })).toBeEnabled();
+    expect(dialog).not.toHaveTextContent('Missing:');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm repair' }));
+    await waitFor(() => expect(actions.repairEquipment).toHaveBeenCalledExactlyOnceWith('pick-1'));
+  });
+
+  it('explains the exact training credit shortfall without enabling a paid course', () => {
+    const data = phaseTwoSnapshot(); data.company!.cash = 10;
+    render(workforce(data)); openWorker('Training');
+    expect(screen.getByRole('dialog', { name: 'Worker a' })).toHaveTextContent('Need 22 more credits · 2 cr reserve.');
+    expect(screen.getByRole('button', { name: 'Review training' })).toBeDisabled();
+    expect(actions.train).not.toHaveBeenCalled();
+  });
+
   it('requires a fresh review after a training fee changes and confirms the selected course only once', async () => {
     const data = phaseTwoSnapshot();
     const view = render(workforce(data)); openWorker('Training');

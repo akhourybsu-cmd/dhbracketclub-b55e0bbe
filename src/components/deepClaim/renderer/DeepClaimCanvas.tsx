@@ -59,6 +59,7 @@ export interface DeepClaimCanvasProps {
   audio?: DeepClaimAudio;
   focusRequest?: { id: string; point: DeepClaimPoint; scale?: number; jobId?: string } | null;
   onCrewFocus?: (jobId: string) => void;
+  onCrewFollowChange?: (jobId: string | null) => void;
   onWorkerFrame?: (sample: DeepClaimWorkerFrame) => void;
   selectedInfrastructureId?: string | null;
   onDiagnostics?: (sample: DeepClaimCanvasDiagnostics) => void;
@@ -92,7 +93,7 @@ class TerrainTextures {
 }
 
 export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
-  const { controlsTarget, trackingTarget, snapshot, view, selectedTile, onSelectTile, onSelectBuilding, active = true, reducedMotion = false, reducedGraphics = false, audio, focusRequest, selectedInfrastructureId, onDiagnostics, onInteraction, onCrewFocus, onWorkerFrame } = props;
+  const { controlsTarget, trackingTarget, snapshot, view, selectedTile, onSelectTile, onSelectBuilding, active = true, reducedMotion = false, reducedGraphics = false, audio, focusRequest, selectedInfrastructureId, onDiagnostics, onInteraction, onCrewFocus, onCrewFollowChange, onWorkerFrame } = props;
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null);
   const context = useRef<CanvasRenderingContext2D | null>(null);
   const size = useRef<ViewportSize>({ width: 1, height: 1 });
@@ -273,6 +274,8 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     current.invalidate();
   }, []);
   useEffect(() => { invalidate(); }, [followingJobId, invalidate]);
+  const followedActiveJob = followingJobId && snapshot.expeditions.some(job => job.id === followingJobId && job.status === 'active') ? followingJobId : null;
+  useEffect(() => { onCrewFollowChange?.(followedActiveJob); }, [followedActiveJob, onCrewFollowChange]);
   // Measure UI only after React layout, never in the animation loop. Portaled
   // controls outside the viewport (camp) do not reserve underground map space.
   const measureControls = useCallback(() => {

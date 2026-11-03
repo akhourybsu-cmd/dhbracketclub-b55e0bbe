@@ -8,9 +8,10 @@ import { OPERATION_STEPS, operationCardModel } from './operationCard';
 import { DeepClaimPortrait, DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
 import './deepClaimExpeditionCard.css';
 
-export function DeepClaimExpeditionCard({ job, snapshot, now, onRefresh, onCollect, onFollow }: {
+export function DeepClaimExpeditionCard({ job, snapshot, now, onRefresh, onCollect, onFollow, followed = false }: {
   job: DeepClaimExpedition; snapshot: DeepClaimSnapshot; now: number;
   onRefresh: () => void; onCollect: () => void; onFollow: (job: DeepClaimExpedition) => void;
+  followed?: boolean;
 }) {
   const state = operationCardModel(snapshot, job, now), source = state.source;
   const deep = source?.deep_modifiers;
@@ -22,7 +23,7 @@ export function DeepClaimExpeditionCard({ job, snapshot, now, onRefresh, onColle
   const crewNumber = source?.status === 'active' ? projectCrewPresentation(snapshot, now).crews.find(crew => crew.job_id === source.id)?.number : null;
   return <article className="dcl-expedition-card dcl-operation-card"
     data-dc-tutorial={source?.status === 'ready' ? 'jobs-ready' : source?.status === 'active' ? 'jobs-active' : undefined}
-    data-dc-expedition={source?.id} data-dc-crew-number={crewNumber ?? undefined} data-operation-state={source?.status ?? 'unavailable'} data-dc-operation-stage={source?.stage}>
+    data-dc-expedition={source?.id} data-dc-crew-number={crewNumber ?? undefined} data-dc-followed={followed && source?.status === 'active' || undefined} aria-current={followed && source?.status === 'active' ? 'true' : undefined} data-operation-state={source?.status ?? 'unavailable'} data-dc-operation-stage={source?.stage}>
     <header><strong>{state.title}</strong>{crewNumber && <ClaimBadge tone="brass">Crew {crewNumber}</ClaimBadge>}{modifiers && <small className="dcl-expedition-deep" aria-label={`Lift ${deep.lift_discount_percent} percent, heat penalty ${deep.heat_penalty_percent} percent`}><TramFront size={10} aria-hidden="true" />{deep.lift_discount_percent}%<Thermometer size={10} aria-hidden="true" />{deep.heat_penalty_percent}%</small>}<ClaimBadge tone={state.ready ? 'green' : state.canCheckReturn ? 'brass' : 'blue'}>{state.status}</ClaimBadge></header>
     <div className="dcl-operation-crewline">
       <div className="dcl-operation-portraits" role="group" aria-label={crewNames ? `Assigned crew: ${crewNames}` : 'Assigned crew'}>
