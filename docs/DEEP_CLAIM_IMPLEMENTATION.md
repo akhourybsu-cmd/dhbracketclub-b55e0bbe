@@ -15,7 +15,9 @@ The tracking strip occupies the permanent map heading, apart from camera control
 
 No migration, dependency, economic/rules change, atlas replacement or save reset is required. Both original atlases, versioned simulation, server authority and earned terrain remain unchanged. The optional worker-frame observer is local QA only; production aggregate diagnostics remain anonymous. Native verification uses isolated real SQL and emulated viewports rather than physical-device performance or impersonating a production player.
 
-Public release verification is pending for this revision. Expected CSS: `DeepClaimPage-Dag7nwRK.css`, SHA-256 `f9cc5bf665a10299188058ecc078b0755c9b2eb95a8107273effc36610dd3115`. The release manifest also requires crew tracking and existing operation markers plus both unchanged original atlas hashes. The existing large-chunk build advisory remains.
+Published through Lovable deployment **`139593a1-361c-4fd0-9579-baf10085ac65`**, after hosting reported the exact game source ready. Public-host verification succeeded **2026-11-03 18:01:19 UTC** on the first attempt: all seven normal-TLS requests returned HTTP 200. [Public proof](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41689695429), job `126104719461`, receipt artifact `13256152288`. Canonical host: **https://dryhorse.app/**.
+
+Hosted CSS **`DeepClaimPage-Dag7nwRK.css`** matches the tested build exactly: SHA-256 **`f9cc5bf665a10299188058ecc078b0755c9b2eb95a8107273effc36610dd3115`**. All 11 required JS markers and eight CSS selectors are present. Both original atlas hashes match. Hosted game JS is `DeepClaimPage-0KO6x9DK.js`, observed SHA-256 `f44fc1bc1fc75184ffb77f09c0dace4a571f6944f9650857637a36ab4eb3f4f5`; build metadata reports `1793728461338`. The source SHA is release metadata; the public host does not expose a Git SHA. Public proof establishes actual served content, with exact CSS/atlas hashes and new feature markers. The existing large-chunk build advisory remains.
 
 ## Previous release — operation clarity
 
