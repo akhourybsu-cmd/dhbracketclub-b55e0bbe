@@ -17,7 +17,9 @@ Native verification: **478 browser checks passed**, with zero assertion, runtime
 - [Native browser evidence](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41673765695), job `126048748005`; review artifact `13249672164`.
 - Public CSS expected: `DeepClaimPage-Bxrf01vh.css`, SHA-256 `5bc84c89119a607fd5317a64919aece3f81c19d42d5ab0be55305637a029636c`. The release metadata requires the new action names, optional grouping and shallow-pump guidance plus unchanged original atlas hashes.
 
-Publication requested; public-host hash verification is pending. Browser evidence uses isolated actual SQL and emulated viewports, not a production account or physical-device performance measurement.
+Published through Lovable deployment `bc9acc36-5b44-43d3-b8d1-516b0a69b291`. Public-host verification succeeded **2026-11-03 16:33:24 UTC** on the first attempt: all seven normal-TLS requests returned HTTP 200, with exact CSS and both original atlas hashes plus every new JS/CSS marker present. [Public proof](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41675343108), job `126054338766`, receipt artifact `13250362268`. Hosted game JS: `DeepClaimPage-BNQ-rMwR.js`, observed SHA-256 `690b3f802d9417049733414b2df503efac252b45b8f143f8ba7214c5bdc5a91a`. Canonical host: https://dryhorse.app/.
+
+The source SHA is release metadata; the host does not expose a Git SHA. Browser evidence uses isolated actual SQL and emulated viewports, not a production account or physical-device performance measurement. Existing large-chunk build advice remains. No unfinished gameplay or migration is introduced by this pass.
 
 ## Previous release — camp HUD, illustrated ledger and mine controls
 
