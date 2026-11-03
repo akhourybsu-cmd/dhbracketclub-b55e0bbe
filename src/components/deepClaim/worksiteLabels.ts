@@ -5,6 +5,8 @@ const keyOf = (point: DeepClaimPoint) => `${point.x}:${point.y}`;
 /** Display labels use public terrain only. Exact coordinates remain internal IDs. */
 export function worksiteName(point: DeepClaimPoint, mode: DeepClaimMode, tiles: ReadonlyMap<string, DeepClaimTile>): string {
   const tile = tiles.get(keyOf(point));
+  if (tile?.remaining === 0 && mode === 'survey') return 'Scout from here';
+  if (tile?.remaining === 0 && mode === 'infrastructure') return 'Build here';
   if (tile?.material && tile.remaining > 0) return RESOURCE_BY_ID[tile.material].name;
   if (tile?.remaining === 0) return 'Connected passage';
   return mode === 'explore' ? 'New frontier' : 'Unknown ground';

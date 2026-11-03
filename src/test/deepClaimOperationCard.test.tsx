@@ -110,7 +110,7 @@ describe('Deep Claim playable crew operations card', () => {
     expect(screen.queryByRole('button', { name: 'Open haul' })).not.toBeInTheDocument();
     expect(ui.onFollow).not.toHaveBeenCalled(); expect(ui.onCollect).not.toHaveBeenCalled();
   });
-  it.each([['explore', 'Exploration crew', 'Exploring'], ['extract', 'Extraction crew', 'Mining'], ['survey', 'Survey crew', 'Surveying'], ['infrastructure', 'Installation crew', 'Installing']] as const)('names %s work from the authoritative mode', (mode: DeepClaimMode, title, status) => {
+  it.each([['explore', 'Expand tunnels', 'Expanding'], ['extract', 'Mine a deposit', 'Mining'], ['survey', 'Scout the area', 'Scouting'], ['infrastructure', 'Improve the mine', 'Building']] as const)('names %s work from the authoritative mode', (mode: DeepClaimMode, title, status) => {
     const { snapshot, job } = fixture({ mode }); card(snapshot, job);
     expect(screen.getByText(title)).toBeInTheDocument(); expect(screen.getByText(status)).toBeInTheDocument();
   });

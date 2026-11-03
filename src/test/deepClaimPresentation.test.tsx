@@ -81,9 +81,14 @@ describe('Camp settings and guide navigation', () => {
   });
   it('presents one guide chapter at a time and focuses the new page heading', () => {
     render(<Settings />); fireEvent.click(screen.getByRole('button', { name: 'Field guide' })); const guide = screen.getByRole('dialog', { name: 'Field guide' });
-    expect(within(guide).getByRole('heading', { name: 'Exploration' })).toBeInTheDocument(); expect(within(guide).queryByRole('heading', { name: 'Extraction' })).not.toBeInTheDocument();
+    expect(within(guide).getByRole('heading', { name: 'Expand tunnels' })).toBeInTheDocument(); expect(within(guide).queryByRole('heading', { name: 'Mine a deposit' })).not.toBeInTheDocument();
     expect(within(guide).getByRole('button', { name: 'Previous guide page' })).toBeDisabled(); fireEvent.click(within(guide).getByRole('button', { name: 'Next guide page' }));
-    expect(within(guide).getByRole('heading', { name: 'Extraction' })).toHaveFocus(); expect(within(guide).getByRole('status')).toHaveTextContent('Page 2 of 13');
+    expect(within(guide).getByRole('heading', { name: 'Mine a deposit' })).toHaveFocus(); expect(within(guide).getByRole('status')).toHaveTextContent('Page 2 of 13');
+    for (let page = 2; page < 9; page++) fireEvent.click(within(guide).getByRole('button', { name: 'Next guide page' }));
+    expect(within(guide).getByRole('heading', { name: 'Scout and improve' })).toHaveFocus();
+    expect(guide).toHaveTextContent('without digging or bringing back ore or specimens');
+    expect(guide).toHaveTextContent('lasting local protection');
+    expect(guide).toHaveTextContent('return timer stays the same');
   });
 });
 

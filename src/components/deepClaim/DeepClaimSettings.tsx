@@ -79,8 +79,8 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
   }
   const views: { key: 'sound' | 'visuals' | 'updates'; label: string }[] = [{ key: 'sound', label: 'Sound' }, { key: 'visuals', label: 'Visuals' }, ...(business ? [{ key: 'updates' as const, label: 'Updates' }] : [])];
   const chapters = [
-    { title: 'Exploration', text: 'Exploration reveals new ground. Choose a reachable target and a rested crew, then review the estimate before dispatch.' },
-    { title: 'Extraction', text: 'Extraction takes resources from finite, revealed deposits. Grades, crew and camp upgrades affect the estimate; the deposit keeps its remaining supply.' },
+    { title: 'Expand tunnels', text: 'Dig new connected passages and uncover more of the mine. Open routes stay open. Any minerals recovered depend on the ground and crew; a full haul is not guaranteed.' },
+    { title: 'Mine a deposit', text: 'Work a known deposit for its remaining materials. Check the estimated haul and route before dispatch. Deposits are finite and do not refill.' },
     { title: 'Expeditions', text: 'A shift travels, sets up, works, hauls and returns. Wages are paid upfront. Workers have six energy each day and cannot join overlapping crews.' },
     { title: 'Hauling', text: 'Returning cargo stays staged until you collect it into storage. Make space before collecting a large haul or starting another shift.' },
     { title: 'Buildings', text: 'Sell stock for company credits. Upgrade the office, shaft, warehouse and tool station to add crews, depth, storage and equipment.' },
@@ -90,15 +90,15 @@ export function DeepClaimSettings({ audio, visuals, onVisualsChange, onRefresh, 
       { title: 'Production', text: 'Build a Smeltery or Gem Workshop, or craft at the Tool Station. Starting a batch commits real materials and credits. Each station processes in order; three uncollected jobs can be staged across the company.' },
     ] : []),
     ...(field ? [
-      { title: 'Infrastructure', text: 'Surveys reveal nearby ground from a connected passage without extracting ore. Supports, ventilation and pumps reduce the displayed chance of a short setup delay; haul rail improves covered travel. Installations take a real crew, materials and time.' },
-      { title: 'Discoveries', text: 'Confirmed reports explain surveys, completed infrastructure and actual incidents. Crews may recover finite specimens after fully working a deposit. Keep a find, sell it once, or salvage it when every material fits in storage.' },
+      { title: 'Scout and improve', text: 'Scout the area reveals nearby ground without digging or bringing back ore or specimens. Improve the mine uses a crew, materials and a fee to install lasting local protection or rail. Rail leaves more work time within the same shift; the return timer stays the same.' },
+      { title: 'Discoveries', text: 'Reports record scouting, finished improvements and incidents. Fully mining a deposit may recover a specimen. Keep it, sell it once or salvage it when all the materials fit in storage.' },
     ] : []),
     ...(business ? [
       { title: 'Research', text: 'The Company Office keeps research, delivery orders and records together. Paid research completes automatically; its permanent benefit applies to new work. Existing crews and queued batches keep their committed plans.' },
       { title: 'Contracts and milestones', text: 'Trading Post orders consume the complete listed collected stock once for a fixed company payout. Orders do not expire. Recorded milestones can be claimed once, including qualifying work completed before the office opened.' },
       { title: 'Club sharing', text: 'Sharing is off until you choose it in the Office’s Club view. Standings publish your company on all three ranking boards. Showcase sharing displays only the kept finds you select. Project contributions commit real stored materials after your review.' },
     ] : []),
-    ...(deep ? [{ title: 'Ancient Deep', text: 'Deep Cutting Systems research and Mine Shaft level 6 open supported depth to 999m. The powered lift saves travel only on the known, constructed central shaft. Hot mining reduces productive work, not cargo or crew safety. Engineering, installed ventilation and working crew heat shields reduce the penalty. Survey and installation work are unaffected by heat.' }] : []),
+    ...(deep ? [{ title: 'Ancient Deep', text: 'Deep Cutting Systems research and Mine Shaft level 6 open access to 999m. The lift frees work time on the built central shaft without shortening the shift. Engineering, ventilation and working heat shields reduce the mining heat penalty. Scouting and installations are unaffected.' }] : []),
   ];
   const page = Math.min(guidePage, chapters.length - 1);
   useTutorialView('guide_reviewed', guide ? { view: 'field_guide', record_id: `page:${page}` } : null, `field-guide:${guide}:${page}`);

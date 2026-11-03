@@ -3,7 +3,7 @@ export const TUTORIAL_SECTION_INFO:Record<TutorialSectionId,{title:string;descri
  beginner:{title:'The First Descent',description:'Learn the basics with your first short shift.'},
  workforce:{title:'Workforce Management',description:'Choose your people and keep them ready for work.'},
  industry:{title:'Resources & Industry',description:'Store materials, refine them and make better equipment.'},
- field:{title:'Underground Operations',description:'Explore new ground and prepare for deeper work.'},
+ field:{title:'Underground Operations',description:'Choose mining work or prepare a site.'},
  business:{title:'Business Development',description:'Choose improvements that help your company grow.'},
  club:{title:'DH Club',description:'Share accomplishments or work on projects together.'},
  settings:{title:'Settings & Game Management',description:'Adjust the game and leave your crew working safely.'},
@@ -49,10 +49,10 @@ export const TUTORIAL_LESSONS:TutorialLesson[]=[
   "Drag or use the map buttons to move around. The worksite list also lets you choose a site.",
  ],[step('enter',"Open Mine","Open Mine to see your tunnels.",'nav-mine',tab('mine'),ui('tab_opened',{tab:'mine'})),step('control',"Move the view","Use a map button to zoom or focus.",'map-controls',tab('mine'),ui('map_interacted')),step('inspect',"Choose a site","Choose a revealed site or use the worksite list.",'map-viewport',tab('mine'),ui('worksite_inspected'))]),
  lesson('beginner.worksite',5,"Choose a Worksite","Choose where your crew will work.",'mara',[
-  "Explore opens new ground. Extract mines a deposit you already know.",
+  "Choose Mine a deposit for ore from a known seam. Expand tunnels digs new routes and may uncover more deposits.",
   "The shallow starter coal seam offers one 30-second first shift per company.",
   "If you have used it, choose another site or review the example without spending.",
- ],[step('difference',"Explore or Extract?","Extract works a known deposit; Explore opens new ground. Keep First shift selected.",'dispatch-mode',{type:'dispatch',mode:'extract'},ack),step('planner',"Open the shift plan","Open the planner for an available worksite.",'dispatch-plan',{type:'dispatch',mode:'extract'},ui('dispatch_opened'))]),
+ ],[step('difference',"Ore or new tunnels?","Choose Mine a deposit for the starter coal seam. Keep First shift selected.",'dispatch-mode',{type:'dispatch',mode:'extract'},ack),step('planner',"Open the shift plan","Open the planner for an available worksite.",'dispatch-plan',{type:'dispatch',mode:'extract'},ui('dispatch_opened'))]),
  lesson('beginner.plan',6,"Plan Your First Shift","Choose a crew and check the shift cost.",'tessa',[
   "Select workers with enough energy. The 30-second first shift takes one energy each.",
   "Quick takes 20 minutes and one energy per worker; Standard takes 60 minutes and two energy, and Deep takes 180 minutes and three energy.",
@@ -71,7 +71,7 @@ export const TUTORIAL_LESSONS:TutorialLesson[]=[
  lesson('beginner.haul',9,"Collect Your Haul","Move the returned haul into storage.",'tessa',[
   "Open haul shows what the crew brought home. Collect into storage puts it in the Warehouse.",
   "Collect what fits. Remaining cargo stays safe while you sell, use materials or upgrade storage.",
-  "Exploration sometimes returns without ore. You can review the example if there is nothing to collect.",
+  "Expanding tunnels can leave useful new routes without an ore haul. You can review the example if there is nothing to collect.",
  ],[step('cargo',"Open the haul","Tap Open haul on the returned shift.",'jobs-ready',tab('surface','returns'),fact('return_ready')),step('collected',"Put it in storage","Tap Collect into storage to put the haul away.",'haul-collect',tab('surface','returns'),fact('cargo_collected'))],fact('cargo_collected')),
  lesson('beginner.sale',10,"Sell or Save","Learn how to sell a little of your stock.",'tessa',[
   "Sell your stock, process it, make equipment or save it for later.",
@@ -143,21 +143,21 @@ export const TUTORIAL_LESSONS:TutorialLesson[]=[
   "Orders have one to ten batches, with three uncollected orders company-wide. Owned and unfinished equipment share a 48-item limit.",
   "Upgrades and Processing research speed up future orders. Started orders keep their ingredients, price and timing.",
  ],[step('queue',"Check the queue","Open Workshop to check each order’s progress.",'production-queue',tab('stores','workshop'),ui('production_inspected')),step('limits',"Review a batch","Open a recipe to check its batch and queue limits.",'production-review',tab('stores','workshop'),ack)],fact('production_collected'),'schema2'),
- lesson('field.exploration',1,'Geological Exploration',"Open a route into new ground.",'ivo',[
-  "Explore opens new ground as the crew works outward from connected tunnels.",
-  "Revealed caves become passages when connected. Finding open air does not guarantee ore or stone.",
-  "Existing ground stays unchanged. New nickel and sulfur seams can appear in new areas below 608m.",
- ],[step('frontier',"Open Explore","Choose Explore to inspect a worksite and route.",'dispatch-mode',{type:'dispatch',mode:'explore'},ui('dispatch_opened',{mode:'explore'})),step('finite',"Check the ground","Compare known deposits with unexplored ground.",'field-operations',tab('mine'),ack)],event('expedition_confirmed',{mode:'explore'})),
- lesson('field.survey',2,'Surveying',"Learn about the ground without mining it.",'ivo',[
-  "Survey reveals ground around a connected, excavated passage. Its preset, Geology and Ore Eye affect coverage.",
-  "Surveys cost wages and energy but return no ore. Check the radius and tile limit before dispatch.",
-  "The report arrives when the crew returns. There is no empty haul to collect.",
- ],[step('survey',"Choose Survey","Open Survey at a connected, excavated passage.",'dispatch-mode',{type:'dispatch',mode:'survey'},ui('dispatch_opened',{mode:'survey'})),step('quote',"Review the survey","Tap Review dispatch to check coverage and cost.",'dispatch-quote',{type:'dispatch',mode:'survey'},ui('quote_reviewed'))],fact('survey_completed'),'schema3'),
- lesson('field.infrastructure',3,'Underground Infrastructure',"Prepare the mine with lasting improvements.",'mara',[
-  "Supports help unstable rock, ventilation helps gas and heat, pumps help water, and rail speeds up covered routes.",
-  "Building needs a connected, excavated site, crew, materials and fee. Presets set the grade; Engineering improves coverage and strength.",
-  "Only finished installations help. The strongest covering protection applies, and rail improves only the route it covers.",
- ],[step('project',"Choose a project","Choose an Infrastructure project for a connected passage.",'field-infrastructure',{type:'dispatch',mode:'infrastructure'},ui('dispatch_opened',{mode:'infrastructure'})),step('cost',"Review the installation","Tap Review dispatch to check materials, fee and coverage.",'dispatch-quote',{type:'dispatch',mode:'infrastructure'},ui('quote_reviewed'))],fact('infrastructure_installed'),'schema3'),
+ lesson('field.exploration',1,'Expand tunnels',"Dig routes that open more of your mine.",'ivo',[
+  "Send the crew to dig outward from connected passages. New tunnels stay open for future crews.",
+  "Crews can collect minerals they uncover, but an empty cave may leave a useful route without an ore haul.",
+  "Need a particular material? Choose Mine a deposit to work a known seam instead.",
+ ],[step('frontier',"Expand tunnels","Choose Expand tunnels to inspect a worksite and route.",'dispatch-mode',{type:'dispatch',mode:'explore'},ui('dispatch_opened',{mode:'explore'})),step('finite',"Check the ground","Compare known deposits with unexplored ground.",'field-operations',tab('mine'),ack)],event('expedition_confirmed',{mode:'explore'})),
+ lesson('field.survey',2,'Scout the area',"Look ahead before you choose where to dig.",'ivo',[
+  "Scouting reveals nearby ground from a connected passage. It does not dig tunnels or remove deposits.",
+  "Use it to spot deposits and plan routes. Scouting is optional, costs wages and energy, and returns no ore or specimens.",
+  "Check the coverage before dispatch. Geology and Ore Eye help reveal more ground; the report arrives when the crew returns.",
+ ],[step('survey',"Scout the area","Choose Scout the area at a connected passage.",'dispatch-mode',{type:'dispatch',mode:'survey'},ui('dispatch_opened',{mode:'survey'})),step('quote',"Review the scouting plan","Tap Review dispatch to check coverage and cost.",'dispatch-quote',{type:'dispatch',mode:'survey'},ui('quote_reviewed'))],fact('survey_completed'),'schema3'),
+ lesson('field.infrastructure',3,'Improve the mine',"Build lasting help for future shifts.",'mara',[
+  "Build supports, ventilation, pumps or rail along a connected passage. Each installation uses a crew, materials and a fee.",
+  "Supports, ventilation and pumps reduce local setup delays. Ventilation also helps with deep heat. Only finished structures help future shifts in their coverage area.",
+  "Rail cuts travel along the route it covers, leaving more time to work within the same shift. It does not bring the return timer forward.",
+ ],[step('project',"Choose an improvement","Choose Improve the mine, then a project for a connected passage.",'field-infrastructure',{type:'dispatch',mode:'infrastructure'},ui('dispatch_opened',{mode:'infrastructure'})),step('cost',"Review the installation","Tap Review dispatch to check materials, fee and coverage.",'dispatch-quote',{type:'dispatch',mode:'infrastructure'},ui('quote_reviewed'))],fact('infrastructure_installed'),'schema3'),
  lesson('field.hazards',4,'Operational Hazards',"Prepare for delays and heat before going deeper.",'gus',[
   "Rockfall, gas and water can delay setup. These incidents do not kill workers, destroy cargo or take extra energy.",
   "At 600–999m, heat reduces how much mining or exploration a shift can do. Engineering, ventilation and working heat shields reduce that loss.",
@@ -165,12 +165,12 @@ export const TUTORIAL_LESSONS:TutorialLesson[]=[
  ],[step('conditions',"Check the conditions","Check the plan’s risk, protection, heat and lift effects.",'dispatch-conditions',{type:'dispatch'},ui('quote_reviewed')),step('safety',"Compare the effects","Compare setup delays with the heat penalty on useful work.",'dispatch-conditions',{type:'dispatch'},ack)],undefined,'schema3'),
  lesson('field.reports',5,'Expedition Reports',"See what happened during a shift.",'ivo',[
   "Reports describe work your crew has completed or incidents it has encountered.",
-  "Incidents appear after setup. Survey and construction reports arrive on return. Estimates are not completed reports.",
+  "Incidents appear after setup. Scouting and improvement reports arrive on return. Estimates are not completed reports.",
   "The log shows recent activity. Older work still counts toward lifetime company records.",
  ],[step('log',"Open Reports","Open Log, then Reports.",'field-log',tab('log','reports'),ui('tab_opened',{tab:'log'})),step('report',"Read a report","Open a report to see what happened.",'field-reports',tab('log','reports'),ack)],undefined,'schema3'),
  lesson('field.discoveries',6,'Rare Discoveries',"Decide what to do with a rare find.",'ivo',[
   "Finishing a deposit may uncover a geode, fossil, journal, rail relic, crystal cluster or meteorite fragment, brought home after the shift.",
-  "Finds can be common, fine, exceptional or flawless. Surveying reveals ground but does not collect specimens.",
+  "Finds can be common, fine, exceptional or flawless. Scout the area reveals ground but brings back no specimens.",
   "Keep saves it, Sell pays its listed value, and Salvage exchanges it for materials if everything fits. These choices are permanent.",
  ],[step('finds',"Open your finds","Open Log, then Finds.",'field-finds',tab('log','finds'),ui('tab_opened',{tab:'log'})),step('choice',"Compare your options","Inspect a specimen before choosing Keep, Sell or Salvage.",'discovery-review',tab('log','finds'),ack)],fact('discovery_decided'),'schema3'),
  lesson('business.office',1,'The Company Office',"Find the right part of the Company Office.",'gus',[

@@ -1,0 +1,25 @@
+.dcl-intent-picker{display:grid;grid-column:1/-1;gap:10px;min-width:0}
+.dcl-intent-group{display:grid;gap:6px;min-width:0}
+.dcl-intent-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;color:var(--dcl-text);font-size:11px;font-weight:800;line-height:1.35}
+.dcl-intent-heading>small{color:var(--dcl-muted);font-size:10px;font-weight:500}
+.dcl-intent-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+.dcl-intent-picker .dcl-intent-choice{position:relative;display:grid;grid-template-rows:auto 1fr;align-content:start;align-items:start;justify-items:start;gap:7px;min-width:0;min-height:90px;padding:8px;text-align:left;border:1px solid var(--dcl-line);border-radius:6px;background:var(--dcl-panel);color:var(--dcl-text);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 10%,transparent),0 3px 0 var(--dcl-shadow);cursor:pointer;transition:border-color .14s ease,background-color .14s ease,transform .14s ease,box-shadow .14s ease}
+.dcl-intent-title-row{display:flex;align-items:center;gap:6px;min-height:32px;width:100%;min-width:0}
+.dcl-intent-art{display:block;flex:0 0 auto;width:32px;height:24px;overflow:hidden;border:1px solid var(--dcl-line);border-radius:3px;background:#263630;box-shadow:inset 0 2px 0 var(--dcl-shadow);transition:transform .14s ease}
+.dcl-intent-art>svg{display:block;width:100%;height:100%;image-rendering:pixelated}
+.dcl-intent-title-row>strong{min-width:0;font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:800;line-height:1.25;letter-spacing:-.025em;overflow-wrap:anywhere}
+.dcl-intent-picker[data-selectable=true] .dcl-intent-title-row{padding-right:15px}
+.dcl-intent-description{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.dcl-intent-outcome{align-self:end;display:block;width:100%;max-width:100%;padding-top:6px;border-top:1px solid var(--dcl-line);color:var(--dcl-muted);font-size:10px;font-weight:500;line-height:1.35}
+.dcl-intent-check{position:absolute;top:8px;right:7px;display:grid;place-items:center;width:15px;height:15px;border:1px solid var(--dcl-line);border-radius:3px;color:transparent;background:var(--dcl-bg);transition:background-color .14s ease,border-color .14s ease,color .14s ease}
+.dcl-intent-picker .dcl-intent-choice[aria-pressed=true]{border-color:var(--dcl-brass);background:var(--dcl-card);box-shadow:inset 0 -3px 0 var(--dcl-brass),inset 0 1px 0 color-mix(in srgb,var(--dcl-text) 12%,transparent),0 3px 0 var(--dcl-shadow)}
+.dcl-intent-choice[aria-pressed=true] .dcl-intent-check{border-color:var(--dcl-brass);color:var(--dcl-bg);background:var(--dcl-brass)}
+.dcl-intent-choice[aria-pressed=true] .dcl-intent-outcome{color:var(--dcl-brass)}
+.dcl-intent-picker .dcl-intent-choice:focus-visible{outline:3px solid var(--dcl-brass);outline-offset:3px}
+.dcl-intent-picker .dcl-intent-choice:disabled{opacity:.55;cursor:not-allowed}
+.dcl-intent-picker .dcl-intent-choice:not(:disabled):active{transform:translateY(2px);box-shadow:inset 0 1px 0 var(--dcl-shadow),0 1px 0 var(--dcl-shadow)}
+@media(hover:hover) and (pointer:fine){.dcl-intent-picker .dcl-intent-choice:not(:disabled):hover{border-color:var(--dcl-brass)}.dcl-intent-choice:not(:disabled):hover .dcl-intent-art{transform:translateY(-2px)}}
+@media(min-width:560px){.dcl-intent-picker .dcl-intent-choice{padding:9px}.dcl-intent-title-row{gap:8px}.dcl-intent-art{width:48px;height:30px}.dcl-intent-title-row>strong{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.dcl-intent-picker *{transition:none!important;animation:none!important;transform:none!important}}
+.deep-claim[data-reduced-motion=true] .dcl-intent-picker *,.dcl-dialog[data-reduced-motion=true] .dcl-intent-picker *{transition:none!important;animation:none!important;transform:none!important}
+@media(forced-colors:active){.dcl-intent-choice[aria-pressed=true] .dcl-intent-check{background:Highlight;color:HighlightText}.dcl-intent-picker .dcl-intent-choice[aria-pressed=true]{outline:2px solid Highlight;outline-offset:-4px}}

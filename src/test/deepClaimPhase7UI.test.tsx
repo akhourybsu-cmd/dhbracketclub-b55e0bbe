@@ -74,11 +74,11 @@ describe('Known-ground navigation and worksite stability', () => {
   });
   it('retains a legal deep target when changing modes and clears only the old quote and browsing filter', async () => {
     render(<Dispatch mode="survey" />); fireEvent.change(screen.getByRole('searchbox', { name: 'Depth or material' }), { target: { value: '800m' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Infrastructure' })); expect(within(screen.getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '48:800'); expect(screen.getByRole('searchbox', { name: 'Depth or material' })).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Improve the mine' })); expect(within(screen.getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '48:800'); expect(screen.getByRole('searchbox', { name: 'Depth or material' })).toHaveValue('');
     fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' })); await waitFor(() => expect(wire.preview).toHaveBeenCalledWith(expect.objectContaining({ mode: 'infrastructure', target_x: 48, target_y: 800 })));
   });
   it('chooses a legal deposit when the selected passage cannot be used for extraction', () => {
-    render(<Dispatch mode="survey" />); fireEvent.click(screen.getByRole('button', { name: 'Extraction' })); expect(within(screen.getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '47:800');
+    render(<Dispatch mode="survey" />); fireEvent.click(screen.getByRole('button', { name: 'Mine a deposit' })); expect(within(screen.getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '47:800');
   });
   it('filters public worksite cards while pinning the shallow selection and excluding ineligible mineral cells', () => {
     render(<DeepClaimDispatch snapshot={wire.data!} initialMode="survey" initialTarget={{ x: 48, y: 1 }} onClose={wire.noop} readOnly={false} busy={false} preview={wire.preview} dispatch={wire.dispatch} />); fireEvent.change(screen.getByRole('searchbox', { name: 'Depth or material' }), { target: { value: '800m' } });

@@ -165,9 +165,9 @@ describe('Deep Claim first play and dispatch confirmation', () => {
   it('gives a first-time company a directly valid 30-second extraction, only after a server quote', async () => {
     render(<Harness />); continueDeepClaimCompany();
     fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
-    const dialog = screen.getByRole('dialog', { name: 'Extraction' });
+    const dialog = screen.getByRole('dialog', { name: 'Mine a deposit' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Extraction' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Mine a deposit' }));
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).toBeChecked();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(wire.dispatch).not.toHaveBeenCalled();
@@ -190,8 +190,8 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     expect(await screen.findByTestId('deep-claim-canvas')).toBeInTheDocument();
   });
   it('keeps normal exploration distinct from the accelerated first shift and clears edited quotes', async () => {
-    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Explore' }));
-    const dialog = screen.getByRole('dialog', { name: 'Exploration' });
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Expand tunnels' }));
+    const dialog = screen.getByRole('dialog', { name: 'Expand tunnels' });
     expect(within(dialog).getByRole('checkbox', { name: /First shift/ })).not.toBeChecked();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     await within(dialog).findByRole('button', { name: 'Dispatch crew' });
@@ -200,7 +200,7 @@ describe('Deep Claim first play and dispatch confirmation', () => {
     expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Review dispatch' })).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('checkbox', { name: /First shift/ }));
-    expect(screen.getByRole('dialog', { name: 'Extraction' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Mine a deposit' })).toBeInTheDocument();
     expect(within(within(dialog).getByRole('group', { name: 'Expedition worksite' })).getByRole('button', { pressed: true })).toHaveAttribute('data-dc-worksite', '47:1');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     await waitFor(() => expect(wire.preview).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'extract', target_x: 47, target_y: 1, duration_minutes: 20, tutorial: true })));
@@ -208,14 +208,14 @@ describe('Deep Claim first play and dispatch confirmation', () => {
   it('shows authoritative blocked reasons and never exposes a confirm action for them', async () => {
     wire.preview.mockResolvedValue(quote({ allowed: false, reasons: ['Crew slots are occupied.'] }));
     render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
-    const dialog = screen.getByRole('dialog', { name: 'Extraction' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
+    const dialog = screen.getByRole('dialog', { name: 'Mine a deposit' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(await within(dialog).findByText('Crew slots are occupied.')).toBeInTheDocument();
     expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument(); expect(wire.dispatch).not.toHaveBeenCalled();
   });
   it('accepts a newer authoritative preview but invalidates it if the cached company later advances', async () => {
     wire.preview.mockResolvedValue(quote({ company_revision: 2 }));
     const view = render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
-    const dialog = screen.getByRole('dialog', { name: 'Extraction' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
+    const dialog = screen.getByRole('dialog', { name: 'Mine a deposit' }); fireEvent.click(within(dialog).getByRole('button', { name: 'Review dispatch' }));
     expect(await within(dialog).findByRole('button', { name: 'Dispatch crew' })).toBeInTheDocument();
     wire.data = { ...wire.data!, revision: 3 }; view.rerender(<Harness />);
     expect(within(dialog).getByText(/Your camp changed/)).toBeInTheDocument(); expect(within(dialog).queryByRole('button', { name: 'Dispatch crew' })).not.toBeInTheDocument();
@@ -264,7 +264,7 @@ describe('Deep Claim authoritative hauls and recovery', () => {
     wire.upgrade.mockImplementation(async () => { wire.data = { ...wire.data!, revision: 3, buildings: wire.data!.buildings.map(item => item.key === 'mine_office' ? { ...item, level: 2, effect: buildingEffect(item.key, 2) } : item) }; return wire.data; });
     fireEvent.click(within(building).getByRole('button', { name: 'Confirm upgrade' }));
     const reward = await screen.findByRole('dialog', { name: 'Mine Office upgraded.' }); fireEvent.click(within(reward).getByRole('button', { name: 'Back to the claim' }));
-    expect(screen.getByRole('button', { name: 'Explore' })).toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Review camp upgrades' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Expand tunnels' })).toBeInTheDocument(); expect(screen.queryByRole('button', { name: 'Review camp upgrades' })).not.toBeInTheDocument();
   });
   it.each([false, true])('keeps retained ore while choosing the next cue from actual sale history: %s', sold => {
     wire.data!.company!.tutorial_used = true;

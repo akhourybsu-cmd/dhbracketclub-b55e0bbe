@@ -10,7 +10,8 @@ export async function runPhase7Browser(h) {
   async function shaft(){await h.clearDialogs(page);await h.tab(page,'Surface');await page.getByRole('button',{name:'Open camp buildings',exact:true}).click();await page.getByRole('dialog',{name:'Buildings',exact:true}).getByRole('button',{name:/Mine Shaft/}).click();return page.getByRole('dialog',{name:'Mine Shaft',exact:true});}
   async function plan(mode,point,{confirm=false}={}){
     const dialog=await h.operationPlan(page,mode,{...point,review:false,workers:['Mara Flint']});
-    await dialog.getByRole('group',{name:'Shift duration',exact:true}).getByRole('button',{name:/Standard/}).click();
+    const hour=dialog.getByRole('group',{name:'Shift duration',exact:true}).locator('[data-dc-duration="60"]');
+    await hour.click();await expect(hour).toHaveAttribute('aria-pressed','true');
     await dialog.getByRole('button',{name:'Review dispatch',exact:true}).click();
     await expect(dialog.getByRole('region',{name:'Heat and lift modifiers',exact:true})).toBeVisible();
     await expect(dialog.getByRole('button',{name:'Dispatch crew',exact:true})).toBeEnabled();

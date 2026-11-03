@@ -1,6 +1,17 @@
 # Deep Claim implementation ledger
 
-## Current release — camp HUD, illustrated ledger and mine controls
+## Operation clarity — mining and optional preparation
+
+The four existing operations have distinct purposes. Their shared illustrated selector now presents **Expand tunnels** and **Mine a deposit** under Mining, with **Scout the area** and **Improve the mine** under optional Planning & improvements. Field operations and dispatch use the same action names, original pixel vignettes, accessible descriptions, selected/focus states and reduced-motion behavior. Crew cards, tutorial dialogue, practice, help and next-shift recovery use the same vocabulary.
+
+- Frontier work opens routes and may bring ore; deposit work brings finite materials home. Scouting explicitly brings no cargo and leaves the ground unmined. The selected crew/duration shows only currently unknown public cells, bounded by the real survey rules. Visible/pinned site counts are memoized across parent clock ticks.
+- Construction explains its local, lasting effect on future shifts. Advisory warnings cover shallow pumps/ventilation/supports, existing stronger coverage, zero present delay risk and rail travel limits. A warning does not override a valid server quote or prevent intentional future preparation. Rails leave more work time inside the same shift; they do not promise earlier returns or extra cargo.
+- Worksite headings describe each task. Scouting durations show coverage choices; construction durations show installation grades. Only construction quotes show project fees. Actual fees/materials, stale-quote guards, crew recovery, saved actions and all canonical mode IDs remain authoritative and unchanged.
+- Audit and rationale: [operation clarity](DEEP_CLAIM_OPERATIONS_AUDIT.md). No migration, dependency, ruleset, economic change, atlas replacement or save reset.
+
+Local verification: **234 test files / 2,473 tests passed** in the final full unit run; application TypeScript, scoped ESLint, production build and Phase 8 preservation passed. The build retains its existing large-chunk advisory. Native browser and public-host evidence are pending; publication has not yet been verified for this revision.
+
+## Previous release — camp HUD, illustrated ledger and mine controls
 
 Game source: **`1c30d57ecad4708083cdd541915f63d0c0f51af1`**. This follow-up to `d41c4ebf` improves the existing game without a migration, dependency, rules/catalog, world-generation, balance, atlas or save reset.
 

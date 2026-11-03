@@ -211,6 +211,8 @@ Audio settings use `dh:deep-claim:audio:v1:<encoded-user-id>`. Graphics/motion p
 
 ## Attribution and future replacement
 
+The operation selector adds four original inline pixel vignettes in `DeepClaimOperationPicker.tsx`: frontier pickaxe/passages, mineral cart, field map/compass and braced worksite. Each uses a 64×40 logical SVG viewBox, integer geometry and the existing warm earth/brass/forest palette. Compact UI frames preserve the illustration's aspect ratio. These are decorative action illustrations, not previews of generated terrain or promised discoveries. Names, benefit text and selection indicators carry their meaning independently of art/color. Hover/press movement honors reduced motion; no new atlas, downloaded image, audio or engine is introduced.
+
 The original inline SVGs, source-authored pixel primitives, pack details and written score are project artwork. Synthesized notes and deterministic noise use no third-party recording. Any later external font, image, texture, animation or recorded audio must be listed with its source and license before shipping. Do not describe generated source primitives as commissioned painting or an untracked download as original.
 
 A future pack must preserve stable asset IDs, logical dimensions, worker-state semantics and building-level references so art upgrades do not invalidate saved companies. Additional animation, recorded music and broader authored scenes can replace pieces incrementally after visual, accessibility and hardware review; game mechanics remain independent of the painter.

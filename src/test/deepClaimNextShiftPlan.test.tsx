@@ -67,7 +67,7 @@ describe('Deep Claim next-shift planning', () => {
   it('does not extract an exhausted deposit or an isolated, unreachable mineral', () => {
     const data = mine(); data.world!.tiles.find(tile => tile.x === 47 && tile.y === 1)!.remaining = 0;
     data.world!.tiles.push({ x: 30, y: 40, terrain: 'stone', material: 'coal', remaining: 100, initial_amount: 100 });
-    expect(deriveNextShiftPlan(data, data.expeditions[0])).toEqual({ plan: null, reasons: ['Explore to find another workable deposit.'] });
+    expect(deriveNextShiftPlan(data, data.expeditions[0])).toEqual({ plan: null, reasons: ['Expand tunnels to find another workable deposit.'] });
   });
   it('keeps exploration as exploration and chooses only a connected frontier', () => {
     const source = returned({ mode: 'explore' }), data = mine(source); data.world!.tiles.find(tile => tile.x === 47 && tile.y === 1)!.remaining = 0;

@@ -62,7 +62,7 @@ export function deriveNextShiftPlan(snapshot: DeepClaimSnapshot, previous: DeepC
   const target = targets.find(point => samePoint(point, source.target))
     ?? (source.mode === 'extract' && sourceMaterial ? orderedTargets.find(point => tiles.get(`${point.x}:${point.y}`)?.material === sourceMaterial) : undefined)
     ?? orderedTargets[0];
-  if (!target) reasons.push(source.mode === 'extract' ? 'Explore to find another workable deposit.' : 'No connected frontier is available.');
+  if (!target) reasons.push(source.mode === 'extract' ? 'Expand tunnels to find another workable deposit.' : 'No connected frontier is available.');
   if (reasons.length || !target) return { plan: null, reasons };
 
   return {

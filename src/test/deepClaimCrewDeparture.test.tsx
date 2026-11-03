@@ -21,7 +21,7 @@ describe('Deep Claim confirmed crew departure', () => {
     const before = structuredClone({ source, workers: data.workers });
     const ui = setup({ job: source, workers: [...data.workers, first] });
     expect(screen.getByRole('status', { name: 'Crew departure' })).toHaveTextContent('Shift underway');
-    expect(screen.getByText('Extraction · 1m · 30s')).toBeInTheDocument();
+    expect(screen.getByText('Mine a deposit · 1m · 30s')).toBeInTheDocument();
     expect(screen.getAllByRole('img', { name: first.name })).toHaveLength(1);
     expect(screen.queryByText(data.workers[1].name)).not.toBeInTheDocument();
     expect(ui.container.querySelector('[data-dc-departure]')).toHaveAttribute('data-dc-departure-stage', 'setup');

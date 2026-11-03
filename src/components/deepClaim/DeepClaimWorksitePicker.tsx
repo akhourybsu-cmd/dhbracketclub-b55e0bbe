@@ -1,12 +1,14 @@
 import { useId, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Search } from 'lucide-react';
-import type { DeepClaimMode, DeepClaimPoint, DeepClaimTile, DeepClaimWorld } from '@/lib/deepClaim/types';
+import type { DeepClaimDuration, DeepClaimMode, DeepClaimPoint, DeepClaimTile, DeepClaimWorker, DeepClaimWorld } from '@/lib/deepClaim/types';
+import { operationAdvice } from '@/lib/deepClaim/operationAdvice';
 import { RESOURCE_ART, FRONTIER_PALETTE } from './renderer/artManifest';
 import { DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
 import { ClaimButton } from './DeepClaimPrimitives';
 import { worksiteBranch, worksiteName } from './worksiteLabels';
 
 const PAGE_SIZE = 4;
+const NO_WORKERS: DeepClaimWorker[] = [];
 const keyOf = (point: DeepClaimPoint) => `${point.x}:${point.y}`;
 const same = (a: DeepClaimPoint | null, b: DeepClaimPoint) => a?.x === b.x && a.y === b.y;
 
@@ -27,9 +29,10 @@ function WorksiteArt({ point, tiles }: { point: DeepClaimPoint; tiles: ReadonlyM
   </span>;
 }
 
-export function DeepClaimWorksitePicker({ world, sites, selected, mode, disabled, onSelect }: {
+export function DeepClaimWorksitePicker({ world, sites, selected, mode, disabled, onSelect, surveyWorkers = NO_WORKERS, minutes = 20 }: {
   world: DeepClaimWorld | null; sites: DeepClaimPoint[]; selected: DeepClaimPoint | null; mode: DeepClaimMode;
   disabled: boolean; onSelect: (point: DeepClaimPoint) => void;
+  surveyWorkers?: DeepClaimWorker[]; minutes?: DeepClaimDuration;
 }) {
   const id = useId();
   const [search, setSearch] = useState('');
@@ -44,25 +47,33 @@ export function DeepClaimWorksitePicker({ world, sites, selected, mode, disabled
   }, [sites, search, mode, tiles]);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pages - 1);
-  const visible = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const visible = useMemo(() => filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE), [filtered, currentPage]);
   const pinned = selected && !visible.some(point => same(selected, point)) ? selected : null;
+  // Parent display clocks tick every second. Recount only when the disclosed
+  // map, visible sites or chosen survey plan changes, never for a clock tick.
+  const surveyCounts = useMemo(() => new Map(mode === 'survey'
+    ? (pinned ? [pinned, ...visible] : visible).map(point => [keyOf(point), operationAdvice({ mode, target: point, world, workers: surveyWorkers, minutes }).unknownCount])
+    : []), [mode, pinned, visible, world, surveyWorkers, minutes]);
   function card(point: DeepClaimPoint) {
     const chosen = same(selected, point), tile = tiles.get(keyOf(point));
     const name = worksiteName(point, mode, tiles), branch = worksiteBranch(point);
+    const unseen = surveyCounts.get(keyOf(point));
+    const benefit = unseen !== undefined ? unseen ? `${unseen} unseen ${unseen === 1 ? 'tile' : 'tiles'}` : 'Already mapped'
+      : tile?.material && tile.remaining > 0 ? `${tile.remaining.toLocaleString()} left` : mode === 'infrastructure' ? 'Local future shifts' : tile?.remaining === 0 ? 'Open passage' : 'Opens new ground';
     return <button type="button" className="dcl-worksite" key={keyOf(point)} data-dc-worksite={keyOf(point)} aria-pressed={chosen}
-      aria-label={`${name}, ${point.y}m deep, ${branch}`} disabled={disabled} onClick={() => { if (!disabled) onSelect(point); }}>
+      aria-label={`${name}, ${point.y}m deep, ${branch}, ${benefit}`} disabled={disabled} onClick={() => { if (!disabled) onSelect(point); }}>
       <WorksiteArt point={point} tiles={tiles} />
       <span className="dcl-site-copy"><strong>{name}</strong><small>{point.y}m · {branch}</small>
-        <span>{tile?.material && tile.remaining > 0 ? `${tile.remaining.toLocaleString()} left` : tile?.remaining === 0 ? 'Open passage' : 'Unexplored'}</span></span>
+        <span>{benefit}</span></span>
       {chosen && <Check className="dcl-site-check" size={14} aria-hidden="true" />}
     </button>;
   }
   return <section className="dcl-worksites" role="group" aria-label="Expedition worksite" data-dc-tutorial="dispatch-target">
-    <header><h3>Worksite</h3><span>{sites.length} {sites.length === 1 ? 'site' : 'sites'}</span></header>
+    <header><h3>{mode === 'extract' ? 'Choose a deposit' : mode === 'explore' ? 'Choose a tunnel frontier' : mode === 'survey' ? 'Scout from' : 'Build at'}</h3><span>{sites.length} {sites.length === 1 ? 'site' : 'sites'}</span></header>
     {sites.length > PAGE_SIZE && <label className="dcl-site-search" htmlFor={id}><Search size={16} aria-hidden="true" /><span className="sr-only">Depth or material</span><input id={id} type="search" aria-label="Depth or material" placeholder="Material or depth" value={search} disabled={disabled} onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>}
     {pinned && <div className="dcl-site-pinned"><span>Selected</span>{card(pinned)}</div>}
     <div className="dcl-worksite-grid">{visible.map(card)}</div>
-    {!sites.length ? <p className="dcl-note">{mode === 'extract' ? 'Explore to find a deposit.' : 'No connected worksite.'}</p> : !filtered.length && <p className="dcl-note" role="status">No matching sites</p>}
+    {!sites.length ? <p className="dcl-note">{mode === 'extract' ? 'Expand tunnels to reach a deposit.' : 'No connected worksite.'}</p> : !filtered.length && <p className="dcl-note" role="status">No matching sites</p>}
     {sites.length > PAGE_SIZE && <div className="dcl-site-pagination" role="group" aria-label="Worksite pages">
       <ClaimButton className="is-small" aria-label="Previous worksite page" disabled={disabled || currentPage === 0} onClick={() => setPage(currentPage - 1)}><ArrowLeft size={16} aria-hidden="true" /></ClaimButton>
       <span aria-live="polite">{filtered.length ? `${currentPage * PAGE_SIZE + 1}–${Math.min(filtered.length, (currentPage + 1) * PAGE_SIZE)} / ${filtered.length}` : '0 sites'}</span>

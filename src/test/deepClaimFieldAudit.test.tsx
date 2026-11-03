@@ -67,9 +67,9 @@ describe('Deep Claim dispatch crew recovery', () => {
   it('preserves the chosen crew but blocks a longer shift when a worker needs more energy', async () => {
     const snapshot = phaseThreeSnapshot(); snapshot.workers[0].energy = 1;
     render(<Planner snapshot={snapshot} />);
-    fireEvent.click(screen.getByRole('button', { name: /Deep.*180 min/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Thorough.*180 min/ }));
     expect(screen.getByRole('button', { name: 'Review dispatch' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Worker a needs 3 energy for this shift.');
+    expect(screen.getByRole('status', { name: 'Crew availability' })).toHaveTextContent('Worker a needs 3 energy for this shift.');
     fireEvent.click(screen.getByRole('button', { name: 'Change crew' }));
     expect(screen.getByRole('checkbox', { name: 'Send Worker a' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Send Worker a' })).toBeEnabled();
@@ -85,7 +85,7 @@ describe('Deep Claim dispatch crew recovery', () => {
     const updated = { ...snapshot, revision: 4, workers: snapshot.workers.map((worker, index) => index ? worker : { ...worker, assigned_job_id: 'another-shift' }) };
     view.rerender(<Planner snapshot={updated} />);
     expect(screen.getByRole('button', { name: 'Review dispatch' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Worker a is already on a shift.');
+    expect(screen.getByRole('status', { name: 'Crew availability' })).toHaveTextContent('Worker a is already on a shift.');
     fireEvent.click(screen.getByRole('button', { name: 'Change crew' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Send Worker a' }));
     fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' }));

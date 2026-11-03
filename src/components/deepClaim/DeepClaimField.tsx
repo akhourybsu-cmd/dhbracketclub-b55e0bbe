@@ -1,15 +1,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, BookOpen, Coins, Compass, FileText, HardHat, MapPin, Radar, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Coins, FileText, HardHat, MapPin, Radar, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { RESOURCE_BY_ID, resourceTotal } from '@/lib/deepClaim/catalog';
 import type { DeepClaimDiscoveryChoice, DeepClaimMode, DeepClaimPoint, DeepClaimResources, DeepClaimSnapshot } from '@/lib/deepClaim/types';
 import { DeepClaimDiscoveryIcon, DeepClaimInfrastructureIcon, DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
 import { DeepClaimLog } from './DeepClaimPanels';
 import { claimTargets } from './display';
-import { CLAIM_OPERATION_NAMES, CLAIM_PROJECT_NAMES } from './fieldLabels';
+import { CLAIM_PROJECT_NAMES } from './fieldLabels';
 import { worksiteBranch } from './worksiteLabels';
 import { ClaimBadge, ClaimButton, ClaimDialog, ClaimEmpty } from './DeepClaimPrimitives';
 import { TutorialHelp, TutorialToolbar, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
 import './deepClaimDepthPicker.css';
+import { DeepClaimOperationPicker } from './DeepClaimOperationPicker';
 
 export type ClaimFieldView = 'finds' | 'reports' | 'ledger';
 
@@ -61,10 +62,10 @@ export function DeepClaimOperations({ snapshot, point, onClose, onDispatch, onLo
       {depthPages > 1 && <div className="dcl-depth-pages" role="group" aria-label="Depth pages"><ClaimButton className="is-small" aria-label="Previous depth page" disabled={shownDepthPage === 0} onClick={() => setDepthPage(shownDepthPage - 1)}>Previous</ClaimButton><span aria-live="polite">{shownDepthPage + 1} / {depthPages}</span><ClaimButton className="is-small" aria-label="Next depth page" disabled={shownDepthPage === depthPages - 1} onClick={() => setDepthPage(shownDepthPage + 1)}>Next</ClaimButton></div>}
       <ClaimButton disabled={!knownDepth} onClick={() => { if (knownDepth) onLocate(knownDepth[1]); }}><MapPin size={14} aria-hidden="true" />Locate known depth</ClaimButton>
     </section>
-    <div className="dcl-field-operation-grid" data-dc-tutorial="field-operations" role="group" aria-label="Mine operations">{(['explore', 'extract', 'survey', 'infrastructure'] as const).map(mode => { const Icon = mode === 'survey' ? Radar : mode === 'infrastructure' ? HardHat : Compass; return <button type="button" key={mode} onClick={() => onDispatch(mode, point)}><Icon size={21} aria-hidden="true" /><strong>{CLAIM_OPERATION_NAMES[mode]}</strong><small>{mode === 'explore' ? 'Reveal new ground' : mode === 'extract' ? 'Mine a known deposit' : mode === 'survey' ? 'Reveal without mining' : 'Build mine infrastructure'}</small></button>; })}</div>
+    <div data-dc-tutorial="field-operations"><DeepClaimOperationPicker onChange={mode => onDispatch(mode, point)} includeSupport={snapshot.schema_version >= 3} /></div>
     {!!snapshot.discovery_summary?.pending && <ClaimButton primary onClick={onFinds}><Sparkles size={15} aria-hidden="true" />Review finds · {snapshot.discovery_summary.pending}</ClaimButton>}
     {!!snapshot.field_reports?.length && <ClaimButton onClick={onReports}><BookOpen size={15} aria-hidden="true" />Read field reports</ClaimButton>}
-    <section className="dcl-installed-list" data-dc-tutorial="field-infrastructure" aria-label="Mine infrastructure"><h3>Infrastructure <small>{structures.length}/{capacity}</small></h3>{selected && <p className="dcl-note">Selected: {CLAIM_PROJECT_NAMES[selected.key]} · grade {selected.grade} · {selected.status}. Radius {selected.radius}; {selected.strength}{selected.key === 'rail' ? '% bonus on covered route segments' : ' percentage points protection at covered worksites'}.</p>}{structures.length ? structures.slice(shownProjectPage * 6, shownProjectPage * 6 + 6).map(item => <button type="button" key={item.id} onClick={() => onLocate(item)} aria-label={`Locate ${CLAIM_PROJECT_NAMES[item.key]} at x${item.x}, ${item.y} metres`}><DeepClaimInfrastructureIcon infrastructureKey={item.key} grade={item.grade} decorative /><span><strong>{CLAIM_PROJECT_NAMES[item.key]}</strong><small>Grade {item.grade} · {item.y}m · radius {item.radius}</small></span><ClaimBadge tone={item.status === 'installed' ? 'green' : 'blue'}>{item.status}</ClaimBadge></button>) : <p className="dcl-note">No infrastructure installed. Choose Infrastructure to plan a project.</p>}{structures.length > 6 && <FieldPagination page={shownProjectPage} total={structures.length} label="projects" onPage={setProjectPage} />}</section>
+    <section className="dcl-installed-list" data-dc-tutorial="field-infrastructure" aria-label="Mine infrastructure"><h3>Infrastructure <small>{structures.length}/{capacity}</small></h3>{selected && <p className="dcl-note">Selected: {CLAIM_PROJECT_NAMES[selected.key]} · grade {selected.grade} · {selected.status}. Radius {selected.radius}; {selected.strength}{selected.key === 'rail' ? '% bonus on covered route segments' : ' percentage points protection at covered worksites'}.</p>}{structures.length ? structures.slice(shownProjectPage * 6, shownProjectPage * 6 + 6).map(item => <button type="button" key={item.id} onClick={() => onLocate(item)} aria-label={`Locate ${CLAIM_PROJECT_NAMES[item.key]} at x${item.x}, ${item.y} metres`}><DeepClaimInfrastructureIcon infrastructureKey={item.key} grade={item.grade} decorative /><span><strong>{CLAIM_PROJECT_NAMES[item.key]}</strong><small>Grade {item.grade} · {item.y}m · radius {item.radius}</small></span><ClaimBadge tone={item.status === 'installed' ? 'green' : 'blue'}>{item.status}</ClaimBadge></button>) : <p className="dcl-note">No improvements yet. Choose Improve the mine to plan a project.</p>}{structures.length > 6 && <FieldPagination page={shownProjectPage} total={structures.length} label="projects" onPage={setProjectPage} />}</section>
   </ClaimDialog>;
 }
 

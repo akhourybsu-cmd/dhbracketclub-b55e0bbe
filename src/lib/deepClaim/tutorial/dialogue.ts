@@ -28,7 +28,7 @@ const beginnerIntros:Record<string,Draft[]>={
  'beginner.camp':[{speaker:'gus',text:"This is your camp. The office, shaft, warehouse and Tool Station are where you’ll start."},{speaker:'tessa',expression:'amused',text:"You can open any building to see what it does. Looking won’t cost you anything."}],
  'beginner.crew':[{speaker:'gus',expression:'proud',text:"Let’s meet the crew. Their skills will help you decide who to send."},{speaker:'mara',text:"We each have a specialty. Open our files and I’ll show you what to look for."}],
  'beginner.mine':[{speaker:'ivo',expression:'excited',text:"The mine map fills in as we explore. For now, have a look at the ground we already know."},{speaker:'gus',expression:'amused',text:"Use the worksite list if that’s easier than moving around the map."}],
- 'beginner.worksite':[{speaker:'mara',text:"Explore opens new ground. Extract sends us to a deposit we’ve already found."}],
+ 'beginner.worksite':[{speaker:'mara',text:"Need coal? Choose Mine a deposit. Use Expand tunnels when you want us to open a new route."}],
  'beginner.plan':[{speaker:'tessa',text:"Pick the crew, then check the wages and energy before you send them."}],
  'beginner.descent':[{speaker:'gus',expression:'skeptical',text:"The plan’s ready. Choose Dispatch crew when you’re happy with the cost."}],
  'beginner.waiting':[{speaker:'ivo',text:"We’ll travel down, set up, work the site and bring the load back."},{speaker:'gus',expression:'amused',text:"You can look around camp or close the game. The crew will carry on."}],

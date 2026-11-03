@@ -132,9 +132,9 @@ export async function runDeepClaimSessionBrowser(h) {
       && Object.entries(ready.cargo).every(([key, amount]) => snapshot.resources[key] === amount));
     const beforePlan = economic(snapshot), callsBeforePlan = await h.command(page, 'calls');
     await reward.getByRole('button', { name: 'Plan next shift', exact: true }).click();
-    const nextPlan = page.getByRole('dialog', { name: /^(?:Extraction|Exploration)$/ }); await expect(nextPlan).toBeVisible();
+    const nextPlan = page.getByRole('dialog', { name: /^(?:Mine a deposit|Expand tunnels)$/ }); await expect(nextPlan).toBeVisible();
     await expect(nextPlan.getByRole('checkbox', { name: /First shift/ })).toHaveCount(0);
-    await expect(nextPlan.getByRole('group', { name: 'Shift duration', exact: true }).getByRole('button', { name: /Quick/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(nextPlan.getByRole('group', { name: 'Shift duration', exact: true }).locator('[data-dc-duration="20"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(nextPlan.getByRole('region', { name: 'Verified dispatch estimate', exact: true })).toHaveCount(0);
     const selected = nextPlan.getByRole('group', { name: 'Expedition worksite', exact: true }).getByRole('button', { pressed: true });
     const point = (await selected.getAttribute('data-dc-worksite')).split(':').map(Number);

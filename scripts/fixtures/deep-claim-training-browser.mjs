@@ -178,7 +178,7 @@ export async function runDeepClaimCampaignBrowser(h) {
       h.checked(`training-readable-action-${keep?'keep':'sale'}-${step}`,readable);
     }
     async function quote(client){
-      const dialog=client.getByRole('dialog',{name:'Extraction',exact:true});await h.expect(dialog).toBeVisible();
+      const dialog=client.getByRole('dialog',{name:'Mine a deposit',exact:true});await h.expect(dialog).toBeVisible();
       const review=dialog.getByRole('button',{name:'Review dispatch',exact:true});
       if(await review.count()){
         const induction=dialog.locator('[data-dc-tutorial="dispatch-induction"] input');await h.expect(induction).toBeChecked();

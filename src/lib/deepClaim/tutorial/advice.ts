@@ -20,7 +20,7 @@ export function getGusAdvice(snapshot:DeepClaimSnapshot|null,context?:TutorialCo
  if(source.business?.research.some(order=>order.status==='active'))add({id:'research_running',priority:60,title:'Research is underway',text:'You can leave this running while you manage the camp. Once it’s complete, the benefit will apply to new work.',expression:'neutral',lesson_id:'business.research',open:{type:'office',view:'research'}});
  const knownDeep=source.world?.tiles.some(tile=>tile.y>=600)===true;
  if(knownDeep)add({id:'deep_heat',priority:55,title:'Check the heat before going deeper',text:'Check the expedition estimate. Engineering and ventilation help with the heat, as do shields that are equipped and in good condition.',expression:'concerned',lesson_id:'field.hazards',open:{type:'dispatch'}});
- add({id:'next_decision',priority:10,title:'Plan your next shift',text:'Start with a worker who has energy and a worksite you can reach. If you’re saving for something, check its cost before selling useful materials.',expression:'amused',lesson_id:'business.strategy',open:{type:'journal',lesson_id:'business.strategy'}});
+ add({id:'next_decision',priority:10,title:'Plan your next shift',text:'Choose Mine a deposit for ore, or Expand tunnels for new ground. Scout the area and Improve the mine can wait until you need them.',expression:'amused',lesson_id:'business.strategy',open:{type:'journal',lesson_id:'business.strategy'}});
  return advice.sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id)).slice(0,6);
 }
 export const getAdvice=getGusAdvice;

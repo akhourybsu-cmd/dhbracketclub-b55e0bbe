@@ -164,7 +164,7 @@ async function dismissTutorial(page) {
   if (await dialogue.isVisible()) await dialogue.click();
   // Wait for the guide's actual navigation before pausing it. The caption can
   // mount one frame before the planner; an early exit would race that opening.
-  const planner = page.getByRole('dialog', { name: 'Extraction', exact: true });
+  const planner = page.getByRole('dialog', { name: 'Mine a deposit', exact: true });
   await expect(planner).toBeVisible();
   await exit.click();
   await expect(page.getByRole('region', { name: 'Tutorial guidance', exact: true })).toHaveCount(0);
@@ -293,7 +293,7 @@ async function chooseWorksite(dialog, x, y, { keyboard = false } = {}) {
 async function intro(page, { confirm = true } = {}) {
   await tab(page, 'Surface');
   await page.getByRole('button', { name: 'Start first shift · 30s', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Extraction' });
+  const dialog = page.getByRole('dialog', { name: 'Mine a deposit' });
   await expect(dialog.getByRole('group', { name: 'Expedition worksite', exact: true }).locator('[data-dc-worksite="47:1"]')).toHaveAttribute('aria-pressed', 'true');
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await expect(dialog.getByRole('region', { name: 'Verified dispatch estimate' })).toBeVisible();
@@ -584,7 +584,7 @@ async function reliability() {
   await expect(sibling.getByRole('tablist', { name: 'Company views' })).toBeVisible();
   await intro(page, { confirm: false });
   await command(page, 'fail_next', { name: 'dc_dispatch_operation', after_commit: true });
-  await page.getByRole('dialog', { name: 'Extraction' }).getByRole('button', { name: 'Dispatch crew', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Mine a deposit' }).getByRole('button', { name: 'Dispatch crew', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: 'Confirm sync', exact: true })).toBeVisible();
@@ -658,15 +658,21 @@ async function selectCrew(dialog, names) {
   await dialog.getByRole('button', { name: 'Done', exact: true }).click();
 }
 async function operationPlan(page, mode, { x, y, infrastructure = 'supports', review = true, workers } = {}) {
+  // Fixture callers may retain descriptive legacy names. Select by the stable
+  // public mode identity; the member-facing names follow the current game UI.
+  const identities = { Exploration: 'explore', Extraction: 'extract', Survey: 'survey', Infrastructure: 'infrastructure',
+    'Expand tunnels': 'explore', 'Mine a deposit': 'extract', 'Scout the area': 'survey', 'Improve the mine': 'infrastructure',
+    explore: 'explore', extract: 'extract', survey: 'survey', infrastructure: 'infrastructure' };
+  const names = { explore: 'Expand tunnels', extract: 'Mine a deposit', survey: 'Scout the area', infrastructure: 'Improve the mine' };
+  const identity = identities[mode]; assert.ok(identity, `Unknown operation fixture mode: ${mode}`);
   await clearDialogs(page); await tab(page, 'Mine');
   await page.getByRole('button', { name: 'Open mine operations', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Underground operations', exact: true }).getByRole('group', { name: 'Mine operations', exact: true }).getByRole('button', { name: new RegExp(`^${mode}(?:\\s|$)`) }).click();
-  const title = mode === 'Survey' ? 'Survey' : mode === 'Infrastructure' ? 'Infrastructure' : mode === 'Extraction' ? 'Extraction' : 'Exploration';
-  const dialog = page.getByRole('dialog', { name: title, exact: true });
+  await page.getByRole('dialog', { name: 'Underground operations', exact: true }).getByRole('group', { name: 'Expedition type', exact: true }).locator(`[data-dc-operation="${identity}"]`).click();
+  const dialog = page.getByRole('dialog', { name: names[identity], exact: true });
   const worksite = dialog.getByRole('group', { name: 'Expedition worksite', exact: true });
   assert.ok(await worksite.locator('[data-dc-worksite]').count() <= 5, 'Worksite cards must stay bounded, including a selected map target');
   if (x !== undefined) await chooseWorksite(dialog, x, y);
-  if (mode === 'Infrastructure') {
+  if (identity === 'infrastructure') {
     const project = dialog.getByRole('group', { name: 'Infrastructure project', exact: true }).locator(`[data-dc-project="${infrastructure}"]`);
     await project.click(); await expect(project).toHaveAttribute('aria-pressed', 'true');
   }
@@ -679,8 +685,8 @@ async function operationPlan(page, mode, { x, y, infrastructure = 'supports', re
 }
 async function harvest(page, x, y, { workers } = {}) {
   await clearDialogs(page); await tab(page, 'Surface');
-  await page.getByRole('button', { name: 'Extract', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Extraction', exact: true });
+  await page.getByRole('button', { name: 'Mine a deposit', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Mine a deposit', exact: true });
   await chooseWorksite(dialog, x, y);
   if (workers) await selectCrew(dialog, workers);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
@@ -1058,8 +1064,8 @@ async function field() {
     && JSON.stringify(snapshot.discovery_summary) === JSON.stringify(beforeSurvey.discovery_summary));
   // The authored quartz seam is genuinely finite. Recover its specimen only
   // after the real server operation returns, then reconcile a lost sale ACK.
-  await tab(page, 'Surface'); await page.getByRole('button', { name: 'Extract', exact: true }).click();
-  dialog = page.getByRole('dialog', { name: 'Extraction', exact: true });
+  await tab(page, 'Surface'); await page.getByRole('button', { name: 'Mine a deposit', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'Mine a deposit', exact: true });
   await chooseWorksite(dialog, 47, 3);
   await dialog.getByRole('button', { name: 'Review dispatch', exact: true }).click();
   await dialog.getByRole('button', { name: 'Dispatch crew', exact: true }).click(); await expect(dialog).toHaveCount(0);
@@ -1280,7 +1286,7 @@ async function main() {
   if (sections.has('social')) await runPhase5Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
   if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
   if (sections.has('deep')) await runPhase7Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, processRecipe, workerFile, expect, assert, actors: DEEP_CLAIM_ACTORS });
-  const training = { setup, pageFor, go, continueCompany, reloadCompany, dismissTutorial, found, intro, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, workerFile, officeView, settle, visualCases, expect, assert, actors: DEEP_CLAIM_ACTORS };
+  const training = { setup, pageFor, go, continueCompany, reloadCompany, dismissTutorial, found, intro, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, workerFile, officeView, operationPlan, settle, visualCases, expect, assert, actors: DEEP_CLAIM_ACTORS };
   if (sections.has('session')) await runDeepClaimSessionBrowser(training);
   if (sections.has('moments')) await runDeepClaimMomentsBrowser(training);
   if (sections.has('navigation')) await runDeepClaimNavigationBrowser(training);

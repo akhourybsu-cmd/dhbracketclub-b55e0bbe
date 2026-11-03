@@ -114,6 +114,7 @@ jobs:
           name: deep-claim-review-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             /tmp/deep-claim-browser-artifacts/navigation-*.png
+            /tmp/deep-claim-browser-artifacts/operations-*.png
             /tmp/deep-claim-browser-artifacts/failure-*.png
             /tmp/deep-claim-browser-artifacts/report.json
             /tmp/deep-claim-browser-artifacts/context.json
