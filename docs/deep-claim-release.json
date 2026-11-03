@@ -1,9 +1,9 @@
 {
   "url": "https://dryhorse.app/",
-  "source_sha": "3380902f34f7ecc2c2c7cd8575181fd7619c17d2",
+  "source_sha": "b29bba192e824121cd58ba58938cf6987d2cca77",
   "css": {
-    "filename": "DeepClaimPage-Dag7nwRK.css",
-    "sha256": "f9cc5bf665a10299188058ecc078b0755c9b2eb95a8107273effc36610dd3115"
+    "filename": "DeepClaimPage-BM730to2.css",
+    "sha256": "af9be057e1f20af00363d5d17c9ed966e94b2eb1f7d606c97786bc42e854ce45"
   },
   "js_markers": [
     "Expand tunnels",
@@ -16,7 +16,12 @@
     "Stop following crew",
     "Crew tracking",
     "dc-crew-tracking",
-    "Updating crew position"
+    "Updating crew position",
+    "Open finished ",
+    "Increase production batches",
+    "Decrease production batches",
+    "Retry notification preferences",
+    "data-dc-followed"
   ],
   "css_styles": [
     ".dcl-intent-picker",
@@ -26,7 +31,11 @@
     ".dcl-activity-control-row",
     ".dc-crew-tracking",
     ".dc-crew-tracking.is-docked",
-    ".dcl-crew-status-target"
+    ".dcl-crew-status-target",
+    ".dcl-finished-production",
+    ".dcl-industry-batch-stepper",
+    ".dcl-applicant-actions",
+    ".dcl-operation-card[data-dc-followed=true]"
   ],
   "atlases": [
     {

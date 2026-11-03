@@ -1,6 +1,6 @@
 # Deep Claim implementation ledger
 
-## Current work — production, workforce and menu recovery
+## Current release — production, workforce and menu recovery
 
 Finished production has image-forward station shortcuts above inventory, ready counts and ready-first queue ordering. Only server-ready orders are collectable. Production quantities use large −/+ controls around the validated input, with minimum/maximum and reviewed-quantity locking. Opening a shortcut does not collect output.
 
@@ -8,7 +8,13 @@ Applicants remain inspectable when housing, credits or connection prevent hiring
 
 Office Back restores reading position and its visible opener; page/branch changes reveal the first new card within the Office scroller. Notification retries clear stale local errors, preserve fresh failures and prevent duplicate retries. Following a map crew reveals and highlights the corresponding operation card using only horizontal carousel scrolling; Stop and manual camera control clear selection. The map and page stay in place.
 
-The local full Deep Claim run passed 1,046 tests and caught one legacy assertion expecting Office Back to reset scrolling. Its updated assertion preserves the initial review/polling checks and now requires the saved 180px list position and opener focus; the connected Office suites pass 28/28. Crew/card integration passes 37/37, workforce passes 55/55, and industry-related suites pass 52/52. Application types and scoped lint are being finalized. Production build passes in 17.98s; Phase 8 preservation passes. Native QA extends the existing real-SQL workforce/industry journey and crew scenario. Exact-source app CI, screenshots and public deployment verification are pending. The existing economic rules, SQL, terrain versions, atlases, saves and authoritative actions are unchanged; no migration or dependency is required.
+Game source: **`b29bba192e824121cd58ba58938cf6987d2cca77`**. [Exact-source CI](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41711051573), job `126178871954`, passes **242 files / 2,599 tests**, actual application types, member lint and production build **20.27s**. [Native browser](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41711051412), job `126178870460`, passes **637 checks**, zero assertion/runtime/console errors; review artifact `13267574005`.
+
+Native coverage retains seven phone/landscape/desktop, theme and reduced-motion cases. It also runs the actual SQL industry journey: full-house applicant inspection without spending, paid hiring and repair, owned production inputs, touch batch limits/review locks, reload and lost-acknowledgment recovery, server-ready shortcuts without premature collection, and real output collection. Crew marker/card selection, horizontal-only scrolling, physical card hit-testing, manual cancellation and Stop all pass. Phone inventory, batch controls, applicant details and both themed selected-crew frames were visually reviewed. The existing original pixel artwork remains consistent.
+
+Local production build passes in **17.98s**, with clean scoped lint and Phase 8 preservation. The broad local run passed 1,046 cases and exposed one legacy Back expectation; it now checks the preserved 180px reading position and opener focus. The connected Office suites pass 28/28 and exact-source app CI includes the corrected expectation. Other focused checks pass crew/card37, workforce55 and industry52 cases. The existing economic rules, SQL, terrain versions, atlases, saves and authoritative actions are unchanged; no migration or dependency is required. Browser evidence uses isolated real SQL and emulated viewports, not production-player impersonation or physical-device measurement. The existing large-chunk build advisory remains.
+
+Public publication verification is pending. Expected CSS: `DeepClaimPage-BM730to2.css`, SHA-256 `af9be057e1f20af00363d5d17c9ed966e94b2eb1f7d606c97786bc42e854ce45`. Release metadata pins the new production/applicant/selection markers and all previous crew/operation markers, plus both original atlas hashes.
 
 ## Previous release — worker staging, animation and tracking
 
