@@ -1,6 +1,27 @@
 # Deep Claim implementation ledger
 
-## Current release — connected mobile company loop
+## Current release — crews and confirmed game moments
+
+This presentation release builds on clean main `90762a0efc95c9f6fe76e1c6e9e00a6266500e86`. It connects existing dispatch, mining, collection and building growth with clearer game moments. No SQL migration, economic rule, hidden terrain, atlas, dependency or rendering-engine change is introduced.
+
+- Operations cards identify the actual assigned workers, known destination and five server-declared stages. Follow crew uses the existing public projection and a revealed grid location/known approach. Returned crews expose View worksite. Expired active clocks still require Check return; only confirmed ready cargo exposes Open haul. Cards keep a bounded 140px portrait / 122px short-wide footprint and 44px action controls.
+- A short, skippable original pixel-lift departure follows only a new active expedition in the resolved dispatch snapshot, matching company, revision, input and worker assignments. Previews, unchanged retries, reloads and unrelated updates cannot trigger it. It does not trap focus or award anything; the active tutorial and other dialogs retain priority. Timers clean up on dismissal, identity change and unmount. Reduced motion uses a static 900ms presentation instead of the normal 1,800ms sequence.
+- Central collection receipts use original pixel crate/ledger art, real transferred quantities, actual equipment IDs and the remaining staged amount. Cash is labelled Company balance. Building receipts compare the actual owned before/after levels with the returned effect. The effect appears once. New construction/upgrades retain their existing sound settings; no new audio engine or continuous render loop is introduced.
+- The existing Back to the claim and Plan next shift actions, tutorial markers, transaction guards, company goals, return reports and public world remain connected. Failed or unconfirmed actions create no success ceremony. Saved-action recovery remains generic when exact before/after evidence is unavailable.
+
+| Verification | Evidence |
+|---|---|
+| Full app suite | **220 files / 2,289 tests passed** in 141.29 seconds; `/tmp/dc-feel-unit.log`. |
+| Final focused tests | **83 tests across five suites passed** in 11.10 seconds; `/tmp/dc-feel-focused-final.log`. Includes the final one-copy effect check, source-matching departure, public crew focus, unchanged/foreign updates, official stage/ready handling, timer cleanup, actual receipts and existing Page integration. |
+| Broad native regression | **192 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-edXWFG/report.json`. Seven screen/theme/motion cases cover real paid dispatch/departure, public Follow crew, actual cargo collection, paid Warehouse 1→2 upgrade, existing goals/next-shift flow and native 30-second sale/Keep tutorial paths. |
+| Final native moments | **56 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-HGnpwI/report.json`. Five layouts/themes/motion cases repeat genuine collection and paid upgrade with the duplicate effect removed. The full earlier 21-frame moments matrix received an independent visual review; final phone upgrade/collection frames retain readable artwork and visible controls. |
+| Source checks | Explicit application-project TypeScript, scoped ESLint, CSS parsing and whitespace checks passed. Phase 8 preserves all 27 frozen gameplay sources, catalogs, SQL and both original atlases; `/tmp/dc-feel-preservation.log`. |
+| Production build | Passed in **23.21 seconds**; `DeepClaimPage-To7_uI7G.js` 810.22 KB / 194.58 KB gzip and `DeepClaimPage-J42TEcz_.css` 271.07 KB / 41.44 KB gzip. The existing large-chunk advisory remains. |
+| Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-JOhw7c/report.json`. This verifies the production-build authentication boundary and PWA bootstrap without claiming physical-device installation. |
+
+Native scenarios use production components and authoritative isolated PostgreSQL; no live member company, stock or achievement is changed. Publication and public-asset verification are pending. No SQL migration is required.
+
+## Previous release — connected mobile company loop
 
 This release builds on clean main `9a69b714ba9f948a10a66d8fa926d6765248c7e9`. The [mobile comparison and design record](DEEP_CLAIM_MOBILE_LOOP.md) explains the reference review and the implemented loop: choose an investment, confirm work, inspect a factual return, collect and plan again. Existing company systems supply all progress and rewards. No SQL migration, mining/economic balance, atlas, dependency or global-service change is introduced.
 

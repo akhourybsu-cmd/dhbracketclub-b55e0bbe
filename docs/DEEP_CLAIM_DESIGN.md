@@ -6,6 +6,8 @@ This document records the design and integration contracts through Phase 7, the 
 
 ## Player promise and first session
 
+Confirmed game moments now connect management to the living mine. An operations card identifies the assigned workers and the current server stage, and Follow crew focuses their disclosed position or known approach. A brief skippable lift departure follows a newly confirmed dispatch. Collection and building improvements receive central illustrated receipts using actual transferred goods and owned before/after levels. Timers, previews, reloads and unchanged retries do not invent these events. The active tutorial keeps priority over departure presentation.
+
 The [mobile session loop](DEEP_CLAIM_MOBILE_LOOP.md) connects the existing systems with a pinned company investment, a factual return report and an editable next-shift draft after collection. It uses existing authoritative progression and reviewed actions. The comparison review, exact scope and device-preference limitations are documented there; release verification remains in the implementation ledger.
 
 The core loop is **plan → dispatch → return → collect → sell or invest → explore deeper**. Decisions should be understandable in a short visit: which workers to spend energy on, whether to reveal ground or extract a known deposit, how long to commit the crew, and whether the next cash purchase should improve storage, tools, access or capacity.

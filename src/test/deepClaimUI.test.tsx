@@ -16,7 +16,7 @@ vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false
 vi.mock('@/components/deepClaim/menu/DeepClaimMenuBackdrop', () => ({ DeepClaimMenuBackdrop: () => null }));
 vi.mock('@/hooks/useDeepClaimTutorial', async () => ({ useDeepClaimTutorial: (await import('./fixtures/deepClaimTutorialMock')).useDeepClaimTutorialMock }));
 vi.mock('@/hooks/useDeepClaim', () => ({ useDeepClaim: () => { wire.hook(); return { data: wire.data, loading: false, refreshing: false, error: null, busy: false, readOnly: wire.readOnly, pendingAction: wire.pending, serverNow: () => Date.parse('2026-11-02T12:00:00Z'), refresh: wire.refresh, bootstrap: wire.bootstrap, preview: wire.preview, dispatch: wire.dispatch, collect: wire.collect, sell: wire.sell, upgrade: wire.upgrade, retryPending: wire.retry }; } }));
-vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: () => <div data-testid="deep-claim-canvas" /> }));
+vi.mock('@/components/deepClaim/renderer/DeepClaimCanvas', () => ({ DeepClaimCanvas: ({ focusRequest }: { focusRequest?: { point: { x: number; y: number } } }) => <div data-testid="deep-claim-canvas" data-focus={focusRequest ? `${focusRequest.point.x}:${focusRequest.point.y}` : ''} /> }));
 vi.mock('@/lib/deepClaim/audio', () => ({ createDeepClaimAudio: () => { const snapshot = { master: false, music: true, ambient: true, sfx: true, volume: .65 }; return { getSnapshot: () => snapshot, subscribe: () => () => {}, setScene: vi.fn(), updateSettings: wire.audioUpdate, unlock: wire.unlock, play: wire.play, setActive: vi.fn(), dispose: wire.dispose }; } }));
 const at = '2026-11-02T12:00:00Z';
 function snapshot(): DeepClaimSnapshot {
@@ -36,6 +36,41 @@ beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.data = snapsho
 afterEach(cleanup);
 
 describe('Deep Claim connected session loop', () => {
+  it('presents confirmed building levels and the actual effect once', async () => {
+    wire.data!.company!.tutorial_used = true;
+    wire.upgrade.mockImplementation(async key => {
+      const updated = structuredClone(wire.data!); updated.revision++;
+      const building = updated.buildings.find(item => item.key === key)!;
+      building.level = 2; building.effect = '240 units of storage';
+      wire.data = updated; return updated;
+    });
+    render(<Harness />); continueDeepClaimCompany();
+    fireEvent.click(screen.getByRole('button', { name: 'Open camp buildings' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Buildings' })).getByRole('button', { name: /Warehouse/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm upgrade' }));
+    const receipt = await screen.findByRole('dialog', { name: 'Warehouse upgraded.' });
+    const change = receipt.querySelector('[data-dc-building-change="warehouse"]');
+    expect(change).toHaveAttribute('data-from-level', '1'); expect(change).toHaveAttribute('data-to-level', '2');
+    expect(within(receipt).getAllByText('240 units of storage')).toHaveLength(1); expect(wire.upgrade).toHaveBeenCalledExactlyOnceWith('warehouse');
+  });
+  it('shows departure only after dispatch confirmation and follows the actual public crew', async () => {
+    wire.dispatch.mockImplementation(async input => {
+      const updated = snapshot(); updated.revision = 2; updated.company!.tutorial_used = true;
+      const job = { ...haul('active'), worker_ids: input.worker_ids };
+      updated.expeditions = [job]; updated.workers = updated.workers.map(worker => ({ ...worker, assigned_job_id: input.worker_ids.includes(worker.id) ? job.id : null }));
+      wire.data = updated; return updated;
+    });
+    render(<Harness />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Start first shift · 30s' }));
+    expect(document.querySelector('[data-dc-departure]')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Dispatch crew' }));
+    const departure = await screen.findByRole('status', { name: 'Crew departure' }); expect(departure).toHaveTextContent('Mara Flint');
+    fireEvent.click(within(departure).getByRole('button', { name: 'Dismiss departure' }));
+    const card = document.querySelector('[data-dc-expedition="shift-1"]')!;
+    fireEvent.click(within(card as HTMLElement).getByRole('button', { name: 'Follow crew' }));
+    expect(screen.getByRole('tab', { name: 'Mine' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('deep-claim-canvas')).toHaveAttribute('data-focus', '47:1'); expect(wire.dispatch).toHaveBeenCalledOnce();
+  });
   it('pins an investment across reload and opens its actual review without a purchase', async () => {
     wire.data!.company!.tutorial_used = true;
     const ui = render(<Harness />); continueDeepClaimCompany();
