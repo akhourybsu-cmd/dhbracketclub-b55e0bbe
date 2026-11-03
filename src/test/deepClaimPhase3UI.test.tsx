@@ -99,6 +99,25 @@ describe('Deep Claim field planning', () => {
   it('switches an incompatible passage context to an eligible mining frontier', () => {
     render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('button', { name: 'Map shaft passage' })); const sheet = screen.getByRole('dialog', { name: 'Underground operations' }); fireEvent.click(within(sheet).getByRole('button', { name: 'Expand tunnels' })); expect(screen.getByRole('dialog', { name: 'Expand tunnels' })).toBeInTheDocument(); expect(chosenSite()).not.toHaveAttribute('data-dc-worksite', '48:1');
   });
+  it('lets an untargeted Scout invitation select useful connected ground through the actual Page flow', async () => {
+    const data = wire.data!, cells = new Map<string, NonNullable<DeepClaimSnapshot['world']>['tiles'][number]>();
+    for (let x = 46; x <= 50; x++) for (let y = 1; y <= 3; y++) {
+      if (Math.abs(x - 48) + Math.abs(y - 1) <= 2) cells.set(`${x}:${y}`, { x, y, terrain: 'stone', material: 'coal', remaining: 10, initial_amount: 10 });
+    }
+    for (let y = 1; y <= 10; y++) cells.set(`48:${y}`, { x: 48, y, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 });
+    cells.set('20:20', { x: 20, y: 20, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 });
+    data.world!.tiles = [...cells.values()]; const original = JSON.stringify(data);
+    render(<App />); continueDeepClaimCompany();
+    fireEvent.click(screen.getByRole('tab', { name: 'Mine' })); fireEvent.click(screen.getByRole('button', { name: 'Open mine operations' }));
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Underground operations' })).getByRole('button', { name: 'Scout the area' }));
+    expect(screen.getByRole('dialog', { name: 'Scout the area' })).toBeInTheDocument();
+    expect(chosenSite()).toHaveAttribute('data-dc-worksite', '48:2'); expect(chosenSite()).toHaveAccessibleName(/[1-9]\d* unseen tiles/);
+    const advice = screen.getByRole('dialog', { name: 'Scout the area' }).querySelector('[data-dc-operation-advice]');
+    expect(advice).toHaveAttribute('data-tone', 'useful'); expect(advice).not.toHaveTextContent('Already surveyed');
+    fireEvent.click(screen.getByRole('button', { name: 'Review dispatch' }));
+    await waitFor(() => expect(wire.preview).toHaveBeenCalledWith(expect.objectContaining({ mode: 'survey', target_x: 48, target_y: 2 })));
+    expect(wire.dispatch).not.toHaveBeenCalled(); expect(JSON.stringify(data)).toBe(original);
+  });
   it('opens a contextual operation sheet from a known passage and keeps keyboard/list alternatives', () => {
     render(<App />); continueDeepClaimCompany(); fireEvent.click(screen.getByRole('tab', { name: 'Mine' })); expect(screen.getByRole('button', { name: 'Open mine operations' })).toBeInTheDocument(); fireEvent.click(screen.getByRole('button', { name: 'Map shaft passage' })); const sheet = screen.getByRole('dialog', { name: 'Underground operations' }); fireEvent.click(within(sheet).getByRole('button', { name: 'Scout the area' })); expect(screen.getByRole('dialog', { name: 'Scout the area' })).toBeInTheDocument(); expect(chosenSite()).toHaveAttribute('data-dc-worksite', '48:1');
   });

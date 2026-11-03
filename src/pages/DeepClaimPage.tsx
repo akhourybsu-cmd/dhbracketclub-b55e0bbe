@@ -337,7 +337,7 @@ function DeepClaimCompany({ userId, clubId, clubName, publisherAvailable, onPubl
   }
   function openDispatch(mode: DeepClaimMode, point: DeepClaimPoint | null = selectedTile) {
     if (!data?.company) return;
-    setLocalError(''); setDispatch({ mode, target: point ?? claimTargets(data, mode)[0] ?? null });
+    setLocalError(''); setDispatch({ mode, target: point ?? (mode === 'survey' ? null : claimTargets(data, mode)[0] ?? null) });
     observe('dispatch_opened', { mode });
   }
   function openFinds(id: string | null = null) { setFieldOperations(null); setFieldView('finds'); setSelectedFindId(id); setTab('log'); }

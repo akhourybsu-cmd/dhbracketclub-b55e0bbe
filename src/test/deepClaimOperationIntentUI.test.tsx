@@ -179,3 +179,21 @@ it('keeps an explicitly chosen mapped entrance and explains its empty scouting f
   expect(screen.getByRole('button', { name: 'Review dispatch' })).toBeEnabled();
   expect(JSON.stringify(data)).toBe(original); expect(preview).not.toHaveBeenCalled(); expect(dispatch).not.toHaveBeenCalled();
 });
+
+
+it.each(['explore', 'extract'] as const)('chooses useful scouting ground when a %s worksite is incompatible with an open passage', mode => {
+  const data = mappedSurveyEntrance(), original = JSON.stringify(data);
+  const { preview, dispatch } = plan({ mode, data });
+  expect(selectedSite()).not.toHaveAttribute('data-dc-worksite', '48:2');
+  fireEvent.click(within(screen.getByRole('group', { name: 'Expedition type' })).getByRole('button', { name: 'Scout the area' }));
+  expect(selectedSite()).toHaveAttribute('data-dc-worksite', '48:2'); expect(selectedSite()).toHaveAccessibleName(/[1-9]\d* unseen tiles/);
+  expect(advice()).toHaveAttribute('data-tone', 'useful'); expect(advice()).not.toHaveTextContent('Already surveyed');
+  expect(preview).not.toHaveBeenCalled(); expect(dispatch).not.toHaveBeenCalled(); expect(JSON.stringify(data)).toBe(original);
+});
+
+it('retains a legal chosen passage when switching from improvements to scouting', () => {
+  plan({ mode: 'infrastructure', data: mappedSurveyEntrance(), initialTarget: { x: 48, y: 1 } });
+  fireEvent.click(within(screen.getByRole('group', { name: 'Expedition type' })).getByRole('button', { name: 'Scout the area' }));
+  expect(selectedSite()).toHaveAttribute('data-dc-worksite', '48:1'); expect(selectedSite()).toHaveAccessibleName(/Already mapped/);
+  expect(advice()).toHaveTextContent('Already surveyed');
+});
