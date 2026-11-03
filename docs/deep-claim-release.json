@@ -1,9 +1,9 @@
 {
   "url": "https://dryhorse.app/",
-  "source_sha": "b29bba192e824121cd58ba58938cf6987d2cca77",
+  "source_sha": "4de37d43264827ede826ec7970abf9c4879dbb23",
   "css": {
-    "filename": "DeepClaimPage-BM730to2.css",
-    "sha256": "af9be057e1f20af00363d5d17c9ed966e94b2eb1f7d606c97786bc42e854ce45"
+    "filename": "DeepClaimPage-D52MFwK1.css",
+    "sha256": "2aeb5c0a8b7df8a69da63dd6f7762dc19ce9f74bb1977e55ece3abc558a4292e"
   },
   "js_markers": [
     "Expand tunnels",
@@ -21,7 +21,11 @@
     "Increase production batches",
     "Decrease production batches",
     "Retry notification preferences",
-    "data-dc-followed"
+    "data-dc-followed",
+    "Back to finds",
+    "Confirm decision",
+    "Company changed. Choose again.",
+    "dcl-discovery-identity"
   ],
   "css_styles": [
     ".dcl-intent-picker",
@@ -35,7 +39,9 @@
     ".dcl-finished-production",
     ".dcl-industry-batch-stepper",
     ".dcl-applicant-actions",
-    ".dcl-operation-card[data-dc-followed=true]"
+    ".dcl-operation-card[data-dc-followed=true]",
+    ".dcl-discovery-identity",
+    ".dcl-find-footer-status"
   ],
   "atlases": [
     {
