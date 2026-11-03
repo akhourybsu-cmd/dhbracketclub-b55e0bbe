@@ -274,11 +274,14 @@ async function tab(page, label) {
 async function closeReward(page) {
   await page.getByRole('button', { name: 'Back to the claim', exact: true }).click();
   await settle(page);
-  // Resolving an uncertain saved action can release a return report that had
-  // been held behind the receipt. Acknowledge only that known presentation.
-  await acknowledgeReturnReport(page);
-  // The exact optional-reveal handler also runs before this auto-wait assertion.
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // A receipt can release the optional rare-find reveal, then its held shift
+  // report. Let the exact Later handler finish before acknowledging that report.
+  // Unknown dialogs remain failures; no general close/Escape action is used.
+  await expect.poll(async () => {
+    await expect(page.getByRole('dialog', { name: 'A find from the deep', exact: true })).toHaveCount(0);
+    await acknowledgeReturnReport(page);
+    return page.getByRole('dialog').count();
+  }, { message: 'Receipt and its known follow-up presentations have closed' }).toBe(0);
 }
 async function chooseWorksite(dialog, x, y, { keyboard = false } = {}) {
   const sites = dialog.getByRole('group', { name: 'Expedition worksite', exact: true });
