@@ -1,5 +1,13 @@
 # Deep Claim implementation ledger
 
+## Current release — reliability pass (pending-action journal)
+
+Built on main `3dfd021b` (+ auto-generated types commit `83b6bf29`). No migration, economy, catalog, atlas or dependency change. Details and limits: [audit](DEEP_CLAIM_AUDIT.md).
+
+- Per-request pending-action journal compatible with the existing pointer key; multi-hook/tab safe clearing; foreign returned snapshots stay uncertain; monotonic replay results.
+- Page: synchronous double-tap latch for collect/production/sale/upgrade; building review frozen at open with explicit Review current upgrade; stale haul reviews close; zero-transfer production no longer says Production secured or plays the deposit sound; partial staging explained.
+- Company goals: Back closes an invalidated inspector in one tap. Worksite/depth search: redundant inner input focus outline suppressed with scoped specificity.
+
 ## Current release — crews and confirmed game moments
 
 This presentation release builds on clean main `90762a0efc95c9f6fe76e1c6e9e00a6266500e86`. It connects existing dispatch, mining, collection and building growth with clearer game moments. No SQL migration, economic rule, hidden terrain, atlas, dependency or rendering-engine change is introduced.
