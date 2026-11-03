@@ -28,6 +28,27 @@ const distance = (a: DeepClaimPoint, b: DeepClaimPoint) => Math.abs(a.x - b.x) +
 const average = (workers: readonly DeepClaimWorker[], stat: 'geology' | 'engineering') =>
   Math.floor(workers.reduce((sum, worker) => sum + worker.stats[stat], 0) / workers.length);
 
+/** Prefer useful public scouting coverage without generating terrain or overriding an explicit player choice.
+ * Build the known index once: O(known tiles + sites * bounded survey footprint).
+ */
+export function preferredSurveySite(
+  sites: readonly DeepClaimPoint[], world: DeepClaimWorld | null,
+  workers: readonly DeepClaimWorker[], minutes: DeepClaimDuration = 20,
+): DeepClaimPoint | null {
+  const fallback = sites[0] ?? null;
+  if (!fallback || !world || !workers.length) return fallback;
+  const plan = surveyPlan(minutes, average(workers, 'geology'), workers.filter(worker => worker.traits.includes('ore_eye')).length);
+  const known = new Set(world.tiles.map(point => `${point.x}:${point.y}`));
+  for (const site of sites) {
+    for (let x = Math.max(0, site.x - plan.radius); x <= Math.min(world.width - 1, site.x + plan.radius); x++) {
+      for (let y = Math.max(1, site.y - plan.radius); y <= Math.min(world.max_depth, site.y + plan.radius); y++) {
+        if (distance(site, { x, y }) <= plan.radius && !known.has(`${x}:${y}`)) return site;
+      }
+    }
+  }
+  return fallback;
+}
+
 /** A deliberately advisory result: future preparation can be valid even when a site has no current gain. */
 export function operationAdvice({
   mode, target, world, infrastructure = [], quote, project, minutes = 20, workers = [],

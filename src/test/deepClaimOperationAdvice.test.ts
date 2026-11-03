@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { operationAdvice } from '@/lib/deepClaim/operationAdvice';
+import { operationAdvice, preferredSurveySite } from '@/lib/deepClaim/operationAdvice';
 import { fieldConditions, infrastructureQuote } from '@/lib/deepClaim/field';
 import type { DeepClaimInfrastructure, DeepClaimInfrastructureKey, DeepClaimPoint, DeepClaimPreview, DeepClaimTile, DeepClaimWorld } from '@/lib/deepClaim/types';
 import { phaseThreeSnapshot } from './fixtures/deepClaimPhase3';
@@ -60,6 +60,52 @@ describe('Deep Claim public survey usefulness', () => {
     const known = [tile(48, 20), tile(47, 20), tile(49, 20), tile(48, 19), tile(48, 21)];
     expect(operationAdvice({ mode: 'survey', target, world: world(known), quote, workers: phaseThreeSnapshot().workers, minutes: 180 }))
       .toMatchObject({ tone: 'caution', heading: 'Already surveyed', unknownCount: 0 });
+  });
+});
+
+describe('Deep Claim useful default survey site', () => {
+  const sites = [{ x: 48, y: 1 }, { x: 48, y: 10 }];
+  const mappedEntrance = [tile(48, 1), tile(47, 1), tile(49, 1), tile(48, 2), tile(48, 10)];
+  function crew() {
+    const worker = phaseThreeSnapshot().workers[0];
+    worker.stats.geology = 34;
+    return [worker];
+  }
+
+  it('skips a fully mapped entrance in favor of a deeper site with unknown cells', () => {
+    expect(preferredSurveySite(sites, world(mappedEntrance), crew())).toEqual(sites[1]);
+  });
+
+  it('keeps the first site when all eligible footprints are mapped', () => {
+    const mapped = Array.from({ length: 96 }, (_, x) => tile(x, 1));
+    const choices = [{ x: 48, y: 1 }, { x: 60, y: 1 }];
+    expect(preferredSurveySite(choices, world(mapped, 1), crew())).toEqual(choices[0]);
+  });
+
+  it('does not count outside-map coordinates as unknown terrain', () => {
+    const choices = [{ x: 0, y: 1 }, { x: 95, y: 2 }];
+    const known = [tile(0, 1), tile(1, 1), tile(0, 2), tile(95, 2)];
+    expect(preferredSurveySite(choices, world(known, 2), crew())).toEqual(choices[1]);
+  });
+
+  it('reconsiders the first site when a wider duration or stronger crew reaches beyond its known patch', () => {
+    const mine = world(mappedEntrance), workers = crew();
+    expect(preferredSurveySite(sites, mine, workers, 60)).toEqual(sites[0]);
+    const geologist = { ...workers[0], id: 'second-worker', stats: { ...workers[0].stats, geology: 80 } };
+    expect(preferredSurveySite(sites, mine, [...workers, geologist])).toEqual(sites[0]);
+  });
+
+  it('depends on public mapped coordinates rather than resource contents and never mutates progress', () => {
+    const mine = world(mappedEntrance), workers = crew(), before = structuredClone({ sites, mine, workers });
+    const changedResources = { ...mine, tiles: mine.tiles.map(point => ({ ...point, material: 'gold_ore' as const, remaining: 500, initial_amount: 500 })) };
+    expect(preferredSurveySite(sites, changedResources, workers)).toEqual(preferredSurveySite(sites, mine, workers));
+    expect({ sites, mine, workers }).toEqual(before);
+  });
+
+  it('uses a neutral first-site fallback until a crew and world are available and handles an empty list', () => {
+    expect(preferredSurveySite(sites, world(mappedEntrance), [])).toEqual(sites[0]);
+    expect(preferredSurveySite(sites, null, crew())).toEqual(sites[0]);
+    expect(preferredSurveySite([], world(mappedEntrance), crew())).toBeNull();
   });
 });
 

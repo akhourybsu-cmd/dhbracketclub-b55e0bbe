@@ -9,7 +9,7 @@ import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tut
 import { DeepClaimWorksitePicker } from './DeepClaimWorksitePicker';
 import { worksiteBranch, worksiteName } from './worksiteLabels';
 import type { DeepClaimDispatchDraft } from '@/lib/deepClaim/nextShiftPlan';
-import { operationAdvice } from '@/lib/deepClaim/operationAdvice';
+import { operationAdvice, preferredSurveySite } from '@/lib/deepClaim/operationAdvice';
 import { DeepClaimOperationPicker } from './DeepClaimOperationPicker';
 import './deepClaimOperationAdvice.css';
 
@@ -25,13 +25,19 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initia
   const tutorialEvents = useDeepClaimTutorialEvents();
   const field = snapshot.schema_version >= 3;
   const [mode, setMode] = useState(initialMode);
-  const [target, setTarget] = useState<DeepClaimPoint | null>(() => initialTarget ?? claimTargets(snapshot, initialMode)[0] ?? null);
   const initialMinutes = DURATION_OPTIONS.some(option => option.minutes === initialPlan?.durationMinutes) ? initialPlan!.durationMinutes : 20;
   const [workers, setWorkers] = useState(() => {
     if (!initialPlan) return snapshot.workers.filter(worker => !worker.assigned_job_id && worker.energy > 0).slice(0, 3).map(worker => worker.id);
     const energy = DURATION_OPTIONS.find(option => option.minutes === initialMinutes)!.energy;
     const eligible = new Set(snapshot.workers.filter(worker => !worker.assigned_job_id && worker.energy >= energy).map(worker => worker.id));
     return [...new Set(initialPlan.workerIds)].filter(id => eligible.has(id)).slice(0, 3);
+  });
+  const [target, setTarget] = useState<DeepClaimPoint | null>(() => {
+    if (initialTarget) return initialTarget;
+    const choices = claimTargets(snapshot, initialMode);
+    return initialMode === 'survey'
+      ? preferredSurveySite(choices, snapshot.world, snapshot.workers.filter(worker => workers.includes(worker.id)), initialMinutes)
+      : choices[0] ?? null;
   });
   const [crewOpen, setCrewOpen] = useState(!field);
   const [crewPage, setCrewPage] = useState(0);

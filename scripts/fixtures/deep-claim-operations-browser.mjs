@@ -41,6 +41,16 @@ export async function runDeepClaimOperationsBrowser(h, run) {
       }
       assert.equal(new Set(payoffs).size, 4, 'The four choices must explain distinct purposes');
       await expect(launcher.locator('[data-dc-operation="survey"]')).toContainText(/no cargo/i);
+      const reachable = await launcher.locator('[data-dc-operation]').evaluateAll(buttons => buttons.map(button => {
+        const box = button.getBoundingClientRect(), dialog = button.closest('[role="dialog"]').getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { mode: button.getAttribute('data-dc-operation'), width: box.width, height: box.height,
+          visible: box.left >= Math.max(0, dialog.left) && box.right <= Math.min(innerWidth, dialog.right)
+            && box.top >= Math.max(0, dialog.top) && box.bottom <= Math.min(innerHeight, dialog.bottom),
+          reachable: !!hit && (hit === button || button.contains(hit)) };
+      }));
+      checked(`operations-launcher-four-actions-fit-and-remain-reachable-${label}`,
+        reachable.length === 4 && reachable.every(choice => choice.visible && choice.reachable && choice.width >= 44 && choice.height >= 44), reachable);
       await fit(page, `operations-launcher-${label}`); await shot(page, `operations-launcher-${label}`);
       checked(`operations-four-distinct-intents-and-payoffs-${label}`, true);
 
@@ -52,13 +62,16 @@ export async function runDeepClaimOperationsBrowser(h, run) {
       let picker = planner.getByRole('group', { name: 'Expedition type', exact: true });
       await expect(picker.locator('[data-dc-operation="survey"]')).toHaveAttribute('aria-pressed', 'true');
       await expect(picker.locator('[data-dc-operation][aria-pressed="true"]')).toHaveCount(1);
+      await expect(picker.locator('[data-dc-operation="survey"] .dcl-intent-outcome')).toBeVisible();
+      await expect(picker.locator('[data-dc-operation="survey"] .dcl-intent-outcome')).toContainText(/map only.*no cargo/i);
       let advice = planner.locator('[data-dc-operation-advice]');
       await expect(advice).toHaveAttribute('role', 'status');
+      // With no map target supplied, the real public frontier in this earned
+      // save has a useful Scout site. Do not silently default to surveyed ground.
+      await expect(advice.locator('strong')).toHaveText(/^Up to [1-9]\d* new tiles?$/);
       await expect(advice).toContainText(/no cargo/i);
       await expect(advice).toContainText(/map|reveal|ground|deposit/i);
-      const surveyHeading = (await advice.locator('strong').innerText()).trim();
-      if (/\d+ new tiles?/.test(surveyHeading)) assert.match(surveyHeading, /^Up to [1-9]\d* new tiles?$/,
-        'Survey reach is an upper bound, never guaranteed discoveries or cargo');
+      checked(`operations-default-scout-selects-useful-unseen-ground-${label}`, true);
       await fit(page, `operations-scout-${label}`); await shot(page, `operations-scout-${label}`);
       checked(`operations-scout-is-clearly-map-only-and-keyboard-operable-${label}`, true);
 
@@ -76,6 +89,25 @@ export async function runDeepClaimOperationsBrowser(h, run) {
       await expect(expansion).toBeVisible();
       await expect(expansion.getByRole('group', { name: 'Expedition type', exact: true }).locator('[data-dc-operation="explore"]')).toHaveAttribute('aria-pressed', 'true');
       checked(`operations-mining-modes-have-clear-selected-state-${label}`, true);
+      await h.clearDialogs(page);
+
+      // An explicitly selected known passage is different from a default. It
+      // must remain selected and truthfully warn when nothing new is in reach.
+      const knownScout = await h.operationPlan(page, 'survey', { x: 48, y: 1, review: false });
+      const selectedScoutSite = knownScout.getByRole('group', { name: 'Expedition worksite', exact: true }).locator('[data-dc-worksite="48:1"]');
+      await expect(selectedScoutSite).toHaveAttribute('aria-pressed', 'true');
+      await expect(knownScout.getByRole('group', { name: 'Expedition type', exact: true }).locator('[data-dc-operation="survey"] .dcl-intent-outcome')).toContainText(/map only.*no cargo/i);
+      const knownAdvice = knownScout.locator('[data-dc-operation-advice]');
+      const knownHeading = (await knownAdvice.locator('strong').innerText()).trim();
+      if (knownHeading === 'Already surveyed') {
+        await expect(knownAdvice).toHaveAttribute('data-tone', 'caution');
+        await expect(knownAdvice).toContainText(/nothing new|another site|wider survey/i);
+      } else {
+        assert.match(knownHeading, /^Up to [1-9]\d* new tiles?$/);
+        await expect(knownAdvice).toContainText(/no cargo/i);
+      }
+      checked(`operations-explicit-scout-site-keeps-selection-and-honest-advice-${label}`, true);
+      await fit(page, `operations-scout-known-ground-${label}`); await shot(page, `operations-scout-known-ground-${label}`);
       await h.clearDialogs(page);
 
       const improvement = await h.operationPlan(page, 'infrastructure', { x: 48, y: 1, infrastructure: 'pump', review: false });

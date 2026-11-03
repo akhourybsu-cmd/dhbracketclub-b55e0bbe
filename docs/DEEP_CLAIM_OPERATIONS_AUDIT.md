@@ -17,7 +17,7 @@ All four consume crew time, energy, wages and applicable equipment wear. Constru
 
 Exploration and surveying both promised to reveal ground without explaining that only one digs passages. Four equal abstract labels hid the difference between earning resources and investing in later work. Every support site looked like the same connected passage. Duration choices described both support jobs in construction grades. A shallow pump could be bought despite water having no effect there.
 
-The shared illustrated selector now names player intentions. Scouting explicitly says “Map only · No cargo”; improvements are separate optional preparation. Sites use action-specific headings, and scouting shows the current unknown-cell count for the selected crew and duration. Construction keeps real grades; scouting uses Local/Wide/Thorough coverage choices with the same existing durations and energy costs.
+The shared illustrated selector now names player intentions and appears before lift navigation. New scouting plans choose connected ground with something left to reveal, using one public coordinate index and a bounded footprint check; explicit map selections remain unchanged. Scouting explicitly says “Map only · No cargo”; improvements are separate optional preparation. Sites use action-specific headings, and scouting shows the current unknown-cell count for the selected crew and duration. Construction keeps real grades; scouting uses Local/Wide/Thorough coverage choices with the same existing durations and energy costs.
 
 ## Actual infrastructure benefits
 

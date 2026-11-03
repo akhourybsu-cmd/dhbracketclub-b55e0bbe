@@ -23,10 +23,10 @@ const quote = (overrides: Partial<DeepClaimPreview> = {}): DeepClaimPreview => (
   conditions: { instability: 1, gas: 0, water: 0, incident_chance_percent: 0, max_delay_seconds: 0, transport_bonus_percent: 0, infrastructure_ids: [] },
   survey: null, installation: null, ...overrides,
 });
-function plan({ mode = 'survey', data = phaseThreeSnapshot(), preview = vi.fn().mockResolvedValue(quote()), dispatch = vi.fn().mockResolvedValue(data), busy = false, readOnly = false }: {
-  mode?: DeepClaimMode; data?: DeepClaimSnapshot; preview?: ReturnType<typeof vi.fn>; dispatch?: ReturnType<typeof vi.fn>; busy?: boolean; readOnly?: boolean;
+function plan({ mode = 'survey', initialTarget = null, data = phaseThreeSnapshot(), preview = vi.fn().mockResolvedValue(quote()), dispatch = vi.fn().mockResolvedValue(data), busy = false, readOnly = false }: {
+  mode?: DeepClaimMode; initialTarget?: { x: number; y: number } | null; data?: DeepClaimSnapshot; preview?: ReturnType<typeof vi.fn>; dispatch?: ReturnType<typeof vi.fn>; busy?: boolean; readOnly?: boolean;
 } = {}) {
-  render(<DeepClaimDispatch snapshot={data} initialMode={mode} initialTarget={null} onClose={vi.fn()} busy={busy} readOnly={readOnly} preview={preview} dispatch={dispatch} />);
+  render(<DeepClaimDispatch snapshot={data} initialMode={mode} initialTarget={initialTarget} onClose={vi.fn()} busy={busy} readOnly={readOnly} preview={preview} dispatch={dispatch} />);
   return { preview, dispatch };
 }
 const advice = () => screen.getByRole('dialog').querySelector<HTMLElement>('[data-dc-operation-advice]')!;
@@ -143,4 +143,39 @@ it('reuses visible and pinned survey counts on unrelated camp ticks but refreshe
   view.rerender(<Board snapshot={crew} minutes={60} />); expect(calculate).toHaveBeenCalledTimes(20);
   expect(calculate.mock.calls.at(-1)?.[0]).toMatchObject({ world: mapped.world, workers: crew.workers, minutes: 60 });
   expect(onSelect).not.toHaveBeenCalled();
+});
+
+
+function mappedSurveyEntrance() {
+  const data = phaseThreeSnapshot();
+  const cells = new Map<string, NonNullable<DeepClaimSnapshot['world']>['tiles'][number]>();
+  // The entry's entire local footprint is known, but only the central shaft is
+  // excavated. Revealed seams beside it are deposits rather than walkways.
+  for (let x = 46; x <= 50; x++) for (let y = 1; y <= 3; y++) {
+    if (Math.abs(x - 48) + Math.abs(y - 1) <= 2) cells.set(`${x}:${y}`, { x, y, terrain: 'stone', material: 'coal', remaining: 10, initial_amount: 10 });
+  }
+  for (let y = 1; y <= 10; y++) cells.set(`48:${y}`, { x: 48, y, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 });
+  // A disconnected revealed cavity must not become a suggested worksite.
+  cells.set('20:20', { x: 20, y: 20, terrain: 'excavated', material: null, remaining: 0, initial_amount: 0 });
+  data.world!.tiles = [...cells.values()];
+  return data;
+}
+
+it('starts an unselected scouting plan at the first useful connected site beyond a mapped entrance', () => {
+  const data = mappedSurveyEntrance(), original = JSON.stringify(data);
+  const { preview, dispatch } = plan({ data });
+  expect(selectedSite()).toHaveAttribute('data-dc-worksite', '48:2');
+  expect(selectedSite()).toHaveAccessibleName(/[1-9]\d* unseen tiles/);
+  expect(advice()).toHaveAttribute('data-tone', 'useful'); expect(advice()).not.toHaveTextContent('Already surveyed');
+  expect(screen.getByRole('group', { name: 'Expedition worksite' }).querySelector('[data-dc-worksite="20:20"]')).not.toBeInTheDocument();
+  expect(JSON.stringify(data)).toBe(original); expect(preview).not.toHaveBeenCalled(); expect(dispatch).not.toHaveBeenCalled();
+});
+
+it('keeps an explicitly chosen mapped entrance and explains its empty scouting footprint', () => {
+  const data = mappedSurveyEntrance(), original = JSON.stringify(data);
+  const { preview, dispatch } = plan({ data, initialTarget: { x: 48, y: 1 } });
+  expect(selectedSite()).toHaveAttribute('data-dc-worksite', '48:1'); expect(selectedSite()).toHaveAccessibleName(/Already mapped/);
+  expect(advice()).toHaveAttribute('data-tone', 'caution'); expect(advice()).toHaveTextContent('Already surveyed');
+  expect(screen.getByRole('button', { name: 'Review dispatch' })).toBeEnabled();
+  expect(JSON.stringify(data)).toBe(original); expect(preview).not.toHaveBeenCalled(); expect(dispatch).not.toHaveBeenCalled();
 });
