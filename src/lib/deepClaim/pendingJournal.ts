@@ -89,8 +89,9 @@ export function clearPendingJournal(pointer: string, requestId: string) {
     store?.removeItem(leafKey(pointer, requestId));
     const canonical = parsePending(store?.getItem(pointer) ?? null);
     if (canonical && pendingRequestId(canonical) === requestId) {
+      store?.removeItem(pointer);
       const next = readPendingJournal(pointer).find(entry => pendingRequestId(entry) !== requestId);
-      if (next) store?.setItem(pointer, JSON.stringify(next)); else store?.removeItem(pointer);
+      if (next) store?.setItem(pointer, JSON.stringify(next));
     }
   } catch { /* ignore */ }
   notify(pointer);
