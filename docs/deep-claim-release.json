@@ -1,0 +1,36 @@
+{
+  "url": "https://dhbracketclub.lovable.app/",
+  "source_sha": "1c30d57ecad4708083cdd541915f63d0c0f51af1",
+  "css": {
+    "filename": "DeepClaimPage-Ui-6cUae.css",
+    "sha256": "bfb10b8411ccbc302b8d09f5e67515f575a178523d32a5fc11f0ed89ec2b48dc"
+  },
+  "js_markers": [
+    "Company ledger",
+    "Activity category",
+    "Previous activity",
+    "Next activity",
+    "Camp upgrades",
+    "Scroll to read",
+    "and crew",
+    "dcl-activity-control-row"
+  ],
+  "css_styles": [
+    ".dcl-activity-categories",
+    ".dcl-activity-pages",
+    ".dcl-field-log-header.is-ledger",
+    ".dc-mine-controls.is-docked",
+    ".dcl-camera-tools",
+    ".dcl-activity-control-row"
+  ],
+  "atlases": [
+    {
+      "path": "/deep-claim/atlas-v1.png",
+      "sha256": "6bc1fbb52d3e1024d75917c5bfdc4f0ecd3ef53ad2d1220ed7a64db5a3a29180"
+    },
+    {
+      "path": "/deep-claim/atlas-v2.png",
+      "sha256": "b5b2d536c599776ebac40adbf4444a7ea4ee677d0184adf6d1ad8830cafc755a"
+    }
+  ]
+}

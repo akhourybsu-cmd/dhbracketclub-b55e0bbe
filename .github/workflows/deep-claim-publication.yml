@@ -1,0 +1,44 @@
+name: Deep Claim public deployment proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/deep-claim-release.json'
+      - 'scripts/check-deep-claim-publication.mjs'
+      - '.github/workflows/deep-claim-publication.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  publication:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      DEEP_CLAIM_PUBLICATION_OUTPUT: /tmp/deep-claim-publication-artifacts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Prepare publication artifacts
+        run: mkdir -p "$DEEP_CLAIM_PUBLICATION_OUTPUT"
+
+      - name: Verify public assets
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=10s 300s node scripts/check-deep-claim-publication.mjs 2>&1 | tee "$DEEP_CLAIM_PUBLICATION_OUTPUT/runner.log"
+
+      - name: Upload public deployment receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-claim-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEEP_CLAIM_PUBLICATION_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 14
