@@ -95,7 +95,7 @@ serve(async (req) => {
 type Trigger = 'start' | 'advance' | 'force' | 'extend' | 'pause' | 'resume' | 'cancel';
 
 async function advanceGame(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   supabaseUrl: string,
   cronSecret: string,
   gameId: string,
@@ -308,7 +308,7 @@ async function scoreCurrentRound(admin: any, g: Record<string, any>) {
   if (existingResult) return;
 
   const { data: answerRows } = await admin.from('readshift_answers').select('id, user_id, body').eq('round_id', round.id).eq('locked', true);
-  const answers = (answerRows || []).map((a: any) => a.user_id);
+  const answers: string[] = (answerRows || []).map((a: any) => a.user_id as string);
   const answerIdByUser: Record<string, string> = {};
   for (const a of answerRows || []) answerIdByUser[a.user_id] = a.id;
   const userByAnswerId: Record<string, string> = {};
