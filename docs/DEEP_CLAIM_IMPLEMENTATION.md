@@ -1,6 +1,6 @@
 # Deep Claim implementation ledger
 
-## Operation clarity — mining and optional preparation
+## Current release — operation clarity
 
 The four existing operations have distinct purposes. Their shared illustrated selector now presents **Expand tunnels** and **Mine a deposit** under Mining, with **Scout the area** and **Improve the mine** under optional Planning & improvements. Field operations and dispatch use the same action names, original pixel vignettes, accessible descriptions, selected/focus states and reduced-motion behavior. Crew cards, tutorial dialogue, practice, help and next-shift recovery use the same vocabulary.
 
@@ -9,7 +9,15 @@ The four existing operations have distinct purposes. Their shared illustrated se
 - The first operations screen puts all four job choices ahead of lift navigation, with compact landscape cards. A new scouting plan starts at useful connected ground; explicit map selections remain selected, including honest already-mapped warnings. Worksite headings describe each task. Scouting durations show coverage choices; construction durations show installation grades. Only construction quotes show project fees. Actual fees/materials, stale-quote guards, crew recovery, saved actions and all canonical mode IDs remain authoritative and unchanged.
 - Audit and rationale: [operation clarity](DEEP_CLAIM_OPERATIONS_AUDIT.md). No migration, dependency, ruleset, economic change, atlas replacement or save reset.
 
-Local verification: **234 test files / 2,473 tests passed** in the final full unit run; application TypeScript, scoped ESLint, production build and Phase 8 preservation passed. The build retains its existing large-chunk advisory. The first native pass reached 395 checks without runtime/console errors, then exposed a fully mapped default scouting site. That usability issue is corrected with bounded public-map selection and explicit-target regressions; **59 Deep Claim files / 929 tests passed** after that fix, including eight additional advisory/default-selection cases. Application TypeScript and targeted lint pass; final native rerun is pending. Publication has not yet been verified for this revision.
+Game source: **`d0314c903a3782c88c4ef3a710d75fab64b0234c`** (following the operation audit in `ccb0b65` and default/layout follow-up in `d43d5f3`). Final app-wide CI passed **234 files / 2,485 tests**, TypeScript, lint and production build (18.04s). Local wiring regressions passed 60/60; the final local build passed in 20.38s. Phase 8 preservation passes. No database migration is required.
+
+Native verification: **478 browser checks passed**, with zero assertion, runtime or console errors, on the exact game source. Seven cases cover 320×568 phones, 844×390 landscape and 1440×900 desktop in both themes, plus a reduced-motion 390×844 phone. All four initial choices fit and remain tappable; actual keyboard entry, useful default scouting, explicit known-ground warnings, mode switching, shallow pumps and economic read-only inspection pass. Phone, desktop and landscape screenshots were visually reviewed. The short landscape viewport retains scrolling with reachable action controls.
+
+- [Full CI](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41673765714), job `126048748058`.
+- [Native browser evidence](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41673765695), job `126048748005`; review artifact `13249672164`.
+- Public CSS expected: `DeepClaimPage-Bxrf01vh.css`, SHA-256 `5bc84c89119a607fd5317a64919aece3f81c19d42d5ab0be55305637a029636c`. The release metadata requires the new action names, optional grouping and shallow-pump guidance plus unchanged original atlas hashes.
+
+Publication requested; public-host hash verification is pending. Browser evidence uses isolated actual SQL and emulated viewports, not a production account or physical-device performance measurement.
 
 ## Previous release — camp HUD, illustrated ledger and mine controls
 

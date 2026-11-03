@@ -1,25 +1,23 @@
 {
   "url": "https://dryhorse.app/",
-  "source_sha": "1c30d57ecad4708083cdd541915f63d0c0f51af1",
+  "source_sha": "d0314c903a3782c88c4ef3a710d75fab64b0234c",
   "css": {
-    "filename": "DeepClaimPage-Ui-6cUae.css",
-    "sha256": "bfb10b8411ccbc302b8d09f5e67515f575a178523d32a5fc11f0ed89ec2b48dc"
+    "filename": "DeepClaimPage-Bxrf01vh.css",
+    "sha256": "5bc84c89119a607fd5317a64919aece3f81c19d42d5ab0be55305637a029636c"
   },
   "js_markers": [
-    "Company ledger",
-    "Activity category",
-    "Previous activity",
-    "Next activity",
-    "Camp upgrades",
-    "Scroll to read",
-    "and crew",
-    "dcl-activity-control-row"
+    "Expand tunnels",
+    "Mine a deposit",
+    "Scout the area",
+    "Improve the mine",
+    "Planning & improvements",
+    "No water risk here yet",
+    "dcl-operation-advice"
   ],
   "css_styles": [
-    ".dcl-activity-categories",
-    ".dcl-activity-pages",
-    ".dcl-field-log-header.is-ledger",
-    ".dc-mine-controls.is-docked",
+    ".dcl-intent-picker",
+    ".dcl-intent-outcome",
+    ".dcl-operation-advice",
     ".dcl-camera-tools",
     ".dcl-activity-control-row"
   ],
