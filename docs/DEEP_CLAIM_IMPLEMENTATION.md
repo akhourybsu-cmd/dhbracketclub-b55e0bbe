@@ -20,7 +20,13 @@ This release builds on clean main `9a69b714ba9f948a10a66d8fa926d6765248c7e9`. Th
 | Production build | Passed in **17.09 seconds**; `DeepClaimPage-CofIyOBP.js` 794.71 KB / 189.77 KB gzip and `DeepClaimPage-WWYiuvnj.css` 253.51 KB / 39.04 KB gzip. The existing large-chunk advisory remains. |
 | Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-cKfYCY/report.json`. This verifies production-build authentication and PWA bootstrap without claiming physical-device installation. |
 
-Native QA changes no live member company, stock or achievement. Publication and public-asset verification are pending. No SQL migration is required.
+Native QA changes no live member company, stock or achievement. No SQL migration is required.
+
+The 29-file feature was pushed normally to main as **`980e6a938a2c5c5028113edc816a967f058b1486`**, tree `699587a7e2742c5ee966fadd12dde10fbe5ebbcd`, from the expected `9a69b714` parent. All uploaded blobs and the remote tree match the tested workspace; main readback and hash-verified local import agree. No force update or protection bypass occurred. Lovable reported the exact source revision ready with no project error before publication.
+
+Deployment **`60552f21-76ea-4025-b1c5-b87a982f2043`** was verified through actual public HTTPS at **https://dhbracketclub.lovable.app/** on **2026-11-03T01:36:17Z**, build `1793669634303`. The public game serves `DeepClaimPage-AUYg1zkE.js` and `DeepClaimPage-WWYiuvnj.css`, with the company-goal IDs/planner, report metadata/sections and Plan next shift action. Shared goal/requirement/report/worksite styles are present, and the old coordinate-dropdown prose stays absent. Public CSS SHA256 **`4fabc1841ddf2dee2b9e5dcf8293f184e54bcb61e6911ba19c9ee2ac3936089f`** exactly matches the tested build. Both original atlas hashes remain unchanged. Proof: `/tmp/dc-loop-public-proof/proof.json`.
+
+Lovable rebuilds JavaScript, so local/hosted JavaScript byte equality is not claimed. Source synchronization and served content were verified separately; the public build ID is not a Git SHA. This receipt is a documentation-only follow-up. Public asset verification does not claim authenticated production-player testing, physical-device installation, measured retention or hardware/audio QA. Goal selection and report-read preferences remain device-local; all economic progression remains server-authoritative.
 
 ## Previous release — thematic selectors
 
