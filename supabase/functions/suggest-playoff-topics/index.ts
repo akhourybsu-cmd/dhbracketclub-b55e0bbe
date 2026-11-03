@@ -1,6 +1,6 @@
 // Returns 3 fresh AI-generated draft topic options for a playoff matchup.
 // Filters against prior season topics + already-used playoff topics for variety.
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { aiGate, logAiUsage } from "../_shared/aiUsage.ts";
 
 const corsHeaders = {
