@@ -46,6 +46,11 @@ export function activityPresentation(kind: string): Readonly<ActivityPresentatio
   return Object.prototype.hasOwnProperty.call(ACTIVITY, kind) ? ACTIVITY[kind] : UNKNOWN_ACTIVITY;
 }
 
+/** Correct the legacy singular-unit copy without rewriting the stored receipt. */
+export function activityTitle(entry: DeepClaimLogEntry): string {
+  return entry.kind === 'sold' || entry.kind === 'collected' ? entry.title.replace(/^1 units\b/, '1 unit') : entry.title;
+}
+
 /** Do not reorder the authoritative snapshot. Equal timestamps use a stable ID tie-break. */
 export function orderCompanyActivity(entries: readonly DeepClaimLogEntry[]): DeepClaimLogEntry[] {
   return [...entries].sort((left, right) => {

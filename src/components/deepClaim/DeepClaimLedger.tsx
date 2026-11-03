@@ -1,7 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
 import type { DeepClaimSnapshot } from '@/lib/deepClaim/types';
-import { activityDateFormatter, activityPresentation, DEEP_CLAIM_ACTIVITY_CATEGORIES, orderCompanyActivity, type DeepClaimActivityArt, type DeepClaimActivityCategory } from '@/lib/deepClaim/ledger';
+import { activityDateFormatter, activityPresentation, activityTitle, DEEP_CLAIM_ACTIVITY_CATEGORIES, orderCompanyActivity, type DeepClaimActivityArt, type DeepClaimActivityCategory } from '@/lib/deepClaim/ledger';
 import { DeepClaimBusinessIcon, DeepClaimEquipmentIcon, DeepClaimPortrait, DeepClaimResourceIcon } from './renderer/DeepClaimIcons';
 import { ClaimButton, ClaimEmpty } from './DeepClaimPrimitives';
 import './deepClaimLedger.css';
@@ -29,12 +29,35 @@ export function DeepClaimLog({ snapshot }: { snapshot: DeepClaimSnapshot }) {
   const dateFormatter = activityDateFormatter(snapshot.company?.timezone);
   const listId = useId();
   const listHeading = useRef<HTMLHeadingElement>(null);
+  const results = useRef<HTMLDivElement>(null);
+  const pager = useRef<HTMLElement>(null);
   const focusPage = useRef(false);
+  const [moreBelow, setMoreBelow] = useState(false);
   useLayoutEffect(() => {
-    if (!focusPage.current) return;
-    focusPage.current = false;
-    listHeading.current?.focus({ preventScroll: true });
-  }, [page, selection.category]);
+    const pane = results.current?.closest<HTMLElement>('.dcl-pane');
+    if (focusPage.current) {
+      focusPage.current = false;
+      listHeading.current?.focus({ preventScroll: true });
+      // Keep the one existing pane scroller. Paging should reveal the first
+      // receipt below the persistent Field tabs, not leave the list mid-page.
+      if (pane && results.current) {
+        const paneTop = pane.getBoundingClientRect().top;
+        const headerBottom = pane.querySelector('.dcl-field-log-header.is-ledger')?.getBoundingClientRect().bottom ?? paneTop;
+        pane.scrollTop += results.current.getBoundingClientRect().top - Math.max(paneTop, headerBottom) - 8;
+      }
+    }
+    const measure = () => {
+      const last = results.current?.querySelector('li:last-child');
+      setMoreBelow(!!last && !!pager.current && last.getBoundingClientRect().bottom > pager.current.getBoundingClientRect().top + 1);
+    };
+    measure();
+    pane?.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    if (pane) observer?.observe(pane);
+    if (results.current) observer?.observe(results.current);
+    return () => { pane?.removeEventListener('scroll', measure); window.removeEventListener('resize', measure); observer?.disconnect(); };
+  }, [page, selection.category, source, visible.length]);
   function turnPage(next: number) { focusPage.current = true; setSelection({ category: selection.category, page: next, source }); }
 
   return <section className="dcl-activity" aria-label="Company ledger">
@@ -46,18 +69,18 @@ export function DeepClaimLog({ snapshot }: { snapshot: DeepClaimSnapshot }) {
       </button>;
     })}</div>
     <h3 className="sr-only" ref={listHeading} tabIndex={-1}>Recent activity, page {page + 1} of {pages}</h3>
-    <div id={listId} className="dcl-activity-results">
-      {visible.length > 0 ? <ol className="dcl-activity-list" aria-label="Recent activity" start={page * PAGE_SIZE + 1}>{visible.map(entry => {
+    <div ref={results} id={listId} className="dcl-activity-results">
+      {visible.length > 0 ? <ol className="dcl-activity-list" role="list" aria-label="Recent activity" start={page * PAGE_SIZE + 1}>{visible.map(entry => {
         const presentation = activityPresentation(entry.kind);
         return <li key={entry.id} data-activity-category={presentation.category}>
           <span className="dcl-activity-art" aria-hidden="true"><ActivityArt kind={presentation.art} /></span>
-          <div><span className="dcl-activity-kind">{presentation.label}</span><strong>{entry.title}</strong><time dateTime={entry.created_at}>{dateFormatter.format(new Date(entry.created_at))}</time></div>
+          <div><span className="dcl-activity-kind">{presentation.label}</span><strong>{activityTitle(entry)}</strong><time dateTime={entry.created_at}>{dateFormatter.format(new Date(entry.created_at))}</time></div>
         </li>;
       })}</ol> : <ClaimEmpty title={ordered.length ? `No ${DEEP_CLAIM_ACTIVITY_CATEGORIES.find(category => category.key === selection.category)?.label.toLowerCase()} activity` : 'No activity yet'} icon={<FileText aria-hidden="true" />} />}
     </div>
-    <nav className="dcl-activity-pages" aria-label="Ledger pages">
+    <nav ref={pager} className="dcl-activity-pages" aria-label="Ledger pages">
       <ClaimButton className="is-small" disabled={page === 0} onClick={() => turnPage(page - 1)} aria-label="Previous activity"><ArrowLeft size={16} aria-hidden="true" /></ClaimButton>
-      <span role="status" aria-live="polite" aria-atomic="true">{filtered.length ? `${page * PAGE_SIZE + 1}–${Math.min(filtered.length, (page + 1) * PAGE_SIZE)} / ${filtered.length}` : '0 records'}</span>
+      <span className="dcl-activity-page-info"><span role="status" aria-live="polite" aria-atomic="true">{filtered.length ? `${page * PAGE_SIZE + 1}–${Math.min(filtered.length, (page + 1) * PAGE_SIZE)} / ${filtered.length}` : '0 records'}</span><small aria-hidden="true" data-visible={moreBelow}>Scroll to read</small></span>
       <ClaimButton className="is-small" disabled={page >= pages - 1} onClick={() => turnPage(page + 1)} aria-label="Next activity"><ArrowRight size={16} aria-hidden="true" /></ClaimButton>
     </nav>
   </section>;

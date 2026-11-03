@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUpToLine, Crosshair, Minus, Plus } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { projectWorkers, tileKey } from '@/lib/deepClaim/world';
 import type { DeepClaimBuildingId, DeepClaimPoint, DeepClaimSnapshot, DeepClaimTile, DeepClaimInfrastructure, DeepClaimDiscovery } from '@/lib/deepClaim/types';
 import { indexRevealedWorld } from '@/lib/deepClaim/visualProjection';
@@ -33,6 +34,7 @@ export type DeepClaimMapInteraction = 'pan' | 'zoom' | 'keyboard' | 'focus';
 
 export interface DeepClaimCanvasProps {
   snapshot: DeepClaimSnapshot;
+  controlsTarget?: HTMLElement | null;
   view: 'surface' | 'mine';
   selectedTile: DeepClaimPoint | null;
   onSelectTile: (point: DeepClaimPoint) => void;
@@ -74,7 +76,7 @@ class TerrainTextures {
 }
 
 export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
-  const { snapshot, view, selectedTile, onSelectTile, onSelectBuilding, active = true, reducedMotion = false, reducedGraphics = false, audio, focusRequest, selectedInfrastructureId, onDiagnostics, onInteraction } = props;
+  const { controlsTarget, snapshot, view, selectedTile, onSelectTile, onSelectBuilding, active = true, reducedMotion = false, reducedGraphics = false, audio, focusRequest, selectedInfrastructureId, onDiagnostics, onInteraction } = props;
   const host = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null);
   const context = useRef<CanvasRenderingContext2D | null>(null);
   const size = useRef<ViewportSize>({ width: 1, height: 1 });
@@ -369,6 +371,8 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
     setAnnouncement(`${name}${crewSize > 1 ? ' and crew' : ''}, ${worker.stage}, depth ${Math.round(worker.y)} metres.`); invalidate();
   }
 
+  const controls = <div className={`dc-mine-controls${controlsTarget ? ' is-docked' : ''}`} data-dc-tutorial="map-controls" role="group" aria-label="Mine view controls"><button type="button" aria-label="Focus surface buildings" disabled={!active} onClick={() => { const before = camera.current; resumeAudioFromGesture(); focusSurface(); interacted('focus', before); invalidate(); }}><ArrowUpToLine size={18} aria-hidden="true" /></button><button type="button" aria-label="Focus crew" disabled={!active || snapshot.workers.length === 0} onClick={() => crewFocus()}><Crosshair size={18} aria-hidden="true" /></button><button type="button" aria-label="Zoom into mine" disabled={!active} onClick={() => zoom(1.28)}><Plus size={19} aria-hidden="true" /></button><button type="button" aria-label="Zoom out of mine" disabled={!active} onClick={() => zoom(1 / 1.28)}><Minus size={19} aria-hidden="true" /></button></div>;
+
   return <div className="dc-mine-renderer" ref={host} data-testid="deep-claim-map" data-dc-view={view} data-dc-active={active ? 'true' : 'false'}>
     <canvas ref={canvas} className="dc-mine-canvas" data-testid="deep-claim-canvas" tabIndex={active ? 0 : -1} role="img" aria-label="Your Deep Claim mine. Drag to pan, pinch or scroll to zoom. Arrow keys pan, plus and minus zoom, Home focuses the surface, C focuses crew. Operation lists provide an accessible alternative."
       onPointerDown={event => { if (!active || event.pointerType === 'mouse' && event.button !== 0) return; resumeAudioFromGesture(); event.currentTarget.focus({ preventScroll: true }); const point = local(event); if (pointers.current.size === 0) gesture.current = false; pointers.current.set(event.pointerId, { ...point, startX: point.x, startY: point.y }); event.currentTarget.setPointerCapture?.(event.pointerId); if (pointers.current.size > 1) gesture.current = true; }}
@@ -397,7 +401,7 @@ export function DeepClaimCanvas(props: DeepClaimCanvasProps) {
         resumeAudioFromGesture(); interacted('keyboard', before); invalidate();
       }} />
     {!supported && <p className="dc-canvas-unavailable" role="status">The illustrated mine is unavailable on this device. Your company and operation controls remain available.</p>}
-    <div className="dc-mine-controls" data-dc-tutorial="map-controls" role="group" aria-label="Mine view controls"><button type="button" aria-label="Focus surface buildings" disabled={!active} onClick={() => { const before = camera.current; resumeAudioFromGesture(); focusSurface(); interacted('focus', before); invalidate(); }}><ArrowUpToLine size={18} aria-hidden="true" /></button><button type="button" aria-label="Focus crew" disabled={!active || snapshot.workers.length === 0} onClick={() => crewFocus()}><Crosshair size={18} aria-hidden="true" /></button><button type="button" aria-label="Zoom into mine" disabled={!active} onClick={() => zoom(1.28)}><Plus size={19} aria-hidden="true" /></button><button type="button" aria-label="Zoom out of mine" disabled={!active} onClick={() => zoom(1 / 1.28)}><Minus size={19} aria-hidden="true" /></button></div>
+    {controlsTarget ? createPortal(controls, controlsTarget) : controls}
     <p className="sr-only" aria-live="polite">{announcement}</p>
   </div>;
 }

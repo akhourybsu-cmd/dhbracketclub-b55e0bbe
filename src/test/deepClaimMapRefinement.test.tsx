@@ -125,6 +125,20 @@ describe('Deep Claim crew navigation', () => {
     root.rerender(<DeepClaimCanvas {...props} snapshot={{ ...snapshot, workers: [...snapshot.workers].reverse() }} />);
     fireEvent.keyDown(screen.getByTestId('deep-claim-canvas'), { key: 'c' }); frame(2000); expect(probe.latest().y).toBe(32);
   });
+  it('docks the same functional camera controls in the shell toolbar and disables them while occluded', () => {
+    const target = document.createElement('div'); target.setAttribute('data-testid', 'shell-toolbar'); document.body.append(target);
+    const probe = cameraProbe(), props = { snapshot: companySnapshot(), view: 'surface' as const, selectedTile: null, onSelectTile: vi.fn(), onSelectBuilding: vi.fn(), onDiagnostics: probe.record, reducedMotion: true };
+    const root = render(<DeepClaimCanvas {...props} controlsTarget={target} />);
+    const controls = screen.getByRole('group', { name: 'Mine view controls' });
+    expect(target).toContainElement(controls); expect(screen.getByTestId('deep-claim-map')).not.toContainElement(controls);
+    frame(); const original = probe.latest().scale;
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom into mine' })); frame(2000); expect(probe.latest().scale).toBeGreaterThan(original);
+    root.rerender(<DeepClaimCanvas {...props} controlsTarget={target} active={false} />);
+    for (const button of controls.querySelectorAll('button')) expect(button).toBeDisabled();
+    root.rerender(<DeepClaimCanvas {...props} controlsTarget={null} />);
+    expect(target).toBeEmptyDOMElement(); expect(screen.getByTestId('deep-claim-map')).toContainElement(screen.getByRole('group', { name: 'Mine view controls' }));
+    root.unmount(); target.remove();
+  });
   it('falls back to distinct idle workers when no expeditions are active', () => {
     render(<DeepClaimCanvas snapshot={companySnapshot()} view="surface" selectedTile={null} onSelectTile={vi.fn()} onSelectBuilding={vi.fn()} reducedMotion />);
     const focus = screen.getByRole('button', { name: 'Focus crew' });

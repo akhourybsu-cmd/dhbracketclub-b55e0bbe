@@ -57,9 +57,9 @@ export function fitSurfaceCamera(size: ViewportSize, bounds: MineBounds, buildin
   const left = Math.min(...buildings.map(building => building.x)), right = Math.max(...buildings.map(building => building.x + building.width));
   const top = Math.min(...buildings.map(building => building.y ?? -8));
   const bottom = Math.max(...buildings.map(building => (building.y ?? -8) + (building.height ?? 8)));
-  // Reserve space for the heading and operation dock, including short landscape
-  // viewports. Fitting width alone can cut the shaft roof off a wide window.
-  const verticalPadding = Math.min(72, size.height * .3);
+  // The game shell reserves real rows for HUD and actions. Fit only the actual
+  // remaining viewport; no building should sit behind a toolbar or be clipped.
+  const verticalPadding = 12;
   const fitScale = Math.min((size.width - 24) / Math.max(1, right - left), (size.height - verticalPadding * 2) / Math.max(1, bottom - top));
   const minimumScale = fitScale < 4 ? 3 : 4;
   const scale = clamp(fitScale, minimumScale, 21);

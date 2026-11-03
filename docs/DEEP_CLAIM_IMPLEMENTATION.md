@@ -2,17 +2,17 @@
 
 ## Current follow-up — illustrated ledger and mine navigation
 
-Built on clean main `d41c4ebf2f4582ca37ce6e0449307fc3dbeff6b3`. This presentation pass adds six illustrated activity categories, six-record pages, timezone-aware receipt dates and explicit mappings for all 20 current event kinds. The latest-record count describes the bounded recent feed. Original receipt titles/timestamp attributes remain intact; unknown future kinds remain in All. Filter/paging focus and refreshed-source recovery have regression coverage.
+Built on clean main `d41c4ebf2f4582ca37ce6e0449307fc3dbeff6b3`. This presentation pass adds six illustrated activity categories, six-record pages, timezone-aware receipt dates and explicit mappings for all 20 current event kinds. The latest-record count describes the bounded recent feed. Original receipt data/timestamp attributes remain intact; singular-unit wording is corrected only in the display; unknown future kinds remain in All. Filter/paging focus and refreshed-source recovery have regression coverage.
 
 Mine navigation now focuses each active expedition once, retains an idle-worker fallback and tracks identities across roster changes. Surface framing uses both building axes. Two-finger gestures preserve their moving world anchor, and right/middle mouse clicks cannot move/select the mine. No SQL, RPC, RLS, economic rules, world generation, saved progress, atlas bytes or dependencies changed. See the follow-up in `DEEP_CLAIM_AUDIT.md` for scope.
 
 | Verification | Evidence |
 |---|---|
-| Full app unit suite | **230 files / 2,429 tests passed** in 283.81 seconds, one worker. Includes 30 new ledger/map regressions and existing games. |
+| Full app unit suite | **230 files / 2,432 tests passed** in 294.69 seconds, one worker. Includes 33 new ledger/map regressions and existing games. |
 | Source checks | Actual app-project TypeScript, scoped ESLint, existing member lint, CSS parsing, browser-script syntax and whitespace checks passed. |
 | Preservation | Unchanged Phase 8 source/SQL/catalog/atlas gate passed. |
-| Production build | Passed in **18.88 seconds**. Existing large-chunk advisory remains. |
-| Native browser / publication | Pending exact-source connected-editor checks after the normal main sync; no new live deployment is claimed by this entry. |
+| Production build | Final layout build passed in **18.90 seconds**. Existing large-chunk advisory remains. |
+| Native browser / publication | Initial `3c1b23a` run: **282/282 passed**, zero errors/runtime errors. Screenshot review found HUD/pager issues; final layout corrections and stronger native intersection/hit-target assertions are being verified before publication. |
 
 Evidence: `/workspace/checkpoints/deep-claim-navigation/`. The new isolated `navigation` browser section derives records from a real tutorial haul and seven actual one-unit coal sales. It checks category keyboard controls, real pagination, all owned-building bounds, native touch anchoring and unchanged authoritative company state over the phone/landscape/desktop matrix. Root browser execution remains blocked by the sandbox's socket `EPERM`; the existing connected editor is the verification fallback. Final browser, commit and public-content receipts will follow after those operations actually complete.
 

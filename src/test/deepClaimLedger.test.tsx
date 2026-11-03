@@ -1,11 +1,11 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DeepClaimLog } from '@/components/deepClaim/DeepClaimPanels';
-import { activityDateFormatter, activityPresentation, orderCompanyActivity } from '@/lib/deepClaim/ledger';
+import { activityDateFormatter, activityPresentation, activityTitle, orderCompanyActivity } from '@/lib/deepClaim/ledger';
 import type { DeepClaimLogEntry } from '@/lib/deepClaim/types';
 import { companySnapshot } from './fixtures/deepClaim';
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const kinds = {
   company: ['founded', 'upgraded', 'research_started', 'research_completed', 'milestone_claimed'],
@@ -19,6 +19,14 @@ function entry(kind: string, id = kind, created_at = '2026-11-01T12:00:00Z'): De
 }
 
 describe('Deep Claim server receipt presentation', () => {
+  it('corrects legacy singular-unit wording while retaining the original receipt and amounts', () => {
+    const receipt = { ...entry('sold'), title: '1 units sold for $4.' };
+    expect(activityTitle(receipt)).toBe('1 unit sold for $4.');
+    expect(receipt.title).toBe('1 units sold for $4.');
+    expect(activityTitle({ ...receipt, title: '11 units sold for $44.' })).toBe('11 units sold for $44.');
+    expect(activityTitle({ ...receipt, kind: 'unknown' })).toBe(receipt.title);
+    expect(activityTitle({ ...receipt, kind: 'collected', title: '1 units moved into the warehouse.' })).toBe('1 unit moved into the warehouse.');
+  });
   it.each(Object.entries(kinds))('classifies every existing %s receipt by its actual server kind', (category, entries) => {
     for (const kind of entries) expect(activityPresentation(kind).category).toBe(category);
   });
@@ -62,6 +70,7 @@ describe('Deep Claim compact illustrated ledger', () => {
     const seen = new Set<string>();
     for (let page = 0; page < 4; page++) {
       const list = within(ledger).getByRole('list', { name: 'Recent activity' });
+      expect(list).toHaveAttribute('role', 'list');
       const rows = within(list).getAllByRole('listitem');
       expect(rows.length).toBeLessThanOrEqual(6);
       rows.forEach(row => seen.add(within(row).getByText(/^Server receipt:/).textContent!));
@@ -134,6 +143,35 @@ describe('Deep Claim compact illustrated ledger', () => {
     expect(time.tagName).toBe('TIME');
     expect(time).toHaveAttribute('datetime', record.created_at);
     expect(screen.queryByRole('button', { name: /collect|claim|sell/i })).not.toBeInTheDocument();
+  });
+
+  it('returns the first receipt below the sticky Field tabs and signals remaining content using the existing pane scroller', () => {
+    const snapshot = companySnapshot();
+    snapshot.log = Array.from({ length: 14 }, (_, index) => entry('sold', String(index).padStart(2, '0')));
+    const rectangle = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 320, width: 320, height: bottom - top, x: 0, y: top, toJSON: () => ({}) });
+    const metrics: { pane: HTMLElement | null } = { pane: null };
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('dcl-pane')) return rectangle(60, 360);
+      if (this.classList.contains('dcl-field-log-header')) return rectangle(60, 114);
+      if (this.classList.contains('dcl-activity-results')) return rectangle(300 - (metrics.pane?.scrollTop ?? 0), 880 - (metrics.pane?.scrollTop ?? 0));
+      if (this.classList.contains('dcl-activity-pages')) return rectangle(300, 360);
+      if (this.tagName === 'LI') return rectangle(800 - (metrics.pane?.scrollTop ?? 0), 880 - (metrics.pane?.scrollTop ?? 0));
+      return rectangle(0, 0);
+    });
+    const ui = render(<div className="dcl-pane"><div className="dcl-field-log-header is-ledger">Field tabs</div><DeepClaimLog snapshot={snapshot} /></div>);
+    const pane = ui.container.querySelector<HTMLElement>('.dcl-pane')!;
+    metrics.pane = pane;
+    pane.scrollTop = 100;
+    fireEvent.click(screen.getByRole('button', { name: 'Next activity' }));
+    expect(pane.scrollTop).toBe(178);
+    expect(ui.container.querySelector('.dcl-activity-results')!.getBoundingClientRect().top).toBe(122);
+    expect(screen.getByRole('heading', { name: 'Recent activity, page 2 of 3' })).toHaveFocus();
+    expect(screen.getByText('Scroll to read')).toHaveAttribute('data-visible', 'true');
+    pane.scrollTop = 700;
+    fireEvent.scroll(pane);
+    expect(screen.getByText('Scroll to read')).toHaveAttribute('data-visible', 'false');
+    expect(ui.container.querySelectorAll('.dcl-activity-results')).toHaveLength(1);
+    expect(ui.container.querySelector('.dcl-activity-results')).not.toHaveAttribute('tabindex');
   });
 
   it('provides a complete empty state without a fake history or active pagination', () => {

@@ -43,7 +43,7 @@ export async function runDeepClaimNavigationBrowser(h) {
       await trade.focus(); await page.keyboard.press('Space');
       await expect(trade).toHaveAttribute('aria-pressed', 'true');
       await expect(activity.getByRole('listitem')).toHaveCount(6);
-      assert.ok((await activity.getByRole('listitem').allTextContents()).every(text => text.includes('units sold')));
+      assert.ok((await activity.getByRole('listitem').allTextContents()).every(text => /\bunits? sold\b/.test(text)));
       await ledger.getByRole('button', { name: 'Next activity', exact: true }).click();
       await expect(activity.getByRole('listitem')).toHaveCount(1);
       await expect(ledger.getByRole('button', { name: 'Next activity', exact: true })).toBeDisabled();
@@ -52,6 +52,21 @@ export async function runDeepClaimNavigationBrowser(h) {
       await categories.getByRole('button', { name: /^All/ }).click();
       await expect(activity.getByRole('listitem')).toHaveCount(6);
       checked(`navigation-ledger-filter-pagination-and-keyboard-${label}`, true);
+      const paging = await page.evaluate(() => [...document.querySelectorAll('.dcl-activity-pages button')].map(button => {
+        const box = button.getBoundingClientRect(), hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { label: button.getAttribute('aria-label'), visible: box.top >= 0 && box.bottom <= innerHeight,
+          reachable: !!hit && (hit === button || button.contains(hit)) };
+      }));
+      checked(`navigation-ledger-pager-remains-onscreen-and-reachable-${label}`, paging.length === 2 && paging.every(item => item.visible && item.reachable), paging);
+      await ledger.getByRole('button', { name: 'Next activity', exact: true }).click();
+      const reading = await page.evaluate(() => {
+        const first = document.querySelector('.dcl-activity-list>li')?.getBoundingClientRect();
+        const header = document.querySelector('.dcl-field-log-header')?.getBoundingClientRect();
+        const footer = document.querySelector('.dcl-activity-pages')?.getBoundingClientRect();
+        return first && header && footer ? { top: first.top, headerBottom: header.bottom, bottom: first.bottom, footerTop: footer.top } : null;
+      });
+      checked(`navigation-ledger-page-start-is-visible-${label}`, !!reading && reading.top >= reading.headerBottom - 1 && reading.top < reading.footerTop - 10, reading);
+      await categories.getByRole('button', { name: /^All/ }).click();
       await fit(page, `navigation-ledger-${label}`); await shot(page, `navigation-ledger-${label}`);
 
       await h.tab(page, 'Surface');
@@ -72,6 +87,23 @@ export async function runDeepClaimNavigationBrowser(h) {
       });
       checked(`navigation-surface-buildings-fit-both-axes-${label}`, framed.length > 0 && framed.every(item =>
         item.first.x >= -1 && item.first.y >= -1 && item.last.x <= item.width + 1 && item.last.y <= item.height + 1), framed);
+      const chrome = await page.evaluate(rectangles => {
+        const map = document.querySelector('.dc-mine-canvas').getBoundingClientRect();
+        const rect = node => { const box = node.getBoundingClientRect(); return { left: box.left, top: box.top, right: box.right, bottom: box.bottom }; };
+        const intersect = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+        const controls = rect(document.querySelector('.dc-mine-controls'));
+        const goal = document.querySelector('.dcl-session-goal');
+        const tools = [...document.querySelectorAll('.dcl-map-tools button')];
+        const overlays = [...document.querySelectorAll('.dcl-map-heading>div:first-child,.dcl-map-tools button,.dc-mine-controls,.dcl-session-goal,.dcl-map-actions')]
+          .filter(node => node.getBoundingClientRect().width > 0).map(node => ({ label: node.getAttribute('aria-label') || node.className, ...rect(node) }));
+        return { toolsOverlap: tools.some(node => intersect(rect(node), controls)), goalOverlap: !!goal && intersect(rect(goal), controls),
+          buildingsCovered: rectangles.flatMap(building => {
+            const box = { left: map.left + building.first.x, top: map.top + building.first.y,
+              right: map.left + building.last.x, bottom: map.top + building.last.y };
+            return overlays.filter(overlay => intersect(box, overlay)).map(overlay => `${building.key}: ${overlay.label}`);
+          }) };
+      }, framed);
+      checked(`navigation-surface-chrome-does-not-cover-camp-${label}`, !chrome.toolsOverlap && !chrome.goalOverlap && chrome.buildingsCovered.length === 0, chrome);
       await fit(page, `navigation-surface-${label}`); await shot(page, `navigation-surface-${label}`);
 
       // Native touch events exercise the actual pointer handlers. A fixed-size
