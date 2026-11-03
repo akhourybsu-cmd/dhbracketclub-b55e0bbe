@@ -13,6 +13,15 @@ export async function runDeepClaimNavigationBrowser(h) {
     })).toBe(true);
     return page.evaluate(() => window.deepClaimRuntime.samples.at(-1).camera);
   }
+  async function readableReceipt(page) {
+    return page.evaluate(() => {
+      const title = document.querySelector('.dcl-activity-list>li strong');
+      if (!title) return { readable: false, reason: 'No first receipt' };
+      const box = title.getBoundingClientRect(), hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+      return { readable: box.top >= 0 && box.bottom <= innerHeight && !!hit && (hit === title || title.contains(hit)),
+        top: box.top, bottom: box.bottom, coveredBy: hit?.className || hit?.tagName || null };
+    });
+  }
   const economic = snapshot => ({ company: snapshot.company, resources: snapshot.resources,
     workers: snapshot.workers, expeditions: snapshot.expeditions, buildings: snapshot.buildings,
     equipment: snapshot.equipment, production: snapshot.production_jobs, business: snapshot.business,
@@ -62,6 +71,8 @@ export async function runDeepClaimNavigationBrowser(h) {
       await categories.getByRole('button', { name: /^All/ }).click();
       await expect(activity.getByRole('listitem')).toHaveCount(6);
       checked(`navigation-ledger-filter-pagination-and-keyboard-${label}`, true);
+      const filteredReceipt = await readableReceipt(page);
+      checked(`navigation-ledger-filter-exposes-readable-receipt-${label}`, filteredReceipt.readable, filteredReceipt);
       const paging = await page.evaluate(() => [...document.querySelectorAll('.dcl-activity-pages button')].map(button => {
         const box = button.getBoundingClientRect(), hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
         return { label: button.getAttribute('aria-label'), visible: box.top >= 0 && box.bottom <= innerHeight,
@@ -73,10 +84,18 @@ export async function runDeepClaimNavigationBrowser(h) {
         const first = document.querySelector('.dcl-activity-list>li')?.getBoundingClientRect();
         const header = document.querySelector('.dcl-field-log-header')?.getBoundingClientRect();
         const footer = document.querySelector('.dcl-activity-pages')?.getBoundingClientRect();
-        return first && header && footer ? { top: first.top, headerBottom: header.bottom, bottom: first.bottom, footerTop: footer.top } : null;
+        const pane = document.querySelector('.dcl-activity')?.closest('.dcl-pane')?.getBoundingClientRect();
+        const controls = document.querySelector('.dcl-activity-control-row');
+        const compact = controls && getComputedStyle(controls).display !== 'contents';
+        return first && header && footer && pane ? { top: first.top, headerBottom: header.bottom, bottom: first.bottom,
+          controlsBottom: compact ? controls.getBoundingClientRect().bottom : header.bottom,
+          readingBottom: compact ? pane.bottom : footer.top } : null;
       });
-      checked(`navigation-ledger-page-start-is-visible-${label}`, !!reading && reading.top >= reading.headerBottom - 1 && reading.top < reading.footerTop - 10, reading);
+      const pagedReceipt = await readableReceipt(page);
+      checked(`navigation-ledger-page-start-is-visible-${label}`, !!reading && reading.top >= Math.max(reading.headerBottom, reading.controlsBottom) - 1 && reading.top < reading.readingBottom - 10 && pagedReceipt.readable, { reading, pagedReceipt });
       await categories.getByRole('button', { name: /^All/ }).click();
+      const resetReceipt = await readableReceipt(page);
+      checked(`navigation-ledger-reset-exposes-readable-receipt-${label}`, resetReceipt.readable, resetReceipt);
       await fit(page, `navigation-ledger-${label}`); await shot(page, `navigation-ledger-${label}`);
 
       await h.tab(page, 'Surface');

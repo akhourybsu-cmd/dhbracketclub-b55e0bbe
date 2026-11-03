@@ -174,6 +174,49 @@ describe('Deep Claim compact illustrated ledger', () => {
     expect(ui.container.querySelector('.dcl-activity-results')).not.toHaveAttribute('tabindex');
   });
 
+  it('keeps compact landscape receipts below both measured control rows when changing pages or reselecting a category', () => {
+    const snapshot = companySnapshot();
+    snapshot.log = Array.from({ length: 14 }, (_, index) => entry('sold', String(index).padStart(2, '0')));
+    const metrics: { pane: HTMLElement | null; headerHeight: number; lastBottom: number } = { pane: null, headerHeight: 54, lastBottom: 340 };
+    const rectangle = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 844, width: 844, height: bottom - top, x: 0, y: top, toJSON: () => ({}) });
+    const originalStyle = window.getComputedStyle;
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((element, pseudo) => element.classList.contains('dcl-activity-control-row') ? { position: 'sticky' } as CSSStyleDeclaration : originalStyle(element, pseudo));
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('dcl-pane')) return rectangle(60, 360);
+      if (this.classList.contains('dcl-field-log-header')) return rectangle(60, 60 + metrics.headerHeight);
+      if (this.classList.contains('dcl-activity-control-row')) return rectangle(64 + metrics.headerHeight, 124 + metrics.headerHeight);
+      if (this.classList.contains('dcl-activity-results')) return rectangle(300 - (metrics.pane?.scrollTop ?? 0), 880 - (metrics.pane?.scrollTop ?? 0));
+      if (this.classList.contains('dcl-activity-pages')) return rectangle(64 + metrics.headerHeight, 124 + metrics.headerHeight);
+      if (this.tagName === 'LI') return rectangle(metrics.lastBottom - 80, metrics.lastBottom);
+      return rectangle(0, 0);
+    });
+    const ui = render(<div className="dcl-pane"><div className="dcl-field-log-header is-ledger">Field tabs</div><DeepClaimLog snapshot={snapshot} /></div>);
+    const pane = ui.container.querySelector<HTMLElement>('.dcl-pane')!; metrics.pane = pane;
+    const ledger = screen.getByRole('region', { name: 'Company ledger' });
+    const trade = screen.getByRole('button', { name: 'Trade activity: 14' });
+    expect(ledger.style.getPropertyValue('--dcl-activity-switcher-height')).toBe('54px');
+    pane.scrollTop = 100;
+    trade.focus(); fireEvent.click(trade);
+    expect(trade).toHaveFocus();
+    expect(pane.scrollTop).toBe(114);
+    expect(ui.container.querySelector('.dcl-activity-results')!.getBoundingClientRect().top).toBe(186);
+    expect(screen.getByText('Scroll to read')).toHaveAttribute('data-visible', 'false');
+    pane.scrollTop = 300;
+    fireEvent.click(trade);
+    expect(pane.scrollTop).toBe(114);
+    expect(trade).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Next activity' }));
+    expect(screen.getByRole('heading', { name: 'Recent activity, page 2 of 3' })).toHaveFocus();
+    metrics.headerHeight = 70;
+    fireEvent(window, new Event('resize'));
+    expect(ledger.style.getPropertyValue('--dcl-activity-switcher-height')).toBe('70px');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous activity' }));
+    expect(ui.container.querySelector('.dcl-activity-results')!.getBoundingClientRect().top).toBe(202);
+    metrics.lastBottom = 400;
+    fireEvent.scroll(pane);
+    expect(screen.getByText('Scroll to read')).toHaveAttribute('data-visible', 'true');
+  });
+
   it('provides a complete empty state without a fake history or active pagination', () => {
     render(<DeepClaimLog snapshot={companySnapshot()} />);
     expect(screen.getByText('No activity yet')).toBeInTheDocument();

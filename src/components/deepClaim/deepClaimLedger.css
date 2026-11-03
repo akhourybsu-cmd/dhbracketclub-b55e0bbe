@@ -10,3 +10,16 @@
 .dcl-activity .dcl-activity-pages{position:sticky;bottom:0;z-index:2;min-height:60px;padding:6px 8px 3px;border:1px solid var(--dcl-line);border-radius:5px;background:var(--dcl-panel);box-shadow:0 -5px 10px var(--dcl-shadow)}
 .dcl-activity-page-info{display:grid;gap:3px;justify-items:center;min-width:82px;color:var(--dcl-text);font-variant-numeric:tabular-nums}.dcl-activity-page-info>small{font-size:9px;line-height:1.2;color:var(--dcl-muted);visibility:hidden}.dcl-activity-page-info>small[data-visible=true]{visibility:visible}
 @media(forced-colors:active){.dcl-field-log-header.is-ledger,.dcl-activity .dcl-activity-pages{background:Canvas;color:CanvasText;border-color:ButtonBorder;box-shadow:none}.dcl-activity-page-info,.dcl-activity-page-info>small{color:CanvasText}}
+.dcl-activity-control-row{display:contents}.dcl-activity-categories{order:1}.dcl-activity-results{order:2}.dcl-activity-pages{order:3}
+@media(min-width:600px) and (max-height:500px){
+  .dcl-activity{position:relative;gap:8px}
+  .dcl-activity>.dcl-section-heading{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .dcl-activity-control-row{display:grid;grid-template-columns:minmax(0,1fr) 164px;align-items:start;gap:8px;position:sticky;top:calc(var(--dcl-activity-switcher-height,0px) + 4px);z-index:2;min-width:0;padding:4px 0;background:var(--dcl-bg);box-shadow:0 4px 0 var(--dcl-bg)}
+  .dcl-activity-categories{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+  .dcl-activity-categories>button{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:24px 16px;gap:0 2px;min-height:52px;padding:4px}
+  .dcl-activity-category-art{grid-column:1;grid-row:1;width:24px;height:24px;justify-self:center}.dcl-activity-category-art>svg{width:24px;height:24px}
+  .dcl-activity-categories strong{grid-row:2;grid-column:1/-1;justify-self:center;font-size:9px;line-height:1.2;overflow-wrap:normal}.dcl-activity-categories small{grid-column:2;grid-row:1;font-size:9px}
+  .dcl-activity .dcl-activity-control-row .dcl-activity-pages{position:static;min-height:52px;gap:4px;padding:3px;box-shadow:none}
+  .dcl-activity-control-row .dcl-activity-page-info{min-width:56px;font-size:10px}.dcl-activity-control-row .dcl-activity-page-info>small{font-size:8px}
+}
+@media(min-width:600px) and (max-height:500px) and (forced-colors:active){.dcl-activity-control-row{background:Canvas;box-shadow:none}}
