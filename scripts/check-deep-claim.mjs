@@ -28,7 +28,7 @@ const visualMatrix = process.env.DEEP_CLAIM_QA_VISUAL_MATRIX === '1';
 const visualCases = visualMatrix
   ? [[320,568,'dark','no-preference'],[320,568,'light','no-preference'],[844,390,'dark','no-preference'],[844,390,'light','no-preference'],[1440,900,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']]
   : [[320,568,'dark','no-preference'],[390,844,'light','no-preference'],[844,390,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']];
-const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
+const report = { checks: [], errors: [], runtimeErrors: [], runtimeErrorStacks: [], browserConsoleErrors: [], artifacts: output,
   visual_matrix: visualMatrix,
   optionalRareRevealDismissals: 0,
   fixture: 'Production Deep Claim screens/hooks, real SQL migrations in local isolated PostgreSQL, local identity. No live writes.' };
@@ -63,7 +63,15 @@ async function start() {
 async function pageFor(context, { runtimeProbe = false } = {}) {
   const page = await context.newPage(); currentPage = page;
   page.setDefaultTimeout(15000);
-  page.on('pageerror', error => report.runtimeErrors.push(error.message));
+  page.on('pageerror', error => {
+    report.runtimeErrors.push(error.message);
+    report.runtimeErrorStacks.push(error.stack || error.message);
+  });
+  page.on('console', message => {
+    if (message.type() === 'error') report.browserConsoleErrors.push({
+      message: message.text(), location: message.location(), page: page.url(),
+    });
+  });
   await page.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort());
   const stub = (path, body) => page.route(`**/${path}*`, route => route.fulfill({ contentType: 'text/javascript', body }));
   await stub('src/integrations/supabase/client.ts', "export {supabase} from '/scripts/fixtures/deep-claim-transport.ts';");

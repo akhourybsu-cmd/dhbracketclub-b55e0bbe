@@ -1,0 +1,108 @@
+name: Deep Claim browser
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deep-claim-browser.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'src/pages/DeepClaimPage.tsx'
+      - 'src/components/deepClaim/**'
+      - 'src/components/games/DHGamesIntro*'
+      - 'src/components/games/DHGamesLogo.tsx'
+      - 'src/components/games/publisherIntroTiming.ts'
+      - 'src/components/games/dhGamesIntro.css'
+      - 'src/hooks/useDeepClaim*'
+      - 'src/lib/deepClaim/**'
+      - 'src/test/deepClaim*'
+      - 'public/deep-claim/**'
+      - 'scripts/check-deep-claim.mjs'
+      - 'scripts/fixtures/deep-claim*'
+      - 'scripts/fixtures/showdown-db.sql'
+      - 'supabase/migrations/*deep_claim*.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEEP_CLAIM_QA_OUTPUT: ${{ runner.temp }}/deep-claim-browser-artifacts
+      DEEP_CLAIM_QA_VISUAL_MATRIX: '1'
+      DEEP_CLAIM_QA_SECTION: navigation,presentation,moments
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Prepare browser artifacts
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const output = process.env.DEEP_CLAIM_QA_OUTPUT;
+          fs.mkdirSync(output, { recursive: true });
+          fs.writeFileSync(path.join(output, 'context.json'), JSON.stringify({
+            commit: process.env.GITHUB_SHA,
+            run: process.env.GITHUB_RUN_ID,
+            attempt: process.env.GITHUB_RUN_ATTEMPT,
+            sections: process.env.DEEP_CLAIM_QA_SECTION,
+            visualMatrix: process.env.DEEP_CLAIM_QA_VISUAL_MATRIX,
+            node: process.version,
+          }, null, 2));
+          JS
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Select installed Chromium
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync } from 'node:fs';
+          import { chromium } from '@playwright/test';
+          appendFileSync(process.env.GITHUB_ENV, `DEEP_CLAIM_QA_CHROMIUM=${chromium.executablePath()}\n`);
+          JS
+
+      - name: Run Deep Claim browser checks
+        shell: bash
+        run: |
+          set -o pipefail
+          # The full seven-layout matrix performs genuine local SQL-backed work.
+          # Bound the process while preserving every individual assertion timeout.
+          timeout --signal=TERM --kill-after=30s 900s node scripts/check-deep-claim.mjs 2>&1 | tee "$DEEP_CLAIM_QA_OUTPUT/runner.log"
+
+      - name: Read browser result
+        if: always()
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const file = path.join(process.env.DEEP_CLAIM_QA_OUTPUT, 'report.json');
+          if (!fs.existsSync(file)) console.log('No browser report produced; inspect the preceding step.');
+          else {
+            const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log(JSON.stringify({ checks: report.checks.length, errors: report.errors,
+              runtimeErrors: report.runtimeErrors, runtimeErrorStacks: report.runtimeErrorStacks,
+              browserConsoleErrors: report.browserConsoleErrors.slice(-30) }, null, 2));
+          }
+          JS
+
+      - name: Upload browser reports and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-claim-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEEP_CLAIM_QA_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7

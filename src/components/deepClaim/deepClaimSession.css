@@ -9,6 +9,9 @@
 .dcl-scene>.dcl-map-heading>.dcl-session-goal{position:static;inset:auto;grid-column:1;grid-row:2;max-width:none;min-width:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto}
 .dcl-scene>.dcl-map-heading>.dcl-camera-tools{grid-column:2;grid-row:2;justify-self:end;max-width:none;min-width:0;padding:0;border:0;background:none;box-shadow:none;pointer-events:auto}
 .dcl-scene>.dcl-map-heading>.dcl-camera-tools:empty{display:none}
+/* Keep one controls subtree mounted while tabs and dialog focus scopes change.
+   Mine uses the same toolbar target, positioned over its larger viewport. */
+.dcl-scene[data-dc-scene=mine]>.dcl-map-heading>.dcl-camera-tools{position:absolute;top:calc(100% + 20px);right:0;z-index:2;grid-column:auto;grid-row:auto}
 .dcl-scene>.dcl-map-actions{position:relative;inset:auto;order:1;flex:0 0 auto;width:100%;max-width:none;margin:0;padding:8px 12px;background:var(--dcl-panel);border-top:1px solid var(--dcl-line)}
 .dcl-scene>.dcl-map-actions>.dcl-button{max-width:320px;min-height:48px;padding:8px 10px;line-height:1.3}
 .dcl-scene>.dcl-map-actions>.dcl-operation-dock{max-width:900px}

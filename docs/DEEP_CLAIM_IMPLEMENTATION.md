@@ -12,7 +12,7 @@ Mine navigation now focuses each active expedition once, retains an idle-worker 
 | Source checks | Actual app-project TypeScript, scoped ESLint, existing member lint, CSS parsing, browser-script syntax and whitespace checks passed. |
 | Preservation | Unchanged Phase 8 source/SQL/catalog/atlas gate passed. |
 | Production build | Final layout build passed in **18.90 seconds**. Existing large-chunk advisory remains. |
-| Native browser / publication | Initial `3c1b23a` run: **282/282 passed**, zero errors/runtime errors. Screenshot review found HUD/pager issues; final layout corrections and stronger native intersection/hit-target assertions are being verified before publication. |
+| Native browser / publication | Initial `3c1b23a`: 282/282 passed. The `8acaf32` follow-up exposed a real rapid Office-close/tab-switch crash after 101 checks. The stable-control-target correction passed 77 focused tests, app types/lint and a 26.34-second build. A scoped GitHub browser workflow is the final native gate; publication remains pending. |
 
 Evidence: `/workspace/checkpoints/deep-claim-navigation/`. The new isolated `navigation` browser section derives records from a real tutorial haul and seven actual one-unit coal sales. It checks category keyboard controls, real pagination, all owned-building bounds, native touch anchoring and unchanged authoritative company state over the phone/landscape/desktop matrix. Root browser execution remains blocked by the sandbox's socket `EPERM`; the existing connected editor is the verification fallback. Final browser, commit and public-content receipts will follow after those operations actually complete.
 
