@@ -20,16 +20,23 @@ export async function runDeepClaimFindFooterBrowser(h, run, find) {
   async function footerReachable(dialog, label) {
     // Include the disabled initial confirmation: fit() ordinarily examines
     // enabled commands only, but every footer state must retain its footprint.
-    const buttons = await dialog.locator('.dcl-dialog-fixed-footer .dcl-dialog-actions button').evaluateAll(nodes => nodes.map(node => {
-      const box = node.getBoundingClientRect(), panel = node.closest('[role="dialog"]').getBoundingClientRect();
-      const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-      return { name: node.textContent.trim(), width: box.width, height: box.height,
-        visible: box.left >= Math.max(0, panel.left) - 1 && box.right <= Math.min(innerWidth, panel.right) + 1
-          && box.top >= Math.max(0, panel.top) - 1 && box.bottom <= Math.min(innerHeight, panel.bottom) + 1,
-        reachable: !!hit && (hit === node || node.contains(hit)) };
-    }));
-    checked(`field-footer-two-reachable-commands-${label}`, buttons.length === 2
-      && buttons.every(button => button.width >= 43.5 && button.height >= 43.5 && button.visible && button.reachable), buttons);
+    const ready = buttons => buttons.length === 2
+      && buttons.every(button => button.width >= 43.5 && button.height >= 43.5 && button.visible && button.reachable);
+    let buttons = [];
+    // Radix animates the opening dialog's scale. Observe its real hit areas
+    // with the ordinary assertion budget before recording final geometry.
+    await expect.poll(async () => {
+      buttons = await dialog.locator('.dcl-dialog-fixed-footer .dcl-dialog-actions button').evaluateAll(nodes => nodes.map(node => {
+        const box = node.getBoundingClientRect(), panel = node.closest('[role="dialog"]').getBoundingClientRect();
+        const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return { name: node.textContent.trim(), width: box.width, height: box.height,
+          visible: box.left >= Math.max(0, panel.left) - 1 && box.right <= Math.min(innerWidth, panel.right) + 1
+            && box.top >= Math.max(0, panel.top) - 1 && box.bottom <= Math.min(innerHeight, panel.bottom) + 1,
+          reachable: !!hit && (hit === node || node.contains(hit)) };
+      }));
+      return ready(buttons);
+    }, { message: `Find footer commands remain reachable: ${label}` }).toBe(true);
+    checked(`field-footer-two-reachable-commands-${label}`, ready(buttons), buttons);
   }
   const peer = await h.setup();
   try {
@@ -48,6 +55,24 @@ export async function runDeepClaimFindFooterBrowser(h, run, find) {
         await expect(dialog.getByRole('button', { name: 'Confirm decision', exact: true })).toBeDisabled();
         await expect(summary).toContainText('Choose an option');
         await footerReachable(dialog, `${label}-initial`);
+        if (width > height) {
+          let choices = [];
+          const ready = () => choices.length === 3
+            && choices.every(choice => choice.width >= 43.5 && choice.height >= 43.5 && choice.visible && choice.reachable);
+          await expect.poll(async () => {
+            choices = await dialog.getByRole('group', { name: 'Find decision', exact: true }).getByRole('button').evaluateAll(nodes => nodes.map(node => {
+              const box = node.getBoundingClientRect(), body = node.closest('.dcl-dialog-scroll-body').getBoundingClientRect();
+              const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+              return { name: node.textContent.trim(), width: box.width, height: box.height,
+                visible: box.left >= Math.max(0, body.left) && box.right <= Math.min(innerWidth, body.right)
+                  && box.top >= Math.max(0, body.top) && box.bottom <= Math.min(innerHeight, body.bottom),
+                reachable: !!hit && (hit === node || node.contains(hit)) };
+            }));
+            return ready();
+          }, { message: `Initial landscape find decisions fit the reading body: ${label}` }).toBe(true);
+          checked(`field-initial-landscape-decisions-visible-${label}`, ready(), choices);
+          await shot(page, `field-footer-${label}-initial`);
+        }
         for (const option of [
           { button: /^Keep in cabinet/, confirm: 'Confirm keep', summary: 'Keep' },
           { button: /^Sell specimen/, confirm: 'Confirm sale', summary: `${find.sale_value} cr` },
