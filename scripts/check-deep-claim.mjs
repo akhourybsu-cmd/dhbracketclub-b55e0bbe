@@ -15,12 +15,13 @@ import { runPhase5Browser } from './fixtures/deep-claim-phase5-browser.mjs';
 import { installDeepClaimRuntimeProbe, runPhase6Browser } from './fixtures/deep-claim-phase6-browser.mjs';
 import { runPhase7Browser } from './fixtures/deep-claim-phase7-browser.mjs';
 import { runDeepClaimAcademyBrowser, runDeepClaimCampaignBrowser, runDeepClaimMenuBrowser } from './fixtures/deep-claim-training-browser.mjs';
+import { runDeepClaimSessionBrowser } from './fixtures/deep-claim-session-browser.mjs';
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = process.env.DEEP_CLAIM_QA_OUTPUT || await mkdtemp(join(tmpdir(), 'deep-claim-'));
 await mkdir(output, { recursive: true });
 const base = 'http://127.0.0.1:8106', token = randomUUID();
-const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'publisher,presentation,quotes,menus,journey,reliability,industry,field,caverns,business,social,runtime,deep,menu,training').split(','));
+const sections = new Set((process.env.DEEP_CLAIM_QA_SECTION || 'publisher,presentation,quotes,menus,journey,reliability,industry,field,caverns,business,social,runtime,deep,menu,training,session').split(','));
 const visualMatrix = process.env.DEEP_CLAIM_QA_VISUAL_MATRIX === '1';
 const visualCases = visualMatrix
   ? [[320,568,'dark','no-preference'],[320,568,'light','no-preference'],[844,390,'dark','no-preference'],[844,390,'light','no-preference'],[1440,900,'dark','no-preference'],[1440,900,'light','no-preference'],[390,844,'dark','reduce']]
@@ -1203,7 +1204,7 @@ async function business() {
 // Scenarios use production accessible interactions. Fixture commands only move
 // existing server timestamps or interrupt local transport, never award money.
 async function main() {
-  for (const section of sections) assert.ok(['publisher', 'presentation', 'quotes', 'menus', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime', 'deep', 'menu', 'training', 'campaign', 'academy'].includes(section), `Unknown Deep Claim QA section ${section}`);
+  for (const section of sections) assert.ok(['publisher', 'presentation', 'quotes', 'menus', 'journey', 'reliability', 'industry', 'field', 'caverns', 'business', 'social', 'runtime', 'deep', 'menu', 'training', 'campaign', 'academy', 'session'].includes(section), `Unknown Deep Claim QA section ${section}`);
   if (sections.has('publisher')) await publisherIntro();
   if (sections.has('menus')) await menus();
   if (sections.has('presentation')) await presentation();
@@ -1218,6 +1219,7 @@ async function main() {
   if (sections.has('runtime')) await runPhase6Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, expect, assert, actors: DEEP_CLAIM_ACTORS });
   if (sections.has('deep')) await runPhase7Browser({ setup, pageFor, go, continueCompany, reloadCompany, found, intro, harvest, operationPlan, officeView, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, processRecipe, workerFile, expect, assert, actors: DEEP_CLAIM_ACTORS });
   const training = { setup, pageFor, go, continueCompany, reloadCompany, dismissTutorial, found, intro, rpc, command, checked, fit, shot, closeReward, clearDialogs, tab, sale, selectCrew, workerFile, officeView, settle, visualCases, expect, assert, actors: DEEP_CLAIM_ACTORS };
+  if (sections.has('session')) await runDeepClaimSessionBrowser(training);
   if (sections.has('menu')) await runDeepClaimMenuBrowser(training);
   if (sections.has('training') || sections.has('campaign')) await runDeepClaimCampaignBrowser(training);
   if (sections.has('training') || sections.has('academy')) await runDeepClaimAcademyBrowser(training);

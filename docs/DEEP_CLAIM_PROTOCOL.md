@@ -4,6 +4,8 @@ Phase 0 architecture through Phase 7 deep operations and the cinematic menu/Trai
 
 ## Ownership and authority
 
+The mobile session layer adds no economic authority. Goal refs and return-report read receipts are bounded, versioned device metadata scoped by user, club and company. Goal progress, cargo, costs and completion always come from the authorized snapshot. Initial return hydration is quiet; elapsed client timers cannot report completed work. Direct goal links validate their catalog key before opening the existing transaction review. A next-shift draft resolves a genuinely collected mining record, available crew and a currently legal public destination, then uses the unchanged server preview/revision/dispatch contract. [Session details](DEEP_CLAIM_MOBILE_LOOP.md) describe acknowledgement and UI behavior.
+
 An authenticated member owns one company in their active club. Authentication, membership, asset installation, and onboarding belong to DH Club. `deep-claim` must be installed and enabled; private game state is never a public club leaderboard. Every backend entry point independently validates access. Changing clubs or removing membership removes access to that club's company without transferring its property.
 
 PostgreSQL is authoritative for money, energy, assignments, terrain mutations, finite deposits, rewards and timestamps. Clients have no direct write grants to these records. Backend functions use a fixed search path, company row locks, validated references, and transactional receipts. Internal generation and reconciliation helpers have no anonymous or authenticated execution grants.

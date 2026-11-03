@@ -15,9 +15,9 @@ function researchReport() {
 function completedOrder(key: string): NonNullable<DeepClaimSnapshot['business']>['research'][number] {
   return { key, status: 'completed', started_at: new Date(start).toISOString(), completes_at: new Date(start + 600_000).toISOString(), completed_at: new Date(start + 600_000).toISOString() };
 }
-function Office({ data, now, view = 'company', refresh = vi.fn(), startResearch = vi.fn() }: { data: DeepClaimSnapshot; now: number; view?: ClaimBusinessView; refresh?: () => void; startResearch?: () => Promise<DeepClaimSnapshot> }) {
+function Office({ data, now, view = 'company', refresh = vi.fn(), startResearch = vi.fn(), initialReview }: { data: DeepClaimSnapshot; now: number; view?: ClaimBusinessView; refresh?: () => void; startResearch?: () => Promise<DeepClaimSnapshot>; initialReview?: { kind: 'research' | 'contract' | 'milestone'; key: string } }) {
   const noop = vi.fn();
-  return <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DeepClaimBusiness snapshot={data} now={now} view={view} onView={noop} onClose={noop} onBuild={noop} onHire={noop} onStores={noop} onConfirmed={noop} onRefresh={refresh} busy={false} readOnly={false} actions={{ startResearch, fulfillContract: noop, claimMilestone: noop }} /></MemoryRouter>;
+  return <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DeepClaimBusiness snapshot={data} initialReview={initialReview} now={now} view={view} onView={noop} onClose={noop} onBuild={noop} onHire={noop} onStores={noop} onConfirmed={noop} onRefresh={refresh} busy={false} readOnly={false} actions={{ startResearch, fulfillContract: noop, claimMilestone: noop }} /></MemoryRouter>;
 }
 
 describe('Deep Claim visual Office progress', () => {
@@ -150,5 +150,26 @@ describe('Deep Claim visual Office progress', () => {
     expect(within(dialog).getByRole('button', { name: 'Deliver whole order' })).toBeDisabled();
     expect(within(dialog).getByRole('progressbar', { name: 'Stone collected for requirement' })).toHaveAttribute('aria-valuenow', '19');
     expect(data.business!.contracts[0].status).toBe('offered');
+  });
+});
+
+
+describe('Company goal review links', () => {
+  it.each([
+    ['research', 'excavation_1', 'research', 'Reinforced Picks', 'Start research'],
+    ['contract', 'yard_foundations', 'contracts', 'Yard Foundations', 'Deliver whole order'],
+    ['milestone', 'first_shift', 'records', 'First Shift', 'Claim company credits'],
+  ] as const)('opens the exact %s review without submitting an economic action', (kind, key, view, name, action) => {
+    const data = phaseFourSnapshot(), startResearch = vi.fn();
+    const actualName = kind === 'research' ? data.business_catalog!.research.find(item => item.key === key)!.name : name;
+    render(<Office data={data} now={start} view={view} initialReview={{ kind, key }} startResearch={startResearch} />);
+    expect(screen.getByRole('heading', { name: actualName })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: action })).toBeInTheDocument();
+    expect(startResearch).not.toHaveBeenCalled();
+  });
+  it('ignores an unknown direct-review key instead of creating an actionable entry', () => {
+    render(<Office data={phaseFourSnapshot()} now={start} view="contracts" initialReview={{ kind: 'contract', key: 'made_up_reward' }} />);
+    expect(screen.queryByRole('button', { name: 'Deliver whole order' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back to camp' })).toBeInTheDocument();
   });
 });

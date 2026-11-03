@@ -8,13 +8,15 @@ import { claimIntroAvailable, claimTargets } from './display';
 import { TutorialHelp, useDeepClaimTutorialEvents, useTutorialView } from './tutorial/events';
 import { DeepClaimWorksitePicker } from './DeepClaimWorksitePicker';
 import { worksiteBranch, worksiteName } from './worksiteLabels';
+import type { DeepClaimDispatchDraft } from '@/lib/deepClaim/nextShiftPlan';
 
 import { CLAIM_OPERATION_NAMES, CLAIM_PROJECT_NAMES } from './fieldLabels';
 type InfrastructureKey = keyof typeof CLAIM_PROJECT_NAMES;
 const OPERATION_ICONS = { explore: Pickaxe, extract: Pickaxe, survey: Radar, infrastructure: HardHat };
 
-export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, readOnly, busy, onClose, preview, dispatch }: {
+export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, initialPlan, readOnly, busy, onClose, preview, dispatch }: {
   snapshot: DeepClaimSnapshot; initialTarget: DeepClaimPoint | null; initialMode: DeepClaimMode; readOnly: boolean; busy: boolean;
+  initialPlan?: DeepClaimDispatchDraft;
   onClose: () => void; preview: (input: DeepClaimDispatchInput) => Promise<DeepClaimPreview>;
   dispatch: (input: DeepClaimDispatchInput, revision?: number) => Promise<DeepClaimSnapshot>;
 }) {
@@ -22,12 +24,18 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, readOn
   const field = snapshot.schema_version >= 3;
   const [mode, setMode] = useState(initialMode);
   const [target, setTarget] = useState<DeepClaimPoint | null>(() => initialTarget ?? claimTargets(snapshot, initialMode)[0] ?? null);
-  const [workers, setWorkers] = useState(() => snapshot.workers.filter(worker => !worker.assigned_job_id && worker.energy > 0).slice(0, 3).map(worker => worker.id));
+  const initialMinutes = DURATION_OPTIONS.some(option => option.minutes === initialPlan?.durationMinutes) ? initialPlan!.durationMinutes : 20;
+  const [workers, setWorkers] = useState(() => {
+    if (!initialPlan) return snapshot.workers.filter(worker => !worker.assigned_job_id && worker.energy > 0).slice(0, 3).map(worker => worker.id);
+    const energy = DURATION_OPTIONS.find(option => option.minutes === initialMinutes)!.energy;
+    const eligible = new Set(snapshot.workers.filter(worker => !worker.assigned_job_id && worker.energy >= energy).map(worker => worker.id));
+    return [...new Set(initialPlan.workerIds)].filter(id => eligible.has(id)).slice(0, 3);
+  });
   const [crewOpen, setCrewOpen] = useState(!field);
   const [crewPage, setCrewPage] = useState(0);
-  const [minutes, setMinutes] = useState<DeepClaimDuration>(20);
+  const [minutes, setMinutes] = useState<DeepClaimDuration>(initialMinutes);
   const [project, setProject] = useState<InfrastructureKey>('supports');
-  const [tutorial, setTutorial] = useState(!snapshot.company?.tutorial_used && initialMode === 'extract' && initialTarget?.x === 47 && initialTarget?.y === 1);
+  const [tutorial, setTutorial] = useState(!initialPlan?.ordinary && !snapshot.company?.tutorial_used && initialMode === 'extract' && initialTarget?.x === 47 && initialTarget?.y === 1);
   const [quote, setQuote] = useState<DeepClaimPreview | null>(null);
   const [checking, setChecking] = useState(false);
   const [sending, setSending] = useState(false);
@@ -74,7 +82,7 @@ export function DeepClaimDispatch({ snapshot, initialTarget, initialMode, readOn
         {(crewOpen || !workers.length) && <fieldset className={`dcl-worker-picker ${field ? 'is-paged' : ''}`} data-dc-tutorial={field ? undefined : 'dispatch-crew'}><legend>Your crew <small>{workers.length}/3 selected</small></legend>{snapshot.workers.slice(currentPage * 6, currentPage * 6 + 6).map(worker => <label className="dcl-worker-choice" key={worker.id} data-selected={workers.includes(worker.id)}><input type="checkbox" aria-label={`Send ${worker.name}`} checked={workers.includes(worker.id)} disabled={frozen || !workers.includes(worker.id) && (!!worker.assigned_job_id || workers.length >= 3 || worker.energy === 0)} onChange={() => change(() => { const next = workers.includes(worker.id) ? workers.filter(id => id !== worker.id) : [...workers, worker.id]; setWorkers(next); tutorialEvents.emit('crew_selected', { worker_id: worker.id, quantity: next.length, mode }); })} /><DeepClaimPortrait worker={worker} /><span><strong>{worker.name}</strong><small>{SPECIALTY_INFO[worker.specialty].name} · {worker.assigned_job_id ? 'On a shift' : `${worker.energy}/6 energy`}</small><ClaimMeter value={worker.energy} max={6} label={`${worker.name} energy`} tone="green" /></span></label>)}{pages > 1 && <div className="dcl-crew-pagination"><ClaimButton className="is-small" aria-label="Previous crew page" disabled={frozen || currentPage === 0} onClick={() => setCrewPage(value => Math.max(0, value - 1))}><ArrowLeft size={15} aria-hidden="true" /></ClaimButton><span aria-live="polite">Crew {currentPage + 1}/{pages}</span><ClaimButton className="is-small" aria-label="Next crew page" disabled={frozen || currentPage === pages - 1} onClick={() => setCrewPage(value => Math.min(pages - 1, value + 1))}><ArrowRight size={15} aria-hidden="true" /></ClaimButton></div>}</fieldset>}
         <div className="dcl-duration-picker" data-dc-tutorial="dispatch-duration" role="group" aria-label="Shift duration">{DURATION_OPTIONS.map((option, index) => <button type="button" key={option.minutes} aria-pressed={!tutorial && minutes === option.minutes} disabled={frozen} onClick={() => change(() => { setMinutes(option.minutes); setTutorial(false); })}><b>{option.label}</b><span>{option.minutes} min{auxiliary ? ` · grade ${index + 1}` : ''}</span><small><Zap size={10} aria-hidden="true" />{option.energy} each</small></button>)}</div>
         {auxiliary && <p className="dcl-note">{mode === 'survey' ? 'Reveal ground, not cargo. Geology improves coverage; the report arrives on return.' : 'Build on connected ground. Engineering improves coverage; active when the crew returns.'}</p>}
-        {introAvailable && !auxiliary && <label className="dcl-intro-shift" data-dc-tutorial="dispatch-induction"><input type="checkbox" checked={tutorial} disabled={frozen} onChange={event => change(() => { setTutorial(event.target.checked); if (event.target.checked) { setMinutes(20); setMode('extract'); setTarget({ x: 47, y: 1 }); } })} /><span><strong>First shift · 30 seconds</strong><small>1m starter seam · once per company · 1 energy each</small></span></label>}
+        {introAvailable && !initialPlan?.ordinary && !auxiliary && <label className="dcl-intro-shift" data-dc-tutorial="dispatch-induction"><input type="checkbox" checked={tutorial} disabled={frozen} onChange={event => change(() => { setTutorial(event.target.checked); if (event.target.checked) { setMinutes(20); setMode('extract'); setTarget({ x: 47, y: 1 }); } })} /><span><strong>First shift · 30 seconds</strong><small>1m starter seam · once per company · 1 energy each</small></span></label>}
       </>}
       {reviewed && <div className="dcl-reviewed-operation"><ClaimBadge>{target ? `${worksiteName(target, mode, revealed)} · ${target.y}m · ${worksiteBranch(target)}` : CLAIM_OPERATION_NAMES[mode]}</ClaimBadge><div>{selected.map(worker => <DeepClaimPortrait key={worker.id} worker={worker} />)}<span>{selected.length} crew · {tutorial ? 'Introduction' : `${minutes} min preset`}</span></div></div>}
       {quote && <section className="dcl-dispatch-quote" data-dc-tutorial="dispatch-quote" aria-label="Verified dispatch estimate"><header><ShieldCheck size={16} aria-hidden="true" /><strong>Foreman’s estimate</strong><ClaimBadge tone={quote.risk_level === 'high' ? 'red' : quote.risk_level === 'moderate' ? 'brass' : 'green'}>{quote.risk_level} risk</ClaimBadge></header><dl><div><dt><Coins size={12} aria-hidden="true" />Wages now</dt><dd>{quote.wages.toLocaleString()} cr</dd></div><div><dt><Zap size={12} aria-hidden="true" />Crew energy</dt><dd>{quote.energy_per_worker} each</dd></div><div><dt><Clock3 size={12} aria-hidden="true" />{field ? 'Base shift' : 'Shift length'}</dt><dd>{quote.duration_seconds < 60 ? `${quote.duration_seconds}s` : `${Math.round(quote.duration_seconds / 60)} min`}</dd></div>{!auxiliary && <><div><dt>Estimated haul</dt><dd>{quote.estimated_yield.min}–{quote.estimated_yield.max}</dd></div><div><dt>Cargo capacity</dt><dd>{quote.cargo_capacity} units</dd></div></>}<div><dt>Supported depth</dt><dd>{quote.accessible_depth}m</dd></div>{quote.operation_cost != null && <div><dt>Project fee now</dt><dd>{quote.operation_cost} cr</dd></div>}{quote.survey && <><div><dt>Survey radius</dt><dd>{quote.survey.radius} tiles</dd></div><div><dt>Reveal limit</dt><dd>Up to {quote.survey.tile_limit} tiles</dd></div></>}</dl>

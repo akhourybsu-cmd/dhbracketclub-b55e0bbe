@@ -20,19 +20,26 @@ const BRANCH_NAMES: Record<DeepClaimResearchBranch, string> = { excavation: 'Exc
 const METRIC_NAMES: Record<DeepClaimBusinessMetric, string> = { completed_mining_expeditions: 'Mining shifts completed', completed_surveys: 'Surveys completed', total_surveyed_tiles: 'Tiles surveyed', installed_infrastructure: 'Projects installed', max_completed_mining_depth: 'Deepest mining shift', collected_production_batches: 'Production batches collected', collected_processed_units: 'Processed units collected', completed_research: 'Research completed', completed_contracts: 'Contracts delivered', total_contract_credits: 'Contract credits earned', kept_discoveries: 'Specimens kept' };
 type Review = { kind: 'research' | 'contract' | 'milestone'; key: string; revision: number };
 
-export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, onHire, onStores, actions, onConfirmed, now, onRefresh, busy, readOnly, clubContent, initialResearchKey }: {
+export function DeepClaimBusiness({ snapshot, view, onView, onClose, onBuild, onHire, onStores, actions, onConfirmed, now, onRefresh, busy, readOnly, clubContent, initialResearchKey, initialReview }: {
   snapshot: DeepClaimSnapshot; view: ClaimBusinessView; onView: (view: ClaimBusinessView) => void; onClose: () => void;
   onBuild: (key: DeepClaimBuildingId) => void; onHire: () => void; onStores: () => void; actions: DeepClaimBusinessActions;
   onConfirmed: (title: string, description: string, snapshot: DeepClaimSnapshot) => void;
   now: number; onRefresh: () => void; busy: boolean; readOnly: boolean; clubContent?: ReactNode; initialResearchKey?: string;
+  initialReview?: { kind: 'research' | 'contract' | 'milestone'; key: string };
 }) {
   const tutorial = useDeepClaimTutorialEvents();
   useTutorialView('tab_opened', { tab: 'office', view }, `office:${view}`);
-  const [branch, setBranch] = useState<DeepClaimResearchBranch>(() => snapshot.business_catalog?.research.find(item => item.key === initialResearchKey)?.branch ?? 'excavation');
+  const [branch, setBranch] = useState<DeepClaimResearchBranch>(() => snapshot.business_catalog?.research.find(item => item.key === (initialReview?.kind === 'research' ? initialReview.key : initialResearchKey))?.branch ?? 'excavation');
   const [contractPage, setContractPage] = useState(0);
   const [milestonePage, setMilestonePage] = useState(0);
   const [records, setRecords] = useState<'milestones' | 'operations'>('milestones');
-  const [storedReview, setReview] = useState<Review | null>(() => initialResearchKey && snapshot.business_catalog?.research.some(item => item.key === initialResearchKey) ? { kind: 'research', key: initialResearchKey, revision: snapshot.revision } : null);
+  const [storedReview, setReview] = useState<Review | null>(() => {
+    if (initialReview) {
+      const entries = initialReview.kind === 'research' ? snapshot.business_catalog?.research : initialReview.kind === 'contract' ? snapshot.business_catalog?.contracts : snapshot.business_catalog?.milestones;
+      if (entries?.some(item => item.key === initialReview.key)) return { ...initialReview, revision: snapshot.revision };
+    }
+    return initialResearchKey && snapshot.business_catalog?.research.some(item => item.key === initialResearchKey) ? { kind: 'research', key: initialResearchKey, revision: snapshot.revision } : null;
+  });
   const [error, setError] = useState('');
   const body = useRef<HTMLDivElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);

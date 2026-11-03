@@ -29,7 +29,7 @@ function job(overrides: Partial<DeepClaimProductionJob> = {}): DeepClaimProducti
 function openWorker(view: 'Training' | 'Gear') { fireEvent.click(screen.getAllByRole('button', { name: 'Crew file' })[0]); fireEvent.click(screen.getByRole('button', { name: view })); }
 function openRecipe() { fireEvent.click(screen.getByRole('button', { name: 'Review Smelt Copper' })); return screen.getByRole('dialog', { name: 'Smelt Copper' }); }
 function App() { return <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DeepClaimPage /></MemoryRouter>; }
-beforeEach(() => { vi.clearAllMocks(); state.data = phaseTwoSnapshot(); state.readOnly = false; state.pending = null; for (const action of Object.values(actions)) vi.mocked(action).mockResolvedValue(state.data); state.startProduction.mockResolvedValue(state.data); state.collectProduction.mockResolvedValue(state.data); });
+beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); state.data = phaseTwoSnapshot(); state.readOnly = false; state.pending = null; for (const action of Object.values(actions)) vi.mocked(action).mockResolvedValue(state.data); state.startProduction.mockResolvedValue(state.data); state.collectProduction.mockResolvedValue(state.data); });
 afterEach(cleanup);
 
 describe('Deep Claim workforce operations', () => {

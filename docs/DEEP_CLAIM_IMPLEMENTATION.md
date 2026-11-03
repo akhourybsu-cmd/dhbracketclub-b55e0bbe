@@ -1,6 +1,28 @@
 # Deep Claim implementation ledger
 
-## Current release — thematic selectors
+## Current release — connected mobile company loop
+
+This release builds on clean main `9a69b714ba9f948a10a66d8fa926d6765248c7e9`. The [mobile comparison and design record](DEEP_CLAIM_MOBILE_LOOP.md) explains the reference review and the implemented loop: choose an investment, confirm work, inspect a factual return, collect and plan again. Existing company systems supply all progress and rewards. No SQL migration, mining/economic balance, atlas, dependency or global-service change is introduced.
+
+- A company goal can target the next building level, a research project, an existing delivery order or a finite company milestone. The compact surface dock and four-card planner show real collected materials, operating reserve, prerequisites and confirmed progress. Pinning stores only an identity; Review opens the exact existing transaction without paying or claiming automatically.
+- The Shift report summarizes newly ready cargo, ready production, pending finds and confirmed research after Continue. First hydration is quiet, other dialogs/tutorials retain priority, and acknowledgement prevents repeated automatic presentation. Manual review can inspect currently ready work. Active elapsed timers and cash differences never become invented completion or idle profit.
+- Positive, fully confirmed haul collection can offer Plan next shift. The ordinary editable draft reuses eligible workers and duration, replaces an exhausted destination with a legal public site, and retains every capacity/energy/slot/storage check. An induction follow-up is a normal 20-minute plan. A fresh server estimate and explicit dispatch confirmation remain mandatory.
+- Goal pins and report-read receipts are bounded device/company preferences; the underlying company remains server-persistent across devices. Foreign/corrupt/blocked metadata cannot authorize actions or supply progress. These UI preferences do not synchronize between devices. No new reward, prestige reset, purchase pressure, streak penalty or notification loop is added.
+- Existing Office direct reviews validate catalog identities and retain revision/permission checks. The new panels reuse original pixel artwork, concise operational labels, light/dark themes, 44px controls and reduced-motion/forced-color support. The short-wide goal dock is compact enough to clear the crew dock; explicit native hit/overlap checks cover all seven layouts.
+
+| Verification | Evidence |
+|---|---|
+| Full app suite | **216 files / 2,231 tests passed** in 145.29 seconds; `/tmp/dc-loop-unit-final.log`. Two older UI suites now clear device preferences between independent tests; within-test persistence remains exercised. |
+| Focused feature tests | **94 tests across six suites passed**, plus **14 Office tests**; `/tmp/dc-loop-focused-final.log` and `/tmp/dc-loop-business-tests.log`. The final goal UI recheck passes all **10 tests** after correcting Testing Library type options; `/tmp/dc-loop-goal-ui-checked.log`. |
+| Final native session | **49 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-258tVa/report.json`. Real paid induction, return, pin/reload/review, actual collection and ordinary follow-up draft use production components and isolated authoritative PostgreSQL. All seven screen/theme/motion cases have zero goal/crew overlap and reachable controls at least 44px wide/high. |
+| Tutorial regression | **108 native checks passed** across the initial session and genuine 30-second sale/Keep campaign paths; `/tmp/deep-claim-LucWCj/report.json`. The subsequent source correction only compacts the short-wide goal dock; the final native run verifies that layout. |
+| Source checks | Explicit application-project TypeScript, scoped ESLint, CSS parsing and whitespace checks passed. The Phase 8 gate preserves all 27 frozen gameplay sources, catalogs, SQL and both original atlases; `/tmp/dc-loop-preservation.log`. |
+| Production build | Passed in **17.09 seconds**; `DeepClaimPage-CofIyOBP.js` 794.71 KB / 189.77 KB gzip and `DeepClaimPage-WWYiuvnj.css` 253.51 KB / 39.04 KB gzip. The existing large-chunk advisory remains. |
+| Built production PWA | All **12 checks passed**, no assertion/runtime errors; `/tmp/deep-claim-pwa-cKfYCY/report.json`. This verifies production-build authentication and PWA bootstrap without claiming physical-device installation. |
+
+Native QA changes no live member company, stock or achievement. Publication and public-asset verification are pending. No SQL migration is required.
+
+## Previous release — thematic selectors
 
 This presentation release builds on clean main `862993fe1ed327c33bc0f6d5f4b2e3ebc650e598`. All five native dropdowns in Deep Claim are replaced with direct game controls. No schema, economic rule, world-generation, atlas, dependency or authorization change is introduced.
 

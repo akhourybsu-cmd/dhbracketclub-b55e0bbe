@@ -8,6 +8,8 @@ Phase 7 adds `supabase/seed/deep-claim-phase7-catalog.json` as a separate versio
 
 ## Session rhythm
 
+The company-goal/return-report/next-shift release changes no costs, production rates, wages, energy budgets, resource distributions or rewards. Its goals display existing requirements and one-time milestone awards; pinning does not pay them. Reusing an induction crew always prepares a normal 20-minute draft with the normal one-energy budget and a fresh authoritative estimate.
+
 | Shift | Server duration | Energy per worker |
 |---|---:|---:|
 | Induction, once per company | approximately 30 seconds | 1 |

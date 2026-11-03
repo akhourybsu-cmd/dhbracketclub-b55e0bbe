@@ -6,6 +6,8 @@ This document records the design and integration contracts through Phase 7, the 
 
 ## Player promise and first session
 
+The [mobile session loop](DEEP_CLAIM_MOBILE_LOOP.md) connects the existing systems with a pinned company investment, a factual return report and an editable next-shift draft after collection. It uses existing authoritative progression and reviewed actions. The comparison review, exact scope and device-preference limitations are documented there; release verification remains in the implementation ledger.
+
 The core loop is **plan → dispatch → return → collect → sell or invest → explore deeper**. Decisions should be understandable in a short visit: which workers to spend energy on, whether to reveal ground or extract a known deposit, how long to commit the crew, and whether the next cash purchase should improve storage, tools, access or capacity.
 
 The first session introduces a private company, three named workers and a short, real expedition. A once-per-company tutorial dispatch lasts approximately 30 seconds, consumes one energy per assigned worker and follows the same server settlement rules as ordinary work. It supplies useful cargo and makes an early upgrade reachable. It is not a repeatable instant-reward button.

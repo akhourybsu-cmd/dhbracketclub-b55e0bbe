@@ -32,6 +32,8 @@ Research retains actual confirmed progress and Maxed states, with compact framed
 
 ## Source inventory and ownership
 
+The mobile session layer reuses building portraits, business emblems, resource art and discovery sprites for its goal dock, paged planner and four-part shift report. `companyGoals.css`, `deepClaimReturnReport.css` and `deepClaimSession.css` extend the established charcoal/brass/ivory frames, 44px controls, state meters, reduced motion and forced colors. No atlas or terrain generation is introduced. A report illustration represents disclosed work only; the return and next-shift modules cannot draw or reveal an undiscovered resource.
+
 ### Thematic selectors
 
 The five former native dropdowns use direct, keyboard-operable buttons with explicit pressed states. Dispatch worksite cards combine original resource illustrations with a bounded 7×5 pixel map sampled only from already revealed public tiles. Unknown ground stays dark; the preview never generates terrain or reveals a hidden deposit. Material names, depth, west/east branch distance and remaining stock identify destinations without visible raw coordinates. Four-card paging and a retained selected card bound the DOM even in a large mine.

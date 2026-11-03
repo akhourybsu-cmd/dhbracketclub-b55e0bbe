@@ -28,7 +28,7 @@ function quote(overrides: Partial<DeepClaimPreview> = {}): DeepClaimPreview { re
 function App() { return <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DeepClaimPage /></MemoryRouter>; }
 function Dispatch({ snapshot = wire.data!, mode = 'survey' as const }: { snapshot?: DeepClaimSnapshot; mode?: 'survey' | 'infrastructure' }) { return <DeepClaimDispatch snapshot={snapshot} initialMode={mode} initialTarget={{ x: 48, y: 1 }} onClose={wire.noop} busy={false} readOnly={false} preview={wire.preview} dispatch={wire.dispatch} />; }
 function FieldLog({ data = wire.data!, selected = 'find-1', readOnly = false, view = 'finds' as const }: { data?: DeepClaimSnapshot; selected?: string | null; readOnly?: boolean; view?: 'finds' | 'reports' | 'ledger' }) { return <DeepClaimFieldLog snapshot={data} view={view} onView={wire.noop} selectedFindId={selected} onSelectFind={selectFind} onLocate={locate} resolveDiscovery={wire.resolve} busy={false} readOnly={readOnly} onConfirmed={confirmed} />; }
-beforeEach(() => { vi.clearAllMocks(); wire.data = phaseThreeSnapshot(); wire.readOnly = false; wire.pending = null; wire.preview.mockResolvedValue(quote()); wire.dispatch.mockResolvedValue(wire.data); wire.resolve.mockResolvedValue(wire.data); });
+beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); wire.data = phaseThreeSnapshot(); wire.readOnly = false; wire.pending = null; wire.preview.mockResolvedValue(quote()); wire.dispatch.mockResolvedValue(wire.data); wire.resolve.mockResolvedValue(wire.data); });
 afterEach(cleanup);
 
 describe('Deep Claim field planning', () => {
