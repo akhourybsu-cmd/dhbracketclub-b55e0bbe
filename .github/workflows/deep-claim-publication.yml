@@ -13,6 +13,63 @@ permissions:
   contents: read
 
 jobs:
+  connectivity:
+    name: Public connection diagnostics
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      DEEP_CLAIM_PUBLICATION_OUTPUT: /tmp/deep-claim-publication-diagnostics
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Compare Node fetch and curl with normal TLS
+        shell: bash
+        run: |
+          mkdir -p "$DEEP_CLAIM_PUBLICATION_OUTPUT"
+          node --input-type=module <<'JS' | tee "$DEEP_CLAIM_PUBLICATION_OUTPUT/node.log"
+          import { appendFileSync, readFileSync } from 'node:fs';
+          import { validateRelease } from './scripts/check-deep-claim-publication.mjs';
+          const release = validateRelease(JSON.parse(readFileSync('docs/deep-claim-release.json', 'utf8')));
+          appendFileSync(process.env.GITHUB_ENV, `PUBLICATION_DIAGNOSTIC_URL=${release.url}\n`);
+          const connection = { url: release.url, proxy_configuration: {
+            HTTPS_PROXY: !!process.env.HTTPS_PROXY, HTTP_PROXY: !!process.env.HTTP_PROXY,
+            NODE_EXTRA_CA_CERTS: !!process.env.NODE_EXTRA_CA_CERTS,
+          } };
+          try {
+            const response = await fetch(release.url, { redirect: 'manual', signal: AbortSignal.timeout(15000) });
+            connection.status = response.status;
+            const location = response.headers.get('location');
+            if (location) { const target = new URL(location, release.url); connection.redirect = target.origin + target.pathname; }
+            await response.body?.cancel();
+          } catch (error) {
+            connection.error = String(error.message).slice(0, 512);
+            if (typeof error.cause?.code === 'string') connection.cause_code = error.cause.code.slice(0, 128);
+            if (typeof error.cause?.message === 'string') connection.cause_message = error.cause.message.slice(0, 512);
+          }
+          console.log(JSON.stringify(connection, null, 2));
+          JS
+
+      - name: Curl status and redirect diagnostic
+        shell: bash
+        run: |
+          set +e
+          curl --silent --show-error --output /dev/null --write-out '%{http_code} %{redirect_url}\n' --max-time 15 "$PUBLICATION_DIAGNOSTIC_URL" 2>&1 | tee "$DEEP_CLAIM_PUBLICATION_OUTPUT/curl.log"
+          status=${PIPESTATUS[0]}
+          printf 'Curl exit status: %s\n' "$status" | tee -a "$DEEP_CLAIM_PUBLICATION_OUTPUT/curl.log"
+
+      - name: Upload connection diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-claim-publication-connectivity-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEEP_CLAIM_PUBLICATION_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 14
+
   publication:
     runs-on: ubuntu-24.04
     timeout-minutes: 8

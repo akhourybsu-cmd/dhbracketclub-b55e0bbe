@@ -11,6 +11,10 @@ const BUDGET_MS = 240_000, REQUEST_MS = 20_000, DELAY_MS = 10_000;
 const SHA256 = /^[a-f\d]{64}$/i;
 const object = value => value && typeof value === 'object' && !Array.isArray(value);
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+const diagnosticText = value => typeof value === 'string' ? value.replace(/(https?:\/\/)[^\s/]*@/g, '$1[redacted]@').slice(0, 512) : undefined;
+const failureDetails = error => ({ error: diagnosticText(error.message) ?? 'Publication request failed.',
+  ...(typeof error.cause?.code === 'string' ? { cause_code: diagnosticText(error.cause.code) } : {}),
+  ...(typeof error.cause?.message === 'string' ? { cause_message: diagnosticText(error.cause.message) } : {}) });
 
 export function validateRelease(value) {
   assert.ok(object(value), 'Release metadata must be an object.');
@@ -55,23 +59,39 @@ function gameAsset(entry, entryUrl, extension, origin) {
 export async function inspectPublication(release, { fetchImpl = fetch, deadline = Date.now() + BUDGET_MS, now = Date.now } = {}) {
   release = validateRelease(release);
   const origin = new URL(release.url).origin;
-  const evidence = { urls: { public: release.url }, http: {}, actual_hashes: { atlases: {} }, js_markers: {}, css_styles: {} };
+  const evidence = { urls: { public: release.url }, http: {}, redirects: [], actual_hashes: { atlases: {} }, js_markers: {}, css_styles: {} };
   async function get(url, label) {
-    const remaining = deadline - now();
-    assert.ok(remaining > 0, 'Publication proof time budget exhausted.');
-    const request = new URL(url);
+    let request = new URL(url);
     request.searchParams.set('__dc_publication', `${release.source_sha}-${now()}`);
-    const response = await fetchImpl(request, {
-      headers: { 'Cache-Control': 'no-cache, no-store, max-age=0', Pragma: 'no-cache', 'Accept-Encoding': 'identity', 'User-Agent': 'DH-Club-publication-verification' },
-      signal: AbortSignal.timeout(Math.max(1, Math.min(REQUEST_MS, remaining))),
-      redirect: 'error',
-    });
-    evidence.urls[label] = response.url || request.href;
-    evidence.http[label] = response.status;
-    assert.equal(response.status, 200, `Public ${label} returned HTTP ${response.status}.`);
-    const bytes = Buffer.from(await response.arrayBuffer());
-    assert.ok(bytes.length <= 16 * 1024 * 1024, `Public ${label} exceeds the verification size limit.`);
-    return bytes;
+    for (let hops = 0; hops <= 5; hops++) {
+      const remaining = deadline - now();
+      assert.ok(remaining > 0, 'Publication proof time budget exhausted.');
+      evidence.urls[label] = request.href;
+      const response = await fetchImpl(request, {
+        headers: { 'Cache-Control': 'no-cache, no-store, max-age=0', Pragma: 'no-cache', 'Accept-Encoding': 'identity', 'User-Agent': 'DH-Club-publication-verification' },
+        signal: AbortSignal.timeout(Math.max(1, Math.min(REQUEST_MS, remaining))),
+        redirect: 'manual',
+      });
+      evidence.urls[label] = response.url || request.href;
+      evidence.http[label] = response.status;
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get('location');
+        await response.body?.cancel();
+        assert.ok(location, `Public ${label} redirect has no Location header.`);
+        const target = new URL(location, request);
+        const redirect = { asset: label, status: response.status, from: request.origin + request.pathname, to: target.origin + target.pathname };
+        evidence.redirects.push(redirect);
+        assert.ok(target.protocol === 'https:' && target.origin === origin && !target.username && !target.password,
+          `Public ${label} redirect left the release HTTPS origin: ${target.origin}.`);
+        assert.ok(hops < 5, `Public ${label} exceeded five redirects.`);
+        request = target; continue;
+      }
+      if (response.status !== 200) await response.body?.cancel();
+      assert.equal(response.status, 200, `Public ${label} returned HTTP ${response.status}.`);
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.ok(bytes.length <= 16 * 1024 * 1024, `Public ${label} exceeds the verification size limit.`);
+      return bytes;
+    }
   }
   try {
     const html = (await get(release.url, 'html')).toString('utf8');
@@ -79,10 +99,10 @@ export async function inspectPublication(release, { fetchImpl = fetch, deadline 
     const moduleTag = tags.find(tag => /\btype\s*=\s*["']module["']/i.test(tag) && /\bsrc\s*=/i.test(tag));
     const src = moduleTag?.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1]?.replaceAll('&amp;', '&');
     assert.ok(src, 'Public HTML has no module entry script.');
-    const entryUrl = assetUrl(src, release.url, origin);
+    const entryUrl = assetUrl(src, evidence.urls.html, origin);
     const entry = (await get(entryUrl, 'entry')).toString('utf8');
-    const gameUrl = gameAsset(entry, entryUrl, 'js', origin);
-    const cssUrl = gameAsset(entry, entryUrl, 'css', origin);
+    const gameUrl = gameAsset(entry, evidence.urls.entry, 'js', origin);
+    const cssUrl = gameAsset(entry, evidence.urls.entry, 'css', origin);
     const cssFilename = cssUrl.pathname.split('/').at(-1);
     evidence.css_filename = cssFilename;
     assert.equal(cssFilename, release.css.filename, 'Served CSS filename differs from the tested release.');
@@ -103,7 +123,7 @@ export async function inspectPublication(release, { fetchImpl = fetch, deadline 
       assert.equal(evidence.actual_hashes.atlases[atlas.path], atlas.sha256.toLowerCase(), `Public atlas ${atlas.path} differs from its frozen hash.`);
     }
     try { evidence.build_version = JSON.parse((await get(new URL('/version.json', release.url), 'version')).toString('utf8')); }
-    catch (error) { evidence.build_version_error = error.message; }
+    catch (error) { evidence.build_version_error = failureDetails(error); }
     return evidence;
   } catch (error) { error.evidence = evidence; throw error; }
 }
@@ -121,7 +141,7 @@ export async function verifyPublication(value, { fetchImpl = fetch, budgetMs = B
       verified = true; break;
     } catch (error) {
       evidence = error.evidence ?? {};
-      attempts.push({ attempt, status: 'failed', checked_at: new Date(now()).toISOString(), error: error.message, evidence });
+      attempts.push({ attempt, status: 'failed', checked_at: new Date(now()).toISOString(), ...failureDetails(error), evidence });
       const remaining = deadline - now();
       if (attempt === 25 || remaining <= 0) break;
       await wait(Math.min(delay, remaining));
@@ -140,7 +160,7 @@ export async function main() {
   await mkdir(output, { recursive: true });
   let receipt;
   try { receipt = await verifyPublication(JSON.parse(await readFile(metadataFile, 'utf8'))); }
-  catch (error) { receipt = { schema_version: 1, status: 'configuration_error', verified: false, checked_at: new Date().toISOString(), error: error.message, metadata_file: metadataFile }; }
+  catch (error) { receipt = { schema_version: 1, status: 'configuration_error', verified: false, checked_at: new Date().toISOString(), ...failureDetails(error), metadata_file: metadataFile }; }
   await writeFile(join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
   console.log(JSON.stringify(receipt, null, 2));
   console.log(`Publication receipt: ${join(output, 'receipt.json')}`);
