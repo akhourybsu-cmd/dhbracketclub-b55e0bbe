@@ -182,13 +182,18 @@ async function interactiveAudit(page, label, selector = ".da-shell") {
         if (/(auto|scroll|hidden|clip)/.test(clipping.overflowY)) { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom); }
       }
       const complete = box.left >= left - 1 && box.right <= right + 1 && box.top >= top - 1 && box.bottom <= bottom + 1;
-      const anchored = node.closest('.da-hud,.da-kiosk-bar,.da-room-topbar,.da-room-tabs,.da-lobby-nav [role="tablist"],.da-pk-top,.da-pk-clock,.da-create-actions,.da-create-steps');
+      const anchor = node.closest('.da-hud,.da-kiosk-bar,.da-room-topbar,.da-room-tabs,.da-lobby-nav [role="tablist"],.da-pk-top,.da-pk-clock,.da-create-actions,.da-create-steps');
+      const main = node.closest('.da-arena-main');
+      const pageContent = main && /auto|scroll/.test(getComputedStyle(main).overflowY)
+        && !node.closest('[role="dialog"],[aria-modal="true"]');
+      const anchored = anchor && !pageContent;
       const intersects = box.right > left + 1 && box.left < right - 1 && box.bottom > top + 1 && box.top < bottom - 1;
       const name = node.getAttribute('aria-label') || node.textContent?.trim().slice(0, 60) || node.tagName;
       if (!complete) {
         offscreen++;
-        // Scrolling lists deliberately contain more items than are visible.
-        // Only anchored commands are required to fit without scrolling.
+        // Lists and mobile page commands can leave the viewport normally.
+        // HUDs, dialogs, player screens and desktop anchored commands retain
+        // their initial fit requirement; visible centers are still hit-tested.
         if (anchored && intersects && !node.closest('.da-room-tabs,.da-pk-view-tabs')) issues.push(`Anchored control clipped: ${name}`);
         continue;
       }
@@ -889,12 +894,15 @@ async function prepareLiveEvent(page, label) {
   await description.fill('A live cinema draft for the club.');
   const next = page.getByRole('button', { name: 'Next', exact: true });
   const stage = page.locator('.da-create-stage');
+  const mobileMain = page.viewportSize().width <= 1023 ? page.locator('.da-arena-main') : null;
+  if (mobileMain) await reachByScrolling(page, next, mobileMain, `${label}-topic-next-page-action-reachable`);
   await next.click(); await expect(stage).toHaveAttribute('aria-label', 'Rules setup');
   await expect(page.getByRole('group', { name: 'Rounds', exact: true }).getByRole('button', { name: '5', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('group', { name: 'Rounds', exact: true }).getByRole('button', { name: '3', exact: true }).click();
   const context = page.getByRole('textbox', { name: 'AI Judging Context', exact: true });
   await context.scrollIntoViewIfNeeded(); await context.fill('Evaluate films from every country and decade.');
   await fit(page, `${label}-rules`);
+  if (mobileMain) await reachByScrolling(page, next, mobileMain, `${label}-rules-next-page-action-reachable`);
   await next.click(); await expect(stage).toHaveAttribute('aria-label', 'Stage setup');
   const clock = page.getByRole('tab', { name: 'Clock', exact: true });
   const presentation = page.getByRole('tab', { name: 'Presentation', exact: true });
@@ -902,6 +910,8 @@ async function prepareLiveEvent(page, label) {
   await expect(stage.getByRole('button', { name: '90s', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await stage.getByRole('button', { name: '2m', exact: true }).click();
   await expect(stage.getByRole('button', { name: 'Alert only', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  if (mobileMain) for (const name of ['Back', 'Next'])
+    await reachByScrolling(page, page.getByRole('button', { name, exact: true }), mobileMain, `${label}-clock-${name.toLowerCase()}-page-action-reachable`);
   await fit(page, `${label}-clock`); await interactiveAudit(page, `${label}-clock-controls`);
   await shot(page, `${label}-clock`);
   await presentation.click();
@@ -912,6 +922,7 @@ async function prepareLiveEvent(page, label) {
     await fullyVisibleControl(toggle, `${label}-${name.toLowerCase().replaceAll(' ', '-')}`);
   }
   await fit(page, `${label}-presentation`); await shot(page, `${label}-presentation`);
+  if (mobileMain) await reachByScrolling(page, next, mobileMain, `${label}-presentation-next-page-action-reachable`);
   await next.click(); await expect(stage).toHaveAttribute('aria-label', 'Review setup');
   await expect(stage).toContainText('Friday night cinema');
   await expect(stage).toContainText('3 picks each');
@@ -930,7 +941,9 @@ async function liveCreationLayout(width, height, theme) {
     report.checks.push({ label: `${label}-normal-room-uses-normal-route`, ok: true });
     await go(page, '/drafts/live/create', { stress: 'live-flow', theme });
     await prepareLiveEvent(page, label);
-    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    const back = page.getByRole('button', { name: 'Back', exact: true });
+    if (width <= 1023) await reachByScrolling(page, back, page.locator('.da-arena-main'), `${label}-review-back-page-action-reachable`);
+    await back.click();
     await expect(page.getByRole('tab', { name: 'Presentation', exact: true })).toHaveAttribute('aria-selected', 'true');
     await page.getByRole('tab', { name: 'Clock', exact: true }).click();
     await expect(page.getByRole('button', { name: '2m', exact: true })).toHaveAttribute('aria-pressed', 'true');
