@@ -472,7 +472,18 @@ async function scrollGesture(page, pane, horizontal = false, direction = 1, dist
   const x = Math.max(15, Math.min(page.viewportSize().width - 15, box.x + box.width / 2));
   const visibleTop = Math.max(70, box.y), visibleBottom = Math.min(page.viewportSize().height - 12, box.y + box.height);
   const y = direction > 0 ? visibleBottom - 12 : visibleTop + 12;
-  if (browserName === 'chromium' && page.viewportSize().width < 768 && !horizontal && distance > 80) {
+  if (browserName === 'webkit') {
+    // Playwright does not support mouse.wheel or CDP touch injection in a
+    // mobile WebKit context. Exercise the real focusable scroll owner with
+    // keyboard input while retaining iPhone rendering and viewport behavior.
+    await pane.focus();
+    if (horizontal) {
+      const key = direction > 0 ? 'ArrowRight' : 'ArrowLeft';
+      for (let step = 0; step < Math.max(1, Math.min(20, Math.ceil(distance / 40))); step++) await page.keyboard.press(key);
+    } else {
+      await page.keyboard.press(distance > 80 ? (direction > 0 ? 'PageDown' : 'PageUp') : (direction > 0 ? 'ArrowDown' : 'ArrowUp'));
+    }
+  } else if (page.viewportSize().width < 768 && !horizontal && distance > 80) {
     const session = await page.context().newCDPSession(page);
     try {
       await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y, id: 1 }] });
@@ -1534,8 +1545,8 @@ async function mobileScrollJourney(width, height, theme) {
       panel: document.querySelector('.da-room-panel').getBoundingClientRect().top,
       hud: document.querySelector('.da-hud').getBoundingClientRect().top }));
     const before = await snapshot();
-    // Chromium uses real touch input; WebKit has no CDP touch transport, so
-    // wheel input verifies its mobile layout and scroll-chain behavior.
+    // Chromium uses real touch input; mobile WebKit uses keyboard scrolling
+    // on its actual owner because the automation API has no wheel/touch path.
     await scrollGesture(page, pane, false, 1, 350);
     await expect.poll(() => pane.evaluate((node) => node.scrollTop)).toBeGreaterThan(before.scroll + 40);
     const after = await snapshot(), moved = after.scroll - before.scroll;
@@ -1543,7 +1554,7 @@ async function mobileScrollJourney(width, height, theme) {
       `${view}: ${key} moves with the page: ${JSON.stringify({ before, after })}`);
     assert.ok(Math.abs(after.hud - before.hud) < 1, 'Only the compact game HUD remains fixed');
     report.checks.push({ label: `${label}-${view}-title-tabs-and-picks-scroll-together`, ok: true,
-      input: browserName === 'chromium' && width < 768 ? 'native-touch' : 'wheel', before, after });
+      input: browserName === 'webkit' ? 'keyboard-mobile-rendering' : width < 768 ? 'native-touch' : 'wheel', before, after });
   };
   try {
     await go(page, '/drafts/stress', { theme, stress: 'large', art: 'varied' });

@@ -14,7 +14,8 @@
   }
 
   #draft-arena-main :is(.da-room-panel, .da-lobby-scroll, .da-live-room-scroll,
-    .da-create-stage, .da-greenroom-body, .da-pick-history-list) {
+    .da-create-stage, .da-greenroom-body, .da-pick-history-list,
+    .da-commissioner-workspace, .da-commissioner-pane) {
     flex: 0 0 auto;
     height: auto;
     max-height: none;
