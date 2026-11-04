@@ -201,7 +201,7 @@ export function DraftBoard({
   return (
     <div className="da-lounge da-room-board">
       {/* ── Mobile: swipeable round panels ── */}
-      <div className="md:hidden">
+      <div className="lg:hidden">
         {/* Round quick-nav chips */}
         <div ref={roundsRef} className="flex gap-1.5 overflow-x-auto dl-no-scrollbar pb-2 px-0.5" role="tablist" aria-label="Rounds">
           {rounds.map((r) => (
@@ -283,7 +283,7 @@ export function DraftBoard({
       </div>
 
       {/* ── Desktop/tablet: full board grid ── */}
-      <div className="hidden md:block dl-card da-room-board-wide">
+      <div className="hidden lg:block dl-card da-room-board-wide">
         <div className="da-room-board-scroll" tabIndex={0} role="region" aria-label="Full draft board">
         <div
           className="grid"

@@ -72,8 +72,8 @@
   }
 }
 
-@media (max-width: 767px) {
-  .da-room-board .dl-round-panel { width: 100%; min-width: 0; }
+@media (max-width: 1023px) {
+  .da-room-board .dl-round-panel { width: 100%; min-width: 0; max-width: none; }
   .da-room-board .dl-mobile-pick-row { align-items: flex-start; }
   .da-room-board .dl-mobile-pick-row > [aria-hidden="true"] { margin-top: 22px; }
   .da-room-board .dl-mobile-owner {

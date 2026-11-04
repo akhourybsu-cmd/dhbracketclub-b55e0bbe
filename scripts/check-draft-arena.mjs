@@ -632,7 +632,10 @@ async function largeBoardStress(width, height, theme) {
       await expect(lastRound).toHaveAttribute('aria-selected', 'true');
       await fullyVisibleControl(lastRound, 'rotation-phone-keyboard-end-round-visible');
       await page.setViewportSize({ width: 844, height: 390 });
-      await expect(page.getByRole('region', { name: 'Full draft board', exact: true })).toBeVisible();
+      await settle(page);
+      await expect(lastRound).toHaveAttribute('aria-selected', 'true');
+      await fullyVisibleControl(lastRound, 'rotation-phone-to-landscape-retains-round-panel');
+      await expect(page.getByRole('region', { name: 'Full draft board', exact: true })).toHaveCount(0);
       await page.setViewportSize({ width: 390, height: 844 });
       await settle(page);
       await expect(lastRound).toHaveAttribute('aria-selected', 'true');
@@ -643,7 +646,7 @@ async function largeBoardStress(width, height, theme) {
     }
     await shot(page, `${label}-large-board`);
     const pane = page.locator(width <= 1023 ? '.da-arena-main' : '.da-room-panel');
-    if (width < 768) {
+    if (width < 1024) {
       const round = page.getByRole('tab', { name: 'View round 10', exact: true });
       await round.click();
       await expect(round).toHaveAttribute('aria-selected', 'true');
@@ -1646,7 +1649,7 @@ async function mobileScrollJourney(width, height, theme) {
   };
   try {
     await go(page, '/drafts/stress', { theme, stress: 'large', art: 'varied' });
-    if (width < 768) {
+    if (width < 1024) {
       const round = page.getByRole('tab', { name: 'View round 6', exact: true });
       await round.click(); await expect(round).toHaveAttribute('aria-selected', 'true'); await settle(page);
     }
@@ -1656,8 +1659,8 @@ async function mobileScrollJourney(width, height, theme) {
     await shot(page, `${label}-board-top`);
     await readingMovesTogether('board');
     const board = page.getByRole('region', { name: 'Full draft board', exact: true });
-    const finalCell = width < 768 ? page.locator('[data-round="6"] .dl-cell').last() : board.locator('.dl-board-cell').last();
-    await reachByScrolling(page, finalCell, width < 768 ? pane : board, `${label}-board-last-player`, width >= 768, pane);
+    const finalCell = width < 1024 ? page.locator('[data-round="6"] .dl-cell').last() : board.locator('.dl-board-cell').last();
+    await reachByScrolling(page, finalCell, width < 1024 ? pane : board, `${label}-board-last-player`, width >= 1024, pane);
     await shot(page, `${label}-board-bottom`);
     await tab(page, 'Pick log');
     await assertSingleScroll('log');
@@ -1736,7 +1739,7 @@ async function mobilePlayerScrollJourney(width, height, theme) {
         input: browserName === 'webkit' ? 'keyboard-mobile-rendering' : width < 768 ? 'native-touch' : 'wheel', before, after });
     };
     await kiosk.getByRole('tab', { name: 'Board', exact: true }).click();
-    if (width < 768) {
+    if (width < 1024) {
       const round = kiosk.getByRole('tab', { name: 'View round 9', exact: true });
       await round.click(); await expect(round).toHaveAttribute('aria-selected', 'true'); await settle(page);
     }
@@ -1746,8 +1749,8 @@ async function mobilePlayerScrollJourney(width, height, theme) {
     await shot(page, `${label}-board-top`);
     await movesTogether('board');
     const board = kiosk.getByRole('region', { name: 'Full draft board', exact: true });
-    await reachByScrolling(page, width < 768 ? kiosk.locator('[data-round="9"] .dl-cell').last() : board.locator('.dl-board-cell .dl-cell').last(),
-      width < 768 ? workspace : board, `${label}-last-board-pick-reachable`, width >= 768, workspace);
+    await reachByScrolling(page, width < 1024 ? kiosk.locator('[data-round="9"] .dl-cell').last() : board.locator('.dl-board-cell .dl-cell').last(),
+      width < 1024 ? workspace : board, `${label}-last-board-pick-reachable`, width >= 1024, workspace);
     await fit(page, `${label}-board-bottom-width`, '.da-pk');
     await shot(page, `${label}-board-bottom`);
     await kiosk.getByRole('tab', { name: 'My team', exact: true }).click();
