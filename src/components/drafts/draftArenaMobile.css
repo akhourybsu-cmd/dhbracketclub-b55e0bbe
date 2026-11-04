@@ -1,0 +1,89 @@
+/* Mobile uses one page scroller beneath the compact Arena HUD. Dialogs and
+   the standalone projector retain their own viewport and focus boundaries. */
+@media (max-width: 1023px) {
+  .da-arena-shell #draft-arena-main {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #draft-arena-main > :is(.da-room, .da-lobby, .da-create-page, .da-live-hub) {
+    height: auto;
+    min-height: 100%;
+  }
+
+  #draft-arena-main :is(.da-room-panel, .da-lobby-scroll, .da-live-room-scroll,
+    .da-create-stage, .da-greenroom-body, .da-pick-history-list) {
+    flex: 0 0 auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+    scrollbar-gutter: auto;
+  }
+
+  #draft-arena-main :is(.da-lobby-tabs, .da-lobby-panel, .da-lobby-rooms,
+    .da-live-hub-workspace, .da-create-form) {
+    flex: 0 0 auto;
+  }
+
+  #draft-arena-main .da-room-stage,
+  #draft-arena-main .da-room .da-greenroom,
+  #draft-arena-main .da-room .da-ceremony {
+    height: auto;
+    max-height: none;
+  }
+
+  #draft-arena-main .da-room .da-ceremony-lineup {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  #draft-arena-main .da-pick-history-fade { display: none; }
+
+  /* Artwork, full title and actions get their own space instead of competing
+     in a narrow row. This applies to the pick log and completed team rosters. */
+  #draft-arena-main .da-room .da-pick-card { gap: 8px; }
+  #draft-arena-main .da-room .da-pick-card-copy {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  #draft-arena-main .da-room .da-pick-card-actions {
+    flex: 1 0 100%;
+    padding-top: 7px;
+    border-top: 1px solid hsl(var(--border) / .5);
+  }
+  #draft-arena-main .da-room .da-pick-card-actions > div > span {
+    overflow-wrap: anywhere;
+  }
+  .da-room-board .dl-cell-text {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 767px) {
+  .da-room-board .dl-round-panel { width: 100%; min-width: 0; }
+  .da-room-board .dl-mobile-pick-row { align-items: flex-start; }
+  .da-room-board .dl-mobile-pick-row > [aria-hidden="true"] { margin-top: 22px; }
+  .da-room-board .dl-mobile-owner {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 2px 5px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .da-room-board .dl-mobile-owner-name { min-width: 0; overflow-wrap: anywhere; }
+  .da-room-board .dl-mobile-pick-number {
+    flex: 0 0 auto;
+    color: hsl(var(--muted-foreground));
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,6 +1,7 @@
 import { DaDetails } from '@/components/draft/ui/DraftKit';
 import { serverNow } from '@/lib/serverClock';
 import { draftInitials } from '@/lib/draft/presentation';
+import { resetDraftViewScroll } from '@/lib/draft/scroll';
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -128,7 +129,7 @@ function DraftDetailSession() {
   const [roomSelection, setRoomSelection] = useState<{ draftId: string | undefined; view: RoomView } | null>(null);
   const roomPanelRef = useRef<HTMLDivElement>(null);
   const [draft, setDraft] = useState<any>(null);
-  useEffect(() => { if (roomPanelRef.current) roomPanelRef.current.scrollTop = 0; }, [roomSelection, draftId, draft?.status]);
+  useEffect(() => { resetDraftViewScroll(roomPanelRef.current); }, [roomSelection, draftId, draft?.status]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1077,7 +1078,7 @@ function DraftDetailSession() {
                 </span>
               </div>
               <div className="relative">
-              <div className="divide-y divide-border/20 max-h-96 overflow-y-auto">
+              <div className="da-pick-history-list divide-y divide-border/20 max-h-96 overflow-y-auto">
                 <AnimatePresence initial={false}>
                   {(() => {
                     const reversed = [...picks].reverse();
@@ -1172,7 +1173,7 @@ function DraftDetailSession() {
               {picks.length > 5 && (
                 <div
                   aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-10"
+                  className="da-pick-history-fade pointer-events-none absolute inset-x-0 bottom-0 h-10"
                   style={{
                     background: 'linear-gradient(to top, hsl(var(--card)) 0%, hsl(var(--card) / 0) 100%)',
                   }}

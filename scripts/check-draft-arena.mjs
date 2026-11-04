@@ -7,13 +7,17 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
-import { chromium, expect } from "@playwright/test";
+import { chromium, webkit, devices, expect } from "@playwright/test";
 
 const cwd = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = process.env.DRAFT_QA_OUTPUT || await mkdtemp(join(tmpdir(), "draft-arena-"));
 await mkdir(output, { recursive: true });
 const base = process.env.DRAFT_QA_URL || "http://127.0.0.1:8098";
+const browserName = process.env.DRAFT_QA_BROWSER || 'chromium';
+assert.ok(['chromium', 'webkit'].includes(browserName), 'Choose a supported Draft Arena QA browser');
+const mobileScrollOnly = process.env.DRAFT_QA_SECTION === 'mobile-scroll';
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
+  browser: browserName, section: mobileScrollOnly ? 'mobile-scroll' : 'all',
   fixtures: "Production pages/hooks/rules; browser-local identity, Supabase/commissioner RPC and image transport. No live writes." };
 let server, browser, currentPage, serverLog;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,11 +47,14 @@ async function start() {
     if (attempt === 99) throw Error("Preview did not start within20seconds");
     await delay(200);
   }
-  browser = await chromium.launch({ executablePath: process.env.DRAFT_QA_CHROMIUM || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
+  browser = browserName === 'webkit'
+    ? await webkit.launch({ headless: true })
+    : await chromium.launch({ executablePath: process.env.DRAFT_QA_CHROMIUM || "/usr/bin/chromium", headless: true, args: ["--no-sandbox"] });
 }
 
 async function setup(width = 390, height = 844, theme = "dark", motion = "no-preference") {
-  const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion });
+  const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion,
+    ...(mobileScrollOnly ? { isMobile: true, ...(browserName === 'webkit' ? { userAgent: devices['iPhone 13'].userAgent } : {}) } : {}) });
   const page = await context.newPage();
   await installFixturePage(page);
   return { page, context, theme };
@@ -465,7 +472,7 @@ async function scrollGesture(page, pane, horizontal = false, direction = 1, dist
   const x = Math.max(15, Math.min(page.viewportSize().width - 15, box.x + box.width / 2));
   const visibleTop = Math.max(70, box.y), visibleBottom = Math.min(page.viewportSize().height - 12, box.y + box.height);
   const y = direction > 0 ? visibleBottom - 12 : visibleTop + 12;
-  if (page.viewportSize().width < 768 && !horizontal && distance > 80) {
+  if (browserName === 'chromium' && page.viewportSize().width < 768 && !horizontal && distance > 80) {
     const session = await page.context().newCDPSession(page);
     try {
       await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y, id: 1 }] });
@@ -485,7 +492,7 @@ async function scrollGesture(page, pane, horizontal = false, direction = 1, dist
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
-async function reachByScrolling(page, target, pane, label, horizontal = false) {
+async function reachByScrolling(page, target, pane, label, horizontal = false, verticalPane = pane) {
   const attempts = [];
   for (let attempt = 0; attempt < 12; attempt++) {
     const geometry = await target.evaluate((node) => {
@@ -506,9 +513,9 @@ async function reachByScrolling(page, target, pane, label, horizontal = false) {
     const delta = useHorizontal ? geometry.xDelta : geometry.yDelta;
     const available = useHorizontal ? geometry.clip.right - geometry.clip.left - geometry.target.width : geometry.clip.bottom - geometry.clip.top - geometry.target.height;
     const distance = Math.max(1, Math.min(useHorizontal ? 2000 : 850, Math.abs(delta) + (available > 4 ? 2 : 0)));
-    await scrollGesture(page, pane, useHorizontal, delta < 0 ? -1 : 1, distance);
-    if (attempt === 1 && !useHorizontal && delta > 0 && await pane.getAttribute('tabindex') !== null) {
-      await pane.focus();
+    await scrollGesture(page, useHorizontal ? pane : verticalPane, useHorizontal, delta < 0 ? -1 : 1, distance);
+    if (attempt === 1 && !useHorizontal && delta > 0 && await verticalPane.getAttribute('tabindex') !== null) {
+      await verticalPane.focus();
       await page.keyboard.press('End');
     }
   }
@@ -555,7 +562,7 @@ async function largeBoardStress(width, height, theme) {
       report.checks.push({ label: 'desktop-phone-landscape-phone-round-selection-and-keyboard', ok: true });
     }
     await shot(page, `${label}-large-board`);
-    const pane = page.locator('.da-room-panel');
+    const pane = page.locator(width <= 1023 ? '.da-arena-main' : '.da-room-panel');
     if (width < 768) {
       const round = page.getByRole('tab', { name: 'View round 10', exact: true });
       await round.click();
@@ -563,9 +570,10 @@ async function largeBoardStress(width, height, theme) {
       await reachByScrolling(page, page.locator('[data-round="10"] .dl-cell').last(), pane, `${label}-last-round-last-player`);
     } else {
       const board = page.getByRole('region', { name: 'Full draft board', exact: true });
-      await reachByScrolling(page, board.locator('.dl-board-cell').last(), board, `${label}-last-round-last-player`, true);
+      await reachByScrolling(page, board.locator('.dl-board-cell').last(), board, `${label}-last-round-last-player`, true, width <= 1023 ? pane : board);
     }
     const pick = page.getByRole('button', { name: 'Make selection', exact: true });
+    if (width <= 1023) { await pane.focus(); await page.keyboard.press('Home'); }
     await fullyVisibleControl(pick, `${label}-pick-still-reachable`);
     await pick.click();
     await expect(page.locator('.da-pick-dialog')).toBeVisible();
@@ -1158,8 +1166,10 @@ async function largeCeremony(width, height) {
     await expect(progress).toHaveAttribute('aria-valuenow', '0');
     const reveal = stage.getByRole('button', { name: 'Reveal pick 1', exact: true });
     const skip = stage.getByRole('button', { name: 'Skip ceremony', exact: true });
+    const readingPane = width <= 1023 ? page.locator('.da-arena-main') : lineup;
     for (const [control, name] of [[reveal, 'reveal'], [skip, 'skip']]) {
-      await fullyVisibleControl(control, `${label}-${name}-footer-visible`);
+      if (width <= 1023) await reachByScrolling(page, control, readingPane, `${label}-${name}-page-action-reachable`);
+      else await fullyVisibleControl(control, `${label}-${name}-footer-visible`);
       const box = await control.boundingBox(); assert.ok(box.width >= 44 && box.height >= 44, 'Ceremony footer targets remain at least 44px');
     }
     await fit(page, `${label}-initial`); await interactiveAudit(page, `${label}-initial-controls`, '.da-ceremony');
@@ -1172,11 +1182,12 @@ async function largeCeremony(width, height) {
     for (let position = 1; position <= 20; position++) {
       const row = lineup.locator(`li[data-ceremony-position="${position}"]`);
       await expect(row).toHaveClass(/is-revealed/);
-      await reachByScrolling(page, row, lineup, `${label}-lineup-position-${position}-reachable`);
+      await reachByScrolling(page, row, readingPane, `${label}-lineup-position-${position}-reachable`);
     }
     const begin = stage.getByRole('button', { name: 'Begin Draft', exact: true });
-    await fullyVisibleControl(begin, `${label}-begin-footer-visible-after-lineup-scroll`);
-    await fullyVisibleControl(stage.locator('.da-ceremony-footer'), `${label}-whole-footer-remains-visible`);
+    if (width <= 1023) await reachByScrolling(page, begin, readingPane, `${label}-begin-page-action-reachable`);
+    else await fullyVisibleControl(begin, `${label}-begin-footer-visible-after-lineup-scroll`);
+    await fullyVisibleControl(stage.locator('.da-ceremony-footer'), `${label}-whole-action-row-visible`);
     await fit(page, `${label}-all-revealed`); await interactiveAudit(page, `${label}-final-controls`, '.da-ceremony');
     await shot(page, `${label}-last-lineup`);
     const stored = await page.evaluate(() => ({ draft: window.daQa.tables.drafts.find((row) => row.id === 'ceremony'), picks: window.daQa.tables.draft_picks.filter((row) => row.draft_id === 'ceremony') }));
@@ -1475,8 +1486,112 @@ async function commissionerPresentation(width, height, theme) {
   finally { await context.close(); }
 }
 
+/** One vertical reading surface on phones/tablets; no half-screen pick panes. */
+async function mobileScrollJourney(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, 'reduce');
+  const label = `mobile-scroll-${browserName}-${width}x${height}-${theme}`;
+  const pane = page.locator('.da-arena-main');
+  const assertSingleScroll = async (view) => {
+    const result = await pane.evaluate((root) => {
+      const nested = [...root.querySelectorAll('*')].filter((node) => {
+        if (!(node instanceof HTMLElement) || node.closest('[hidden],[aria-hidden="true"]')) return false;
+        const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+        return box.width > 0 && box.height > 0 && style.visibility !== 'hidden'
+          && /auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 2;
+      }).map((node) => ({ className: node.className, height: node.clientHeight, scrollHeight: node.scrollHeight }));
+      return { nested, owner: getComputedStyle(root).overflowY, pageHeight: document.documentElement.scrollHeight,
+        viewportHeight: innerHeight, scrollHeight: root.scrollHeight, height: root.clientHeight };
+    });
+    assert.match(result.owner, /auto|scroll/, 'The arena main owns vertical reading');
+    assert.deepEqual(result.nested, [], `${view}: no nested vertical scrolling: ${JSON.stringify(result)}`);
+    assert.ok(result.scrollHeight > result.height + 40, `${view}: the whole content participates in page scrolling`);
+    assert.ok(result.pageHeight <= result.viewportHeight + 2, 'The outer document does not become a second scroller');
+    report.checks.push({ label: `${label}-${view}-one-vertical-owner`, ok: true, ...result });
+  };
+  const assertPickCopy = async (selector, view) => {
+    const issues = await page.locator(selector).evaluateAll((nodes) => nodes.flatMap((node) => {
+      const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+      if (!box.width || !box.height || node.closest('[hidden],[aria-hidden="true"]')) return [];
+      const label = node.textContent?.slice(0, 35);
+      const errors = [];
+      if (box.width < 60) errors.push(`${label}: pick text squeezed to ${box.width.toFixed(1)}px`);
+      if (node.scrollWidth > node.clientWidth + 2) errors.push(`${label}: text overflows its column`);
+      if (style.webkitLineClamp && style.webkitLineClamp !== 'none') errors.push(`${label}: pick title remains line-clamped`);
+      if (node.scrollHeight > node.clientHeight + 2) errors.push(`${label}: pick title clipped vertically`);
+      const card = node.closest('.dl-cell,.da-pick-card')?.getBoundingClientRect();
+      if (card && (box.left < card.left - 2 || box.right > card.right + 2 || box.top < card.top - 2 || box.bottom > card.bottom + 2))
+        errors.push(`${label}: title escapes its pick card`);
+      return errors;
+    }));
+    assert.deepEqual(issues, [], `${view}: long pick titles remain readable`);
+    report.checks.push({ label: `${label}-${view}-full-pick-titles`, ok: true });
+  };
+  const readingMovesTogether = async (view) => {
+    await pane.focus(); await page.keyboard.press('Home'); await settle(page);
+    const snapshot = () => page.evaluate(() => ({ scroll: document.querySelector('.da-arena-main').scrollTop,
+      title: document.querySelector('.da-room-topbar').getBoundingClientRect().top,
+      tabs: document.querySelector('.da-room-tabs').getBoundingClientRect().top,
+      panel: document.querySelector('.da-room-panel').getBoundingClientRect().top,
+      hud: document.querySelector('.da-hud').getBoundingClientRect().top }));
+    const before = await snapshot();
+    // Chromium uses real touch input; WebKit has no CDP touch transport, so
+    // wheel input verifies its mobile layout and scroll-chain behavior.
+    await scrollGesture(page, pane, false, 1, 350);
+    await expect.poll(() => pane.evaluate((node) => node.scrollTop)).toBeGreaterThan(before.scroll + 40);
+    const after = await snapshot(), moved = after.scroll - before.scroll;
+    for (const key of ['title', 'tabs', 'panel']) assert.ok(Math.abs(before[key] - after[key] - moved) < 2,
+      `${view}: ${key} moves with the page: ${JSON.stringify({ before, after })}`);
+    assert.ok(Math.abs(after.hud - before.hud) < 1, 'Only the compact game HUD remains fixed');
+    report.checks.push({ label: `${label}-${view}-title-tabs-and-picks-scroll-together`, ok: true,
+      input: browserName === 'chromium' && width < 768 ? 'native-touch' : 'wheel', before, after });
+  };
+  try {
+    await go(page, '/drafts/stress', { theme, stress: 'large', art: 'varied' });
+    if (width < 768) {
+      const round = page.getByRole('tab', { name: 'View round 6', exact: true });
+      await round.click(); await expect(round).toHaveAttribute('aria-selected', 'true'); await settle(page);
+    }
+    await fit(page, `${label}-board-width`);
+    await assertSingleScroll('board');
+    await assertPickCopy('.da-room-board .dl-cell-text', 'board');
+    await shot(page, `${label}-board-top`);
+    await readingMovesTogether('board');
+    const board = page.getByRole('region', { name: 'Full draft board', exact: true });
+    const finalCell = width < 768 ? page.locator('[data-round="6"] .dl-cell').last() : board.locator('.dl-board-cell').last();
+    await reachByScrolling(page, finalCell, width < 768 ? pane : board, `${label}-board-last-player`, width >= 768, pane);
+    await shot(page, `${label}-board-bottom`);
+    await tab(page, 'Pick log');
+    await assertSingleScroll('log');
+    await assertPickCopy('.da-room-log .da-pick-card-copy > span:first-child', 'log');
+    await readingMovesTogether('log');
+    const lastHistory = page.locator('.da-room-log .da-pick-card').last();
+    await expect(lastHistory.locator('.da-pick-card-copy > span:first-child')).toContainText(/^1·/);
+    await reachByScrolling(page, lastHistory, pane, `${label}-oldest-pick-reachable`);
+    await shot(page, `${label}-log-bottom`);
+    await fit(page, `${label}-log-width`);
+    await visibleAssets(page, `${label}-log-visible-art`);
+    await go(page, '/drafts/complete', { theme, stress: 'large', art: 'varied' });
+    await tab(page, 'Teams');
+    await assertSingleScroll('teams');
+    await assertPickCopy('.da-room-rosters .da-pick-card-copy > span:first-child', 'teams');
+    await readingMovesTogether('teams');
+    await reachByScrolling(page, page.locator('.da-room-rosters .da-pick-card').last(), pane, `${label}-last-team-pick-reachable`);
+    await shot(page, `${label}-teams-bottom`);
+    await fit(page, `${label}-teams-width`);
+    await visibleAssets(page, `${label}-teams-visible-art`);
+    const writes = await page.evaluate(() => window.daQa.operations.filter((row) => ['draft_picks', 'draft_results', 'draft_skips'].includes(row.table)).length);
+    assert.equal(writes, 0, 'Reading, changing views and scrolling do not alter picks or results');
+    report.checks.push({ label: `${label}-read-only-layout`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
+  if (mobileScrollOnly) {
+    for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark']]) await mobileScrollJourney(...args);
+  } else {
   // Exercise newly added stress cases first; retain the complete core matrix.
   await commissionerMemberDenied();
   for (const args of [[320,568,'dark'],[1440,900,'light']]) await commissionerJourney(...args);
@@ -1498,6 +1613,7 @@ try {
   await artworkSelection();
   for (const args of [[320,568,"no-preference"],[390,844,"reduce"],[844,390,"no-preference"]]) await liveWorkspace(...args);
   for (const args of [[320,568,"dark","no-preference"],[360,740,"light","no-preference"],[390,844,"light","no-preference"],[390,844,"dark","reduce"],[430,932,"dark","no-preference"],[768,1024,"light","no-preference"],[844,390,"dark","no-preference"],[1440,900,"light","no-preference"],[1920,1080,"dark","no-preference"]]) await viewportJourney(...args);
+  }
   assert.deepEqual(report.runtimeErrors, [], "No unhandled browser errors");
   console.log(`PASS Draft Arena: ${report.checks.length} checks`);
 } catch (error) {

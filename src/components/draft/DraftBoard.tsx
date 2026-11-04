@@ -253,12 +253,11 @@ export function DraftBoard({
                 </div>
                 <div className="space-y-1.5">
                   {order.map((p, idx) => {
-                    const pick = pickByCell.get(`${round}:${p.user_id}`);
                     const pickNum = pickNumberFor(round, columnIndexOf(p));
-                    const isCurrent = !pick && pickNum === currentPickNumber;
                     return (
-                      <div key={p.user_id} className="flex items-center gap-2.5">
+                      <div key={p.user_id} className="dl-mobile-pick-row flex items-center gap-2.5">
                         <div
+                          aria-hidden="true"
                           className={cn(
                             'dl-display w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0',
                             p.user_id === currentUserId ? 'dl-avatar-gold' : 'dl-avatar-muted',
@@ -266,7 +265,13 @@ export function DraftBoard({
                         >
                           {initials(p.profiles?.display_name)}
                         </div>
-                        <div className="flex-1 min-w-0">{renderCellContent(round, p, idx, false)}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="dl-mobile-owner">
+                            <span className="dl-mobile-owner-name">{p.profiles?.display_name || 'Unknown'}</span>
+                            <span className="dl-mobile-pick-number" aria-label={`Pick ${pickNum}`}>#{pickNum}</span>
+                          </div>
+                          {renderCellContent(round, p, idx, false)}
+                        </div>
                       </div>
                     );
                   })}

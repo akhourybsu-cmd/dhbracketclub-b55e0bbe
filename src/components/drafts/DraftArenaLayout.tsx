@@ -6,6 +6,7 @@ import { DraftArenaBoot } from './DraftArenaBoot';
 import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import './draftArena.css';
+import './draftArenaMobile.css';
 
 /**
  * Full-screen standalone shell for the Draft Arena. Applies the `.da-mode`
@@ -23,6 +24,11 @@ export function DraftArenaLayout({ children }: { children: ReactNode }) {
   const reducedMotion = useReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
   const [hidden, setHidden] = useState(() => document.hidden);
+
+  useEffect(() => {
+    const main = shell.current?.querySelector<HTMLElement>('.da-arena-main');
+    if (main) main.scrollTop = 0;
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -61,8 +67,7 @@ export function DraftArenaLayout({ children }: { children: ReactNode }) {
       <div className="da-arena-architecture" aria-hidden="true"><i /><i /><i /></div>
       <DraftArenaHUD />
 
-      {/* Dense workspaces own one bounded pane. Older report and archive
-          screens retain the main viewport scroller so every action stays reachable. */}
+      {/* Mobile scrolls the complete page; desktop workspaces retain their panes. */}
       <main className="da-arena-main" id="draft-arena-main" tabIndex={-1}>
         {children}
       </main>
