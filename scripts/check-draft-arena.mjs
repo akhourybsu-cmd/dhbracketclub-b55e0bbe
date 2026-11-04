@@ -466,6 +466,42 @@ async function liveWorkspace(width, height, motion = "no-preference") {
   finally { await context.close(); }
 }
 
+async function settleScroll(pane) {
+  await pane.evaluate((node) => new Promise((resolve, reject) => {
+    // Native keyboard scrolling is not a Web Animation. Two animation frames
+    // can sample it midway through a PageDown/End operation, especially in
+    // mobile WebKit. Observe the actual owner and its ancestors until idle.
+    const targets = [];
+    for (let target = node; target; target = target.parentElement) targets.push(target);
+    const positions = () => targets.map((target) => `${target.scrollLeft}:${target.scrollTop}`).join('|');
+    const started = performance.now();
+    let previous = positions(), stableFrames = 0, frame;
+    const timer = setTimeout(() => {
+      cancelAnimationFrame(frame);
+      reject(new Error(`Native scroll did not settle within 2000ms: ${positions()}`));
+    }, 2000);
+    const tick = () => {
+      const current = positions();
+      stableFrames = current === previous ? stableFrames + 1 : 0;
+      previous = current;
+      if (stableFrames >= 6 && performance.now() - started >= 120) {
+        clearTimeout(timer); resolve();
+      } else frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+  }));
+}
+
+async function verticalScrollOwner(page, pane) {
+  const usesMain = await pane.evaluate((node) => {
+    // Portaled game screens/composers keep their own scroll and focus bounds.
+    if (node.closest('[role="dialog"],[aria-modal="true"]')) return false;
+    const main = node.closest('.da-arena-main');
+    return !!main && /auto|scroll/.test(getComputedStyle(main).overflowY);
+  });
+  return usesMain ? page.locator('.da-arena-main') : pane;
+}
+
 async function scrollGesture(page, pane, horizontal = false, direction = 1, distance = 850) {
   const box = await pane.boundingBox();
   assert.ok(box, "The intended scrolling pane exists");
@@ -500,10 +536,11 @@ async function scrollGesture(page, pane, horizontal = false, direction = 1, dist
     await page.mouse.move(x, Math.max(visibleTop + 4, Math.min(visibleBottom - 4, (visibleTop + visibleBottom) / 2)));
     await page.mouse.wheel(horizontal ? direction * distance : 0, horizontal ? 0 : direction * distance);
   }
-  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await settleScroll(pane);
 }
 
 async function reachByScrolling(page, target, pane, label, horizontal = false, verticalPane = pane) {
+  verticalPane = await verticalScrollOwner(page, verticalPane);
   const attempts = [];
   for (let attempt = 0; attempt < 12; attempt++) {
     const geometry = await target.evaluate((node) => {
@@ -528,6 +565,7 @@ async function reachByScrolling(page, target, pane, label, horizontal = false, v
     if (attempt === 1 && !useHorizontal && delta > 0 && await verticalPane.getAttribute('tabindex') !== null) {
       await verticalPane.focus();
       await page.keyboard.press('End');
+      await settleScroll(verticalPane);
     }
   }
   const final = await target.evaluate((node) => {
@@ -584,7 +622,7 @@ async function largeBoardStress(width, height, theme) {
       await reachByScrolling(page, board.locator('.dl-board-cell').last(), board, `${label}-last-round-last-player`, true, width <= 1023 ? pane : board);
     }
     const pick = page.getByRole('button', { name: 'Make selection', exact: true });
-    if (width <= 1023) { await pane.focus(); await page.keyboard.press('Home'); }
+    if (width <= 1023) { await pane.focus(); await page.keyboard.press('Home'); await settleScroll(pane); }
     await fullyVisibleControl(pick, `${label}-pick-still-reachable`);
     await pick.click();
     await expect(page.locator('.da-pick-dialog')).toBeVisible();
@@ -1538,7 +1576,7 @@ async function mobileScrollJourney(width, height, theme) {
     report.checks.push({ label: `${label}-${view}-full-pick-titles`, ok: true });
   };
   const readingMovesTogether = async (view) => {
-    await pane.focus(); await page.keyboard.press('Home'); await settle(page);
+    await pane.focus(); await page.keyboard.press('Home'); await settleScroll(pane); await settle(page);
     const snapshot = () => page.evaluate(() => ({ scroll: document.querySelector('.da-arena-main').scrollTop,
       title: document.querySelector('.da-room-topbar').getBoundingClientRect().top,
       tabs: document.querySelector('.da-room-tabs').getBoundingClientRect().top,
