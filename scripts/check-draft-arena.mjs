@@ -568,9 +568,28 @@ async function reachByScrolling(page, target, pane, label, horizontal = false, v
     const distance = Math.max(1, Math.min(useHorizontal ? 2000 : 850, Math.abs(delta) + (available > 4 ? 2 : 0)));
     await scrollGesture(page, useHorizontal ? pane : verticalPane, useHorizontal, delta < 0 ? -1 : 1, distance);
     if (attempt === 1 && !useHorizontal && delta > 0 && await verticalPane.getAttribute('tabindex') !== null) {
-      await verticalPane.focus();
-      await page.keyboard.press('End');
-      await settleScroll(verticalPane);
+      const item = await target.elementHandle();
+      let endGeometry;
+      try {
+        endGeometry = await verticalPane.evaluate((owner, node) => {
+          if (!node || !owner.contains(node)) return { canUseEnd: false, reason: 'Target is outside this scroll owner' };
+          const ownerBox = owner.getBoundingClientRect(), targetBox = node.getBoundingClientRect();
+          const maxScroll = owner.scrollHeight - owner.clientHeight;
+          const topAtEnd = targetBox.top - ownerBox.top - owner.clientTop + owner.scrollTop - maxScroll;
+          const bottomAtEnd = topAtEnd + targetBox.height;
+          return { canUseEnd: topAtEnd >= 0 && bottomAtEnd <= owner.clientHeight,
+            topAtEnd, bottomAtEnd, viewportHeight: owner.clientHeight, maxScroll };
+        }, item);
+      } finally { await item?.dispose(); }
+      attempts[attempts.length - 1].endShortcut = endGeometry;
+      // End is useful only for a target that will fit near the owner's end.
+      // A target near the start of a long log must keep using normal gestures;
+      // jumping to the end would overshoot it by thousands of pixels.
+      if (endGeometry.canUseEnd) {
+        await verticalPane.focus();
+        await page.keyboard.press('End');
+        await settleScroll(verticalPane);
+      }
     }
   }
   const final = await target.evaluate((node) => {
