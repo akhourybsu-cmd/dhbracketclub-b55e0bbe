@@ -52,6 +52,57 @@ afterEach(() => {
 });
 
 describe('Draft Arena deliberate player screen', () => {
+  it('offers a named keyboard focus target for the complete live content', () => {
+    render(<PersonalLiveKiosk {...props} />);
+    enter();
+    const content = within(player()).getByRole('region', { name: 'Live draft content' });
+    expect(content).toHaveAttribute('tabindex', '0');
+    expect(content.querySelector('.da-pk-clock')).toBeInTheDocument();
+    expect(within(content).getByRole('tablist', { name: 'Player screen workspace' })).toBeInTheDocument();
+    expect(content.querySelector('.da-pk-view-panels')).toBeInTheDocument();
+    expect(content.contains(within(player()).getByRole('button', { name: 'Back to event' }))).toBe(false);
+    act(() => content.focus());
+    expect(content).toHaveFocus();
+  });
+
+  it('starts a changed mobile view at the clock without resetting horizontal board navigation', () => {
+    render(<PersonalLiveKiosk {...props} />);
+    enter();
+    const dialog = within(player());
+    const content = dialog.getByRole('region', { name: 'Live draft content' });
+    const panels = content.querySelector<HTMLElement>('.da-pk-view-panels')!;
+    const board = content.querySelector<HTMLElement>('.da-pk-board')!;
+    content.style.overflowY = 'auto';
+    content.scrollTop = 700;
+    content.scrollLeft = 40;
+    panels.scrollTop = 280;
+    panels.scrollLeft = 90;
+    board.scrollLeft = 340;
+    fireEvent.click(dialog.getByRole('tab', { name: 'My team' }));
+    expect(content.scrollTop).toBe(0);
+    expect(panels.scrollTop).toBe(0);
+    expect(content.scrollLeft).toBe(40);
+    expect(panels.scrollLeft).toBe(90);
+    expect(board.scrollLeft).toBe(340);
+    expect(dialog.getByRole('tab', { name: 'My team' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('leaves the bounded desktop pane and workspace positions unchanged', () => {
+    render(<PersonalLiveKiosk {...props} />);
+    enter();
+    const dialog = within(player());
+    const content = dialog.getByRole('region', { name: 'Live draft content' });
+    const panels = content.querySelector<HTMLElement>('.da-pk-view-panels')!;
+    content.style.overflowY = 'hidden';
+    content.scrollTop = 170;
+    panels.scrollTop = 280;
+    panels.scrollLeft = 90;
+    fireEvent.click(dialog.getByRole('tab', { name: 'Draft desk' }));
+    expect(content.scrollTop).toBe(170);
+    expect(panels.scrollTop).toBe(280);
+    expect(panels.scrollLeft).toBe(90);
+  });
+
   it('waits for entry, leaves ordinary pointers alone and returns focus on Escape', async () => {
     render(<PersonalLiveKiosk {...props} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

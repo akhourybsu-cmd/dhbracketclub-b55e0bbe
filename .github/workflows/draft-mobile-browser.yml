@@ -200,5 +200,8 @@ jobs:
             /tmp/draft-regression-browser-artifacts/live-greenroom-host-alone.png
             /tmp/draft-regression-browser-artifacts/live-order-ceremony.png
             /tmp/draft-regression-browser-artifacts/live-other-player-receives-first-pick.png
+            /tmp/draft-regression-browser-artifacts/live-320x568-no-preference-workspace.png
+            /tmp/draft-regression-browser-artifacts/live-390x844-reduce-workspace.png
+            /tmp/draft-regression-browser-artifacts/live-844x390-no-preference-workspace.png
           if-no-files-found: warn
           retention-days: 7

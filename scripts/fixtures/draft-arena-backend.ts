@@ -115,16 +115,19 @@ if (params.get('stress') === 'commissioner-gallery') {
     if (standing.user_id === 'u1') { standing.rank = 2; standing.playoff_seed = 2; }
   }
 }
-if (params.get("stress") === "large") {
+if (["large", "player-scroll"].includes(params.get("stress") || '')) {
+  const playerScroll = params.get('stress') === 'player-scroll';
   profiles[0].display_name = "ÆTHER⚡無限🚀".repeat(8);
   for (let index = 4; index <= 20; index++) profiles.push({ id: `u${index}`, display_name: index === 20 ? "終章の挑戦者⚡".repeat(9) : `Player ${index} · 星際`, avatar_url: null });
-  const topic = Array.from("不滅のアリーナ🚀".repeat(12)).slice(0, 100).join("");
+  const topic = playerScroll ? 'Cinema night · The complete player view' : Array.from("不滅のアリーナ🚀".repeat(12)).slice(0, 100).join("");
   const large = draft("stress", topic, "in_progress", 10);
-  large.current_pick_number = 121; large.current_round = 7;
+  large.current_pick_number = playerScroll ? 200 : 121; large.current_round = playerScroll ? 10 : 7;
   tables.drafts.push(large);
   tables.competitions.push({ id: large.competition_id, title: topic, status: "active", type: "draft", created_by: "u1" });
   for (const [index, profile] of profiles.entries()) tables.draft_participants.push({ id: `stress-part-${profile.id}`, draft_id: "stress", user_id: profile.id, pick_order: index + 1, joined_at: date });
-  for (let index = 0; index < 120; index++) {
+  // The tenth reverse-order round reaches Alex at slot200; nine own picks
+  // plus the current real slot exercise a long team without changing rules.
+  for (let index = 0; index < (playerScroll ? 199 : 120); index++) {
     const roundIndex = Math.floor(index / 20), position = index % 20;
     const owner = profiles[roundIndex % 2 === 0 ? position : 19 - position];
     const pick = { id: `stress-pick-${index + 1}`, draft_id: "stress", user_id: owner.id, pick_text: `${index + 1}·${Array.from("星際の物語🚀".repeat(15)).slice(0, 90).join("")}`, pick_number: index + 1, round: roundIndex + 1, picked_at: date };

@@ -186,7 +186,9 @@ async function interactiveAudit(page, label, selector = ".da-shell") {
       const main = node.closest('.da-arena-main');
       const pageContent = main && /auto|scroll/.test(getComputedStyle(main).overflowY)
         && !node.closest('[role="dialog"],[aria-modal="true"]');
-      const anchored = anchor && !pageContent;
+      const playerWorkspace = node.closest('.da-pk[role="dialog"] .da-pk-workspace');
+      const playerContent = playerWorkspace && /auto|scroll/.test(getComputedStyle(playerWorkspace).overflowY);
+      const anchored = anchor && !pageContent && !playerContent;
       const intersects = box.right > left + 1 && box.left < right - 1 && box.bottom > top + 1 && box.top < bottom - 1;
       const name = node.getAttribute('aria-label') || node.textContent?.trim().slice(0, 60) || node.tagName;
       if (!complete) {
@@ -436,10 +438,12 @@ async function liveWorkspace(width, height, motion = "no-preference") {
     assert.equal(await page.evaluate(() => document.fullscreenElement === null), true, 'Entering the player screen does not request native fullscreen');
     await expect(kiosk).toContainText("Clock paused");
     await fit(page, `${label}-board`, ".da-pk");
+    const workspace = kiosk.locator('.da-pk-workspace');
     for (const name of ["My team", "Draft desk", "Live feed", "Host", "Board"]) {
       await kiosk.getByRole("tab", { name, exact: true }).click();
       await expect(kiosk.getByRole("tab", { name, exact: true })).toHaveAttribute("aria-selected", "true");
       await fit(page, `${label}-${name.toLowerCase().replaceAll(" ", "-")}`, ".da-pk");
+      if (width <= 1023) await reachByScrolling(page, kiosk.getByRole('button', { name: 'Make my pick', exact: true }), workspace, `${label}-${name.toLowerCase().replaceAll(' ', '-')}-pick-page-action-reachable`);
       await expect(kiosk.getByRole("button", { name: "Make my pick", exact: true })).toBeVisible();
     }
     await shot(page, `${label}-workspace`);
@@ -498,13 +502,16 @@ async function settleScroll(pane) {
 }
 
 async function verticalScrollOwner(page, pane) {
-  const usesMain = await pane.evaluate((node) => {
+  const owner = await pane.evaluate((node) => {
+    const workspace = node.closest('.da-pk[role="dialog"] .da-pk-workspace');
+    if (workspace && /auto|scroll/.test(getComputedStyle(workspace).overflowY)) return 'player';
     // Portaled game screens/composers keep their own scroll and focus bounds.
-    if (node.closest('[role="dialog"],[aria-modal="true"]')) return false;
+    if (node.closest('[role="dialog"],[aria-modal="true"]')) return 'supplied';
     const main = node.closest('.da-arena-main');
-    return !!main && /auto|scroll/.test(getComputedStyle(main).overflowY);
+    return main && /auto|scroll/.test(getComputedStyle(main).overflowY) ? 'main' : 'supplied';
   });
-  return usesMain ? page.locator('.da-arena-main') : pane;
+  return owner === 'player' ? page.locator('.da-pk[role="dialog"] .da-pk-workspace')
+    : owner === 'main' ? page.locator('.da-arena-main') : pane;
 }
 
 async function scrollGesture(page, pane, horizontal = false, direction = 1, distance = 850) {
@@ -1679,10 +1686,112 @@ async function mobileScrollJourney(width, height, theme) {
   finally { await context.close(); }
 }
 
+/** The optional private player screen uses the same single-scroll contract. */
+async function mobilePlayerScrollJourney(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, 'reduce');
+  const label = `player-scroll-${browserName}-${width}x${height}-${theme}`;
+  try {
+    await go(page, '/drafts/active/__qa/live', { theme, stress: 'player-scroll', art: 'varied' });
+    const enter = page.getByRole('button', { name: 'Enter live draft', exact: true });
+    await enter.click();
+    const kiosk = page.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
+    await expect(kiosk).toBeVisible();
+    const workspace = kiosk.getByRole('region', { name: 'Live draft content', exact: true });
+    await expect(workspace).toHaveAttribute('tabindex', '0');
+    const assertOwner = async (view) => {
+      const state = await workspace.evaluate((root) => ({
+        owner: getComputedStyle(root).overflowY, height: root.clientHeight, scrollHeight: root.scrollHeight,
+        nested: [...root.querySelectorAll('*')].filter((node) => {
+          if (!(node instanceof HTMLElement) || node.closest('[hidden],[aria-hidden="true"]')) return false;
+          const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+          return box.width > 0 && box.height > 0 && style.visibility !== 'hidden'
+            && /auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 2;
+        }).map((node) => ({ className: node.className, height: node.clientHeight, scrollHeight: node.scrollHeight })),
+        screenHeight: root.closest('.da-pk').clientHeight, screenScrollHeight: root.closest('.da-pk').scrollHeight,
+      }));
+      assert.match(state.owner, /auto|scroll/, 'The private workspace owns vertical reading');
+      assert.ok(state.scrollHeight > state.height + 40, `${view}: the long fixture requires scrolling`);
+      assert.deepEqual(state.nested, [], `${view}: no second vertical pick pane: ${JSON.stringify(state)}`);
+      assert.ok(state.screenScrollHeight <= state.screenHeight + 2, 'The dialog does not become another scroller');
+      report.checks.push({ label: `${label}-${view}-one-vertical-owner`, ok: true, ...state });
+    };
+    const movesTogether = async (view) => {
+      await workspace.focus(); await page.keyboard.press('Home'); await settleScroll(workspace); await settle(page);
+      const snapshot = () => kiosk.evaluate((root) => ({
+        scroll: root.querySelector('.da-pk-workspace').scrollTop,
+        topbar: root.querySelector('.da-pk-top').getBoundingClientRect().top,
+        clock: root.querySelector('.da-pk-clock').getBoundingClientRect().top,
+        tabs: root.querySelector('.da-pk-view-tabs').getBoundingClientRect().top,
+        picks: root.querySelector('.da-pk-view-panels').getBoundingClientRect().top,
+      }));
+      const before = await snapshot();
+      await scrollGesture(page, workspace, false, 1, 350);
+      await expect.poll(() => workspace.evaluate((node) => node.scrollTop)).toBeGreaterThan(before.scroll + 40);
+      const after = await snapshot(), moved = after.scroll - before.scroll;
+      for (const key of ['clock', 'tabs', 'picks']) assert.ok(Math.abs(before[key] - after[key] - moved) < 2,
+        `${view}: ${key} moves with the private workspace: ${JSON.stringify({ before, after })}`);
+      assert.ok(Math.abs(after.topbar - before.topbar) < 1, 'Only the compact private topbar remains fixed');
+      await fullyVisibleControl(kiosk.getByRole('button', { name: 'Back to event', exact: true }), `${label}-${view}-exit-stays-reachable`);
+      report.checks.push({ label: `${label}-${view}-clock-tabs-and-picks-scroll-together`, ok: true,
+        input: browserName === 'webkit' ? 'keyboard-mobile-rendering' : width < 768 ? 'native-touch' : 'wheel', before, after });
+    };
+    await kiosk.getByRole('tab', { name: 'Board', exact: true }).click();
+    if (width < 768) {
+      const round = kiosk.getByRole('tab', { name: 'View round 9', exact: true });
+      await round.click(); await expect(round).toHaveAttribute('aria-selected', 'true'); await settle(page);
+    }
+    await assertOwner('board');
+    await workspace.focus(); await page.keyboard.press('Home'); await settleScroll(workspace);
+    await fit(page, `${label}-board-width`, '.da-pk');
+    await shot(page, `${label}-board-top`);
+    await movesTogether('board');
+    const board = kiosk.getByRole('region', { name: 'Full draft board', exact: true });
+    await reachByScrolling(page, width < 768 ? kiosk.locator('[data-round="9"] .dl-cell').last() : board.locator('.dl-board-cell .dl-cell').last(),
+      width < 768 ? workspace : board, `${label}-last-board-pick-reachable`, width >= 768, workspace);
+    await fit(page, `${label}-board-bottom-width`, '.da-pk');
+    await shot(page, `${label}-board-bottom`);
+    await kiosk.getByRole('tab', { name: 'My team', exact: true }).click();
+    await expect(kiosk.locator('.da-pk-team-row')).toHaveCount(9);
+    await assertOwner('team');
+    const clipped = await kiosk.locator('.da-pk-team-row > span:nth-child(2)').evaluateAll((nodes) => nodes.filter((node) => {
+      const box = node.getBoundingClientRect(), row = node.closest('.da-pk-team-row').getBoundingClientRect();
+      return node.scrollWidth > node.clientWidth + 2 || node.scrollHeight > node.clientHeight + 2
+        || box.left < row.left - 2 || box.right > row.right + 2 || box.top < row.top - 2 || box.bottom > row.bottom + 2;
+    }).map((node) => node.textContent));
+    assert.deepEqual(clipped, [], 'Private team titles remain fully readable');
+    report.checks.push({ label: `${label}-team-full-pick-titles`, ok: true });
+    await movesTogether('team');
+    const lastTeam = kiosk.locator('.da-pk-team-row').last();
+    await expect(lastTeam).toContainText('#161');
+    await reachByScrolling(page, lastTeam, workspace, `${label}-last-team-pick-reachable`);
+    await fit(page, `${label}-team-bottom-width`, '.da-pk');
+    await shot(page, `${label}-team-bottom`);
+    const make = kiosk.getByRole('button', { name: 'Make my pick', exact: true });
+    await reachByScrolling(page, make, workspace, `${label}-make-pick-page-action-reachable`);
+    await make.click();
+    const composer = page.locator('.da-pick-dialog[role="dialog"]');
+    await expect(composer).toContainText('Round 10 · Pick #200');
+    const input = composer.getByRole('textbox', { name: 'Your draft pick', exact: true });
+    await expect(input).toBeFocused();
+    await fullyVisibleControl(input, `${label}-composer-input-visible`);
+    await interactiveAudit(page, `${label}-composer-controls`, '.da-pick-dialog');
+    await page.keyboard.press('Escape'); await expect(composer).toHaveCount(0); await expect(kiosk).toBeVisible();
+    await kiosk.getByRole('button', { name: 'Back to event', exact: true }).click();
+    await expect(kiosk).toHaveCount(0); await expect(enter).toBeFocused();
+    assert.equal(await page.getByTestId('kiosk-composer-submits').textContent(), '0', 'Inspecting the composer never submits a pick');
+    assert.equal(await page.evaluate(() => window.daQa.operations.filter((row) => ['draft_picks', 'draft_results', 'draft_skips'].includes(row.table)).length), 0,
+      'Private navigation and scrolling preserve the canonical match');
+    report.checks.push({ label: `${label}-composer-close-exit-and-no-gameplay-write`, ok: true });
+    console.log(`PASS ${label}`);
+  } catch (error) { await captureFailure(page, label); throw error; }
+  finally { await context.close(); }
+}
+
 try {
   await start();
   if (mobileScrollOnly) {
     for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark']]) await mobileScrollJourney(...args);
+    for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark']]) await mobilePlayerScrollJourney(...args);
   } else {
   // Exercise newly added stress cases first; retain the complete core matrix.
   await commissionerMemberDenied();

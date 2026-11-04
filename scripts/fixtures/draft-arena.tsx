@@ -59,28 +59,32 @@ function LiveWorkspaceFixture() {
   const [pickText, setPickText] = useState("");
   const [submits, setSubmits] = useState(0);
   const { tables, userId } = draftArenaFixture;
-  const picks = tables.draft_picks.filter((pick) => pick.draft_id === "active");
-  const participants = tables.draft_participants.filter((participant) => participant.draft_id === "active").map((participant) => ({ ...participant, profiles: tables.profiles.find((profile) => profile.id === participant.user_id) }));
+  const fixtureId = params.get('stress') === 'player-scroll' ? 'stress' : 'active';
+  const draft = tables.drafts.find((row) => row.id === fixtureId)!;
+  const picks = tables.draft_picks.filter((pick) => pick.draft_id === fixtureId);
+  const participants = tables.draft_participants.filter((participant) => participant.draft_id === fixtureId).map((participant) => ({ ...participant, profiles: tables.profiles.find((profile) => profile.id === participant.user_id) }));
+  const currentRound = Number(draft.current_round), currentPick = Number(draft.current_pick_number);
+  const numRounds = Number(draft.num_rounds), totalPicks = participants.length * numRounds;
   const namedPicks = picks.map((pick) => ({ ...pick, name: tables.profiles.find((profile) => profile.id === pick.user_id)?.display_name || "Player" }));
   const enrichments = new Map(tables.item_enrichments.map((image) => [image.item_id, image]));
   return <>
     <output hidden data-testid="kiosk-composer-submits">{submits}</output>
     <PersonalLiveKiosk
-      draftTitle="Greatest movie night"
+      draftId={fixtureId} draftTitle={String(draft.topic)}
       clock={{ running: true, paused: true, remainingMs: 60_000, totalMs: 90_000, expired: false }}
-      pickerName="Alex" isMyTurn picksUntilYou={0} currentRound={3} numRounds={4}
-      currentPickNumber={7} totalPicks={12} myPicks={picks.filter((pick) => pick.user_id === userId)}
+      pickerName="Alex" isMyTurn picksUntilYou={0} currentRound={currentRound} numRounds={numRounds}
+      currentPickNumber={currentPick} totalPicks={totalPicks} myPicks={picks.filter((pick) => pick.user_id === userId)}
       recentPicks={namedPicks.slice(-3)} allPicks={namedPicks} announce sound={false}
       onMakePick={() => setShowPick(true)} palette="heritage"
-      board={<DraftBoard participants={participants} picks={picks} numRounds={4} currentPickNumber={7} currentUserId={userId} enrichments={enrichments} newPickIds={new Set()} />}
-      desk={<PersonalDraftDesk draftId="active" userId={userId} taken={new Set(picks.map((pick) => pick.pick_text.toLowerCase()))} onChoose={setPickText} />}
-      broadcast={<DraftBroadcastFeed picks={namedPicks} totalPicks={12} />}
+      board={<DraftBoard participants={participants} picks={picks} numRounds={numRounds} currentPickNumber={currentPick} currentUserId={userId} enrichments={enrichments} newPickIds={new Set()} />}
+      desk={<PersonalDraftDesk draftId={fixtureId} userId={userId} taken={new Set(picks.map((pick) => pick.pick_text.toLowerCase()))} onChoose={setPickText} />}
+      broadcast={<DraftBroadcastFeed picks={namedPicks} totalPicks={totalPicks} />}
       hostControls={<section className="dl-card p-4"><h2 className="dl-display">Host workspace</h2><p>Clock is paused for this isolated presentation check.</p></section>}
     />
-    <MakePickSheet open={showPick} onClose={() => setShowPick(false)} currentRound={3} currentPickNumber={7}
+    <MakePickSheet open={showPick} onClose={() => setShowPick(false)} currentRound={currentRound} currentPickNumber={currentPick}
       pickText={pickText} onTextChange={setPickText} onSubmit={() => { setSubmits((value) => value + 1); setShowPick(false); }}
       submitting={false} localDuplicate={false} suggestion={null} onApplyCorrection={setPickText} onDismissSuggestion={() => {}}
-      topic="Greatest movie night" draftId="active" userId={userId} />
+      topic={String(draft.topic)} draftId={fixtureId} userId={userId} />
   </>;
 }
 // Match App.tsx: the shell belongs inside each matched route, so its HUD/menu

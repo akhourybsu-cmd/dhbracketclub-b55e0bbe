@@ -69,12 +69,25 @@ function PlayerScreenSession(props: PersonalLiveKioskProps) {
     ...(props.hostControls ? [{ id: 'host', label: 'Host' }] : []),
   ];
   const rootRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const panelsRef = useRef<HTMLDivElement>(null);
   const entryRef = useRef<HTMLButtonElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
   const wakeRef = useRef<WakeLockHandle | null>(null);
   const wakePending = useRef(false);
   const ownsFullscreen = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    // Mobile scrolls the clock, view tabs and content together. Only its
+    // vertical reading position changes; desktop keeps its existing pane.
+    const workspace = workspaceRef.current;
+    if (workspace && /^(auto|scroll)$/.test(getComputedStyle(workspace).overflowY)) {
+      workspace.scrollTop = 0;
+      if (panelsRef.current) panelsRef.current.scrollTop = 0;
+    }
+  }, [open, activeView]);
 
   const requestWake = useCallback(async () => {
     const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<WakeLockHandle> } };
@@ -243,7 +256,7 @@ function PlayerScreenSession(props: PersonalLiveKioskProps) {
         </div>
       </header>
 
-      <div className="da-pk-body da-pk-workspace">
+      <div ref={workspaceRef} className="da-pk-body da-pk-workspace" role="region" aria-label="Live draft content" tabIndex={0}>
         <aside className="da-pk-rail">
           <section className="dl-card da-pk-clock">
             <LiveClockDial clock={clock} size={96} />
@@ -289,7 +302,7 @@ function PlayerScreenSession(props: PersonalLiveKioskProps) {
               >{item.label}</button>
             ))}
           </nav>
-          <div className="da-pk-view-panels">
+          <div ref={panelsRef} className="da-pk-view-panels">
           <section className="da-pk-board" role="tabpanel" id={`${panelId}-board-panel`} aria-labelledby={`${panelId}-board-tab`} hidden={activeView !== 'board'}>{props.board}</section>
           <section className="dl-card p-4" role="tabpanel" id={`${panelId}-team-panel`} aria-labelledby={`${panelId}-team-tab`} hidden={activeView !== 'team'}>
             <p className="dl-eyebrow">My team · {props.myPicks.length} of {props.numRounds}</p>

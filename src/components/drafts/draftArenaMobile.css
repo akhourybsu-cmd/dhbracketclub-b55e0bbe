@@ -93,3 +93,43 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* The private live player screen has its own focus trap and back controls,
+   with the same single-page reading pattern as the regular mobile room. */
+@media (max-width: 1023px) {
+  .da-pk[role="dialog"] {
+    height: var(--da-viewport-height, 100dvh);
+    bottom: auto;
+  }
+  .da-pk[role="dialog"] > .da-pk-top { flex: 0 0 auto; }
+  .da-pk[role="dialog"] .da-pk-workspace {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: auto;
+    -webkit-overflow-scrolling: touch;
+    outline-offset: -3px;
+  }
+  .da-pk[role="dialog"] :is(.da-pk-rail, .da-pk-main, .da-pk-view-panels) {
+    flex: 0 0 auto;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .da-pk[role="dialog"] .da-pk-rail {
+    position: static;
+    top: auto;
+    align-self: stretch;
+  }
+  .da-pk[role="dialog"] .da-pk-team-row { align-items: flex-start; }
+  .da-pk[role="dialog"] .da-pk-team-row > .flex-1 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .da-pk[role="dialog"] .da-pk-team-row > :last-child { flex: 0 0 auto; }
+}
