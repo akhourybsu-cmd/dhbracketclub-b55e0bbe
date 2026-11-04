@@ -1025,11 +1025,14 @@ async function liveEventLifecycle() {
     await expect(player.getByRole('button', { name: 'Configure live draft', exact: true })).toHaveCount(0);
     await expect(player.getByRole('button', { name: 'Start order reveal', exact: true })).toHaveCount(0);
     const join = player.getByRole('button', { name: 'Join Draft', exact: true });
-    await fullyVisibleControl(join, 'live-small-phone-join-visible');
+    if (player.viewportSize().width <= 1023) await reachByScrolling(player, join, player.locator('.da-arena-main'), 'live-small-phone-join-page-action-reachable');
+    else await fullyVisibleControl(join, 'live-player-join-visible');
     await fit(player, 'live-greenroom-player-before-join'); await shot(player, 'live-greenroom-player-before-join');
     await join.click();
     await expect(host.getByRole('region', { name: 'Players in the room', exact: true })).toContainText('Blair');
-    await expect(start).toBeEnabled(); await fullyVisibleControl(start, 'live-host-start-visible');
+    await expect(start).toBeEnabled();
+    if (host.viewportSize().width <= 1023) await reachByScrolling(host, start, host.locator('.da-arena-main'), 'live-host-start-page-action-reachable');
+    else await fullyVisibleControl(start, 'live-host-start-visible');
     await start.click();
     await expect(host.getByRole('region', { name: 'Draft order ceremony', exact: true })).toBeVisible();
     await expect(player.getByRole('region', { name: 'Draft order ceremony', exact: true })).toBeVisible();
@@ -1241,7 +1244,7 @@ async function largeCeremony(width, height) {
     await shot(page, `${label}-last-lineup`);
     const stored = await page.evaluate(() => ({ draft: window.daQa.tables.drafts.find((row) => row.id === 'ceremony'), picks: window.daQa.tables.draft_picks.filter((row) => row.draft_id === 'ceremony') }));
     assert.equal(stored.draft.status, 'setup'); assert.equal(stored.draft.ceremony_reveal_index, 20); assert.equal(stored.picks.length, 0);
-    report.checks.push({ label: `${label}-actual-reveals-bounded-lineup-and-fixed-footer`, ok: true });
+    report.checks.push({ label: `${label}-actual-reveals-complete-lineup-and-reachable-actions`, ok: true });
     console.log(`PASS ${label}`);
   } catch (error) { await captureFailure(page, label); throw error; }
   finally { await context.close(); }
@@ -1581,6 +1584,8 @@ async function mobileScrollJourney(width, height, theme) {
       title: document.querySelector('.da-room-topbar').getBoundingClientRect().top,
       tabs: document.querySelector('.da-room-tabs').getBoundingClientRect().top,
       panel: document.querySelector('.da-room-panel').getBoundingClientRect().top,
+      status: (() => { const strip = document.querySelector('.da-room-panel .dl-status');
+        return strip && strip.getBoundingClientRect().height > 0 ? strip.getBoundingClientRect().top : null; })(),
       hud: document.querySelector('.da-hud').getBoundingClientRect().top }));
     const before = await snapshot();
     // Chromium uses real touch input; mobile WebKit uses keyboard scrolling
@@ -1590,6 +1595,12 @@ async function mobileScrollJourney(width, height, theme) {
     const after = await snapshot(), moved = after.scroll - before.scroll;
     for (const key of ['title', 'tabs', 'panel']) assert.ok(Math.abs(before[key] - after[key] - moved) < 2,
       `${view}: ${key} moves with the page: ${JSON.stringify({ before, after })}`);
+    if (view === 'board' && before.status !== null) {
+      assert.notEqual(after.status, null, 'The board status remains part of the page');
+      assert.ok(Math.abs(before.status - after.status - moved) < 2,
+        `Board status moves with picks: ${JSON.stringify({ before, after })}`);
+      report.checks.push({ label: `${label}-board-status-scrolls-with-picks`, ok: true });
+    }
     assert.ok(Math.abs(after.hud - before.hud) < 1, 'Only the compact game HUD remains fixed');
     report.checks.push({ label: `${label}-${view}-title-tabs-and-picks-scroll-together`, ok: true,
       input: browserName === 'webkit' ? 'keyboard-mobile-rendering' : width < 768 ? 'native-touch' : 'wheel', before, after });

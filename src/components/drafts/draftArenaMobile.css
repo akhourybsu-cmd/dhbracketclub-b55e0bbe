@@ -43,6 +43,11 @@
 
   #draft-arena-main .da-pick-history-fade { display: none; }
 
+  #draft-arena-main :is(.dl-status, .da-room-groups, .da-live-command-rail) {
+    position: static;
+    top: auto;
+  }
+
   /* Artwork, full title and actions get their own space instead of competing
      in a narrow row. This applies to the pick log and completed team rosters. */
   #draft-arena-main .da-room .da-pick-card { gap: 8px; }

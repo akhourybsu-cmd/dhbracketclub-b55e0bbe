@@ -174,7 +174,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Upload compact regression report and failure frames
+      - name: Upload compact regression report and review frames
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -185,5 +185,20 @@ jobs:
             /tmp/draft-regression-browser-artifacts/failure.png
             /tmp/draft-regression-browser-artifacts/*-failure.png
             /tmp/draft-regression-browser-artifacts/*-diagnostics.json
+            /tmp/draft-regression-browser-artifacts/initial-active-room.png
+            /tmp/draft-regression-browser-artifacts/initial-lobby.png
+            /tmp/draft-regression-browser-artifacts/live-ceremony-20-players-320x568-early.png
+            /tmp/draft-regression-browser-artifacts/live-ceremony-20-players-320x568-last-lineup.png
+            /tmp/draft-regression-browser-artifacts/390x844-*-active.png
+            /tmp/draft-regression-browser-artifacts/390x844-*-complete.png
+            /tmp/draft-regression-browser-artifacts/commissioner-gallery-320x568-light-overview.png
+            /tmp/draft-regression-browser-artifacts/commissioner-gallery-320x568-light-planner.png
+            /tmp/draft-regression-browser-artifacts/commissioner-gallery-1440x900-dark-overview.png
+            /tmp/draft-regression-browser-artifacts/stress-320x568-dark-large-board.png
+            /tmp/draft-regression-browser-artifacts/stress-320x568-dark-last-log-pick.png
+            /tmp/draft-regression-browser-artifacts/live-greenroom-player-before-join.png
+            /tmp/draft-regression-browser-artifacts/live-greenroom-host-alone.png
+            /tmp/draft-regression-browser-artifacts/live-order-ceremony.png
+            /tmp/draft-regression-browser-artifacts/live-other-player-receives-first-pick.png
           if-no-files-found: warn
           retention-days: 7
