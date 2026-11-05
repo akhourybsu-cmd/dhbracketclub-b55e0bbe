@@ -28,4 +28,8 @@ Reviewed screenshots from both engines confirm visible input, submit and close c
 
 ## Publication
 
-Lovable was ready and synchronized to the exact checked source before publish was requested. Deployment `75c475dd-c991-4f80-ad88-470b6946ba80` returned pending. Public proof is pending; that publish response alone does not establish the change is live. The existing release verifier follows the canonical site's actual entry graph and requires the tested Arena CSS filename/hash and keyboard JavaScript/CSS markers. It reads public files only.
+Lovable was ready and synchronized to the exact checked source before deployment `75c475dd-c991-4f80-ad88-470b6946ba80` was requested. Independent public-content proof [41963743140](https://github.com/akhourybsu-cmd/dhbracketclub-b55e0bbe/actions/runs/41963743140) then passed at **2026-11-05T03:47:27.183Z**. Receipt artifact: `13386407507` (`draft-mobile-publication-41963743140-1`). The verifier's eight offline tests also pass.
+
+The canonical [public site](https://dryhorse.app/) served its actual HTML, module entry, Arena CSS and three Arena JavaScript bundles with HTTP 200 over normal TLS. The stylesheet is `DraftArenaLayout-DMLZqmFl.css`, SHA-256 `f209327cfcc46facc3d06f8d85e405acf6b4b9013658d1b05e27812330d50681`, matching the tested build exactly. All viewport, form, pick-composer and previous mobile-scrolling release markers passed. The verifier follows the served entry graph and reads public files only.
+
+The receipt associates the checked source SHA through release metadata; the hosting server does not expose a Git revision. This proves the expected deployed content, rather than claiming a server-reported Git SHA or a physical-device gameplay session. Subsequent documentation-only commits leave the tested application source unchanged.
