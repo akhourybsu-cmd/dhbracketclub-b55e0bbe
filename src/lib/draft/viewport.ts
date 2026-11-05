@@ -60,6 +60,7 @@ export function bindDraftViewport() {
   const properties = PROPERTIES.map(name => ({ name, value: style.getPropertyValue(name), priority: style.getPropertyPriority(name) }));
   const attributes = ATTRIBUTES.map(name => ({ name, value: root.getAttribute(name) }));
   let frame = 0;
+  let focusFrame = 0;
   let ensureFocused = false;
   let bounds: DraftViewportBounds | undefined;
   const update = () => {
@@ -72,7 +73,15 @@ export function bindDraftViewport() {
     }
     root.dataset.daShortViewport = String(bounds.height < 340);
     root.dataset.daTinyViewport = String(bounds.height < 260);
-    if (ensureFocused) keepFocusedFieldVisible(bounds);
+    if (ensureFocused) {
+      cancelAnimationFrame(focusFrame);
+      // Let viewport-dependent flex sizing and browser scroll anchoring settle
+      // before measuring the field's actual reading area.
+      focusFrame = requestAnimationFrame(() => {
+        focusFrame = 0;
+        if (bounds) keepFocusedFieldVisible(bounds);
+      });
+    }
     ensureFocused = false;
     frame = 0;
   };
@@ -91,6 +100,7 @@ export function bindDraftViewport() {
   document.addEventListener('focusin', focus);
   return () => {
     cancelAnimationFrame(frame);
+    cancelAnimationFrame(focusFrame);
     viewport?.removeEventListener('resize', resize);
     viewport?.removeEventListener('scroll', pan);
     window.removeEventListener('resize', resize);

@@ -79,9 +79,11 @@ describe('Draft typing viewport', () => {
     const moveWindow = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     release = bindDraftViewport();
     input.focus(); input.setSelectionRange(3, 3); flush();
+    expect(owner.scrollTop).toBe(0); // Viewport layout commits before measuring.
+    flush();
     expect(owner.scrollTop).toBe(66);
     Object.assign(viewport, { height: 260, offsetTop: 70 });
-    viewport.dispatchEvent(new Event('resize')); flush();
+    viewport.dispatchEvent(new Event('resize')); flush(); flush();
     expect(owner.scrollTop).toBe(66);
     Object.assign(viewport, { offsetTop: 110 });
     viewport.dispatchEvent(new Event('scroll')); flush();
@@ -108,6 +110,15 @@ describe('Draft typing viewport', () => {
     expect(root.getAttribute('data-da-short-viewport')).toBe('previous');
     expect(root.hasAttribute('data-da-tiny-viewport')).toBe(false);
     viewport.dispatchEvent(new Event('scroll'));
+    expect(frames.size).toBe(0);
+  });
+
+  it('cancels a deferred focus adjustment when leaving Arena', () => {
+    release = bindDraftViewport();
+    document.dispatchEvent(new Event('focusin'));
+    flush();
+    expect(frames.size).toBe(1);
+    release(); release = undefined;
     expect(frames.size).toBe(0);
   });
 });

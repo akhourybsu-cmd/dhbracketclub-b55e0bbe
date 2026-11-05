@@ -77,4 +77,8 @@ html[data-da-tiny-viewport="true"] .da-commissioner-review textarea { min-height
   :is(.da-arena-shell.da-mode, .da-appearance-panel.da-lounge) :is(input, textarea, select, [contenteditable="true"]) {
     font-size: 16px;
   }
+  :is(.da-arena-shell.da-mode, .da-appearance-panel.da-lounge) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select) {
+    min-height: 44px;
+  }
+  .da-arena-shell .da-live-find-action { min-height: 44px; }
 }
