@@ -1966,7 +1966,11 @@ async function keyboardOtherForms(page, width, keyboardHeight, keyboardTop, them
 
   await go(page, '/drafts/active', { theme });
   await tab(page, 'My desk');
-  const notes = page.getByPlaceholder('Private note (optional)').filter({ visible: true });
+  const desk = page.locator('.da-room-panel .da-room-desk');
+  const deskHeading = desk.locator('.da-desk-heading');
+  if (await deskHeading.getAttribute('aria-expanded') === 'false') await deskHeading.click();
+  await expect(deskHeading).toHaveAttribute('aria-expanded', 'true');
+  const notes = desk.getByPlaceholder('Private note (optional)');
   await notes.fill('Keep this idea for later.');
   await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
   await keyboardControl(notes, `${label}-desk-notes-focused`, { editable: true });
