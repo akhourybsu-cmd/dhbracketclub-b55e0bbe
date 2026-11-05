@@ -1,13 +1,15 @@
 {
   "url": "https://dryhorse.app/",
-  "source_sha": "11a1701214021829d12a60f90ff0c3ea59295394",
+  "source_sha": "7bec6b5fcd97bcac68120af6094bd4db03ef356f",
   "css": {
-    "filename": "DraftArenaLayout-7boc4KSm.css",
-    "sha256": "d6271728f2d2351cbb5b1d070ce2ac0b22a62859dee9a29fb187cdf00d930206"
+    "filename": "DraftArenaLayout-DMLZqmFl.css",
+    "sha256": "f209327cfcc46facc3d06f8d85e405acf6b4b9013658d1b05e27812330d50681"
   },
   "bundles": {
     "DraftArenaLayout": [
-      "draft-arena-main"
+      "draft-arena-main",
+      "--da-viewport-top",
+      "focusin"
     ],
     "DraftBoard": [
       "dl-mobile-owner-name",
@@ -18,7 +20,10 @@
     "DraftDetailPage": [
       "da-pick-history-list",
       "da-pick-history-fade",
-      "Live draft content"
+      "Live draft content",
+      "da-pick-dialog-content",
+      "Dispute reason",
+      "Rejection reason"
     ]
   },
   "css_styles": [
@@ -26,6 +31,9 @@
     ".dl-mobile-owner",
     ".da-pick-history-list",
     ".da-commissioner-workspace",
-    ".da-pk-workspace"
+    ".da-pk-workspace",
+    ".da-pick-dialog-content",
+    ".da-form-dialog",
+    "--da-viewport-top"
   ]
 }
