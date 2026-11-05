@@ -59,6 +59,10 @@ for (const table of ['draft_season_entries', 'draft_season_standings', 'draft_pa
 const operations: Row[] = [];
 const calls: Row[] = [];
 const failedReads = new Map<string, number>();
+const failedWrites = new Map<string, number>();
+const blockedWrites = new Set<string>();
+const heldWrites = new Map<string, Set<() => void>>();
+const functionReplies = new Map<string, Row[]>();
 const failedRpcs = new Map<string, number>();
 const heldReads = new Set<() => void>();
 let holdActiveReads = params.get("stress") === "delayed-room";
@@ -70,6 +74,16 @@ function releaseActiveReads() {
 let serial = 100;
 const clone = <T,>(value: T): T => structuredClone(value);
 const imageURL = (name: string) => new URL(`/images/qa-draft-art/${name}.svg`, location.origin).href;
+if (params.get('stress') === 'keyboard') {
+  tables.club_ai_settings[0].ai_enabled = true;
+  tables.drafts.find((row) => row.id === 'active')!.topic = 'World cinema and unforgettable stories across every country, decade and genre — a club film draft';
+  for (let index = 1; index <= 12; index++) tables.draft_desk_items.push({
+    id: `keyboard-desk-${index}`, draft_id: 'active', user_id: userId,
+    title: `Film idea ${index} with a deliberately descriptive title`,
+    notes: 'A saved private note that makes the expanded shortlist genuinely longer than the visible keyboard area.',
+    position: index, is_favorite: false, is_on_deck: false, created_at: date, updated_at: date,
+  });
+}
 if (["projector", "live-host", "live-actions"].includes(params.get("stress") || "")) {
   const clockStart = new Date().toISOString();
   const deadline = new Date(Date.now() + 90_000).toISOString();
@@ -258,6 +272,14 @@ class Query implements PromiseLike<any> {
   abortSignal() { return this; }
   async run() {
     calls.push({ table: this.table, mode: this.mode });
+    if (this.mode !== 'select' && blockedWrites.has(this.table)) await new Promise<void>((resolve) => {
+      const pending = heldWrites.get(this.table) ?? new Set<() => void>();
+      pending.add(resolve); heldWrites.set(this.table, pending);
+    });
+    if (this.mode !== 'select' && (failedWrites.get(this.table) || 0) > 0) {
+      failedWrites.set(this.table, failedWrites.get(this.table)! - 1);
+      return { data: null, error: { message: 'Fixture: interrupted write' } };
+    }
     if (this.mode === "select" && (failedReads.get(this.table) || 0) > 0) {
       failedReads.set(this.table, failedReads.get(this.table)! - 1);
       return { data: null, error: { message: "Fixture: interrupted read" } };
@@ -298,13 +320,17 @@ export const supabase = {
     if (commissionerFixture.handles(name)) return commissionerFixture.rpc(name, args);
     return { data: name === "is_app_admin" ? false : name === "current_user_club_id" ? "club" : name === "server_now" ? new Date().toISOString() : null, error: null };
   },
-  functions: { invoke: async (name: string, args?: any) => { calls.push({ function: name, args: clone(args || {}) }); return { data: { success: true, enriched: 0 }, error: null }; } },
+  functions: { invoke: async (name: string, args?: any) => { calls.push({ function: name, args: clone(args || {}) }); return { data: functionReplies.get(name)?.shift() ?? { success: true, enriched: 0 }, error: null }; } },
   channel, removeChannel: async (item: FixtureChannel) => { await item.unsubscribe(); }, removeAllChannels: async () => { channels.clear(); },
   auth: { getSession: async () => ({ data: { session: { access_token: "fixture-only", user: { id: userId } } }, error: null }), getUser: async () => ({ data: { user: { id: userId } }, error: null }), onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }) },
   storage: { from: () => ({ getPublicUrl: (path: string) => ({ data: { publicUrl: path } }) }) },
 };
 Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, releaseActiveReads,
   failNextRead: (table: string) => failedReads.set(table, (failedReads.get(table) || 0) + 1),
+  failNextWrite: (table: string) => failedWrites.set(table, (failedWrites.get(table) || 0) + 1),
+  blockWrites: (table: string) => { blockedWrites.add(table); },
+  releaseWrites: (table: string) => { blockedWrites.delete(table); for (const release of heldWrites.get(table) ?? []) release(); heldWrites.delete(table); },
+  replyNextFunction: (name: string, data: Row) => { functionReplies.set(name, [...(functionReplies.get(name) ?? []), clone(data)]); },
   failNextRPC: (name: string) => failedRpcs.set(name, (failedRpcs.get(name) || 0) + 1),
   blockRPC: (name: string) => failedRpcs.set(name, Infinity),
   releaseRPC: (name: string) => failedRpcs.delete(name),

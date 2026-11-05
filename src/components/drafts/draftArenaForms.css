@@ -1,0 +1,70 @@
+/* Typed review forms keep their actions outside the keyboard's scroll body. */
+.da-form-dialog.da-arena-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px;
+  width: min(94vw, 600px);
+}
+.da-form-dialog > .da-form-dialog-header {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 32px;
+  justify-content: center;
+}
+.da-form-dialog-header .da-form-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.da-form-dialog-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  gap: 12px;
+}
+.da-form-dialog-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+  scroll-padding-block: 12px;
+  scrollbar-width: thin;
+}
+.da-form-dialog .da-form-dialog-actions {
+  display: flex;
+  flex-direction: row;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid hsl(var(--border) / .5);
+}
+.da-form-dialog .da-form-dialog-actions > button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  height: auto;
+  padding: 8px 10px;
+  margin: 0;
+  white-space: normal;
+}
+.da-form-dialog .da-form-dialog-actions > :not([hidden]) ~ :not([hidden]) { margin: 0; }
+.da-form-dialog .da-form-dialog-actions > button:last-child { flex-grow: 2; }
+html[data-da-short-viewport="true"] .da-form-dialog.da-arena-dialog {
+  gap: 8px;
+  padding: 12px;
+}
+html[data-da-short-viewport="true"] .da-form-dialog-form { gap: 8px; }
+html[data-da-short-viewport="true"] .da-form-dialog-header .da-form-description { display: none; }
+html[data-da-short-viewport="true"] .da-form-dialog-body textarea {
+  min-height: 48px;
+  height: 48px;
+}

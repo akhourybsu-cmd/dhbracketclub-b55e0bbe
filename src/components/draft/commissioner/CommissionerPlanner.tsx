@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, CalendarDays, Copy, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -106,6 +107,7 @@ export function CommissionerPlanner(props: CommissionerPlannerProps) {
 }
 
 function PlannerSession({ clubId, seasonId, data, mutate, busy = false, readOnly = false, recipients = [] }: CommissionerPlannerProps) {
+  const { palette } = useDraftArenaPalette();
   const [view, setView] = useState<'schedule' | 'presets'>('schedule');
   const rootRef = useRef<HTMLElement>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -256,18 +258,21 @@ function PlannerSession({ clubId, seasonId, data, mutate, busy = false, readOnly
     </>}
     </div>
     <Dialog open={!!prompt} onOpenChange={(open) => { if (!open && !working) { setPrompt(null); setError(''); intent.current = null; } }}>
-      <DialogContent className="da-appearance-panel da-lounge da-arena-dialog da-planner-dialog">
-        <DialogHeader><DialogTitle>{prompt?.kind === 'send_reminder' ? 'Send plan reminder' : prompt?.kind === 'delete_plan' ? 'Delete planned draft' : 'Delete preset'}</DialogTitle><DialogDescription className="break-words">{prompt?.title}</DialogDescription></DialogHeader>
-        {prompt && <form className="space-y-3" onSubmit={(event) => void confirm(event)}>
-          {prompt.kind === 'send_reminder' && <>
-            <p className="text-xs text-muted-foreground">Sends an in-app notification now. Your reason is the message in their inbox. Automatic reminders are not scheduled.</p>
-            <label className="block text-xs font-bold">Recipient<select className="form-input mt-1 min-h-11 w-full" required disabled={working} value={prompt.recipient} onChange={(event) => setPrompt({ ...prompt, recipient: event.target.value })}><option value="">Choose a participant</option>{recipients.map((person) => <option key={person.userId} value={person.userId}>{person.name}</option>)}</select></label>
-            {recentReminder && <p className="text-xs text-muted-foreground">This participant was reminded within the past hour. Wait before sending another.</p>}
-          </>}
-          {prompt.kind !== 'send_reminder' && <p className="text-xs text-muted-foreground">This removes the saved {prompt.kind === 'delete_plan' ? 'plan' : 'setup'}. Existing drafts and results stay intact.</p>}
-          <label className="block text-xs font-bold">{prompt.kind === 'send_reminder' ? 'Reminder reason' : 'Reason for deletion'}<Textarea className="mt-1 resize-none" rows={3} minLength={3} maxLength={1000} required disabled={working} value={prompt.reason} onChange={(event) => setPrompt({ ...prompt, reason: event.target.value })} /></label>
-          {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
-          <div className="da-planner-actions flex gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={working} onClick={() => { setPrompt(null); setError(''); intent.current = null; }}>Cancel</Button><Button type="submit" className="min-h-11 flex-1" disabled={disabled || prompt.reason.trim().length < 3 || (prompt.kind === 'send_reminder' && (!prompt.recipient || !!recentReminder))}>{working ? 'Saving…' : prompt.kind === 'send_reminder' ? 'Send in-app reminder' : prompt.kind === 'delete_plan' ? 'Delete planned draft' : 'Delete preset'}</Button></div>
+      <DialogContent className="da-appearance-panel da-lounge da-arena-dialog da-planner-dialog da-form-dialog" data-da-palette={palette}>
+        <DialogHeader className="da-form-dialog-header"><DialogTitle>{prompt?.kind === 'send_reminder' ? 'Send plan reminder' : prompt?.kind === 'delete_plan' ? 'Delete planned draft' : 'Delete preset'}</DialogTitle></DialogHeader>
+        {prompt && <form className="da-form-dialog-form" onSubmit={(event) => void confirm(event)} aria-label="Plan confirmation">
+          <div className="da-form-dialog-body space-y-3" role="region" aria-label="Plan confirmation details">
+            <DialogDescription className="break-words">{prompt.title}</DialogDescription>
+            {prompt.kind === 'send_reminder' && <>
+              <p className="text-xs text-muted-foreground">Sends an in-app notification now. Your reason is the message in their inbox. Automatic reminders are not scheduled.</p>
+              <label className="block text-xs font-bold">Recipient<select className="form-input mt-1 min-h-11 w-full" required disabled={working} value={prompt.recipient} onChange={(event) => setPrompt({ ...prompt, recipient: event.target.value })}><option value="">Choose a participant</option>{recipients.map((person) => <option key={person.userId} value={person.userId}>{person.name}</option>)}</select></label>
+              {recentReminder && <p className="text-xs text-muted-foreground">This participant was reminded within the past hour. Wait before sending another.</p>}
+            </>}
+            {prompt.kind !== 'send_reminder' && <p className="text-xs text-muted-foreground">This removes the saved {prompt.kind === 'delete_plan' ? 'plan' : 'setup'}. Existing drafts and results stay intact.</p>}
+            <label className="block text-xs font-bold">{prompt.kind === 'send_reminder' ? 'Reminder reason' : 'Reason for deletion'}<Textarea className="mt-1 resize-none" rows={3} minLength={3} maxLength={1000} required disabled={working} value={prompt.reason} onChange={(event) => setPrompt({ ...prompt, reason: event.target.value })} /></label>
+            {error && <p className="text-xs text-destructive" role="alert">{error}</p>}
+          </div>
+          <div className="da-planner-actions da-form-dialog-actions flex gap-2"><Button type="button" variant="outline" className="min-h-11" disabled={working} onClick={() => { setPrompt(null); setError(''); intent.current = null; }}>Cancel</Button><Button type="submit" className="min-h-11 flex-1" disabled={disabled || prompt.reason.trim().length < 3 || (prompt.kind === 'send_reminder' && (!prompt.recipient || !!recentReminder))}>{working ? 'Saving…' : prompt.kind === 'send_reminder' ? 'Send in-app reminder' : prompt.kind === 'delete_plan' ? 'Delete planned draft' : 'Delete preset'}</Button></div>
         </form>}
       </DialogContent>
     </Dialog>

@@ -5,8 +5,11 @@ import { DraftArenaHUD } from './DraftArenaHUD';
 import { DraftArenaBoot } from './DraftArenaBoot';
 import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
+import { bindDraftViewport } from '@/lib/draft/viewport';
 import './draftArena.css';
 import './draftArenaMobile.css';
+import './draftArenaForms.css';
+import './draftArenaKeyboard.css';
 
 /**
  * Full-screen standalone shell for the Draft Arena. Applies the `.da-mode`
@@ -31,32 +34,12 @@ export function DraftArenaLayout({ children }: { children: ReactNode }) {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    const viewport = window.visualViewport;
-    const rootStyle = document.documentElement.style;
-    const previousHeight = rootStyle.getPropertyValue('--da-viewport-height');
-    const previousPriority = rootStyle.getPropertyPriority('--da-viewport-height');
-    const previousShortViewport = document.documentElement.getAttribute('data-da-short-viewport');
-    const resize = () => {
-      const visibleHeight = viewport?.height ?? window.innerHeight;
-      const height = `${visibleHeight}px`;
-      shell.current?.style.setProperty('--da-viewport-height', height);
-      // Portaled composers and artwork drawers share the visible keyboard bounds.
-      rootStyle.setProperty('--da-viewport-height', height);
-      document.documentElement.dataset.daShortViewport = String(visibleHeight < 340);
-    };
+    const releaseViewport = bindDraftViewport();
     const visibility = () => setHidden(document.hidden);
-    resize();
-    viewport?.addEventListener('resize', resize);
-    window.addEventListener('resize', resize);
     document.addEventListener('visibilitychange', visibility);
     return () => {
-      viewport?.removeEventListener('resize', resize);
-      window.removeEventListener('resize', resize);
+      releaseViewport();
       document.removeEventListener('visibilitychange', visibility);
-      if (previousHeight) rootStyle.setProperty('--da-viewport-height', previousHeight, previousPriority);
-      else rootStyle.removeProperty('--da-viewport-height');
-      if (previousShortViewport === null) document.documentElement.removeAttribute('data-da-short-viewport');
-      else document.documentElement.setAttribute('data-da-short-viewport', previousShortViewport);
     };
   }, []);
 

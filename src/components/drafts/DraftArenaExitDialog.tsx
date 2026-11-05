@@ -16,8 +16,7 @@ export function DraftArenaExitDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="da-arena-dialog da-exit-dialog !overflow-y-auto border-gold/30"
-        style={{ top: 'calc(var(--da-viewport-height, 100dvh) / 2)' }}>
+      <AlertDialogContent className="da-arena-dialog da-exit-dialog !overflow-y-auto border-gold/30">
         <AlertDialogHeader>
           <AlertDialogTitle className="da-exit-title text-lg font-black tracking-tight">
             Leave the Draft Arena?

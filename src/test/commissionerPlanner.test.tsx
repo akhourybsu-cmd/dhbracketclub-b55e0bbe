@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CommissionerPlanner } from '@/components/draft/commissioner/CommissionerPlanner';
@@ -104,6 +104,55 @@ describe('Commissioner planning persistence', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('did not return a delivery receipt');
     expect(screen.queryByText('In-app reminder delivered.')).toBeNull();
     expect(screen.getByRole('dialog')).toBeVisible();
+  });
+
+  it('keeps typed reminder details focused across snapshot refreshes and retries the native form without losing its intent', async () => {
+    const mutate = vi.fn<CommissionerMutate>().mockRejectedValueOnce(new Error('Connection interrupted'))
+      .mockResolvedValueOnce({ ...result, record: { notification_id: 'notification-retry' } });
+    const view = render(<Harness data={{ ...empty, plans: [plan] }} mutate={mutate} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remind participants about Film classics' }));
+    const dialog = screen.getByRole('dialog', { name: 'Send plan reminder' });
+    const details = within(dialog).getByRole('region', { name: 'Plan confirmation details' });
+    const recipient = within(dialog).getByLabelText('Recipient');
+    const reason = within(dialog).getByLabelText('Reminder reason') as HTMLTextAreaElement;
+    fireEvent.change(recipient, { target: { value: 'player-1' } });
+    fireEvent.change(reason, { target: { value: 'Please check the planned topic.\nBring your next picks.' } });
+    reason.focus();
+    view.rerender(<Harness data={{ ...empty, plans: [{ ...plan, notes: 'Refreshed workspace details' }] }} mutate={mutate} />);
+    expect(reason).toHaveFocus();
+    expect(reason).toHaveValue('Please check the planned topic.\nBring your next picks.');
+    expect(recipient).toHaveValue('player-1');
+    const submit = within(dialog).getByRole('button', { name: 'Send in-app reminder' }) as HTMLButtonElement;
+    expect(details).toContainElement(reason);
+    expect(details).not.toContainElement(submit);
+    expect(submit.form).toBe(reason.form);
+    expect(mutate).not.toHaveBeenCalled();
+
+    fireEvent.submit(reason.form!);
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Connection interrupted');
+    expect(reason).toHaveValue('Please check the planned topic.\nBring your next picks.');
+    expect(submit).toBeEnabled();
+    fireEvent.submit(reason.form!);
+    expect(await screen.findByRole('status')).toHaveTextContent('In-app reminder delivered.');
+    expect(mutate).toHaveBeenCalledTimes(2);
+    expect(mutate.mock.calls[1]).toEqual(mutate.mock.calls[0]);
+  });
+
+  it('keeps deletion confirmation separate from typed details and cancels without a mutation', async () => {
+    const mutate = vi.fn<CommissionerMutate>().mockResolvedValue(result);
+    render(<Harness data={{ ...empty, plans: [plan] }} mutate={mutate} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete plan Film classics' }));
+    const dialog = screen.getByRole('dialog', { name: 'Delete planned draft' });
+    const details = within(dialog).getByRole('region', { name: 'Plan confirmation details' });
+    const reason = within(dialog).getByLabelText('Reason for deletion');
+    fireEvent.change(reason, { target: { value: 'The event is being moved.' } });
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+    expect(details).toContainElement(reason);
+    expect(details).not.toContainElement(cancel);
+    expect(within(dialog).getByRole('button', { name: 'Delete planned draft' })).toBeEnabled();
+    fireEvent.click(cancel);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   it('saves a reusable LIVE preset without changing the existing scoring scope or presentation semantics', async () => {

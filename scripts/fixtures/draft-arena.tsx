@@ -39,6 +39,7 @@ import { MakePickSheet } from "../../src/components/draft/MakePickSheet";
 import { DraftBoard } from "../../src/components/draft/DraftBoard";
 import { PersonalDraftDesk } from "../../src/components/draft/PersonalDraftDesk";
 import { DraftBroadcastFeed } from "../../src/components/draft/DraftBroadcastFeed";
+import { PageTransition } from "../../src/components/PageTransition";
 import { draftArenaFixture } from "./draft-arena-backend";
 
 const params = new URLSearchParams(location.search);
@@ -90,7 +91,8 @@ function LiveWorkspaceFixture() {
 // Match App.tsx: the shell belongs inside each matched route, so its HUD/menu
 // receive that route's draftId/seasonId through useParams.
 function arena(screen: React.ReactNode) {
-  return <DraftArenaLayout>{screen}</DraftArenaLayout>;
+  const content = <DraftArenaLayout>{screen}</DraftArenaLayout>;
+  return params.get('keyboard') === '1' ? <PageTransition>{content}</PageTransition> : content;
 }
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

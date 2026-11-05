@@ -9,7 +9,7 @@ on:
       - 'src/components/draft/**'
       - 'src/components/drafts/**'
       - 'src/components/EnrichedItemCard.tsx'
-      - 'src/lib/draft/scroll.ts'
+      - 'src/lib/draft/**'
       - 'src/pages/DraftDetailPage.tsx'
       - 'src/pages/DraftsListPage.tsx'
       - 'src/pages/LiveDraftsPage.tsx'
@@ -29,10 +29,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        engine: [chromium, webkit]
+        include:
+          - { engine: chromium, section: mobile-scroll, label: mobile }
+          - { engine: webkit, section: mobile-scroll, label: mobile }
+          - { engine: chromium, section: keyboard, label: keyboard }
+          - { engine: webkit, section: keyboard, label: keyboard }
+    name: ${{ matrix.label }} (${{ matrix.engine }})
     env:
       DRAFT_QA_OUTPUT: /tmp/draft-mobile-browser-artifacts
-      DRAFT_QA_SECTION: mobile-scroll
+      DRAFT_QA_SECTION: ${{ matrix.section }}
       DRAFT_QA_BROWSER: ${{ matrix.engine }}
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +76,7 @@ jobs:
           appendFileSync(process.env.GITHUB_ENV, `DRAFT_QA_CHROMIUM=${chromium.executablePath()}\n`);
           JS
 
-      - name: Check mobile pick layouts and scroll ownership
+      - name: Check mobile layouts, scroll ownership and keyboard geometry
         shell: bash
         run: |
           set -o pipefail
@@ -96,7 +101,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: draft-mobile-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: draft-${{ matrix.label }}-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.DRAFT_QA_OUTPUT }}/
           if-no-files-found: warn
           retention-days: 7

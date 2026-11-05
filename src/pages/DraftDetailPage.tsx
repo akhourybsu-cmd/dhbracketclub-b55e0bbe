@@ -2670,15 +2670,15 @@ function DraftDetailSession() {
 
       {/* Dispute Dialog */}
       <Dialog open={!!disputeDialogPick} onOpenChange={(open) => { if (!open) { setDisputeDialogPick(null); setDisputeReason(''); } }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="da-appearance-panel da-lounge da-arena-dialog da-form-dialog" data-da-palette={daPalette}>
+          <DialogHeader className="da-form-dialog-header">
             <DialogTitle>Dispute Pick Rating</DialogTitle>
-            <DialogDescription>
-              Explain why you think this rating is incorrect. An admin will review and may trigger an AI re-evaluation.
+            <DialogDescription className="da-form-description">
+              Explain what you think the rating missed.
             </DialogDescription>
           </DialogHeader>
           {disputeDialogPick && (
-            <div className="space-y-4">
+            <div className="da-form-dialog-body space-y-4" role="region" aria-label="Dispute details">
               <div className="da-subcard p-3">
                 <p className="text-[13px] font-semibold">{disputeDialogPick.pick_text}</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
@@ -2686,6 +2686,7 @@ function DraftDetailSession() {
                 </p>
               </div>
               <Textarea
+                aria-label="Dispute reason"
                 placeholder="Why do you think this rating is wrong? (e.g., the AI made a factual error, overlooked an important quality, etc.)"
                 value={disputeReason}
                 onChange={(e) => setDisputeReason(e.target.value)}
@@ -2695,7 +2696,7 @@ function DraftDetailSession() {
               <p className="text-[10px] text-muted-foreground text-right">{disputeReason.length}/500</p>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="da-form-dialog-actions">
             <Button variant="outline" onClick={() => { setDisputeDialogPick(null); setDisputeReason(''); }}>Cancel</Button>
             <Button onClick={handleSubmitDispute} disabled={submittingDispute || !disputeReason.trim()}>
               {submittingDispute ? 'Submitting…' : 'Submit Dispute'}
@@ -2706,20 +2707,21 @@ function DraftDetailSession() {
 
       {/* Reject Dispute Dialog */}
       <Dialog open={!!rejectDialog} onOpenChange={(open) => { if (!open) { setRejectDialog(null); setRejectRationale(''); } }}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="da-appearance-panel da-lounge da-arena-dialog da-form-dialog" data-da-palette={daPalette}>
+          <DialogHeader className="da-form-dialog-header">
             <DialogTitle>Reject Dispute</DialogTitle>
-            <DialogDescription>
-              Provide a rationale that explains why this dispute is being rejected. It will be visible to the participant on their pick.
+            <DialogDescription className="da-form-description">
+              This note is shown to the person who disputed the rating.
             </DialogDescription>
           </DialogHeader>
           {rejectDialog && (
-            <div className="space-y-4">
+            <div className="da-form-dialog-body space-y-4" role="region" aria-label="Rejection details">
               <div className="da-subcard p-3">
                 <p className="text-[13px] font-semibold">{rejectDialog.pickText}</p>
                 <p className="text-[11px] text-muted-foreground mt-1 italic">User dispute: "{rejectDialog.reason}"</p>
               </div>
               <Textarea
+                aria-label="Rejection reason"
                 placeholder="Explain why the dispute is being rejected (visible to the participant)…"
                 value={rejectRationale}
                 onChange={(e) => setRejectRationale(e.target.value)}
@@ -2729,7 +2731,7 @@ function DraftDetailSession() {
               <p className="text-[10px] text-muted-foreground text-right">{rejectRationale.length}/1000</p>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="da-form-dialog-actions">
             <Button variant="outline" onClick={() => { setRejectDialog(null); setRejectRationale(''); }}>Cancel</Button>
             <Button
               onClick={handleConfirmReject}

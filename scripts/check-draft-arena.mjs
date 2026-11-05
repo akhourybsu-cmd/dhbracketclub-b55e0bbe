@@ -16,8 +16,10 @@ const base = process.env.DRAFT_QA_URL || "http://127.0.0.1:8098";
 const browserName = process.env.DRAFT_QA_BROWSER || 'chromium';
 assert.ok(['chromium', 'webkit'].includes(browserName), 'Choose a supported Draft Arena QA browser');
 const mobileScrollOnly = process.env.DRAFT_QA_SECTION === 'mobile-scroll';
+const keyboardOnly = process.env.DRAFT_QA_SECTION === 'keyboard';
 const report = { checks: [], errors: [], runtimeErrors: [], artifacts: output,
-  browser: browserName, section: mobileScrollOnly ? 'mobile-scroll' : 'all',
+  browser: browserName, section: keyboardOnly ? 'keyboard' : mobileScrollOnly ? 'mobile-scroll' : 'all',
+  ...(keyboardOnly ? { keyboard_model: 'Controlled VisualViewport bounds and events in a mobile browser; no physical or OS keyboard is opened.' } : {}),
   fixtures: "Production pages/hooks/rules; browser-local identity, Supabase/commissioner RPC and image transport. No live writes." };
 let server, browser, currentPage, serverLog;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -54,7 +56,7 @@ async function start() {
 
 async function setup(width = 390, height = 844, theme = "dark", motion = "no-preference") {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: motion,
-    ...(mobileScrollOnly ? { isMobile: true, ...(browserName === 'webkit' ? { userAgent: devices['iPhone 13'].userAgent } : {}) } : {}) });
+    ...(mobileScrollOnly || keyboardOnly ? { isMobile: true, ...(browserName === 'webkit' ? { userAgent: devices['iPhone 13'].userAgent } : {}) } : {}) });
   const page = await context.newPage();
   await installFixturePage(page);
   return { page, context, theme };
@@ -84,10 +86,29 @@ async function installFixturePage(page) {
       readText: async () => window.daClipboard || '',
     } });
   });
+  if (keyboardOnly) await page.addInitScript(() => {
+    // A desktop runner cannot open the iOS software keyboard. Supply the
+    // geometry/events the browser exposes during keyboard resize and pan;
+    // production code still performs all layout, focus and scrolling work.
+    const viewport = new EventTarget();
+    let bounds = null;
+    const current = () => ({ width: innerWidth, height: innerHeight, offsetTop: 0, offsetLeft: 0, scale: 1, ...bounds });
+    for (const name of ['width', 'height', 'offsetTop', 'offsetLeft', 'scale']) {
+      Object.defineProperty(viewport, name, { configurable: true, get: () => current()[name] });
+    }
+    Object.defineProperty(viewport, 'pageTop', { get: () => scrollY + current().offsetTop });
+    Object.defineProperty(viewport, 'pageLeft', { get: () => scrollX + current().offsetLeft });
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: viewport });
+    window.daKeyboardViewport = {
+      set(next, event = 'resize') { bounds = { ...current(), ...next }; viewport.dispatchEvent(new Event(event)); },
+      reset() { bounds = null; viewport.dispatchEvent(new Event('resize')); viewport.dispatchEvent(new Event('scroll')); },
+      current,
+    };
+  });
 }
 
 async function go(page, route, { theme = "dark", user = "u1", role = "member", stress = "", art = "", shared = "" } = {}) {
-  const params = new URLSearchParams({ route, theme, user, role, stress, art, shared });
+  const params = new URLSearchParams({ route, theme, user, role, stress, art, shared, ...(keyboardOnly ? { keyboard: '1' } : {}) });
   const projector = route.endsWith('/kiosk');
   await page.goto(`${base}/scripts/fixtures/draft-arena${projector ? '-projector' : ''}.html?${params}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.daQa?.ready && window.daQueryClient);
@@ -1790,9 +1811,215 @@ async function mobilePlayerScrollJourney(width, height, theme) {
   finally { await context.close(); }
 }
 
+async function setKeyboardViewport(page, width, height, offsetTop, event = 'resize') {
+  await page.evaluate(({ width, height, offsetTop, event }) => {
+    window.daKeyboardViewport.set({ width: width - 12, height, offsetTop, offsetLeft: 6, scale: 1 }, event);
+  }, { width, height, offsetTop, event });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+}
+
+async function keyboardControl(control, label, { editable = false } = {}) {
+  let evidence;
+  await expect.poll(async () => {
+    evidence = await control.evaluate((node, checkEditable) => {
+      const box = node.getBoundingClientRect(), viewport = window.visualViewport;
+      const issues = [];
+      let left = viewport.offsetLeft, top = viewport.offsetTop;
+      let right = left + viewport.width, bottom = top + viewport.height;
+      for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+        const bounds = parent.getBoundingClientRect(), style = getComputedStyle(parent);
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) { top = Math.max(top, bounds.top); bottom = Math.min(bottom, bounds.bottom); }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) { left = Math.max(left, bounds.left); right = Math.min(right, bounds.right); }
+      }
+      if (box.width < 43.5 || box.height < 43.5) issues.push(`Small typing/control target ${box.width}×${box.height}`);
+      if (box.left < left - 1 || box.right > right + 1 || box.top < top - 1 || box.bottom > bottom + 1)
+        issues.push(`Control clipped by keyboard or ancestor: ${JSON.stringify({ box: { x: box.x, y: box.y, width: box.width, height: box.height }, clip: { left, top, right, bottom } })}`);
+      if (checkEditable && parseFloat(getComputedStyle(node).fontSize) < 16) issues.push(`iOS auto-zoom risk: ${getComputedStyle(node).fontSize}`);
+      if (!node.matches(':disabled,[aria-disabled="true"]')) {
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        if (hit !== node && !node.contains(hit)) issues.push(`Control center covered by ${hit?.className || hit?.tagName}`);
+      }
+      return { issues, viewport: { width: viewport.width, height: viewport.height, offsetTop: viewport.offsetTop, offsetLeft: viewport.offsetLeft },
+        target: { x: box.x, y: box.y, width: box.width, height: box.height }, font: getComputedStyle(node).fontSize };
+    }, editable);
+    return evidence.issues;
+  }, { message: label }).toEqual([]);
+  report.checks.push({ label, ok: true, ...evidence });
+}
+
+async function keyboardShot(page, label) {
+  await shot(page, label);
+  const clip = await page.evaluate(() => ({ x: visualViewport.offsetLeft, y: visualViewport.offsetTop,
+    width: visualViewport.width, height: visualViewport.height }));
+  await page.screenshot({ path: join(output, `${label}-visible.png`), clip });
+}
+
+async function keyboardTypingJourney(width, height, theme) {
+  const { page, context } = await setup(width, height, theme, width === 390 ? 'no-preference' : 'reduce');
+  const label = `keyboard-${browserName}-${width}x${height}-${theme}`;
+  const keyboardHeight = width > height ? 210 : width === 320 ? 260 : 330;
+  const keyboardTop = width > height ? 35 : width === 320 ? 70 : 110;
+  try {
+    await go(page, '/drafts/active', { theme, stress: 'keyboard' });
+    const original = await page.evaluate(() => structuredClone(window.daQa.tables.draft_picks.filter(row => row.draft_id === 'active')));
+    await page.getByRole('button', { name: 'Make selection', exact: true }).click();
+    const composer = page.locator('.da-pick-dialog[role="dialog"]');
+    const input = composer.getByRole('textbox', { name: 'Your draft pick', exact: true });
+    const send = composer.getByRole('button', { name: 'Submit pick', exact: true });
+    const close = composer.getByRole('button', { name: 'Close', exact: true });
+    const shortlist = composer.locator('.da-desk-heading');
+    if (await shortlist.getAttribute('aria-expanded') === 'false') await shortlist.click();
+    await expect(composer.locator('.da-desk-item')).toHaveCount(13);
+    await input.focus();
+    await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+    await keyboardControl(input, `${label}-pick-focused-above-keyboard`, { editable: true });
+    await keyboardControl(send, `${label}-send-above-keyboard`);
+    await keyboardControl(close, `${label}-close-above-keyboard`);
+    await input.pressSequentially('Interstella', { delay: 20 });
+    await expect(input).toHaveValue('Interstella');
+    await input.evaluate(node => node.setSelectionRange(3, 3));
+    await setKeyboardViewport(page, width, keyboardHeight, keyboardTop + 12, 'scroll');
+    await keyboardControl(input, `${label}-caret-survives-keyboard-pan`, { editable: true });
+    assert.equal(await input.evaluate(node => node.selectionStart), 3, 'A keyboard pan preserves the caret');
+    await input.pressSequentially('X');
+    await expect(input).toHaveValue('IntXerstella');
+    await input.fill('Interstella');
+    await page.evaluate(() => window.daQa.replyNextFunction('check-draft-pick', {
+      corrected_text: 'Interstellar', is_duplicate: false, is_irrelevant: false, relevance_note: null,
+    }));
+    await send.click();
+    await expect(composer).toContainText('Did you mean');
+    await keyboardControl(input, `${label}-advisory-does-not-hide-field`, { editable: true });
+    const correction = composer.getByRole('button', { name: 'Interstellar', exact: true });
+    await correction.scrollIntoViewIfNeeded(); await correction.click(); await input.focus();
+    await expect(input).toHaveValue('Interstellar');
+    await keyboardControl(input, `${label}-correction-remains-editable`, { editable: true });
+    await page.evaluate(() => { window.daQa.blockWrites('draft_picks'); window.daQa.failNextWrite('draft_picks'); });
+    await send.click();
+    await expect(send).toBeDisabled();
+    await expect.poll(() => page.evaluate(() => window.daQa.calls.filter(row => row.table === 'draft_picks' && row.mode === 'insert').length)).toBe(1);
+    await keyboardControl(send, `${label}-pending-control-visible`);
+    await keyboardControl(close, `${label}-pending-close-visible`);
+    await page.evaluate(() => window.daQa.releaseWrites('draft_picks'));
+    await expect(send).toBeEnabled(); await expect(input).toHaveValue('Interstellar');
+    await expect(composer).toBeVisible();
+    await keyboardControl(input, `${label}-failed-request-preserves-input`, { editable: true });
+    await keyboardControl(send, `${label}-retry-visible`);
+    await keyboardShot(page, `${label}-pick-recovery`);
+    await send.click();
+    await expect(composer).toHaveCount(0);
+    await expect.poll(() => page.evaluate(() => window.daQa.tables.draft_picks.filter(row => row.draft_id === 'active').length)).toBe(7);
+    const saved = await page.evaluate(() => ({ picks: window.daQa.tables.draft_picks.filter(row => row.draft_id === 'active'),
+      writes: window.daQa.operations.filter(row => row.table === 'draft_picks' && row.mode === 'insert') }));
+    assert.deepEqual(saved.picks.slice(0, 6), original); assert.equal(saved.writes.length, 1);
+    assert.equal(saved.picks[6].pick_text, 'Interstellar'); assert.equal(saved.picks[6].pick_number, 7);
+    report.checks.push({ label: `${label}-actual-pick-retry-submits-once`, ok: true });
+
+    await go(page, '/drafts/active/__qa/live', { theme });
+    await page.getByRole('button', { name: 'Enter live draft', exact: true }).click();
+    const player = page.getByRole('dialog', { name: 'Draft Arena player screen', exact: true });
+    await player.getByRole('button', { name: 'Make my pick', exact: true }).click();
+    const nested = page.locator('.da-pick-dialog[role="dialog"]');
+    const nestedInput = nested.getByRole('textbox', { name: 'Your draft pick', exact: true });
+    await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+    await keyboardControl(nestedInput, `${label}-nested-player-field`, { editable: true });
+    await nestedInput.pressSequentially('A private keyboard draft', { delay: 10 });
+    await setKeyboardViewport(page, width, keyboardHeight - 16, keyboardTop + 12);
+    await expect(nestedInput).toHaveValue('A private keyboard draft');
+    await keyboardControl(nestedInput, `${label}-nested-resize-keeps-field`, { editable: true });
+    await keyboardControl(nested.getByRole('button', { name: 'Close', exact: true }), `${label}-nested-close-visible`);
+    await keyboardShot(page, `${label}-nested-player`);
+    await nested.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.evaluate(() => window.daKeyboardViewport.reset());
+    await expect(player).toBeVisible();
+    await player.getByRole('button', { name: 'Back to event', exact: true }).click();
+    await expect(player).toHaveCount(0);
+    assert.equal(await page.getByTestId('kiosk-composer-submits').textContent(), '0', 'Cancelling the nested composer never submits');
+    report.checks.push({ label: `${label}-nested-player-cancel-recovery`, ok: true });
+
+    await keyboardOtherForms(page, width, keyboardHeight, keyboardTop, theme, label);
+    console.log(`PASS ${label}`);
+  } catch (error) {
+    await captureFailure(page, label);
+    const geometry = await page.evaluate(() => ({ viewport: window.daKeyboardViewport?.current(),
+      active: document.activeElement?.outerHTML, style: document.documentElement.getAttribute('style'),
+      dialogs: [...document.querySelectorAll('[role="dialog"]')].map(node => ({ html: node.outerHTML.slice(0, 1200), rect: node.getBoundingClientRect().toJSON() })) })).catch(() => null);
+    await writeFile(join(output, `${label}-keyboard-geometry.json`), JSON.stringify(geometry, null, 2));
+    throw error;
+  } finally { await context.close(); }
+}
+
+async function keyboardOtherForms(page, width, keyboardHeight, keyboardTop, theme, label) {
+  await go(page, '/drafts/create', { theme });
+  const topic = page.getByPlaceholder('e.g. Best Fast Food Items');
+  await topic.fill('Films for a rainy night');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(topic, `${label}-create-topic-focused`, { editable: true });
+  await topic.pressSequentially('!'); await expect(topic).toHaveValue('Films for a rainy night!');
+  await keyboardShot(page, `${label}-create`);
+  await page.evaluate(() => window.daKeyboardViewport.reset());
+  const description = page.getByPlaceholder('What are we drafting?');
+  await description.fill('Stories from every country.');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(description, `${label}-create-description-focused`, { editable: true });
+  assert.equal(await page.evaluate(() => window.daQa.operations.filter(row => row.table === 'drafts' && row.mode === 'insert').length), 0);
+
+  await go(page, '/drafts/active', { theme });
+  await tab(page, 'My desk');
+  const notes = page.getByPlaceholder('Private note (optional)').filter({ visible: true });
+  await notes.fill('Keep this idea for later.');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(notes, `${label}-desk-notes-focused`, { editable: true });
+  await notes.pressSequentially(' Still here.');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop + 12, 'scroll');
+  await expect(notes).toHaveValue('Keep this idea for later. Still here.');
+  await keyboardControl(notes, `${label}-desk-notes-pan`, { editable: true });
+  await page.evaluate(() => window.daKeyboardViewport.reset());
+  await tab(page, 'Pick log');
+  await page.getByTitle('Edit pick', { exact: true }).first().click();
+  const edit = page.locator('.da-room-log input').filter({ visible: true });
+  await edit.fill('A revised movie title');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(edit, `${label}-inline-pick-edit`, { editable: true });
+  await edit.pressSequentially('!'); await expect(edit).toHaveValue('A revised movie title!');
+  await edit.press('Escape');
+  assert.equal(await page.evaluate(() => window.daQa.operations.filter(row => ['draft_picks', 'draft_desk_items'].includes(row.table)).length), 0);
+
+  await go(page, '/drafts/live', { theme });
+  const code = page.getByRole('textbox', { name: 'Room code', exact: true });
+  await code.fill('ABC12');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(code, `${label}-live-code-focused`, { editable: true });
+  await keyboardControl(page.getByRole('button', { name: 'Find live room', exact: true }), `${label}-live-code-action-visible`);
+
+  await go(page, '/drafts?tab=commissioner', { theme, stress: 'commissioner', role: 'commissioner' });
+  const workspace = page.locator('[data-testid="commissioner-workspace"]');
+  await workspace.getByRole('tab', { name: 'Planner', exact: true }).click();
+  await workspace.getByRole('button', { name: 'New plan', exact: true }).click();
+  const plan = page.getByRole('form', { name: 'Planned draft details', exact: true });
+  const planTopic = plan.getByRole('textbox', { name: 'Planned topic', exact: true });
+  await planTopic.fill('Thursday cinema');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(planTopic, `${label}-plan-topic-focused`, { editable: true });
+  await page.evaluate(() => window.daKeyboardViewport.reset());
+  const planningNotes = plan.getByRole('textbox', { name: 'Planning notes', exact: true });
+  await planningNotes.fill('Bring three film ideas.');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop);
+  await keyboardControl(planningNotes, `${label}-plan-notes-focused`, { editable: true });
+  await planningNotes.pressSequentially(' Keep the draft saved.');
+  await setKeyboardViewport(page, width, keyboardHeight, keyboardTop + 12, 'scroll');
+  await expect(planningNotes).toHaveValue('Bring three film ideas. Keep the draft saved.');
+  await keyboardControl(planningNotes, `${label}-plan-notes-pan`, { editable: true });
+  await keyboardShot(page, `${label}-planner`);
+  assert.equal(await page.evaluate(() => window.daQa.operations.length), 0, 'Typing in the planner never saves a plan implicitly');
+  report.checks.push({ label: `${label}-creation-desk-edit-code-plan-stay-local`, ok: true });
+}
+
 try {
   await start();
-  if (mobileScrollOnly) {
+  if (keyboardOnly) {
+    for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark']]) await keyboardTypingJourney(...args);
+  } else if (mobileScrollOnly) {
     for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark']]) await mobileScrollJourney(...args);
     for (const args of [[320,568,'dark'],[390,844,'light'],[844,390,'dark']]) await mobilePlayerScrollJourney(...args);
   } else {

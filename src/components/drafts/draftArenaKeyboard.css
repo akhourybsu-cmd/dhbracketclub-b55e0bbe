@@ -1,0 +1,80 @@
+/* VisualViewport coordinates cover the keyboard's pan as well as its size. */
+.da-arena-shell.da-shell,
+.da-pk[role="dialog"] {
+  top: var(--da-viewport-top, 0px);
+  left: var(--da-viewport-left, 0px);
+  right: auto;
+  bottom: auto;
+  width: var(--da-viewport-width, 100vw);
+  height: var(--da-viewport-height, 100dvh);
+}
+.da-pk[role="dialog"] {
+  padding-top: max(0px, calc(env(safe-area-inset-top, 0px) - var(--da-viewport-top, 0px)));
+  padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--da-viewport-bottom-gap, 0px)));
+}
+html :is(.da-arena-dialog[role="dialog"], .da-arena-dialog[role="alertdialog"]) {
+  --da-safe-top: max(0px, calc(env(safe-area-inset-top, 0px) - var(--da-viewport-top, 0px)));
+  --da-safe-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--da-viewport-bottom-gap, 0px)));
+  --da-safe-left: max(0px, calc(env(safe-area-inset-left, 0px) - var(--da-viewport-left, 0px)));
+  --da-safe-right: max(0px, calc(env(safe-area-inset-right, 0px) - var(--da-viewport-right-gap, 0px)));
+  top: calc(var(--da-viewport-top, 0px) + var(--da-safe-top) + (var(--da-viewport-height, 100dvh) - var(--da-safe-top) - var(--da-safe-bottom)) / 2);
+  left: calc(var(--da-viewport-left, 0px) + var(--da-safe-left) + (var(--da-viewport-width, 100vw) - var(--da-safe-left) - var(--da-safe-right)) / 2);
+  max-height: calc(var(--da-viewport-height, 100dvh) - var(--da-safe-top) - var(--da-safe-bottom) - 24px);
+  max-width: calc(var(--da-viewport-width, 100vw) - var(--da-safe-left) - var(--da-safe-right) - 24px);
+}
+.da-arena-drawer.da-appearance-panel {
+  top: var(--da-viewport-top, 0px);
+  right: calc(100vw - var(--da-viewport-left, 0px) - var(--da-viewport-width, 100vw));
+  left: auto;
+  max-width: calc(var(--da-viewport-width, 100vw) - 18px);
+}
+.da-arena-shell, .da-appearance-panel.da-lounge {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.da-pick-dialog .da-pick-dialog-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px;
+}
+.da-pick-dialog-content > .da-pick-compose {
+  flex: none;
+  min-height: 0;
+  overflow: visible;
+}
+.da-pick-compose .flex-1 { min-width: 0; overflow-wrap: anywhere; }
+.da-pick-dialog-content > .da-pick-dialog-desk {
+  flex: none;
+  max-height: none;
+  overflow: visible;
+  margin-top: 12px;
+}
+html[data-da-short-viewport="true"] .da-pick-dialog {
+  gap: 8px;
+  padding: 12px;
+}
+html[data-da-short-viewport="true"] .da-pick-dialog-heading .dl-eyebrow { display: none; }
+html[data-da-short-viewport="true"] .da-pick-dialog-heading :is(h2,p:last-child) {
+  -webkit-line-clamp: 1;
+  margin-top: 0;
+}
+html[data-da-tiny-viewport="true"] .da-commissioner-review {
+  display: block;
+  overflow-y: auto;
+  padding: 12px;
+}
+html[data-da-tiny-viewport="true"] .da-commissioner-review-body {
+  overflow: visible;
+  max-height: none;
+  margin-block: 10px;
+}
+html[data-da-tiny-viewport="true"] .da-commissioner-review textarea { min-height: 48px; height: 48px; }
+@media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+  :is(.da-arena-shell.da-mode, .da-appearance-panel.da-lounge) :is(input, textarea, select, [contenteditable="true"]) {
+    font-size: 16px;
+  }
+}

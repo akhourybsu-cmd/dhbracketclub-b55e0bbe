@@ -53,7 +53,7 @@ export function PickComposerFields({
           aria-label="Your draft pick"
           maxLength={100}
           autoFocus={autoFocus}
-          className="form-input flex-1 h-12 text-[15px]"
+          className="form-input flex-1 h-12 text-base"
           onKeyDown={(e) => {
             if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return;
             e.preventDefault();
@@ -142,8 +142,8 @@ interface MakePickSheetProps extends PickComposerFieldsProps {
 }
 
 /**
- * Bottom-sheet pick composer (portaled to body to escape transformed
- * ancestors). Keeps the draft board visible above the sheet.
+ * Portaled pick composer shares the Arena's visible keyboard bounds.
+ * Radix owns initial focus so React cannot pan the window first.
  */
 export function MakePickSheet({
   open,
@@ -189,8 +189,9 @@ export function MakePickSheet({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <PickComposerFields {...fields} inputRef={input} autoFocus />
-            <div className="da-pick-dialog-desk">
+            <div className="da-pick-dialog-content">
+              <PickComposerFields {...fields} inputRef={input} autoFocus={false} />
+              <div className="da-pick-dialog-desk">
               <PersonalDraftDesk
                 compact
                 draftId={draftId}
@@ -198,10 +199,8 @@ export function MakePickSheet({
                 taken={taken}
                 onChoose={fields.onTextChange}
               />
+              </div>
             </div>
-            <p className="text-center text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-bold">
-              Your shortlist. Your next contender.
-            </p>
       </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>
