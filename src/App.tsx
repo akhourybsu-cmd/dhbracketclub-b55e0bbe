@@ -158,6 +158,9 @@ const RuneDelveLayout = lazyWithRetry(() => import("./components/runedelve/RuneD
 const NexusLayout = lazyWithRetry(() => import("./components/nexus/NexusLayout").then(m => ({ default: m.NexusLayout })));
 const PickemLayout = lazyWithRetry(() => import("./components/pickem/PickemLayout").then(m => ({ default: m.PickemLayout })));
 const DraftArenaLayout = lazyWithRetry(() => import("./components/drafts/DraftArenaLayout").then(m => ({ default: m.DraftArenaLayout })));
+const LineupDraftsPage = lazyWithRetry(() => import("./pages/LineupDraftsPage"));
+const CreateLineupDraftPage = lazyWithRetry(() => import("./pages/CreateLineupDraftPage"));
+const LineupDraftDetailPage = lazyWithRetry(() => import("./pages/LineupDraftDetailPage"));
 const ForgeLayout = lazyWithRetry(() => import("./components/workout/ForgeLayout").then(m => ({ default: m.ForgeLayout })));
 const ReadshiftLayout = lazyWithRetry(() => import("./components/readshift/ReadshiftLayout").then(m => ({ default: m.ReadshiftLayout })));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -282,6 +285,9 @@ function AnimatedRoutes() {
 
         {/* Drafts module — standalone Draft Arena shell (own boot, HUD, no DH chrome) */}
         <Route path="/drafts" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftsListPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/lineup" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><LineupDraftsPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/lineup/create" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><CreateLineupDraftPage /></DraftArenaLayout></ProtectedPage>} />
+        <Route path="/drafts/lineup/:draftId" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><LineupDraftDetailPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/live" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><LiveDraftsPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/live/create" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><CreateDraftPage /></DraftArenaLayout></ProtectedPage>} />
         <Route path="/drafts/live/:draftId" element={<ProtectedPage assetSlug="draft-arena"><DraftArenaLayout><DraftDetailPage /></DraftArenaLayout></ProtectedPage>} />

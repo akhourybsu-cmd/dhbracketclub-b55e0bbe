@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Archive, ArrowUpRight, BarChart3, BookOpen, Bookmark, Home, LogOut,
-  Menu, MonitorPlay, Palette, Plus, Radio, Swords, Trophy,
+  Menu, MonitorPlay, Palette, Plus, Radio, Swords, Trophy, LayoutGrid,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlags';
 import { DraftArenaPaletteList } from './DraftArenaAppearance';
 
 const primaryLinks = [
+  { to: '/drafts/lineup', label: 'Lineup Drafts', description: 'Fill the roles. Build your team.', icon: LayoutGrid, pathPrefix: '/drafts/lineup' },
   { to: '/drafts/live', label: 'LIVE arena', description: 'Host, join or resume an event', icon: Radio, pathPrefix: '/drafts/live' },
   { to: '/drafts', label: 'Draft rooms', description: 'Find your next pick', icon: Bookmark, tab: 'drafts' },
   { to: '/drafts?tab=season', label: 'The season', description: 'Standings & playoff picture', icon: Trophy, tab: 'season' },
@@ -31,6 +32,7 @@ export function DraftArenaMenu() {
   const activeTab = ['drafts', 'season', 'stats', 'commissioner'].includes(requestedTab) ? requestedTab : 'drafts';
   const isLiveMagazine = location.pathname.endsWith('/magazine') && search.get('live') === '1';
   const isLive = location.pathname === '/drafts/live' || location.pathname.startsWith('/drafts/live/') || isLiveMagazine;
+  const isLineup = location.pathname === '/drafts/lineup' || location.pathname.startsWith('/drafts/lineup/');
   const inDraftRoom = Boolean(params.draftId) && !location.pathname.startsWith('/drafts/seasons');
   useEffect(() => setOpen(false), [location.key]);
 
@@ -84,13 +86,15 @@ export function DraftArenaMenu() {
                 <p className="da-arena-eyebrow">THIS DRAFT</p>
                 <div>
                   {isLive && <Link to={`/drafts/live/${encodeURIComponent(params.draftId)}`} onClick={() => setOpen(false)}><Swords size={17} aria-hidden="true" />Player room</Link>}
-                  <Link to={`/drafts/${encodeURIComponent(params.draftId)}/magazine${isLive ? '?live=1' : ''}`} onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true" />Magazine</Link>
-                  <Link to={`/drafts/${encodeURIComponent(params.draftId)}/kiosk`} target={isLive ? '_blank' : undefined} rel={isLive ? 'noreferrer' : undefined} onClick={() => setOpen(false)}><MonitorPlay size={17} aria-hidden="true" />Projector{isLive && <ArrowUpRight size={14} aria-hidden="true" />}</Link>
+                  {isLineup ? <Link to={`/drafts/lineup/${encodeURIComponent(params.draftId)}?view=results`} onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true" />Lineup results</Link> : <>
+                    <Link to={`/drafts/${encodeURIComponent(params.draftId)}/magazine${isLive ? '?live=1' : ''}`} onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true" />Magazine</Link>
+                    <Link to={`/drafts/${encodeURIComponent(params.draftId)}/kiosk`} target={isLive ? '_blank' : undefined} rel={isLive ? 'noreferrer' : undefined} onClick={() => setOpen(false)}><MonitorPlay size={17} aria-hidden="true" />Projector{isLive && <ArrowUpRight size={14} aria-hidden="true" />}</Link>
+                  </>}
                 </div>
               </div>
             )}
-            {isLive ? <LiveHostShortcut onNavigate={() => setOpen(false)} /> : <Link to="/drafts/create" onClick={() => setOpen(false)} className="da-arena-drawer-create da-cta">
-              <Plus size={18} aria-hidden="true" />Create draft<ArrowUpRight size={17} aria-hidden="true" />
+            {isLive ? <LiveHostShortcut onNavigate={() => setOpen(false)} /> : <Link to={isLineup ? '/drafts/lineup/create' : '/drafts/create'} onClick={() => setOpen(false)} className="da-arena-drawer-create da-cta">
+              <Plus size={18} aria-hidden="true" />{isLineup ? 'Create lineup' : 'Create draft'}<ArrowUpRight size={17} aria-hidden="true" />
             </Link>}
           </TabsContent>
           <TabsContent value="display" className="da-arena-drawer-body" tabIndex={0}>

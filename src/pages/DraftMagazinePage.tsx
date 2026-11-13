@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, Crown, Share2, Sparkles, Star, Trophy, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +55,7 @@ export default function DraftMagazinePage() {
   }, [data]);
   if (loading) return <div className="loading-spinner"><div className="loading-spinner-ring" /><p className="loading-spinner-text">Opening the magazine…</p></div>;
   if (error || !data?.draft) return <div className="da-magazine-empty"><p className="[overflow-wrap:anywhere]">{error || 'Draft not found.'}</p><Button className="min-h-11" onClick={() => void load()}>Retry</Button></div>;
+  if (data.draft.draft_format === 'lineup') return <Navigate to={`/drafts/lineup/${encodeURIComponent(data.draft.id)}?view=results`} replace />;
   const { draft, participants, picks, results } = data;
   const winner = participants.find((participant: any) => participant.user_id === results[0]?.user_id);
   const share = async () => {

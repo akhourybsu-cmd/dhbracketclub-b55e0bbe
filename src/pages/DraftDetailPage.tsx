@@ -221,6 +221,10 @@ function DraftDetailSession() {
     ]);
 
     if (draftData) {
+      if ((draftData as { draft_format?: string }).draft_format === 'lineup') {
+        navigate(`/drafts/lineup/${encodeURIComponent(draftId)}${location.search}`, { replace: true });
+        return;
+      }
       setDraft(draftData);
       setEditTopic(draftData.topic);
     }
@@ -229,7 +233,7 @@ function DraftDetailSession() {
     setSeasonRosterLocked(eligibility.rosterLocked);
     setSeasonJoinEligible(eligibility.eligible);
     setLoading(false);
-  }, [draftId, user]);
+  }, [draftId, user, navigate, location.search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { if (picks.length) fetchEnrichments(); }, [picks.length, fetchEnrichments]);

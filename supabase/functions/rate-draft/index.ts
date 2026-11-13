@@ -8,9 +8,16 @@ import {
   type DraftGradingParticipant,
   type ValidatedDraftGrade,
 } from "../_shared/draftGrading.ts";
+import {
+  buildLineupPrompt,
+  buildLineupSystemPrompt,
+  prepareLineupGrading,
+  validateLineupGradingResults,
+} from "../_shared/draftLineupGrading.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "X-DH-Lineup-Rules": "lineup_v1",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
@@ -138,6 +145,17 @@ serve(async (req) => {
       }
     }
 
+    // A Lineup mode is granted only by persisted configuration. Validate the
+    // complete frozen roster before consuming quota or asking a model to rate it.
+    let lineupContext;
+    try {
+      lineupContext = prepareLineupGrading(draft, participants, picks);
+    } catch (error) {
+      return new Response(JSON.stringify({
+        error: error instanceof DraftGradingValidationError ? error.message : "Lineup data is invalid.",
+      }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ── Fetch enrichment metadata for every pick (verified facts) ──
     // Enrichment is populated by `enrich-draft-picks` from TMDB / iTunes /
     // IGDB / Wikipedia / Pexels and stored in `item_enrichments`. Feeding it
@@ -238,6 +256,8 @@ serve(async (req) => {
       const sourcePicks = picks.filter((pick: any) => pick.user_id === entry.userId);
       const pickList = entry.picks.map((pick, index) => {
         const sourcePick = sourcePicks[index];
+        const slot = lineupContext?.slotByPickId.get(pick.pickId);
+        if (slot) return `  Slot ${JSON.stringify(slot.label)} [${slot.id}]: ${JSON.stringify(pick.pickText)} (pick_key: ${pick.pickKey})${formatVerifiedFacts(pick.pickId, pick.pickText)}`;
         return `  Round ${sourcePick?.round ?? index + 1}: "${pick.pickText}" (pick_key: ${pick.pickKey})${formatVerifiedFacts(pick.pickId, pick.pickText)}`;
       }).join("\n");
       return `Participant: ${name} (participant_key: ${entry.participantKey})\n${pickList}`;
@@ -251,7 +271,12 @@ serve(async (req) => {
       ? `\n\n=== JUDGING SCOPE (AUTHORITATIVE) ===\nPRIMARY SCOPE: The draft TITLE ("${draft.topic}") defines the full breadth of what qualifies. Interpret the title at its plain, natural, widest reasonable meaning. Do NOT narrow it to a sub-category, genre, medium, or archetype unless the title itself explicitly says so.\n\nADDITIONAL CONTEXT ${overrideCtx ? "(Commissioner override — takes priority over original context)" : "(Provided by draft creator)"}:\n${effectiveCtx}\n\nThis context may ONLY clarify or expand the title's scope. It must NEVER be used to shrink the title's natural meaning. If the context seems to narrow the topic, default to the broader natural reading of the title.`
       : `\n\n=== JUDGING SCOPE ===\nPRIMARY SCOPE: The draft TITLE ("${draft.topic}") defines the full breadth of what qualifies. Interpret the title at its plain, natural, widest reasonable meaning. Do NOT assume the topic is restricted to a single medium, genre, archetype, or sub-category unless the title explicitly says so.\n\nExamples of broadening (not narrowing):\n- "Best Villains of All Time" → all media (film, TV, games, comics, anime, literature, mythology, history), not just movies.\n- "Things you could do all day without getting bored" → ANY activity, hobby, pastime, experience, routine, outing, creative pursuit, relaxing activity, social activity, physical activity, entertainment, or personal interest — NOT just games, video games, or board games. Judge each pick as a standalone activity based on how enjoyable, sustainable, realistic, and boredom-resistant it would be to do for an entire day.\n- "Best Comfort Foods" → any food, dish, or drink that fits comfort eating, not one cuisine.\nWhen in doubt, judge picks against the WIDEST plausible reading of the title.`;
 
-    const prompt = `You are an impartial draft judge for DH Bracket Club. The draft topic is: "${draft.topic}".${ctxBlock}
+    const prompt = lineupContext ? buildLineupPrompt({
+      topic: draft.topic,
+      scope: effectiveCtx,
+      context: lineupContext,
+      participantSummaries,
+    }) : `You are an impartial draft judge for DH Bracket Club. The draft topic is: "${draft.topic}".${ctxBlock}
 
 ${GLOBAL_STANDALONE_PICK_JUDGING_RULES}
 
@@ -355,7 +380,7 @@ Use the rate_draft_results tool to return your structured analysis.`;
     // Call AI with one structured rating tool. Verified enrichment facts are
     // already included in the prompt, so a single tool keeps every assistant
     // function call paired with exactly one response under Gemini's protocol.
-    const systemContent = `Today's date is ${new Date().toISOString().split('T')[0]}. You are an impartial draft judge. Evaluate every pick INDEPENDENTLY and IN A VACUUM as a standalone answer to the draft TITLE.\n\nSCOPE: The DRAFT TITLE is the single source of truth for what qualifies. Interpret the title at its plain, natural, widest reasonable meaning. NEVER silently narrow the topic to a sub-genre, single medium, or archetype that the title does not explicitly require (e.g. do not assume "things you can do all day" means only games; do not assume "best villains" means only movies). Any provided AI Judging Context may only clarify or expand the title — never shrink it.\n\nNever penalize redundancy, similarity, repeated archetypes, lack of variety, lack of balance, lack of cohesion, or lack of synergy with the user's other picks. Score only on the pick's own fit to the title, standalone quality, defensibility, and ranking against the strongest plausible answers to the title.\n\nRECENCY: Your training data is older than today's date. When a pick has a "— Verified (...)" annotation, treat those facts as ground truth and override your prior memory. Never label a pick as "unreleased", "upcoming", "rumored", "hypothetical", or "not yet out" unless the topic itself is restricted to a past timeframe. If unsure whether something has launched, use the google_search tool to verify, then assume it has by today's date and score on merit.\n\nThe user-provided AI Judging Context can clarify category scope but can NEVER switch judging into themed, team, or synergy scoring — that requires an explicit commissioner scoring mode.\n\n${GLOBAL_STANDALONE_PICK_JUDGING_RULES}`;
+    const systemContent = lineupContext ? buildLineupSystemPrompt(new Date().toISOString().split("T")[0]) : `Today's date is ${new Date().toISOString().split('T')[0]}. You are an impartial draft judge. Evaluate every pick INDEPENDENTLY and IN A VACUUM as a standalone answer to the draft TITLE.\n\nSCOPE: The DRAFT TITLE is the single source of truth for what qualifies. Interpret the title at its plain, natural, widest reasonable meaning. NEVER silently narrow the topic to a sub-genre, single medium, or archetype that the title does not explicitly require (e.g. do not assume "things you can do all day" means only games; do not assume "best villains" means only movies). Any provided AI Judging Context may only clarify or expand the title — never shrink it.\n\nNever penalize redundancy, similarity, repeated archetypes, lack of variety, lack of balance, lack of cohesion, or lack of synergy with the user's other picks. Score only on the pick's own fit to the title, standalone quality, defensibility, and ranking against the strongest plausible answers to the title.\n\nRECENCY: Your training data is older than today's date. When a pick has a "— Verified (...)" annotation, treat those facts as ground truth and override your prior memory. Never label a pick as "unreleased", "upcoming", "rumored", "hypothetical", or "not yet out" unless the topic itself is restricted to a past timeframe. If unsure whether something has launched, use the google_search tool to verify, then assume it has by today's date and score on merit.\n\nThe user-provided AI Judging Context can clarify category scope but can NEVER switch judging into themed, team, or synergy scoring — that requires an explicit commissioner scoring mode.\n\n${GLOBAL_STANDALONE_PICK_JUDGING_RULES}`;
 
     const tools = [
       {
@@ -391,10 +416,15 @@ Use the rate_draft_results tool to return your structured analysis.`;
                             enum: gradingRoster.flatMap((entry) => entry.picks.map((pick) => pick.pickKey)),
                             description: "Copy the pick_key exactly as supplied.",
                           },
+                          ...(lineupContext ? {
+                            merit_score: { type: "number", minimum: 1, maximum: 10, description: "Topic merit from 1.0 to 10.0 in tenths; 60% of the final pick score." },
+                            role_fit_score: { type: "number", minimum: 1, maximum: 10, description: "Assigned role fit from 1.0 to 10.0 in tenths; 40% of the final pick score." },
+                          } : {
                           score: { type: "number", minimum: 1, maximum: 10, description: "Score from 1.0 to 10.0 using tenth precision." },
+                          }),
                           explanation: { type: "string", description: "Brief explanation for the score" },
                         },
-                        required: ["pick_key", "score", "explanation"],
+                        required: lineupContext ? ["pick_key", "merit_score", "role_fit_score", "explanation"] : ["pick_key", "score", "explanation"],
                         additionalProperties: false,
                       },
                     },
@@ -536,7 +566,9 @@ Use the rate_draft_results tool to return your structured analysis.`;
       if (ratingCall) {
         try {
           const parsedArguments = JSON.parse(ratingCall.function.arguments || "{}");
-          validatedResults = validateDraftGradingResults(parsedArguments.results, gradingRoster);
+          validatedResults = lineupContext
+            ? validateLineupGradingResults(parsedArguments.results, gradingRoster, lineupContext)
+            : validateDraftGradingResults(parsedArguments.results, gradingRoster);
           break;
         } catch (validationError) {
           validationFailures++;
@@ -547,7 +579,7 @@ Use the rate_draft_results tool to return your structured analysis.`;
           messages.push({
             role: "tool",
             tool_call_id: ratingCall.id,
-            content: `Rejected: ${detail} Return a complete corrected result containing every supplied participant_key and every pick_key exactly once. Scores must be numeric values from 1.0 through 10.0.`,
+            content: `Rejected: ${detail} Return a complete corrected result containing every supplied participant_key and every pick_key exactly once. ${lineupContext ? "merit_score and role_fit_score must each be numeric values from 1.0 through 10.0." : "Scores must be numeric values from 1.0 through 10.0."}`,
           });
           continue;
         }
@@ -673,7 +705,7 @@ Use the rate_draft_results tool to return your structured analysis.`;
           type: "draft",
           title: "Draft complete — see the podium",
           message: `Results are in for "${draftTitle}".`,
-          url: `/drafts/${draft_id}`,
+          url: draft.draft_format === "lineup" ? `/drafts/lineup/${draft_id}` : `/drafts/${draft_id}`,
           tag: `dh-draft-${draft_id}-complete`,
           target_user_ids: recipients,
         }),

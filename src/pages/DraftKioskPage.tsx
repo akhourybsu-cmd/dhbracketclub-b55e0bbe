@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { LayoutGroup, motion } from 'framer-motion';
 import { Maximize2, Minimize2, Volume2, VolumeX, Radio, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -209,6 +209,7 @@ export default function DraftKioskPage() {
     );
   }
 
+  if (draft.draft_format === 'lineup') return <Navigate to={`/drafts/lineup/${encodeURIComponent(draft.id)}`} replace />;
   const recent = picks.filter(pick => pick.id !== concealedPickId).slice(-12).reverse();
 
   return (

@@ -29,6 +29,9 @@ import { Toaster } from "sonner";
 import { DraftArenaLayout } from "../../src/components/drafts/DraftArenaLayout";
 import DraftsListPage from "../../src/pages/DraftsListPage";
 import LiveDraftsPage from "../../src/pages/LiveDraftsPage";
+import LineupDraftsPage from "../../src/pages/LineupDraftsPage";
+import CreateLineupDraftPage from "../../src/pages/CreateLineupDraftPage";
+import LineupDraftDetailPage from "../../src/pages/LineupDraftDetailPage";
 import DraftDetailPage from "../../src/pages/DraftDetailPage";
 import CreateDraftPage from "../../src/pages/CreateDraftPage";
 import SeasonsArchivePage from "../../src/pages/SeasonsArchivePage";
@@ -103,6 +106,9 @@ createRoot(document.getElementById("root")!).render(
           <Routes>
             <Route path="/drafts" element={arena(<DraftsListPage />)} />
             <Route path="/drafts/live" element={arena(<LiveDraftsPage />)} />
+            <Route path="/drafts/lineup" element={arena(<LineupDraftsPage />)} />
+            <Route path="/drafts/lineup/create" element={arena(<CreateLineupDraftPage />)} />
+            <Route path="/drafts/lineup/:draftId" element={arena(<LineupDraftDetailPage />)} />
             <Route path="/drafts/live/create" element={arena(<CreateDraftPage />)} />
             <Route path="/drafts/live/:draftId" element={arena(<DraftDetailPage />)} />
             <Route path="/drafts/create" element={arena(<CreateDraftPage />)} />

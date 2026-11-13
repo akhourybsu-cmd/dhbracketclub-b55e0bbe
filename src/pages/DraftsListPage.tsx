@@ -1226,7 +1226,7 @@ export default function DraftsListPage() {
     if (!user) return;
     setDraftLoadError(false);
     try {
-    const { data, error } = await withTimeout(
+    const { data: allDraftRows, error } = await withTimeout(
       Promise.resolve(
         supabase
           .from('drafts')
@@ -1237,6 +1237,7 @@ export default function DraftsListPage() {
       'drafts list query',
     );
     if (error) throw error;
+    const data = allDraftRows?.filter(draft => (draft as { draft_format?: string }).draft_format !== 'lineup');
 
     if (data) {
       const draftIds = data.map(d => d.id);

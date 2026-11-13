@@ -4,6 +4,7 @@ import { aiGate, logAiUsage } from "../_shared/aiUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "X-DH-Lineup-Rules": "lineup_v1",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
@@ -79,7 +80,22 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { pick_text, topic, category, existing_picks, ai_context, ai_context_override } = await req.json();
+    const { pick_text, topic, category, existing_picks, ai_context, ai_context_override, draft_id } = await req.json();
+
+    // This legacy advisory endpoint never decides a ranked slot assignment.
+    // When supplied, resolve the draft through the caller's own RLS client.
+    if (draft_id !== undefined) {
+      if (typeof draft_id !== "string") return new Response(JSON.stringify({ error: "Invalid draft id" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+      const { data: sourceDraft, error: sourceError } = await userClient.from("drafts").select("*").eq("id", draft_id).maybeSingle();
+      if (sourceError || !sourceDraft) return new Response(JSON.stringify({ error: "Draft unavailable" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+      if (sourceDraft.draft_format === "lineup") return new Response(JSON.stringify({ error: "Choose an open role in the Lineup Draft. Standalone pick advice does not evaluate lineup roles." }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!pick_text || typeof pick_text !== "string" || pick_text.trim().length < 2) {
       return new Response(JSON.stringify({ suggestion: null }), {

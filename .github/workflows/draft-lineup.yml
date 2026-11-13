@@ -1,0 +1,91 @@
+name: Draft Arena Lineup
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/draft-lineup.yml'
+      - 'src/components/draft/lineup/**'
+      - 'src/components/draft/MakePickSheet.tsx'
+      - 'src/components/drafts/**'
+      - 'src/App.tsx'
+      - 'src/pages/*Lineup*'
+      - 'src/hooks/useLineupDraft*'
+      - 'src/lib/draft/lineup*'
+      - 'src/lib/draft/viewport.ts'
+      - 'src/test/draftLineup*'
+      - 'supabase/migrations/*draft_lineup*'
+      - 'supabase/functions/rate-draft/**'
+      - 'supabase/functions/check-draft-pick/**'
+      - 'supabase/functions/_shared/draftGrading.ts'
+      - 'supabase/functions/_shared/draftLineupGrading.ts'
+      - 'supabase/functions/resolve-pick-dispute/**'
+      - 'supabase/functions/draft-missed-picks/**'
+      - 'src/components/draft/MakePickSheet.tsx'
+      - 'src/components/drafts/**'
+      - 'supabase/functions/_shared/draftLineupGrading.ts'
+      - 'scripts/test-draft-lineup-db.mjs'
+      - 'scripts/check-draft-lineup.mjs'
+      - 'scripts/fixtures/draft-arena*'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  database:
+    name: Lineup rules and database
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Check application TypeScript
+        run: npm run typecheck
+      - name: Check Lineup unit and component tests
+        run: npx vitest run draftLineup --maxWorkers=1
+      - name: Check real migration authorization and transactions
+        run: node scripts/test-draft-lineup-db.mjs
+      - name: Production build
+        run: npm run build
+
+  browser:
+    name: Lineup (${{ matrix.engine }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    env:
+      DRAFT_LINEUP_BROWSER: ${{ matrix.engine }}
+      DRAFT_LINEUP_OUTPUT: /tmp/draft-lineup-browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install browser and system dependencies
+        run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Check actual Lineup pages and input
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$DRAFT_LINEUP_OUTPUT"
+          timeout --signal=TERM --kill-after=30s 900s node scripts/check-draft-lineup.mjs 2>&1 | tee "$DRAFT_LINEUP_OUTPUT/runner.log"
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-lineup-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/draft-lineup-browser/
+          if-no-files-found: warn
+          retention-days: 7

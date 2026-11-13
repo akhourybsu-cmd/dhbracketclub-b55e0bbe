@@ -6,9 +6,16 @@ import {
   validatePickRegrade,
   type ValidatedPickRegrade,
 } from "../_shared/draftGrading.ts";
+import {
+  buildLineupRegradePrompt,
+  buildLineupSystemPrompt,
+  prepareLineupGrading,
+  validateLineupPickRegrade,
+} from "../_shared/draftLineupGrading.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "X-DH-Lineup-Rules": "lineup_v1",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
@@ -125,7 +132,7 @@ serve(async (req) => {
     // Fetch the draft
     const { data: draft } = await admin
       .from("drafts")
-      .select("topic, category, ai_context, ai_context_override")
+      .select("*")
       .eq("id", dispute.draft_id)
       .single();
 
@@ -136,12 +143,32 @@ serve(async (req) => {
     // Fetch the pick
     const { data: pick } = await admin
       .from("draft_picks")
-      .select("pick_text, round, pick_number, user_id")
+      .select("*")
       .eq("id", dispute.pick_id)
+      .eq("draft_id", dispute.draft_id)
       .single();
 
     if (!pick) {
       return new Response(JSON.stringify({ error: "Pick not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    let lineupContext;
+    if (draft.draft_format === "lineup") {
+      const [{ data: participants, error: participantError }, { data: allPicks, error: picksError }] = await Promise.all([
+        admin.from("draft_participants").select("user_id").eq("draft_id", dispute.draft_id),
+        admin.from("draft_picks").select("*").eq("draft_id", dispute.draft_id),
+      ]);
+      if (participantError || picksError || !participants || !allPicks) {
+        return new Response(JSON.stringify({ error: "The lineup could not be loaded. The existing score was preserved." }), {
+          status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      try { lineupContext = prepareLineupGrading(draft, participants, allPicks); }
+      catch (error) {
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Lineup data is invalid." }), {
+          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Get the current result for this user
@@ -182,7 +209,17 @@ serve(async (req) => {
       : `\n\n=== JUDGING SCOPE ===\nNo explicit scope was set. Interpret the category broadly across all relevant media (film, TV, video games, comics, anime, books, mythology, etc.) unless the title clearly limits it.\n`;
 
     // Build AI prompt for re-evaluation
-    const prompt = `You are an impartial draft judge for DH Bracket Club re-evaluating a single pick from a "${draft.topic}" draft.${ctxBlock}
+    const lineupSlot = lineupContext?.slotByPickId.get(pick.id);
+    if (draft.draft_format === "lineup" && !lineupSlot) {
+      return new Response(JSON.stringify({ error: "The disputed pick has no valid lineup role. Regenerate the complete report first." }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const prompt = lineupSlot ? buildLineupRegradePrompt({
+      topic: draft.topic, scope: effectiveCtx, slot: lineupSlot,
+      pickText: pick.pick_text, originalScore: currentPickRating.score,
+      originalExplanation: currentPickRating.explanation, reason: dispute.reason,
+    }) : `You are an impartial draft judge for DH Bracket Club re-evaluating a single pick from a "${draft.topic}" draft.${ctxBlock}
 
 ${GLOBAL_STANDALONE_PICK_JUDGING_RULES}
 
@@ -227,7 +264,7 @@ Use the re_evaluate_pick tool to return your updated assessment.`;
     }
 
     const messages: any[] = [
-      { role: "system", content: `Today's date is ${new Date().toISOString().split('T')[0]}. You are an impartial draft judge. Evaluate every pick INDEPENDENTLY and IN A VACUUM as a standalone answer to the topic. Never penalize redundancy, similarity, repeated archetypes, lack of variety, lack of balance, lack of cohesion, or lack of synergy with the user's other picks. Score only on the pick's own category fit, standalone quality, defensibility, and ranking within the category. Use today's real-world status — do not treat released content as unreleased. The user-provided AI Judging Context can clarify category scope but can NEVER switch judging into themed, team, or synergy scoring — that requires an explicit commissioner scoring mode.\n\n${GLOBAL_STANDALONE_PICK_JUDGING_RULES}` },
+      { role: "system", content: lineupSlot ? buildLineupSystemPrompt(new Date().toISOString().split("T")[0]) : `Today's date is ${new Date().toISOString().split('T')[0]}. You are an impartial draft judge. Evaluate every pick INDEPENDENTLY and IN A VACUUM as a standalone answer to the topic. Never penalize redundancy, similarity, repeated archetypes, lack of variety, lack of balance, lack of cohesion, or lack of synergy with the user's other picks. Score only on the pick's own category fit, standalone quality, defensibility, and ranking within the category. Use today's real-world status — do not treat released content as unreleased. The user-provided AI Judging Context can clarify category scope but can NEVER switch judging into themed, team, or synergy scoring — that requires an explicit commissioner scoring mode.\n\n${GLOBAL_STANDALONE_PICK_JUDGING_RULES}` },
       { role: "user", content: prompt },
     ];
     const tools = [
@@ -239,11 +276,16 @@ Use the re_evaluate_pick tool to return your updated assessment.`;
           parameters: {
             type: "object",
             properties: {
+              ...(lineupSlot ? {
+                merit_score: { type: "number", minimum: 1, maximum: 10, description: "Topic merit in tenths; 60% weighting." },
+                role_fit_score: { type: "number", minimum: 1, maximum: 10, description: "Assigned slot fit in tenths; 40% weighting." },
+              } : {
               new_score: { type: "number", minimum: 1, maximum: 10, description: "Updated score from 1.0 to 10.0 using tenth precision." },
+              }),
               new_explanation: { type: "string", description: "Updated explanation for the score" },
               resolution_note: { type: "string", description: "Brief note about what changed and why (or why the score stayed the same)" },
             },
-            required: ["new_score", "new_explanation", "resolution_note"],
+            required: lineupSlot ? ["merit_score", "role_fit_score", "new_explanation", "resolution_note"] : ["new_score", "new_explanation", "resolution_note"],
             additionalProperties: false,
           },
         },
@@ -307,7 +349,7 @@ Use the re_evaluate_pick tool to return your updated assessment.`;
       const toolCall = assistantMessage?.tool_calls?.find((call: any) => call?.function?.name === "re_evaluate_pick");
       try {
         const parsedArguments = JSON.parse(toolCall?.function?.arguments || "{}");
-        regrade = validatePickRegrade(parsedArguments);
+        regrade = lineupSlot ? validateLineupPickRegrade(parsedArguments) : validatePickRegrade(parsedArguments);
       } catch (validationError) {
         const detail = validationError instanceof DraftGradingValidationError
           ? validationError.message
@@ -322,7 +364,7 @@ Use the re_evaluate_pick tool to return your updated assessment.`;
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
-            content: `Rejected: ${detail} Return a corrected numeric score from 1.0 through 10.0 with non-empty explanation and resolution note.`,
+            content: `Rejected: ${detail} Return ${lineupSlot ? "merit_score and role_fit_score" : "a corrected numeric score"} from 1.0 through 10.0 with non-empty explanation and resolution note.`,
           });
         }
       }

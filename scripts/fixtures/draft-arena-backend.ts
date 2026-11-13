@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- This isolated Supabase transport intentionally carries heterogeneous saved rows. */
 // In-memory transport fixture only. Uses production turn/results/rendering logic.
 import { commissionerTables, createCommissionerFixture } from './draft-arena-commissioner';
+import { createLineupConfig, validateLineupConfig } from '../../src/lib/draft/lineup';
 type Row = Record<string, any>;
 const params = new URLSearchParams(location.search);
 const userId = params.get("user") || "u1";
@@ -182,6 +183,20 @@ if (params.get("art") === "varied") {
   }
   tables.item_enrichments[0].metadata.image_candidates = Array.from({ length: 9 }, (_, index) => ({ url: `${imageURL(["portrait", "wide", "square", "slow"][index % 4])}?detail=1&candidate=${index + 1}`, thumbnail: `${imageURL(["portrait", "wide", "square", "slow"][index % 4])}?thumb=1&candidate=${index + 1}`, source: "tmdb", label: `Catalog alternative ${index + 1}` }));
 }
+if (params.get('stress') === 'lineup') {
+  const config = createLineupConfig('breakfast');
+  const active = { ...draft('lineup-active', 'The breakfast starting lineup', 'in_progress', 4), draft_format:'lineup', lineup_config:config, current_pick_number:4, current_round:2, current_pick_user_id:'u1', timer_seconds:null };
+  const done = { ...draft('lineup-complete', 'A complete breakfast lineup', 'complete', 4), draft_format:'lineup', lineup_config:clone(config), current_pick_number:9, current_round:4, current_pick_user_id:null, timer_seconds:null };
+  for (const room of [active,done]) {
+    tables.drafts.push(room); tables.competitions.push({id:room.competition_id,club_id:'club',created_by:'u1',title:room.topic,type:'draft',status:room.status,description:'A saved lineup with every role visible.'});
+    for (const [i,who] of ['u1','u2'].entries()) tables.draft_participants.push({id:`${room.id}-player-${who}`,club_id:'club',draft_id:room.id,user_id:who,pick_order:i+1,joined_at:date});
+  }
+  const food = ['Orange juice','French toast','Cinnamon roll','Chocolate croissant','Hash browns','Fruit bowl','Black coffee','Eggs Benedict'];
+  const who = ['u1','u2','u2','u1','u1','u2','u2','u1'];
+  const slots = ['drink','entree','sweet','sweet','side','side','drink','entree'];
+  for (const room of [active,done]) for(let i=0;i<(room.id==='lineup-active'?3:8);i++) tables.draft_picks.push({id:`${room.id}-pick-${i+1}`,club_id:'club',draft_id:room.id,user_id:who[i],pick_text:food[i],pick_number:i+1,round:Math.floor(i/2)+1,lineup_slot_id:slots[i],picked_at:date});
+  for (const [i,who] of ['u1','u2'].entries()) { const own=tables.draft_picks.filter(row=>row.draft_id===done.id&&row.user_id===who); tables.draft_results.push({id:`${done.id}-result-${who}`,club_id:'club',draft_id:done.id,user_id:who,rank:i+1,total_score:own.length*(9-i),points_awarded:0,summary:'A balanced breakfast, judged in its assigned roles.',pick_ratings:own.map(row=>({pick_id:row.id,pick_text:row.pick_text,score:9-i,explanation:'Merit 9.0/10 · Role fit 9.0/10 (60/40). Fits this breakfast role.',scoring_version:'lineup_v1',lineup_slot_id:row.lineup_slot_id,lineup_slot_label:config.slots.find(slot=>slot.id===row.lineup_slot_id)!.label})),created_at:date}); }
+}
 if (sharedKey) {
   const saved = localStorage.getItem(sharedKey);
   if (saved) {
@@ -228,6 +243,75 @@ if (sharedKey) window.addEventListener("storage", (event) => {
   serial = Math.max(serial, snapshot.serial);
   for (const change of snapshot.events || []) emitChange(change);
 });
+// This adapter validates transport state; official SQL is tested independently.
+function lineupAction(args: Row) {
+  const reject = (message: string, code = 'P0001') => ({ data: null, error: { code, message } });
+  if (args.p_club_id !== 'club' || !tables.club_members.some(member => member.club_id === 'club' && member.user_id === userId)) return reject('You must belong to this club.', '42501');
+  if (typeof args.p_request_id !== 'string' || !args.p_request_id) return reject('A request ID is required.');
+  const receipts = tables.draft_lineup_requests ||= [];
+  const fingerprint = JSON.stringify([args.p_draft_id ?? null, args.p_action, args.p_payload ?? {}]);
+  const previous = receipts.find(row => row.user_id === userId && row.request_id === args.p_request_id);
+  if (previous) return previous.fingerprint === fingerprint ? { data: { ...clone(previous.result), replayed: true }, error: null } : reject('Request ID belongs to a different action.');
+  const action = args.p_action, payload = args.p_payload ?? {};
+  let room = tables.drafts.find(row => row.id === args.p_draft_id && row.club_id === 'club' && row.draft_format === 'lineup');
+  const changed: Array<[string, string, Row[]]> = [];
+  const mark = (table: string, mode: string, rows: Row[]) => changed.push([table, mode, rows]);
+  if (action === 'create') {
+    if (validateLineupConfig(payload.lineup_config).length) return reject('Choose a valid lineup.');
+    if (typeof payload.topic !== 'string' || !payload.topic.trim() || payload.topic.length > 100) return reject('Enter a topic using up to 100 characters.');
+    const competition = { id: crypto.randomUUID(), club_id: 'club', created_by: userId, title: payload.topic.trim(), description: payload.description ?? '', type: 'draft', status: 'setup', created_at: new Date().toISOString() };
+    room = { ...draft(crypto.randomUUID(), payload.topic.trim(), 'setup', payload.lineup_config.slots.length), created_by: userId, competition_id: competition.id, draft_format: 'lineup', lineup_config: clone(payload.lineup_config), ai_context: payload.ai_context ?? null, timer_seconds: null, current_pick_user_id: null };
+    const member = { id: crypto.randomUUID(), club_id: 'club', draft_id: room.id, user_id: userId, pick_order: 1, joined_at: new Date().toISOString() };
+    tables.competitions.push(competition); tables.drafts.push(room); tables.draft_participants.push(member);
+    mark('competitions', 'insert', [competition]); mark('drafts', 'insert', [room]); mark('draft_participants', 'insert', [member]);
+  } else {
+    if (!room) return reject('This lineup is unavailable.', '42501');
+    const players = tables.draft_participants.filter(row => row.draft_id === room!.id).sort((a,b) => a.pick_order-b.pick_order);
+    const own = players.find(row => row.user_id === userId);
+    const host = room.created_by === userId;
+    const selected = tables.draft_picks.filter(row => row.draft_id === room!.id);
+    if (action === 'join') {
+      if (room.status !== 'setup') return reject('This lineup has already started.');
+      if (!own) { const member = { id: crypto.randomUUID(), club_id: 'club', draft_id: room.id, user_id: userId, pick_order: players.length + 1, joined_at: new Date().toISOString() }; tables.draft_participants.push(member); mark('draft_participants', 'insert', [member]); }
+    } else if (action === 'leave') {
+      if (room.status !== 'setup' || host) return reject('The host cannot leave this lineup.');
+      tables.draft_participants = tables.draft_participants.filter(row => row.id !== own?.id);
+      if (own) mark('draft_participants', 'delete', [own]);
+      tables.draft_participants.filter(row => row.draft_id === room!.id).sort((a,b)=>a.pick_order-b.pick_order).forEach((row,index)=> { row.pick_order=index+1; });
+    } else if (action === 'start') {
+      if (!host) return reject('Only the host can start.', '42501');
+      if (room.status !== 'setup' || players.length < 2) return reject('At least two players are needed.');
+      Object.assign(room, { status: 'in_progress', current_pick_number: 1, current_round: 1, current_pick_user_id: players[0].user_id }); mark('drafts', 'update', [room]);
+    } else if (action === 'cancel') {
+      if (!host || !['setup','in_progress'].includes(room.status)) return reject('Only the host can cancel an open lineup.', '42501');
+      room.status = 'cancelled'; room.current_pick_user_id = null; mark('drafts', 'update', [room]);
+    } else if (action === 'pick' || action === 'edit_pick') {
+      if (!own || room.status !== 'in_progress') return reject('This lineup is not accepting picks.');
+      if (typeof payload.text !== 'string' || !payload.text.trim() || payload.text.length > 100) return reject('Enter a valid pick.');
+      const normalized = (text: string) => text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+      if (selected.some(row => row.id !== payload.pick_id && normalized(row.pick_text) === normalized(payload.text))) return reject('That selection has already been drafted.');
+      if (action === 'edit_pick') {
+        const old = selected.find(row => row.id === payload.pick_id && (row.user_id === userId || host));
+        if (!old) return reject('You cannot edit that pick.', '42501'); old.pick_text = payload.text.trim(); mark('draft_picks','update',[old]);
+      } else {
+        if (room.current_pick_user_id !== userId) return reject('Wait for your turn.');
+        if (!room.lineup_config.slots.some((slot: Row) => slot.id === payload.slot_id)) return reject('Choose an open slot.');
+        if (selected.some(row => row.user_id === userId && row.lineup_slot_id === payload.slot_id)) return reject('That slot is filled.');
+        const pick = { id: crypto.randomUUID(), club_id:'club', draft_id:room.id, user_id:userId, pick_number:room.current_pick_number, round:room.current_round, pick_text:payload.text.trim(), lineup_slot_id:payload.slot_id, picked_at:new Date().toISOString() };
+        tables.draft_picks.push(pick); mark('draft_picks','insert',[pick]);
+        const number = selected.length + 2, total = players.length * room.num_rounds;
+        const roundIndex = Math.floor((number - 1) / players.length), offset = (number - 1) % players.length;
+        Object.assign(room, { current_pick_number:number, current_round:roundIndex+1, status:number>total?'complete':'in_progress', current_pick_user_id:number>total?null:players[roundIndex%2===0?offset:players.length-1-offset].user_id }); mark('drafts','update',[room]);
+      }
+    } else return reject('Unsupported lineup action.');
+  }
+  const result = { draft_id:room!.id, action };
+  receipts.push({ user_id:userId, request_id:args.p_request_id, fingerprint, result });
+  for (const [table, mode, rows] of changed) { operations.push({table,mode,rows:clone(rows),transport:'lineup-rpc'}); publish(table,mode,rows); }
+  if (loseLineupReply) { loseLineupReply=false; return reject('Fixture: response lost after server commit.', '08006'); }
+  return { data:result, error:null };
+}
+let loseLineupReply = false;
 function hydrate(table: string, row: Row) {
   const value = clone(row);
   if (row.user_id) value.profiles = profiles.find((p) => p.id === row.user_id) || null;
@@ -235,6 +319,7 @@ function hydrate(table: string, row: Row) {
     value.profiles = profiles.find((p) => p.id === row.created_by);
     value.current_pick_profiles = profiles.find((p) => p.id === row.current_pick_user_id);
     value.competitions = tables.competitions.find((c) => c.id === row.competition_id);
+    value.draft_participants = tables.draft_participants.filter(participant => participant.draft_id === row.id).map(participant => ({ user_id: participant.user_id }));
   }
   if (table === "draft_season_entries") value.drafts = clone(tables.drafts.find((d) => d.id === row.draft_id));
   return value;
@@ -317,6 +402,7 @@ export const supabase = {
       failedRpcs.set(name, failedRpcs.get(name)! - 1);
       return { data: null, error: { code: '08006', message: 'Fixture: interrupted commissioner request' } };
     }
+    if (name === "draft_lineup_action") return lineupAction(args);
     if (commissionerFixture.handles(name)) return commissionerFixture.rpc(name, args);
     return { data: name === "is_app_admin" ? false : name === "current_user_club_id" ? "club" : name === "server_now" ? new Date().toISOString() : null, error: null };
   },
@@ -331,6 +417,7 @@ Object.assign(window, { daQa: { tables, operations, calls, userId, ready: true, 
   blockWrites: (table: string) => { blockedWrites.add(table); },
   releaseWrites: (table: string) => { blockedWrites.delete(table); for (const release of heldWrites.get(table) ?? []) release(); heldWrites.delete(table); },
   replyNextFunction: (name: string, data: Row) => { functionReplies.set(name, [...(functionReplies.get(name) ?? []), clone(data)]); },
+  loseNextLineupResponse: () => { loseLineupReply = true; },
   failNextRPC: (name: string) => failedRpcs.set(name, (failedRpcs.get(name) || 0) + 1),
   blockRPC: (name: string) => failedRpcs.set(name, Infinity),
   releaseRPC: (name: string) => failedRpcs.delete(name),

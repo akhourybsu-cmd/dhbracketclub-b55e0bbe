@@ -6,10 +6,12 @@ import { DraftArenaBoot } from './DraftArenaBoot';
 import { DraftSeasonWelcomeController } from './DraftSeasonWelcomeController';
 import { useDraftArenaPalette } from '@/hooks/useDraftArenaPalette';
 import { bindDraftViewport } from '@/lib/draft/viewport';
+import { DraftFormatSelector } from './DraftFormatSelector';
 import './draftArena.css';
 import './draftArenaMobile.css';
 import './draftArenaForms.css';
 import './draftArenaKeyboard.css';
+import './draftArenaFormats.css';
 
 /**
  * Full-screen standalone shell for the Draft Arena. Applies the `.da-mode`
@@ -23,6 +25,8 @@ import './draftArenaKeyboard.css';
 export function DraftArenaLayout({ children }: { children: ReactNode }) {
   const { palette } = useDraftArenaPalette();
   const location = useLocation();
+  const isLineup = location.pathname === '/drafts/lineup' || location.pathname.startsWith('/drafts/lineup/');
+  const formatHub = ['/drafts', '/drafts/live', '/drafts/lineup'].includes(location.pathname);
   const isLive = location.pathname === '/drafts/live' || location.pathname.startsWith('/drafts/live/') || (location.pathname.endsWith('/magazine') && new URLSearchParams(location.search).get('live') === '1');
   const reducedMotion = useReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
@@ -45,18 +49,19 @@ export function DraftArenaLayout({ children }: { children: ReactNode }) {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div ref={shell} className={`da-mode da-lounge da-shell da-arena-shell${isLive ? ' da-live-arena' : ''}`} data-da-palette={palette} data-da-live={isLive || undefined}
+    <div ref={shell} className={`da-mode da-lounge da-shell da-arena-shell${isLive ? ' da-live-arena' : ''}${isLineup ? ' da-lineup-arena' : ''}`} data-da-palette={palette} data-da-live={isLive || undefined}
       data-da-motion={reducedMotion ? 'reduced' : 'full'} data-da-hidden={hidden}>
       <div className="da-arena-architecture" aria-hidden="true"><i /><i /><i /></div>
       <DraftArenaHUD />
 
       {/* Mobile scrolls the complete page; desktop workspaces retain their panes. */}
       <main className="da-arena-main" id="draft-arena-main" tabIndex={-1}>
+        {formatHub && <DraftFormatSelector />}
         {children}
       </main>
 
       <DraftArenaBoot />
-      {!isLive && <DraftSeasonWelcomeController />}
+      {!isLive && !isLineup && <DraftSeasonWelcomeController />}
     </div>
     </MotionConfig>
   );

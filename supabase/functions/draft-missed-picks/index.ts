@@ -4,6 +4,7 @@ import { aiGate, logAiUsage } from "../_shared/aiUsage.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
+  "X-DH-Lineup-Rules": "lineup_v1",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
@@ -27,6 +28,7 @@ serve(async (req) => {
     // Visibility enforced by RLS on the caller's own client.
     const { data: draft } = await userClient.from("drafts").select("*").eq("id", draft_id).maybeSingle();
     if (!draft) return json({ error: "Draft not found" }, 404);
+    if (draft.draft_format === "lineup") return json({ error: "Lineup Drafts use assigned roles. Open the lineup to review its selections." }, 409);
     if (draft.status !== "complete") return json({ error: "Draft is not complete" }, 400);
     if (Array.isArray(draft.missed_picks) && !force) return json({ missed_picks: draft.missed_picks });
 

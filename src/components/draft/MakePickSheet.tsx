@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AlertTriangle, Loader2, Send, Sparkles, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,9 @@ interface PickComposerFieldsProps {
   topic: string;
   autoFocus?: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  slotPicker?: ReactNode;
+  canSubmit?: boolean;
+  readOnly?: boolean;
 }
 
 /** Input + AI suggestion banners shared by the pick sheet and inline composer. */
@@ -41,13 +44,18 @@ export function PickComposerFields({
   topic,
   autoFocus,
   inputRef,
+  slotPicker,
+  canSubmit = true,
+  readOnly = false,
 }: PickComposerFieldsProps) {
   return (
     <div className="da-pick-compose">
+      {slotPicker}
       <div className="flex gap-2">
         <Input
           ref={inputRef}
           value={pickText}
+          readOnly={readOnly}
           onChange={(e) => onTextChange(e.target.value)}
           placeholder="Enter your pick…"
           aria-label="Your draft pick"
@@ -57,14 +65,14 @@ export function PickComposerFields({
           onKeyDown={(e) => {
             if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return;
             e.preventDefault();
-            if (pickText.trim() && !submitting && !localDuplicate) onSubmit();
+            if (pickText.trim() && !submitting && !localDuplicate && canSubmit) onSubmit();
           }}
         />
         <button
           type="button"
           aria-label="Submit pick"
           onClick={onSubmit}
-          disabled={submitting || !pickText.trim() || localDuplicate}
+          disabled={submitting || !pickText.trim() || localDuplicate || !canSubmit}
           title={localDuplicate ? 'This pick has already been taken' : undefined}
           className="dl-cta h-12 px-5"
         >
@@ -197,7 +205,7 @@ export function MakePickSheet({
                 draftId={draftId}
                 userId={userId}
                 taken={taken}
-                onChoose={fields.onTextChange}
+                onChoose={fields.readOnly ? undefined : fields.onTextChange}
               />
               </div>
             </div>

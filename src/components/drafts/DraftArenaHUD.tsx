@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Info, Radio } from 'lucide-react';
+import { ArrowLeft, Info, LayoutGrid, Radio } from 'lucide-react';
 import draftEmblem from '@/assets/draft-emblem.webp';
 import { useCurrentSeason, formatSeasonChip } from '@/hooks/useDraftSeasons';
 import { DraftArenaExitDialog } from './DraftArenaExitDialog';
@@ -25,11 +25,16 @@ export function DraftArenaHUD() {
   const path = location.pathname;
   const isHub = path === '/drafts';
   const isLiveHub = path === '/drafts/live';
+  const isLineupHub = path === '/drafts/lineup';
+  const isLineup = isLineupHub || path.startsWith('/drafts/lineup/');
   const isLiveMagazine = path.endsWith('/magazine') && new URLSearchParams(location.search).get('live') === '1';
   const isLive = isLiveHub || path.startsWith('/drafts/live/') || isLiveMagazine;
 
   // Contextual subtitle per route
   const subtitle = (() => {
+    if (isLineupHub) return 'Lineup Drafts';
+    if (path === '/drafts/lineup/create') return 'Build a lineup';
+    if (isLineup) return 'Your lineup room';
     if (isLiveHub) return 'The live arena';
     if (path === '/drafts/live/create') return 'Host a live event';
     if (isLiveMagazine) return 'The event magazine';
@@ -47,7 +52,9 @@ export function DraftArenaHUD() {
   const seasonChip = formatSeasonChip(season);
 
   const handleBack = () => {
-    if (isLiveMagazine && draftId) {
+    if (isLineup && !isLineupHub) {
+      navigate('/drafts/lineup');
+    } else if (isLiveMagazine && draftId) {
       navigate(`/drafts/live/${encodeURIComponent(draftId)}`);
     } else if (isLive && !isLiveHub) {
       navigate('/drafts/live');
@@ -71,13 +78,13 @@ export function DraftArenaHUD() {
             variant="ghost"
             size="icon"
             onClick={handleBack}
-            aria-label={isLiveMagazine ? 'Back to live room' : isLive && !isLiveHub ? 'Back to LIVE arena' : isHub ? 'Exit Draft Arena' : 'Back to Draft Arena'}
+            aria-label={isLineup && !isLineupHub ? 'Back to Lineup Drafts' : isLiveMagazine ? 'Back to live room' : isLive && !isLiveHub ? 'Back to LIVE arena' : isHub ? 'Exit Draft Arena' : 'Back to Draft Arena'}
             className="da-hud-action w-11 h-11 shrink-0 btn-press"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
 
-          <Link to={isLive ? '/drafts/live' : '/drafts'} className="da-arena-brand" aria-label={isLive ? 'Draft Arena LIVE lobby' : 'Draft Arena lobby'}>
+          <Link to={isLineup ? '/drafts/lineup' : isLive ? '/drafts/live' : '/drafts'} className="da-arena-brand" aria-label={isLineup ? 'Lineup Drafts lobby' : isLive ? 'Draft Arena LIVE lobby' : 'Draft Arena lobby'}>
             <span className="da-hud-emblem da-arena-emblem">
               <img
                 src={draftEmblem}
@@ -99,8 +106,9 @@ export function DraftArenaHUD() {
           </Link>
 
           {isLive && <Link to="/drafts/live" className="da-hud-chip da-live-hud-badge shrink-0" aria-label="LIVE arena"><Radio className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span>LIVE</span></Link>}
+          {isLineup && <Link to="/drafts/lineup" className="da-hud-chip shrink-0" aria-label="Lineup Drafts"><LayoutGrid className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span>Lineup</span></Link>}
 
-          {!isLive && seasonChip && (
+          {!isLive && !isLineup && seasonChip && (
             <button
               type="button"
               onClick={openSeasonWelcome}
@@ -113,7 +121,7 @@ export function DraftArenaHUD() {
             </button>
           )}
 
-          {!isLive && !seasonChip && season && (
+          {!isLive && !isLineup && !seasonChip && season && (
             <button
               type="button"
               onClick={openSeasonWelcome}
