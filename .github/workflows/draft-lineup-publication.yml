@@ -1,0 +1,52 @@
+name: Lineup Draft public deployment proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/draft-lineup-release.json'
+      - 'scripts/check-draft-lineup-publication.mjs'
+      - 'scripts/check-draft-lineup-publication.test.mjs'
+      - 'scripts/check-draft-mobile-publication.mjs'
+      - '.github/workflows/draft-lineup-publication.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  publication:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      DRAFT_LINEUP_PUBLICATION_OUTPUT: /tmp/draft-lineup-publication
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check release verifiers without network
+        run: node --test scripts/check-draft-mobile-publication.test.mjs scripts/check-draft-lineup-publication.test.mjs
+      - name: Record release-check context
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          fs.mkdirSync(process.env.DRAFT_LINEUP_PUBLICATION_OUTPUT, { recursive: true });
+          fs.writeFileSync(`${process.env.DRAFT_LINEUP_PUBLICATION_OUTPUT}/context.json`, JSON.stringify({
+            commit: process.env.GITHUB_SHA, run: process.env.GITHUB_RUN_ID,
+            attempt: process.env.GITHUB_RUN_ATTEMPT, node: process.version,
+          }, null, 2));
+          JS
+      - name: Verify served frontend and server rules with normal TLS
+        shell: bash
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=10s 300s node scripts/check-draft-lineup-publication.mjs 2>&1 | tee "$DRAFT_LINEUP_PUBLICATION_OUTPUT/runner.log"
+      - name: Upload independent public receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: draft-lineup-publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/draft-lineup-publication/
+          if-no-files-found: warn
+          retention-days: 14

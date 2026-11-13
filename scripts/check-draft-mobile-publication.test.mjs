@@ -36,6 +36,13 @@ test('rejects missing new Board markers rather than accepting a mixed or stale r
   await assert.rejects(inspectPublication(release, { fetchImpl: transport({ '/assets/DraftBoard-good.js': 'old board' }) }), /DraftBoard is missing release markers/);
 });
 
+test('finds the exact route basename when a longer Lineup route contains the same suffix', async () => {
+  const entry = bodies['/assets/index-current.js'] + '"assets/LineupDraftDetailPage-new.js"';
+  const result = await inspectPublication(release, { fetchImpl: transport({ '/assets/index-current.js': entry }) });
+  assert.equal(new URL(result.urls.DraftDetailPage).pathname, '/assets/DraftDetailPage-good.js');
+  assert.equal(result.js_markers.DraftDetailPage['da-pick-history-list'], true);
+});
+
 test('rejects missing selectors and ambiguous served bundle references', async () => {
   const without = { ...release, css_styles: ['.missing-selector'] };
   await assert.rejects(inspectPublication(without, { fetchImpl: transport() }), /missing mobile release selectors/);

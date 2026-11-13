@@ -35,8 +35,12 @@ function assetUrl(path, base, origin) {
 }
 
 function findAsset(entry, entryUrl, prefix, extension, origin) {
-  const pattern = new RegExp('["\'`]([^"\'`\\s]*' + prefix + '-[\\w-]+\\.' + extension + '(?:\\?[^"\'`\\s]*)?)["\'`]', 'g');
-  const found = new Set([...entry.matchAll(pattern)].map(match => assetUrl(match[1], entryUrl, origin).href));
+  const pattern = new RegExp('["\'`]((?:[^"\'`\\s]*/)?' + prefix + '-[\\w-]+\\.' + extension + '(?:\\?[^"\'`\\s]*)?)["\'`]', 'g');
+  const found = new Set([...entry.matchAll(pattern)].map(match => {
+    const url = assetUrl(match[1], entryUrl, origin);
+    assert.match(url.pathname.split('/').at(-1), new RegExp(`^${prefix}-[\\w-]+\\.${extension}$`), 'Served asset basename must match its exact release prefix.');
+    return url.href;
+  }));
   assert.equal(found.size, 1, `Expected exactly one ${prefix} ${extension} asset in the served entry.`);
   return new URL([...found][0]);
 }
