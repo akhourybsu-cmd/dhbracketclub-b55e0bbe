@@ -3334,6 +3334,61 @@ export type Database = {
           },
         ]
       }
+      draft_lineup_receipts: {
+        Row: {
+          action: string
+          actor_user_id: string
+          club_id: string
+          created_at: string
+          draft_id: string
+          request_id: string
+          request_payload: Json
+          response: Json
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          club_id: string
+          created_at?: string
+          draft_id: string
+          request_id: string
+          request_payload: Json
+          response: Json
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          club_id?: string
+          created_at?: string
+          draft_id?: string
+          request_id?: string
+          request_payload?: Json
+          response?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_lineup_receipts_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_lineup_receipts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "draft_lineup_receipts_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       draft_participants: {
         Row: {
           club_id: string
@@ -3438,6 +3493,7 @@ export type Database = {
           club_id: string
           draft_id: string
           id: string
+          lineup_slot_id: string | null
           pick_number: number
           pick_text: string
           picked_at: string
@@ -3448,6 +3504,7 @@ export type Database = {
           club_id?: string
           draft_id: string
           id?: string
+          lineup_slot_id?: string | null
           pick_number: number
           pick_text: string
           picked_at?: string
@@ -3458,6 +3515,7 @@ export type Database = {
           club_id?: string
           draft_id?: string
           id?: string
+          lineup_slot_id?: string | null
           pick_number?: number
           pick_text?: string
           picked_at?: string
@@ -4065,9 +4123,11 @@ export type Database = {
           current_pick_number: number
           current_pick_user_id: string | null
           current_round: number
+          draft_format: string
           id: string
           is_live: boolean
           kiosk_code: string | null
+          lineup_config: Json | null
           live_settings: Json
           missed_picks: Json | null
           missed_picks_generated_at: string | null
@@ -4097,9 +4157,11 @@ export type Database = {
           current_pick_number?: number
           current_pick_user_id?: string | null
           current_round?: number
+          draft_format?: string
           id?: string
           is_live?: boolean
           kiosk_code?: string | null
+          lineup_config?: Json | null
           live_settings?: Json
           missed_picks?: Json | null
           missed_picks_generated_at?: string | null
@@ -4129,9 +4191,11 @@ export type Database = {
           current_pick_number?: number
           current_pick_user_id?: string | null
           current_round?: number
+          draft_format?: string
           id?: string
           is_live?: boolean
           kiosk_code?: string | null
+          lineup_config?: Json | null
           live_settings?: Json
           missed_picks?: Json | null
           missed_picks_generated_at?: string | null
@@ -15508,6 +15572,21 @@ export type Database = {
         Args: { p_season_id: string }
         Returns: Json
       }
+      draft_lineup_action: {
+        Args: {
+          p_action: string
+          p_club_id: string
+          p_draft_id: string
+          p_payload?: Json
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      draft_lineup_reject_direct_child: {
+        Args: { p_draft_id: string }
+        Returns: undefined
+      }
+      draft_lineup_valid_config: { Args: { p_config: Json }; Returns: boolean }
       ensure_forge_week: {
         Args: {
           p_club_id: string
