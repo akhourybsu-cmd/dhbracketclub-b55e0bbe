@@ -170,6 +170,7 @@ export function useLineupDraft(draftId: string | undefined) {
     if (!clubId || !userId || !draftId || inFlight.current) return null;
     const existing = readPending(pendingKey) ?? (pendingState.scope === scope ? pendingState.pending : null);
     if (existing && !retry && (existing.action !== action || JSON.stringify(existing.payload) !== JSON.stringify(payload))) {
+      setPendingState({ scope, pending: existing });
       setActionError('Retry the saved action before making another change.'); return null;
     }
     const request = retry ?? existing ?? { requestId: crypto.randomUUID(), action, payload };

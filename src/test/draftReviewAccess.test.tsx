@@ -32,6 +32,17 @@ beforeEach(() => {
 });
 
 describe('Draft review scope', () => {
+  it('can retry a failed permission read without carrying its prior decision', async () => {
+    backend.failRead = true;
+    const { result } = renderHook(() => useDraftReviewAccess('old-draft', 'club-a'));
+    await waitFor(() => expect(result.current.resolved).toBe(true));
+    expect(result.current.verified).toBe(false);
+    backend.failRead = false;
+    act(() => result.current.refresh());
+    expect(result.current.allowed).toBe(false);
+    await waitFor(() => expect(result.current.allowed).toBe(true));
+    expect(result.current.seasonId).toBe('archived-season');
+  });
   it('checks the draft’s archived season instead of the current season', async () => {
     const { result } = renderHook(() => useDraftReviewAccess('old-draft', 'club-a'));
     await waitFor(() => expect(result.current.allowed).toBe(true));

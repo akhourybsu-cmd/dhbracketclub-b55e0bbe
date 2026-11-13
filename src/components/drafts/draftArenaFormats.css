@@ -2,7 +2,9 @@
 .da-format-selector a { display: flex; align-items: center; justify-content: center; gap: 7px; flex: 1; min-width: 0; min-height: 44px; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 800; color: hsl(var(--muted-foreground)); transition: background-color 150ms, color 150ms; }
 .da-format-selector a.is-selected { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
 .da-format-selector a:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 3px; }
+.da-arena-lineup-chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: 11px; font-size: 11px; font-weight: 800; }
 .da-arena-main:has(> .da-format-selector) { display: flex; flex-direction: column; }
 .da-arena-main:has(> .da-format-selector) > :is(.da-lobby,.da-live-hub) { flex: 1 1 auto; min-height: 0; height: auto; }
 @media(max-width: 1023px) { #draft-arena-main:has(> .da-format-selector) > :is(.da-lobby,.da-live-hub) { flex: 0 0 auto; height: auto; min-height: 0; } }
 @media(prefers-reduced-motion: reduce) { .da-format-selector a { transition: none; } }
+@media(max-width: 359px) { .da-arena-lineup-chip > span { display: none; } }

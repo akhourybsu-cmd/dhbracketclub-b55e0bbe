@@ -59,6 +59,11 @@
 .da-lineup-status-filters > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 9px 11px; flex: 0 0 auto; border: 1px solid transparent; border-radius: 10px; font-size: 11px; font-weight: 750; color: hsl(var(--muted-foreground)); }
 .da-lineup-status-filters > button[aria-pressed="true"] { border-color: hsl(var(--lu-accent) / .5); color: hsl(var(--lu-accent)); background: hsl(var(--lu-accent) / .1); }
 .da-lineup-status-filters > button > span { font-size: 10px; opacity: .8; }
+@media (max-width: 639px) {
+  .da-lineup-status-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); overflow: visible; }
+  .da-lineup-status-filters > button { min-width: 0; padding-inline: 6px; }
+  .da-lineup-status-filters > button:first-child { grid-column: span 2; }
+}
 .da-lineup-room-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .da-lineup-room-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid hsl(var(--lu-line)); border-radius: 16px; background: hsl(var(--lu-paper) / .9); }
 .da-lineup-room-card:hover { border-color: hsl(var(--lu-accent) / .55); box-shadow: 0 5px 20px hsl(var(--foreground) / .04); }

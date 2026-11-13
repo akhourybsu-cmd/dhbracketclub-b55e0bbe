@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronDown, CircleHelp, Copy, Crown, Lay
 import { useAuth } from '@/contexts/AuthContext';
 import { useClub } from '@/contexts/ClubContext';
 import { useLineupDraft, type LineupParticipant, type LineupPick } from '@/hooks/useLineupDraft';
+import { useDraftReviewAccess } from '@/hooks/useDraftReviewAccess';
 import { MakePickSheet } from '@/components/draft/MakePickSheet';
 import { LineupRoster } from '@/components/draft/lineup/LineupRoster';
 import { SlotPicker } from '@/components/draft/lineup/SlotPicker';
@@ -48,9 +49,10 @@ function LineupRoom({ draftId }: { draftId: string | undefined }) {
   const [notice, setNotice] = useState('');
   const autoReport = useRef(false);
   const draft = room.draft;
+  const reviewAccess = useDraftReviewAccess(draftId, draft?.club_id);
   const participants = room.participants ?? [], picks = room.picks ?? [], results = room.results ?? [];
   const me = participants.find(player => player.user_id === user?.id);
-  const host = !!draft && (draft.created_by === user?.id || isClubAdmin);
+  const host = !!draft && (draft.created_by === user?.id || isClubAdmin || reviewAccess.allowed);
   const setup = draft?.status === 'setup';
   const active = draft?.status === 'in_progress';
   const complete = draft?.status === 'complete';
@@ -115,7 +117,7 @@ function LineupRoom({ draftId }: { draftId: string | undefined }) {
       <Link to="/drafts/lineup" className="da-lineup-icon-button" aria-label="Back to Lineup Drafts"><ArrowLeft aria-hidden="true" /></Link>
       <div><p className="dl-eyebrow">DRAFT ARENA · LINEUP</p><h1>{draft.topic}</h1></div>
       <Button type="button" variant="ghost" className="da-lineup-icon-button" onClick={() => setHelp(true)} aria-label="Lineup rules"><CircleHelp aria-hidden="true" /></Button>
-      <Button type="button" variant="ghost" className="da-lineup-icon-button" disabled={room.refreshing} onClick={() => void room.refresh()} aria-label="Refresh lineup"><RefreshCw className={room.refreshing ? 'animate-spin' : ''} aria-hidden="true" /></Button>
+      <Button type="button" variant="ghost" className="da-lineup-icon-button" disabled={room.refreshing} onClick={() => { reviewAccess.refresh(); void room.refresh(); }} aria-label="Refresh lineup"><RefreshCw className={room.refreshing ? 'animate-spin' : ''} aria-hidden="true" /></Button>
     </header>
 
     {room.error && <div className="da-lineup-alert" role="alert"><span>{room.error} Showing your last confirmed lineup.</span><Button variant="outline" className="min-h-11" onClick={() => void room.refresh()}>Retry</Button></div>}
@@ -135,7 +137,7 @@ function LineupRoom({ draftId }: { draftId: string | undefined }) {
       </div>
       <div className="da-lineup-command-actions">
         {setup && !me && <Button disabled={room.working || !!room.pending} className="da-cta min-h-11" onClick={() => void room.mutate('join')}><Plus aria-hidden="true" />Join lineup</Button>}
-        {setup && me && host && <Button disabled={room.working || !!room.pending || participants.length < 2} className="da-cta min-h-11" onClick={() => void room.mutate('start')}><Sparkles aria-hidden="true" />{room.working ? 'Starting…' : 'Start lineup'}</Button>}
+        {setup && host && <Button disabled={room.working || !!room.pending || participants.length < 2} className="da-cta min-h-11" onClick={() => void room.mutate('start')}><Sparkles aria-hidden="true" />{room.working ? 'Starting…' : 'Start lineup'}</Button>}
         {setup && me && !host && <Button disabled={room.working || !!room.pending} variant="outline" className="min-h-11" onClick={() => void room.mutate('leave')}><LogOut aria-hidden="true" />Leave lineup</Button>}
         {setup && <Button variant="outline" className="min-h-11" onClick={() => void copyInvite()}><Copy aria-hidden="true" />Invite club</Button>}
         {myTurn && <Button className="da-cta min-h-11" disabled={room.working || !!room.pending} onClick={openComposer}><Plus aria-hidden="true" />Make selection<ArrowRight aria-hidden="true" /></Button>}

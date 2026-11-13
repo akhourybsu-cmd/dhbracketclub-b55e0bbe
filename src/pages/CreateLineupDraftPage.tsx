@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { createLineupDraft, lineupError } from '@/hooks/useLineupDraft';
 import { LINEUP_TEMPLATES, createLineupConfig, parseLineupConfig, type LineupConfig } from '@/lib/draft/lineup';
 import { LineupArtwork } from '@/components/draft/lineup/LineupArtwork';
-import { clearLineupCreateReceipt, lineupCreateKey, readLineupCreateReceipt, writeLineupCreateReceipt, type LineupCreateReceipt } from '@/components/draft/lineup/lineupCreateReceipt';
+import { clearLineupCreateReceipt, clearRejectedLineupCreateReceipt, lineupCreateKey, readLineupCreateReceipt, writeLineupCreateReceipt, type LineupCreateReceipt } from '@/components/draft/lineup/lineupCreateReceipt';
 import '@/components/draft/lineup/lineup.css';
 
 const STEPS = ['Lineup', 'Topic', 'Review'];
@@ -95,6 +95,13 @@ function LineupSetup({ userId, clubId, requestedTemplate, previousConfig, previo
     if (!validConfig || !topic.trim()) { setError('Check your topic and lineup before creating the draft.'); return; }
     let pending: LineupCreateReceipt;
     try {
+      const recovered = !receipt && readLineupCreateReceipt(key);
+      if (recovered) {
+        setReceipt(recovered); setConfig(recovered.lineupConfig); setTopic(recovered.topic);
+        setDescription(recovered.description); setAiContext(recovered.aiContext); setStep(2);
+        setError('Review the saved request, then retry to confirm it.');
+        return;
+      }
       pending = receipt ?? { requestId: crypto.randomUUID(), topic: topic.trim(), description: description.trim(), aiContext: aiContext.trim(), lineupConfig: validConfig };
       // Save before sending. A lost response can safely be retried after reload.
       setStorageUnavailable(!writeLineupCreateReceipt(key, pending));
@@ -104,17 +111,16 @@ function LineupSetup({ userId, clubId, requestedTemplate, previousConfig, previo
     setSending(true); setError('');
     try {
       const result = await createLineupDraft({ clubId, userId, ...pending });
-      clearLineupCreateReceipt(key);
+      clearLineupCreateReceipt(key, pending.requestId);
       void queryClient.invalidateQueries({ queryKey: ['draft-lineup-list', clubId, userId] });
       if (active.current) navigate(`/drafts/lineup/${encodeURIComponent(result.draft_id)}`, { replace: true });
     } catch (failure) {
       if (active.current) {
         setError(lineupError(failure, 'The draft was not confirmed. Retry to check the same request safely.'));
-        const code = failure && typeof failure === 'object' && 'code' in failure ? String(failure.code) : '';
         // Returned SQL rejections roll back the transaction, so corrections
         // can safely create a new request. Ambiguous network errors retain it.
-        if (/^(P\d|22|23|42)/.test(code)) {
-          clearLineupCreateReceipt(key); setReceipt(null); setStorageUnavailable(false);
+        if (clearRejectedLineupCreateReceipt(key, pending.requestId, failure)) {
+          setReceipt(null); setStorageUnavailable(false);
         }
       }
     } finally {

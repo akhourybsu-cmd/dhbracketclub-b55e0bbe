@@ -106,7 +106,7 @@ export function DraftArenaHUD() {
           </Link>
 
           {isLive && <Link to="/drafts/live" className="da-hud-chip da-live-hud-badge shrink-0" aria-label="LIVE arena"><Radio className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span>LIVE</span></Link>}
-          {isLineup && <Link to="/drafts/lineup" className="da-hud-chip shrink-0" aria-label="Lineup Drafts"><LayoutGrid className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span>Lineup</span></Link>}
+          {isLineup && <Link to="/drafts/lineup" className="da-hud-chip da-arena-lineup-chip shrink-0" aria-label="Lineup Drafts"><LayoutGrid className="w-3.5 h-3.5 shrink-0" aria-hidden="true" /><span>Lineup</span></Link>}
 
           {!isLive && !isLineup && seasonChip && (
             <button

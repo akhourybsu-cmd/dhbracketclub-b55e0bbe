@@ -38,7 +38,37 @@ async function setup(width,height,theme,shared){
  const go=async(route,user='u1')=>{const params=new URLSearchParams({route,user,theme,stress:'lineup',shared,keyboard:'1'});await p.goto(`${base}/scripts/fixtures/draft-arena.html?${params}`,{waitUntil:'domcontentloaded'});await settle(p);};
  return {p,context,go};
 }
-async function widthAudit(p,label){const failures=await p.locator('.da-lineup').evaluateAll(nodes=>nodes.flatMap(node=>{const b=node.getBoundingClientRect();return b.left<-.5||b.right>innerWidth+.5?[{left:b.left,right:b.right,viewport:innerWidth}]:[]}));assert.deepEqual(failures,[],label+' has no horizontal overflow');check(label);}
+async function widthAudit(p,label){
+ const evidence=await p.locator('.da-lineup').evaluateAll(nodes=>{
+  const failures=[],dimensions=[];
+  if(!nodes.length)failures.push({issue:'Missing Lineup page root'});
+  const viewport=document.documentElement.clientWidth||innerWidth;
+  const roots=[['document',document.documentElement],['body',document.body],['arena-main',document.querySelector('#draft-arena-main')],...nodes.map((node,index)=>[`lineup-${index}`,node])];
+  for(const [scope,node]of roots){
+   if(!node){failures.push({scope,issue:'Missing width audit root'});continue;}
+   const b=node.getBoundingClientRect(),measurement={scope,left:b.left,right:b.right,clientWidth:node.clientWidth,scrollWidth:node.scrollWidth,viewport};
+   dimensions.push(measurement);
+   if(node.scrollWidth>node.clientWidth+1)failures.push({...measurement,issue:'Scrollable content exceeds its reading area'});
+   if(scope!=='document'&&scope!=='body'&&(b.left<-.5||b.right>viewport+.5))failures.push({...measurement,issue:'Container extends beyond the page'});
+  }
+  // Inspect real controls, not decorative SVG paths, glows or shadows. The
+  // status-filter tray may intentionally scroll; the page itself may not.
+  for(const root of nodes)for(const control of root.querySelectorAll('button,a,input,textarea,select')){
+   const b=control.getBoundingClientRect();
+   if(!b.width||!b.height)continue;
+   let left=0,right=viewport,scrollableTray=false;
+   for(let owner=control.parentElement;owner;owner=owner.parentElement){
+    const style=getComputedStyle(owner),r=owner.getBoundingClientRect();
+    if(/^(auto|scroll)$/.test(style.overflowX)&&owner.scrollWidth>owner.clientWidth+1){scrollableTray=true;break;}
+    if(/^(hidden|clip|auto|scroll)$/.test(style.overflowX)){left=Math.max(left,r.left);right=Math.min(right,r.right);}
+   }
+   if(!scrollableTray&&(b.left<left-1||b.right>right+1))failures.push({issue:'Interactive control is horizontally clipped',control:control.getAttribute('aria-label')||control.textContent?.trim().slice(0,80),left:b.left,right:b.right,clip:{left,right}});
+  }
+  return {failures,dimensions};
+ });
+ assert.deepEqual(evidence.failures,[],label+' has no horizontal overflow or clipped controls');
+ check(label,{dimensions:evidence.dimensions});
+}
 async function keyboardControl(control,label){
  let evidence;
  await expect.poll(async()=>{evidence=await control.evaluate(node=>{const b=node.getBoundingClientRect(),v=visualViewport;let left=v.offsetLeft,top=v.offsetTop,right=left+v.width,bottom=top+v.height;const issues=[];

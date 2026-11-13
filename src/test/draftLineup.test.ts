@@ -1,14 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   LINEUP_TEMPLATES, createLineupConfig, draftRoomPath, lineupProgress,
   openLineupSlots, parseLineupConfig, validateLineupConfig,
 } from '@/lib/draft/lineup';
 import {
-  clearLineupCreateReceipt, lineupCreateKey, readLineupCreateReceipt, writeLineupCreateReceipt,
+  clearLineupCreateReceipt, clearRejectedLineupCreateReceipt, lineupCreateKey, readLineupCreateReceipt, writeLineupCreateReceipt,
   type LineupCreateReceipt,
 } from '@/components/draft/lineup/lineupCreateReceipt';
 
-afterEach(() => localStorage.clear());
+afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); sessionStorage.clear(); });
 
 describe('Lineup requirements', () => {
   it.each(LINEUP_TEMPLATES)('ships a usable, distinct $name lineup', template => {
@@ -105,7 +105,7 @@ describe('Unconfirmed lineup creation recovery', () => {
     expect(readLineupCreateReceipt(key)).toEqual(original);
     expect(readLineupCreateReceipt(lineupCreateKey('bob', 'club-a'))).toBeNull();
     expect(readLineupCreateReceipt(lineupCreateKey('alice', 'club-b'))).toBeNull();
-    clearLineupCreateReceipt(key);
+    clearLineupCreateReceipt(key, original.requestId);
     expect(readLineupCreateReceipt(key)).toBeNull();
   });
 
@@ -123,5 +123,79 @@ describe('Unconfirmed lineup creation recovery', () => {
     localStorage.setItem(key, '{broken-json');
     expect(readLineupCreateReceipt(key)).toBeNull();
     expect(lineupCreateKey('alice:club-b', 'club-a')).not.toBe(lineupCreateKey('alice', 'club-b:club-a'));
+  });
+
+  it('keeps two simultaneous tabs independent even when both started without a saved request', () => {
+    const key = lineupCreateKey('alice', 'club'), a = receipt();
+    const b = { ...receipt(), requestId: 'b621584e-cf61-408d-81cf-31f81b362187', topic: 'A different lineup' };
+    expect(readLineupCreateReceipt(key)).toBeNull(); // Both tabs opened before either request.
+    expect(readLineupCreateReceipt(key)).toBeNull();
+    writeLineupCreateReceipt(key, a);
+    const tabA = sessionStorage.getItem(`${key}:active`)!;
+    sessionStorage.clear();
+    writeLineupCreateReceipt(key, b);
+    const tabB = sessionStorage.getItem(`${key}:active`)!;
+    expect(readLineupCreateReceipt(key)).toEqual(b);
+    sessionStorage.setItem(`${key}:active`, tabA); // A reloads after B overwrites the discovery pointer.
+    expect(readLineupCreateReceipt(key)).toEqual(a);
+    clearLineupCreateReceipt(key, a.requestId);
+    sessionStorage.setItem(`${key}:active`, tabB);
+    expect(readLineupCreateReceipt(key)).toEqual(b);
+    expect(JSON.parse(localStorage.getItem(key)!)).toEqual(b);
+    clearLineupCreateReceipt(key, b.requestId);
+    expect(readLineupCreateReceipt(key)).toBeNull();
+  });
+
+  it('does not delete a newer tab reference when an older acknowledgement arrives', () => {
+    const key = lineupCreateKey('alice', 'club'), a = receipt();
+    const b = { ...receipt(), requestId: 'b621584e-cf61-408d-81cf-31f81b362187' };
+    writeLineupCreateReceipt(key, a); writeLineupCreateReceipt(key, b);
+    clearLineupCreateReceipt(key, a.requestId);
+    expect(sessionStorage.getItem(`${key}:active`)).toBe(b.requestId);
+    expect(readLineupCreateReceipt(key)).toEqual(b);
+  });
+
+  it('recovers a closed tab request after a later request is confirmed', () => {
+    const key = lineupCreateKey('alice', 'club'), a = receipt();
+    const b = { ...receipt(), requestId: 'b621584e-cf61-408d-81cf-31f81b362187' };
+    writeLineupCreateReceipt(key, a); sessionStorage.clear();
+    writeLineupCreateReceipt(key, b); clearLineupCreateReceipt(key, b.requestId);
+    sessionStorage.clear();
+    expect(localStorage.getItem(key)).toBeNull();
+    expect(readLineupCreateReceipt(key)).toEqual(a);
+  });
+
+  it('migrates a legacy saved request and keeps its exact choices immutable', () => {
+    const key = lineupCreateKey('alice', 'club'), original = receipt();
+    localStorage.setItem(key, JSON.stringify(original));
+    expect(readLineupCreateReceipt(key)).toEqual(original);
+    expect(sessionStorage.getItem(`${key}:active`)).toBe(original.requestId);
+    expect(() => writeLineupCreateReceipt(key, { ...original, topic: 'Changed choices' })).toThrow(/cannot change/i);
+    expect(readLineupCreateReceipt(key)).toEqual(original);
+  });
+
+  it('clears a provably rejected rate-limit request while keeping an uncertain response recoverable', () => {
+    const key = lineupCreateKey('alice', 'club'), original = receipt();
+    writeLineupCreateReceipt(key, original);
+    expect(clearRejectedLineupCreateReceipt(key, original.requestId, { code: '08006' })).toBe(false);
+    expect(readLineupCreateReceipt(key)).toEqual(original);
+    expect(clearRejectedLineupCreateReceipt(key, original.requestId, { code: '54000' })).toBe(true);
+    expect(readLineupCreateReceipt(key)).toBeNull();
+  });
+
+  it('limits outstanding recovery copies without sacrificing an existing request', () => {
+    const key = lineupCreateKey('alice', 'club');
+    const records = Array.from({ length: 16 }, (_, index) => ({ ...receipt(), requestId: `b621584e-cf61-408d-81cf-${String(index).padStart(12, '0')}` }));
+    records.forEach(row => writeLineupCreateReceipt(key, row));
+    expect(() => writeLineupCreateReceipt(key, { ...receipt(), requestId: 'b621584e-cf61-408d-81cf-999999999999' })).toThrow(/confirm an earlier/i);
+    expect(writeLineupCreateReceipt(key, records[0])).toBe(true);
+    expect(readLineupCreateReceipt(key)).toEqual(records[0]);
+  });
+
+  it('allows the caller to keep an in-memory retry when browser persistence is blocked', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Storage blocked', 'SecurityError'); });
+    const original = receipt();
+    expect(writeLineupCreateReceipt(lineupCreateKey('alice', 'club'), original)).toBe(false);
+    expect(original.requestId).toBe('b621584e-cf61-408d-81cf-31f81b362186');
   });
 });
