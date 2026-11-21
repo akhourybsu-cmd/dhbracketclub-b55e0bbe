@@ -276,8 +276,10 @@ function DraftDetailSession() {
   const [isAppAdmin, setIsAppAdmin] = useState(false);
   const isParticipant = participants.some(p => p.user_id === user?.id);
   const { palette: daPalette } = useDraftArenaPalette();
-  const canManage = isCreator || isAppAdmin;
   const reviewAccess = useDraftReviewAccess(draftId, draft?.club_id);
+  // The club's assigned commissioner runs every draft in the club: start,
+  // reorder, host live clocks, remove picks and manage the room.
+  const canManage = isCreator || isAppAdmin || isCommissioner || reviewAccess.allowed;
   const canReviewDisputes = reviewAccess.allowed || (reviewAccess.verified && !reviewAccess.seasonId && (isCreator || isAppAdmin));
 
   /* ── Live draft hosting ──
