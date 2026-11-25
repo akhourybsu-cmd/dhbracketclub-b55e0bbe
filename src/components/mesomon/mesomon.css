@@ -153,7 +153,8 @@
 .mm-screen {
   container-type: size;
   min-height: 0;
-  position: relative;
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,7 +176,8 @@
 .mm-pixels {
   flex: none;
   position: relative;
-  width: min(100cqw, 111.11111cqh);
+  --mm-fit: min(100cqw, 111.11111cqh);
+  width: var(--mm-fit);
   aspect-ratio: 10 / 9;
   overflow: hidden;
   image-rendering: pixelated;
@@ -1650,8 +1652,19 @@ fieldset.mm-battle-controls {
   }
 }
 
+/* Keep the same grid item through rotation. The screen fills its assigned
+   track even when WebKit has not yet reported a new element measurement. */
 .mm-display-slot {
-  display: contents;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+@media (min-width: 768px) and (min-height: 601px) {
+  @supports (width: round(nearest, 500px, 160px)) {
+    .mm-pixels {
+      width: min(var(--mm-fit), max(160px, round(nearest, var(--mm-fit), 160px)));
+    }
+  }
 }
 
 @media (max-width: 767px), (orientation: landscape) and (max-height: 600px) {
@@ -1677,6 +1690,8 @@ fieldset.mm-battle-controls {
     flex: 0 1 auto;
   }
   .mesomon[data-playing="true"] .mm-screen {
+    position: relative;
+    inset: auto;
     width: min(100cqw, 111.1111cqh);
     aspect-ratio: 160 / 144;
     border: 0;

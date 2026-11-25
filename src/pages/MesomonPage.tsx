@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -139,14 +138,12 @@ function Chapter({
   const [hidden, setHidden] = useState(() => document.hidden);
   const [revealed, setRevealed] = useState(false);
   const [textCount, setTextCount] = useState(0);
-  const [pixelWidth, setPixelWidth] = useState(160);
   const [sealProgress, setSealProgress] = useState(0);
   const lastCheckpoint = useRef("");
   const audioMoment = useRef({ bonded: false, sealed: false, battle: "" });
   const adoptedSave = useRef<GameSession["save"] | null | undefined>(undefined);
   const resolvingCloud = useRef(false);
   const pixels = useRef<HTMLDivElement>(null);
-  const screen = useRef<HTMLDivElement>(null);
   const view = useRef<MesomonView | null>(null);
   const audio = useRef<MesomonAudio | null>(null);
   const current = useRef(session);
@@ -207,27 +204,6 @@ function Chapter({
     lastSave.current = session.save;
     saveLocal.current(session.save);
   }, [session, playing]);
-
-  const hasSession = session !== null;
-  useLayoutEffect(() => {
-    const node = screen.current;
-    if (!node) return;
-    const resize = () => {
-      const { clientWidth: width, clientHeight: height } = node;
-      const fit = Math.max(0.1, Math.min(width / 160, height / 144));
-      const integer = Math.floor(fit);
-      const handheld = window.matchMedia?.(
-        "(max-width: 767px), (orientation: landscape) and (max-height: 600px)",
-      ).matches;
-      const scale =
-        !handheld && integer >= 1 && integer / fit >= 0.78 ? integer : fit;
-      setPixelWidth(Math.floor(160 * scale));
-    };
-    resize();
-    const observer = new ResizeObserver(resize);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasSession, playing]);
 
   useEffect(() => {
     const parent = pixels.current;
@@ -720,11 +696,10 @@ function Chapter({
               </span>
             </div>
             <div className="mm-display-slot">
-              <div className="mm-screen" ref={screen}>
+              <div className="mm-screen">
                 <div
                   ref={pixels}
                   className="mm-pixels"
-                  style={{ maxWidth: pixelWidth }}
                   role="img"
                   aria-label={`Port Marche game view. Tavian at ${session.save.player.x}, ${session.save.player.y} in ${getMap(session.save).name}.`}
                 />
