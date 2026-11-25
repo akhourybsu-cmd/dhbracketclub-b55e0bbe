@@ -143,7 +143,7 @@ function Chapter({
   const [sealProgress, setSealProgress] = useState(0);
   const lastCheckpoint = useRef("");
   const audioMoment = useRef({ bonded: false, sealed: false, battle: "" });
-  const adoptedSave = useRef<GameSession["save"] | null>(null);
+  const adoptedSave = useRef<GameSession["save"] | null | undefined>(undefined);
   const resolvingCloud = useRef(false);
   const pixels = useRef<HTMLDivElement>(null);
   const screen = useRef<HTMLDivElement>(null);
@@ -182,8 +182,7 @@ function Chapter({
   useEffect(() => {
     if (
       !sync.loading &&
-      (!session ||
-        (!playing && !!sync.save && adoptedSave.current !== sync.save))
+      (!session || (!playing && adoptedSave.current !== sync.save))
     ) {
       const restored = createSession(sync.save ?? createNewSave(slot));
       const save = restored.save;
@@ -613,8 +612,8 @@ function Chapter({
     setPlaying(false);
     setHeld(null);
     setMenu(null);
-    setSession(null);
-    adoptedSave.current = null;
+    // Keep the preloaded world mounted when reopening a file offline.
+    adoptedSave.current = undefined;
     await sync.reload();
   };
   const restoreCloud = async () => {
@@ -624,9 +623,8 @@ function Chapter({
     setPlaying(false);
     setHeld(null);
     setMenu(null);
+    adoptedSave.current = undefined;
     await sync.useCloud();
-    adoptedSave.current = null;
-    setSession(null);
     resolvingCloud.current = false;
   };
   const leave = () => {

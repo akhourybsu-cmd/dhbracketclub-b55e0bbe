@@ -11,13 +11,13 @@ const fixture = vi.hoisted(() => ({
   saveLocal: vi.fn(), flush: vi.fn(async () => {}), retry: vi.fn(async () => {}), reload: vi.fn(async () => {}),
   useCloud: vi.fn(async () => {}), keepLocal: vi.fn(async () => {}),
   viewCreate: vi.fn(), viewDestroy: vi.fn(), audioCreate: vi.fn(), audioDestroy: vi.fn(),
-  blocked:false,blockReason:'',
+  blocked:false,blockReason:'',loading:false,
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'test-user' }, loading: false }) }));
 vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: { id: 'test-club' }, loading: false }) }));
 vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false, isInstalled: () => true }) }));
 vi.mock('@/hooks/useMesomonSave', () => ({ useMesomonSave: () => ({
-  save: fixture.save, loading: false, status: 'local', error: null, conflict: null,
+  save: fixture.save, loading: fixture.loading, status: 'local', error: null, conflict: null,
   saveLocal: fixture.saveLocal, flush: fixture.flush, retry: fixture.retry, reload: fixture.reload,
   useCloud: fixture.useCloud, keepLocal: fixture.keepLocal,
   blocked:fixture.blocked,blockReason:fixture.blockReason,
@@ -39,7 +39,7 @@ vi.mock('@/lib/mesomon/audio', () => ({ MesomonAudio: class {
 } }));
 
 beforeEach(() => {
-  vi.clearAllMocks(); fixture.save=null;fixture.blocked=false;fixture.blockReason='';localStorage.clear();
+  vi.clearAllMocks(); fixture.save=null;fixture.blocked=false;fixture.blockReason='';fixture.loading=false;localStorage.clear();
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} unobserve() {} });
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -139,6 +139,34 @@ describe('Mesomon game shell', () => {
     mounted.unmount();mount();await screen.findByRole('button',{name:/^Begin journey/});
     expect(screen.getByRole('button',{name:'Mute audio'})).toBeVisible();
     expect(fixture.saveLocal).not.toHaveBeenCalled();
+  });
+
+  it('preserves the loaded renderer while reopening a blocked file and resuming its newer position', async () => {
+    fixture.save = createNewSave();
+    fixture.blocked = true;
+    const mounted = mount();
+    const refresh = () => mounted.rerender(<MemoryRouter><MesomonGame userId={USER} clubId={CLUB}/></MemoryRouter>);
+    await waitFor(() => expect(document.querySelector('.mesomon canvas')).toBeInTheDocument());
+    const canvas = document.querySelector('.mesomon canvas');
+    fixture.reload.mockImplementationOnce(async () => {
+      fixture.loading = true;
+      fixture.save = null;
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Reload file' }));
+    refresh();
+    expect(fixture.reload).toHaveBeenCalledOnce();
+    expect(document.querySelector('.mesomon canvas')).toBe(canvas);
+
+    fixture.loading = false;
+    fixture.blocked = false;
+    fixture.save = createNewSave();
+    fixture.save.player.x = 9;
+    refresh();
+    await waitFor(() => expect(document.querySelector('.mesomon')).toHaveAttribute('data-player-x', '9'));
+    await begin();
+    expect(document.querySelector('.mesomon canvas')).toBe(canvas);
+    expect(fixture.viewCreate).toHaveBeenCalledOnce();
+    expect(fixture.viewDestroy).not.toHaveBeenCalled();
   });
 
   it('pauses an active journey and closes its menu when storage ownership becomes blocked',async()=>{

@@ -400,6 +400,14 @@ async function offlineTabs() {
     await expect(beginB).toBeVisible();
     if(locks){await expect(beginB).toBeDisabled();await expect(b.getByRole('button',{name:'Reload file',exact:true})).toBeVisible();}
     else{await expect(beginB).toBeEnabled();await beginB.click();await expect(controls(b,'right')).toBeVisible();}
+    const readyCanvas = '.mesomon canvas[aria-hidden="true"]';
+    await Promise.all([a, b].map(page => expect(page.locator(readyCanvas)).toHaveCount(1)));
+    const originalCanvas = await b.locator(readyCanvas).elementHandle();
+    const offlineArtRequests = [];
+    b.on('request', request => {
+      const path = new URL(request.url()).pathname;
+      if (/^\/games\/mesomon\/(harbor-tiles|people|mesomon|battle)\.png$/.test(path)) offlineArtRequests.push(path);
+    });
     await context.setOffline(true);await a.bringToFront();
     const before=position(await save(a));await press(a,'right');
     await expect.poll(async()=>position(await save(a))).not.toBe(before);
@@ -420,7 +428,11 @@ async function offlineTabs() {
     await expect(controls(b,'right')).toBeVisible();
     await expect.poll(async()=>`${await b.locator('.mesomon').getAttribute('data-map-id')}:${await b.locator('.mesomon').getAttribute('data-player-x')}:${await b.locator('.mesomon').getAttribute('data-player-y')}`).toBe(head);
     await press(b,'left');await expect.poll(async()=>position(await save(b))).not.toBe(head);
-    check(engine+'-same-context-offline-tabs-preserve-newest-file-and-explicitly-transfer-ownership',{webLocks:locks,preservedHead:head});
+    assert.ok(await b.locator(readyCanvas).evaluate((canvas, original) => canvas === original, originalCanvas),
+      'Offline reload must retain the preloaded Phaser canvas');
+    assert.deepEqual(offlineArtRequests, [], 'Offline reload must reuse the preloaded world and battle sprite sheets');
+    await expect(b.locator('.mm-view-error')).toHaveCount(0);
+    check(engine+'-same-context-offline-tabs-preserve-newest-file-and-explicitly-transfer-ownership',{webLocks:locks,preservedHead:head,offlineArtRequests});
     await b.screenshot({path:join(output,engine+'-offline-tab-recovered.png')});
   }catch(error){await b?.screenshot({path:join(output,engine+'-offline-tabs-failure.png')}).catch(()=>{});throw error;}
   finally{await context.close();}

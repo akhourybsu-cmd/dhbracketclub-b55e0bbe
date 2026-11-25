@@ -1692,6 +1692,12 @@ fieldset.mm-battle-controls {
 @media (max-width: 767px) and (orientation: portrait) {
   .mm-control-deck {
     height: 144px;
+    margin-block: auto;
+  }
+}
+@media (pointer: coarse) {
+  .mesomon[data-playing="true"] .mm-footnote {
+    display: none;
   }
 }
 
