@@ -29,6 +29,8 @@ The browser matrix covers 320×568, 390×844, 844×390 and 1440×900 in light an
 
 Active-game receipts record the rendered canvas dimensions, the size of each 16×16 source tile on the 10×9 display, and the four gaps inside the screen. Handheld checks allow two CSS pixels for rounding and require the screen to fill the available slot at its native aspect ratio. Exploration tiles must reach 24 CSS pixels on each tested phone. Battle and dialogue can shrink the screen to accommodate controls. Desktop may use integer scaling and letterboxing.
 
+The browser runner reads the native 160×144 Phaser canvas during ship exploration and both chapter battles. It checks deck and sea colors, Tavian’s colors at the spawn position, and separate ally and enemy sprite regions for Rillik, Tressel and the Rift Wretch. Each sample requires multiple opaque artwork pixels. Any bright green pixel from Phaser’s missing-texture graphic fails the frame check. The runner waits for a painted frame and retains measured counts, the native PNG and a viewport screenshot on failure.
+
 The build check traverses the actual static JavaScript import graph from `dist/index.html`. Dynamic dependency filenames alone are not treated as eager imports. It asserts that the main app does not eagerly import the Mesomon route or Phaser chunk. It also validates the emitted `dist/games/mesomon/release.json`: Port Marche chapter, rules version 1 and asset version 2, an actual Git SHA, and an explicit dirty-source flag. In GitHub Actions the SHA must equal `GITHUB_SHA`; CI must report a clean source checkout.
 
 ## Evidence boundaries

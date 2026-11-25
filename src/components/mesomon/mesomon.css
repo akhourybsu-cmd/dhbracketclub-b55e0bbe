@@ -151,6 +151,7 @@
   color: #f0cc81;
 }
 .mm-screen {
+  container-type: size;
   min-height: 0;
   position: relative;
   display: flex;
@@ -174,15 +175,16 @@
 .mm-pixels {
   flex: none;
   position: relative;
-  max-width: 100%;
-  max-height: 100%;
+  width: min(100cqw, 111.11111cqh);
+  aspect-ratio: 10 / 9;
   overflow: hidden;
   image-rendering: pixelated;
 }
 .mm-pixels canvas {
   display: block !important;
   width: 100% !important;
-  height: 100% !important;
+  height: auto !important;
+  aspect-ratio: 10 / 9;
   image-rendering: pixelated !important;
   touch-action: none !important;
 }

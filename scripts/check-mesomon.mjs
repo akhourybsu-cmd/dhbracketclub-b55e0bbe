@@ -41,7 +41,14 @@ async function preparePage(p,theme,guest=false) {
   activePage=p;
   p.setDefaultTimeout(15000);
   p.on('pageerror', error => report.runtimeErrors.push(error.message));
-  await p.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort());
+  const fixtureOrigin = new URL(base);
+  assert.equal(fixtureOrigin.hostname, '127.0.0.1', 'The fixture requires a loopback origin');
+  await p.route('**/*', route => {
+    const requested = new URL(route.request().url());
+    const allowed = requested.origin === fixtureOrigin.origin &&
+      (requested.protocol === fixtureOrigin.protocol || requested.protocol === 'blob:');
+    return allowed ? route.continue() : route.abort();
+  });
   const stub = (path, body) => p.route(`**/${path}*`, route => route.fulfill({ contentType: 'text/javascript', body }));
   await stub('src/integrations/supabase/client.ts', "export {supabase} from '/scripts/fixtures/mesomon-backend.ts';");
   await stub('src/contexts/AuthContext.tsx', `export const useAuth=()=>({user:${guest ? 'null' : "{id:'11111111-1111-4111-8111-111111111111',user_metadata:{display_name:'Alex'}}"},loading:false});`);
@@ -154,7 +161,7 @@ async function interact(p, id, dialogue = true) {
 }
 async function audit(p, label) {
   await settleLayout(p);
-  const evidence = await p.locator('.mesomon').evaluate((root, label) => {
+  const measure = () => p.locator('.mesomon').evaluate((root, label) => {
     const issues = [], viewport = document.documentElement.clientWidth;
     for (const [name, node] of [['document', document.documentElement], ['body', document.body], ['game', root]]) {
       if (node.scrollWidth > node.clientWidth + 1) issues.push(`${name} overflows horizontally`);
@@ -196,7 +203,81 @@ async function audit(p, label) {
     }
     return { issues, display, canvasCount: root.querySelectorAll('canvas').length, rootWidth: root.getBoundingClientRect().width, viewport };
   }, label);
-  assert.deepEqual(evidence.issues, [], label); check(label, evidence);
+  // A mobile orientation change can reach CSS, ResizeObserver and Phaser on
+  // different frames. Record the final geometry at the failing viewport.
+  let evidence = await measure();
+  if (evidence.issues.length) {
+    try {
+      await expect.poll(async () => {
+        evidence = await measure();
+        return evidence.issues;
+      }, { timeout: 2500, message: label }).toEqual([]);
+    } catch (error) {
+      report.checks.push({ label, ok: false, ...evidence });
+      await p.screenshot({ path: join(output, label + '-geometry-failure.png') });
+      throw error;
+    }
+  }
+  check(label, evidence);
+}
+
+// Palette samples come from opaque interiors of the shipped 16px exploration
+// and 48px battle frames. Each sprite is measured only within its own bounds.
+const FRAME_SAMPLES = {
+  ship: [
+    { name: 'ship deck', area: [0, 0, 160, 144], color: 0x916f50, minimum: 500 },
+    { name: 'sea', area: [0, 0, 160, 144], color: 0x315e65, minimum: 200 },
+    { name: 'Tavian coat', area: [72, 64, 16, 16], color: 0x467778, minimum: 12 },
+    { name: 'Tavian hair', area: [72, 64, 16, 16], color: 0x304346, minimum: 12 },
+  ],
+  ally: [
+    { name: 'Rillik blue', area: [21, 50, 48, 50], color: 0x577c89, minimum: 100 },
+    { name: 'Rillik highlight', area: [21, 50, 48, 50], color: 0x8caaa6, minimum: 35 },
+  ],
+  bond: [
+    { name: 'Tressel ochre', area: [92, 19, 48, 50], color: 0xae7b51, minimum: 100 },
+    { name: 'Tressel gold', area: [92, 19, 48, 50], color: 0xc09245, minimum: 20 },
+  ],
+  boss: [
+    { name: 'Rift Wretch body', area: [92, 19, 48, 50], color: 0x221e30, minimum: 250 },
+    { name: 'Rift Wretch markings', area: [92, 19, 48, 50], color: 0x8a5c97, minimum: 15 },
+  ],
+};
+async function auditFrame(p, label, scene) {
+  const canvas = p.locator('.mesomon canvas');
+  const samples = scene === 'ship' ? FRAME_SAMPLES.ship : [...FRAME_SAMPLES.ally, ...FRAME_SAMPLES[scene]];
+  let reading;
+  try {
+    await expect.poll(async () => {
+      reading = await canvas.evaluate((node, samples) => {
+        const { width, height } = node;
+        const pixels = node.getContext('2d').getImageData(0, 0, width, height).data;
+        const rgb = index => pixels[index] * 65536 + pixels[index + 1] * 256 + pixels[index + 2];
+        let missingGreen = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          if (rgb(i) === 0x00ff00 && pixels[i + 3]) missingGreen++;
+        }
+        const counts = samples.map(({ name, area: [left, top, w, h], color, minimum }) => {
+          let count = 0;
+          for (let y = top; y < top + h; y++) for (let x = left; x < left + w; x++) {
+            const i = 4 * (y * width + x);
+            if (pixels[i + 3] === 255 && rgb(i) === color) count++;
+          }
+          return { name, count, minimum };
+        });
+        return { width, height, missingGreen, counts };
+      }, samples);
+      return reading.width === 160 && reading.height === 144 && !reading.missingGreen &&
+        reading.counts.every(({ count, minimum }) => count >= minimum);
+    }, { timeout: 10000, message: label }).toBe(true);
+  } catch (error) {
+    const png = await canvas.evaluate(node => node.toDataURL('image/png')).catch(() => null);
+    if (png) await writeFile(join(output, label + '-native.png'), Buffer.from(png.split(',')[1], 'base64'));
+    await p.screenshot({ path: join(output, label + '-failure.png') }).catch(() => {});
+    report.checks.push({ label, ok: false, reading });
+    throw error;
+  }
+  check(label, reading);
 }
 
 async function smoke(width, height, theme) {
@@ -205,6 +286,7 @@ async function smoke(width, height, theme) {
   try {
     await audit(p, label + '-title-fit'); await p.screenshot({ path: join(output, label + '-title.png') });
     await start(p); await drain(p); await audit(p, label + '-game-fit');
+    await auditFrame(p, label + '-ship-art', 'ship');
     const direction = await p.evaluate(async () => {
       const state = await window.mmQa.readSave(), p = state.player;
       return [['right',1,0],['down',0,1],['left',-1,0],['up',0,-1]].find(([,dx,dy]) => window.mmQa.canWalk(state,p.x+dx,p.y+dy))?.[0];
@@ -314,6 +396,7 @@ async function bossLayouts(p) {
 }
 async function battle(p, mode) {
   await expect.poll(async () => (await save(p))?.battle?.phase).toBe('choosing');
+  await auditFrame(p, engine + '-' + mode + '-battle-art', mode);
   if (mode === 'bond') {
     for (let index=0; index<6 && (await save(p)).battle?.phase === 'choosing'; index++) {
       const state = await save(p);

@@ -139,7 +139,7 @@ function Chapter({
   const [hidden, setHidden] = useState(() => document.hidden);
   const [revealed, setRevealed] = useState(false);
   const [textCount, setTextCount] = useState(0);
-  const [size, setSize] = useState({ width: 160, height: 144 });
+  const [pixelWidth, setPixelWidth] = useState(160);
   const [sealProgress, setSealProgress] = useState(0);
   const lastCheckpoint = useRef("");
   const audioMoment = useRef({ bonded: false, sealed: false, battle: "" });
@@ -221,10 +221,7 @@ function Chapter({
       ).matches;
       const scale =
         !handheld && integer >= 1 && integer / fit >= 0.78 ? integer : fit;
-      setSize({
-        width: Math.floor(160 * scale),
-        height: Math.floor(144 * scale),
-      });
+      setPixelWidth(Math.floor(160 * scale));
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -727,7 +724,7 @@ function Chapter({
                 <div
                   ref={pixels}
                   className="mm-pixels"
-                  style={{ width: size.width, height: size.height }}
+                  style={{ maxWidth: pixelWidth }}
                   role="img"
                   aria-label={`Port Marche game view. Tavian at ${session.save.player.x}, ${session.save.player.y} in ${getMap(session.save).name}.`}
                 />

@@ -21,7 +21,7 @@ Phaser3 is loaded inside `createMesomonView` after entry to the lazy Mesomon rou
 
 The renderer does not move the canonical player, resolve battles, change quests, determine rewards or write saves. Walking interpolation illustrates committed tile movement. Canvas is hidden from assistive technology because the shell supplies map/objective text and nearby interaction controls. All effects become static under reduced motion. The app’s accessible DOM seal ring owns both its phase and input accuracy; Seal Assist bypasses timing in the engine. An optional renderer ring is available to callers that use its matching `sealAccuracy()` method, and is disabled in the app to avoid competing clocks.
 
-A view queues updates during preload, reports asset failure through `onError`, and exposes a bounded boot timeout. Route cancellation can abort before import or during preload; `destroy()` removes the canvas and Phaser input/timer/texture lifecycle. No global keyboard or browser gesture handler is registered by the renderer.
+Before starting the scene, the browser decodes each of the four local PNG sheets. The renderer checks the source dimensions and registered frame counts before it marks the canvas ready. This lets the UI offer a retry when a browser cannot decode the art. The browser suite also samples the painted scene at native resolution. A view queues updates during preload, reports asset failure through `onError`, and exposes a bounded boot timeout. Route cancellation can abort before import or during preload; `destroy()` removes the canvas and Phaser input/timer/texture lifecycle. No global keyboard or browser gesture handler is registered by the renderer.
 
 ## Audio
 

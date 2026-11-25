@@ -20,10 +20,63 @@ const DIRECTION_FRAME: Record<Direction, number> = { down: 0, left: 3, right: 6,
 const CREATURE_DIRECTION: Record<Direction, number> = { down: 0, left: 2, right: 4, up: 6 };
 const TILE: Record<TileKind, string> = { water: 'water', stone: 'stone', wood: 'dock', wall: 'wall', roof: 'roof', reeds: 'reeds', sand: 'sand', floor: 'floor', 'dark-water': 'water2', stairs: 'stair', grass: 'grass' };
 
+const sheets = [
+  { key: 'ms:tiles', url: MESOMON_ASSETS.tiles, size: 16, columns: TILES.length, rows: 1 },
+  { key: 'ms:people', url: MESOMON_ASSETS.people, size: 16, columns: 15, rows: PEOPLE.length },
+  { key: 'ms:creatures', url: MESOMON_ASSETS.creatures, size: 16, columns: 8, rows: CREATURES.length },
+  { key: 'ms:battle', url: MESOMON_ASSETS.battle, size: 48, columns: CREATURES.length, rows: 1 },
+];
+const artError = 'The harbor artwork could not load. Retry when your connection returns.';
+const closed = () => new DOMException('Mesomon view was closed.', 'AbortError');
+
+async function loadArtwork(signal?: AbortSignal) {
+  if (signal?.aborted) throw closed();
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  const timeout = setTimeout(abort, 18000);
+  try {
+    return await Promise.all(sheets.map(sheet => new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      const cleanup = () => {
+        image.onload = null;
+        image.onerror = null;
+        controller.signal.removeEventListener('abort', cancel);
+      };
+      const cancel = () => {
+        cleanup();
+        image.removeAttribute('src');
+        reject(signal?.aborted ? closed() : new Error(artError));
+      };
+      controller.signal.addEventListener('abort', cancel, { once: true });
+      image.onerror = () => { cleanup(); reject(new Error(artError)); };
+      image.onload = async () => {
+        try {
+          await image.decode();
+          if (image.naturalWidth !== sheet.columns * sheet.size || image.naturalHeight !== sheet.rows * sheet.size) {
+            throw new Error(artError);
+          }
+          resolve(image);
+        } catch {
+          reject(new Error(artError));
+        } finally {
+          cleanup();
+        }
+      };
+      image.src = sheet.url;
+    })));
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
+    controller.abort();
+  }
+}
+
 /** Phaser is imported only after the lazy Mesomon route mounts. Rules stay in engine.ts. */
 export async function createMesomonView(parent: HTMLElement, options: MesomonViewOptions = {}): Promise<MesomonView> {
   const Phaser = (await import('phaser')).default;
-  if (options.signal?.aborted) throw new DOMException('Mesomon view was closed.', 'AbortError');
+  const images = await loadArtwork(options.signal);
+  if (options.signal?.aborted) throw closed();
   let latest: GameSession | null = null;
   let currentScene: PortMarcheScene | null = null;
   let disposed = false;
@@ -54,17 +107,18 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
     private companionFrom = { x: 0, y: 0 };
     private companionTarget = { x: 0, y: 0 };
     constructor() { super({ key: 'PortMarche' }); }
-    preload(): void {
-      this.load.spritesheet('ms:tiles', MESOMON_ASSETS.tiles, { frameWidth: 16, frameHeight: 16 });
-      this.load.spritesheet('ms:people', MESOMON_ASSETS.people, { frameWidth: 16, frameHeight: 16 });
-      this.load.spritesheet('ms:creatures', MESOMON_ASSETS.creatures, { frameWidth: 16, frameHeight: 16 });
-      this.load.spritesheet('ms:battle', MESOMON_ASSETS.battle, { frameWidth: 48, frameHeight: 48 });
-      this.load.on('loaderror', () => { if (!disposed) options.onError?.('The harbor artwork could not load. Retry when your connection returns.'); });
-    }
     create(): void {
       if (disposed) return;
+      if (bootTimer) clearTimeout(bootTimer);
+      bootTimer = null;
+      for (const [i, sheet] of sheets.entries()) {
+        const texture = this.textures.addSpriteSheet(sheet.key, images[i], { frameWidth: sheet.size, frameHeight: sheet.size });
+        if (!texture || texture.getFrameNames().length !== sheet.columns * sheet.rows) {
+          options.onError?.(artError);
+          return;
+        }
+      }
       this.ready = true; registerScene(this);
-      if (bootTimer) clearTimeout(bootTimer); bootTimer = null;
       this.cameras.main.setRoundPixels(true);
       this.decorations = this.add.graphics().setDepth(-20);
       this.effects = this.add.graphics().setDepth(10000);
