@@ -73,6 +73,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
     items: [
       { path: '/showdown', label: 'DH Showdown', shortLabel: 'Showdown', icon: Swords },
       { path: '/deep-claim', label: 'Deep Claim', shortLabel: 'Claim', icon: Gem },
+      { path: '/mesomon', label: 'Mesomon', icon: Compass },
       { path: '/drafts', label: 'Draft Arena', shortLabel: 'Drafts', icon: Bookmark },
       { path: '/rune-delve', label: 'Rune Delve', shortLabel: 'Delve', icon: Sparkles },
       { path: '/nexus', label: 'Nexus Defense', shortLabel: 'Nexus', icon: Shield },
@@ -130,6 +131,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/pickem/, 'NFL Game Center'],
   [/^\/showdown/, 'DH Showdown'],
   [/^\/deep-claim/, 'Deep Claim'],
+  [/^\/mesomon(?:\/|$)/, 'Mesomon'],
   [/^\/drafts/, 'Draft Arena'],
   [/^\/rune-delve/, 'Rune Delve'],
   [/^\/nexus/, 'Nexus Defense'],
@@ -188,6 +190,7 @@ export const GAME_SHELL_PREFIXES = [
   '/drafts',
   '/showdown',
   '/deep-claim',
+  '/mesomon',
   '/portfolio-wars',
   '/readshift',
   '/workouts',
@@ -195,7 +198,9 @@ export const GAME_SHELL_PREFIXES = [
 ] as const;
 
 export function isGameShellRoute(pathname: string): boolean {
-  return GAME_SHELL_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return GAME_SHELL_PREFIXES.some((prefix) => prefix === '/mesomon'
+    ? pathname === prefix || pathname.startsWith(`${prefix}/`)
+    : pathname.startsWith(prefix));
 }
 
 /** Every shared destination that can earn a slot in the mobile tab bar. */

@@ -107,6 +107,25 @@ const REGISTRY: Record<string, FeatureOnboarding> = {
     primaryCta: { label: 'Enter Deep Claim', route: '/deep-claim' },
   },
 
+  'mesomon': {
+    featureKey: 'mesomon',
+    displayName: 'Mesomon',
+    shortDescription: 'A harbor in two voices.',
+    featureType: 'game',
+    importance: 'important',
+    version: 1,
+    iconKey: 'Sparkles',
+    tags: ['Story', 'Exploration', 'Solo'],
+    onboardingTitle: 'Welcome to Port Marche',
+    onboardingSummary: 'Come home. Bring the core.',
+    onboardingSteps: [
+      { title: 'Walk the harbor', body: 'Move with the directional pad or arrow keys. Use A to speak, inspect and open doors.', iconKey: 'DoorOpen' },
+      { title: 'Earn a companion’s trust', body: 'Help the Mesomon you meet. A willing bond forms through Resonate; demons cannot be bonded.', iconKey: 'Sparkles' },
+      { title: 'Keep your place', body: 'Your chapter saves on this device. Cloud sync keeps your selected save slot available across devices when connected.', iconKey: 'BookOpen' },
+    ],
+    primaryCta: { label: 'Enter Port Marche', route: '/mesomon' },
+  },
+
   'rune-delve': {
     featureKey: 'rune-delve',
     displayName: 'Rune Delve',

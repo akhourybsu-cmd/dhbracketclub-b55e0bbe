@@ -1,0 +1,82 @@
+name: Mesomon — Port Marche
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mesomon.yml'
+      - 'src/lib/mesomon/**'
+      - 'src/components/mesomon/**'
+      - 'src/hooks/useMesomonSave.ts'
+      - 'src/pages/MesomonPage.tsx'
+      - 'src/test/mesomon*'
+      - 'src/App.tsx'
+      - 'src/lib/appNavigation.ts'
+      - 'src/types/assets.ts'
+      - 'src/pages/CompetePage.tsx'
+      - 'public/games/mesomon/**'
+      - 'supabase/migrations/*mesomon*'
+      - 'scripts/*mesomon*'
+      - 'scripts/fixtures/mesomon*'
+      - 'vite.config.ts'
+      - 'src/lib/onboarding/registry.ts'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    name: Chapter, saves and database
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run mesomon --maxWorkers=1
+      - run: node scripts/test-mesomon-db.mjs
+      - run: npm run build
+      - name: Verify the game remains outside the eager application graph
+        run: node scripts/check-mesomon.mjs --build-check
+
+  browser:
+    name: Chapter (${{ matrix.engine }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    env:
+      MESOMON_BROWSER: ${{ matrix.engine }}
+      MESOMON_OUTPUT: /tmp/mesomon-browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install browser and system dependencies
+        run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Check actual chapter and mobile controls
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p "$MESOMON_OUTPUT"
+          timeout --signal=TERM --kill-after=30s 900s node scripts/check-mesomon.mjs 2>&1 | tee "$MESOMON_OUTPUT/runner.log"
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mesomon-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/mesomon-browser/
+          if-no-files-found: warn
+          retention-days: 7

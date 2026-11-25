@@ -1,0 +1,153 @@
+import type { DialogueChoice, DialogueLine } from '../types';
+const say = (speaker: string, ...text: string[]): DialogueLine[] => text.map(value => ({ speaker, text: value }));
+
+export const DIALOGUES: Record<string, DialogueLine[]> = {
+  captain: [
+    ...say('Captain', 'Port Marche.'), ...say('Tavian', 'I can see that.'),
+    ...say('Captain', 'You can see roofs. The harbor’s underneath them.'),
+    ...say('Tavian', 'You say that to everyone coming ashore?'),
+    ...say('Captain', 'Only the ones staring like the city owes an apology.', 'Your letter’s getting wet.'),
+    ...say('Tavian', 'I’ve read it.'), ...say('Captain', 'You’ve been reading it for four days.'),
+    ...say('Edda’s letter', 'Come home. Bring the core.', 'The harbor is singing in two voices.'),
+    ...say('Captain', 'Gangplank’s aft. Mind the third board.'),
+  ],
+  nia: [
+    ...say('Nia', 'You took long enough.'), ...say('Tavian', 'Hello to you too.'),
+    ...say('Nia', 'No. Hello was three summers ago.', 'This is a formal complaint.'),
+    ...say('Tavian', 'You practiced that.'), ...say('Nia', 'The whole walk down.'),
+    ...say('Tavian', 'Where’s Edda?'), ...say('Nia', 'Supposed to meet you.'),
+    ...say('Tavian', 'She misses appointments.'), ...say('Nia', 'Not yours.'),
+    ...say('Nia', 'Her workshop lamp’s been on since yesterday.', 'I knocked twice. Nothing.'),
+    ...say('Tavian', 'Was the door locked?'), ...say('Nia', 'No. I was hoping you’d have a better question.'),
+    ...say('Nia', 'Workshop’s northwest, past the blue awnings.', 'Same crooked sign. Some things waited.'),
+  ],
+  workshop: [
+    ...say('Nia', 'Her cup’s still here.'), ...say('Tavian', 'That proves she owns a cup.'),
+    ...say('Nia', 'It proves you’re worried.'), ...say('Tavian', 'I was hoping for evidence with measurements.'),
+    ...say('Nia', 'You came home. That’s a measurement.'),
+    ...say('Tavian', 'The chair’s upright. No broken glass.', 'She left in a hurry, but not a fight.'),
+    ...say('Nia', 'Look at her workbench. I’ll check outside.'),
+  ],
+  chart: [
+    ...say('Tavian', 'Her old tide chart. That curve is the harbor.', 'Those evenly spaced cuts are new.'),
+    ...say('Nia', 'A second tide?'), ...say('Tavian', 'Too regular. Nothing living breathes that neatly.'),
+    ...say('Tavian', 'She measured it at low water. More than once.'),
+  ],
+  'field-map': [
+    ...say('Tavian', 'Still damp. She took this below the quay.'),
+    ...say('Nia', 'The old tide stairs are circled.'), ...say('Tavian', 'And the drainage passage beneath them.'),
+    ...say('Nia', 'Bram keeps the barrier. Ask him before climbing it.'),
+  ],
+  'satchel-hook': [
+    ...say('Tavian', 'Her travel satchel’s gone. The field case too.'),
+    ...say('Nia', 'Would she take those for a quick measurement?'),
+    ...say('Tavian', 'No. She expected to go farther.'),
+    ...say('Nia', 'So she left on her own feet.'), ...say('Tavian', 'That’s something.'),
+  ],
+  'clues-complete': [
+    ...say('Tavian', 'There’s a note under the chart.'),
+    ...say('Edda’s note', 'The second voice is not echo.', 'Echo follows. This one waits.'),
+    ...say('Nia', 'Bram sent a runner. An inlet’s emptying against the tide.'),
+    ...say('Tavian', 'Old stairs?'), ...say('Nia', 'Of course. Far eastern quay.', 'Try not to make that face at him.'),
+  ],
+  bram: [
+    ...say('Bram', 'Merrow. Four years, and you’re at my barrier again.'),
+    ...say('Tavian', 'You’ve moved it.'), ...say('Bram', 'Water moved it. I put it back.'),
+    ...say('Tavian', 'Edda’s been measuring below the tide stairs.'),
+    ...say('Bram', 'She was here yesterday. Carried her own lamp.'),
+    ...say('Tavian', 'Did she come back?'), ...say('Bram', 'I didn’t see. I won’t dress that up.'),
+    ...say('Bram', 'Something small’s caught behind the lower gate.', 'Every pulse pulls the water out from under it.'),
+    ...say('Nia', 'I can take the load if he frees the wheel.'),
+    ...say('Bram', 'Good. Two people. A sensible improvement.', 'Stairs are beside me. Bring yourselves back.'),
+  ],
+  'gate-blocked': [
+    ...say('Tavian', 'The wheel turns. The bracket doesn’t.'),
+    ...say('Nia', 'It’s taking the whole gate’s weight.'),
+    ...say('Tavian', 'We need a brace under it.', 'There’s loose timber farther down the stairs.'),
+  ],
+  'gate-opened': [
+    ...say('Nia', 'Brace is seated. On three.'), ...say('Tavian', 'One. Two—'),
+    ...say('Port Marche', 'The lattice lifts. A small blue shape slips into water.'),
+    ...say('Nia', 'You crossed half the coast to open a rusty door.'),
+    ...say('Tavian', 'It was a complicated door.'),
+    ...say('Port Marche', 'The water withdraws again. A board cracks.'),
+    ...say('Nia', 'Stay there. That walkway’s not taking both of us.'),
+  ],
+  'first-bond': [
+    ...say('Port Marche', 'A wet paw settles beside Tavian’s boot.', 'The Rillik has come back.'),
+    ...say('Tavian', 'I won’t close the gate.'),
+    ...say('Port Marche', 'It watches the cuff pulse. Tavian keeps his hand still.'),
+    ...say('Tavian', 'I don’t know what it wants either.'),
+    ...say('Port Marche', 'The Rillik touches the Edenite lattice.', 'A pale crystal grows against the brass.'),
+    ...say('Tavian', 'All right.', 'We can be frightened at the same thing.'),
+    ...say('Nia', 'Did it just choose you?'), ...say('Tavian', 'I think it chose not to leave.'),
+    ...say('Nia', 'That’s a start.'),
+    ...say('Field note', 'Each bond has its own resting crystal.', 'Release lets Rillik walk with you. Call brings it back.'),
+    ...say('Tavian', 'The wrong current goes under the wharf.', 'We’ll follow it together.'),
+  ],
+  'sense-eddy': [
+    ...say('Port Marche', 'Rillik tests a board with one paw.', 'A pale ripple slips toward the sluice.'),
+    ...say('Tavian', 'There’s a channel behind the wall.', 'The maintenance wheel should drain the crossing.'),
+  ],
+  sluice: [
+    ...say('Tavian', 'Counterweight first. Then the handle.'),
+    ...say('Port Marche', 'The trapped water falls away from the crossing.'),
+    ...say('Tavian', 'Someone opened this recently.', 'Edda never leaves a handle pointing down.'),
+  ],
+  tressel: [
+    ...say('Port Marche', 'A rope-tailed Mesomon guards a heap of dry splinters.'),
+    ...say('Tavian', 'We’re not after your nest.'),
+    ...say('Port Marche', 'Another pulse shudders through the timber.', 'The Tressel lunges before it can look back.'),
+    ...say('Field note', 'Moves and Guard each use a turn.', 'Resonant Cry lowers agitation. A calm Mesomon may bond.'),
+  ],
+  'sense-channel': [
+    ...say('Port Marche', 'Rillik’s tail ring catches the second rhythm.', 'This current goes uphill, against the harbor.'),
+    ...say('Tavian', 'That chamber. It’s coming from the other side.'),
+  ],
+  'boss-intro': [
+    ...say('Tavian', 'There. Above the black water.'),
+    ...say('Port Marche', 'A narrow cut hangs in the air.', 'Something unfinished drags itself through.'),
+    ...say('Tavian', 'That isn’t a Mesomon.'),
+    ...say('Field note', 'Demons have Stability, not agitation.', 'Push its hold to zero. A demon cannot form a bond.'),
+    ...say('Tavian', 'Stay close, Rillik. Watch the gaps.'),
+  ],
+  'boss-defeated': [
+    ...say('Port Marche', 'The Wretch folds into the tear. The water is still.'),
+    ...say('Tavian', 'It’s gone. The opening isn’t.'),
+    ...say('Port Marche', 'Rillik presses its paw against the cuff.'),
+    ...say('Tavian', 'Three pulses. Together.'),
+    ...say('Field note', 'Meet the moving ring with the Edenite ring.', 'Seal Assist removes the timing requirement.'),
+  ],
+  sealed: [
+    ...say('Port Marche', 'The two voices meet. One falls quiet.', 'For a moment, the harbor sounds like itself.'),
+    ...say('Tavian', 'There’s another pulse. Inland.', 'And north. Fainter.'),
+    ...say('Port Marche', 'Rillik noses a loose stone beside the chamber wall.'),
+  ],
+  page: [
+    ...say('Tavian', 'Paper. Dry paper, down here.'),
+    ...say('Edda’s page', 'Not all doors are opened from the other side.'),
+    ...say('Tavian', 'That’s her hand. She marked the inland road.'),
+    ...say('Port Marche', 'A pencilled date lies beneath the mark.', 'Edda left this after the first tremor.'),
+    ...say('Tavian', 'She was alive. She meant to keep going.', 'Nia needs to see this.'),
+  ],
+  closing: [
+    ...say('Nia', 'You look like the tide brought you in.'), ...say('Tavian', 'It tried.'),
+    ...say('Nia', 'Bram says the inlet’s holding.', 'You can stop checking your cuff for a minute.'),
+    ...say('Tavian', 'I found a page. Edda went inland on purpose.'),
+    ...say('Nia', 'Then we have somewhere to start.'),
+    ...say('Port Marche', 'Nia sets food beside the map. Two bowls.'),
+    ...say('Nia', 'Are you leaving in the morning?'),
+  ],
+  'closing-after': [
+    ...say('Nia', 'Good. One of those was almost an answer.'),
+    ...say('Port Marche', 'Tavian puts the new crystal beside Edda’s map.', 'Rillik emerges, circles the rope twice, and sleeps.'),
+    ...say('Tavian', 'We’ll find her.'),
+    ...say('Port Marche', 'A point on the inland road pulses once.'),
+  ],
+};
+
+export const CLOSING_CHOICES: DialogueChoice[] = [
+  { id: 'warm', label: 'Warm', text: 'Not before we find her.' },
+  { id: 'wry', label: 'Wry', text: 'I’ve just unpacked one sock.' },
+  { id: 'direct', label: 'Direct', text: 'No. The next pulse is inland.' },
+];

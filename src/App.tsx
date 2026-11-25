@@ -63,6 +63,7 @@ const EventsPage = lazyWithRetry(() => import("./pages/EventsPage"));
 const EventDetailPage = lazyWithRetry(() => import("./pages/EventDetailPage"));
 const CompetePage = lazyWithRetry(() => import("./pages/CompetePage"));
 const DeepClaimPage = lazyWithRetry(() => import("./pages/DeepClaimPage"));
+const MesomonPage = lazyWithRetry(() => import("./pages/MesomonPage"));
 const ShowdownPage = lazyWithRetry(() => import("./pages/ShowdownPage"));
 const ShowdownMatchPage = lazyWithRetry(() => import("./pages/ShowdownMatchPage"));
 const CipherCreatePage = lazyWithRetry(() => import("./pages/CipherCreatePage"));
@@ -225,6 +226,7 @@ function AnimatedRoutes() {
         {/* Compete hub */}
         <Route path="/compete" element={<ProtectedPage><CompetePage /></ProtectedPage>} />
         <Route path="/deep-claim" element={<ProtectedPage assetSlug="deep-claim"><DeepClaimPage /></ProtectedPage>} />
+        <Route path="/mesomon" element={<ProtectedPage assetSlug="mesomon"><MesomonPage /></ProtectedPage>} />
 
         {/* Portfolio Wars — live trading league */}
         <Route path="/portfolio-wars" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PortfolioWarsPage /></PwLayout></ProtectedPage>} />
