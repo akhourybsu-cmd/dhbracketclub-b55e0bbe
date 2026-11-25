@@ -226,7 +226,17 @@ async function smoke(width, height, theme) {
       return {blocked:ancestors.includes('none'),height:node.clientHeight,scrollHeight:node.scrollHeight};
     });
     assert.equal(pan.blocked,false,'No ancestor prevents the fieldcase from touch scrolling');
-    if(pan.scrollHeight>pan.height+1){await settings.hover();await p.mouse.wheel(0,350);await expect.poll(()=>settings.evaluate(node=>node.scrollTop)).toBeGreaterThan(0);}
+    if (pan.scrollHeight > pan.height + 1) {
+      if (engine === 'webkit' && width < 1024) {
+        // Mobile WebKit has no mouse-wheel input. Reach an actual control
+        // below the fold and check that the settings panel scrolled to it.
+        await settings.getByRole('slider', { name: 'Harbor ambience' }).scrollIntoViewIfNeeded();
+      } else {
+        await settings.hover();
+        await p.mouse.wheel(0, 350);
+      }
+      await expect.poll(() => settings.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+    }
     check(label+'-settings-retains-scroll-gesture',{pan});
     await audit(p,label+'-settings-fit');await p.screenshot({path:join(output,label+'-settings.png')});
     await p.keyboard.press('Escape'); await expect(p.getByRole('dialog')).toHaveCount(0); check(label + '-keyboard-cancel-closes-menu');
@@ -247,7 +257,12 @@ async function smoke(width, height, theme) {
     await context.setOffline(false);
     await p.evaluate(() => window.mmQa.navigate('/compete'));
     await expect(p.getByRole('heading', { name: 'DH Club destination' })).toBeVisible(); await expect(p.locator('canvas')).toHaveCount(0);
-    await p.mouse.wheel(0,500); await expect.poll(() => p.evaluate(() => Math.max(scrollY,document.scrollingElement?.scrollTop||0,document.body.scrollTop))).toBeGreaterThan(0);
+    if (engine === 'webkit' && width < 1024) {
+      await p.getByRole('button', { name: 'Outside lower control' }).tap();
+    } else {
+      await p.mouse.wheel(0, 500);
+    }
+    await expect.poll(() => p.evaluate(() => Math.max(scrollY,document.scrollingElement?.scrollTop||0,document.body.scrollTop))).toBeGreaterThan(0);
     check(label + '-exit-cleans-canvas-and-restores-page-scroll');
     await p.getByRole('link', { name: 'Enter Mesomon' }).click();
     await expect(p.locator('.mesomon')).toBeVisible(); check(label + '-route-remount');
