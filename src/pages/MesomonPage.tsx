@@ -2,35 +2,26 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
-  LogOut,
-  Maximize,
-  Minimize,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   Compass,
-  Map as MapIcon,
   BookOpen,
   Feather,
-  Menu,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useClubAssets } from "@/hooks/useClubAssets";
 import { useMesomonSave } from "@/hooks/useMesomonSave";
-import { LocationChart } from "@/components/mesomon/LocationChart";
+import { MesomonStartMenu, type MenuTab } from "@/components/mesomon/MesomonStartMenu";
 import {
   CHAPTER_TITLE,
   createNewSave,
   createSession,
-  getHarborNotes,
   getMap,
   getObjective,
   getPhase,
-  getQuestSteps,
   interactionLabel,
   nearbyInteractions,
   reduceGame,
@@ -55,6 +46,7 @@ import type {
 import "@/components/mesomon/mesomon.css";
 
 const DIRECTIONS: Direction[] = ["up", "right", "down", "left"];
+const SEAL_PERIOD_MS = 1800;
 const SAVE_LABELS = {
   saving: "Saving",
   saved: "Saved",
@@ -62,7 +54,6 @@ const SAVE_LABELS = {
   attention: "Sync needs attention",
   local: "On this device",
 };
-type MenuTab = "party" | "journal" | "settings" | "save" | "chart";
 type MesomonView = Awaited<
   ReturnType<
     typeof import("@/lib/mesomon/renderer/createGame").createMesomonView
@@ -152,19 +143,7 @@ function Chapter({
   }, []);
   const closeRestart = useCallback(() => setRestart(false), []);
   const menuTrigger = useRef<HTMLButtonElement>(null);
-  const chartTrigger = useRef<HTMLButtonElement>(null);
-  const openedFromChart = useRef(false);
-  const wasFullscreen = useRef(fullscreen.active);
   const restoreMenuFocus = useRef(false);
-  useEffect(() => {
-    // The browser can consume Escape while leaving native fullscreen.
-    if (wasFullscreen.current && !fullscreen.active && (menu || restart)) {
-      restoreMenuFocus.current = true;
-      setRestart(false);
-      setMenu(null);
-    }
-    wasFullscreen.current = fullscreen.active;
-  }, [fullscreen.active, menu, restart]);
   const [viewError, setViewError] = useState<string | null>(null);
   const [artReady, setArtReady] = useState(false);
   const [viewRetry, setViewRetry] = useState(0);
@@ -185,7 +164,8 @@ function Chapter({
   const flush = useRef(sync.flush);
   const playingRef = useRef(playing);
   const menuRef = useRef(menu);
-  const sealOrigin = useRef(performance.now());
+  const sealOrigin = useRef(0);
+  const pausedSealTime = useRef(0);
   const lastSave = useRef<GameSession["save"] | null>(null);
   current.current = session;
   saveLocal.current = sync.saveLocal;
@@ -403,11 +383,7 @@ function Chapter({
       });
     if (!menu && restoreMenuFocus.current) {
       restoreMenuFocus.current = false;
-      const trigger = openedFromChart.current
-        ? chartTrigger.current
-        : menuTrigger.current;
-      trigger?.focus({ preventScroll: true });
-      openedFromChart.current = false;
+      menuTrigger.current?.focus({ preventScroll: true });
     }
   }, [menu, playing]);
   const line = session?.dialogue?.lines[session.dialogue.index];
@@ -419,13 +395,13 @@ function Chapter({
     setTextCount(0);
   }, [lineKey]);
   useEffect(() => {
-    if (!line || revealed || textSpeed === "fast") return;
+    if (!line || revealed || textSpeed === "fast" || menu || hidden) return;
     const timer = window.setInterval(
       () => setTextCount((value) => Math.min(line.text.length, value + 2)),
       textSpeed === "slow" ? 45 : 24,
     );
     return () => clearInterval(timer);
-  }, [line, revealed, textSpeed]);
+  }, [line, revealed, textSpeed, menu, hidden]);
   const textComplete =
     !line || revealed || textSpeed === "fast" || textCount >= line.text.length;
   const readyText = textComplete ? line?.text : line?.text.slice(0, textCount);
@@ -449,7 +425,7 @@ function Chapter({
   const hitSeal = useCallback(() => {
     const save = current.current?.save;
     if (!save) return;
-    const progress = ((performance.now() - sealOrigin.current) % 1800) / 1800;
+    const progress = ((performance.now() - sealOrigin.current) % SEAL_PERIOD_MS) / SEAL_PERIOD_MS;
     const accuracy =
       save.settings.sealAssist || save.settings.reducedMotion
         ? 1
@@ -473,13 +449,14 @@ function Chapter({
       cancelWalk();
       if (action === "menu") {
         setHeld(null);
-        openedFromChart.current = false;
-        setMenu((value) => (value ? null : "party"));
+        if (!current.current) return;
+        if (menuRef.current) closeMenu();
+        else setMenu("start");
         audio.current?.cue("menu");
         return;
       }
       if (menuRef.current) {
-        if (action === "cancel") setMenu(null);
+        if (action === "cancel") closeMenu();
         return;
       }
       if (!playingRef.current) return;
@@ -500,6 +477,7 @@ function Chapter({
     },
     [
       sync.blocked,
+      closeMenu,
       cancelWalk,
       awakenAudio,
       dispatch,
@@ -526,11 +504,13 @@ function Chapter({
         return;
       if (menuRef.current) return;
       const action = keyboardAction(event.key);
-      if (!action || !playingRef.current) return;
-      if (target?.closest("button,a") && action === "confirm") {
-        if (event.key.toLowerCase() === "z" && target.closest("button")) {
+      if (!action || (!playingRef.current && action !== "menu")) return;
+      const control = target?.closest<HTMLElement>("button,a");
+      const gameConfirm = playingRef.current && event.key.toLowerCase() === "z" && control?.dataset.mmAction === "menu";
+      if (control && action === "confirm" && !gameConfirm) {
+        if (event.key.toLowerCase() === "z" && control instanceof HTMLButtonElement) {
           event.preventDefault();
-          (target.closest("button") as HTMLButtonElement).click();
+          if (!event.repeat) control.click();
         }
         return;
       }
@@ -566,25 +546,22 @@ function Chapter({
   const reducedMotion = session?.save.settings.reducedMotion ?? false;
   const sealAssist = session?.save.settings.sealAssist ?? false;
   useEffect(() => {
-    if (
-      !sealActive ||
-      dialogueActive ||
-      hidden ||
-      menu ||
-      reducedMotion ||
-      sealAssist
-    )
+    if (!sealActive) {
+      pausedSealTime.current = 0;
       return;
-    sealOrigin.current = performance.now();
-    const timer = window.setInterval(
-      () =>
-        setSealProgress(
-          ((performance.now() - sealOrigin.current) % 1800) / 1800,
-        ),
-      40,
-    );
-    return () => clearInterval(timer);
-  }, [sealActive, dialogueActive, hidden, menu, reducedMotion, sealAssist]);
+    }
+    if (!playing || dialogueActive || hidden || menu || reducedMotion || sealAssist) return;
+    const now = performance.now();
+    sealOrigin.current = now - pausedSealTime.current;
+    setSealProgress(pausedSealTime.current / SEAL_PERIOD_MS);
+    const timer = window.setInterval(() => {
+      setSealProgress(((performance.now() - sealOrigin.current) % SEAL_PERIOD_MS) / SEAL_PERIOD_MS);
+    }, 40);
+    return () => {
+      clearInterval(timer);
+      pausedSealTime.current = (performance.now() - sealOrigin.current) % SEAL_PERIOD_MS;
+    };
+  }, [sealActive, dialogueActive, hidden, menu, reducedMotion, sealAssist, playing]);
 
   const begin = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (sync.blocked || sync.loading) return;
@@ -653,6 +630,22 @@ function Chapter({
     dispatch({ type: "battle", action });
   };
 
+  const startKey = (
+    <button
+      type="button"
+      className="mm-start-key"
+      ref={menuTrigger}
+      data-mm-action="menu"
+      aria-label="Start"
+      aria-haspopup="dialog"
+      aria-keyshortcuts="M"
+      disabled={!session || sync.blocked}
+      onClick={() => press("menu")}
+    >
+      Start
+    </button>
+  );
+
   return (
     <div
       className={`mesomon mm-phase-${phase}`}
@@ -662,95 +655,7 @@ function Chapter({
       data-player-y={session?.save.player.y}
       data-reduced-motion={session?.save.settings.reducedMotion || undefined}
     >
-      <header
-        className="mm-header"
-        data-mm-layer
-        aria-hidden={menu ? true : undefined}
-      >
-        {!playing && session && (
-          <Link
-            to="/compete"
-            onClick={leave}
-            aria-label="Exit game"
-            title="Exit game"
-            className="mm-icon"
-          >
-            <LogOut size={18} aria-hidden="true" />
-          </Link>
-        )}
-        <div className="mm-wordmark">
-          <img src={portraitUrl("rillik")} width="32" height="32" alt="" />
-          <h1>MESOMON</h1>
-        </div>
-        {playing && phase === "explore" && (
-          <button
-            type="button"
-            className="mm-chart-trigger"
-            aria-label="Open location chart"
-            aria-haspopup="dialog"
-            ref={chartTrigger}
-            onClick={() => {
-              openedFromChart.current = true;
-              cancelWalk();
-              setHeld(null);
-              setMenu("chart");
-              audio.current?.cue("menu");
-            }}
-          >
-            <MapIcon size={16} aria-hidden="true" /> Map
-          </button>
-        )}
-        {fullscreen.available && (
-          <button
-            type="button"
-            className="mm-icon"
-            aria-label={
-              fullscreen.active ? "Leave full screen" : "Enter full screen"
-            }
-            title={
-              fullscreen.active ? "Leave full screen" : "Enter full screen"
-            }
-            onClick={fullscreen.toggle}
-          >
-            {fullscreen.active ? (
-              <Minimize size={17} />
-            ) : (
-              <Maximize size={17} />
-            )}
-          </button>
-        )}
-        <button
-          className="mm-icon"
-          aria-label={
-            session?.save.settings.mute ? "Unmute audio" : "Mute audio"
-          }
-          onClick={() => {
-            awakenAudio();
-            updateSettings({ mute: !session?.save.settings.mute });
-          }}
-        >
-          {session?.save.settings.mute ? (
-            <VolumeX size={17} />
-          ) : (
-            <Volume2 size={17} />
-          )}
-        </button>
-        <button
-          className="mm-icon"
-          ref={menuTrigger}
-          data-mm-action="menu"
-          aria-label="Menu"
-          disabled={!session || sync.blocked}
-          onClick={() => press("menu")}
-        >
-          <Menu size={19} />
-        </button>
-      </header>
-      {fullscreen.error && (
-        <div className="mm-display-notice" role="status">
-          {fullscreen.error}
-        </div>
-      )}
+      <h1 className="mm-sr-only">Mesomon</h1>
       {!session ? (
         <div className="mm-loading">
           <img src={MESOMON_ASSETS.cover} alt="Port Marche harbor" />
@@ -770,20 +675,6 @@ function Chapter({
             data-mm-layer
             aria-hidden={menu ? true : undefined}
           >
-            <div className="mm-location">
-              <span>
-                <Compass size={12} />
-                {getMap(session.save).name}
-              </span>
-              <span
-                className={`mm-save-status mm-save-${sync.status}`}
-                role="status"
-              >
-                {sync.save || sync.status === "attention"
-                  ? SAVE_LABELS[sync.status]
-                  : "New file"}
-              </span>
-            </div>
             <div className="mm-display-slot">
               <div className="mm-screen" data-art-ready={artReady}>
                 <div
@@ -832,14 +723,17 @@ function Chapter({
                           </button>
                         ))}
                       </div>
-                      <button
-                        className="mm-primary"
-                        disabled={sync.blocked || sync.loading}
-                        onClick={begin}
-                      >
-                        {sync.save ? "Continue journey" : "Begin journey"}
-                        <ChevronRight size={18} />
-                      </button>
+                      <div className="mm-title-actions">
+                        <button
+                          className="mm-primary"
+                          disabled={sync.blocked || sync.loading}
+                          onClick={begin}
+                        >
+                          {sync.save ? "Continue journey" : "Begin journey"}
+                          <ChevronRight size={18} />
+                        </button>
+                        {startKey}
+                      </div>
                       <span className="mm-title-note">
                         {sync.save
                           ? `${Math.floor(sync.save.playtimeSeconds / 60)} min · ${getMap(sync.save).name}`
@@ -1094,6 +988,7 @@ function Chapter({
                 </span>
               </div>
               <div className="mm-quick-actions">
+                {startKey}
                 <button
                   aria-label="Current Sense"
                   disabled={
@@ -1134,13 +1029,24 @@ function Chapter({
               </div>
             </div>
           )}
-          <footer className="mm-footnote">
+          {playing && (phase === "battle" || phase === "ending") && (
+            <div className="mm-system-deck" data-mm-layer aria-hidden={menu ? true : undefined}>
+              {startKey}
+            </div>
+          )}
+          <footer className="mm-footnote" data-mm-layer aria-hidden={menu ? true : undefined}>
             {playing
-              ? "Arrows / WASD · Z / Enter · X / Esc · M"
+              ? "Arrows / WASD · Z / Enter · X / Esc · M for Start"
               : "An independent, non-canon story in Mesoplasia."}
           </footer>
           {!sync.blocked && menu && !restart && (
-            <GameMenu
+            <MesomonStartMenu
+              playing={playing}
+              saveStatus={sync.status}
+              saveLabel={!playing && !sync.save && (sync.status === "local" || sync.status === "saved")
+                ? "New file"
+                : SAVE_LABELS[sync.status]}
+              fullscreen={fullscreen}
               tab={menu}
               onTab={setMenu}
               session={session}
@@ -1153,7 +1059,7 @@ function Chapter({
               }}
               onTitle={() => {
                 leave();
-                setMenu(null);
+                closeMenu();
                 setPlaying(false);
               }}
               onRestart={() => setRestart(true)}
@@ -1176,7 +1082,7 @@ function Chapter({
                 setSession(createSession(next));
                 saveLocal.current(next);
                 setRestart(false);
-                setMenu(null);
+                closeMenu();
                 setPlaying(true);
               }}
             />
@@ -1188,6 +1094,7 @@ function Chapter({
                   "This file changed in another window. Reload it before continuing."}
               </span>
               <button onClick={() => void reloadFile()}>Reload file</button>
+              <Link to="/compete" onClick={leave}>Exit game</Link>
             </div>
           )}
           {!sync.blocked &&
@@ -1499,353 +1406,5 @@ function RestartConfirmation({
         </button>
       </section>
     </div>
-  );
-}
-
-function GameMenu({
-  tab,
-  onTab,
-  session,
-  onClose,
-  onSettings,
-  onSave,
-  onExit,
-  onTitle,
-  onRestart,
-  onCompanion,
-}: {
-  tab: MenuTab;
-  onTab: (tab: MenuTab) => void;
-  session: GameSession;
-  onClose: () => void;
-  onSettings: (value: Partial<MesomonSettings>) => void;
-  onSave: () => void;
-  onExit: () => void;
-  onTitle: () => void;
-  onRestart: () => void;
-  onCompanion: () => void;
-}) {
-  const dialog = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    dialog.current
-      ?.querySelector<HTMLButtonElement>("button")
-      ?.focus({ preventScroll: true });
-    const keyboard = (event: KeyboardEvent) => {
-      if (event.key === "Escape" || event.key.toLowerCase() === "x") {
-        event.preventDefault();
-        onClose();
-      }
-      if (event.key !== "Tab" || !dialog.current) return;
-      const nodes = [
-        ...dialog.current.querySelectorAll<HTMLElement>(
-          "button:not(:disabled),a,input",
-        ),
-      ];
-      const first = nodes[0],
-        last = nodes.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    };
-    window.addEventListener("keydown", keyboard);
-    return () => {
-      window.removeEventListener("keydown", keyboard);
-      previous?.focus({ preventScroll: true });
-    };
-  }, [onClose]);
-  const s = session.save.settings;
-  const harborNotes = tab === "journal" ? getHarborNotes(session.save) : [];
-  return (
-    <div className="mm-modal-backdrop">
-      <section
-        ref={dialog}
-        className="mm-menu"
-        role="dialog"
-        aria-modal="true"
-        aria-label={tab === "chart" ? "Location chart" : "Game menu"}
-      >
-        <header>
-          <div>
-            <small>TAVIAN’S</small>
-            <h2>{tab === "chart" ? "Harbor chart" : "Fieldcase"}</h2>
-          </div>
-          <button
-            className="mm-icon"
-            aria-label={tab === "chart" ? "Close chart" : "Close menu"}
-            data-mm-action="cancel"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </header>
-        {tab !== "chart" && (
-          <nav aria-label="Fieldcase sections">
-            {(["party", "journal", "settings", "save"] as const).map(
-              (value) => (
-                <button
-                  key={value}
-                  aria-pressed={value === tab}
-                  onClick={() => onTab(value)}
-                >
-                  {value === "party"
-                    ? "Companions"
-                    : value === "save"
-                      ? "Save & exit"
-                      : value === "journal"
-                        ? "Journal"
-                        : "Settings"}
-                </button>
-              ),
-            )}
-          </nav>
-        )}
-        <div className="mm-menu-body" data-section={tab} key={tab}>
-          {tab === "chart" && <LocationChart save={session.save} />}
-          {tab === "party" && (
-            <>
-              {session.save.party.length > 0 ? (
-                session.save.party.map((member) => (
-                  <article className="mm-party-member" key={member.id}>
-                    <img
-                      src={portraitUrl(member.speciesId)}
-                      alt={SPECIES[member.speciesId].name}
-                    />
-                    <div>
-                      <h3>
-                        {SPECIES[member.speciesId].name}
-                        <small>
-                          Lv. {member.level} ·{" "}
-                          {SPECIES[member.speciesId].affinities.join(" / ")}
-                        </small>
-                      </h3>
-                      <meter
-                        min={0}
-                        max={member.maxVitality}
-                        value={member.vitality}
-                        aria-label={`${SPECIES[member.speciesId].name} vitality`}
-                      />
-                      <p>
-                        {member.vitality}/{member.maxVitality} Vitality
-                      </p>
-                      <p>{SPECIES[member.speciesId].description}</p>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <figure className="mm-cuff-study">
-                  <img
-                    src={MESOMON_ASSETS.fieldcase}
-                    alt="A brass cuff and a folded letter tucked into Tavian’s fieldcase"
-                  />
-                  <figcaption>
-                    <strong>Edenite cuff</strong>
-                    <span>No bonds yet</span>
-                  </figcaption>
-                </figure>
-              )}
-              {!!session.save.party.length && (
-                <button onClick={onCompanion}>
-                  {session.save.questFlags.companion_released
-                    ? "Call Rillik to the crystal"
-                    : "Release Rillik beside you"}
-                </button>
-              )}
-            </>
-          )}
-          {tab === "journal" && (
-            <>
-              <h3>{CHAPTER_TITLE}</h3>
-              <p className="mm-journal-objective">
-                {getObjective(session.save)}
-              </p>
-              <ol className="mm-quest-steps">
-                {getQuestSteps(session.save)
-                  .filter((step) => step.complete)
-                  .map((step) => (
-                    <li key={step.id}>
-                      <span aria-hidden="true">◆</span>
-                      {step.label}
-                    </li>
-                  ))}
-              </ol>
-              {harborNotes.length > 0 && (
-                <>
-                  <h3>On the quay</h3>
-                  <ul className="mm-quest-steps">
-                    {harborNotes.map((note) => <li key={note}>{note}</li>)}
-                  </ul>
-                </>
-              )}
-              <h3>Recent notes</h3>
-              <div className="mm-conversation-log">
-                {session.save.dialogueHistory.length ? (
-                  session.save.dialogueHistory
-                    .slice(-32)
-                    .map((entry, index) => (
-                      <p key={index}>
-                        <strong>{readingVoice(entry.speaker).credit}</strong>
-                        {entry.text}
-                      </p>
-                    ))
-                ) : (
-                  <p>No entries yet.</p>
-                )}
-              </div>
-            </>
-          )}
-          {tab === "settings" && (
-            <>
-              <Setting
-                label="Text"
-                values={["slow", "normal", "fast"]}
-                value={s.textSpeed}
-                onChange={(value) =>
-                  onSettings({
-                    textSpeed: value as MesomonSettings["textSpeed"],
-                  })
-                }
-                labels={["Slow", "Normal", "Instant"]}
-              />
-              <Setting
-                label="Battles"
-                values={["normal", "fast"]}
-                value={s.battleSpeed}
-                onChange={(value) =>
-                  onSettings({
-                    battleSpeed: value as MesomonSettings["battleSpeed"],
-                  })
-                }
-              />
-              <Toggle
-                label="Reduced motion"
-                checked={s.reducedMotion}
-                onChange={(reducedMotion) => onSettings({ reducedMotion })}
-              />
-              <Toggle
-                label="Seal Assist · no timed input"
-                checked={s.sealAssist}
-                onChange={(sealAssist) => onSettings({ sealAssist })}
-              />
-              <Toggle
-                label="Haptics"
-                checked={s.haptics}
-                onChange={(haptics) => onSettings({ haptics })}
-              />
-              <Toggle
-                label="Mute"
-                checked={s.mute}
-                onChange={(mute) => onSettings({ mute })}
-              />
-              <label className="mm-range">
-                Music{" "}
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={s.musicVolume}
-                  onChange={(event) =>
-                    onSettings({ musicVolume: Number(event.target.value) })
-                  }
-                />
-              </label>
-              <label className="mm-range">
-                Harbor ambience{" "}
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={s.ambientVolume}
-                  onChange={(event) =>
-                    onSettings({ ambientVolume: Number(event.target.value) })
-                  }
-                />
-              </label>
-            </>
-          )}
-          {tab === "save" && (
-            <>
-              <div className="mm-save-file">
-                <small>FIELD NOTES · FILE {session.save.slot}</small>
-                <h3>{getMap(session.save).name}</h3>
-                <p>
-                  {Math.floor(session.save.playtimeSeconds / 60)} minutes ·{" "}
-                  {session.save.party.length} companions
-                </p>
-              </div>
-              <button className="mm-primary" onClick={onSave}>
-                Save now
-              </button>
-              <button onClick={onTitle}>Title screen</button>
-              <button className="mm-danger" onClick={onRestart}>
-                Begin this file again
-              </button>
-            </>
-          )}
-        </div>
-        <footer>
-          <Link to="/compete" onClick={onExit}>
-            <LogOut size={16} aria-hidden="true" /> Exit game
-          </Link>
-        </footer>
-      </section>
-    </div>
-  );
-}
-function Setting({
-  label,
-  values,
-  value,
-  onChange,
-  labels,
-}: {
-  label: string;
-  values: string[];
-  value: string;
-  onChange: (value: string) => void;
-  labels?: string[];
-}) {
-  return (
-    <fieldset className="mm-setting">
-      <legend>{label}</legend>
-      <div>
-        {values.map((item, index) => (
-          <button
-            key={item}
-            aria-pressed={value === item}
-            onClick={() => onChange(item)}
-          >
-            {labels?.[index] ?? item}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-function Toggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <button
-      className="mm-toggle"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-    >
-      <span>{label}</span>
-      <b>{checked ? "On" : "Off"}</b>
-    </button>
   );
 }

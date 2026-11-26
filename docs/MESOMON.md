@@ -12,7 +12,9 @@ Combat uses a seeded resolver with priority/agility, four moves per companion, d
 
 The first-play duration of 15–25 minutes is a design target. Automated walkthroughs and headless simulations establish functional completion, not measured human reading/exploration time or physical-phone frame rates.
 
-Tap a clear patch of ground to walk there. Tapping a distant person or landmark walks Tavian up to it. Tap again or press A to interact. The small gold pointer marks what A will select. The first step from rest responds immediately. Tap paths, the D-pad and the keyboard share a 200 ms stride, including when the player switches controls mid-walk. Open **Map** to see the route to the next known stop and read its walking directions. Each leg respects people, solid terrain and the current state of the tideworks. Closing or reopening the game keeps Tavian on the last tile he reached.
+Tap a clear patch of ground to walk there. Tapping a distant person or landmark walks Tavian up to it. Tap again or press A to interact. The small gold pointer marks what A will select. The first step from rest responds immediately. Tap paths, the D-pad and the keyboard share a 200 ms stride, including when the player switches controls mid-walk. Open **Start → Map** to see the route to the next known stop and read its walking directions. Each leg respects people, solid terrain and the current state of the tideworks. Closing or reopening the game keeps Tavian on the last tile he reached.
+
+Press **Start** on the console or **M** on a keyboard to pause. The menu holds Companions, Journal, Map, Settings, Save file and Exit game. Settings includes sound and full screen on supported devices. **Back** returns to the menu. **Resume** continues the current scene, and **Exit game** saves locally and returns to Compete.
 
 ## Writing and staging a scene
 

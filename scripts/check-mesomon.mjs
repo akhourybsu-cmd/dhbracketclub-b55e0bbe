@@ -112,6 +112,35 @@ async function auditBuild() {
   check('production-main-static-graph-keeps-Mesomon-lazy',{modules:visited.size,route:routes[0],engine:engines[0]});
 }
 async function press(p, name) { await expect(controls(p, name)).toBeVisible(); await controls(p, name).click(); }
+const startMenu = p => p.getByRole('dialog', { name: 'Start menu', exact: true });
+async function openStart(p) {
+  const key = controls(p, 'menu');
+  await expect(key).toHaveAccessibleName('Start');
+  await key.click();
+  const menu = startMenu(p);
+  await expect(menu).toHaveAttribute('data-section', 'start');
+  return menu;
+}
+async function closeStart(p, key = 'Escape') {
+  await p.keyboard.press(key);
+  await expect(startMenu(p)).toHaveCount(0);
+  await expect(controls(p, 'menu')).toBeFocused();
+}
+async function startSection(menu, name) {
+  await menu.getByRole('button', { name, exact: true }).click();
+  await expect(menu.getByRole('heading', { name, exact: true })).toBeVisible();
+}
+async function startHome(menu) {
+  await menu.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(menu).toHaveAttribute('data-section', 'start');
+}
+async function noShellCommands(p) {
+  await expect(p.locator('.mm-header, .mm-wordmark, .mm-location')).toHaveCount(0);
+  await expect(p.getByRole('link', { name: 'Exit game', exact: true })).toHaveCount(0);
+  await expect(p.getByRole('button', { name: /^(Open location chart|Settings|Journal|Companions|Map|Save file|Enter full screen|Leave full screen)$/i })).toHaveCount(0);
+  await expect(p.getByRole('switch', { name: /^Mute\b/ })).toHaveCount(0);
+  await expect(p.locator('.mm-save-status')).toHaveCount(0);
+}
 async function start(p) {
   const newJourney = p.getByRole('button', { name: /^(New journey|Begin journey|Begin|Start journey|New game)$/i });
   const continueJourney = p.getByRole('button', { name: /^(Continue|Continue journey)$/i });
@@ -378,9 +407,16 @@ async function audit(p, label) {
     if (menu) {
       const backdrop = getComputedStyle(menu.closest('.mm-modal-backdrop'));
       const safe = [backdrop.paddingLeft, backdrop.paddingTop, backdrop.paddingRight, backdrop.paddingBottom].map(parseFloat);
-      if (gapsToViewport(menu).some((gap, i) => Math.abs(gap - safe[i]) > 1)) issues.push('The pause menu does not fill its safe area');
+      const menuGaps = gapsToViewport(menu);
+      if (menuGaps.some((gap, i) => gap < safe[i] - 1)) issues.push('The Start menu is clipped outside the safe area');
+      if (viewport >= 320 && height >= 300 && menuGaps.every(gap => gap < 3)) issues.push('The Start menu covers the entire console');
     }
     if (label.endsWith('-game-fit')) {
+      const game = root.querySelector('.mm-game');
+      const slot = game?.querySelector('.mm-display-slot');
+      if (!slot || game.firstElementChild !== slot) issues.push('A shell layer precedes the playable screen');
+      else if (Math.abs(slot.getBoundingClientRect().top - game.getBoundingClientRect().top - game.clientTop) > 1)
+        issues.push('The display still reserves space for a top bar');
       const deck = root.querySelector('.mm-control-deck');
       if (deck) {
         const [left, , right, bottom] = gapsToViewport(deck);
@@ -511,8 +547,12 @@ async function smoke(width, height, theme) {
   const { p, context } = await setup(width, height, theme);
   try {
     await expect(p.getByRole('button', { name: /^Begin journey$/i })).toBeVisible();
-    await expect(p.getByRole('link', { name: 'Exit game', exact: true })).toHaveAttribute('href', '/compete');
+    await noShellCommands(p);
     await audit(p, label + '-title-fit'); await p.screenshot({ path: join(output, label + '-title.png') });
+    const menu = await openStart(p);
+    await expect(menu.getByRole('link', { name: 'Exit game', exact: true })).toHaveAttribute('href', '/compete');
+    await menu.getByRole('button', { name: 'Back to title', exact: true }).click();
+    await expect(menu).toHaveCount(0);
     await start(p); await drain(p); await audit(p, label + '-game-fit');
     await auditFrame(p, label + '-ship-art', 'ship');
     const direction = await p.evaluate(async () => {
@@ -524,16 +564,24 @@ async function smoke(width, height, theme) {
     check(label + '-touch-moves-real-player');
     await step(p, direction, true);
     check(label + '-keyboard-uses-same-actions');
-    await press(p, 'menu'); await expect(p.getByRole('dialog')).toBeVisible(); await audit(p, label + '-menu-fit');
+    await noShellCommands(p);
+    await openStart(p);
+    for (const name of ['Resume', 'Companions', 'Journal', 'Map', 'Settings', 'Save file']) {
+      await expect(menu.getByRole('button', { name, exact: true })).toBeVisible();
+    }
+    await expect(menu.locator('.mm-menu-context .mm-save-status')).toBeVisible();
+    await expect(menu.getByRole('link', { name: 'Exit game', exact: true })).toHaveAttribute('href', '/compete');
+    await audit(p, label + '-menu-fit');
     await p.screenshot({ path: join(output, label + '-menu.png') });
-    await p.getByRole('dialog').getByRole('button',{name:'Settings',exact:true}).click();
+    await startSection(menu, 'Settings');
+    await expect(menu.getByRole('switch', { name: /^Mute\b/ })).toBeVisible();
     const settings=p.locator('.mm-menu-body'),assist=p.getByRole('switch',{name:/Seal Assist/i});
     await assist.focus();await p.keyboard.press('Space');await expect(assist).toBeFocused();check(label+'-settings-keeps-keyboard-focus');
     const pan=await settings.evaluate(node=>{
       const ancestors=[];for(let owner=node;owner;owner=owner.parentElement)ancestors.push(getComputedStyle(owner).touchAction);
       return {blocked:ancestors.includes('none'),height:node.clientHeight,scrollHeight:node.scrollHeight};
     });
-    assert.equal(pan.blocked,false,'No ancestor prevents the fieldcase from touch scrolling');
+    assert.equal(pan.blocked,false,'No ancestor prevents Settings from touch scrolling');
     if (pan.scrollHeight > pan.height + 1) {
       if (engine === 'webkit' && width < 1024) {
         // Mobile WebKit has no mouse-wheel input. Reach an actual control
@@ -547,7 +595,14 @@ async function smoke(width, height, theme) {
     }
     check(label+'-settings-retains-scroll-gesture',{pan});
     await audit(p,label+'-settings-fit');await p.screenshot({path:join(output,label+'-settings.png')});
-    await p.keyboard.press('Escape'); await expect(p.getByRole('dialog')).toHaveCount(0); check(label + '-keyboard-cancel-closes-menu');
+    await p.keyboard.press('Escape');
+    await expect(menu).toHaveAttribute('data-section', 'start');
+    await startSection(menu, 'Save file');
+    await expect(menu.getByRole('button', { name: 'Save now', exact: true })).toBeEnabled();
+    await p.keyboard.press('x');
+    await expect(menu).toHaveAttribute('data-section', 'start');
+    await closeStart(p);
+    check(label + '-submenus-return-to-start-and-resume-at-the-trigger');
     const persisted = await save(p); await p.reload(); await p.waitForFunction(() => Boolean(window.mmQa));
     const continueButton = p.getByRole('button', { name: /^(Continue|Continue journey)$/i });
     await expect(continueButton).toBeVisible(); await continueButton.click();
@@ -563,10 +618,11 @@ async function smoke(width, height, theme) {
       const state=await window.mmQa.readSave(),p=state.player;return [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]].find(([,dx,dy])=>window.mmQa.canWalk(state,p.x+dx,p.y+dy))?.[0];
     });
     await step(p,offlineDirection);
-    await expect(p.locator('.mm-save-offline')).toContainText('Offline');check(label+'-disconnected-play-saves-locally');
+    await openStart(p);
+    await expect(menu.locator('.mm-save-status.mm-save-offline')).toContainText('Offline');
+    check(label+'-disconnected-play-saves-locally');
     await context.setOffline(false);
-    await press(p, 'menu');
-    await p.getByRole('dialog').getByRole('link', { name: 'Exit game', exact: true }).click();
+    await menu.getByRole('link', { name: 'Exit game', exact: true }).click();
     await expect(p.getByRole('heading', { name: 'DH Club destination' })).toBeVisible(); await expect(p.locator('canvas')).toHaveCount(0);
     if (engine === 'webkit' && width < 1024) {
       await p.getByRole('button', { name: 'Outside lower control' }).tap();
@@ -618,6 +674,21 @@ async function bossLayouts(p) {
       await p.setViewportSize({width,height});await settleLayout(p);
       await expect(p.getByRole('button',{name:/^Brine Snap/i})).toBeVisible();
       await audit(p,`${engine}-boss-${width}x${height}-fit`);
+      if (width === 320) {
+        await noShellCommands(p);
+        const battleState = (await save(p)).battle;
+        const key = p.getByRole('button', { name: 'Start', exact: true });
+        await key.tap();
+        const menu = startMenu(p);
+        await expect(menu).toHaveAttribute('data-section', 'start');
+        await startSection(menu, 'Journal');
+        await expect(p.getByRole('button', { name: /^Brine Snap/i })).toHaveCount(0);
+        await p.keyboard.press('Escape');
+        await menu.getByRole('button', { name: 'Resume', exact: true }).tap();
+        await expect(p.getByRole('button', { name: /^Brine Snap/i })).toBeEnabled();
+        assert.deepEqual((await save(p)).battle, battleState, 'Opening Start must preserve the complete battle state');
+        check(engine+'-phone-start-pauses-and-resumes-the-same-battle');
+      }
       await p.screenshot({path:join(output,`${engine}-boss-${width}x${height}.png`)});
     }
   }finally{if(previous){await p.setViewportSize(previous);await settleLayout(p);}}
@@ -670,14 +741,15 @@ async function chapter() {
     assert.equal((await save(p)).questFlags.captain_met, true);
     await captureLocation(p,'ship','captain');
     await interact(p,'gangplank');
-    await press(p,'menu');
-    const fieldcase = p.getByRole('dialog', {name:'Game menu'});
+    const fieldcase = await openStart(p);
+    await startSection(fieldcase, 'Companions');
     await expect(fieldcase.getByText('No bonds yet', {exact:true})).toBeVisible();
     const cuff = fieldcase.getByRole('img', {name:/brass cuff/i});
     await expect(cuff).toBeVisible();
     await expect.poll(() => cuff.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
     await p.screenshot({path:join(output,engine+'-empty-fieldcase.png')});
-    await fieldcase.getByRole('button', {name:'Journal',exact:true}).click();
+    await startHome(fieldcase);
+    await startSection(fieldcase, 'Journal');
     const journal = await p.evaluate(async () => {
       const state = await window.mmQa.readSave();
       return {objective: window.mmQa.getObjective(state), steps: window.mmQa.getQuestSteps(state).filter(step => step.complete)};
@@ -689,7 +761,7 @@ async function chapter() {
     await expect(entries).toHaveText(journal.steps.map(step => `◆${step.label}`));
     await p.screenshot({path:join(output,engine+'-early-journal.png')});
     check(engine+'-arrival-fieldcase-and-spoiler-safe-journal');
-    await fieldcase.getByRole('button', {name:'Close menu'}).click();
+    await closeStart(p, 'm');
     for (const id of ['nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
       if (id === 'gate-wheel') {
         await walkTo(p,id);
@@ -703,13 +775,14 @@ async function chapter() {
       }
       if (id === 'nia') {
         await p.screenshot({path:join(output,engine+'-harbor.png')});
-        await p.getByRole('button',{name:'Open location chart'}).click();
-        const chartDialog = p.getByRole('dialog',{name:'Location chart'});
+        const chartDialog = await openStart(p);
+        await startSection(chartDialog, 'Map');
         const chart = chartDialog.getByRole('region',{name:'Location chart'});
         await expect(chart).toContainText(/workshop/i);
         await expect(chart.getByRole('list',{name:'Walking directions'})).toBeVisible();
         await p.screenshot({path:join(output,engine+'-harbor-location-chart.png')});
-        await chartDialog.getByRole('button',{name:'Close chart'}).click();
+        await startHome(chartDialog);
+        await chartDialog.getByRole('button', { name: 'Resume', exact: true }).click();
         await expect(chartDialog).toHaveCount(0);
         check(engine+'-phone-chart-to-workshop');
       }
@@ -745,9 +818,9 @@ async function chapter() {
     await interact(p,'pickup-tincture'); await interact(p,'save-lamp'); await interact(p,'chamber-door');
     await walkTo(p,'rift'); await captureLocation(p,'chamber','rift');
     await interact(p,'rift'); await battle(p,'boss');
-    await press(p,'menu'); await p.getByRole('button',{name:/Settings/i}).click();
+    await openStart(p); await startSection(fieldcase, 'Settings');
     const assist=p.getByRole('switch',{name:/Seal Assist/i}); if(await assist.getAttribute('aria-checked')!=='true')await assist.click();
-    await p.keyboard.press('Escape');
+    await closeStart(p, 'm');
     for(let index=0;index<3;index++) await p.getByRole('button',{name:/Seal pulse/i}).click();
     await drain(p); assert.equal((await save(p)).rifts['port-marche'],'sealed'); check(engine+'-three-pulse-assisted-rift-seal');
     await interact(p,'page');
@@ -756,7 +829,9 @@ async function chapter() {
     await interact(p,'closing',false);await drain(p,{inspectChoices:true,expectedId:'closing',choiceId:'wry'}); assert.equal((await save(p)).questFlags.chapter_complete,true); check(engine+'-complete-real-chapter-through-closing');
     await audit(p, engine + '-chapter-complete-fit');
     await p.screenshot({path:join(output,engine+'-chapter-complete.png')});
-    await p.locator('.mm-end').getByRole('link', { name: 'Exit game', exact: true }).click();
+    await noShellCommands(p);
+    await openStart(p);
+    await fieldcase.getByRole('link', { name: 'Exit game', exact: true }).click();
     await expect(p.getByRole('heading', { name: 'DH Club destination' })).toBeVisible();
   } catch(error) { await p.screenshot({path:join(output,engine+'-chapter-failure.png')}).catch(()=>{}); throw error; }
   finally { await context.close(); }
@@ -779,14 +854,20 @@ async function touchLaunch() {
   try {
     const button = p.getByRole('button', {name: 'Begin journey', exact: true});
     await expect(button).toBeEnabled();
-    const canExpand = await p.getByRole('button', {name: 'Enter full screen', exact: true}).count();
+    const menu = await openStart(p);
+    await startSection(menu, 'Settings');
+    const canExpand = await menu.getByRole('button', {name: 'Enter full screen', exact: true}).count();
+    await closeStart(p, 'm');
     await button.tap();
     await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
     if (canExpand) {
       const owner = () => p.evaluate(() => (document.fullscreenElement ?? document.webkitFullscreenElement)?.matches('.mm-device') ?? false);
       await expect.poll(owner).toBe(true);
-      await p.getByRole('button', {name: 'Leave full screen', exact: true}).tap();
+      await openStart(p);
+      await startSection(menu, 'Settings');
+      await menu.getByRole('button', {name: 'Leave full screen', exact: true}).tap();
       await expect.poll(owner).toBe(false);
+      await closeStart(p, 'm');
     }
     await audit(p, engine + '-trusted-touch-console-fit');
     check(engine + '-touch-begin-plays-and-expands-where-supported', {nativeFullscreenOffered: !!canExpand});
