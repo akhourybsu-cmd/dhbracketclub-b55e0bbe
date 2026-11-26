@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { canWalk, DELTAS, getPhase, getVisibleObjects, nearbyInteractions } from './engine';
+import { createWalkClock } from './input';
 import { findWalkingPath } from './wayfinding';
 import type { Direction, GameAction, GameSession, MapId } from './types';
 
@@ -11,11 +12,33 @@ const directionTo = (a: Point, b: Point) => directions.find(dir =>
 
 /** A tap requests an ordinary walk. Only the current tile is committed to a save. */
 export function useTapWalk(session: GameSession | null, active: boolean, act: (action: GameAction) => void, notice: (text: string) => void) {
+  const [clock] = useState(createWalkClock);
   const [walk, setWalk] = useState<Walk | null>(null);
   const pending = useRef<Walk | null>(null);
   const latest = useRef({ session, active });
   latest.current = { session, active };
-  const cancel = useCallback(() => { pending.current = null; setWalk(null); }, []);
+  const cancel = useCallback(() => {
+    clock.cancel();
+    pending.current = null;
+    setWalk(null);
+  }, [clock]);
+  const map = session?.save.player.mapId;
+  useEffect(() => {
+    cancel();
+    return clock.cancel;
+  }, [active, map, cancel, clock]);
+  const manualStep = useCallback((direction: Direction) => {
+    cancel();
+    const source = latest.current;
+    if (!source.active || !source.session) return;
+    const map = source.session.save.player.mapId;
+    clock.request(() => {
+      const now = latest.current;
+      if (now.active && now.session?.save.player.mapId === map && !document.hidden) {
+        act({ type: 'move', direction });
+      }
+    });
+  }, [act, cancel, clock]);
   const tap = useCallback((tile: Point, id?: string) => {
     const { session, active } = latest.current;
     if (!active || !session || getPhase(session) !== 'explore') return;
@@ -36,9 +59,8 @@ export function useTapWalk(session: GameSession | null, active: boolean, act: (a
     setWalk(next);
   }, [act, cancel, notice]);
   const x = session?.save.player.x, y = session?.save.player.y;
-  const map = session?.save.player.mapId;
   useEffect(() => {
-    if (!walk) return;
+    if (!walk || pending.current !== walk) return;
     const { session } = latest.current;
     if (!active || !session || walk.map !== map) { cancel(); return; }
     const index = walk.points.findIndex(p => p.x === x && p.y === y);
@@ -48,15 +70,14 @@ export function useTapWalk(session: GameSession | null, active: boolean, act: (a
       if (index >= 0 && walk.face && session.save.player.facing !== walk.face) act({ type: 'face', direction: walk.face });
       return;
     }
-    const timer = window.setTimeout(() => {
+    return clock.request(() => {
       const now = latest.current;
       if (pending.current !== walk || !now.active || !now.session || document.hidden) return;
       const save = now.session.save;
       const direction = directionTo(save.player, next);
       if (!direction || save.player.mapId !== walk.map || !canWalk(save, next.x, next.y)) { cancel(); return; }
       act({ type: 'move', direction });
-    }, index === 0 ? 0 : 145);
-    return () => window.clearTimeout(timer);
-  }, [walk, x, y, map, active, act, cancel]);
-  return { tap, cancel, destination: walk?.destination };
+    });
+  }, [walk, x, y, map, active, act, cancel, clock]);
+  return { tap, cancel, manualStep, destination: walk?.destination };
 }

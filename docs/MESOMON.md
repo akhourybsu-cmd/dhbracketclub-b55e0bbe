@@ -12,7 +12,7 @@ Combat uses a seeded resolver with priority/agility, four moves per companion, d
 
 The first-play duration of 15–25 minutes is a design target. Automated walkthroughs and headless simulations establish functional completion, not measured human reading/exploration time or physical-phone frame rates.
 
-Tap a clear patch of ground to walk there. Tapping a distant person or landmark walks Tavian up to it. Tap again or press A to interact. The small gold pointer marks what A will select. A direction on the pad or keyboard takes over immediately. Open **Map** to see the route to the next known stop and read its walking directions. Each leg respects people, solid terrain and the current state of the tideworks. Closing or reopening the game keeps Tavian on the last tile he reached.
+Tap a clear patch of ground to walk there. Tapping a distant person or landmark walks Tavian up to it. Tap again or press A to interact. The small gold pointer marks what A will select. The first step from rest responds immediately. Tap paths, the D-pad and the keyboard share a 200 ms stride, including when the player switches controls mid-walk. Open **Map** to see the route to the next known stop and read its walking directions. Each leg respects people, solid terrain and the current state of the tideworks. Closing or reopening the game keeps Tavian on the last tile he reached.
 
 ## Writing and staging a scene
 
@@ -22,7 +22,7 @@ Give each speaker something they could have seen or heard. Nia follows the inves
 
 Use a character’s name for spoken dialogue, `Port Marche` for something the player can see, and `Field note` for a control or rule. Letters and inscriptions keep their own source credit. Register new written sources in `reading.ts` so they appear on paper and keep that credit in the journal. The closing conversation gives each response its own reply.
 
-The journal pairs one current objective with Tavian’s account of the journey. Write each entry in the past tense and unlock it on the flag that confirms Tavian experienced it. Future encounters stay off the page until the player reaches them.
+The journal pairs one current objective with Tavian’s account of the journey. Each entry unlocks when Tavian experiences it. The whistle and the fisher’s net each get one short entry under **On the quay**, updated as the player helps. Future encounters stay off the page until the player reaches them.
 
 Give a one-time conversation variant a stable `once` key. Its lines and receipt share the same save. This lets a player meet the rope maker, read the repair tag later and come back with a new question, even across a reload.
 

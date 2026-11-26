@@ -63,7 +63,10 @@ describe('Mesomon Port Marche chapter', () => {
     const once = JSON.stringify(session.save.party);
     session = reduceGame(session, { type: 'advance' });
     expect(JSON.stringify(session.save.party)).toBe(once);
-    for (const id of ['save-lamp', 'sense-channel', 'chamber-door', 'rift']) session = interactWith(session, id);
+    for (const id of ['save-lamp', 'sense-channel', 'chamber-door']) session = interactWith(session, id);
+    const flooded = beginInteraction(session, 'chamber-markings');
+    const floodedLines = flooded.dialogue!.lines;
+    session = interactWith(finishDialogue(flooded), 'rift');
     expect(session.save.battle?.enemy.speciesId).toBe('rift-wretch');
     expect(session.save.rifts['port-marche']).toBe('found');
     for (let guard = 0; session.save.battle?.phase === 'choosing' && guard < 10; guard++) session = reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'resonant-cry' } });
@@ -75,6 +78,9 @@ describe('Mesomon Port Marche chapter', () => {
     for (let pulse = 0; pulse < 3; pulse++) session = reduceGame(session, { type: 'seal', accuracy: 1 });
     session = finishDialogue(session);
     expect(session.save.rifts['port-marche']).toBe('sealed');
+    const drained = beginInteraction(session, 'chamber-markings');
+    expect(drained.dialogue!.lines).not.toEqual(floodedLines);
+    session = finishDialogue(drained);
     for (const id of ['page', 'chamber-exit', 'passage-exit', 'stairs-exit', 'workshop-door', 'closing']) session = interactWith(session, id);
     expect(getPhase(session)).toBe('ending');
     expect(getQuestSteps(session.save).every(step => step.complete)).toBe(true);
@@ -86,6 +92,10 @@ describe('Mesomon Port Marche chapter', () => {
     session = createSession(migrateSave(session.save)!);
     expect(getPhase(session)).toBe('explore');
     expect(getObjective(session.save)).toContain('inland road');
+    const returnVisit = beginInteraction(session, 'closing');
+    expect(returnVisit.dialogue!.choices).toBeUndefined();
+    expect(returnVisit.dialogue!.lines.some(line => line.speaker === 'Nia')).toBe(true);
+    expect(getPhase(finishDialogue(returnVisit))).toBe('explore');
   });
 
   it.each([
@@ -104,6 +114,13 @@ describe('Mesomon Port Marche chapter', () => {
       expect(revisit.dialogue?.lines.length).toBeGreaterThan(0);
       expect(revisit.dialogue?.onFinish).toBeUndefined();
       session = finishDialogue(revisit);
+      if (index === 1) {
+        const remaining = order[2];
+        const hint = beginInteraction(session, 'closing');
+        const clueWords = { chart: /chart/i, 'field-map': /map/i, 'satchel-hook': /hook/i };
+        expect(hint.dialogue!.lines.at(-1)?.text).toMatch(clueWords[remaining as keyof typeof clueWords]);
+        session = finishDialogue(hint);
+      }
     }
     expect(session.save.questFlags.clues_complete).toBe(true);
     session = interactWith(session, 'workshop-exit');
@@ -160,6 +177,92 @@ describe('Mesomon Port Marche chapter', () => {
     const imitation = beginInteraction(session, 'pell');
     expect(imitation.dialogue?.id).toBe('whistle-imitation');
     expect(beginInteraction(finishDialogue(imitation), 'pell').dialogue?.id).toBe('pell-repeat');
+  });
+
+  it('lets a healthy companion visit Seli, then heals the party on its return from a fight', () => {
+    let session = interactWith(reachFirstBond(), 'stairs-exit');
+    session = interactWith(session, 'bram');
+    expect(session.save.questFlags['heard:bram-lamp']).toBeUndefined();
+    const originalTinctures = session.save.inventory.tincture;
+    session = interactWith(session, 'seli');
+    expect(session.save.inventory.tincture).toBe(originalTinctures + 1);
+    const healthy = beginInteraction(session, 'seli');
+    expect(healthy.dialogue?.lines.some(line => line.speaker === 'Seli')).toBe(true);
+    expect(healthy.dialogue?.id).toBe('seli-repeat');
+    session = finishDialogue(healthy);
+    expect(session.save.questFlags['heard:edda-lamp-oil']).toBe(true);
+    const lamp = beginInteraction(session, 'bram');
+    expect(lamp.save.questFlags['heard:bram-lamp']).toBe(true);
+    expect(lamp.dialogue!.lines.map(line => line.speaker)).toEqual(['Tavian', 'Bram']);
+    session = finishDialogue(lamp);
+
+    for (const id of ['tide-door', 'passage-door', 'sense-eddy', 'sluice', 'tressel']) session = interactWith(session, id);
+    for (let turn = 0; turn < 4; turn++) {
+      const active = session.save.battle!.allies[0];
+      if (active.vitality < active.maxVitality) break;
+      session = reduceGame(session, { type: 'battle', action: { type: 'guard' } });
+    }
+    session = reduceGame(session, { type: 'battle', action: { type: 'flee' } });
+    session = finishDialogue(reduceGame(session, { type: 'advance' }));
+    expect(session.save.party[0].vitality).toBeLessThan(session.save.party[0].maxVitality);
+    for (const id of ['passage-exit', 'stairs-exit', 'pell', 'whistle-reeds', 'pell']) session = interactWith(session, id);
+    const beforeTreatment = session.save.inventory.tincture;
+    expect(session.save.questFlags['heard:seli-whistle']).toBeUndefined();
+
+    const treatment = beginInteraction(session, 'seli');
+    expect(treatment.dialogue?.id).toBe('seli-rest');
+    expect(treatment.save.questFlags['heard:seli-whistle']).toBe(true);
+    session = createSession(migrateSave(finishDialogue(treatment).save)!);
+    expect(session.save.party[0].vitality).toBe(session.save.party[0].maxVitality);
+    expect(session.save.collection[session.save.party[0].id]).toEqual(session.save.party[0]);
+    const later = beginInteraction(session, 'seli');
+    expect(later.dialogue?.id).toBe('seli-repeat');
+    expect(later.dialogue?.lines).not.toEqual(treatment.dialogue?.lines);
+    expect(later.save.inventory.tincture).toBe(beforeTreatment);
+  });
+
+  it.each([['merchant', 'dockworker'], ['dockworker', 'merchant']] as const)(
+    'remembers the freight conversation when meeting %s before %s',
+    (first, second) => {
+      let session = createSession(createNewSave());
+      for (const id of ['captain', 'gangplank', first]) session = interactWith(session, id);
+      expect(session.save.questFlags['heard:onion-lighter']).toBeUndefined();
+      session = beginInteraction(session, second);
+      if (second === 'merchant') {
+        expect(session.save.questFlags['heard:onion-lighter']).toBeUndefined();
+        session = beginInteraction(finishDialogue(session), 'dockworker');
+      }
+      expect(session.save.questFlags['heard:onion-lighter']).toBe(true);
+      const lines = session.dialogue!.lines;
+      expect(lines.some(line => /onion/i.test(line.text))).toBe(true);
+      const resumed = createSession(migrateSave(session.save)!);
+      expect(resumed.dialogue?.lines).toEqual(lines);
+      expect(beginInteraction(finishDialogue(resumed), 'dockworker').dialogue?.lines).not.toEqual(lines);
+    },
+  );
+
+  it.each([true, false])('lets the chart recall the rigger only after hearing the bell story (%s)', (heardBell) => {
+    let session = createSession(createNewSave());
+    for (const id of ['captain', 'gangplank', ...(heardBell ? ['bell-worker'] : []), 'nia', 'workshop-door'])
+      session = interactWith(session, id);
+    const chart = beginInteraction(createSession(migrateSave(session.save)!), 'chart');
+    expect(chart.dialogue?.lines.some(line => /bell/i.test(line.text))).toBe(heardBell);
+  });
+
+  it.each(['before', 'after'] as const)('uses the flour-carter lead at supper only if learned %s finding the page', (visit) => {
+    const save = createNewSave();
+    save.questFlags.workshop_entered = true;
+    save.questFlags.nia_met = true;
+    save.questFlags.page_found = visit === 'after';
+    save.player = { ...save.player, mapId: 'harbor', x: 18, y: 5 };
+    let session = interactWith(createSession(save), 'inland-gate');
+    expect(session.save.questFlags['visited:inland-gate']).toBe(true);
+    expect(Boolean(session.save.questFlags['heard:flour-carter'])).toBe(visit === 'after');
+    session.save.questFlags.page_found = true;
+    session = interactWith(createSession(migrateSave(session.save)!), 'workshop-door');
+    const supper = beginInteraction(session, 'closing');
+    expect(supper.dialogue?.lines.some(line => /flour/i.test(line.text))).toBe(visit === 'after');
+    expect(supper.dialogue?.choices?.map(choice => choice.id)).toEqual(['warm', 'wry', 'direct']);
   });
 
   it('keeps all three closing answers distinct, saved, and spoken once', () => {

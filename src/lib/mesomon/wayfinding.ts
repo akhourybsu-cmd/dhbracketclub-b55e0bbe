@@ -1,5 +1,5 @@
 import { MAPS } from './data/maps';
-import { canWalk, DELTAS, getVisibleObjects } from './engine';
+import { canWalk, DELTAS, getVisibleObjects, interactionLabel, needsGateBrace } from './engine';
 import type { Direction, MapId, MapObject, MesomonSaveV1 } from './types';
 
 interface Point { x: number; y: number }
@@ -30,7 +30,7 @@ function chapterDestination(save: MesomonSaveV1): Destination | undefined {
     return at('workshop', ...clues.filter(([flag]) => !has(flag)).map(([, id]) => id));
   }
   if (!has('bram_met')) return at('harbor', 'bram');
-  if (!has('gate_opened')) return at('tide-stairs', has('brace_found') ? 'gate-wheel' : 'gate-brace');
+  if (!has('gate_opened')) return at('tide-stairs', needsGateBrace(save) ? 'gate-brace' : 'gate-wheel');
   if (!has('rillik_bonded')) return at('tide-stairs', 'rillik-bond');
   if (!has('current_eddy')) return at('passage', 'sense-eddy');
   if (!has('sluice_open')) return at('passage', 'sluice');
@@ -112,7 +112,5 @@ export function getChartRoute(save: MesomonSaveV1): ChartRoute | undefined {
     if (last?.direction === direction) last.steps++;
     else legs.push({ direction, steps: 1 });
   }
-  // The opening in the chamber has no name until Tavian sees it.
-  const label = target.id === 'rift' && !save.questFlags.boss_introduced ? 'Chamber basin' : target.label;
-  return { target, label, points, legs, facing: towards(tile, target) };
+  return { target, label: interactionLabel(save, target), points, legs, facing: towards(tile, target) };
 }

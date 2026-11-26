@@ -61,6 +61,23 @@ async function preparePage(p,theme,guest=false) {
 }
 const save = p => p.evaluate(async () => window.mmQa.readSave());
 const controls = (p, name) => p.locator(`[data-mm-action="${name}"]`);
+const directions = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
+const arrowKeys = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
+const observedDialogues = new Set();
+const positionKey = player => `${player.mapId}:${player.x}:${player.y}`;
+const livePlayer = p => p.locator('.mesomon').evaluate(root => ({ mapId: root.dataset.mapId, x: Number(root.dataset.playerX), y: Number(root.dataset.playerY) }));
+async function waitForPlayer(p, expected) {
+  await expect.poll(async () => positionKey(await livePlayer(p)), { intervals: [16, 32, 50] }).toBe(positionKey(expected));
+  await expect.poll(async () => positionKey((await save(p)).player), { intervals: [16, 32, 50] }).toBe(positionKey(expected));
+}
+async function step(p, direction, keyboard = false) {
+  const before = await livePlayer(p), [dx, dy] = directions[direction];
+  if (keyboard) await p.keyboard.press(arrowKeys[direction]);
+  else await press(p, direction);
+  const expected = { ...before, x: before.x + dx, y: before.y + dy };
+  await waitForPlayer(p, expected);
+  return expected;
+}
 async function auditBuild() {
   const release=JSON.parse(await readFile('dist/games/mesomon/release.json','utf8'));
   assert.equal(release.schema_version,1,'The build must emit the Mesomon release metadata schema');
@@ -102,36 +119,71 @@ async function start(p) {
   else await newJourney.click();
   await expect(p.locator('.mesomon[data-map-id]')).toHaveAttribute('data-map-id', 'ship');
   await expect(p.locator('.mesomon canvas')).toHaveCount(1);
+  await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
   await expect.poll(() => save(p)).not.toBeNull();
 }
 async function settleLayout(p) {
   await p.evaluate(async()=>{await document.fonts.ready;await new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done)));});
 }
-async function drain(p, {inspectChoices=false, opening=false}={}) {
-  let choicesInspected=false;
+async function conversationLine(p, expectedId) {
+  const state = await save(p), dialogue = state?.dialogue;
+  assert.ok(dialogue, 'Expected an active saved conversation');
+  if (expectedId) assert.equal(dialogue.id, expectedId, 'The expected story beat must be active');
+  const line = dialogue.lines[dialogue.index];
+  assert.ok(line?.text.trim() && line.speaker.trim(), `${dialogue.id} has a readable, attributed line`);
+  const panel = p.getByRole('region', {name: 'Conversation'});
+  const voice = await p.evaluate(speaker => window.mmQa.readingVoice(speaker), line.speaker);
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveAttribute('data-voice', voice.kind);
+  // Match the active data, not a fragment of authored prose that changes with edits.
+  await expect(panel.locator('.mm-dialogue-text [aria-live="polite"]')).toHaveText(line.text);
+  await expect(panel.locator('.mm-speaker strong')).toHaveText(voice.credit);
+  const portrait = panel.locator('.mm-speaker img');
+  if (voice.portrait) {
+    await expect(portrait).toBeVisible();
+    await expect.poll(() => portrait.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
+  } else await expect(portrait).toHaveCount(0);
+  observedDialogues.add(dialogue.id);
+  return { state, dialogue, panel, voice };
+}
+async function drain(p, {inspectChoices=false, opening=false, expectedId, choiceId}={}) {
+  let choicesInspected=false, selectedChoice=false;
   const readingModes = new Set();
+  if (expectedId) await conversationLine(p, expectedId);
   for (let count = 0; count < 180; count++) {
     const state = await save(p);
     if (!state?.dialogue) {
       if (opening) {
-        assert.deepEqual([...readingModes].sort(), ['document', 'scene', 'speech']);
+        for (const kind of ['document', 'scene', 'speech']) assert.ok(readingModes.has(kind), `The opening must present its ${kind} reading mode`);
         check(engine + '-opening-shows-spoken-lines-narration-and-letter');
       }
+      if (choiceId) assert.ok(selectedChoice, `Expected to explicitly select ${choiceId}`);
       return;
     }
+    const { dialogue, panel, voice } = await conversationLine(p);
+    const atChoices = dialogue.choices?.length && dialogue.index >= dialogue.lines.length - 1;
     if (opening) {
-      const panel = p.getByRole('region', {name: 'Conversation'});
-      const kind = await panel.getAttribute('data-voice');
+      const kind = voice.kind;
       if (kind && !readingModes.has(kind)) {
-        await expect(panel.locator('.mm-dialogue-next')).toHaveText('Continue', {timeout: 7000});
-        if (kind === 'speech') await expect(panel.locator('.mm-speaker img')).toBeVisible();
-        else await expect(panel.locator('.mm-speaker img')).toHaveCount(0);
+        if (!atChoices) {
+          if (await panel.locator('.mm-dialogue-next').textContent() !== 'Continue') await press(p, 'confirm');
+          await expect(panel.locator('.mm-dialogue-next')).toHaveText('Continue', {timeout: 7000});
+        }
         await p.screenshot({path: join(output, engine + '-reading-' + kind + '.png')});
         readingModes.add(kind);
       }
     }
-    const choice = state.dialogue.choices?.[1] || state.dialogue.choices?.[0];
-    if (choice && state.dialogue.index >= state.dialogue.lines.length - 1) {
+    if (atChoices) {
+      assert.ok(choiceId, `Conversation ${dialogue.id} requires an explicit choice ID; QA will not choose a fallback`);
+      assert.equal(dialogue.id, 'closing', 'Only the reviewed closing choice is automated');
+      assert.deepEqual(dialogue.choices.map(choice => choice.id).sort(), ['direct', 'warm', 'wry']);
+      const choice = dialogue.choices.find(option => option.id === choiceId);
+      assert.ok(choice, `Conversation ${dialogue.id} offers the requested ${choiceId} choice`);
+      await expect(panel.locator('.mm-tone-choices button')).toHaveCount(dialogue.choices.length);
+      await expect(panel.locator('.mm-tone-choices button small')).toHaveText(dialogue.choices.map(option => option.label));
+      const beforeChoice = JSON.stringify(dialogue);
+      await press(p, 'confirm');
+      assert.equal(JSON.stringify((await save(p)).dialogue), beforeChoice, 'Confirm must wait for an actual choice');
       if(inspectChoices&&!choicesInspected){
         const previous=p.viewportSize();
         try{
@@ -141,11 +193,26 @@ async function drain(p, {inspectChoices=false, opening=false}={}) {
         }finally{if(previous){await p.setViewportSize(previous);await settleLayout(p);}}
         choicesInspected=true;
       }
-      const option = p.getByRole('button', { name: new RegExp(choice.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) });
-      if (await option.count() && await option.isVisible()) { await option.click(); continue; }
+      const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const option = panel.getByRole('button', { name: new RegExp(`^${escape(choice.label)}\\s*${escape(choice.text)}$`) });
+      await expect(option).toHaveCount(1);
+      await option.click();
+      await expect.poll(async () => (await save(p)).dialogue?.id).toBe('closing-after');
+      const after = await save(p);
+      assert.equal(after.questFlags.response_tone, choiceId);
+      assert.equal(after.dialogue.lines[0].text, choice.text, 'The selected response is spoken in the followup');
+      check(engine + '-closing-explicit-choice-persists-and-opens-followup', {choiceId, offeredChoiceIds: dialogue.choices.map(option => option.id)});
+      selectedChoice=true;
+      continue;
     }
+    const next = panel.locator('.mm-dialogue-next');
+    if ((await next.textContent()) !== 'Continue') await press(p, 'confirm');
+    await expect(next).toHaveText('Continue', {timeout: 7000});
     await press(p, 'confirm');
-    await pause(20);
+    await expect.poll(async () => {
+      const current = (await save(p)).dialogue;
+      return current ? `${current.id}:${current.index}` : null;
+    }, { intervals: [16, 32, 50] }).not.toBe(`${dialogue.id}:${dialogue.index}`);
   }
   throw new Error('Dialogue did not terminate after 180 real advances.');
 }
@@ -166,11 +233,7 @@ async function walkTo(p, id) {
     }
     throw new Error(`No walkable route to ${targetId} from ${origin.x},${origin.y}`);
   }, id);
-  for (const direction of route) {
-    const before = await save(p);
-    await press(p, direction);
-    await expect.poll(async () => { const current = await save(p); return `${current.player.x}:${current.player.y}`; }).not.toBe(`${before.player.x}:${before.player.y}`);
-  }
+  for (const direction of route) await step(p, direction);
 }
 async function interact(p, id, dialogue = true) {
   await walkTo(p, id);
@@ -196,6 +259,90 @@ async function tapMapObject(p, id) {
     };
   },id);
   await canvas.tap({position});
+}
+async function waitAtObject(p, id) {
+  await expect.poll(async () => {
+    const player = await livePlayer(p);
+    return p.evaluate(({id, player}) => {
+      const object = window.mmQa.getMap(player.mapId).objects.find(object => object.id === id);
+      return object ? Math.abs(player.x - object.x) + Math.abs(player.y - object.y) : Infinity;
+    }, {id, player});
+  }, { intervals: [16, 32, 50] }).toBeLessThanOrEqual(1);
+  await waitForPlayer(p, await livePlayer(p));
+}
+async function tapGround(p, tile) {
+  const canvas = p.locator('.mesomon canvas');
+  const position = await canvas.evaluate(async (node, tile) => {
+    const state = await window.mmQa.readSave(), map = window.mmQa.getMap(state), rect = node.getBoundingClientRect();
+    const axis = (target, player, count, pixels, rendered) => {
+      const scroll = Math.max(0, Math.min(count * 16 - pixels, player * 16 + 8 - pixels / 2));
+      return (target * 16 + 8 - scroll) * rendered / pixels;
+    };
+    return {x: axis(tile.x, state.player.x, map.width, node.width, rect.width), y: axis(tile.y, state.player.y, map.height, node.height, rect.height)};
+  }, tile);
+  assert.ok(position.x > 0 && position.y > 0, 'The destination must be in the rendered viewport');
+  await canvas.tap({position});
+}
+async function walkingPace() {
+  const traces = [];
+  for (const mode of ['keyboard-held', 'ground-tap']) {
+    const {p, context} = await setup(390,844,'dark');
+    let heldKey;
+    try {
+      await start(p); await drain(p); await settleLayout(p);
+      const corridor = await p.evaluate(async () => {
+        const state = await window.mmQa.readSave(), origin = state.player;
+        for (const [direction, dx, dy] of [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]]) {
+          const points = Array.from({length:4}, (_, index) => ({x: origin.x + dx * (index + 1), y: origin.y + dy * (index + 1)}));
+          if (points.every(point => window.mmQa.canWalk(state, point.x, point.y)) &&
+              !window.mmQa.canWalk(state, origin.x + dx * 5, origin.y + dy * 5))
+            return {direction, origin, points, stepMs: window.mmQa.walkStepMs};
+        }
+        return null;
+      });
+      assert.ok(corridor, 'The arrival deck needs a visible four-tile straight route ending at a wall for a bounded pace proof');
+      await p.evaluate(() => {
+        const root = document.querySelector('.mesomon');
+        const trace = {steps: [], startedAt: performance.now(), observer: null};
+        let previous = `${root.dataset.playerX}:${root.dataset.playerY}`;
+        trace.observer = new MutationObserver(() => {
+          const key = `${root.dataset.playerX}:${root.dataset.playerY}`;
+          if (key !== previous) {
+            trace.steps.push({x: Number(root.dataset.playerX), y: Number(root.dataset.playerY), at: performance.now()});
+            previous = key;
+          }
+        });
+        trace.observer.observe(root, {attributes: true, attributeFilter: ['data-player-x','data-player-y']});
+        window.mmPace = trace;
+      });
+      if (mode === 'keyboard-held') {
+        heldKey = arrowKeys[corridor.direction];
+        await p.keyboard.down(heldKey);
+      } else await tapGround(p, corridor.points.at(-1));
+      await p.waitForFunction(() => window.mmPace.steps.length >= 4, null, {timeout: 5000});
+      if (heldKey) { await p.keyboard.up(heldKey); heldKey = null; }
+      const expected = {mapId: corridor.origin.mapId, ...corridor.points.at(-1)};
+      await waitForPlayer(p, expected);
+      const steps = await p.evaluate(() => {
+        window.mmPace.observer.disconnect();
+        const steps = window.mmPace.steps;
+        delete window.mmPace;
+        return steps;
+      });
+      assert.deepEqual(steps.map(({x,y}) => ({x,y})), corridor.points, `${mode} must commit exactly the requested route`);
+      const intervals = steps.slice(1).map((step, index) => step.at - steps[index].at);
+      const mean = intervals.reduce((sum, duration) => sum + duration, 0) / intervals.length;
+      assert.ok(intervals.every(duration => duration >= corridor.stepMs - 45), `${mode} must not advance tiles faster than its shared clock: ${JSON.stringify(intervals)}`);
+      assert.ok(mean >= corridor.stepMs - 25 && mean <= corridor.stepMs + 100,
+        `${mode} must walk at the authored pace (${corridor.stepMs}ms): ${JSON.stringify(intervals)}`);
+      traces.push({mode, stepMs: corridor.stepMs, intervals: intervals.map(value => Math.round(value)), mean: Math.round(mean), steps: corridor.points});
+    } finally {
+      if (heldKey) await p.keyboard.up(heldKey).catch(() => {});
+      await context.close();
+    }
+  }
+  assert.ok(Math.abs(traces[0].mean - traces[1].mean) <= 70, 'Holding a key and tapping a destination must share a practical walking pace');
+  check(engine+'-keyboard-held-and-ground-tap-share-walking-pace', {traces, timingScope: 'Live DOM tile commits over three intervals; loopback hosted-browser proof, not physical-device frame performance'});
 }
 async function captureLocation(p, mapId, landmark, label = mapId) {
   await expect(p.locator('.mesomon')).toHaveAttribute('data-map-id', mapId);
@@ -373,11 +520,9 @@ async function smoke(width, height, theme) {
       return [['right',1,0],['down',0,1],['left',-1,0],['up',0,-1]].find(([,dx,dy]) => window.mmQa.canWalk(state,p.x+dx,p.y+dy))?.[0];
     });
     assert.ok(direction, 'Ship has an adjacent walkable tile');
-    const before = await save(p); await press(p, direction);
-    await expect.poll(async () => { const s = await save(p); return `${s.player.x}:${s.player.y}`; }).not.toBe(`${before.player.x}:${before.player.y}`);
+    await step(p, direction);
     check(label + '-touch-moves-real-player');
-    const keyboardBefore = await save(p); await p.keyboard.press({ up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight' }[direction]);
-    await expect.poll(async () => { const s = await save(p); return `${s.player.x}:${s.player.y}`; }).not.toBe(`${keyboardBefore.player.x}:${keyboardBefore.player.y}`);
+    await step(p, direction, true);
     check(label + '-keyboard-uses-same-actions');
     await press(p, 'menu'); await expect(p.getByRole('dialog')).toBeVisible(); await audit(p, label + '-menu-fit');
     await p.screenshot({ path: join(output, label + '-menu.png') });
@@ -414,10 +559,10 @@ async function smoke(width, height, theme) {
     await auditFrame(p, label + '-restored-ship-art', 'ship');
     await p.screenshot({ path: join(output, label + '-game.png') });
     await context.setOffline(true);
-    const offlineBefore=await save(p),offlineDirection=await p.evaluate(async()=>{
+    const offlineDirection=await p.evaluate(async()=>{
       const state=await window.mmQa.readSave(),p=state.player;return [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]].find(([,dx,dy])=>window.mmQa.canWalk(state,p.x+dx,p.y+dy))?.[0];
     });
-    await press(p,offlineDirection);await expect.poll(async()=>{const s=await save(p);return`${s.player.x}:${s.player.y}`;}).not.toBe(`${offlineBefore.player.x}:${offlineBefore.player.y}`);
+    await step(p,offlineDirection);
     await expect(p.locator('.mm-save-offline')).toContainText('Offline');check(label+'-disconnected-play-saves-locally');
     await context.setOffline(false);
     await press(p, 'menu');
@@ -517,12 +662,12 @@ async function chapter() {
     await tapMapObject(p,'captain');
     await expect(p.locator('[data-mm-object="captain"]')).toBeVisible();
     await expect(p.getByRole('region',{name:'Conversation'})).toHaveCount(0);
-    // Allow the final 130 ms walking frame to reach the persisted tile before aiming again.
-    await pause(160); await settleLayout(p);
+    await waitAtObject(p, 'captain'); await settleLayout(p);
     await tapMapObject(p,'captain');
     await expect(p.getByRole('region',{name:'Conversation'})).toBeVisible();
     check(engine+'-touch-captain-walks-to-adjacency-and-second-tap-speaks');
-    await drain(p, {opening: true});
+    await drain(p, {opening: true, expectedId:'captain'});
+    assert.equal((await save(p)).questFlags.captain_met, true);
     await captureLocation(p,'ship','captain');
     await interact(p,'gangplank');
     await press(p,'menu');
@@ -533,10 +678,15 @@ async function chapter() {
     await expect.poll(() => cuff.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
     await p.screenshot({path:join(output,engine+'-empty-fieldcase.png')});
     await fieldcase.getByRole('button', {name:'Journal',exact:true}).click();
-    await expect(fieldcase.locator('.mm-journal-objective')).toContainText('Nia');
+    const journal = await p.evaluate(async () => {
+      const state = await window.mmQa.readSave();
+      return {objective: window.mmQa.getObjective(state), steps: window.mmQa.getQuestSteps(state).filter(step => step.complete)};
+    });
+    assert.deepEqual(journal.steps.map(step => step.id), ['disembarked'], 'Only the completed arrival belongs in the early journal');
+    await expect(fieldcase.locator('.mm-journal-objective')).toHaveText(journal.objective);
     const entries = fieldcase.locator('.mm-quest-steps li');
-    await expect(entries).toHaveCount(1);
-    await expect(entries).toHaveText([/came ashore/i]);
+    await expect(entries).toHaveCount(journal.steps.length);
+    await expect(entries).toHaveText(journal.steps.map(step => `◆${step.label}`));
     await p.screenshot({path:join(output,engine+'-early-journal.png')});
     check(engine+'-arrival-fieldcase-and-spoiler-safe-journal');
     await fieldcase.getByRole('button', {name:'Close menu'}).click();
@@ -565,10 +715,10 @@ async function chapter() {
       }
       if (id === 'bell-worker') await captureLocation(p,'harbor',id);
       if(id==='chart'){
-        await expect(p.getByRole('region',{name:'Conversation'})).toContainText(/pinhole/i);
-        await expect(p.locator('.mm-dialogue-next')).toHaveText('Continue',{timeout:7000});
+        await conversationLine(p,'chart');
+        assert.equal((await save(p)).questFlags.clue_chart, true);
         await p.screenshot({path:join(output,engine+'-workshop.png')});
-        await drain(p);
+        await drain(p,{expectedId:'chart'});
         await captureLocation(p,'workshop',id);
       }
     }
@@ -577,10 +727,10 @@ async function chapter() {
     for(const id of ['stairs-exit','whistle-reeds','pell','fisher','tide-door','passage-door']) await interact(p,id);
     assert.equal((await save(p)).questFlags.whistle_returned,true); assert.equal((await save(p)).questFlags.wrong_catch,true); check(engine+'-both-optional-harbor-stories');
     await walkTo(p,'sense-eddy'); await p.getByRole('button',{name:/Current Sense/i}).click();
-    await expect(p.getByRole('region',{name:'Conversation'})).toContainText(/wet seam/i);
-    await expect(p.locator('.mm-dialogue-next')).toHaveText('Continue',{timeout:7000});
+    await conversationLine(p,'sense-eddy');
+    assert.equal((await save(p)).questFlags.current_eddy, true);
     await p.screenshot({path:join(output,engine+'-underwharf.png')});
-    await drain(p);
+    await drain(p,{expectedId:'sense-eddy'});
     await walkTo(p,'sluice');
     const crossingIsWalkable = () => p.evaluate(async () => window.mmQa.canWalk(await window.mmQa.readSave(),10,12));
     assert.equal(await crossingIsWalkable(),false);
@@ -590,7 +740,8 @@ async function chapter() {
     await captureLocation(p,'passage','sluice','passage-drained');
     await interact(p,'tressel'); await battle(p,'bond');
     assert.ok((await save(p)).party.length>=2); check(engine+'-optional-wild-resonance');
-    await walkTo(p,'sense-channel'); await p.getByRole('button',{name:/Current Sense/i}).click(); await drain(p);
+    await walkTo(p,'sense-channel'); await p.getByRole('button',{name:/Current Sense/i}).click(); await drain(p,{expectedId:'sense-channel'});
+    assert.equal((await save(p)).questFlags.currents_followed, true);
     await interact(p,'pickup-tincture'); await interact(p,'save-lamp'); await interact(p,'chamber-door');
     await walkTo(p,'rift'); await captureLocation(p,'chamber','rift');
     await interact(p,'rift'); await battle(p,'boss');
@@ -602,7 +753,7 @@ async function chapter() {
     await interact(p,'page');
     // Door names are authored map objects, not production-only test shortcuts.
     for(const id of ['chamber-exit','passage-exit','stairs-exit','workshop-door']) await interact(p,id);
-    await interact(p,'closing',false);await drain(p,{inspectChoices:true}); assert.equal((await save(p)).questFlags.chapter_complete,true); check(engine+'-complete-real-chapter-through-closing');
+    await interact(p,'closing',false);await drain(p,{inspectChoices:true,expectedId:'closing',choiceId:'wry'}); assert.equal((await save(p)).questFlags.chapter_complete,true); check(engine+'-complete-real-chapter-through-closing');
     await audit(p, engine + '-chapter-complete-fit');
     await p.screenshot({path:join(output,engine+'-chapter-complete.png')});
     await p.locator('.mm-end').getByRole('link', { name: 'Exit game', exact: true }).click();
@@ -647,8 +798,7 @@ async function offlineTabs() {
   let b;
   const position=state=>`${state.player.mapId}:${state.player.x}:${state.player.y}`;
   try{
-    await start(a);await drain(a);await press(a,'right');
-    await expect.poll(async()=>position(await save(a))).not.toBe('ship:8:9');
+    await start(a);await drain(a);await step(a,'right');
     const locks=await a.evaluate(()=>typeof navigator.locks?.request==='function');
     b=await context.newPage();await preparePage(b,'dark');
     const beginB=b.getByRole('button',{name:/^(Begin journey|Continue journey)$/i});
@@ -664,8 +814,7 @@ async function offlineTabs() {
       if (/^\/games\/mesomon\/(harbor-tiles|people|mesomon|battle|scenery)\.png$/.test(path)) offlineArtRequests.push(path);
     });
     await context.setOffline(true);await a.bringToFront();
-    const before=position(await save(a));await press(a,'right');
-    await expect.poll(async()=>position(await save(a))).not.toBe(before);
+    await step(a,'right');
     const newest=await save(a),head=position(newest);
     await b.bringToFront();
     // A blocked file cannot start. The fallback without Web Locks detects the
@@ -682,7 +831,7 @@ async function offlineTabs() {
     await expect(resume).toBeEnabled();await resume.click();
     await expect(controls(b,'right')).toBeVisible();
     await expect.poll(async()=>`${await b.locator('.mesomon').getAttribute('data-map-id')}:${await b.locator('.mesomon').getAttribute('data-player-x')}:${await b.locator('.mesomon').getAttribute('data-player-y')}`).toBe(head);
-    await press(b,'left');await expect.poll(async()=>position(await save(b))).not.toBe(head);
+    await step(b,'left');
     assert.ok(await b.locator(readyCanvas).evaluate((canvas, original) => canvas === original, originalCanvas),
       'Offline reload must retain the preloaded Phaser canvas');
     assert.deepEqual(offlineArtRequests, [], 'Offline reload must reuse the preloaded world and battle sprite sheets');
@@ -703,10 +852,12 @@ try {
   browser=engine==='webkit'?await webkit.launch({headless:true}):await chromium.launch({headless:true,executablePath:process.env.MESOMON_CHROMIUM||(existsSync('/usr/bin/chromium')?'/usr/bin/chromium':chromium.executablePath()),args:['--no-sandbox']});
   const sizes=process.env.MESOMON_QUICK?[[390,844,'dark']]:[[320,568,'dark'],[320,568,'light'],[390,844,'dark'],[390,844,'light'],[844,390,'dark'],[844,390,'light'],[1440,900,'dark'],[1440,900,'light']];
   for(const [width,height,theme]of sizes)await smoke(width,height,theme);
+  await walkingPace();
   if(!process.env.MESOMON_SMOKE_ONLY)await chapter();
   await guestRoute();
   await touchLaunch();
   await offlineTabs();
+  check(engine+'-active-dialogue-lines-and-reading-voices-match-saved-conversations', {dialogueIds: [...observedDialogues].sort()});
   assert.deepEqual(report.runtimeErrors,[]);console.log(`PASS Mesomon ${engine}: ${report.checks.length} checks`);
   }
 }catch(error){report.errors.push(String(error.stack||error));console.error(error);await activePage?.screenshot({path:join(output,'failure.png')}).catch(()=>{});process.exitCode=1;}

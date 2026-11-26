@@ -50,6 +50,16 @@ export function nearbyInteractions(save: MesomonSaveV1): MapObject[] {
     });
 }
 
+export function interactionLabel(save: MesomonSaveV1, object: MapObject): string {
+  switch (object.id) {
+    case 'rift': return flag(save, 'rift_sealed') ? 'Sealed basin' : flag(save, 'boss_introduced') ? object.label : 'Chamber basin';
+    case 'gate-wheel': return flag(save, 'gate_opened') ? 'Braced tide wheel' : object.label;
+    case 'sluice': return flag(save, 'sluice_open') ? 'Lowered sluice lever' : object.label;
+    case 'kettle': return flag(save, 'page_found') ? 'Workshop kettle' : object.label;
+    default: return object.label;
+  }
+}
+
 export function getPhase(session: GameSession): 'explore' | 'dialogue' | 'battle' | 'seal' | 'ending' {
   if (session.dialogue) return 'dialogue';
   if (session.save.battle) return 'battle';
@@ -59,23 +69,37 @@ export function getPhase(session: GameSession): 'explore' | 'dialogue' | 'battle
 }
 
 const QUEST_STEPS = [
+  ['captain_met', 'Edda asked me to bring my core home.'],
   ['disembarked', 'Came ashore on the lower quay.'],
-  ['workshop_entered', 'Edda’s workshop was empty. Nia helped me look.'],
-  ['clues_complete', 'The chart, map and missing satchel point to the old tide stairs.'],
+  ['nia_met', 'Nia waited for my boat. Edda never came.'],
+  ['workshop_entered', 'Nia let me into Edda’s empty workshop.'],
+  ['clues_complete', 'A second pulse on her chart. The old tide stairs on her map.'],
   ['bram_met', 'Bram saw Edda go down with a lamp.'],
-  ['rillik_bonded', 'After we lifted the gate, Rillik came back and touched the cuff.'],
+  ['rillik_bonded', 'We freed Rillik. It came back and touched my cuff.'],
   ['current_eddy', 'Rillik found a drain behind the passage wall.'],
   ['sluice_open', 'Opened the sluice. The crossing is dry.'],
-  ['tutorial_complete', 'Passed the flooded nest.'],
-  ['currents_followed', 'Foam in the upper channel runs uphill to the chamber.'],
+  ['tutorial_complete', 'Got past Tressel’s flooded nest.'],
+  ['currents_followed', 'We followed the foam uphill to the chamber.'],
   ['boss_defeated', 'The Wretch slipped back through the opening.'],
   ['rift_sealed', 'Three pulses from the cuff closed the rift.'],
-  ['page_found', 'Edda wrapped her survey page in wax. She took the inland road.'],
-  ['chapter_complete', 'Brought the page home to Nia.'],
+  ['page_found', 'Found Edda’s page under the stone. She marked the inland road.'],
+  ['chapter_complete', 'Showed Nia the page. We’ll ask the carters in the morning.'],
 ] as const;
 export function getQuestSteps(save: MesomonSaveV1) {
   const first = QUEST_STEPS.findIndex(([key]) => !flag(save, key));
   return QUEST_STEPS.map(([id, label], index) => ({ id, label, complete: flag(save, id), active: index === first }));
+}
+export function getHarborNotes(save: MesomonSaveV1): string[] {
+  const notes: string[] = [];
+  if (flag(save, 'whistle_returned')) notes.push('Pell has the whistle back.');
+  else if (flag(save, 'whistle_found')) notes.push('Found the tin whistle. Bring it back to Pell.');
+  else if (flag(save, 'whistle_accepted')) notes.push('Pell lost a tin whistle in the reeds below the market.');
+  if (flag(save, 'wrong_catch')) notes.push('Rillik helped free the Muddren from the fisher’s net.');
+  else if (flag(save, 'visited:fisher')) notes.push('A Muddren has its foot caught in the fisher’s net.');
+  return notes;
+}
+export function needsGateBrace(save: MesomonSaveV1): boolean {
+  return !flag(save, 'brace_found') && (flag(save, 'visited:gate-wheel') || flag(save, 'visited:nia-stairs'));
 }
 export function getObjective(save: MesomonSaveV1): string {
   if (!flag(save, 'captain_met')) return 'Speak to the captain, near the ship’s bow.';
@@ -83,18 +107,21 @@ export function getObjective(save: MesomonSaveV1): string {
   if (!flag(save, 'nia_met')) return 'Nia is waiting at the arrival pier.';
   if (!flag(save, 'workshop_entered')) return 'Edda’s workshop is northwest, past the market.';
   if (!flag(save, 'clues_complete')) return `Search Edda’s chart, field map and empty hook · ${['clue_chart', 'clue_map', 'clue_hook'].filter(key => flag(save, key)).length}/3`;
-  if (!flag(save, 'bram_met')) return 'Speak to Bram on the far eastern quay.';
-  if (!flag(save, 'gate_opened')) return flag(save, 'brace_found') ? 'Brace the jammed wheel. Nia will hold the gate.' : 'Find a loose brace below the tide wheel.';
-  if (!flag(save, 'rillik_bonded')) return 'Rillik came back. Kneel beside the broken walkway.';
-  if (!flag(save, 'current_eddy')) return 'Enter the under-wharf passage. Let Rillik sense the current.';
-  if (!flag(save, 'sluice_open')) return 'Follow the pale ripple to the maintenance sluice.';
+  if (!flag(save, 'bram_met')) return 'Meet Bram at the east quay barrier.';
+  if (!flag(save, 'gate_opened')) {
+    if (flag(save, 'brace_found')) return 'Take the timber to the tide wheel.';
+    return needsGateBrace(save) ? 'Find a timber brace below the tide wheel.' : 'Check the wheel at the old tide stairs.';
+  }
+  if (!flag(save, 'rillik_bonded')) return 'Check the broken walkway for Rillik.';
+  if (!flag(save, 'current_eddy')) return 'Under the wharf, let Rillik listen at the eddy.';
+  if (!flag(save, 'sluice_open')) return 'Lower the sluice lever to drain the crossing.';
   if (!flag(save, 'tutorial_complete')) return 'A frightened Tressel guards the crossing. Approach carefully.';
   if (!flag(save, 'current_channel')) return 'Use Current Sense near the upper channel.';
-  if (!flag(save, 'boss_defeated')) return 'Follow the second current into the old tide chamber.';
+  if (!flag(save, 'boss_defeated')) return save.player.mapId === 'chamber' ? 'Inspect the basin at the end of the walkway.' : 'Follow the current into the old tide chamber.';
   if (!flag(save, 'rift_sealed')) return 'The demon is gone. Align three pulses to seal the rift.';
   if (!flag(save, 'page_found')) return 'Inspect the stone beside the sealed rift.';
   if (!flag(save, 'chapter_complete')) return 'Return to Nia at Edda’s workshop.';
-  return 'Port Marche is quiet again. The inland road will have to wait.';
+  return 'Explore Port Marche. The inland road is beyond this chapter.';
 }
 
 function open(session: GameSession, id: string, lines: DialogueLine[], onFinish?: StoryEvent, choices?: DialogueState['choices']): GameSession {
@@ -191,7 +218,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   if (id === 'captain') return flag(save, 'captain_met') ? short(session, 'Captain', 'Gangplank’s aft. Mind the third board.') : scene(session, 'captain', 'captain-met');
   if (id === 'gangplank') {
     if (!flag(save, 'captain_met')) return short(session, 'Captain', 'Tavian. A word before you go ashore.');
-    save.questFlags.disembarked = true; teleport(session, 'harbor', 26, 30, 'up'); session.notice = 'Port Marche · the harbor remembers you'; return session;
+    save.questFlags.disembarked = true; teleport(session, 'harbor', 26, 30, 'up'); session.notice = ''; return session;
   }
   if (id === 'nia') return flag(save, 'nia_met') ? scene(session, 'nia-repeat') : scene(session, 'nia', 'nia-met');
   if (id === 'workshop-door') {
@@ -238,7 +265,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
     return scene(session, dialogueId);
   }
   if (id === 'sluice') {
-    if (flag(save, 'sluice_open')) return short(session, 'Tavian', 'The crossing’s drained. No need to turn it again.');
+    if (flag(save, 'sluice_open')) return short(session, 'Tavian', 'Handle’s down. The boards are dry.');
     if (!flag(save, 'current_eddy')) return short(session, 'Tavian', 'Which channel does this drain? Let Rillik check the current.');
     save.questFlags.sluice_open = true; return scene(session, 'sluice');
   }
@@ -254,7 +281,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   }
   if (id === 'gleamwing') return scene(session, 'gleamwing', 'wild-complete');
   if (id === 'chamber-door') {
-    if (!flag(save, 'tutorial_complete')) return short(session, 'Tavian', 'That frightened Tressel is still guarding the way back.');
+    if (!flag(save, 'tutorial_complete')) return short(session, 'Tavian', 'That Tressel’s still at the crossing. I’d better check on it.');
     if (!flag(save, 'currents_followed')) return short(session, 'Tavian', 'Rillik hasn’t found where the second current leads yet.');
     return teleport(session, 'chamber', 8, 12);
   }
@@ -273,7 +300,8 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   if (id === 'closing' && !flag(save, 'page_found')) return scene(session, 'workshop-nia');
   if (id === 'closing') {
     if (flag(save, 'chapter_complete')) return scene(session, 'closing-repeat');
-    save.questFlags.companion_released = true;
+    // Rillik rests in its crystal during supper and emerges beside the map.
+    save.questFlags.companion_released = false;
     return open(session, 'closing', beginNarrativeBeat(save, 'closing'), undefined, CLOSING_CHOICES);
   }
   if (id === 'pell') {
@@ -300,7 +328,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
       save.inventory.tincture = (save.inventory.tincture ?? 0) + 1;
       return scene(session, 'seli-gift');
     }
-    if (save.party.length) { healParty(save); return scene(session, 'seli-rest'); }
+    if (save.party.some(member => member.vitality < member.maxVitality)) { healParty(save); return scene(session, 'seli-rest'); }
     return scene(session, 'seli-repeat');
   }
   const lines = beginNarrativeBeat(save, id);
@@ -323,6 +351,7 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     const choice = dialogue?.index === (dialogue?.lines.length ?? 0) - 1 ? dialogue?.choices?.find(value => value.id === action.id) : undefined;
     if (!choice) return previous;
     save.questFlags.response_tone = choice.id;
+    save.questFlags.companion_released = true;
     save.dialogueHistory = [...save.dialogueHistory, dialogue!.lines[dialogue!.index]].slice(-100);
     return open(session, 'closing-after', [{ speaker: 'Tavian', text: choice.text }, ...beginNarrativeBeat(save, 'closing-after')], 'chapter-complete');
   }

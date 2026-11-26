@@ -10,6 +10,7 @@ import { paintTideworks, type TideworksState } from './tideworks';
 import { paintEnvironmentMotion } from './environmentMotion';
 import { foregroundForMap, paintForeground } from './foreground';
 import { INTERACTION_ART, interactionArtKey, paintInteractionArt } from './interactionsArt';
+import { WALK_STEP_MS } from '../input';
 import { canWalk, getMap, getPhase, getVisibleObjects, nearbyInteractions } from '../engine';
 
 // Native pixels relative to the interaction tile. Raised desks and recessed doors
@@ -353,17 +354,17 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (!session || !this.ready || disposed || paused || !this.tavian || !this.effects || !this.decorations) return;
       const reduced = session.save.settings.reducedMotion;
       const map = getMap(session.save);
-      const progress = reduced ? 1 : Math.min(1, (time - this.moveStart) / 130);
+      const progress = reduced ? 1 : Math.min(1, Math.max(0, time - this.moveStart) / WALK_STEP_MS);
       this.tavian.setPosition(Math.round(this.from.x + (this.target.x - this.from.x) * progress), Math.round(this.from.y + (this.target.y - this.from.y) * progress));
       const walking = progress < 1 && (this.from.x !== this.target.x || this.from.y !== this.target.y);
-      this.tavian.setFrame(DIRECTION_FRAME[session.save.player.facing] + (walking ? 1 + Math.floor(time / 95) % 2 : 0)).setDepth(this.tavian.y + 1);
+      this.tavian.setFrame(DIRECTION_FRAME[session.save.player.facing] + (walking ? 1 + Math.floor(progress * 2) : 0)).setDepth(this.tavian.y + 1);
       this.playerShadow?.setVisible(this.tavian.visible).setPosition(this.tavian.x, this.tavian.y - 2).setDepth(this.tavian.y - 0.5);
       this.companionShadow?.setVisible(Boolean(this.companion?.visible));
       if (!this.battleMode) this.cameras.main.centerOn(this.tavian.x, this.tavian.y - 8);
       if (this.companion?.visible) {
         const x = Math.round(this.companionFrom.x + (this.companionTarget.x - this.companionFrom.x) * progress), y = Math.round(this.companionFrom.y + (this.companionTarget.y - this.companionFrom.y) * progress);
         const species = CREATURES.indexOf(session.save.party[0].speciesId);
-        const frame = species * 8 + CREATURE_DIRECTION[this.companionFacing] + (walking ? Math.floor(time / 120) % 2 : 0);
+        const frame = species * 8 + CREATURE_DIRECTION[this.companionFacing] + (walking ? Math.floor(progress * 2) : 0);
         this.companion.setPosition(x, y).setDepth(y).setFrame(frame);
         this.companionShadow?.setPosition(x, y - 2).setDepth(y - 0.5);
       }

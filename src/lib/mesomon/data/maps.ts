@@ -45,7 +45,7 @@ export const MAPS: Record<MapId, MapDefinition> = {
   ] },
   harbor: { id: 'harbor', name: 'Port Marche · lower quay', width: 40, height: 36, tiles: harbor, spawn: { x: 26, y: 30 }, ambience: 'harbor', objects: [
     object('nia', 25, 28, 'Nia', 'npc'), object('workshop-door', 9, 15, 'Edda’s workshop', 'door', 'door', false),
-    object('seli', 22, 16, 'Seli · provisions', 'npc'), object('pell', 30, 26, 'Pell', 'npc'), object('fisher', 5, 28, 'Fisher · the wrong catch', 'npc'),
+    object('seli', 22, 16, 'Seli · provisions', 'npc'), object('pell', 30, 26, 'Pell', 'npc'), object('fisher', 5, 28, 'Fisher', 'npc'),
     object('dockworker', 11, 24, 'Dock worker', 'npc'), object('bell-worker', 20, 23, 'Crane rigger', 'npc', 'worker'), object('lamp-keeper', 31, 17, 'Lamp keeper', 'npc', 'worker'),
     object('bram', 33, 21, 'Bram · tide supervisor', 'npc'), object('tide-door', 35, 21, 'Old tide stairs', 'door', 'stairs', false),
     object('inland-gate', 18, 4, 'Inland road gate', 'sign', 'gate'), object('whistle-reeds', 32, 29, 'Search the reeds', 'search', 'reeds'),

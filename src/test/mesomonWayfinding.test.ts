@@ -47,7 +47,7 @@ describe('Port Marche location chart', () => {
     expect(visited.slice(0, 4)).toEqual(['captain', 'gangplank', 'nia', 'workshop-door']);
     expect(new Set(visited.slice(4, 7))).toEqual(new Set(['chart', 'field-map', 'satchel-hook']));
     expect(visited.slice(7)).toEqual([
-      'workshop-exit', 'bram', 'tide-door', 'gate-brace', 'gate-wheel', 'rillik-bond', 'passage-door',
+      'workshop-exit', 'bram', 'tide-door', 'gate-wheel', 'gate-brace', 'gate-wheel', 'rillik-bond', 'passage-door',
       'sense-eddy', 'sluice', 'tressel', 'sense-channel', 'chamber-door', 'rift', 'page',
       'chamber-exit', 'passage-exit', 'stairs-exit', 'workshop-door', 'closing',
     ]);

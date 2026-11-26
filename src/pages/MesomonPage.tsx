@@ -26,14 +26,16 @@ import {
   CHAPTER_TITLE,
   createNewSave,
   createSession,
+  getHarborNotes,
   getMap,
   getObjective,
   getPhase,
   getQuestSteps,
+  interactionLabel,
   nearbyInteractions,
   reduceGame,
 } from "@/lib/mesomon/engine";
-import { keyboardAction } from "@/lib/mesomon/input";
+import { isDirection, keyboardAction, WALK_STEP_MS } from "@/lib/mesomon/input";
 import { MOVES, SPECIES } from "@/lib/mesomon/data/species";
 import { resonanceEligibility } from "@/lib/mesomon/battle";
 import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
@@ -185,20 +187,6 @@ function Chapter({
   const menuRef = useRef(menu);
   const sealOrigin = useRef(performance.now());
   const lastSave = useRef<GameSession["save"] | null>(null);
-  const moveBuffer = useRef<{
-    last: number;
-    direction: Direction | null;
-    timer: ReturnType<typeof setTimeout> | null;
-  }>({ last: -Infinity, direction: null, timer: null });
-  const clearMoveBuffer = useCallback(() => {
-    if (moveBuffer.current.timer) clearTimeout(moveBuffer.current.timer);
-    moveBuffer.current.timer = null;
-    moveBuffer.current.direction = null;
-  }, []);
-  useEffect(() => clearMoveBuffer, [clearMoveBuffer]);
-  useEffect(() => {
-    if (hidden || menu || !playing) clearMoveBuffer();
-  }, [hidden, menu, playing, clearMoveBuffer]);
   current.current = session;
   saveLocal.current = sync.saveLocal;
   flush.current = sync.flush;
@@ -218,7 +206,11 @@ function Chapter({
     act,
     showNotice,
   );
-  const { cancel: cancelWalk, tap: tapWorld } = walking;
+  const { cancel: cancelWalk, manualStep, tap } = walking;
+  const tapWorld = useCallback((tile: { x: number; y: number }, id?: string) => {
+    setHeld(null);
+    tap(tile, id);
+  }, [tap]);
   const destination = useRef(walking.destination);
   destination.current = walking.destination;
   const dispatch = useCallback(
@@ -351,19 +343,21 @@ function Chapter({
   useEffect(() => {
     const visibility = () => {
       setHidden(document.hidden);
+      cancelWalk();
       setHeld(null);
       if (document.hidden && playingRef.current && current.current) {
         saveLocal.current(current.current.save);
         void flush.current();
       }
     };
-    const pageHide = () => {
+    const checkpoint = () => {
       if (playingRef.current && current.current) {
         saveLocal.current(current.current.save);
         void flush.current();
       }
     };
-    const blur = () => setHeld(null);
+    const blur = () => { setHeld(null); cancelWalk(); };
+    const pageHide = () => { blur(); checkpoint(); };
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", pageHide);
     window.addEventListener("blur", blur);
@@ -371,9 +365,9 @@ function Chapter({
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", pageHide);
       window.removeEventListener("blur", blur);
-      pageHide();
+      checkpoint();
     };
-  }, []);
+  }, [cancelWalk]);
   useEffect(() => {
     if (!playing || hidden || menu) return;
     const timer = window.setInterval(
@@ -467,40 +461,16 @@ function Chapter({
   const press = useCallback(
     (action: InputAction) => {
       if (sync.blocked) return;
-      cancelWalk();
       awakenAudio();
       if (
-        DIRECTIONS.includes(action as Direction) &&
+        isDirection(action) &&
         playingRef.current &&
         !menuRef.current
       ) {
-        const buffer = moveBuffer.current,
-          elapsed = performance.now() - buffer.last;
-        if (elapsed >= 140) {
-          clearMoveBuffer();
-          buffer.last = performance.now();
-          dispatch({ type: "input", action });
-        } else {
-          buffer.direction = action as Direction;
-          if (!buffer.timer)
-            buffer.timer = setTimeout(() => {
-              const direction = buffer.direction;
-              buffer.timer = null;
-              buffer.direction = null;
-              if (
-                direction &&
-                playingRef.current &&
-                !menuRef.current &&
-                !document.hidden
-              ) {
-                buffer.last = performance.now();
-                dispatch({ type: "input", action: direction });
-              }
-            }, 140 - elapsed);
-        }
+        manualStep(action);
         return;
       }
-      clearMoveBuffer();
+      cancelWalk();
       if (action === "menu") {
         setHeld(null);
         openedFromChart.current = false;
@@ -536,11 +506,19 @@ function Chapter({
       hitSeal,
       line,
       textComplete,
-      clearMoveBuffer,
+      manualStep,
     ],
   );
   const pressRef = useRef(press);
   pressRef.current = press;
+  const heldRef = useRef<Direction | null>(null);
+  heldRef.current = held;
+  const startHold = useCallback((direction: Direction) => {
+    if (heldRef.current === direction) return;
+    heldRef.current = direction;
+    setHeld(direction);
+    pressRef.current(direction);
+  }, []);
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       const target = event.target instanceof Element ? event.target : null;
@@ -557,9 +535,9 @@ function Chapter({
         return;
       }
       event.preventDefault();
-      if (DIRECTIONS.includes(action as Direction))
-        setHeld(action as Direction);
-      else if (!event.repeat) pressRef.current(action);
+      if (event.repeat) return;
+      if (isDirection(action)) startHold(action);
+      else pressRef.current(action);
     };
     const up = (event: KeyboardEvent) => {
       const action = keyboardAction(event.key);
@@ -572,13 +550,16 @@ function Chapter({
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
     };
-  }, []);
+  }, [startHold]);
   useEffect(() => {
-    if (!held || hidden || menu || !playing) return;
-    pressRef.current(held);
-    const timer = window.setInterval(() => pressRef.current(held), 155);
+    if (hidden || menu || !playing || sync.blocked || phase !== "explore") {
+      setHeld(null);
+      return;
+    }
+    if (!held) return;
+    const timer = window.setInterval(() => pressRef.current(held), WALK_STEP_MS);
     return () => clearInterval(timer);
-  }, [held, hidden, menu, playing]);
+  }, [held, hidden, menu, playing, phase, sync.blocked]);
   const sealActive = session?.save.seal.active ?? false;
   const dialogueActive =
     session?.dialogue !== null && session?.dialogue !== undefined;
@@ -640,8 +621,8 @@ function Chapter({
     setHeld(null);
     setMenu(null);
     setRestart(false);
-    clearMoveBuffer();
-  }, [sync.blocked, clearMoveBuffer]);
+    cancelWalk();
+  }, [sync.blocked, cancelWalk]);
   const reloadFile = async () => {
     playingRef.current = false;
     setPlaying(false);
@@ -909,8 +890,7 @@ function Chapter({
                       has one voice.
                     </h2>
                     <p>
-                      Edda took the inland road. Her map is back on the workshop
-                      table.
+                      Edda marked the inland road. Tavian’s journey pauses here.
                     </p>
                     <button
                       className="mm-primary"
@@ -1026,7 +1006,7 @@ function Chapter({
                           }
                         >
                           {index === 0 && <kbd aria-hidden="true">A</kbd>}
-                          {object.label}
+                          {interactionLabel(session.save, object)}
                           <ChevronRight size={13} />
                         </button>
                       ))}
@@ -1057,7 +1037,7 @@ function Chapter({
                     target &&
                     DIRECTIONS.includes(target.dataset.mmAction as Direction)
                   )
-                    setHeld(target.dataset.mmAction as Direction);
+                    startHold(target.dataset.mmAction as Direction);
                 }}
                 onPointerMove={(event) => {
                   if (!event.currentTarget.hasPointerCapture(event.pointerId))
@@ -1069,7 +1049,7 @@ function Chapter({
                     setHeld(null);
                     return;
                   }
-                  setHeld(
+                  startHold(
                     Math.abs(dx) > Math.abs(dy)
                       ? dx > 0
                         ? "right"
@@ -1128,7 +1108,7 @@ function Chapter({
                 </button>
                 <span className="mm-control-hint">
                   {session.save.party.length
-                    ? "Rillik is with you"
+                    ? (session.save.questFlags.companion_released ? "Rillik walks beside you" : "Rillik is resting")
                     : "Tap ground to walk"}
                 </span>
               </div>
@@ -1579,6 +1559,7 @@ function GameMenu({
     };
   }, [onClose]);
   const s = session.save.settings;
+  const harborNotes = tab === "journal" ? getHarborNotes(session.save) : [];
   return (
     <div className="mm-modal-backdrop">
       <section
@@ -1692,6 +1673,14 @@ function GameMenu({
                     </li>
                   ))}
               </ol>
+              {harborNotes.length > 0 && (
+                <>
+                  <h3>On the quay</h3>
+                  <ul className="mm-quest-steps">
+                    {harborNotes.map((note) => <li key={note}>{note}</li>)}
+                  </ul>
+                </>
+              )}
               <h3>Recent notes</h3>
               <div className="mm-conversation-log">
                 {session.save.dialogueHistory.length ? (

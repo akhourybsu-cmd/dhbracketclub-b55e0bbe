@@ -8,7 +8,9 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { getMap, canWalk, createNewSave } from '../../src/lib/mesomon/engine';
+import { getMap, canWalk, createNewSave, getObjective, getQuestSteps } from '../../src/lib/mesomon/engine';
+import { readingVoice } from '../../src/lib/mesomon/reading';
+import { WALK_STEP_MS } from '../../src/lib/mesomon/input';
 import { readLocalSave } from '../../src/lib/mesomon/storage';
 
 const MesomonPage = lazy(() => import('../../src/pages/MesomonPage'));
@@ -18,7 +20,7 @@ function CurrentRoute() {
   const route = useLocation();
   useEffect(() => {
     const user = params.get('guest') === '1' ? null : '11111111-1111-4111-8111-111111111111';
-    Object.assign(window, { mmQa: { getMap, canWalk, createNewSave, readSave: async () => (await readLocalSave(user, 1))?.save || null } });
+    Object.assign(window, { mmQa: { getMap, canWalk, createNewSave, getObjective, getQuestSteps, readingVoice, walkStepMs: WALK_STEP_MS, readSave: async () => (await readLocalSave(user, 1))?.save || null } });
     return () => { Reflect.deleteProperty(window, 'mmQa'); };
   }, []);
   return <span hidden data-qa-route={route.pathname} />;

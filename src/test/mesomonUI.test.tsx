@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MesomonGame } from '@/pages/MesomonPage';
@@ -64,6 +64,18 @@ describe('Mesomon game shell', () => {
     expect(fieldcase.getByText('Came ashore on the lower quay.')).toBeVisible();
     expect(fieldcase.getByText('Nia is waiting at the arrival pier.')).toBeVisible();
     expect(fieldcase.queryByText(/Wretch|sealed rift|upper channel/i)).toBeNull();
+    expect(fieldcase.queryByRole('heading', { name: 'On the quay' })).toBeNull();
+  });
+  it('shows the current errand in the journal when returning with Pell’s whistle', async () => {
+    fixture.save = createNewSave();
+    Object.assign(fixture.save.questFlags, { whistle_accepted: true, whistle_found: true });
+    mount();
+    await begin();
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    const journal = within(screen.getByRole('dialog'));
+    fireEvent.click(journal.getByRole('button', { name: 'Journal' }));
+    expect(journal.getByText('Found the tin whistle. Bring it back to Pell.')).toBeVisible();
+    expect(journal.queryByText(/has the whistle back|fisher’s net/i)).toBeNull();
   });
   it('keeps the console unbranded and exits a running game through its pause menu', async () => {
     render(
@@ -104,6 +116,30 @@ describe('Mesomon game shell', () => {
     expect(screen.getByRole('button',{name:'A — Confirm'})).toBeVisible();
     expect(screen.getByRole('button',{name:'B — Cancel'})).toBeVisible();
     await waitFor(()=>expect(fixture.saveLocal).toHaveBeenCalled());
+  });
+
+  it('paces held arrows in reduced motion and ignores OS repeat after release', async () => {
+    fixture.save = createNewSave();
+    fixture.save.settings.reducedMotion = true;
+    mount();
+    await begin();
+    vi.useFakeTimers();
+    try {
+      const shell = document.querySelector('.mesomon')!;
+      fireEvent.keyDown(window, { key: 'ArrowUp' });
+      expect(shell).toHaveAttribute('data-player-y', '8');
+      fireEvent.keyDown(window, { key: 'ArrowUp', repeat: true });
+      act(() => vi.advanceTimersByTime(199));
+      expect(shell).toHaveAttribute('data-player-y', '8');
+      act(() => vi.advanceTimersByTime(1));
+      expect(shell).toHaveAttribute('data-player-y', '7');
+      fireEvent.keyUp(window, { key: 'ArrowUp' });
+      fireEvent.keyDown(window, { key: 'ArrowUp', repeat: true });
+      act(() => vi.advanceTimersByTime(400));
+      expect(shell).toHaveAttribute('data-player-y', '7');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('uses real engine movement for keyboard-operable direction buttons', async () => {
