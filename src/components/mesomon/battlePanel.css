@@ -65,7 +65,24 @@
   font-weight: 650;
   line-height: 1.35;
 }
-.mesomon .mm-battle-panel .mm-beat-next { min-width: 54px; }
+.mesomon .mm-battle-panel .mm-beat-next {
+  min-width: 54px;
+  color: #f6f1d9;
+  background: #234e43;
+  border-color: #183e35;
+}
+.mesomon .mm-battle-panel .mm-primary {
+  color: #172928;
+  background: #d7ab5d;
+}
+.mesomon .mm-battle-panel button:disabled {
+  opacity: 1;
+  color: #495548;
+  background: #d2d0b7;
+  border-color: #929783;
+  box-shadow: none;
+}
+.mm-battle-panel button:disabled small { color: inherit; }
 .mm-battle-panel .mm-battle-result { margin-top: 10px; }
 .mesomon .mm-battle-panel button:enabled:active {
   transform: translateY(2px);

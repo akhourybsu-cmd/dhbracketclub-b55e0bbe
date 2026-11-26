@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MesomonGame } from '@/pages/MesomonPage';
-import { createNewSave } from '@/lib/mesomon/engine';
+import { createNewSave, createSession, reduceGame } from '@/lib/mesomon/engine';
 import { createBattle, makeCompanion, startBattleTurn } from '@/lib/mesomon/battle';
 import type { MesomonSaveV1 } from '@/lib/mesomon/types';
 
@@ -13,6 +13,9 @@ const fixture = vi.hoisted(() => ({
   useCloud: vi.fn(async () => {}), keepLocal: vi.fn(async () => {}),
   viewCreate: vi.fn(), viewDestroy: vi.fn(), audioCreate: vi.fn(), audioDestroy: vi.fn(),
   blocked:false,blockReason:'',loading:false,
+  delayFirstFrame: false,
+  firstFrame: undefined as (() => void) | undefined,
+  artFailure: undefined as (() => void) | undefined,
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'test-user' }, loading: false }) }));
 vi.mock('@/contexts/ClubContext', () => ({ useClub: () => ({ club: { id: 'test-club' }, loading: false }) }));
@@ -24,11 +27,22 @@ vi.mock('@/hooks/useMesomonSave', () => ({ useMesomonSave: () => ({
   blocked:fixture.blocked,blockReason:fixture.blockReason,
 }) }));
 vi.mock('@/lib/mesomon/renderer/createGame', () => ({
-  createMesomonView: async (parent: HTMLElement, options: { signal?: AbortSignal }) => {
+  createMesomonView: async (parent: HTMLElement, options: { signal?: AbortSignal; onFirstFrame?: () => void; onError?: (error: string) => void }) => {
     fixture.viewCreate();
     const canvas = document.createElement('canvas'); canvas.width=160;canvas.height=144;
     if (!options.signal?.aborted) parent.appendChild(canvas);
-    return { update: vi.fn(), pause: vi.fn(), sealAccuracy: () => 1,
+    let drewFrame = false;
+    const drawFrame = () => {
+      if (!drewFrame && !options.signal?.aborted) {
+        drewFrame = true;
+        options.onFirstFrame?.();
+      }
+    };
+    return { update: () => {
+      fixture.firstFrame = drawFrame;
+      fixture.artFailure = () => options.onError?.('The artwork could not load.');
+      if (!fixture.delayFirstFrame) drawFrame();
+    }, pause: vi.fn(), sealAccuracy: () => 1,
       destroy: () => { fixture.viewDestroy(); canvas.remove(); } };
   },
 }));
@@ -40,6 +54,7 @@ vi.mock('@/lib/mesomon/audio', () => ({ MesomonAudio: class {
 } }));
 
 beforeEach(() => {
+  fixture.delayFirstFrame = false; fixture.firstFrame = undefined; fixture.artFailure = undefined;
   vi.clearAllMocks(); fixture.save=null;fixture.blocked=false;fixture.blockReason='';fixture.loading=false;localStorage.clear();
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} unobserve() {} });
 });
@@ -49,13 +64,86 @@ function mount(strict=false) {
   const game=<MemoryRouter><MesomonGame userId={USER} clubId={CLUB} /></MemoryRouter>;
   return render(strict?<StrictMode>{game}</StrictMode>:game);
 }
-async function begin() { fireEvent.click(await screen.findByRole('button',{name:/Begin journey|Continue journey/})); }
+async function begin() {
+  fireEvent.click(await screen.findByRole('button',{name:/Begin journey|Continue journey/}));
+  await waitFor(() => expect(fixture.firstFrame).toBeDefined());
+}
 function openStart() {
   fireEvent.click(screen.getByRole('button', { name: 'Start' }));
   return within(screen.getByRole('dialog', { name: 'Start menu' }));
 }
 
 describe('Mesomon game shell', () => {
+  it.each(['first frame', 'art failure'])('holds a restored battle for the %s, even under keyboard and touch input', async ready => {
+    const file = createNewSave();
+    const member = makeCompanion('rillik');
+    file.party = [member];
+    file.collection[member.id] = member;
+    file.battle = startBattleTurn(createBattle(file.party, 'muddren'), { type: 'move', moveId: 'brine-snap' }, {});
+    const [first, impact] = file.battle.playback!.beats;
+    fixture.save = file;
+    fixture.delayFirstFrame = true;
+    mount();
+    await begin();
+    vi.useFakeTimers();
+    try {
+      const battle = within(screen.getByRole('region', { name: 'Battle' }));
+      const next = battle.getByRole('button', { name: 'Next' });
+      expect(next).toBeDisabled();
+      fireEvent.click(next);
+      fireEvent.keyDown(window, { key: 'z' });
+      fireEvent.keyDown(window, { key: 'Enter' });
+      act(() => vi.advanceTimersByTime(7000));
+      expect(battle.getByRole('status')).toHaveTextContent(first.text);
+      expect(fixture.saveLocal.mock.calls.at(-1)?.[0].battle.playback.index).toBe(0);
+      act(() => ready === 'first frame' ? fixture.firstFrame!() : fixture.artFailure!());
+      expect(next).toBeEnabled();
+      fireEvent.keyDown(next, { key: 'z' });
+      expect(battle.getByRole('status')).toHaveTextContent(impact.text);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('keeps battle moves locked until the first frame', async () => {
+    const file = createNewSave();
+    const member = makeCompanion('rillik');
+    file.party = [member];
+    file.collection[member.id] = member;
+    file.battle = createBattle(file.party, 'muddren');
+    fixture.save = file;
+    fixture.delayFirstFrame = true;
+    mount();
+    await begin();
+    const battle = within(screen.getByRole('region', { name: 'Battle' }));
+    const move = battle.getByRole('button', { name: /Brine Snap/ });
+    expect(move).toBeDisabled();
+    fireEvent.click(move);
+    fireEvent.keyDown(window, { key: 'z' });
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].battle.turn).toBe(0);
+    act(() => fixture.firstFrame!());
+    expect(move).toBeEnabled();
+  });
+
+  it('holds a saved walk-in behind the cover until the first frame', async () => {
+    const file = createNewSave();
+    file.player = { ...file.player, x: 8, y: 10, facing: 'down' };
+    file.questFlags.captain_met = true;
+    const arrival = reduceGame(createSession(file), { type: 'interact', id: 'gangplank' }).save;
+    const initialSteps = arrival.dialogue!.approach!.steps.length;
+    fixture.save = arrival;
+    fixture.delayFirstFrame = true;
+    mount();
+    await begin();
+    vi.useFakeTimers();
+    try {
+      fireEvent.keyDown(window, { key: 'z' });
+      act(() => vi.advanceTimersByTime(7000));
+      expect(fixture.saveLocal.mock.calls.at(-1)?.[0].dialogue.approach.steps).toHaveLength(initialSteps);
+      act(() => fixture.firstFrame!());
+      act(() => vi.advanceTimersByTime(200));
+      expect(fixture.saveLocal.mock.calls.at(-1)?.[0].dialogue.approach.steps).toHaveLength(initialSteps - 1);
+    } finally { vi.useRealTimers(); }
+  });
+
   it('pauses the current attack in Start and resumes the next impact through the keyboard', async () => {
     fixture.save = createNewSave();
     const member = makeCompanion('rillik');
@@ -119,6 +207,10 @@ describe('Mesomon game shell', () => {
     expect(Array.from(stats.querySelectorAll('div'), cell => cell.textContent)).toEqual([
       'Attack16', 'Defense14', 'Speed17', 'Resonance20',
     ]);
+    fireEvent.click(menu.getByRole('button', { name: 'Release Rillik beside you' }));
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].questFlags.companion_released).toBe(true);
+    fireEvent.click(menu.getByRole('button', { name: 'Call Rillik to the crystal' }));
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].questFlags.companion_released).toBe(false);
   });
   it('keeps the Companions meter in step with a paused exchange', async () => {
     const file = createNewSave();
@@ -134,6 +226,7 @@ describe('Mesomon game shell', () => {
     const menu = openStart();
     fireEvent.click(menu.getByRole('button', { name: 'Companions' }));
     expect(menu.getByRole('meter', { name: 'Rillik vitality' })).toHaveAttribute('value', String(member.vitality));
+    expect(menu.queryByRole('button', { name: /Release Rillik|Call Rillik/ })).toBeNull();
   });
   it('shows the current errand in the journal when returning with Pell’s whistle', async () => {
     fixture.save = createNewSave();

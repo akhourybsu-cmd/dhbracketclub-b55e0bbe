@@ -399,7 +399,11 @@ async function walkingPace() {
       assert.deepEqual(steps.map(({x,y}) => ({x,y})), corridor.points, `${mode} must commit exactly the requested route`);
       const intervals = steps.slice(1).map((step, index) => step.at - steps[index].at);
       const mean = intervals.reduce((sum, duration) => sum + duration, 0) / intervals.length;
-      assert.ok(intervals.every(duration => duration >= corridor.stepMs - 45), `${mode} must not advance tiles faster than its shared clock: ${JSON.stringify(intervals)}`);
+      // The first DOM receipt includes React's input-to-paint latency. A late
+      // first receipt shortens the next observed interval on a busy browser.
+      // Check steady walking and total elapsed time, and still reject an opening burst.
+      assert.ok(intervals[0] >= corridor.stepMs / 2, `${mode} commits two opening steps together: ${JSON.stringify(intervals)}`);
+      assert.ok(intervals.slice(1).every(duration => duration >= corridor.stepMs - 45), `${mode} must not advance tiles faster than its shared clock: ${JSON.stringify(intervals)}`);
       assert.ok(mean >= corridor.stepMs - 25 && mean <= corridor.stepMs + 100,
         `${mode} must walk at the authored pace (${corridor.stepMs}ms): ${JSON.stringify(intervals)}`);
       traces.push({mode, stepMs: corridor.stepMs, intervals: intervals.map(value => Math.round(value)), mean: Math.round(mean), steps: corridor.points});
@@ -715,7 +719,10 @@ async function inspectPacedTurn(p) {
   assert.deepEqual((await save(p)).battle, checkpoint, 'Reload must restore the saved beat and resolved combat outcome');
   await resume.click();
   const next = panel.getByRole('button', {name: 'Next', exact: true});
-  await expect(next).toBeVisible();
+  await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
+  await expect(next).toBeEnabled();
+  const nextColors = await readButtonContrast(next);
+  assert.ok(nextColors.readings[0].ratio >= 4.5, 'Battle Next text contrast: '+JSON.stringify(nextColors));
   await next.click();
   await expect.poll(async () => {
     const battle = (await save(p)).battle;
@@ -729,9 +736,8 @@ async function inspectPacedTurn(p) {
   assert.deepEqual((await save(p)).battle, expected, 'Manual and automatic reading must preserve the committed result and item charges');
   check(engine+'-paced-turn-pause-reload-and-deliberate-advance', {turn: expected.turn, beats: checkpoint.playback.beats.length});
 }
-async function moveContrast(p) {
-  const move=p.getByRole('button',{name:/^Brine Snap/i});
-  const measure=()=>move.evaluate(button=>{
+async function readButtonContrast(control, selector = null) {
+  return control.evaluate((button, selector) => {
     const parse=color=>{const values=color.match(/[\d.]+/g)?.map(Number)||[];return[values[0]||0,values[1]||0,values[2]||0,values.length>3?values[3]:1];};
     const composite=(front,back)=>front.slice(0,3).map((channel,index)=>channel*front[3]+back[index]*(1-front[3]));
     const luminance=color=>color.map(channel=>{const c=channel/255;return c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4;}).reduce((total,c,index)=>total+c*[0.2126,0.7152,0.0722][index],0);
@@ -740,13 +746,18 @@ async function moveContrast(p) {
     const style=getComputedStyle(button),brightness=Number(style.filter.match(/brightness\(([\d.]+)\)/)?.[1]||1);
     const painted=color=>color.map(channel=>Math.min(255,Math.max(0,channel*brightness)));
     const back=painted(background);
-    const readings=[...button.querySelectorAll('strong,small')].map(node=>{
+    const labels = selector ? [...button.querySelectorAll(selector)] : [button];
+    const readings=labels.map(node=>{
       const color=getComputedStyle(node).color,foreground=painted(composite(parse(color),background));
       const values=[luminance(foreground),luminance(back)].sort((a,b)=>a-b);
       return{text:node.textContent,ratio:Math.round(((values[1]+0.05)/(values[0]+0.05))*100)/100,color,background:style.backgroundColor};
     });
     return{brightness,backgroundImage:style.backgroundImage,readings};
-  });
+  }, selector);
+}
+async function moveContrast(p) {
+  const move=p.getByRole('button',{name:/^Brine Snap/i});
+  const measure=()=>readButtonContrast(move, 'strong,small');
   await p.mouse.move(1,1);await pause(180);const normal=await measure();
   await move.hover();await pause(180);const hovered=await measure();
   for(const [state,result]of [['normal',normal],['hover',hovered]]){

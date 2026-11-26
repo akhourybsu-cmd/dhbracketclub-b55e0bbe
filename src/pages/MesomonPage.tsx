@@ -146,6 +146,7 @@ function Chapter({
   const restoreMenuFocus = useRef(false);
   const [viewError, setViewError] = useState<string | null>(null);
   const [artReady, setArtReady] = useState(false);
+  const sceneReady = artReady || viewError !== null;
   const [viewRetry, setViewRetry] = useState(0);
   const [held, setHeld] = useState<Direction | null>(null);
   const [hidden, setHidden] = useState(() => document.hidden);
@@ -180,9 +181,10 @@ function Chapter({
     setSession((value) => (value ? { ...value, notice } : value));
   }, []);
   const phase = session ? getPhase(session) : "explore";
+  const scenePaused = !playing || !sceneReady || !!menu || hidden || sync.blocked;
   const walking = useTapWalk(
     session,
-    playing && !menu && !hidden && !sync.blocked && phase === "explore",
+    !scenePaused && phase === "explore",
     act,
     showNotice,
   );
@@ -195,10 +197,13 @@ function Chapter({
   destination.current = walking.destination;
   const dispatch = useCallback(
     (action: GameAction) => {
-      if (action.type !== "tick" && action.type !== "settings") cancelWalk();
+      if (action.type !== "tick" && action.type !== "settings") {
+        if (scenePaused) return;
+        cancelWalk();
+      }
       act(action);
     },
-    [act, cancelWalk],
+    [act, cancelWalk, scenePaused],
   );
   useEffect(() => {
     if (
@@ -395,12 +400,12 @@ function Chapter({
   const stepsLeft = session?.dialogue?.approach?.steps.length ?? 0;
   const skipWalkAnimation = session?.save.settings.reducedMotion ?? false;
   useEffect(() => {
-    if (!playing || hidden || menu || sync.blocked || !approaching) return;
+    if (scenePaused || !approaching) return;
     const timer = window.setTimeout(() => {
       act({ type: "approach-step", actor: approaching, remaining: stepsLeft });
     }, skipWalkAnimation ? 0 : WALK_STEP_MS);
     return () => window.clearTimeout(timer);
-  }, [playing, hidden, menu, sync.blocked, approaching, stepsLeft, skipWalkAnimation, act]);
+  }, [scenePaused, approaching, stepsLeft, skipWalkAnimation, act]);
   const line = approaching ? undefined : session?.dialogue?.lines[session.dialogue.index];
   const voice = line ? readingVoice(line.speaker) : null;
   const lineKey = `${session?.dialogue?.id}:${session?.dialogue?.index}`;
@@ -474,7 +479,7 @@ function Chapter({
         if (action === "cancel") closeMenu();
         return;
       }
-      if (!playingRef.current || current.current?.dialogue?.approach) return;
+      if (scenePaused || current.current?.dialogue?.approach) return;
       if (
         action === "confirm" &&
         current.current?.save.seal.active &&
@@ -492,6 +497,7 @@ function Chapter({
     },
     [
       sync.blocked,
+      scenePaused,
       closeMenu,
       cancelWalk,
       awakenAudio,
@@ -552,14 +558,14 @@ function Chapter({
     };
   }, [startHold]);
   useEffect(() => {
-    if (hidden || menu || !playing || sync.blocked || phase !== "explore") {
+    if (scenePaused || phase !== "explore") {
       setHeld(null);
       return;
     }
     if (!held) return;
     const timer = window.setInterval(() => pressRef.current(held), WALK_STEP_MS);
     return () => clearInterval(timer);
-  }, [held, hidden, menu, playing, phase, sync.blocked]);
+  }, [held, scenePaused, phase]);
   const sealActive = session?.save.seal.active ?? false;
   const dialogueActive =
     session?.dialogue !== null && session?.dialogue !== undefined;
@@ -718,7 +724,11 @@ function Chapter({
                 {viewError && (
                   <div className="mm-view-error" role="alert">
                     <p>{viewError}</p>
-                    <button onClick={() => setViewRetry((value) => value + 1)}>
+                    <button onClick={() => {
+                      setArtReady(false);
+                      setViewError(null);
+                      setViewRetry(value => value + 1);
+                    }}>
                       Reload artwork
                     </button>
                   </div>
@@ -903,7 +913,7 @@ function Chapter({
                     key={session.save.battle.id}
                     save={session.save}
                     battle={session.save.battle}
-                    paused={!!menu || hidden || sync.blocked}
+                    paused={scenePaused}
                     onBeat={advanceBattleBeat}
                     onAction={battleAction}
                     onContinue={() => dispatch({ type: "advance" })}
@@ -1093,7 +1103,7 @@ function Chapter({
               }}
               onRestart={() => setRestart(true)}
               onCompanion={() =>
-                dispatch({
+                act({
                   type: "companion",
                   released: !session.save.questFlags.companion_released,
                 })

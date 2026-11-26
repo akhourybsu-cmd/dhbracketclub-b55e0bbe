@@ -9,7 +9,7 @@ import { getBattleBeat } from "@/lib/mesomon/battlePlayback";
 import type { MesomonSaveStatus } from "@/hooks/useMesomonSave";
 import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
 import { SPECIES } from "@/lib/mesomon/data/species";
-import { CHAPTER_TITLE, getHarborNotes, getMap, getObjective, getQuestSteps } from "@/lib/mesomon/engine";
+import { CHAPTER_TITLE, getHarborNotes, getMap, getObjective, getPhase, getQuestSteps } from "@/lib/mesomon/engine";
 import { isDirection, keyboardAction } from "@/lib/mesomon/input";
 import { readingVoice } from "@/lib/mesomon/reading";
 import type { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
@@ -198,7 +198,7 @@ export function MesomonStartMenu({
                   </figcaption>
                 </figure>
               )}
-              {playing && !!session.save.party.length && (
+              {playing && getPhase(session) === "explore" && !!session.save.party.length && (
                 <button onClick={onCompanion}>
                   {session.save.questFlags.companion_released
                     ? "Call Rillik to the crystal"

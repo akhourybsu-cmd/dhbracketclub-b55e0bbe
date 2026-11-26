@@ -22,7 +22,7 @@ Nia comes to meet Tavian when he lands. After the workshop clues are in hand, Br
 
 Each new journey rolls its own Rillik and wild encounters. A species defines the range of each stat. For example, a new Rillik can have 44–52 maximum vitality and 14–16 Speed. The same creature keeps its rolls when Tavian leaves and returns, reloads, or offers it a bond. Check **Start → Companions** for its Attack, Defense, Speed and Resonance.
 
-A turn starts when you choose a move or an item. Action priority decides who goes first. Within the same priority, Speed decides, with a seeded roll for a tie. Damage uses the move’s power, the attacker’s Attack, the defender’s Defense and a small seeded variation. The stage shows each move and its result in order, including the Wretch’s separate strikes. **Next** advances the current beat. **Start → Settings → Battles** changes automatic playback speed. A mid-turn save resumes the recorded exchange.
+A turn starts when you choose a move or an item. Action priority decides who goes first. Within the same priority, Speed decides, with a seeded roll for a tie. Damage uses the move’s power, the attacker’s Attack, the defender’s Defense and a small seeded variation. The stage shows each move and its result in order, including the Wretch’s separate strikes. **Next** advances the current beat. **Start → Settings → Battles** changes automatic playback speed. A mid-turn save holds the recorded exchange until the battlefield appears. If the artwork fails to load, the text and controls remain playable.
 
 The release manifest identifies this system as rules version 2. The private save format stays at version 1. Existing companions keep their maximum vitality and receive their previous species combat values when loading an older file.
 
