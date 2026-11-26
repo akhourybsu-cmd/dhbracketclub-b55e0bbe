@@ -5,6 +5,7 @@ import {
   PawPrint, Play, Save, Settings,
 } from "lucide-react";
 import { LocationChart } from "./LocationChart";
+import { getBattleBeat } from "@/lib/mesomon/battlePlayback";
 import type { MesomonSaveStatus } from "@/hooks/useMesomonSave";
 import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
 import { SPECIES } from "@/lib/mesomon/data/species";
@@ -104,6 +105,8 @@ export function MesomonStartMenu({
 
   const s = session.save.settings;
   const harborNotes = tab === "journal" ? getHarborNotes(session.save) : [];
+  const battle = session.save.battle;
+  const beat = battle && getBattleBeat(battle);
   const title = sections.find(section => section.id === tab)?.label ?? "Start menu";
   return (
     <div className="mm-modal-backdrop">
@@ -146,33 +149,43 @@ export function MesomonStartMenu({
           {tab === "party" && (
             <>
               {session.save.party.length > 0 ? (
-                session.save.party.map((member) => (
-                  <article className="mm-party-member" key={member.id}>
-                    <img
-                      src={portraitUrl(member.speciesId)}
-                      alt={SPECIES[member.speciesId].name}
-                    />
-                    <div>
-                      <h3>
-                        {SPECIES[member.speciesId].name}
-                        <small>
-                          Lv. {member.level} ·{" "}
-                          {SPECIES[member.speciesId].affinities.join(" / ")}
-                        </small>
-                      </h3>
-                      <meter
-                        min={0}
-                        max={member.maxVitality}
-                        value={member.vitality}
-                        aria-label={`${SPECIES[member.speciesId].name} vitality`}
+                session.save.party.map((member) => {
+                  const fighterIndex = battle?.allies.findIndex(ally => ally.id === member.id) ?? -1;
+                  const vitality = beat?.allyVitality[fighterIndex] ?? battle?.allies[fighterIndex]?.vitality ?? member.vitality;
+                  return (
+                    <article className="mm-party-member" key={member.id}>
+                      <img
+                        src={portraitUrl(member.speciesId)}
+                        alt={SPECIES[member.speciesId].name}
                       />
-                      <p>
-                        {member.vitality}/{member.maxVitality} Vitality
-                      </p>
-                      <p>{SPECIES[member.speciesId].description}</p>
-                    </div>
-                  </article>
-                ))
+                      <div>
+                        <h3>
+                          {SPECIES[member.speciesId].name}
+                          <small>
+                            Lv. {member.level} ·{" "}
+                            {SPECIES[member.speciesId].affinities.join(" / ")}
+                          </small>
+                        </h3>
+                        <meter
+                          min={0}
+                          max={member.maxVitality}
+                          value={vitality}
+                          aria-label={`${SPECIES[member.speciesId].name} vitality`}
+                        />
+                        <p>
+                          {vitality}/{member.maxVitality} Vitality
+                        </p>
+                        <dl className="mm-individual-stats" aria-label="Battle stats">
+                          <div><dt>Attack</dt><dd>{member.power}</dd></div>
+                          <div><dt>Defense</dt><dd>{member.guard}</dd></div>
+                          <div><dt>Speed</dt><dd>{member.agility}</dd></div>
+                          <div><dt>Resonance</dt><dd>{member.resonance}</dd></div>
+                        </dl>
+                        <p>{SPECIES[member.speciesId].description}</p>
+                      </div>
+                    </article>
+                  );
+                })
               ) : (
                 <figure className="mm-cuff-study">
                   <img

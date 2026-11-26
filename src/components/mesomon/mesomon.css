@@ -1124,6 +1124,22 @@
   color: #52654d;
   margin-top: 4px;
 }
+.mm-individual-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4.3rem, 1fr));
+  gap: 4px 10px;
+  margin: 6px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.mm-individual-stats > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3px;
+  border-bottom: 1px dotted #a4ac8f;
+}
+.mm-individual-stats dt { font-size: 11px; }
+.mm-individual-stats dd { margin: 0; font-weight: 750; }
 .mm-setting {
   border: 0;
   border-bottom: 1px solid #b9bda0;

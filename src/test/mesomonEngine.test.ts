@@ -6,10 +6,19 @@ import { MAPS } from '@/lib/mesomon/data/maps';
 import { migrateSave } from '@/lib/mesomon/save';
 import type { BattleAction, Direction, GameSession, MapObject } from '@/lib/mesomon/types';
 
+function playTurn(previous: GameSession, action: BattleAction): GameSession {
+  let session = reduceGame(previous, { type: 'battle', action });
+  while (session.save.battle?.playback) session = reduceGame(session, { type: 'advance' });
+  return session;
+}
 function finishDialogue(value: GameSession): GameSession {
   let session = value;
   for (let guard = 0; session.dialogue && guard < 300; guard++) {
     const dialogue = session.dialogue;
+    if (dialogue.approach) {
+      session = reduceGame(session, { type: 'approach-step', actor: dialogue.approach.actor, remaining: dialogue.approach.steps.length });
+      continue;
+    }
     session = reduceGame(session, dialogue.choices && dialogue.index === dialogue.lines.length - 1 ? { type: 'choice', id: 'warm' } : { type: 'advance' });
   }
   expect(session.dialogue).toBeNull();
@@ -52,10 +61,10 @@ describe('Mesomon Port Marche chapter', () => {
     expect(session.save.inventory['crystal-bud']).toBe(2);
     for (const id of ['passage-door', 'pickup-tincture', 'sense-eddy', 'sluice', 'tressel']) session = interactWith(session, id);
     expect(session.save.battle?.enemy.speciesId).toBe('tressel');
-    session = reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'resonant-cry' } });
-    session = reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'resonant-cry' } });
+    session = playTurn(session, { type: 'move', moveId: 'resonant-cry' });
+    session = playTurn(session, { type: 'move', moveId: 'resonant-cry' });
     expect(resonanceEligibility(session.save.battle!, 2).eligible).toBe(true);
-    session = reduceGame(session, { type: 'battle', action: { type: 'resonate' } });
+    session = playTurn(session, { type: 'resonate' });
     expect(session.save.party).toHaveLength(1);
     session = finishDialogue(reduceGame(session, { type: 'advance' }));
     expect(session.save.party.map(member => member.speciesId)).toEqual(['rillik', 'tressel']);
@@ -69,7 +78,7 @@ describe('Mesomon Port Marche chapter', () => {
     session = interactWith(finishDialogue(flooded), 'rift');
     expect(session.save.battle?.enemy.speciesId).toBe('rift-wretch');
     expect(session.save.rifts['port-marche']).toBe('found');
-    for (let guard = 0; session.save.battle?.phase === 'choosing' && guard < 10; guard++) session = reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'resonant-cry' } });
+    for (let guard = 0; session.save.battle?.phase === 'choosing' && guard < 10; guard++) session = playTurn(session, { type: 'move', moveId: 'resonant-cry' });
     expect(session.save.battle?.phase).toBe('won');
     session = finishDialogue(reduceGame(session, { type: 'advance' }));
     expect(getPhase(session)).toBe('seal');
@@ -200,9 +209,9 @@ describe('Mesomon Port Marche chapter', () => {
     for (let turn = 0; turn < 4; turn++) {
       const active = session.save.battle!.allies[0];
       if (active.vitality < active.maxVitality) break;
-      session = reduceGame(session, { type: 'battle', action: { type: 'guard' } });
+      session = playTurn(session, { type: 'guard' });
     }
-    session = reduceGame(session, { type: 'battle', action: { type: 'flee' } });
+    session = playTurn(session, { type: 'flee' });
     session = finishDialogue(reduceGame(session, { type: 'advance' }));
     expect(session.save.party[0].vitality).toBeLessThan(session.save.party[0].maxVitality);
     for (const id of ['passage-exit', 'stairs-exit', 'pell', 'whistle-reeds', 'pell']) session = interactWith(session, id);
@@ -363,10 +372,10 @@ describe('Mesomon Port Marche chapter', () => {
   it('restores battle and seal progress exactly across a reload', () => {
     let session = reachFirstBond();
     for (const id of ['passage-door', 'sense-eddy', 'sluice', 'tressel']) session = interactWith(session, id);
-    session = reduceGame(session, { type: 'battle', action: { type: 'guard' } });
+    session = playTurn(session, { type: 'guard' });
     const restored = createSession(JSON.parse(JSON.stringify(session.save)));
     expect(restored.save.battle).toEqual(session.save.battle);
-    expect(reduceGame(restored, { type: 'battle', action: { type: 'move', moveId: 'brine-snap' } }).save.battle).toEqual(reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'brine-snap' } }).save.battle);
+    expect(playTurn(restored, { type: 'move', moveId: 'brine-snap' }).save.battle).toEqual(playTurn(session, { type: 'move', moveId: 'brine-snap' }).save.battle);
     session.save.battle = null; session.save.questFlags.boss_defeated = true; session.save.seal = { active: true, pulses: 1, attempts: 2 };
     expect(createSession(JSON.parse(JSON.stringify(session.save))).save.seal).toEqual({ active: true, pulses: 1, attempts: 2 });
     session.save.settings.sealAssist = true;
@@ -474,15 +483,15 @@ describe('Mesomon Port Marche chapter', () => {
     const veil = resolveBattleTurn(third, { type: 'move', moveId: 'tidal-veil' });
     expect(veil.log.some(line => line.includes('double pulse'))).toBe(true);
     expect(veil.mudbound).toBe(0);
-    expect(veil.allies[0].vitality).toBeGreaterThanOrEqual(42);
+    expect(veil.allies[0].vitality).toBeGreaterThanOrEqual(battle.allies[0].vitality - 6);
     const outcomes = new Set<number>();
     for (let seed = 1; seed <= 32; seed++) {
       const evasion = resolveBattleTurn({ ...battle, seed: seed * 1000003 }, { type: 'move', moveId: 'reedstep' });
       outcomes.add(evasion.allies[0].vitality);
       expect(evasion).toEqual(resolveBattleTurn({ ...battle, seed: seed * 1000003 }, { type: 'move', moveId: 'reedstep' }));
     }
-    expect(outcomes.has(48)).toBe(true);
-    expect([...outcomes].some(vitality => vitality < 48)).toBe(true);
+    expect(outcomes.has(battle.allies[0].vitality)).toBe(true);
+    expect([...outcomes].some(vitality => vitality < battle.allies[0].vitality)).toBe(true);
   });
 
   it('lets a solo Rillik beat the boss across 128 seeds with basic attacks, guard and two tinctures', () => {
@@ -508,7 +517,7 @@ describe('Mesomon Port Marche chapter', () => {
   it('finishes both required fights with one Rillik, starting supplies, and no optional rest or bond', () => {
     let session = reachFirstBond();
     for (const id of ['passage-door', 'sense-eddy', 'sluice', 'tressel']) session = interactWith(session, id);
-    while (session.save.battle?.phase === 'choosing') session = reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'brine-snap' } });
+    while (session.save.battle?.phase === 'choosing') session = playTurn(session, { type: 'move', moveId: 'brine-snap' });
     expect(session.save.battle?.phase).toBe('won');
     session = finishDialogue(reduceGame(session, { type: 'advance' }));
     expect(session.save.party).toHaveLength(1);
@@ -518,7 +527,7 @@ describe('Mesomon Port Marche chapter', () => {
       const battle = session.save.battle, hp = battle.allies[battle.activeIndex].vitality;
       const action: BattleAction = hp <= 18 && battle.usedTinctures < 2 ? { type: 'item', itemId: 'tincture' }
         : (battle.turn + 1) % 3 === 0 ? { type: 'guard' } : { type: 'move', moveId: 'brine-snap' };
-      session = reduceGame(session, { type: 'battle', action });
+      session = playTurn(session, action);
     }
     expect(session.save.battle?.phase).toBe('won');
     expect(session.save.party).toHaveLength(1);
@@ -534,10 +543,10 @@ describe('Mesomon Port Marche chapter', () => {
     session.save.collection[session.save.party[0].id] = { ...session.save.party[0] };
     session.save.battle = createBattle(session.save.party, 'tressel');
     const before = session.save.inventory.tincture;
-    session = reduceGame(session, { type: 'battle', action: { type: 'item', itemId: 'tincture' } });
+    session = playTurn(session, { type: 'item', itemId: 'tincture' });
     expect(session.save.battle?.usedTinctures).toBe(1);
     session = createSession(migrateSave(session.save)!);
-    while (session.save.battle?.phase === 'choosing') session = reduceGame(session, { type: 'battle', action: { type: 'move', moveId: 'brine-snap' } });
+    while (session.save.battle?.phase === 'choosing') session = playTurn(session, { type: 'move', moveId: 'brine-snap' });
     session = createSession(migrateSave(session.save)!);
     session = finishDialogue(reduceGame(session, { type: 'advance' }));
     expect(session.save.inventory.tincture).toBe(before - 1);

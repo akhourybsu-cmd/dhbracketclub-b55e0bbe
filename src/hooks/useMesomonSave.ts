@@ -25,7 +25,7 @@ const requestId = () => {
 };
 interface CloudResponse { data: unknown; error: unknown; }
 interface SaveClient {
-  rpc(name: 'mesomon_save', args: { p_club_id: string; p_slot: number; p_expected_revision: number; p_request_id: string; p_state: MesomonSaveV1; p_expected_user_id: string }): PromiseLike<CloudResponse>;
+  rpc(name: 'mesomon_save', args: { p_club_id: string; p_slot: number; p_expected_revision: number; p_request_id: string; p_state: object; p_expected_user_id: string }): PromiseLike<CloudResponse>;
   from(name: 'mesomon_save_slots'): { select(fields: string): { eq(field: string, value: string): { eq(field: string, value: number): { maybeSingle(): PromiseLike<CloudResponse> } } } };
 }
 const cloudClient = supabase as unknown as SaveClient;
@@ -119,7 +119,7 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
           if (!cloud) throw new Error('Cloud save did not acknowledge this chapter. Try Save again.');
           const latest = envelope.current;
           if (!latest) return;
-          const dirty = saveFingerprint(latest.save) !== saveFingerprint(pending.state);
+          const dirty = saveFingerprint(latest.save) !== saveFingerprint(cloud.state);
           if (!persist({ ...latest, cloudRevision: cloud.revision, cloudUpdatedAt: cloud.updated_at, pending: null, dirty, writtenAt: Date.now() })) return;
           setStatus(dirty ? 'saving' : 'saved');
         } catch (failure) {

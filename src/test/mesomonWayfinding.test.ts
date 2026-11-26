@@ -14,6 +14,7 @@ function followChart(session: GameSession) {
       const delta = DELTAS[leg.direction];
       expect(canWalk(session.save, x + delta.x, y + delta.y)).toBe(true);
       session = reduceGame(session, { type: 'move', direction: leg.direction });
+      if (session.dialogue) return { session, id: route.target.id };
     }
   }
   expect(session.save.player).toMatchObject(route.points[route.points.length - 1]);
@@ -28,13 +29,16 @@ describe('Port Marche location chart', () => {
     let session = createSession(createNewSave());
     const visited: string[] = [];
     for (let turn = 0; turn < 400 && !session.save.questFlags.chapter_complete; turn++) {
-      if (session.dialogue) {
+      if (session.dialogue?.approach) {
+        const { actor, steps } = session.dialogue.approach;
+        session = reduceGame(session, { type: 'approach-step', actor, remaining: steps.length });
+      } else if (session.dialogue) {
         session = reduceGame(session, session.dialogue.choices && session.dialogue.index === session.dialogue.lines.length - 1
           ? { type: 'choice', id: 'direct' } : { type: 'advance' });
       } else if (session.save.battle) {
         const action = resonanceEligibility(session.save.battle, session.save.inventory['crystal-bud']).eligible
           ? { type: 'resonate' as const } : { type: 'move' as const, moveId: 'resonant-cry' as const };
-        session = reduceGame(session, session.save.battle.phase === 'choosing' ? { type: 'battle', action } : { type: 'advance' });
+        session = reduceGame(session, !session.save.battle.playback && session.save.battle.phase === 'choosing' ? { type: 'battle', action } : { type: 'advance' });
       } else if (session.save.seal.active) {
         session = reduceGame(session, { type: 'seal', accuracy: 1 });
       } else {
@@ -44,9 +48,9 @@ describe('Port Marche location chart', () => {
       }
     }
     expect(session.save.questFlags.chapter_complete, visited.join(' → ')).toBe(true);
-    expect(visited.slice(0, 4)).toEqual(['captain', 'gangplank', 'nia', 'workshop-door']);
-    expect(new Set(visited.slice(4, 7))).toEqual(new Set(['chart', 'field-map', 'satchel-hook']));
-    expect(visited.slice(7)).toEqual([
+    expect(visited.slice(0, 3)).toEqual(['captain', 'gangplank', 'workshop-door']);
+    expect(new Set(visited.slice(3, 6))).toEqual(new Set(['chart', 'field-map', 'satchel-hook']));
+    expect(visited.slice(6)).toEqual([
       'workshop-exit', 'bram', 'tide-door', 'gate-wheel', 'gate-brace', 'gate-wheel', 'rillik-bond', 'passage-door',
       'sense-eddy', 'sluice', 'tressel', 'sense-channel', 'chamber-door', 'rift', 'page',
       'chamber-exit', 'passage-exit', 'stairs-exit', 'workshop-door', 'closing',

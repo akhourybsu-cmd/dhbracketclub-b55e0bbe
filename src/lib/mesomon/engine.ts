@@ -1,9 +1,11 @@
-import { createBattle, makeCompanion, resolveBattleTurn } from './battle';
+import { bondFighter, createBattle, makeCompanion, startBattleTurn } from './battle';
+import { advanceBattleBeat } from './battlePlayback';
 import { CLOSING_CHOICES } from './data/dialogue';
 import { beginNarrativeBeat } from './narrative';
 import { MAPS, WALKABLE_TILES } from './data/maps';
+import { habitatSeed, newJourneySeed } from './individuals';
 import { SPECIES } from './data/species';
-import type { DialogueLine, DialogueState, Direction, GameAction, GameSession, MapDefinition, MapId, MapObject, MesomonSaveV1, StoryEvent } from './types';
+import type { ApproachingNpc, NpcPosition, DialogueLine, DialogueState, Direction, GameAction, GameSession, MapDefinition, MapId, MapObject, MesomonSaveV1, StoryEvent } from './types';
 
 export { SPECIES, MOVES } from './data/species';
 export const CHAPTER_TITLE = 'The Harbor in Two Voices';
@@ -11,8 +13,8 @@ export const DELTAS: Record<Direction, { x: number; y: number }> = { up: { x: 0,
 const flag = (save: MesomonSaveV1, key: string) => save.questFlags[key] === true;
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
-export function createNewSave(slot: 1 | 2 | 3 = 1): MesomonSaveV1 {
-  return { schemaVersion: 1, slot, player: { name: 'Tavian', mapId: 'ship', x: 8, y: 9, facing: 'up' }, party: [], collection: {}, inventory: { tincture: 2, 'crystal-bud': 2 }, questFlags: {}, activeQuestId: 'harbor-two-voices', rifts: { 'port-marche': 'unseen' }, settings: { textSpeed: 'normal', battleSpeed: 'normal', reducedMotion: false, haptics: false, mute: true, sealAssist: false, musicVolume: 0.35, ambientVolume: 0.3 }, playtimeSeconds: 0, savedAt: new Date().toISOString(), battle: null, seal: { active: false, pulses: 0, attempts: 0 }, dialogue: null, dialogueHistory: [] };
+export function createNewSave(slot: 1 | 2 | 3 = 1, journeySeed = newJourneySeed()): MesomonSaveV1 {
+  return { schemaVersion: 1, slot, journeySeed, player: { name: 'Tavian', mapId: 'ship', x: 8, y: 9, facing: 'up' }, party: [], collection: {}, inventory: { tincture: 2, 'crystal-bud': 2 }, questFlags: {}, activeQuestId: 'harbor-two-voices', rifts: { 'port-marche': 'unseen' }, settings: { textSpeed: 'normal', battleSpeed: 'normal', reducedMotion: false, haptics: false, mute: true, sealAssist: false, musicVolume: 0.35, ambientVolume: 0.3 }, playtimeSeconds: 0, savedAt: new Date().toISOString(), battle: null, seal: { active: false, pulses: 0, attempts: 0 }, dialogue: null, dialogueHistory: [] };
 }
 
 export function createSession(save: MesomonSaveV1): GameSession { const restored = clone(save); return { save: restored, dialogue: restored.dialogue, notice: '' }; }
@@ -31,6 +33,9 @@ export function getVisibleObjects(save: MesomonSaveV1): MapObject[] {
     if (object.id === 'page') return save.rifts['port-marche'] === 'sealed';
     if (object.id === 'muddren-catch') return !flag(save, 'wrong_catch');
     return !object.hidden;
+  }).map(object => {
+    const position = object.id === 'nia' || object.id === 'bram' ? save.quayResidents?.[object.id] : undefined;
+    return position ? { ...object, x: position.x, y: position.y, direction: position.facing } : object;
   });
 }
 
@@ -132,10 +137,54 @@ function open(session: GameSession, id: string, lines: DialogueLine[], onFinish?
 function scene(session: GameSession, id: string, onFinish?: StoryEvent): GameSession {
   return open(session, id, beginNarrativeBeat(session.save, id), onFinish);
 }
+const opposite: Record<Direction, Direction> = { up: 'down', down: 'up', left: 'right', right: 'left' };
+const directions = Object.keys(DELTAS) as Direction[];
+
+function faceOneAnother(save: MesomonSaveV1, resident: NpcPosition) {
+  const facing = directions.find(direction => resident.x + DELTAS[direction].x === save.player.x && resident.y + DELTAS[direction].y === save.player.y);
+  if (facing) { resident.facing = facing; save.player.facing = opposite[facing]; }
+}
+
+/** A short walk to a neighbouring tile, avoiding people, props and the foot of
+ * the tide stairs. A resident must never park on a door or a return position. */
+function meetOnQuay(session: GameSession, actor: ApproachingNpc): GameSession {
+  const save = session.save;
+  if (save.player.mapId !== 'harbor' || flag(save, actor + '_met')) return session;
+  const residents = getVisibleObjects(save);
+  const npc = residents.find(object => object.id === actor);
+  if (!npc || Math.abs(npc.x - save.player.x) + Math.abs(npc.y - save.player.y) > 3) return session;
+
+  const queue: { x: number; y: number; steps: Direction[] }[] = [{ x: npc.x, y: npc.y, steps: [] }];
+  const seen = new Set([npc.y * MAPS.harbor.width + npc.x]);
+  for (const tile of queue) {
+    if (Math.abs(tile.x - save.player.x) + Math.abs(tile.y - save.player.y) === 1) {
+      const result = scene(session, actor, actor === 'nia' ? 'nia-met' : 'bram-met');
+      save.questFlags['visited:' + actor] = true;
+      const position = { x: npc.x, y: npc.y, facing: npc.direction ?? 'down' };
+      (save.quayResidents ??= {})[actor] = position;
+      if (tile.steps.length && !save.settings.reducedMotion) {
+        result.dialogue!.approach = { actor, steps: tile.steps };
+      } else {
+        position.x = tile.x; position.y = tile.y;
+        faceOneAnother(save, position);
+      }
+      return result;
+    }
+    if (tile.steps.length >= 4) continue;
+    for (const direction of directions) {
+      const x = tile.x + DELTAS[direction].x, y = tile.y + DELTAS[direction].y;
+      const key = y * MAPS.harbor.width + x;
+      if (seen.has(key) || !canWalk(save, x, y) || (x === 34 && y === 22)
+        || residents.some(object => object.x === x && object.y === y)) continue;
+      seen.add(key); queue.push({ x, y, steps: [...tile.steps, direction] });
+    }
+  }
+  return session;
+}
 function short(session: GameSession, speaker: string, ...lines: string[]): GameSession { return open(session, `${speaker}-remark`, lines.map(text => ({ speaker, text }))); }
 function teleport(session: GameSession, mapId: MapId, x: number, y: number, facing: Direction = 'up'): GameSession { session.save.player = { ...session.save.player, mapId, x, y, facing }; return session; }
 function healParty(save: MesomonSaveV1) { save.party = save.party.map(member => ({ ...member, vitality: member.maxVitality })); for (const member of save.party) save.collection[member.id] = clone(member); }
-function firstBond(save: MesomonSaveV1) { if (flag(save, 'rillik_bonded')) return; const member = makeCompanion('rillik', 'rillik-first'); save.party.push(member); save.collection[member.id] = clone(member); save.questFlags.rillik_bonded = true; save.questFlags.companion_released = true; }
+function firstBond(save: MesomonSaveV1) { if (flag(save, 'rillik_bonded')) return; const member = makeCompanion('rillik', 'rillik-first', habitatSeed(save, 'tide-gate')); save.party.push(member); save.collection[member.id] = clone(member); save.questFlags.rillik_bonded = true; save.questFlags.companion_released = true; }
 
 function event(session: GameSession, name?: StoryEvent): GameSession {
   const save = session.save;
@@ -147,22 +196,22 @@ function event(session: GameSession, name?: StoryEvent): GameSession {
     case 'bram-met': save.questFlags.bram_met = true; break;
     case 'gate-opened': save.questFlags.gate_opened = true; break;
     case 'first-bond': firstBond(save); session.notice = 'Rillik chose to stay · first crystal formed'; break;
-    case 'boss-introduced': save.questFlags.boss_introduced = true; save.rifts['port-marche'] = 'found'; save.battle = createBattle(save.party, 'rift-wretch', 'chamber-boss', 19200617); break;
+    case 'boss-introduced': save.questFlags.boss_introduced = true; save.rifts['port-marche'] = 'found'; save.battle = createBattle(save.party, 'rift-wretch', 'chamber-boss', habitatSeed(save, 'chamber-boss')); break;
     case 'sealed': save.questFlags.rift_sealed = true; save.rifts['port-marche'] = 'sealed'; save.seal.active = false; break;
     case 'page-found': save.questFlags.page_found = true; break;
     case 'chapter-complete': save.questFlags.chapter_complete = true; healParty(save); break;
     case 'whistle-accepted': save.questFlags.whistle_accepted = true; break;
     case 'whistle-returned': if (!flag(save, 'whistle_returned')) { save.questFlags.whistle_returned = true; save.inventory.tincture = (save.inventory.tincture ?? 0) + 1; save.inventory['tin-whistle'] = 0; session.notice = 'Tin Whistle complete · +1 tincture'; } break;
     case 'wrong-catch': save.questFlags.wrong_catch = true; break;
-    case 'tutorial-complete': save.battle = createBattle(save.party, 'tressel', 'passage-encounter', 420197); break;
-    case 'wild-complete': save.battle = createBattle(save.party, 'gleamwing', 'gleamwing-encounter', 501932); break;
+    case 'tutorial-complete': save.battle = createBattle(save.party, 'tressel', 'passage-encounter', habitatSeed(save, 'passage-encounter')); break;
+    case 'wild-complete': save.battle = createBattle(save.party, 'gleamwing', 'gleamwing-encounter', habitatSeed(save, 'gleamwing-encounter')); break;
   }
   return session;
 }
 
 function finishBattle(session: GameSession): GameSession {
   const save = session.save, battle = save.battle;
-  if (!battle || battle.phase === 'choosing') return session;
+  if (!battle || battle.playback || battle.phase === 'choosing') return session;
   for (const ally of battle.allies) {
     const member = save.party.find(value => value.id === ally.id);
     if (member) { member.vitality = ally.vitality; if (battle.phase === 'won' || battle.phase === 'resonated') member.experience += 20; save.collection[member.id] = clone(member); }
@@ -175,9 +224,9 @@ function finishBattle(session: GameSession): GameSession {
     return short(session, 'Nia', 'Steady. Sit here on the steps a minute.', battle.id === 'chamber-boss' ? 'That thing can wait. Let me see your wrist.' : 'There’s room to rest here. I’ve got the gate.');
   }
   if (battle.phase === 'escaped') { session.notice = 'You stepped back. The creature has room.'; return session; }
-  if (battle.phase === 'resonated' && battle.enemy.speciesId !== 'rift-wretch') {
-    const member = makeCompanion(battle.enemy.speciesId, `${battle.enemy.speciesId}-${battle.id}`);
-    if (!save.collection[member.id] && save.party.length < 3 && (save.inventory['crystal-bud'] ?? 0) > 0) { save.party.push(member); save.collection[member.id] = clone(member); save.inventory['crystal-bud']--; }
+  if (battle.phase === 'resonated') {
+    const member = bondFighter(battle.enemy);
+    if (member && !save.collection[member.id] && save.party.length < 3 && (save.inventory['crystal-bud'] ?? 0) > 0) { save.party.push(member); save.collection[member.id] = clone(member); save.inventory['crystal-bud']--; }
   }
   if (battle.id === 'passage-encounter') {
     save.questFlags.tutorial_complete = true;
@@ -198,7 +247,12 @@ function advance(session: GameSession): GameSession {
     session.save.dialogue = null; session.dialogue = null;
     return event(session, dialogue.onFinish);
   }
-  if (session.save.battle) return finishBattle(session);
+  const battle = session.save.battle;
+  if (battle?.playback) {
+    session.save.battle = advanceBattleBeat(battle, battle.turn, battle.playback.index);
+    return session;
+  }
+  if (battle) return finishBattle(session);
   if (getPhase(session) === 'ending') { session.save.questFlags.ending_seen = true; session.notice = 'Chapter I complete · the harbor remains yours to explore'; }
   return session;
 }
@@ -218,7 +272,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   if (id === 'captain') return flag(save, 'captain_met') ? short(session, 'Captain', 'Gangplank’s aft. Mind the third board.') : scene(session, 'captain', 'captain-met');
   if (id === 'gangplank') {
     if (!flag(save, 'captain_met')) return short(session, 'Captain', 'Tavian. A word before you go ashore.');
-    save.questFlags.disembarked = true; teleport(session, 'harbor', 26, 30, 'up'); session.notice = ''; return session;
+    save.questFlags.disembarked = true; teleport(session, 'harbor', 26, 30, 'up'); session.notice = ''; return meetOnQuay(session, 'nia');
   }
   if (id === 'nia') return flag(save, 'nia_met') ? scene(session, 'nia-repeat') : scene(session, 'nia', 'nia-met');
   if (id === 'workshop-door') {
@@ -340,6 +394,23 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
   const save = session.save;
   if (action.type === 'settings') { save.settings = { ...save.settings, ...action.settings }; return session; }
   if (action.type === 'tick') { if (Number.isFinite(action.seconds)) save.playtimeSeconds += Math.max(0, Math.min(60, Math.floor(action.seconds))); return session; }
+  const approach = session.dialogue?.approach;
+  if (action.type === 'approach-step') {
+    if (!approach || approach.actor !== action.actor || approach.steps.length !== action.remaining) return previous;
+    const position = save.quayResidents?.[approach.actor];
+    if (position) {
+      const steps = approach.steps.splice(0, save.settings.reducedMotion ? approach.steps.length : 1);
+      for (const direction of steps) {
+        position.x += DELTAS[direction].x; position.y += DELTAS[direction].y; position.facing = direction;
+      }
+    }
+    if (!position || !approach.steps.length) {
+      if (position) faceOneAnother(save, position);
+      delete session.dialogue!.approach;
+    }
+    return session;
+  }
+  if (approach) return previous;
   if (action.type === 'input') {
     if (action.action === 'menu' || action.action === 'cancel') return session;
     if (action.action === 'confirm') return session.dialogue || save.battle || getPhase(session) === 'ending' ? advance(session) : getPhase(session) === 'explore' ? interact(session) : session;
@@ -355,9 +426,16 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     save.dialogueHistory = [...save.dialogueHistory, dialogue!.lines[dialogue!.index]].slice(-100);
     return open(session, 'closing-after', [{ speaker: 'Tavian', text: choice.text }, ...beginNarrativeBeat(save, 'closing-after')], 'chapter-complete');
   }
+  if (action.type === 'battle-beat') {
+    if (!save.battle || session.dialogue) return previous;
+    const next = advanceBattleBeat(save.battle, action.turn, action.index);
+    if (next === save.battle) return previous;
+    save.battle = next;
+    return session;
+  }
   if (action.type === 'battle') {
-    if (!save.battle || session.dialogue || save.battle.phase !== 'choosing') return previous;
-    save.battle = resolveBattleTurn(save.battle, action.action, { tinctures: Math.max(0, (save.inventory.tincture ?? 0) - save.battle.usedTinctures), emptyBuds: save.inventory['crystal-bud'] ?? 0 });
+    if (!save.battle || session.dialogue || save.battle.playback || save.battle.phase !== 'choosing') return previous;
+    save.battle = startBattleTurn(save.battle, action.action, { tinctures: Math.max(0, (save.inventory.tincture ?? 0) - save.battle.usedTinctures), emptyBuds: save.inventory['crystal-bud'] ?? 0 });
     return session;
   }
   if (action.type === 'seal') {
@@ -372,7 +450,13 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
   if (action.type === 'face') { save.player.facing = action.direction; return session; }
   if (action.type === 'move') {
     save.player.facing = action.direction; const delta = DELTAS[action.direction], x = save.player.x + delta.x, y = save.player.y + delta.y;
-    if (canWalk(save, x, y)) { save.player.x = x; save.player.y = y; session.notice = ''; }
+    if (canWalk(save, x, y)) {
+      save.player.x = x; save.player.y = y; session.notice = '';
+      if (save.player.mapId === 'harbor') {
+        if (!flag(save, 'nia_met') && flag(save, 'disembarked')) return meetOnQuay(session, 'nia');
+        if (flag(save, 'clues_complete') && !flag(save, 'bram_met')) return meetOnQuay(session, 'bram');
+      }
+    }
     return session;
   }
   if (action.type === 'interact') return interact(session, action.id);

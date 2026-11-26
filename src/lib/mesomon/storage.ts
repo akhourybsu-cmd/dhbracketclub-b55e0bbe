@@ -1,7 +1,7 @@
 import { migrateSave, type CloudSave } from './save';
 import type { MesomonSaveV1 } from './types';
 
-export interface PendingSave { requestId: string; expectedRevision: number; state: MesomonSaveV1; }
+export interface PendingSave { requestId: string; expectedRevision: number; state: object; }
 export interface LocalSaveEnvelope {
   version: 1; save: MesomonSaveV1; cloudRevision: number; cloudUpdatedAt: string | null;
   dirty: boolean; pending: PendingSave | null; writtenAt: number;
@@ -25,8 +25,9 @@ export function parseLocalEnvelope(value: unknown, slot: 1 | 2 | 3): LocalSaveEn
   let pending: PendingSave | null = null;
   if (raw.pending) {
     const p = raw.pending as Record<string, unknown>, state = migrateSave(p.state);
-    if (!state || state.slot !== slot || typeof p.requestId !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(p.requestId) || !Number.isSafeInteger(p.expectedRevision) || Number(p.expectedRevision) < 0) return null;
-    pending = { requestId: p.requestId, expectedRevision: Number(p.expectedRevision), state };
+    if (!state || state.slot !== slot || !p.state || typeof p.state !== 'object' || typeof p.requestId !== 'string' || !/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(p.requestId) || !Number.isSafeInteger(p.expectedRevision) || Number(p.expectedRevision) < 0) return null;
+    // An accepted request can only be retried with its original payload, even across a client update.
+    pending = { requestId: p.requestId, expectedRevision: Number(p.expectedRevision), state: p.state };
   }
   if (raw.cloudUpdatedAt !== null && (typeof raw.cloudUpdatedAt !== 'string' || !Number.isFinite(Date.parse(raw.cloudUpdatedAt)))) return null;
   return { version: 1, save, cloudRevision: Number(raw.cloudRevision), cloudUpdatedAt: raw.cloudUpdatedAt as string | null, dirty: raw.dirty, pending, writtenAt: raw.writtenAt };

@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MesomonGame } from '@/pages/MesomonPage';
 import { createNewSave } from '@/lib/mesomon/engine';
+import { createBattle, makeCompanion, startBattleTurn } from '@/lib/mesomon/battle';
 import type { MesomonSaveV1 } from '@/lib/mesomon/types';
 
 const fixture = vi.hoisted(() => ({
@@ -55,6 +56,38 @@ function openStart() {
 }
 
 describe('Mesomon game shell', () => {
+  it('pauses the current attack in Start and resumes the next impact through the keyboard', async () => {
+    fixture.save = createNewSave();
+    const member = makeCompanion('rillik');
+    fixture.save.party = [member];
+    fixture.save.collection[member.id] = member;
+    fixture.save.battle = createBattle([member], 'muddren');
+    mount();
+    await begin();
+    vi.useFakeTimers();
+    try {
+      const battle = within(screen.getByRole('region', { name: 'Battle' }));
+      const move = battle.getByRole('button', { name: /Brine Snap/ });
+      move.focus();
+      fireEvent.keyDown(move, { key: 'z' });
+      const meter = battle.getByRole('meter', { name: 'Muddren HP' });
+      const hp = meter.getAttribute('aria-valuenow');
+      const cue = battle.getByRole('status').textContent;
+      const menu = openStart();
+      act(() => vi.advanceTimersByTime(10000));
+      fireEvent.click(menu.getByRole('button', { name: 'Resume' }));
+      expect(battle.getByRole('status')).toHaveTextContent(cue!);
+      expect(meter).toHaveAttribute('aria-valuenow', hp);
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Start' }), { key: 'ArrowRight' });
+      const next = battle.getByRole('button', { name: 'Next' });
+      expect(next).toHaveFocus();
+      fireEvent.keyDown(next, { key: 'z' });
+      expect(battle.getByRole('status')).toHaveTextContent(/Muddren loses/);
+      expect(Number(meter.getAttribute('aria-valuenow'))).toBeLessThan(Number(hp));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
   it('shows the empty cuff and only discoveries already entered in this file', async () => {
     fixture.save = createNewSave();
     fixture.save.questFlags.disembarked = true;
@@ -71,6 +104,36 @@ describe('Mesomon game shell', () => {
     expect(fieldcase.getByText('Nia is waiting at the arrival pier.')).toBeVisible();
     expect(fieldcase.queryByText(/Wretch|sealed rift|upper channel/i)).toBeNull();
     expect(fieldcase.queryByRole('heading', { name: 'On the quay' })).toBeNull();
+  });
+  it('shows the individual companion’s combat stats in the fieldcase', async () => {
+    fixture.save = createNewSave();
+    const member = makeCompanion('rillik');
+    Object.assign(member, { power: 16, guard: 14, agility: 17, resonance: 20 });
+    fixture.save.party = [member];
+    fixture.save.collection[member.id] = member;
+    mount();
+    await begin();
+    const menu = openStart();
+    fireEvent.click(menu.getByRole('button', {name: 'Companions'}));
+    const stats = menu.getByLabelText('Battle stats');
+    expect(Array.from(stats.querySelectorAll('div'), cell => cell.textContent)).toEqual([
+      'Attack16', 'Defense14', 'Speed17', 'Resonance20',
+    ]);
+  });
+  it('keeps the Companions meter in step with a paused exchange', async () => {
+    const file = createNewSave();
+    const member = makeCompanion('rillik');
+    file.party = [member];
+    file.collection[member.id] = member;
+    const battle = createBattle(file.party, 'tressel');
+    file.battle = startBattleTurn(battle, { type: 'guard' }, {});
+    expect(file.battle.allies[0].vitality).toBeLessThan(member.vitality);
+    fixture.save = file;
+    mount();
+    await begin();
+    const menu = openStart();
+    fireEvent.click(menu.getByRole('button', { name: 'Companions' }));
+    expect(menu.getByRole('meter', { name: 'Rillik vitality' })).toHaveAttribute('value', String(member.vitality));
   });
   it('shows the current errand in the journal when returning with Pell’s whistle', async () => {
     fixture.save = createNewSave();
@@ -184,6 +247,34 @@ describe('Mesomon game shell', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(conversation.querySelector('[aria-live="polite"]')).toHaveTextContent('Can you see Edda? Grey coat, lamp on her belt.');
     expect(within(conversation).getByRole('button',{name:'Continue'})).toBeVisible();
+  });
+
+  it('lets Nia walk up from the pier, wait while Start is open, and speak without a tap', async () => {
+    fixture.save = createNewSave();
+    fixture.save.player = { ...fixture.save.player, x: 8, y: 10, facing: 'down' };
+    fixture.save.questFlags.captain_met = true;
+    fixture.save.settings.textSpeed = 'fast';
+    mount();
+    await begin();
+    vi.useFakeTimers({toFake: ['setTimeout', 'clearTimeout']});
+    try {
+      fireEvent.click(screen.getByRole('button', {name: /Go ashore/}));
+      expect(screen.getByText('Nia approaches.')).toBeVisible();
+      fireEvent.keyDown(window, {key:'z'});
+      expect(screen.getByText('Nia approaches.')).toBeVisible();
+      act(() => vi.advanceTimersByTime(200));
+      const start = openStart();
+      act(() => vi.advanceTimersByTime(1000));
+      expect(fixture.saveLocal.mock.calls.at(-1)?.[0].dialogue.approach.steps).toHaveLength(1);
+      fireEvent.click(start.getByRole('button', {name:'Resume'}));
+      act(() => vi.advanceTimersByTime(200));
+      const conversation = screen.getByRole('region', {name:'Conversation'});
+      expect(within(conversation).getByText('Nia', {exact:true})).toBeVisible();
+      expect(within(conversation).getByRole('button', {name:'Continue'})).toBeVisible();
+      expect(fixture.saveLocal.mock.calls.at(-1)?.[0].questFlags.nia_met).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('preserves a timed seal pulse while the player uses the Start menu', async () => {

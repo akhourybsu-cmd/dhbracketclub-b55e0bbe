@@ -1,0 +1,89 @@
+.mm-battle-panel {
+  color: #223d35;
+  min-width: 0;
+}
+.mm-battle-panel .mm-battle-vitals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(8px, 3vw, 22px);
+}
+.mm-battle-panel .mm-fighter-title {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  justify-content: space-between;
+}
+.mm-battle-panel .mm-fighter-title strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+.mm-battle-panel .mm-vital-number, .mm-vital-change {
+  font: 700 10px/1.3 "DM Sans", sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #384f3f;
+}
+.mm-battle-panel .mm-vital-change { color: #833d23; }
+.mm-battle-meter {
+  height: 7px;
+  margin: 3px 0 1px;
+  overflow: hidden;
+  border: 1px solid #68775e;
+  border-radius: 2px;
+  background: #bdc5a5;
+}
+.mm-battle-meter i {
+  display: block;
+  height: 100%;
+  background: #326652;
+  transition: width 220ms ease-out;
+}
+.mm-fighter:last-child .mm-battle-meter i { background: #875633; }
+.mm-fighter[data-acting] .mm-fighter-title strong { text-decoration: underline 2px; text-underline-offset: 2px; }
+.mm-fighter[data-hit] .mm-battle-meter { outline: 1px solid #8a452c; }
+.mm-battle-panel .mm-command-prompt {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  color: #395544;
+}
+.mm-turn-readout {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  border-top: 1px solid #b2b294;
+  padding-top: 10px;
+}
+.mm-turn-readout small { color: #425847; font-size: 11px; font-weight: 700; }
+.mm-battle-panel .mm-turn-readout .mm-battle-log {
+  color: #183730;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  font-size: clamp(14px, 2vw, 18px);
+  font-weight: 650;
+  line-height: 1.35;
+}
+.mesomon .mm-battle-panel .mm-beat-next { min-width: 54px; }
+.mm-battle-panel .mm-battle-result { margin-top: 10px; }
+.mesomon .mm-battle-panel button:enabled:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 3px #162e3259;
+  transition: none;
+}
+.mesomon .mm-battle-panel button:focus-visible {
+  outline: 2px solid #1b534c;
+  outline-offset: 1px;
+}
+@media (orientation: portrait), (min-height: 601px) {
+  /* Hold the stage still while the commands give way to the turn narration. */
+  .mm-battle-panel[data-battle-stage="playback"],
+  .mm-battle-panel[data-battle-stage="result"] { min-height: 246px; }
+}
+.mm-battle-panel[data-motion="reduced"] .mm-battle-meter i { transition: none; }
+.mesomon .mm-battle-panel[data-motion="reduced"] button:enabled:active { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .mm-battle-meter i { transition: none; }
+  .mesomon .mm-battle-panel button:enabled:active { transform: none; }
+}

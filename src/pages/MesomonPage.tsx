@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { getBattleHitSide } from "@/lib/mesomon/battlePlayback";
 import { Link } from "react-router-dom";
 import {
   ChevronDown,
@@ -27,8 +28,7 @@ import {
   reduceGame,
 } from "@/lib/mesomon/engine";
 import { isDirection, keyboardAction, WALK_STEP_MS } from "@/lib/mesomon/input";
-import { MOVES, SPECIES } from "@/lib/mesomon/data/species";
-import { resonanceEligibility } from "@/lib/mesomon/battle";
+import { BattlePanel } from "@/components/mesomon/BattlePanel";
 import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
 import { readingVoice } from "@/lib/mesomon/reading";
 import { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
@@ -153,7 +153,7 @@ function Chapter({
   const [textCount, setTextCount] = useState(0);
   const [sealProgress, setSealProgress] = useState(0);
   const lastCheckpoint = useRef("");
-  const audioMoment = useRef({ bonded: false, sealed: false, battle: "" });
+  const audioMoment = useRef({ bonded: false, sealed: false, battle: "", impact: "" });
   const adoptedSave = useRef<GameSession["save"] | null | undefined>(undefined);
   const resolvingCloud = useRef(false);
   const pixels = useRef<HTMLDivElement>(null);
@@ -295,10 +295,13 @@ function Chapter({
           : "battle"
         : session.save.player.mapId,
     );
+    const battle = session.save.battle;
+    const hitSide = battle && getBattleHitSide(battle);
     const moment = {
       bonded: session.save.questFlags.rillik_bonded === true,
       sealed: session.save.rifts["port-marche"] === "sealed",
-      battle: session.save.battle?.id ?? "",
+      battle: battle?.id ?? "",
+      impact: battle?.playback && hitSide ? `${battle.id}:${battle.turn}:${battle.playback.index}` : "",
     };
     if (playingRef.current && moment.bonded && !audioMoment.current.bonded)
       audio.current?.cue("bond");
@@ -311,6 +314,8 @@ function Chapter({
       session.save.battle
     )
       audio.current?.cue(session.save.battle.enemy.speciesId);
+    if (playingRef.current && hitSide && moment.impact !== audioMoment.current.impact)
+      audio.current?.cue(hitSide === "ally" ? "ally-hit" : "enemy-hit");
     audioMoment.current = moment;
   }, [session]);
   useEffect(
@@ -386,7 +391,17 @@ function Chapter({
       menuTrigger.current?.focus({ preventScroll: true });
     }
   }, [menu, playing]);
-  const line = session?.dialogue?.lines[session.dialogue.index];
+  const approaching = session?.dialogue?.approach?.actor;
+  const stepsLeft = session?.dialogue?.approach?.steps.length ?? 0;
+  const skipWalkAnimation = session?.save.settings.reducedMotion ?? false;
+  useEffect(() => {
+    if (!playing || hidden || menu || sync.blocked || !approaching) return;
+    const timer = window.setTimeout(() => {
+      act({ type: "approach-step", actor: approaching, remaining: stepsLeft });
+    }, skipWalkAnimation ? 0 : WALK_STEP_MS);
+    return () => window.clearTimeout(timer);
+  }, [playing, hidden, menu, sync.blocked, approaching, stepsLeft, skipWalkAnimation, act]);
+  const line = approaching ? undefined : session?.dialogue?.lines[session.dialogue.index];
   const voice = line ? readingVoice(line.speaker) : null;
   const lineKey = `${session?.dialogue?.id}:${session?.dialogue?.index}`;
   const textSpeed = session?.save.settings.textSpeed;
@@ -459,7 +474,7 @@ function Chapter({
         if (action === "cancel") closeMenu();
         return;
       }
-      if (!playingRef.current) return;
+      if (!playingRef.current || current.current?.dialogue?.approach) return;
       if (
         action === "confirm" &&
         current.current?.save.seal.active &&
@@ -505,6 +520,11 @@ function Chapter({
       if (menuRef.current) return;
       const action = keyboardAction(event.key);
       if (!action || (!playingRef.current && action !== "menu")) return;
+      if (isDirection(action) && current.current?.save.battle && !current.current.dialogue) {
+        event.preventDefault();
+        if (!event.repeat) document.querySelector<HTMLButtonElement>(".mm-battle-panel [data-battle-default]")?.focus({ preventScroll: true });
+        return;
+      }
       const control = target?.closest<HTMLElement>("button,a");
       const gameConfirm = playingRef.current && event.key.toLowerCase() === "z" && control?.dataset.mmAction === "menu";
       if (control && action === "confirm" && !gameConfirm) {
@@ -624,7 +644,11 @@ function Chapter({
     if (current.current && playing) saveLocal.current(current.current.save);
     void sync.flush();
   };
+  const advanceBattleBeat = useCallback((turn: number, index: number) => {
+    dispatch({ type: "battle-beat", turn, index });
+  }, [dispatch]);
   const battleAction = (action: BattleAction) => {
+    if (current.current?.save.settings.haptics) navigator.vibrate?.(12);
     awakenAudio();
     audio.current?.cue("confirm");
     dispatch({ type: "battle", action });
@@ -800,9 +824,13 @@ function Chapter({
               <section
                 className={`mm-event ${session.dialogue ? "mm-dialogue" : ""}`}
                 data-voice={voice?.kind}
-                aria-label={session.dialogue ? "Conversation" : "Field notes"}
+                aria-label={session.dialogue ? "Conversation" : session.save.battle ? "Battle" : "Field notes"}
               >
-                {line && voice ? (
+                {approaching ? (
+                  <p className="mm-objective" role="status">
+                    {approaching === "nia" ? "Nia approaches." : "Bram approaches."}
+                  </p>
+                ) : line && voice ? (
                   <>
                     <div className="mm-speaker">
                       {voice.portrait && (
@@ -872,7 +900,11 @@ function Chapter({
                   </>
                 ) : session.save.battle ? (
                   <BattlePanel
-                    session={session}
+                    key={session.save.battle.id}
+                    save={session.save}
+                    battle={session.save.battle}
+                    paused={!!menu || hidden || sync.blocked}
+                    onBeat={advanceBattleBeat}
                     onAction={battleAction}
                     onContinue={() => dispatch({ type: "advance" })}
                   />
@@ -1125,219 +1157,6 @@ function Chapter({
         </>
       )}
     </div>
-  );
-}
-
-function BattlePanel({
-  session,
-  onAction,
-  onContinue,
-}: {
-  session: GameSession;
-  onAction: (action: BattleAction) => void;
-  onContinue: () => void;
-}) {
-  const [tab, setTab] = useState<"moves" | "switch" | "pack" | "log">("moves");
-  const [busy, setBusy] = useState(false);
-  const locked = useRef(false),
-    cooldown = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (cooldown.current) clearTimeout(cooldown.current);
-    },
-    [],
-  );
-  const choose = (action: BattleAction) => {
-    if (locked.current) return;
-    locked.current = true;
-    setBusy(true);
-    onAction(action);
-    cooldown.current = setTimeout(
-      () => {
-        locked.current = false;
-        setBusy(false);
-      },
-      session.save.settings.battleSpeed === "fast" ? 170 : 520,
-    );
-  };
-  const battle = session.save.battle!;
-  const ally = battle.allies[battle.activeIndex];
-  if (battle.phase !== "choosing")
-    return (
-      <div className="mm-battle-result">
-        <h2>
-          {battle.phase === "resonated"
-            ? "A willing bond."
-            : battle.phase === "won"
-              ? battle.enemy.speciesId === "rift-wretch"
-                ? "Pushed back. Not yet sealed."
-                : "The current settles."
-              : battle.phase === "lost"
-                ? "A moment to catch your breath."
-                : "You leave them room."}
-        </h2>
-        <p>{battle.log.at(-1)}</p>
-        <button className="mm-primary" onClick={onContinue}>
-          Continue
-        </button>
-      </div>
-    );
-  const eligibility = resonanceEligibility(
-    battle,
-    session.save.inventory["crystal-bud"] ?? 0,
-    session.save.party.length < 3,
-  );
-  return (
-    <fieldset className="mm-battle-controls" disabled={busy}>
-      <div className="mm-battle-vitals">
-        <div>
-          <strong>{SPECIES[ally.speciesId].name}</strong>
-          <span>
-            {ally.vitality}/{ally.maxVitality} Vitality
-          </span>
-          <meter
-            min={0}
-            max={ally.maxVitality}
-            value={ally.vitality}
-            aria-label="Companion vitality"
-          />
-        </div>
-        <div>
-          <strong>{SPECIES[battle.enemy.speciesId].name}</strong>
-          <span>
-            {battle.enemy.speciesId === "rift-wretch"
-              ? `Stability ${battle.stability}/${battle.maxStability}`
-              : `Agitation ${battle.agitation}`}
-          </span>
-          <meter
-            min={0}
-            max={
-              battle.enemy.speciesId === "rift-wretch"
-                ? battle.maxStability
-                : battle.enemy.maxVitality
-            }
-            value={
-              battle.enemy.speciesId === "rift-wretch"
-                ? battle.stability
-                : battle.enemy.vitality
-            }
-            aria-label={
-              battle.enemy.speciesId === "rift-wretch"
-                ? "Demon stability"
-                : "Wild Mesomon vitality"
-            }
-          />
-        </div>
-      </div>
-      <p className="mm-battle-log" role="status">
-        {battle.log.at(-1) || "Choose a move."}
-      </p>
-      <div className="mm-battle-tabs" aria-label="Battle actions">
-        {(["moves", "switch", "pack", "log"] as const).map((value) => (
-          <button
-            key={value}
-            aria-pressed={tab === value}
-            onClick={() => setTab(value)}
-          >
-            {value === "moves"
-              ? "Moves"
-              : value === "switch"
-                ? "Switch"
-                : value === "pack"
-                  ? "Satchel"
-                  : "Log"}
-          </button>
-        ))}
-      </div>
-      {tab === "moves" ? (
-        <>
-          <div className="mm-moves">
-            {ally.moves.map((id) => (
-              <button
-                key={id}
-                title={MOVES[id].description}
-                onClick={() => choose({ type: "move", moveId: id })}
-              >
-                <strong>{MOVES[id].name}</strong>
-                <small>
-                  {MOVES[id].kind === "calm"
-                    ? battle.enemy.speciesId === "rift-wretch"
-                      ? "Loosen hold"
-                      : "Calm"
-                    : MOVES[id].kind === "guard"
-                      ? "Guard"
-                      : MOVES[id].kind === "evade"
-                        ? "Evade"
-                        : "Attack"}{" "}
-                  · {MOVES[id].affinity}
-                </small>
-              </button>
-            ))}
-          </div>
-          <div className="mm-battle-utility">
-            <button onClick={() => choose({ type: "guard" })}>Guard</button>
-            <button
-              disabled={!eligibility.eligible}
-              onClick={() => choose({ type: "resonate" })}
-            >
-              Resonate
-            </button>
-          </div>
-          <p className="mm-resonance-reason">{eligibility.reason}</p>
-        </>
-      ) : tab === "switch" ? (
-        <div className="mm-switch-list">
-          {battle.allies.map((member, index) => (
-            <button
-              key={member.id}
-              disabled={index === battle.activeIndex || member.vitality <= 0}
-              onClick={() => {
-                choose({ type: "switch", index });
-                setTab("moves");
-              }}
-            >
-              <img src={portraitUrl(member.speciesId)} alt="" />
-              <span>
-                {SPECIES[member.speciesId].name}
-                <small>
-                  {member.vitality}/{member.maxVitality} Vitality
-                </small>
-              </span>
-              {index === battle.activeIndex ? "Active" : "Call"}
-            </button>
-          ))}
-        </div>
-      ) : tab === "log" ? (
-        <ol className="mm-turn-history" aria-label="Recent battle actions">
-          {battle.log.map((message, index) => (
-            <li key={index}>{message}</li>
-          ))}
-        </ol>
-      ) : (
-        <div className="mm-pack">
-          <button
-            disabled={
-              (session.save.inventory.tincture ?? 0) - battle.usedTinctures <= 0
-            }
-            onClick={() => choose({ type: "item", itemId: "tincture" })}
-          >
-            Healing tincture · up to 26 vitality{" "}
-            <span>
-              ×
-              {Math.max(
-                0,
-                (session.save.inventory.tincture ?? 0) - battle.usedTinctures,
-              )}
-            </span>
-          </button>
-          {battle.enemy.speciesId !== "rift-wretch" && (
-            <button onClick={() => choose({ type: "flee" })}>
-              Give them space
-            </button>
-          )}
-        </div>
-      )}
-    </fieldset>
   );
 }
 

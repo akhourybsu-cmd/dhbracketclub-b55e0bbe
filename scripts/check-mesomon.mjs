@@ -81,7 +81,7 @@ async function step(p, direction, keyboard = false) {
 async function auditBuild() {
   const release=JSON.parse(await readFile('dist/games/mesomon/release.json','utf8'));
   assert.equal(release.schema_version,1,'The build must emit the Mesomon release metadata schema');
-  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,1);assert.equal(release.assets_version,3);
+  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,2);assert.equal(release.assets_version,3);
   assert.match(release.source_sha,/^[a-f\d]{40}$/,'Release metadata must contain the actual Git commit');
   assert.equal(typeof release.source_dirty,'boolean','Release metadata must identify uncommitted source');
   if(process.env.GITHUB_SHA)assert.equal(release.source_sha,process.env.GITHUB_SHA,'CI build metadata must identify the checked GitHub commit');
@@ -245,9 +245,9 @@ async function drain(p, {inspectChoices=false, opening=false, expectedId, choice
   }
   throw new Error('Dialogue did not terminate after 180 real advances.');
 }
-async function walkTo(p, id) {
+async function walkTo(p, id, meeting) {
   const route = await p.evaluate(async targetId => {
-    const state = await window.mmQa.readSave(), map = window.mmQa.getMap(state), target = map.objects.find(object => object.id === targetId);
+    const state = await window.mmQa.readSave(), map = window.mmQa.getMap(state), target = window.mmQa.getVisibleObjects(state).find(object => object.id === targetId);
     if (!target) throw new Error(`No object ${targetId} on ${map.id}`);
     const origin = state.player, queue = [{ x: origin.x, y: origin.y, path: [] }], seen = new Set([`${origin.x}:${origin.y}`]);
     const directions = [['up', 0, -1], ['right', 1, 0], ['down', 0, 1], ['left', -1, 0]];
@@ -262,19 +262,57 @@ async function walkTo(p, id) {
     }
     throw new Error(`No walkable route to ${targetId} from ${origin.x},${origin.y}`);
   }, id);
-  for (const direction of route) await step(p, direction);
+  for (const direction of route) {
+    await step(p, direction);
+    if (meeting && (await save(p)).dialogue?.id === meeting) return;
+  }
+  assert.ok(!meeting, `Walking up to ${id} must trigger the meeting without an interact press`);
 }
 async function interact(p, id, dialogue = true) {
   await walkTo(p, id);
   await p.locator(`[data-mm-object="${id}"]`).click();
   if (dialogue) await drain(p);
 }
+async function automaticMeeting(p, id, trigger) {
+  const status = id === 'nia' ? 'Nia approaches.' : 'Bram approaches.';
+  // Install before movement so even a slow runner records a brief walk-in.
+  await p.evaluate(text => {
+    const root = document.querySelector('.mesomon');
+    const seen = {approach: false};
+    const observer = new MutationObserver(() => {
+      if ([...root.querySelectorAll('[role="status"]')].some(node => node.textContent.trim() === text)) {
+        seen.approach = true; observer.disconnect();
+      }
+    });
+    observer.observe(root, {childList: true, subtree: true, characterData: true});
+    window.mmMeeting = seen;
+  }, status);
+  await trigger();
+  const before = await livePlayer(p);
+  await expect.poll(async () => (await save(p)).dialogue?.id).toBe(id);
+  await p.keyboard.press('ArrowDown');
+  await conversationLine(p, id);
+  assert.deepEqual(await livePlayer(p), before, 'The player must not walk away from a meeting');
+  assert.equal((await save(p)).dialogue.index, 0, 'A movement key must not skip the opening line');
+  assert.equal(await p.evaluate(() => window.mmMeeting.approach), true, 'The resident must approach before the first line');
+  await p.screenshot({path: join(output, engine + '-meeting-' + id + '.png')});
+  await drain(p, {expectedId: id});
+  const final = await save(p);
+  assert.equal(final.questFlags[id + '_met'], true);
+  const distance = await p.evaluate(async actor => {
+    const state = await window.mmQa.readSave();
+    const person = window.mmQa.getVisibleObjects(state).find(object => object.id === actor);
+    return Math.abs(person.x - state.player.x) + Math.abs(person.y - state.player.y);
+  }, id);
+  assert.equal(distance, 1, 'The resident finishes beside the player');
+  check(engine + '-automatic-meeting-' + id, {position: before, distance});
+}
 async function tapMapObject(p, id) {
   const canvas = p.locator('.mesomon canvas');
   const position = await canvas.evaluate(async (node, id) => {
     const state = await window.mmQa.readSave();
     const map = window.mmQa.getMap(state);
-    const object = map.objects.find(candidate => candidate.id === id);
+    const object = window.mmQa.getVisibleObjects(state).find(candidate => candidate.id === id);
     if (!object) throw Error(`No object ${id} on ${map.id}`);
     // The native viewport follows the player's tile center and stops at the map edges.
     const axis = (target, player, mapTiles, pixels, rendered) => {
@@ -642,7 +680,55 @@ async function smoke(width, height, theme) {
   finally { await context.close(); }
 }
 
-async function chooseMove(p, name) { await p.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).click(); await pause(60); }
+async function finishPlayback(p) {
+  await expect.poll(async () => !!(await save(p)).battle?.playback, {timeout: 18000}).toBe(false);
+  await expect(p.locator('.mm-battle-panel')).not.toHaveAttribute('data-battle-stage', 'playback');
+}
+async function chooseMove(p, name) {
+  const turn = (await save(p)).battle.turn;
+  await p.getByRole('button', { name: new RegExp(`^${name}`, 'i') }).click();
+  await expect.poll(async () => (await save(p)).battle?.turn).toBe(turn + 1);
+  await finishPlayback(p);
+}
+async function inspectPacedTurn(p) {
+  const before = (await save(p)).battle;
+  await p.getByRole('button', {name: 'Guard', exact: true}).click();
+  const panel = p.locator('.mm-battle-panel');
+  await expect(panel).toHaveAttribute('data-battle-stage', 'playback');
+  await expect(panel.getByRole('button', {name: /^Brine Snap/i})).toHaveCount(0);
+  await expect(panel.getByRole('button', {name: 'Next', exact: true})).toBeVisible();
+  await expect(panel.getByRole('meter')).toHaveCount(2);
+  await openStart(p);
+  const checkpoint = (await save(p)).battle;
+  assert.equal(checkpoint.turn, before.turn + 1);
+  assert.ok(checkpoint.playback && checkpoint.playback.beats.length >= 2);
+  const displayedBeat = checkpoint.playback.beats[checkpoint.playback.index];
+  await expect(panel.locator('.mm-turn-readout .mm-battle-log')).toHaveText(displayedBeat.text);
+  const meters = await panel.locator('[role="meter"]').evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('aria-valuenow'))));
+  assert.deepEqual(meters, [displayedBeat.allyVitality[displayedBeat.activeIndex], displayedBeat.stability], 'The HP and boss stability meters must follow the displayed action');
+  await pause(1900); // Longer than the longest authored beat.
+  assert.deepEqual((await save(p)).battle, checkpoint, 'Start must freeze playback without resolving a second turn');
+  await p.reload();
+  await p.waitForFunction(() => Boolean(window.mmQa));
+  const resume = p.getByRole('button', { name: /^Continue( journey)?$/i });
+  await expect(resume).toBeVisible();
+  assert.deepEqual((await save(p)).battle, checkpoint, 'Reload must restore the saved beat and resolved combat outcome');
+  await resume.click();
+  const next = panel.getByRole('button', {name: 'Next', exact: true});
+  await expect(next).toBeVisible();
+  await next.click();
+  await expect.poll(async () => {
+    const battle = (await save(p)).battle;
+    return !battle.playback || battle.playback.index > checkpoint.playback.index;
+  }).toBe(true);
+  await audit(p, engine+'-battle-resolution-fit');
+  await p.screenshot({path:join(output,engine+'-battle-resolution.png')});
+  await finishPlayback(p);
+  const expected = { ...checkpoint };
+  delete expected.playback;
+  assert.deepEqual((await save(p)).battle, expected, 'Manual and automatic reading must preserve the committed result and item charges');
+  check(engine+'-paced-turn-pause-reload-and-deliberate-advance', {turn: expected.turn, beats: checkpoint.playback.beats.length});
+}
 async function moveContrast(p) {
   const move=p.getByRole('button',{name:/^Brine Snap/i});
   const measure=()=>move.evaluate(button=>{
@@ -713,16 +799,14 @@ async function battle(p, mode) {
     check(engine + '-demon-cannot-be-bonded');
     await p.screenshot({path:join(output,engine+'-boss-battle.png')});
     await bossLayouts(p);
-    await chooseMove(p,'Guard');
-    const checkpoint = await save(p); await p.reload(); await p.waitForFunction(() => Boolean(window.mmQa));
-    const continueButton = p.getByRole('button', { name: /^(Continue|Continue journey)$/i }); await expect(continueButton).toBeVisible(); await continueButton.click();
-    await expect.poll(async () => (await save(p))?.battle?.turn).toBe(checkpoint.battle.turn); check(engine + '-reload-restores-battle-turn');
+    await inspectPacedTurn(p);
     for (let index=0; index<22 && (await save(p)).battle?.phase === 'choosing'; index++) {
       const state = await save(p), active = state.battle.allies[state.battle.activeIndex];
       if (active.vitality <= 18 && state.inventory.tincture > state.battle.usedTinctures) {
         await p.getByRole('button',{name:'Satchel',exact:true}).click();
-        await p.getByRole('button',{name:/^Healing tincture/i}).click();
-        await p.getByRole('button',{name:'Moves',exact:true}).click(); await pause(60); continue;
+        await chooseMove(p,'Healing tincture');
+        assert.equal((await save(p)).battle.usedTinctures, state.battle.usedTinctures + 1, 'A tincture costs one item across every displayed beat');
+        await p.getByRole('button',{name:'Moves',exact:true}).click(); continue;
       }
       await chooseMove(p,'Brine Snap');
     }
@@ -744,7 +828,13 @@ async function chapter() {
     await drain(p, {opening: true, expectedId:'captain'});
     assert.equal((await save(p)).questFlags.captain_met, true);
     await captureLocation(p,'ship','captain');
-    await interact(p,'gangplank');
+    const settingsMenu = await openStart(p);
+    await startSection(settingsMenu, 'Settings');
+    const reduceMotion = settingsMenu.getByRole('switch', {name: /^Reduced motion/i});
+    if (await reduceMotion.getAttribute('aria-checked') === 'true') await reduceMotion.click();
+    await closeStart(p, 'm');
+    await walkTo(p, 'gangplank');
+    await automaticMeeting(p, 'nia', () => p.locator('[data-mm-object="gangplank"]').click());
     const fieldcase = await openStart(p);
     await startSection(fieldcase, 'Companions');
     await expect(fieldcase.getByText('No bonds yet', {exact:true})).toBeVisible();
@@ -758,7 +848,7 @@ async function chapter() {
       const state = await window.mmQa.readSave();
       return {objective: window.mmQa.getObjective(state), steps: window.mmQa.getQuestSteps(state).filter(step => step.complete)};
     });
-    assert.deepEqual(journal.steps.map(step => step.id), ['captain_met', 'disembarked'], 'Only Edda’s letter and the landing belong in the early journal');
+    assert.deepEqual(journal.steps.map(step => step.id), ['captain_met', 'disembarked', 'nia_met'], 'The journal includes the letter, landing, and Nia’s welcome');
     await expect(fieldcase.locator('.mm-journal-objective')).toHaveText(journal.objective);
     const entries = fieldcase.locator('ol.mm-quest-steps li');
     await expect(entries).toHaveCount(journal.steps.length);
@@ -772,7 +862,11 @@ async function chapter() {
         assert.ok(!(await save(p)).questFlags.gate_opened);
         await captureLocation(p,'tide-stairs',id,'tide-stairs-closed');
       }
-      await interact(p,id,id !== 'chart');
+      if (id === 'bram') {
+        await automaticMeeting(p, 'bram', () => walkTo(p, 'bram', 'bram'));
+      } else if (id !== 'nia') {
+        await interact(p,id,id !== 'chart');
+      }
       if (id === 'gate-wheel') {
         assert.equal((await save(p)).questFlags.gate_opened,true);
         await captureLocation(p,'tide-stairs',id,'tide-stairs-open');
@@ -801,6 +895,15 @@ async function chapter() {
     }
     assert.equal((await save(p)).party[0]?.speciesId,'rillik'); check(engine+'-first-bond-after-real-gate-rescue');
     await p.screenshot({path:join(output,engine+'-first-bond.png')});
+    await openStart(p); await startSection(fieldcase, 'Companions');
+    const ally = (await save(p)).party[0];
+    const stats = fieldcase.locator('.mm-individual-stats').first();
+    await expect(stats.locator('dt')).toHaveText(['Attack', 'Defense', 'Speed', 'Resonance']);
+    await expect(stats.locator('dd')).toHaveText([ally.power, ally.guard, ally.agility, ally.resonance].map(String));
+    await audit(p, engine+'-individual-stats-fit');
+    await p.screenshot({path:join(output,engine+'-companion-stats.png')});
+    await closeStart(p, 'm');
+    check(engine+'-individual-stats-match-the-bonded-companion');
     for(const id of ['stairs-exit','whistle-reeds','pell','fisher','tide-door','passage-door']) await interact(p,id);
     assert.equal((await save(p)).questFlags.whistle_returned,true); assert.equal((await save(p)).questFlags.wrong_catch,true); check(engine+'-both-optional-harbor-stories');
     await walkTo(p,'sense-eddy'); await p.getByRole('button',{name:/Current Sense/i}).click();

@@ -1,7 +1,7 @@
 import type { MapId, MesomonSettings, SpeciesId } from './types';
 
 type Scene = MapId | 'battle' | 'boss';
-type Cue = 'confirm' | 'cancel' | 'menu' | 'bond' | 'seal' | SpeciesId;
+type Cue = 'ally-hit' | 'enemy-hit' | 'confirm' | 'cancel' | 'menu' | 'bond' | 'seal' | SpeciesId;
 const THEMES: Record<'harbor' | 'workshop' | 'underwharf' | 'battle' | 'boss', number[]> = {
   harbor: [62, 69, 67, 64, 65, 62, 59, 57, 62, 64, 69, 67, 64, 60, 62, 57],
   workshop: [62, 65, 69, 72, 71, 69, 65, 64, 62, 60, 59, 57],
@@ -105,6 +105,12 @@ export class MesomonAudio {
   cue(cue: Cue): void {
     const ctx = this.context;
     if (!ctx || this.paused || this.settings.mute || ctx.state !== 'running') return;
+    if (cue === 'ally-hit' || cue === 'enemy-hit') {
+      const pitch = cue === 'ally-hit' ? 44 : 56;
+      this.tone(pitch + 7, ctx.currentTime, 0.045, this.effects, 'square', 0.19);
+      this.tone(pitch, ctx.currentTime + 0.035, 0.09, this.effects, 'triangle', 0.48);
+      return;
+    }
     const notes: Partial<Record<Cue, number[]>> = {
       confirm: [74, 81], cancel: [65, 60], menu: [69, 74], bond: [62, 69, 65, 74], seal: [61, 66, 62, 69, 74],
       rillik: [81, 84, 79], muddren: [43, 38], gleamwing: [91, 93, 86], tressel: [76, 71, 78], 'rift-wretch': [37, 38, 49],

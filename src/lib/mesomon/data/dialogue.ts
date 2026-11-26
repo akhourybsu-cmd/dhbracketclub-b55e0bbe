@@ -32,12 +32,10 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     ...say('Captain', 'There’s somebody waving now. Your bag’s by the gangplank.'),
   ],
   nia: [
-    ...say('Nia', 'I wore my good coat. Is that bag wet?'),
-    ...say('Tavian', 'Hello, Nia. Your stitching held.'),
-    ...say('Nia', 'I’d have settled for a letter.'),
-    ...say('Port Marche', 'He holds the bag out. She goes straight past it and hugs him.'),
-    ...say('Tavian', 'I know. Where’s Edda?'),
-    ...say('Nia', 'She missed our supper yesterday. I saw her workshop lamp burning all night.'),
+    ...say('Nia', 'Tav! Here, give me that wet bag.'),
+    ...say('Port Marche', 'He holds it out. She hugs him instead.'),
+    ...say('Tavian', 'I’ve missed you. I thought Edda would be here too.'),
+    ...say('Nia', 'So did I. She missed supper last night. Her workshop lamp was still on at midnight.'),
     ...say('Nia', 'Let’s try her place. Northwest, past the market.'),
   ],
   workshop: [
@@ -68,7 +66,7 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     ...say('Nia', 'That’s the inlet on her map. Come on, Tav. East quay.'),
   ],
   bram: [
-    ...say('Bram', 'Hold there. Nia! Is that young Merrow with you?'),
+    ...say('Bram', 'Hold up, Nia. Those boards are slick. Tav Merrow, is that you?'),
     ...say('Tavian', 'Edda came this way. Did you see her come up?'),
     ...bramGateReport,
   ],
