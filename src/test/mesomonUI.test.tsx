@@ -49,7 +49,7 @@ vi.mock('@/lib/mesomon/renderer/createGame', () => ({
 vi.mock('@/lib/mesomon/audio', () => ({ MesomonAudio: class {
   constructor() { fixture.audioCreate(); }
   unlock = async () => {};
-  setSettings = vi.fn(); setScene = vi.fn(); cue = vi.fn(); pause = vi.fn();
+  setSettings = vi.fn(); setScene = vi.fn(); cue = vi.fn(); battleBeat = vi.fn(); pause = vi.fn();
   destroy = () => fixture.audioDestroy();
 } }));
 

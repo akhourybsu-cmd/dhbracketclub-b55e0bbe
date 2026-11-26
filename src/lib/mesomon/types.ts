@@ -4,6 +4,7 @@ export type MapId = 'ship' | 'harbor' | 'workshop' | 'tide-stairs' | 'passage' |
 export type SpeciesId = 'rillik' | 'muddren' | 'gleamwing' | 'tressel' | 'rift-wretch';
 export type Affinity = 'Tide' | 'Stone' | 'Gale' | 'Lumen' | 'Rift';
 export type MoveId = 'brine-snap' | 'reedstep' | 'resonant-cry' | 'tidal-veil' | 'bank-break' | 'mud-wrap' | 'lantern-dust' | 'quick-tackle' | 'splinter-swipe' | 'rift-lash';
+export type BattleCue = MoveId | 'guard' | 'tincture' | 'switch' | 'dodge' | 'mudbound' | 'resonate' | 'flee';
 export interface IndividualStats {
   maxVitality: number; power: number; guard: number; agility: number; resonance: number;
 }
@@ -16,6 +17,7 @@ export interface Fighter extends IndividualStats {
 }
 /** Read-only presentation of the combatants just after one beat in a committed turn. */
 export interface BattleBeat {
+  cue?: BattleCue;
   side: 'ally' | 'enemy' | 'field';
   kind: 'action' | 'impact' | 'notice';
   text: string;
@@ -50,6 +52,7 @@ export interface NpcApproach { actor: ApproachingNpc; steps: Direction[] }
 export interface DialogueState { approach?: NpcApproach; id: string; lines: DialogueLine[]; index: number; onFinish?: StoryEvent; choices?: DialogueChoice[]; }
 export type StoryEvent = 'captain-met' | 'nia-met' | 'workshop-entered' | 'clues-complete' | 'bram-met' | 'gate-opened' | 'first-bond' | 'boss-introduced' | 'sealed' | 'page-found' | 'chapter-complete' | 'whistle-accepted' | 'whistle-returned' | 'wrong-catch' | 'tutorial-complete' | 'wild-complete';
 export interface MesomonSettings {
+  manualBattle?: boolean;
   textSpeed: 'slow' | 'normal' | 'fast'; battleSpeed: 'normal' | 'fast';
   reducedMotion: boolean; haptics: boolean; mute: boolean; sealAssist: boolean;
   musicVolume: number; ambientVolume: number;

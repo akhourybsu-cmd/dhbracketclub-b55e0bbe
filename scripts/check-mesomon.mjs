@@ -82,7 +82,7 @@ async function step(p, direction, keyboard = false) {
 async function auditBuild() {
   const release=JSON.parse(await readFile('dist/games/mesomon/release.json','utf8'));
   assert.equal(release.schema_version,1,'The build must emit the Mesomon release metadata schema');
-  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,2);assert.equal(release.assets_version,JSON.parse(await readFile('public/games/mesomon/manifest.json','utf8')).version);
+  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,3);assert.equal(release.assets_version,JSON.parse(await readFile('public/games/mesomon/manifest.json','utf8')).version);
   assert.match(release.source_sha,/^[a-f\d]{40}$/,'Release metadata must contain the actual Git commit');
   assert.equal(typeof release.source_dirty,'boolean','Release metadata must identify uncommitted source');
   if(process.env.GITHUB_SHA)assert.equal(release.source_sha,process.env.GITHUB_SHA,'CI build metadata must identify the checked GitHub commit');
@@ -732,12 +732,24 @@ async function chooseMove(p, name) {
 }
 async function inspectPacedTurn(p) {
   const before = (await save(p)).battle;
+  const settings = await openStart(p);
+  await startSection(settings, 'Settings');
+  await settings.getByRole('group', {name:'Battles',exact:true}).getByRole('button', {name:'manual',exact:true}).click();
+  const motion = settings.getByRole('switch', {name:/^Reduced motion/i});
+  const originalMotion = await motion.getAttribute('aria-checked');
+  if (originalMotion !== 'true') await motion.click();
+  await closeStart(p, 'm');
   await p.getByRole('button', {name: 'Guard', exact: true}).click();
   const panel = p.locator('.mm-battle-panel');
   await expect(panel).toHaveAttribute('data-battle-stage', 'playback');
   await expect(panel.getByRole('button', {name: /^Brine Snap/i})).toHaveCount(0);
   await expect(panel.getByRole('button', {name: 'Next', exact: true})).toBeVisible();
   await expect(panel.getByRole('meter')).toHaveCount(2);
+  await pause(1150); // Beyond the ordinary guard declaration.
+  const held = (await save(p)).battle.playback;
+  assert.equal(held.index, 0);
+  assert.equal(held.beats[held.index].cue, 'guard');
+  await p.screenshot({path:join(output,engine+'-guard-manual-motion-reduced.png')});
   await openStart(p);
   const checkpoint = (await save(p)).battle;
   assert.equal(checkpoint.turn, before.turn + 1);
@@ -766,6 +778,13 @@ async function inspectPacedTurn(p) {
   }).toBe(true);
   await audit(p, engine+'-battle-resolution-fit');
   await p.screenshot({path:join(output,engine+'-battle-resolution.png')});
+  const preferences = await openStart(p);
+  await startSection(preferences, 'Settings');
+  const pace = preferences.getByRole('group', {name:'Battles',exact:true});
+  await expect(pace.getByRole('button', {name:'manual',exact:true})).toHaveAttribute('aria-pressed','true');
+  await pace.getByRole('button', {name:'normal',exact:true}).click();
+  if (originalMotion !== 'true') await preferences.getByRole('switch', {name:/^Reduced motion/i}).click();
+  await closeStart(p, 'm');
   await finishPlayback(p);
   const expected = { ...checkpoint };
   delete expected.playback;
@@ -837,6 +856,9 @@ async function battle(p, mode) {
   await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
   const canvas = p.locator('.mesomon canvas');
   await expect(canvas).toHaveAttribute('data-scene', 'battle');
+  const backdrop = {bond:'passage-encounter',sighting:'gleamwing-encounter',boss:'chamber-boss'}[mode];
+  await expect(canvas).toHaveAttribute('data-battle-backdrop', backdrop);
+  check(engine+'-'+mode+'-painted-arena',{backdrop});
   await expect.poll(() => canvas.evaluate(node => [node.width, node.height, getComputedStyle(node).imageRendering])).toEqual([640, 576, 'auto']);
   await trackBattleSprites(p, opponent);
   const seen = () => p.evaluate(() => window.mmCreatureProbe.seen);
@@ -895,7 +917,12 @@ async function battle(p, mode) {
         assert.equal((await save(p)).battle.usedTinctures, state.battle.usedTinctures + 1, 'A tincture costs one item across every displayed beat');
         await p.getByRole('button',{name:'Moves',exact:true}).click(); continue;
       }
-      await chooseMove(p,'Brine Snap');
+      if ((state.battle.turn + 1) % 3 === 0) {
+        await expect(p.getByText('Double pulse next · Try Guard', {exact:true})).toBeVisible();
+        await chooseMove(p, 'Guard');
+      } else {
+        await chooseMove(p, active.speciesId === 'tressel' ? 'Splinter Swipe' : 'Brine Snap');
+      }
     }
   }
   const result = await save(p); assert.ok(['won','resonated'].includes(result.battle?.phase), `Battle did not complete successfully: ${JSON.stringify(result.battle)}`);

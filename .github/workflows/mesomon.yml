@@ -24,6 +24,7 @@ on:
       - 'src/pages/CompetePage.tsx'
       - 'public/games/mesomon/**'
       - 'art/mesomon/creatures/**'
+      - 'art/mesomon/battle-scenes/**'
       - 'supabase/migrations/*mesomon*'
       - 'scripts/*mesomon*'
       - 'scripts/fixtures/mesomon*'
@@ -49,6 +50,7 @@ jobs:
         run: |
           python -m pip install Pillow==13.0.0
           python scripts/build-mesomon-creature-art.py --check
+          python scripts/build-mesomon-battle-scenes.py --check
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

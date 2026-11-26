@@ -1,4 +1,4 @@
-import type { SpeciesId } from './types';
+import type { BattleState, SpeciesId } from './types';
 
 /** Original Port Marche artwork, loaded only by the Mesomon route. */
 const version = 4;
@@ -20,6 +20,9 @@ export const PEOPLE = ['tavian', 'nia', 'bram', 'seli', 'pell', 'captain', 'edda
 export const CREATURES = ['rillik', 'muddren', 'gleamwing', 'tressel', 'rift-wretch'] as const;
 export function fieldPlateUrl(id: SpeciesId): string {
   return `/games/mesomon/field-guide/${id}.webp?v=${version}`;
+}
+export function battleSceneUrl(id: BattleState['id']): string {
+  return `/games/mesomon/battle-scenes-v1/${id}.webp`;
 }
 export const TILES = ['water', 'water2', 'dock', 'stone', 'grass', 'mud', 'wall', 'roof', 'door', 'stair', 'reeds', 'floor', 'shelf', 'table', 'crate', 'gate', 'bridge', 'rift', 'rope', 'rail', 'lamp', 'sand', 'channel', 'flower', 'chart', 'map', 'satchel', 'rock', 'sign', 'awning', 'window', 'ship', 'planks', 'black', 'arch', 'gear', 'port', 'starboard', 'bow', 'gangplank', 'cabin-0-0', 'cabin-1-0', 'cabin-2-0', 'cabin-0-1', 'cabin-1-1', 'cabin-2-1', 'cabin-0-2', 'cabin-1-2', 'cabin-2-2'] as const;
 type TileArt = typeof TILES[number];

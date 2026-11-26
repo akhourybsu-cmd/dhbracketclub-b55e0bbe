@@ -1,8 +1,9 @@
 import type PhaserTypes from 'phaser';
 import type { Direction, GameSession, MapDefinition, MapObject, SpeciesId, TileKind } from '../types';
 import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, personArt, propArt } from '../assets';
-import { paintBattleStage } from './battleStage';
-import { BATTLE_CELL, BATTLE_POSES, BATTLE_RENDER_SCALE, FIELD_SCREEN, battleFrame, battlePose } from './battleMotion';
+import { mountBattleBackdrop } from './battleStage';
+import { BATTLE_CELL, BATTLE_LANDING, BATTLE_POSES, BATTLE_RENDER_SCALE, FIELD_SCREEN, battleFrame, battleOpacity, battlePose, fighterMotion } from './battleMotion';
+import { impactDefense, paintBattleEffect } from './battleEffects';
 import { getBattleBeat, getBattleHitSide } from '../battlePlayback';
 import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
@@ -346,6 +347,8 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.battleSprites.forEach(s => s.destroy()); this.battleSprites = [];
       this.background?.setVisible(!this.battleMode); this.objects.forEach(o => { o.sprite.setVisible(!this.battleMode); o.shadow?.setVisible(!this.battleMode); });
       this.foreground.forEach(image => image.setVisible(!this.battleMode));
+      // Between the stage and portraits, so spray and currents never hide the art.
+      this.effects?.setDepth(this.battleMode ? 8900 : 10000);
       this.game.canvas.dataset.scene = this.battleMode ? 'battle' : 'field';
       const scale = this.battleMode ? BATTLE_RENDER_SCALE : 1;
       const width = FIELD_SCREEN.width * scale, height = FIELD_SCREEN.height * scale;
@@ -358,11 +361,11 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       }
       camera.removeBounds().centerOn(FIELD_SCREEN.width / 2, FIELD_SCREEN.height / 2);
       this.battleStage = this.add.graphics().setDepth(8000);
-      paintBattleStage(this.battleStage, session.save.battle.enemy.speciesId === 'rift-wretch', getMap(session.save).ambience === 'harbor');
-      this.battleSprites = [
-        this.add.sprite(45, 98, 'ms:battle', 0).setOrigin(0.5, 1).setScale(1 / scale).setDepth(9000),
-        this.add.sprite(116, 67, 'ms:battle', 0).setOrigin(0.5, 1).setScale(1 / scale).setFlipX(true).setDepth(9000),
-      ];
+      mountBattleBackdrop(this, this.battleStage, session.save.battle.id, getMap(session.save).ambience === 'harbor');
+      this.battleSprites = (['ally', 'enemy'] as const).map(side => {
+        const foot = BATTLE_LANDING[side];
+        return this.add.sprite(foot.x, foot.y, 'ms:battle', 0).setOrigin(0.5, 1).setScale(1 / scale).setFlipX(side === 'enemy').setDepth(9000);
+      });
     }
     private updateBattle(session: GameSession): void {
       const battle = session.save.battle;
@@ -385,23 +388,32 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       const ally = battle.allies[activeIndex];
       this.beatElapsedMs += Math.min(64, delta);
       this.effects.clear();
+      const reduced = session.save.settings.reducedMotion;
+      if (beat && battle.playback) {
+        const prior = battle.playback.beats[battle.playback.index - 1];
+        const secondPulse = prior?.kind === 'impact' && prior.side === beat.side;
+        const defense = impactDefense(battle, this.hitSide);
+        if (defense) paintBattleEffect(this.effects, defense, this.beatElapsedMs, true, false);
+        paintBattleEffect(this.effects, beat, this.beatElapsedMs, reduced, secondPulse);
+      }
       for (const [index, sprite] of this.battleSprites.entries()) {
         const side = index === 0 ? 'ally' : 'enemy';
         const fighter = index === 0 ? ally : battle.enemy;
         const hp = index === 0 ? beat?.allyVitality[activeIndex] : beat?.enemyVitality;
         const conscious = (hp ?? fighter.vitality) > 0;
-        const cue = side === this.hitSide ? 'hit' : beat?.kind === 'action' && side === beat.side ? 'act' : 'ready';
-        const pose = battlePose(side, cue, this.beatElapsedMs, session.save.settings.reducedMotion || (!conscious && cue === 'ready'));
+        const cue = fighterMotion(side, beat, this.hitSide);
+        const pose = battlePose(side, cue, this.beatElapsedMs, reduced || (!conscious && cue === 'ready'));
         const frame = battleFrame(fighter.speciesId, pose.cel);
         if (Number(sprite.frame.name) !== frame) sprite.setFrame(frame);
-        sprite.setPosition(pose.x, pose.y).setAlpha(conscious ? 1 : 0.35);
-        if (pose.spark) {
+        sprite.setPosition(pose.x, pose.y).setAlpha(battleOpacity(conscious, side === this.hitSide, this.beatElapsedMs, reduced));
+        if (pose.spark && !beat?.cue) {
           const x = pose.x + (index === 0 ? 10 : -10), y = pose.y - 21;
           this.effects.fillStyle(0xffe6a0).fillRect(x - 3, y, 7, 1).fillRect(x, y - 3, 1, 7);
         }
         if (beat?.side === side) {
+          const foot = BATTLE_LANDING[side];
           this.effects.fillStyle(index === 0 ? 0xb1dec6 : 0xe6bb8e, 0.9);
-          this.effects.fillRect(index === 0 ? 39 : 110, index === 0 ? 99 : 68, 12, 1);
+          this.effects.fillRect(foot.x - 6, foot.y + 1, 12, 1);
         }
       }
     }

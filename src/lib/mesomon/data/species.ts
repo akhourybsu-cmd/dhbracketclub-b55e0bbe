@@ -2,11 +2,11 @@ import type { MoveDefinition, MoveId, SpeciesDefinition, SpeciesId } from '../ty
 
 export const MOVES: Record<MoveId, MoveDefinition> = {
   'brine-snap': { id: 'brine-snap', name: 'Brine Snap', affinity: 'Tide', kind: 'attack', power: 11, priority: 0, description: 'A short jet of salt water hits the opponent.' },
-  reedstep: { id: 'reedstep', name: 'Reedstep', affinity: 'Tide', kind: 'evade', power: 0, priority: 5, description: 'Try to dodge the first strike this turn. A second strike can still land.' },
+  reedstep: { id: 'reedstep', name: 'Reedstep', affinity: 'Tide', kind: 'evade', power: 0, priority: 5, description: 'Try to slip the first strike. A clean dodge helps a wild Mesomon settle.' },
   'resonant-cry': { id: 'resonant-cry', name: 'Resonant Cry', affinity: 'Tide', kind: 'calm', power: 0, priority: 1, description: 'Lower a wild Mesomon’s agitation or weaken the Rift Wretch’s stability.' },
-  'tidal-veil': { id: 'tidal-veil', name: 'Tidal Veil', affinity: 'Tide', kind: 'guard', power: 0, priority: 6, description: 'Wash away Mudbound and soften every hit this turn.' },
+  'tidal-veil': { id: 'tidal-veil', name: 'Tidal Veil', affinity: 'Tide', kind: 'guard', power: 0, priority: 6, description: 'Wash away Mudbound and soften every hit, even a double pulse.' },
   'bank-break': { id: 'bank-break', name: 'Bank Break', affinity: 'Stone', kind: 'attack', power: 11, priority: -1, description: 'A slow, heavy shove of river stone.' },
-  'mud-wrap': { id: 'mud-wrap', name: 'Mud Wrap', affinity: 'Stone', kind: 'guard', power: 0, priority: 6, description: 'Shed Mudbound and take cover in a bank of mud for the turn.' },
+  'mud-wrap': { id: 'mud-wrap', name: 'Mud Wrap', affinity: 'Stone', kind: 'guard', power: 0, priority: 6, description: 'Shed Mudbound. A mud shell absorbs most of the first hit, then breaks.' },
   'lantern-dust': { id: 'lantern-dust', name: 'Lantern Dust', affinity: 'Lumen', kind: 'calm', power: 0, priority: 1, description: 'A glow from the wings lowers wild agitation or weakens the Rift Wretch’s stability.' },
   'quick-tackle': { id: 'quick-tackle', name: 'Quick Tackle', affinity: 'Gale', kind: 'attack', power: 8, priority: 2, description: 'Rush in and strike before the opponent moves.' },
   'splinter-swipe': { id: 'splinter-swipe', name: 'Splinter Swipe', affinity: 'Stone', kind: 'attack', power: 7, priority: 0, description: 'A quick swipe of a rope-strong tail.' },

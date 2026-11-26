@@ -275,12 +275,12 @@ export function MesomonStartMenu({
               />
               <Setting
                 label="Battles"
-                values={["normal", "fast"]}
-                value={s.battleSpeed}
+                values={["normal", "fast", "manual"]}
+                value={s.manualBattle ? "manual" : s.battleSpeed}
                 onChange={(value) =>
-                  onSettings({
-                    battleSpeed: value as MesomonSettings["battleSpeed"],
-                  })
+                  onSettings(value === "manual"
+                    ? { manualBattle: true }
+                    : { manualBattle: false, battleSpeed: value === "fast" ? "fast" : "normal" })
                 }
               />
               <Toggle

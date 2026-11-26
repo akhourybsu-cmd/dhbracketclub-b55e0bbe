@@ -1,4 +1,4 @@
-import { bondFighter, createBattle, makeCompanion, startBattleTurn } from './battle';
+import { bondFighter, createBattle, makeCompanion, startBattleTurn, tinctureRecovery } from './battle';
 import { advanceBattleBeat } from './battlePlayback';
 import { CLOSING_CHOICES } from './data/dialogue';
 import { beginNarrativeBeat } from './narrative';
@@ -474,7 +474,7 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     const injured = save.party.find(member => member.vitality < member.maxVitality);
     if (!injured) { session.notice = 'Your companions are already rested.'; return session; }
     if ((save.inventory.tincture ?? 0) < 1) { session.notice = 'No tinctures. Seli and the lantern alcove offer rest.'; return session; }
-    save.inventory.tincture--; injured.vitality = Math.min(injured.maxVitality, injured.vitality + 26); save.collection[injured.id] = clone(injured); session.notice = `${SPECIES[injured.speciesId].name} recovered vitality`; return session;
+    save.inventory.tincture--; injured.vitality += tinctureRecovery(injured); save.collection[injured.id] = clone(injured); session.notice = `${SPECIES[injured.speciesId].name} recovered vitality`; return session;
   }
   return session;
 }

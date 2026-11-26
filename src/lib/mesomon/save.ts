@@ -25,6 +25,7 @@ const bonded = z.object({
 });
 const fighter = z.object({ id: z.string().min(1).max(80), speciesId: z.enum(['rillik', 'muddren', 'gleamwing', 'tressel', 'rift-wretch']), vitality: integer(999), maxVitality: z.number().int().min(1).max(999), power: integer(999), guard: integer(999), agility: integer(999), resonance: integer(999), moves: z.array(move).min(1).max(4) }).refine(value => value.vitality <= value.maxVitality);
 const beat = z.object({
+  cue: z.union([move, z.enum(['guard','tincture','switch','dodge','mudbound','resonate','flee'])]).optional(),
   side: z.enum(['ally', 'enemy', 'field']), kind: z.enum(['action', 'impact', 'notice']),
   text: z.string().min(1).max(400), activeIndex: integer(2), allyVitality: z.array(integer(999)).min(1).max(3),
   enemyVitality: integer(999), agitation: integer(100), stability: integer(999),
@@ -53,7 +54,7 @@ const schema = z.object({
   party: z.array(bonded).max(3), collection: dictionary(bonded, 30), inventory: dictionary(integer(9999), 80),
   questFlags: dictionary(z.union([z.boolean(), z.number().finite().min(-1000000).max(1000000), z.string().max(500)]), 150),
   activeQuestId: z.string().min(1).max(100), rifts: dictionary(z.enum(['unseen', 'found', 'sealed']), 20),
-  settings: z.object({ textSpeed: z.enum(['slow', 'normal', 'fast']), battleSpeed: z.enum(['normal', 'fast']), reducedMotion: z.boolean(), haptics: z.boolean(), mute: z.boolean(), sealAssist: z.boolean(), musicVolume: z.number().min(0).max(1).default(0.35), ambientVolume: z.number().min(0).max(1).default(0.3) }),
+  settings: z.object({ textSpeed: z.enum(['slow', 'normal', 'fast']), battleSpeed: z.enum(['normal', 'fast']), manualBattle: z.boolean().optional(), reducedMotion: z.boolean(), haptics: z.boolean(), mute: z.boolean(), sealAssist: z.boolean(), musicVolume: z.number().min(0).max(1).default(0.35), ambientVolume: z.number().min(0).max(1).default(0.3) }),
   playtimeSeconds: integer(315360000), savedAt: z.string().datetime({ offset: true }),
   battle: battle.nullable().default(null), seal: z.object({ active: z.boolean(), pulses: integer(3), attempts: integer(100000) }).default({ active: false, pulses: 0, attempts: 0 }),
   quayResidents: z.object({ nia: npcPosition.optional(), bram: npcPosition.optional() }).optional(),

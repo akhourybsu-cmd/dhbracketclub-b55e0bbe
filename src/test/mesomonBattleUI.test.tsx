@@ -56,7 +56,9 @@ describe("battle turn controls", () => {
     fireEvent.keyDown(moves[1], { key: "s" });
     expect(moves[3]).toHaveFocus();
     fireEvent.click(moves[3]);
-    expect(screen.getByRole("status")).toHaveTextContent(/Tidal Veil/);
+    const chosen = startBattleTurn(battle, { type: "move", moveId: "tidal-veil" }, {});
+    expect(screen.getByRole("status")).toHaveTextContent(chosen.playback!.beats[0].text);
+    expect(chosen.playback!.beats[0].cue).toBe("tidal-veil");
   });
 
   it("keeps the final impact separate from the result and hides both while the winning move starts", () => {
@@ -78,6 +80,68 @@ describe("battle turn controls", () => {
     expect(screen.getByRole("heading", { name: /Pushed back/ })).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a manual turn at the same beat until Next is pressed, then focuses the last move", () => {
+    vi.useFakeTimers();
+    const save = createNewSave();
+    save.settings.manualBattle = true;
+    const battle = createBattle([makeCompanion("rillik")], "tressel");
+    const turn = startBattleTurn(battle, { type: "move", moveId: "tidal-veil" }, {});
+    render(<Harness initial={battle} save={save} />);
+    fireEvent.click(screen.getByRole("button", { name: /Tidal Veil/ }));
+    for (const beat of turn.playback!.beats) {
+      act(() => vi.advanceTimersByTime(60_000));
+      expect(screen.getByRole("status")).toHaveTextContent(beat.text);
+      const next = screen.getByRole("button", {name: "Next"});
+      expect(next).toHaveFocus();
+      fireEvent.click(next);
+    }
+    expect(screen.getByRole("button", {name: /Tidal Veil/})).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Turn 2");
+  });
+
+  it("warns of the double pulse when choosing and explains tactics for the current opponent", () => {
+    const save = createNewSave();
+    const battle = createBattle([makeCompanion("rillik")], "rift-wretch", "chamber-boss");
+    const view = render(<BattlePanel battle={{...battle, turn: 1}} save={save} paused={false}
+      onAction={vi.fn()} onBeat={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.queryByText(/Double pulse next/)).toBeNull();
+    view.rerender(<BattlePanel battle={{...battle, turn: 2}} save={save} paused={false}
+      onAction={vi.fn()} onBeat={vi.fn()} onContinue={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Double pulse next");
+    expect(screen.getByRole("button", {name: /Resonant Cry/})).toHaveTextContent("Drain stability");
+    expect(screen.getByRole("button", {name: /Tidal Veil/})).toHaveTextContent("Guard all hits");
+  });
+
+  it("explains a full roster to the player when a wild creature is ready to bond", () => {
+    const save = createNewSave();
+    save.party = [makeCompanion("rillik"), makeCompanion("muddren"), makeCompanion("gleamwing")];
+    const battle = createBattle(save.party, "tressel");
+    battle.agitation = 0;
+    render(<Harness initial={battle} save={save} />);
+    expect(screen.getByRole("button", {name: "Resonate"})).toBeDisabled();
+    expect(screen.getByRole("button", {name: "Resonate"})).toHaveAccessibleDescription(/three.*crystals/i);
+  });
+
+  it("shows depleted party members as resting and shows item recovery only when it happens", () => {
+    vi.useFakeTimers();
+    const save = createNewSave();
+    save.settings.manualBattle = true;
+    const battle = createBattle([makeCompanion("rillik"), makeCompanion("tressel")], "muddren");
+    battle.allies[0].vitality = battle.allies[0].maxVitality - 8;
+    battle.allies[1].vitality = 0;
+    render(<Harness initial={battle} save={save} />);
+    fireEvent.click(screen.getByRole("button", {name: "Switch"}));
+    expect(screen.getByRole("button", {name: /Tressel.*Resting/i})).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", {name: "Satchel"}));
+    const potion = screen.getByRole("button", {name: /Healing tincture/});
+    expect(potion).toHaveTextContent("Restore 8 HP");
+    fireEvent.click(potion);
+    expect(document.querySelector(".mm-vital-change")).toBeNull();
+    fireEvent.click(screen.getByRole("button", {name: "Next"}));
+    expect(document.querySelector('.mm-vital-change[data-direction="gain"]')).toHaveTextContent("+8");
+    expect(screen.getByRole("meter", {name: "Rillik HP"})).toHaveAttribute("aria-valuenow", String(battle.allies[0].maxVitality));
   });
 
   it.each(["fast", "normal"] as const)("pauses and resumes the same %s beat in reduced motion", speed => {

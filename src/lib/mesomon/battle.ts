@@ -1,6 +1,6 @@
 import { MOVES, SPECIES } from './data/species';
 import { deriveSeed, individualStats, strikeDamage } from './individuals';
-import type { BattleAction, BattleBeat, BattleState, BondedMesomon, Fighter, SpeciesId } from './types';
+import type { BattleAction, BattleBeat, BattleCue, BattleState, BondedMesomon, Fighter, SpeciesId } from './types';
 
 export function makeCompanion(
   speciesId: BondedMesomon['speciesId'],
@@ -28,6 +28,27 @@ export function createBattle(party: BondedMesomon[], enemySpecies: SpeciesId, id
   return { id, allies, activeIndex: Math.max(0, allies.findIndex(member => member.vitality > 0)), enemy, agitation: enemySpecies === 'gleamwing' ? 48 : 68, stability: enemySpecies === 'rift-wretch' ? 64 : 0, maxStability: enemySpecies === 'rift-wretch' ? 64 : 0, frenzy: false, seed: seed >>> 0, turn: 0, guarded: false, evasion: false, mudbound: 0, phase: 'choosing', log: [enemySpecies === 'rift-wretch' ? 'The Rift Wretch has a hold on the tear. Bring its stability to zero so Tavian can seal it.' : `${SPECIES[enemySpecies].name} backs away from Tavian. Use a calming move to lower its agitation.`], usedTinctures: 0 };
 }
 
+export function tinctureRecovery(member: Pick<Fighter, 'vitality' | 'maxVitality'>): number {
+  return Math.min(26, Math.max(0, member.maxVitality - member.vitality));
+}
+
+/** The third Broken Current arrives in two pulses. The HUD reads the same clock as the resolver. */
+export function hasIncomingDoublePulse(battle: BattleState): boolean {
+  return battle.enemy.speciesId === 'rift-wretch' && (battle.turn + 1) % 3 === 0;
+}
+
+function isSettled(battle: BattleState): boolean {
+  const tired = battle.enemy.vitality <= Math.ceil(battle.enemy.maxVitality * 0.35);
+  return battle.agitation <= 28 || (tired && battle.agitation <= 44);
+}
+
+function loosenRift(battle: BattleState, amount: number): number {
+  const pressure = Math.min(battle.stability, amount);
+  battle.stability -= pressure;
+  battle.enemy.vitality = Math.ceil(battle.enemy.maxVitality * battle.stability / battle.maxStability);
+  return pressure;
+}
+
 export function resonanceEligibility(battle: BattleState, emptyBuds = 1, storyAllowed = true): { eligible: boolean; reason: string } {
   if (SPECIES[battle.enemy.speciesId].category === 'demon') return { eligible: false, reason: 'The Rift Wretch has no living voice for the cuff to answer.' };
   if (battle.phase !== 'choosing') return { eligible: false, reason: 'This encounter has ended.' };
@@ -38,7 +59,7 @@ export function resonanceEligibility(battle: BattleState, emptyBuds = 1, storyAl
   const tired = battle.enemy.vitality <= Math.ceil(battle.enemy.maxVitality * 0.35);
   // Vitality alone is never consent. Even a tired creature must have stopped
   // pulling away; Cry is the gentle, reliable route through that threshold.
-  if (battle.agitation > 28 && !(tired && battle.agitation <= 44)) {
+  if (!isSettled(battle)) {
     const calmMove = battle.allies[battle.activeIndex]?.moves.find(id => MOVES[id].kind === 'calm');
     const hint = calmMove ? `Try ${MOVES[calmMove].name}.` : 'Use a calming move.';
     return { eligible: false, reason: `${tired ? 'It’s tired, but still pulling away.' : 'It’s still frightened.'} ${hint}` };
@@ -73,9 +94,9 @@ export function resolveBattleTurn(
   const active = battle.allies[battle.activeIndex];
   const enemyName = battle.enemy.speciesId === 'rift-wretch' ? 'the Rift Wretch' : `the wild ${SPECIES[battle.enemy.speciesId].name}`;
   const enemyLabel = SPECIES[battle.enemy.speciesId].name;
-  const present = (side: BattleBeat['side'], kind: BattleBeat['kind'], text: string) => {
+  const present = (side: BattleBeat['side'], kind: BattleBeat['kind'], text: string, cue?: BattleCue) => {
     onBeat?.({
-      side, kind, text,
+      side, kind, text, cue,
       activeIndex: battle.activeIndex,
       allyVitality: battle.allies.map(member => member.vitality),
       enemyVitality: battle.enemy.vitality,
@@ -84,9 +105,9 @@ export function resolveBattleTurn(
     });
   };
   const append = (line: string) => { battle.log.push(line); };
-  const describe = (side: BattleBeat['side'], line: string) => {
+  const describe = (side: BattleBeat['side'], line: string, cue?: BattleCue) => {
     append(line);
-    present(side, 'notice', line);
+    present(side, 'notice', line, cue);
   };
   if (!active) return { ...battle, phase: 'lost', log: ['No companion can continue. Return to the tide stairs.'] };
   if (action.type === 'move' && (!active.moves.includes(action.moveId) || !MOVES[action.moveId])) return previous;
@@ -95,15 +116,16 @@ export function resolveBattleTurn(
   if (action.type === 'resonate') {
     const eligibility = resonanceEligibility(battle, options.emptyBuds ?? 1, options.storyAllowed ?? true);
     if (!eligibility.eligible) return { ...previous, log: [eligibility.reason] };
-    present('ally', 'notice', 'Tavian holds out an empty crystal bud.');
-    present('enemy', 'notice', `${enemyLabel} steps close enough to touch it.`);
+    present('ally', 'notice', 'Tavian holds out an empty crystal bud.', 'resonate');
+    present('enemy', 'notice', `${enemyLabel} steps close enough to touch it.`, 'resonate');
     return { ...battle, phase: 'resonated', turn: battle.turn + 1, log: [`${SPECIES[battle.enemy.speciesId].name} steps closer. Tavian holds still.`, 'The empty crystal bud rings once. The creature stays with him.'] };
   }
   if (action.type === 'flee') {
     if (battle.enemy.speciesId === 'rift-wretch') return { ...previous, log: ['The Rift Wretch blocks the way out. Bring its stability to zero.'] };
-    present('field', 'notice', 'Tavian lowers his cuff and steps back.');
+    present('field', 'notice', 'Tavian lowers his cuff and steps back.', 'flee');
     return { ...battle, turn: battle.turn + 1, phase: 'escaped', log: ['Tavian gives the creature room. The way remains open.'] };
   }
+  const burst = hasIncomingDoublePulse(battle);
   battle.turn++;
   battle.mudbound = Math.max(0, battle.mudbound - 1);
   const playerPriority = action.type === 'switch' ? 8 : action.type === 'item' ? 7 : action.type === 'guard' ? 6 : action.type === 'move' ? MOVES[action.moveId].priority : 0;
@@ -120,64 +142,76 @@ export function resolveBattleTurn(
     }
     if (battle.allies.every(member => member.vitality <= 0)) { battle.phase = 'lost'; append('The last companion tires. Tavian calls everyone back to the cuff.'); return true; }
     const current = battle.allies[battle.activeIndex];
-    if (current.vitality <= 0) { battle.activeIndex = battle.allies.findIndex(member => member.vitality > 0); describe('field', `${SPECIES[battle.allies[battle.activeIndex].speciesId].name} steps forward.`); }
+    if (current.vitality <= 0) { battle.activeIndex = battle.allies.findIndex(member => member.vitality > 0); describe('field', `${SPECIES[battle.allies[battle.activeIndex].speciesId].name} steps forward.`, 'switch'); }
     return false;
   };
   const playerTurn = () => {
     const member = battle.allies[battle.activeIndex];
     const name = SPECIES[member.speciesId].name;
-    if (action.type === 'switch') { battle.activeIndex = action.index; describe('ally', `${SPECIES[battle.allies[action.index].speciesId].name} takes the lead.`); return; }
-    if (action.type === 'item') { const restored = Math.min(26, member.maxVitality - member.vitality); member.vitality += restored; battle.usedTinctures++; describe('ally', `Tavian gives ${name} a tincture. ${name} recovers ${restored} vitality.`); return; }
-    if (action.type === 'guard') { battle.guarded = true; describe('ally', `${name} braces for the attack.`); return; }
+    if (action.type === 'switch') { battle.activeIndex = action.index; describe('ally', `${SPECIES[battle.allies[action.index].speciesId].name} takes the lead.`, 'switch'); return; }
+    if (action.type === 'item') {
+      present('ally', 'action', `Tavian gives ${name} a tincture.`, 'tincture');
+      const restored = tinctureRecovery(member);
+      member.vitality += restored;
+      battle.usedTinctures++;
+      const recovery = `${name} recovers ${restored} vitality.`;
+      append(recovery);
+      present('ally', 'impact', recovery, 'tincture');
+      return;
+    }
+    if (action.type === 'guard') { battle.guarded = true; describe('ally', `${name} braces for the attack.`, 'guard'); return; }
     if (action.type !== 'move') return;
     const move = MOVES[action.moveId];
-    if (move.kind === 'guard') { battle.guarded = true; battle.mudbound = 0; describe('ally', `${name} uses ${move.name} to soften incoming strikes.`); return; }
-    if (move.kind === 'evade') { battle.evasion = true; describe('ally', `${name} uses ${move.name} to try to dodge.`); return; }
-    present('ally', 'action', `${name} uses ${move.name}.`);
+    if (move.kind === 'guard') {
+      battle.guarded = true;
+      battle.mudbound = 0;
+      describe('ally', move.id === 'mud-wrap' ? `${name} packs a shell of mud over its back.` : `A veil of water gathers around ${name}.`, move.id);
+      return;
+    }
+    if (move.kind === 'evade') { battle.evasion = true; describe('ally', `${name} uses ${move.name} to try to dodge.`, move.id); return; }
+    present('ally', 'action', `${name} uses ${move.name}.`, move.id);
     if (move.kind === 'calm') {
       if (battle.enemy.speciesId === 'rift-wretch') {
-        const pressure = Math.min(battle.stability, 12 + Math.floor(member.resonance / 5));
-        battle.stability -= pressure;
-        battle.enemy.vitality = Math.ceil(battle.enemy.maxVitality * battle.stability / battle.maxStability);
+        const pressure = loosenRift(battle, 12 + Math.floor(member.resonance / 5));
         const result = `The Rift Wretch loses ${pressure} stability.`;
         append(`${name} uses ${move.name}. ${result}`);
-        present('ally', 'impact', result);
+        present('ally', 'impact', result, move.id);
       } else {
         battle.agitation = Math.max(0, battle.agitation - (24 + Math.floor(member.resonance / 5)));
         const result = `${enemyLabel} begins to relax.`;
         append(`${name} uses ${move.name}. ${result}`);
-        present('ally', 'impact', result);
+        present('ally', 'impact', result, move.id);
         if (resonanceEligibility(battle, options.emptyBuds, options.storyAllowed).eligible) append('It stays close. Tavian can offer a bond.');
       }
       return;
     }
     const amount = strikeDamage(move, member, battle.enemy, random(battle));
-    battle.agitation = Math.max(0, battle.agitation - 6);
     if (battle.enemy.speciesId === 'rift-wretch') {
-      const pressure = Math.min(battle.stability, Math.ceil(amount * 0.9));
-      battle.stability = Math.max(0, battle.stability - pressure);
-      battle.enemy.vitality = Math.ceil(battle.enemy.maxVitality * battle.stability / battle.maxStability);
+      const pressure = loosenRift(battle, Math.ceil(amount * 0.9));
       append(`${name} uses ${move.name}. The Rift Wretch loses ${pressure} stability.`);
-      present('ally', 'impact', `The Rift Wretch loses ${pressure} stability.`);
+      present('ally', 'impact', `The Rift Wretch loses ${pressure} stability.`, move.id);
     } else {
       const damage = Math.min(amount, battle.enemy.vitality);
       battle.enemy.vitality -= damage;
       append(`${name} hits ${enemyName} with ${move.name} for ${damage} vitality.`);
-      present('ally', 'impact', `${enemyLabel} loses ${damage} vitality.`);
+      present('ally', 'impact', `${enemyLabel} loses ${damage} vitality.`, move.id);
     }
   };
   const enemyTurn = () => {
     const member = battle.allies[battle.activeIndex];
-    const burst = battle.enemy.speciesId === 'rift-wretch' && battle.turn % 3 === 0;
-    // The chapter's startled creatures attack defensively. Their strikes use
-    // the same stat formula with a smaller move-power contribution.
+    const wild = battle.enemy.speciesId !== 'rift-wretch';
+    if (wild && !battle.frenzy && isSettled(battle) && action.type === 'move' && MOVES[action.moveId].kind === 'calm') {
+      describe('enemy', `${enemyLabel} lowers its guard.`, action.moveId);
+      return;
+    }
     const base = strikeDamage(enemyMove, battle.enemy, member, random(battle));
-    const protection = battle.guarded ? 0.3 : 1;
+    const mudShell = action.type === 'move' && action.moveId === 'mud-wrap' && battle.guarded;
+    const waterVeil = action.type === 'move' && action.moveId === 'tidal-veil' && battle.guarded;
     const hits = burst ? 2 : 1;
     const target = SPECIES[member.speciesId].name;
     const attack = enemyMove ? `uses ${enemyMove.name}` : 'strikes';
     const declaration = `${enemyLabel} ${attack}${burst ? ' in a double pulse' : ''}.`;
-    present('enemy', 'action', declaration);
+    present('enemy', 'action', declaration, enemyMove?.id);
     let damage = 0;
     let evaded = false;
     for (let hit = 0; hit < hits && member.vitality > 0; hit++) {
@@ -185,16 +219,26 @@ export function resolveBattleTurn(
       // making it the safer response to the Wretch's third-turn double pulse.
       if (battle.evasion && hit === 0 && random(battle) < 0.72) {
         evaded = true;
-        present('enemy', 'impact', `${target} slips past the strike.`);
+        if (wild) battle.agitation = Math.max(0, battle.agitation - 13);
+        present('enemy', 'impact', wild ? `${target} slips away. ${enemyLabel} settles.` : `${target} slips past the strike.`, 'dodge');
         continue;
       }
+      // A mud shell breaks on first contact. A veil or ordinary brace lasts through every pulse.
+      const protection = mudShell ? (hit === 0 ? 0.12 : 1) : waterVeil ? 0.3 : battle.guarded ? 0.45 : 1;
       const amount = Math.min(member.vitality, Math.max(1, Math.round(base * (burst ? 0.7 : 1) * protection)));
       member.vitality -= amount; damage += amount;
-      present('enemy', 'impact', `${target} loses ${amount} vitality.`);
+      present('enemy', 'impact', `${target} loses ${amount} vitality.`, enemyMove?.id);
     }
     if (evaded) append(`${target} dodges the first strike from ${enemyName}.`);
     if (damage > 0) append(`${declaration} ${target} loses ${damage} vitality.`);
-    if (battle.enemy.speciesId === 'muddren' && battle.turn % 2 === 0 && !battle.guarded) { battle.mudbound = 2; describe('field', 'Mud clings to the party’s feet. Mudbound slows their next move.'); }
+    if (burst && battle.guarded && !mudShell && member.vitality > 0) {
+      const pressure = loosenRift(battle, 8);
+      describe('field', `The double pulse rebounds. The Wretch loses ${pressure} stability.`, 'rift-lash');
+    }
+    if (battle.enemy.speciesId === 'muddren' && battle.turn % 2 === 0 && !battle.guarded && !evaded) {
+      battle.mudbound = 2;
+      describe('field', 'Mud clings to the party’s feet. Mudbound slows their next move.', 'mudbound');
+    }
   };
   if (playerFirst) { playerTurn(); if (!endCheck()) { enemyTurn(); endCheck(); } }
   else {

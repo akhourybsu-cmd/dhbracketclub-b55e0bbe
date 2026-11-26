@@ -1,4 +1,50 @@
 import type Phaser from 'phaser';
+import type { BattleState } from '../types';
+import { battleSceneUrl } from '../assets';
+
+/** The geometry is immediately playable, including when the optional plate is offline. */
+export function mountBattleBackdrop(scene: Phaser.Scene, stage: Phaser.GameObjects.Graphics, id: BattleState['id'], harbor: boolean) {
+  paintBattleStage(stage, id === 'chamber-boss', harbor);
+  const key = `ms:backdrop:${id}`;
+  const canvas = scene.game.canvas;
+  let plate: Phaser.GameObjects.Image | undefined;
+  let loading: HTMLImageElement | undefined;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const stopLoading = () => {
+    clearTimeout(timeout);
+    timeout = undefined;
+    if (!loading) return;
+    loading.onload = loading.onerror = null;
+    loading = undefined;
+  };
+  const cancel = () => {
+    const pending = loading;
+    stopLoading();
+    pending?.removeAttribute('src');
+  };
+  const show = () => {
+    plate = scene.add.image(0, 0, key).setOrigin(0).setDisplaySize(160, 144).setDepth(stage.depth);
+    stage.setVisible(false);
+    canvas.dataset.battleBackdrop = id;
+  };
+  stage.once('destroy', () => {
+    cancel();
+    plate?.destroy();
+    delete canvas.dataset.battleBackdrop;
+  });
+  if (scene.textures.exists(key)) {
+    show();
+    return;
+  }
+  loading = new Image();
+  loading.onload = () => {
+    if (loading?.naturalWidth === 640 && loading.naturalHeight === 576 && scene.textures.addImage(key, loading)) show();
+    stopLoading();
+  };
+  loading.onerror = stopLoading;
+  timeout = setTimeout(cancel, 12_000);
+  loading.src = battleSceneUrl(id);
+}
 
 /** The rear landing, flooded channel and near landing share a receding waterline. */
 export function paintBattleStage(stage: Phaser.GameObjects.Graphics, boss: boolean, harbor: boolean) {

@@ -34,8 +34,14 @@ The renderer does not move the canonical player, resolve battles, change quests,
 
 Before starting the scene, the browser decodes the local PNG sheets. The renderer checks the source dimensions and registered frame counts before it marks the canvas ready. This lets the UI offer a retry when a browser cannot decode the art. The browser suite also samples the painted scene at native resolution. A view queues updates during preload, reports asset failure through `onError`, and exposes a bounded boot timeout. Route cancellation can abort before import or during preload; `destroy()` removes the canvas and Phaser input/timer/texture lifecycle. No global keyboard or browser gesture handler is registered by the renderer.
 
+### Battle locations and move effects
+
+The maintenance sluice, lantern alcove and rift chamber each have a painted waterline and two landing surfaces aligned to the creatures’ feet. The cropped original environment artwork is in `art/mesomon/battle-scenes/`. Run `python scripts/build-mesomon-battle-scenes.py` to compile the 640×576 WebP stages or use `--check` to verify the shipped files. The game requests a stage on entering that encounter. Native geometry supports the entire fight while the image loads or if the device is offline.
+
+Version 3 turns store the move or field action on each beat. Phaser uses this to place the water jet, splinters, veil, healing glints and rift pulses on the right fighter. Reduced motion uses fixed cues. Older saved turns can finish with their original action and impact poses.
+
 ## Audio
 
-`MesomonAudio` synthesizes an original compact score with Web Audio. No audio context exists until a player gesture calls `unlock()`. Harbor, workshop, under-wharf, battle and Rift Wretch phrases have different rhythms and registers. Short confirm/cancel/menu cues, species cries, a spare four-note bond motif and a dissonance-to-resolution seal cue use the same bounded voice pool.
+`MesomonAudio` synthesizes an original compact score with Web Audio. No audio context exists until a player gesture calls `unlock()`. Harbor, workshop, under-wharf, battle and Rift Wretch phrases have different rhythms and registers. Move-specific attack, support and impact sounds follow the saved turn. Short confirm/cancel/menu cues, species cries, a spare four-note bond motif and a dissonance-to-resolution seal cue use the same bounded voice pool.
 
 Music and ambient volumes are independent, and the saved mute preference applies to every bus. Background/menu pause stops scheduled voices and the single scheduling timer. Destroy closes the context and disconnects every node. Browsers lacking Web Audio remain playable. Audio is presentation only and never advances gameplay.

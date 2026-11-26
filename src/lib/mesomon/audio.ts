@@ -1,4 +1,5 @@
-import type { MapId, MesomonSettings, SpeciesId } from './types';
+import type { BattleCue, BattleState, MapId, MesomonSettings, SpeciesId } from './types';
+import { getBattleBeat, getBattleHitSide } from './battlePlayback';
 
 type Scene = MapId | 'battle' | 'boss';
 type Cue = 'ally-hit' | 'enemy-hit' | 'confirm' | 'cancel' | 'menu' | 'bond' | 'seal' | SpeciesId;
@@ -10,6 +11,38 @@ const THEMES: Record<'harbor' | 'workshop' | 'underwharf' | 'battle' | 'boss', n
   boss: [38, 45, 46, 50, 49, 45, 41, 40, 38, 46, 45, 49, 50, 41, 40, 37],
 };
 const noteFrequency = (note: number) => 440 * 2 ** ((note - 69) / 12);
+
+interface Gesture {
+  wave: OscillatorType;
+  from: number;
+  to: number;
+  duration: number;
+  /** Interval above the final note, sounded once as a quiet answering voice. */
+  answer?: number;
+}
+
+// MIDI pitches and seconds. Keep even the longest gesture under a quick beat.
+const BATTLE_GESTURES: Record<BattleCue, Gesture> = {
+  'brine-snap':     { wave: 'triangle', from: 84, to: 58, duration: .09, answer: 5 },
+  'quick-tackle':   { wave: 'square', from: 62, to: 75, duration: .055 },
+  'splinter-swipe': { wave: 'sawtooth', from: 79, to: 60, duration: .07 },
+  'bank-break':     { wave: 'triangle', from: 48, to: 34, duration: .15, answer: 7 },
+  'rift-lash':      { wave: 'sawtooth', from: 41, to: 53, duration: .13, answer: 1 },
+  'resonant-cry':   { wave: 'sine', from: 69, to: 76, duration: .16, answer: 5 },
+  'lantern-dust':   { wave: 'sine', from: 90, to: 86, duration: .10, answer: 7 },
+  'tidal-veil':     { wave: 'sine', from: 55, to: 72, duration: .15, answer: 7 },
+  'mud-wrap':       { wave: 'triangle', from: 52, to: 41, duration: .11 },
+  reedstep:         { wave: 'triangle', from: 72, to: 84, duration: .065, answer: 4 },
+  guard:            { wave: 'square', from: 51, to: 47, duration: .06 },
+  tincture:         { wave: 'triangle', from: 73, to: 80, duration: .045 },
+  switch:           { wave: 'triangle', from: 76, to: 67, duration: .09, answer: 7 },
+  dodge:            { wave: 'sine', from: 85, to: 95, duration: .055 },
+  mudbound:         { wave: 'sawtooth', from: 45, to: 36, duration: .14 },
+  resonate:         { wave: 'sine', from: 74, to: 74, duration: .17, answer: 7 },
+  flee:             { wave: 'triangle', from: 64, to: 57, duration: .085 },
+};
+const HEALING_TONE: Gesture = { wave: 'sine', from: 74, to: 81, duration: .12, answer: 5 };
+const SETTLING_TONE: Gesture = { wave: 'sine', from: 76, to: 69, duration: .14 };
 
 /** Small original score synthesized locally. No samples, remote music or autoplay. */
 export class MesomonAudio {
@@ -23,6 +56,7 @@ export class MesomonAudio {
   private paused = false;
   private disposed = false;
   private index = 0;
+  private lastBattleBeat = '';
   private noiseBuffer: AudioBuffer | null = null;
   private settings: Pick<MesomonSettings, 'mute' | 'musicVolume' | 'ambientVolume'> = { mute: false, musicVolume: 0.45, ambientVolume: 0.4 };
 
@@ -40,6 +74,7 @@ export class MesomonAudio {
     } catch { /* Browsers without Web Audio remain fully playable. */ }
   }
   setSettings(settings: MesomonSettings): void {
+    if (settings.mute && !this.settings.mute) this.stopSources();
     this.settings = { mute: settings.mute, musicVolume: settings.musicVolume, ambientVolume: settings.ambientVolume };
     this.applyVolumes();
   }
@@ -51,18 +86,20 @@ export class MesomonAudio {
   }
   setScene(scene: Scene): void {
     if (this.scene === scene) return;
-    this.scene = scene; this.index = 0;
+    this.scene = scene; this.index = 0; this.lastBattleBeat = '';
     this.stopSources();
   }
   private theme(): keyof typeof THEMES {
     if (this.scene === 'battle' || this.scene === 'boss') return this.scene;
     return this.scene === 'workshop' ? 'workshop' : ['passage', 'chamber'].includes(this.scene) ? 'underwharf' : 'harbor';
   }
-  private tone(note: number, at: number, duration: number, gain: GainNode | null, waveform: OscillatorType = 'triangle', amplitude = 1): void {
+  private tone(note: number, at: number, duration: number, gain: GainNode | null, waveform: OscillatorType = 'triangle', amplitude = 1, endNote?: number): void {
     const ctx = this.context;
     if (!ctx || !gain || this.disposed || this.nodes.size > 12) return;
     const oscillator = ctx.createOscillator(), envelope = ctx.createGain();
-    oscillator.type = waveform; oscillator.frequency.value = noteFrequency(note);
+    oscillator.type = waveform;
+    oscillator.frequency.setValueAtTime(noteFrequency(note), at);
+    if (endNote !== undefined) oscillator.frequency.exponentialRampToValueAtTime(noteFrequency(endNote), at + duration);
     envelope.gain.setValueAtTime(0, at); envelope.gain.linearRampToValueAtTime(amplitude, at + 0.012);
     envelope.gain.exponentialRampToValueAtTime(0.001, at + duration);
     oscillator.connect(envelope); envelope.connect(gain); this.nodes.add(oscillator);
@@ -101,6 +138,39 @@ export class MesomonAudio {
       }
     }
     this.index++; this.timer = setTimeout(() => this.schedule(), tempo);
+  }
+  battleBeat(battle: BattleState): void {
+    const playback = battle.playback, beat = getBattleBeat(battle);
+    if (!playback || !beat) return;
+    const key = `${battle.id}:${battle.turn}:${playback.index}`;
+    if (key === this.lastBattleBeat) return;
+    this.lastBattleBeat = key;
+    const ctx = this.context;
+    if (!ctx || this.disposed || this.paused || this.settings.mute || ctx.state !== 'running') return;
+
+    const calming = beat.cue === 'resonant-cry' || beat.cue === 'lantern-dust';
+    // The crystal rings on contact. A wild creature lowering its guard gets a quiet beat.
+    if (beat.kind === 'notice' && ((beat.cue === 'resonate' && beat.side === 'ally') || (calming && beat.side === 'enemy'))) return;
+    let gesture = beat.cue ? BATTLE_GESTURES[beat.cue] : undefined;
+    if (beat.kind === 'impact' && beat.cue !== 'dodge') {
+      if (calming) {
+        gesture = SETTLING_TONE;
+      } else if (beat.cue === 'tincture') {
+        gesture = HEALING_TONE;
+      } else {
+        const target = getBattleHitSide(battle);
+        if (target) this.cue(target === 'ally' ? 'ally-hit' : 'enemy-hit');
+        return;
+      }
+    }
+    if (!gesture) return;
+    // Keep harmonically rich square/saw voices softer than the rounder voices.
+    const amp = gesture.wave === 'square' || gesture.wave === 'sawtooth' ? .21 : .48;
+    this.tone(gesture.from, ctx.currentTime, gesture.duration, this.effects, gesture.wave, amp, gesture.to);
+    if (gesture.answer !== undefined) {
+      this.tone(gesture.to + gesture.answer, ctx.currentTime + gesture.duration * .65,
+        gesture.duration * .8, this.effects, 'sine', .24);
+    }
   }
   cue(cue: Cue): void {
     const ctx = this.context;

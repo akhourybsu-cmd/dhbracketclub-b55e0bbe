@@ -43,7 +43,7 @@ function mesomonBuildProvenance(): Plugin {
           JSON.stringify({
             schema_version: 1,
             chapter: "port-marche",
-            rules_version: 2,
+            rules_version: 3,
             assets_version: artManifest.version,
             source_sha: sourceSha,
             source_dirty: sourceDirty,

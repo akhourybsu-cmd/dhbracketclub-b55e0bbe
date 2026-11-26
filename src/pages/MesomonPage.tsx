@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { getBattleHitSide } from "@/lib/mesomon/battlePlayback";
 import { Link } from "react-router-dom";
 import {
   ChevronDown,
@@ -154,7 +153,7 @@ function Chapter({
   const [textCount, setTextCount] = useState(0);
   const [sealProgress, setSealProgress] = useState(0);
   const lastCheckpoint = useRef("");
-  const audioMoment = useRef({ bonded: false, sealed: false, battle: "", impact: "" });
+  const audioMoment = useRef({ bonded: false, sealed: false, battle: "" });
   const adoptedSave = useRef<GameSession["save"] | null | undefined>(undefined);
   const resolvingCloud = useRef(false);
   const pixels = useRef<HTMLDivElement>(null);
@@ -288,8 +287,8 @@ function Chapter({
   }, [session]);
   useEffect(() => {
     view.current?.pause(hidden || !!menu || !playing);
-    audio.current?.pause(hidden || !!menu || !playing);
   }, [hidden, menu, playing]);
+  useEffect(() => { audio.current?.pause(scenePaused); }, [scenePaused]);
   useEffect(() => {
     if (!session) return;
     audio.current?.setSettings(session.save.settings);
@@ -301,12 +300,10 @@ function Chapter({
         : session.save.player.mapId,
     );
     const battle = session.save.battle;
-    const hitSide = battle && getBattleHitSide(battle);
     const moment = {
       bonded: session.save.questFlags.rillik_bonded === true,
       sealed: session.save.rifts["port-marche"] === "sealed",
       battle: battle?.id ?? "",
-      impact: battle?.playback && hitSide ? `${battle.id}:${battle.turn}:${battle.playback.index}` : "",
     };
     if (playingRef.current && moment.bonded && !audioMoment.current.bonded)
       audio.current?.cue("bond");
@@ -319,10 +316,9 @@ function Chapter({
       session.save.battle
     )
       audio.current?.cue(session.save.battle.enemy.speciesId);
-    if (playingRef.current && hitSide && moment.impact !== audioMoment.current.impact)
-      audio.current?.cue(hitSide === "ally" ? "ally-hit" : "enemy-hit");
+    if (battle && !scenePaused) audio.current?.battleBeat(battle);
     audioMoment.current = moment;
-  }, [session]);
+  }, [session, scenePaused]);
   useEffect(
     () => () => {
       audio.current?.destroy();

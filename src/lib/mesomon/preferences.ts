@@ -14,6 +14,7 @@ export function readPreferences(
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     const result: Partial<MesomonSettings> = {};
     for (const key of [
+      "manualBattle",
       "reducedMotion",
       "haptics",
       "mute",
