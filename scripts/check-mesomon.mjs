@@ -1,6 +1,7 @@
 // Exercises the production chapter, Phaser view and local-save hook. Only the
 // authentication/club/cloud transport boundary is replaced, with no live writes.
 import assert from 'node:assert/strict';
+import { trackBattleSprites } from './mesomon-creature-visuals.mjs';
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -81,7 +82,7 @@ async function step(p, direction, keyboard = false) {
 async function auditBuild() {
   const release=JSON.parse(await readFile('dist/games/mesomon/release.json','utf8'));
   assert.equal(release.schema_version,1,'The build must emit the Mesomon release metadata schema');
-  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,2);assert.equal(release.assets_version,3);
+  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,2);assert.equal(release.assets_version,JSON.parse(await readFile('public/games/mesomon/manifest.json','utf8')).version);
   assert.match(release.source_sha,/^[a-f\d]{40}$/,'Release metadata must contain the actual Git commit');
   assert.equal(typeof release.source_dirty,'boolean','Release metadata must identify uncommitted source');
   if(process.env.GITHUB_SHA)assert.equal(release.source_sha,process.env.GITHUB_SHA,'CI build metadata must identify the checked GitHub commit');
@@ -130,6 +131,55 @@ async function startSection(menu, name) {
   await menu.getByRole('button', { name, exact: true }).click();
   await expect(menu.getByRole('heading', { name, exact: true })).toBeVisible();
 }
+async function checkFieldGuide(p, menu, known, label, sizes = [p.viewportSize()]) {
+  await startSection(menu, 'Field Guide');
+  const species = ['Rillik', 'Muddren', 'Gleamwing', 'Tressel', 'Rift Wretch'];
+  await expect(menu.locator('.mm-guide-progress')).toContainText(known.length + ' / 5 seen');
+  await expect(menu.locator('.mm-guide-unseen')).toHaveCount(5 - known.length);
+  for (const name of species) {
+    const button = menu.getByRole('button', {name: 'View ' + name, exact: true});
+    if (known.includes(name)) {
+      await expect(button).toBeEnabled();
+      await button.click();
+      const spread = menu.getByRole('figure', {name, exact: true});
+      const art = spread.getByRole('img', {name, exact: true});
+      await expect(art).toBeVisible();
+      await expect.poll(() => art.evaluate(image => [image.naturalWidth, image.naturalHeight])).toEqual([512, 512]);
+      if (name === 'Gleamwing') await expect(spread).not.toContainText('Bonded');
+      if (name === 'Rillik' || name === 'Tressel') await expect(spread).toContainText('Bonded');
+      if (name === 'Rift Wretch') {
+        await expect(spread).toContainText('Demon');
+        await expect(spread).not.toContainText('Bonded');
+      }
+    } else {
+      await expect(button).toHaveCount(0);
+      await expect(menu).not.toContainText(name);
+      assert.equal(await menu.locator('img').evaluateAll((images, id) =>
+        images.some(image => new URL(image.src).pathname.toLowerCase().includes(id)),
+      name.toLowerCase().replaceAll(' ', '-')), false, 'A locked entry must not reveal its artwork');
+    }
+  }
+  const previous = p.viewportSize();
+  try {
+    for (const {width, height} of sizes) {
+      await p.setViewportSize({width, height});
+      if (known.length) {
+        const figure = menu.getByRole('figure');
+        const contained = await figure.locator('img').evaluate(image => {
+          const rect = image.getBoundingClientRect(), panel = image.closest('.mm-menu').getBoundingClientRect();
+          return rect.width >= 100 && rect.height >= 100 && rect.left >= panel.left && rect.right <= panel.right;
+        });
+        assert.ok(contained, 'The field plate must be large enough to inspect and fit within the open guide');
+      }
+      await audit(p, engine + '-' + label + '-' + width + 'x' + height);
+      await p.screenshot({path: join(output, engine + '-' + label + '-' + width + 'x' + height + '.png')});
+    }
+  } finally {
+    if (previous) await p.setViewportSize(previous);
+  }
+  await startHome(menu);
+  check(engine + '-' + label, {known});
+}
 async function startHome(menu) {
   await menu.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(menu).toHaveAttribute('data-section', 'start');
@@ -137,7 +187,7 @@ async function startHome(menu) {
 async function noShellCommands(p) {
   await expect(p.locator('.mm-header, .mm-wordmark, .mm-location')).toHaveCount(0);
   await expect(p.getByRole('link', { name: 'Exit game', exact: true })).toHaveCount(0);
-  await expect(p.getByRole('button', { name: /^(Open location chart|Settings|Journal|Companions|Map|Save file|Enter full screen|Leave full screen)$/i })).toHaveCount(0);
+  await expect(p.getByRole('button', { name: /^(Open location chart|Settings|Journal|Companions|Field Guide|Map|Save file|Enter full screen|Leave full screen)$/i })).toHaveCount(0);
   await expect(p.getByRole('switch', { name: /^Mute\b/ })).toHaveCount(0);
   await expect(p.locator('.mm-save-status')).toHaveCount(0);
 }
@@ -484,7 +534,8 @@ async function audit(p, label) {
       if(!scrollable&&(rect.top< -1||rect.bottom>innerHeight+1))issues.push(`${button.getAttribute('aria-label')||button.textContent} is outside the usable screen`);
     }
     const canvas = root.querySelector('canvas');
-    if (canvas && (canvas.width !== 160 || canvas.height !== 144)) issues.push('Canvas logical resolution changed');
+    const battleScale = root.classList.contains('mm-phase-battle') ? 4 : 1;
+    if (canvas && (canvas.width !== 160 * battleScale || canvas.height !== 144 * battleScale)) issues.push('Unexpected canvas resolution for the scene');
     let display = null;
     if (canvas && root.dataset.playing === 'true') {
       const screen = canvas.closest('.mm-screen');
@@ -529,31 +580,16 @@ async function audit(p, label) {
   check(label, evidence);
 }
 
-// Palette samples come from opaque interiors of the shipped 16px exploration
-// and 48px battle frames. Each sprite is measured only within its own bounds.
-const FRAME_SAMPLES = {
-  ship: [
+// The overworld retains its native handheld grid. Check that both the ship and its
+// traveler are actually drawn, independently of the high-resolution encounter art.
+async function auditFrame(p, label) {
+  const canvas = p.locator('.mesomon canvas');
+  const samples = [
     { name: 'ship deck', area: [0, 0, 160, 144], color: 0x916f50, minimum: 500 },
     { name: 'sea', area: [0, 0, 160, 144], color: 0x315e65, minimum: 200 },
     { name: 'Tavian coat', area: [72, 64, 16, 16], color: 0x467778, minimum: 12 },
     { name: 'Tavian hair', area: [72, 64, 16, 16], color: 0x304346, minimum: 12 },
-  ],
-  ally: [
-    { name: 'Rillik blue', area: [21, 50, 48, 50], color: 0x577c89, minimum: 100 },
-    { name: 'Rillik highlight', area: [21, 50, 48, 50], color: 0x8caaa6, minimum: 35 },
-  ],
-  bond: [
-    { name: 'Tressel ochre', area: [92, 19, 48, 50], color: 0xae7b51, minimum: 100 },
-    { name: 'Tressel gold', area: [92, 19, 48, 50], color: 0xc09245, minimum: 20 },
-  ],
-  boss: [
-    { name: 'Rift Wretch body', area: [92, 19, 48, 50], color: 0x221e30, minimum: 250 },
-    { name: 'Rift Wretch markings', area: [92, 19, 48, 50], color: 0x8a5c97, minimum: 15 },
-  ],
-};
-async function auditFrame(p, label, scene) {
-  const canvas = p.locator('.mesomon canvas');
-  const samples = scene === 'ship' ? FRAME_SAMPLES.ship : [...FRAME_SAMPLES.ally, ...FRAME_SAMPLES[scene]];
+  ];
   let reading;
   try {
     await expect.poll(async () => {
@@ -600,7 +636,7 @@ async function smoke(width, height, theme) {
     await menu.getByRole('button', { name: 'Back to title', exact: true }).click();
     await expect(menu).toHaveCount(0);
     await start(p); await drain(p); await audit(p, label + '-game-fit');
-    await auditFrame(p, label + '-ship-art', 'ship');
+    await auditFrame(p, label + '-ship-art');
     const direction = await p.evaluate(async () => {
       const state = await window.mmQa.readSave(), p = state.player;
       return [['right',1,0],['down',0,1],['left',-1,0],['up',0,-1]].find(([,dx,dy]) => window.mmQa.canWalk(state,p.x+dx,p.y+dy))?.[0];
@@ -612,7 +648,7 @@ async function smoke(width, height, theme) {
     check(label + '-keyboard-uses-same-actions');
     await noShellCommands(p);
     await openStart(p);
-    for (const name of ['Resume', 'Companions', 'Journal', 'Map', 'Settings', 'Save file']) {
+    for (const name of ['Resume', 'Companions', 'Field Guide', 'Journal', 'Map', 'Settings', 'Save file']) {
       await expect(menu.getByRole('button', { name, exact: true })).toBeVisible();
     }
     await expect(menu.locator('.mm-menu-context .mm-save-status')).toBeVisible();
@@ -657,7 +693,7 @@ async function smoke(width, height, theme) {
     await expect.poll(async () => { const s = await save(p); return `${s.player.mapId}:${s.player.x}:${s.player.y}`; }).toBe(`${persisted.player.mapId}:${persisted.player.x}:${persisted.player.y}`);
     check(label + '-reload-restores-position-with-one-canvas');
     await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
-    await auditFrame(p, label + '-restored-ship-art', 'ship');
+    await auditFrame(p, label + '-restored-ship-art');
     await p.screenshot({ path: join(output, label + '-game.png') });
     await context.setOffline(true);
     const offlineDirection=await p.evaluate(async()=>{
@@ -797,14 +833,54 @@ async function bossLayouts(p) {
 }
 async function battle(p, mode) {
   await expect.poll(async () => (await save(p))?.battle?.phase).toBe('choosing');
-  await auditFrame(p, engine + '-' + mode + '-battle-art', mode);
+  const opponent = {bond: 'tressel', sighting: 'gleamwing', boss: 'rift-wretch'}[mode];
+  await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
+  const canvas = p.locator('.mesomon canvas');
+  await expect(canvas).toHaveAttribute('data-scene', 'battle');
+  await expect.poll(() => canvas.evaluate(node => [node.width, node.height, getComputedStyle(node).imageRendering])).toEqual([640, 576, 'auto']);
+  await trackBattleSprites(p, opponent);
+  const seen = () => p.evaluate(() => window.mmCreatureProbe.seen);
+  try {
+    for (const species of ['rillik', opponent]) {
+      await expect.poll(async () => (await seen())[species].rest ?? 0).toBeGreaterThan(.94);
+    }
+  } catch (error) {
+    const closest = await p.evaluate(() => window.mmCreatureProbe.closest);
+    report.checks.push({label: engine + '-' + mode + '-battle-art', ok: false, closest});
+    const native = await p.locator('.mesomon canvas').evaluate(node => node.toDataURL('image/png'));
+    await writeFile(join(output, engine + '-' + mode + '-native.png'), Buffer.from(native.split(',')[1], 'base64'));
+    throw error;
+  }
+  check(engine + '-' + mode + '-battle-art', {opponent, frames: await seen()});
+  if (mode === 'sighting') {
+    await p.evaluate(() => window.mmCreatureProbe.stop());
+    await p.screenshot({path: join(output, engine + '-battle-gleamwing.png')});
+    await p.getByRole('button', {name: 'Satchel', exact: true}).click();
+    await chooseMove(p, 'Give them space');
+    await expect.poll(async () => (await save(p)).battle?.phase).toBe('escaped');
+    await p.getByRole('button', {name: 'Continue', exact: true}).click();
+    await drain(p);
+    return;
+  }
   if (mode === 'bond') {
+    await p.screenshot({path: join(output, engine + '-battle-tressel.png')});
+    await chooseMove(p, 'Resonant Cry');
+    const frames = await seen();
+    await p.evaluate(() => window.mmCreatureProbe.stop());
+    for (const [name, image] of await p.evaluate(() => window.mmCreatureProbe.stills())) {
+      await writeFile(join(output, engine + '-pose-' + name + '.png'), Buffer.from(image.split(',')[1], 'base64'));
+    }
+    for (const [species, pose] of [['rillik', 'action'], ['tressel', 'action'], ['rillik', 'recoil']]) {
+      assert.ok(frames[species][pose] > .94, 'Expected rendered ' + species + ' ' + pose + ' artwork: ' + JSON.stringify(frames));
+    }
+    check(engine + '-battle-poses-match-source-artwork', {frames});
     for (let index=0; index<6 && (await save(p)).battle?.phase === 'choosing'; index++) {
       const state = await save(p);
       if (state.battle.agitation <= 25) { await chooseMove(p,'Resonate'); break; }
       await chooseMove(p,'Resonant Cry');
     }
   } else {
+    await p.evaluate(() => window.mmCreatureProbe.stop());
     const resonate = p.getByRole('button', { name: /^Resonate\b/i });
     if (await resonate.count()) await expect(resonate).toBeDisabled();
     check(engine + '-demon-cannot-be-bonded');
@@ -847,6 +923,7 @@ async function chapter() {
     await walkTo(p, 'gangplank');
     await automaticMeeting(p, 'nia', () => p.locator('[data-mm-object="gangplank"]').click());
     const fieldcase = await openStart(p);
+    await checkFieldGuide(p, fieldcase, [], 'field-guide-unseen');
     await startSection(fieldcase, 'Companions');
     await expect(fieldcase.getByText('No bonds yet', {exact:true})).toBeVisible();
     const cuff = fieldcase.getByRole('img', {name:/brass cuff/i});
@@ -906,7 +983,9 @@ async function chapter() {
     }
     assert.equal((await save(p)).party[0]?.speciesId,'rillik'); check(engine+'-first-bond-after-real-gate-rescue');
     await p.screenshot({path:join(output,engine+'-first-bond.png')});
-    await openStart(p); await startSection(fieldcase, 'Companions');
+    await openStart(p);
+    await checkFieldGuide(p, fieldcase, ['Rillik'], 'field-guide-first-bond', [{width:320,height:568},{width:1440,height:900}]);
+    await startSection(fieldcase, 'Companions');
     const ally = (await save(p)).party[0];
     const stats = fieldcase.locator('.mm-individual-stats').first();
     await expect(stats.locator('dt')).toHaveText(['Attack', 'Defense', 'Speed', 'Resonance']);
@@ -931,6 +1010,7 @@ async function chapter() {
     await captureLocation(p,'passage','sluice','passage-drained');
     await interact(p,'tressel'); await battle(p,'bond');
     assert.ok((await save(p)).party.length>=2); check(engine+'-optional-wild-resonance');
+    await interact(p, 'gleamwing'); await battle(p, 'sighting');
     await walkTo(p,'sense-channel'); await p.getByRole('button',{name:/Current Sense/i}).click(); await drain(p,{expectedId:'sense-channel'});
     assert.equal((await save(p)).questFlags.currents_followed, true);
     await interact(p,'pickup-tincture'); await interact(p,'save-lamp'); await interact(p,'chamber-door');
@@ -949,6 +1029,7 @@ async function chapter() {
     await p.screenshot({path:join(output,engine+'-chapter-complete.png')});
     await noShellCommands(p);
     await openStart(p);
+    await checkFieldGuide(p, fieldcase, ['Rillik','Muddren','Gleamwing','Tressel','Rift Wretch'], 'field-guide-chapter');
     await fieldcase.getByRole('link', { name: 'Exit game', exact: true }).click();
     await expect(p.getByRole('heading', { name: 'DH Club destination' })).toBeVisible();
   } catch(error) { await p.screenshot({path:join(output,engine+'-chapter-failure.png')}).catch(()=>{}); throw error; }
@@ -1010,7 +1091,7 @@ async function offlineTabs() {
     const offlineArtRequests = [];
     b.on('request', request => {
       const path = new URL(request.url()).pathname;
-      if (/^\/games\/mesomon\/(harbor-tiles|people|mesomon|battle|scenery)\.png$/.test(path)) offlineArtRequests.push(path);
+      if (/^\/games\/mesomon\/(harbor-tiles|people|mesomon|battle|creature-battle-v1|scenery)\.png$/.test(path)) offlineArtRequests.push(path);
     });
     await context.setOffline(true);await a.bringToFront();
     await step(a,'right');

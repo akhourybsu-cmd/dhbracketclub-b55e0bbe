@@ -23,6 +23,7 @@ on:
       - 'src/types/assets.ts'
       - 'src/pages/CompetePage.tsx'
       - 'public/games/mesomon/**'
+      - 'art/mesomon/creatures/**'
       - 'supabase/migrations/*mesomon*'
       - 'scripts/*mesomon*'
       - 'scripts/fixtures/mesomon*'
@@ -41,6 +42,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the published creature art against the master plates
+        run: |
+          python -m pip install Pillow==13.0.0
+          python scripts/build-mesomon-creature-art.py --check
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

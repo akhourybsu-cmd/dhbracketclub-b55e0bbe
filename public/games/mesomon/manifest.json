@@ -1,5 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
+  "original": true,
+  "tileSize": 16,
   "scenery": {
     "crane": {
       "x": 0,
@@ -20,8 +22,6 @@
       "height": 32
     }
   },
-  "original": true,
-  "tileSize": 16,
   "people": {
     "cell": [
       16,
@@ -55,6 +55,39 @@
       "gleamwing",
       "tressel",
       "rift-wretch"
+    ]
+  },
+  "battle": {
+    "file": "creature-battle-v1.png",
+    "cell": [
+      192,
+      192
+    ],
+    "rows": [
+      "rillik",
+      "muddren",
+      "gleamwing",
+      "tressel",
+      "rift-wretch"
+    ],
+    "poses": [
+      "rest",
+      "ready",
+      "action",
+      "recoil"
+    ]
+  },
+  "fieldGuide": {
+    "size": [
+      512,
+      512
+    ],
+    "files": [
+      "field-guide/rillik.webp",
+      "field-guide/muddren.webp",
+      "field-guide/gleamwing.webp",
+      "field-guide/tressel.webp",
+      "field-guide/rift-wretch.webp"
     ]
   },
   "tiles": {
@@ -112,7 +145,7 @@
     "harbor-tiles.png",
     "people.png",
     "mesomon.png",
-    "battle.png",
+    "creature-battle-v1.png",
     "portraits.png",
     "cover.png",
     "scenery.png",
@@ -133,6 +166,11 @@
     "portraits/muddren.png",
     "portraits/gleamwing.png",
     "portraits/tressel.png",
-    "portraits/rift-wretch.png"
+    "portraits/rift-wretch.png",
+    "field-guide/rillik.webp",
+    "field-guide/muddren.webp",
+    "field-guide/gleamwing.webp",
+    "field-guide/tressel.webp",
+    "field-guide/rift-wretch.webp"
   ]
 }

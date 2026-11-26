@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft, BookOpen, ChevronRight, Compass, LogOut, Maximize, Minimize,
+  ArrowLeft, BookMarked, BookOpen, ChevronRight, Compass, LogOut, Maximize, Minimize,
   PawPrint, Play, Save, Settings,
 } from "lucide-react";
+import { FieldGuide } from "./FieldGuide";
 import { LocationChart } from "./LocationChart";
 import { getBattleBeat } from "@/lib/mesomon/battlePlayback";
 import type { MesomonSaveStatus } from "@/hooks/useMesomonSave";
-import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
+import { MESOMON_ASSETS, fieldPlateUrl } from "@/lib/mesomon/assets";
 import { SPECIES } from "@/lib/mesomon/data/species";
 import { CHAPTER_TITLE, getHarborNotes, getMap, getObjective, getPhase, getQuestSteps } from "@/lib/mesomon/engine";
 import { isDirection, keyboardAction } from "@/lib/mesomon/input";
@@ -21,6 +22,7 @@ const sections = [
   { id: "chart", label: "Map", icon: Compass },
   { id: "settings", label: "Settings", icon: Settings },
   { id: "save", label: "Save file", icon: Save },
+  { id: "guide", label: "Field Guide", icon: BookMarked },
 ] as const;
 export type MenuTab = "start" | (typeof sections)[number]["id"];
 
@@ -82,7 +84,7 @@ export function MesomonStartMenu({
         if (key === "home") next = 0;
         else if (key === "end") next = commands.length - 1;
         else if (action === "up") next = Math.max(0, index - 2);
-        else if (action === "down" && index + 2 < commands.length) next = index === 0 ? 1 : index + 2;
+        else if (action === "down") next = index === 0 ? 1 : Math.min(index + 2, commands.length - 1);
         else if (action === "left" && index > 0 && index % 2 === 0) next--;
         else if (action === "right" && index % 2 === 1 && index + 1 < commands.length) next++;
         commands[next].focus();
@@ -145,6 +147,7 @@ export function MesomonStartMenu({
               </nav>
             </>
           )}
+          {tab === "guide" && <FieldGuide save={session.save} />}
           {tab === "chart" && <LocationChart save={session.save} />}
           {tab === "party" && (
             <>
@@ -155,7 +158,9 @@ export function MesomonStartMenu({
                   return (
                     <article className="mm-party-member" key={member.id}>
                       <img
-                        src={portraitUrl(member.speciesId)}
+                        className="mm-party-plate"
+                        width="512" height="512"
+                        src={fieldPlateUrl(member.speciesId)}
                         alt={SPECIES[member.speciesId].name}
                       />
                       <div>

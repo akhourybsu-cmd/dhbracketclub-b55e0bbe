@@ -186,6 +186,10 @@ describe('Mesomon game shell', () => {
     fireEvent.click(fieldcase.getByRole('button', {name: 'Companions'}));
     expect(fieldcase.getByRole('img', {name: /brass cuff/i})).toBeVisible();
     fireEvent.click(fieldcase.getByRole('button', {name: 'Back'}));
+    fireEvent.click(fieldcase.getByRole('button', {name: 'Field Guide'}));
+    expect(fieldcase.getByRole('heading', {name: 'No sightings yet'})).toBeVisible();
+    fireEvent.click(fieldcase.getByRole('button', {name: 'Back'}));
+    expect(fieldcase.getByRole('button', {name: 'Field Guide'})).toHaveFocus();
     fireEvent.click(fieldcase.getByRole('button', {name: 'Journal'}));
     expect(fieldcase.getByText('Edda asked me to bring my core home.')).toBeVisible();
     expect(fieldcase.getByText('Came ashore on the lower quay.')).toBeVisible();

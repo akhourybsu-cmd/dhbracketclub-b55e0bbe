@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { portraitUrl } from "@/lib/mesomon/assets";
+import { fieldPlateUrl } from "@/lib/mesomon/assets";
 import { resonanceEligibility } from "@/lib/mesomon/battle";
 import { battleBeatDuration, getBattleBeat } from "@/lib/mesomon/battlePlayback";
 import { MOVES, SPECIES } from "@/lib/mesomon/data/species";
@@ -202,7 +202,7 @@ export function BattlePanel({ save, battle, paused, onBeat, onAction, onContinue
                     setTab("moves");
                   }}
                 >
-                  <img src={portraitUrl(member.speciesId)} alt="" />
+                  <img src={fieldPlateUrl(member.speciesId)} alt="" />
                   <span>
                     {SPECIES[member.speciesId].name}
                     <small>

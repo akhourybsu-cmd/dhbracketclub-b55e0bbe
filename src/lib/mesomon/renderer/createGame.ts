@@ -2,7 +2,7 @@ import type PhaserTypes from 'phaser';
 import type { Direction, GameSession, MapDefinition, MapObject, SpeciesId, TileKind } from '../types';
 import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, personArt, propArt } from '../assets';
 import { paintBattleStage } from './battleStage';
-import { battlePose } from './battleMotion';
+import { BATTLE_CELL, BATTLE_POSES, BATTLE_RENDER_SCALE, FIELD_SCREEN, battleFrame, battlePose } from './battleMotion';
 import { getBattleBeat, getBattleHitSide } from '../battlePlayback';
 import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
@@ -49,7 +49,7 @@ const sheets = [
   { key: 'ms:tiles', url: MESOMON_ASSETS.tiles, size: 16, columns: TILES.length, rows: 1 },
   { key: 'ms:people', url: MESOMON_ASSETS.people, size: 16, columns: 15, rows: PEOPLE.length },
   { key: 'ms:creatures', url: MESOMON_ASSETS.creatures, size: 16, columns: 8, rows: CREATURES.length },
-  { key: 'ms:battle', url: MESOMON_ASSETS.battle, size: 48, columns: CREATURES.length, rows: 1 },
+  { key: 'ms:battle', url: MESOMON_ASSETS.battle, size: BATTLE_CELL, columns: BATTLE_POSES.length, rows: CREATURES.length },
 ];
 const artwork = [
   ...sheets.map(sheet => ({ url: sheet.url, width: sheet.columns * sheet.size, height: sheet.rows * sheet.size })),
@@ -178,6 +178,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.tavian = this.add.sprite(0, 0, 'ms:people', 0).setOrigin(0.5, 1);
       this.companion = this.add.sprite(0, 0, 'ms:creatures', 0).setOrigin(0.5, 1).setVisible(false);
       this.game.canvas.setAttribute('aria-hidden', 'true');
+      this.game.canvas.dataset.scene = 'field';
       this.game.canvas.style.imageRendering = 'pixelated';
       this.game.canvas.style.touchAction = 'none';
       this.scale.updateBounds();
@@ -345,29 +346,64 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.battleSprites.forEach(s => s.destroy()); this.battleSprites = [];
       this.background?.setVisible(!this.battleMode); this.objects.forEach(o => { o.sprite.setVisible(!this.battleMode); o.shadow?.setVisible(!this.battleMode); });
       this.foreground.forEach(image => image.setVisible(!this.battleMode));
-      if (!this.battleMode || !session.save.battle) { this.cameras.main.setBounds(0, 0, getMap(session.save).width * 16, getMap(session.save).height * 16); return; }
-      this.cameras.main.setScroll(0, 0).removeBounds();
+      this.game.canvas.dataset.scene = this.battleMode ? 'battle' : 'field';
+      const scale = this.battleMode ? BATTLE_RENDER_SCALE : 1;
+      const width = FIELD_SCREEN.width * scale, height = FIELD_SCREEN.height * scale;
+      this.scale.resize(width, height);
+      const camera = this.cameras.main.setViewport(0, 0, width, height).setZoom(scale);
+      if (!this.battleMode || !session.save.battle) {
+        const map = getMap(session.save);
+        camera.setBounds(0, 0, map.width * 16, map.height * 16).centerOn(this.target.x, this.target.y - 8);
+        return;
+      }
+      camera.removeBounds().centerOn(FIELD_SCREEN.width / 2, FIELD_SCREEN.height / 2);
       this.battleStage = this.add.graphics().setDepth(8000);
       paintBattleStage(this.battleStage, session.save.battle.enemy.speciesId === 'rift-wretch', getMap(session.save).ambience === 'harbor');
-      this.battleSprites = [this.add.sprite(45, 98, 'ms:battle', 0).setOrigin(0.5, 1).setFlipX(true).setDepth(9000), this.add.sprite(116, 67, 'ms:battle', 0).setOrigin(0.5, 1).setDepth(9000)];
+      this.battleSprites = [
+        this.add.sprite(45, 98, 'ms:battle', 0).setOrigin(0.5, 1).setScale(1 / scale).setDepth(9000),
+        this.add.sprite(116, 67, 'ms:battle', 0).setOrigin(0.5, 1).setScale(1 / scale).setFlipX(true).setDepth(9000),
+      ];
     }
     private updateBattle(session: GameSession): void {
       const battle = session.save.battle;
       if (!battle || this.battleSprites.length < 2) return;
+      const playback = battle.playback;
+      const key = playback ? `${battle.id}:${battle.turn}:${playback.index}` : '';
+      if (key !== this.battleBeatKey) {
+        this.battleBeatKey = key;
+        this.beatElapsedMs = 0;
+        this.hitSide = getBattleHitSide(battle);
+      }
+      // A resumed encounter can be paused before the first animation tick.
+      this.drawBattle(session, 0);
+    }
+    private drawBattle(session: GameSession, delta: number): void {
+      const battle = session.save.battle;
+      if (!battle || !this.effects) return;
       const beat = getBattleBeat(battle);
       const activeIndex = beat?.activeIndex ?? battle.activeIndex;
       const ally = battle.allies[activeIndex];
-      this.battleSprites[0].setFrame(Math.max(0, CREATURES.indexOf(ally.speciesId)));
-      this.battleSprites[1].setFrame(Math.max(0, CREATURES.indexOf(battle.enemy.speciesId)));
-      this.battleSprites[0].setAlpha((beat?.allyVitality[activeIndex] ?? ally.vitality) > 0 ? 1 : 0.35);
-      this.battleSprites[1].setAlpha((beat?.enemyVitality ?? battle.enemy.vitality) > 0 ? 1 : 0.35);
-
-      const playback = battle.playback;
-      const key = playback ? `${battle.id}:${battle.turn}:${playback.index}` : '';
-      if (key === this.battleBeatKey) return;
-      this.battleBeatKey = key;
-      this.beatElapsedMs = 0;
-      this.hitSide = getBattleHitSide(battle);
+      this.beatElapsedMs += Math.min(64, delta);
+      this.effects.clear();
+      for (const [index, sprite] of this.battleSprites.entries()) {
+        const side = index === 0 ? 'ally' : 'enemy';
+        const fighter = index === 0 ? ally : battle.enemy;
+        const hp = index === 0 ? beat?.allyVitality[activeIndex] : beat?.enemyVitality;
+        const conscious = (hp ?? fighter.vitality) > 0;
+        const cue = side === this.hitSide ? 'hit' : beat?.kind === 'action' && side === beat.side ? 'act' : 'ready';
+        const pose = battlePose(side, cue, this.beatElapsedMs, session.save.settings.reducedMotion || (!conscious && cue === 'ready'));
+        const frame = battleFrame(fighter.speciesId, pose.cel);
+        if (Number(sprite.frame.name) !== frame) sprite.setFrame(frame);
+        sprite.setPosition(pose.x, pose.y).setAlpha(conscious ? 1 : 0.35);
+        if (pose.spark) {
+          const x = pose.x + (index === 0 ? 10 : -10), y = pose.y - 21;
+          this.effects.fillStyle(0xffe6a0).fillRect(x - 3, y, 7, 1).fillRect(x, y - 3, 1, 7);
+        }
+        if (beat?.side === side) {
+          this.effects.fillStyle(index === 0 ? 0xb1dec6 : 0xe6bb8e, 0.9);
+          this.effects.fillRect(index === 0 ? 39 : 110, index === 0 ? 99 : 68, 12, 1);
+        }
+      }
     }
     update(time: number, delta: number): void {
       const session = latest;
@@ -388,29 +424,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         this.companion.setPosition(x, y).setDepth(y).setFrame(frame);
         this.companionShadow?.setPosition(x, y - 2).setDepth(y - 0.5);
       }
-      this.effects.clear(); this.decorations.clear();
+      this.decorations.clear();
       if (this.battleMode) {
-        const battle = session.save.battle;
-        if (!battle) return;
-        const beat = getBattleBeat(battle);
-        this.beatElapsedMs += Math.min(64, delta);
-        for (const [index, sprite] of this.battleSprites.entries()) {
-          const side = index === 0 ? 'ally' : 'enemy';
-          const cue = side === this.hitSide ? 'hit' : beat?.kind === 'action' && side === beat.side ? 'act' : 'ready';
-          const pose = battlePose(side, cue, this.beatElapsedMs, reduced);
-          const bob = !beat && !reduced && sprite.alpha === 1 ? Math.floor(time / 850) % 2 : 0;
-          sprite.setPosition(pose.x, pose.y + bob);
-          if (pose.spark) {
-            const x = pose.x + (index === 0 ? 10 : -10), y = pose.y - 21;
-            this.effects.fillStyle(0xffe6a0).fillRect(x - 3, y, 7, 1).fillRect(x, y - 3, 1, 7);
-          }
-          if (beat?.side === side) {
-            this.effects.fillStyle(index === 0 ? 0xb1dec6 : 0xe6bb8e, 0.9);
-            this.effects.fillRect(index === 0 ? 39 : 110, index === 0 ? 99 : 68, 12, 1);
-          }
-        }
+        this.drawBattle(session, delta);
         return;
       }
+      this.effects.clear();
       const view = this.cameras.main.worldView;
       paintEnvironmentMotion(this.decorations, map, view, time, {
         gateOpened: session.save.questFlags.gate_opened === true,
@@ -478,7 +497,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
   }
   function registerScene(scene: PortMarcheScene) { currentScene = scene; }
   const game = new Phaser.Game({
-    type: Phaser.CANVAS, parent, width: 160, height: 144, backgroundColor: '#102224',
+    type: Phaser.CANVAS, parent, width: FIELD_SCREEN.width, height: FIELD_SCREEN.height, backgroundColor: '#102224',
     pixelArt: true, roundPixels: true, antialias: false, banner: false, autoFocus: false,
     audio: { noAudio: true }, input: { keyboard: false }, scene: PortMarcheScene,
     fps: { target: 60 }, render: { antialias: false, pixelArt: true, roundPixels: true },

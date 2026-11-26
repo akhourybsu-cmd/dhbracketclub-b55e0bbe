@@ -1,22 +1,26 @@
 # Mesomon · Port Marche art and audio
 
-Port Marche uses original pixel art drawn at native resolution. Every tile, sprite silhouette, portrait, scene composition and musical phrase is defined in the repository; no commercial game image, map, recording, font or melody supplied source material.
+Port Marche combines native pixel art for the world with illustrated creature plates for close views. The master artwork, pose definitions and rendering code are kept in the repository.
 
 ## Pixel specification
 
 - World tiles:16×16px. Native camera:160×144px, with smoothing disabled and integer logical positions.
 - Tavian and people:16×16px cells. Each row has down/left/right/up × idle/two walking frames, then interaction, bracing and hurt frames. Tavian's anatomical left cuff is explicitly placed per direction.
 - Creature overworld atlas:16×16px cells with a dedicated front, profile and back drawing for each species. Down, left, right and up each have two movement frames. Boots and paws meet the lower tile edge. The winged species hovers above a grounded shadow.
-- Battle illustrations and dialogue/party portraits:48×48px transparent images. Rillik's tail-ring, Muddren's reinforced back, Gleamwing's lantern-like wings, Tressel's rope-tail and the Wretch's broken asymmetry distinguish silhouettes.
+- Human dialogue portraits use 48×48px cells. Five original full-body creature illustrations supply both battle poses and Field Guide plates. Rillik’s sea-glass tail ring, Muddren’s layered scutes, Gleamwing’s lantern windows, Tressel’s curled rope tail and the Wretch’s floating shards remain legible in silhouette.
 - The 320×180px cover places Tavian and Rillik on a timber jetty, with a moored sailing boat, a tide beacon and a distant customs skyline.
 - The 216×90px Fieldcase still life shows Tavian’s brass survey cuff and unlit Edenite core beside cord and a folded letter in a felt-lined travel case.
 - The transparent 128×64px scenery atlas holds a 48×48px cargo crane, a 32×32px tide-stair wheel and a 48×32px skiff. The underwharf sluice has its own 16×24px lever cabinet. Its red grip drops and the counterweight rises when the crossing drains.
 - `renderer/interiors.ts` paints room illustrations into the cached map at native resolution. Edda’s workbench, the unfinished sail and her tide plots sit on the workshop floor plan. The passage’s barred outfall, tide staff and pier posts follow its existing masonry and walking lanes.
-- Light comes from the upper left. Hard edges, charcoal outlines, warm brass and sea-glass accents unite the set. No blur, antialiasing, emoji or external image-generation request is used.
+- Upper-left light, charcoal contours, warm brass and sea-glass accents unite the world and the field plates. The creature illustrations use finer edges and directional shading on fur, armor, wing membranes and stone.
 
 Slate joints, dock planks and water use lower-contrast accents around the actors. The Wayfarer’s copper vent hood, glazed door and portholes fit one 48×48px deckhouse illustration, sliced into nine terrain cells. Each human speaker has a dedicated three-quarter bust, with trade clothing and personal details visible at dialogue scale. Both travel atlases share the 16-pixel ground grid, and the camera centers on the player’s tile midpoint.
 
-The source is `scripts/generate-mesomon-assets.py`. Run `python scripts/generate-mesomon-assets.py` with Pillow to regenerate the exact files in `public/games/mesomon/`. This authoring tool is not shipped in the browser and adds no runtime dependency. `manifest.json` and `src/lib/mesomon/assets.ts` describe frame geometry and filenames. Individual `/games/mesomon/portraits/{id}.png` files serve accessible DOM dialogue and party panels without loading Phaser.
+Run `python scripts/generate-mesomon-assets.py` with Pillow to rebuild the native pixel art and manifest. Dialogues use individual PNGs so they can display independently of Phaser.
+
+The five transparent master cutouts in `art/mesomon/creatures/` were made for Port Marche with the built-in image generator and cleaned against their original matte. Run `python scripts/build-mesomon-creature-art.py` to compile them, or add `--check` to compare the published pixels with the masters. The compiler produces five 512×512 transparent WebP field plates and a 768×960 battle atlas. Each row is one species, facing right. Its four 192×192 cells show rest, ready, action and recoil. Articulated pose definitions and a shared foot baseline keep wings, paws and loose shards attached to the same figure through a turn.
+
+The battle camera draws the atlas on a 640×576 backing canvas while preserving the stage’s 160×144 logical composition. Opponents face each other. Reduced motion shows each action as a fixed pose. Opening **Start → Field Guide** loads plates for the species the player has encountered. Existing save receipts populate the guide on first open.
 
 ## Rendering
 

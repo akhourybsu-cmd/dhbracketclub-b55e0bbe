@@ -29,7 +29,7 @@ import {
 } from "@/lib/mesomon/engine";
 import { isDirection, keyboardAction, WALK_STEP_MS } from "@/lib/mesomon/input";
 import { BattlePanel } from "@/components/mesomon/BattlePanel";
-import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
+import { MESOMON_ASSETS, fieldPlateUrl } from "@/lib/mesomon/assets";
 import { readingVoice } from "@/lib/mesomon/reading";
 import { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
 import { useTapWalk } from "@/lib/mesomon/useTapWalk";
@@ -810,7 +810,7 @@ function Chapter({
                 )}
                 {playing && phase === "ending" && !session.dialogue && (
                   <div className="mm-end">
-                    <img src={portraitUrl("rillik")} alt="Rillik resting" />
+                    <img src={fieldPlateUrl("rillik")} alt="Rillik" />
                     <small>MESOMON · CHAPTER I: PORT MARCHE</small>
                     <h2>
                       The harbor

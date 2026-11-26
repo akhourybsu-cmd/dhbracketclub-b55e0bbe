@@ -1,0 +1,181 @@
+.mm-menu-body[data-section="guide"] {
+  background: #ede5cd;
+}
+.mm-field-guide {
+  --mm-guide-rule: #aba184;
+  color: #213c35;
+  margin: 0 auto;
+  max-width: 42rem;
+}
+.mm-guide-progress,
+.mm-guide-tags,
+.mm-guide-site {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.mm-guide-progress {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--mm-guide-rule);
+  padding-bottom: 7px;
+  font-variant-numeric: tabular-nums;
+  color: #49583f;
+}
+.mm-guide-progress > :first-child {
+  font: italic 15px Georgia, serif;
+}
+.mm-guide-spread {
+  margin: 10px 0;
+}
+.mm-guide-art,
+.mm-guide-empty {
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  border: 1px solid #b0ac90;
+  background: radial-gradient(ellipse at 48% 63%, #fff9df, #dadac0 76%);
+  box-shadow: inset 0 0 0 3px #f6efd8;
+}
+.mm-guide-art {
+  height: clamp(124px, 30vh, 275px);
+  height: clamp(124px, 30dvh, 275px);
+}
+.mm-guide-art::after {
+  content: "";
+  position: absolute;
+  left: 24%;
+  right: 24%;
+  bottom: 9%;
+  height: 5%;
+  z-index: -1;
+  background: radial-gradient(ellipse, #68735648, transparent 70%);
+}
+.mm-guide-number {
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  font: italic 12px Georgia, serif;
+  color: #49583f;
+}
+.mesomon .mm-guide-art img,
+.mesomon .mm-guide-index img,
+.mesomon .mm-party-member .mm-party-plate {
+  object-fit: contain;
+  image-rendering: auto;
+}
+.mm-guide-art img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 5px;
+}
+.mm-guide-spread figcaption {
+  padding: 10px 2px 0;
+}
+.mesomon .mm-guide-spread h3,
+.mesomon .mm-guide-empty h3 {
+  font: bold clamp(23px, 5vw, 30px)/1.1 Georgia, serif;
+  letter-spacing: -.02em;
+  color: #263d31;
+}
+.mm-guide-tags {
+  flex-wrap: wrap;
+  margin: 6px 0 8px;
+}
+.mm-guide-tags > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid #a8af90;
+  border-radius: 2px;
+  padding: 1px 5px;
+  background: #dfe3c9;
+  color: #304534;
+  font-weight: 650;
+}
+.mesomon .mm-guide-spread p,
+.mesomon .mm-guide-empty p {
+  line-height: 1.45;
+  font-size: 14px;
+}
+.mm-guide-site {
+  margin-top: 7px;
+  color: #47543c;
+}
+.mm-guide-index {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 8px 0 0;
+  gap: clamp(3px, 1vw, 8px);
+  border-top: 1px solid var(--mm-guide-rule);
+}
+.mm-guide-index > li { min-width: 0; }
+.mm-menu .mm-guide-index button,
+.mm-guide-unseen {
+  position: relative;
+  width: 100%;
+  height: clamp(46px, 9vh, 70px);
+  display: grid;
+  place-items: center;
+  background: #eee8cf;
+  border: 1px solid #a2a68a;
+  border-radius: 3px;
+  padding: 3px;
+  box-shadow: inset 0 1px #fffae7;
+}
+.mm-menu .mm-guide-index button[aria-pressed="true"] {
+  background: #d5dfc2;
+  border: 2px solid #43664c;
+  box-shadow: inset 0 -2px #67805b;
+}
+.mm-guide-index img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.mm-guide-unseen {
+  color: #77765e;
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+}
+.mm-guide-empty {
+  padding: clamp(20px, 7vh, 60px) 10px;
+  gap: 7px;
+  text-align: center;
+  margin-top: 12px;
+}
+.mm-menu .mm-party-member > .mm-party-plate {
+  width: clamp(72px, 23vw, 126px);
+  height: auto;
+  aspect-ratio: 1;
+  align-self: flex-start;
+  background: #e6e5cb;
+  padding: 3px;
+  border: 1px solid #aaac8d;
+  box-shadow: inset 0 0 0 2px #f6efd9;
+}
+@media (orientation: landscape) and (min-width: 540px), (min-width: 700px) {
+  .mm-menu[data-section="guide"] { width: min(100%, 41rem); }
+  .mm-guide-spread {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(12px, 3vw, 24px);
+  }
+  .mm-guide-art { height: clamp(118px, 40vh, 255px); }
+  .mm-guide-spread figcaption { padding: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mesomon:not([data-reduced-motion="true"]) .mm-guide-art img {
+    animation: mm-field-plate-in 150ms ease-out;
+  }
+  @keyframes mm-field-plate-in {
+    from { opacity: .5; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

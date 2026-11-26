@@ -1,5 +1,7 @@
+import type { SpeciesId } from './types';
+
 /** Original Port Marche artwork, loaded only by the Mesomon route. */
-const version = 3;
+const version = 4;
 const artUrl = (path: string) => `/games/mesomon/${path}.png?v=${version}`;
 
 export const MESOMON_ASSETS = {
@@ -11,11 +13,14 @@ export const MESOMON_ASSETS = {
   tiles: artUrl('harbor-tiles'),
   people: artUrl('people'),
   creatures: artUrl('mesomon'),
-  battle: artUrl('battle'),
+  battle: artUrl('creature-battle-v1'),
   portraits: artUrl('portraits'),
 } as const;
 export const PEOPLE = ['tavian', 'nia', 'bram', 'seli', 'pell', 'captain', 'edda', 'fisher', 'worker', 'porter', 'lanternkeeper', 'vendor'] as const;
 export const CREATURES = ['rillik', 'muddren', 'gleamwing', 'tressel', 'rift-wretch'] as const;
+export function fieldPlateUrl(id: SpeciesId): string {
+  return `/games/mesomon/field-guide/${id}.webp?v=${version}`;
+}
 export const TILES = ['water', 'water2', 'dock', 'stone', 'grass', 'mud', 'wall', 'roof', 'door', 'stair', 'reeds', 'floor', 'shelf', 'table', 'crate', 'gate', 'bridge', 'rift', 'rope', 'rail', 'lamp', 'sand', 'channel', 'flower', 'chart', 'map', 'satchel', 'rock', 'sign', 'awning', 'window', 'ship', 'planks', 'black', 'arch', 'gear', 'port', 'starboard', 'bow', 'gangplank', 'cabin-0-0', 'cabin-1-0', 'cabin-2-0', 'cabin-0-1', 'cabin-1-1', 'cabin-2-1', 'cabin-0-2', 'cabin-1-2', 'cabin-2-2'] as const;
 type TileArt = typeof TILES[number];
 const ROLE_ART: Record<string, typeof PEOPLE[number]> = {

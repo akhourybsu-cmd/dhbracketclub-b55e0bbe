@@ -5,6 +5,7 @@ The first chapter uses the existing Vitest, Playwright and isolated PostgreSQL c
 ## Commands
 
 ```sh
+python scripts/build-mesomon-creature-art.py --check
 npm run typecheck
 npm run lint:member
 npx vitest run mesomon --maxWorkers=1
