@@ -61,6 +61,7 @@ describe('Mesomon game shell', () => {
     const fieldcase = within(screen.getByRole('dialog'));
     expect(fieldcase.getByRole('img', {name: /brass cuff/i})).toBeVisible();
     fireEvent.click(fieldcase.getByRole('button', {name: 'Journal'}));
+    expect(fieldcase.getByText('Edda asked me to bring my core home.')).toBeVisible();
     expect(fieldcase.getByText('Came ashore on the lower quay.')).toBeVisible();
     expect(fieldcase.getByText('Nia is waiting at the arrival pier.')).toBeVisible();
     expect(fieldcase.queryByText(/Wretch|sealed rift|upper channel/i)).toBeNull();

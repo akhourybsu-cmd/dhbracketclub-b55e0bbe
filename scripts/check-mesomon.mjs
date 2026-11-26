@@ -682,9 +682,9 @@ async function chapter() {
       const state = await window.mmQa.readSave();
       return {objective: window.mmQa.getObjective(state), steps: window.mmQa.getQuestSteps(state).filter(step => step.complete)};
     });
-    assert.deepEqual(journal.steps.map(step => step.id), ['disembarked'], 'Only the completed arrival belongs in the early journal');
+    assert.deepEqual(journal.steps.map(step => step.id), ['captain_met', 'disembarked'], 'Only Edda’s letter and the landing belong in the early journal');
     await expect(fieldcase.locator('.mm-journal-objective')).toHaveText(journal.objective);
-    const entries = fieldcase.locator('.mm-quest-steps li');
+    const entries = fieldcase.locator('ol.mm-quest-steps li');
     await expect(entries).toHaveCount(journal.steps.length);
     await expect(entries).toHaveText(journal.steps.map(step => `◆${step.label}`));
     await p.screenshot({path:join(output,engine+'-early-journal.png')});
