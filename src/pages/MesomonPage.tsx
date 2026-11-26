@@ -792,9 +792,6 @@ function Chapter({
                     >
                       Revisit the harbor
                     </button>
-                    <Link to="/compete" onClick={leave}>
-                      Exit game
-                    </Link>
                   </div>
                 )}
               </div>

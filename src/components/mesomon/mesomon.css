@@ -888,10 +888,6 @@
 .mm-end .mm-primary {
   max-width: 260px;
 }
-.mm-end a {
-  font-size: 11px;
-  text-decoration: underline;
-}
 .mm-modal-backdrop {
   position: absolute;
   z-index: 5;
@@ -1030,6 +1026,10 @@
 .mm-menu .mm-start-command[data-command="exit"] {
   color: #714731;
   background: #e8ddbf;
+}
+@media (max-width: 359px) {
+  .mm-menu .mm-start-command { grid-template-columns: 19px minmax(0, 1fr); }
+  .mm-start-command svg:last-child { display: none; }
 }
 .mm-start-command:hover, .mm-start-command:focus-visible { filter: brightness(1.04); }
 .mm-menu :is(button, a, input):focus-visible {

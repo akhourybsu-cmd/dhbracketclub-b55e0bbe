@@ -408,6 +408,10 @@ async function audit(p, label) {
       const backdrop = getComputedStyle(menu.closest('.mm-modal-backdrop'));
       const safe = [backdrop.paddingLeft, backdrop.paddingTop, backdrop.paddingRight, backdrop.paddingBottom].map(parseFloat);
       const menuGaps = gapsToViewport(menu);
+      for (const label of menu.querySelectorAll('.mm-start-command > span')) {
+        if (label.getBoundingClientRect().height > parseFloat(getComputedStyle(label).lineHeight) + 1)
+          issues.push(`The Start command "${label.textContent}" wraps across rows`);
+      }
       if (menuGaps.some((gap, i) => gap < safe[i] - 1)) issues.push('The Start menu is clipped outside the safe area');
       if (viewport >= 320 && height >= 300 && menuGaps.every(gap => gap < 3)) issues.push('The Start menu covers the entire console');
     }
