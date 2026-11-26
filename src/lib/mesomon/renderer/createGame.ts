@@ -5,6 +5,7 @@ import { paintBattleStage } from './battleStage';
 import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
 import { paintExteriors } from './exteriors';
+import { paintQuaySquare } from './quaySquare';
 import { paintTideworks, type TideworksState } from './tideworks';
 import { paintEnvironmentMotion } from './environmentMotion';
 import { foregroundForMap, paintForeground } from './foreground';
@@ -262,6 +263,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         paintTerrainDepth(context, map);
         paintInterior(context, map.id);
         paintExteriors(context, map);
+        paintQuaySquare(context, map);
         paintTideworks(context, map, tide);
         if (map.id === 'harbor') {
           const skiff = SCENERY.skiff;
@@ -301,7 +303,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         const texture = peopleRow >= 0 ? 'ms:people' : creatureRow >= 0 ? 'ms:creatures' : 'ms:tiles';
         const frame = peopleRow >= 0 ? peopleRow * 15 + DIRECTION_FRAME[data.direction ?? 'down'] : creatureRow >= 0 ? creatureRow * 8 + CREATURE_DIRECTION[data.direction ?? 'down'] : Math.max(0, TILES.indexOf(objectTile as typeof TILES[number]));
         const x = data.x * 16 + 8, y = data.y * 16 + 16;
-        const landmark = data.sprite === 'crane' || data.sprite === 'wheel' ? data.sprite : null;
+        const landmark = data.sprite === 'crane' ? 'crane' : data.id === 'gate-wheel' ? 'wheel' : null;
         let shadow: PhaserTypes.GameObjects.Ellipse | null = null;
         if (landmark === 'wheel') {
           shadow = this.add.ellipse(x + 3, y - 1, 16, 5, 0x102224, 0.32);

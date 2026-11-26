@@ -228,29 +228,18 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
   ellipse('#b0ae91', cx, cy, 48, 30);
   ellipse('#5c706c', cx, cy, 44, 27);
   ellipse('#869287', cx, cy - 1, 42, 25);
-  // A flush, walkable apron steps into the opening at the corners. Clip
-  // the wet surface against the same tiles that govern Tavian's footing.
-  const wetEllipse = (color: string, rx: number, ry: number) => {
-    for (let dy = -ry; dy <= ry; dy++) {
-      const y = cy + 1 + dy;
-      const half = Math.round(rx * Math.sqrt(1 - (dy / ry) ** 2));
-      const left = cx - half, right = cx + half;
-      for (let col = left >> 4; col <= right >> 4; col++) {
-        if (map.tiles[y >> 4][col] !== 'dark-water') continue;
-        const x = Math.max(left, col * 16);
-        rect(color, x, y, Math.min(right + 1, col * 16 + 16) - x, 1);
-      }
-    }
-  };
-  wetEllipse('#344c50', 38, 22);
-  wetEllipse(state.sealed ? '#557473' : '#424757', 36, 20);
+  // The lip curves between tile centers. The water covers every blocked
+  // center and the projecting inspection deck carries the southern approach.
+  ellipse('#344c50', cx, cy + 1, 37, 22);
+  ellipse('#3b5254', cx, cy + 2, 36, 21);
+  ellipse(state.sealed ? '#557473' : '#424757', cx, cy + 1, 35, 21);
   for (let tick = 0; tick < 16; tick++) {
     const angle = tick * Math.PI / 8;
     const dx = Math.cos(angle), dy = Math.sin(angle);
     line(tick % 4 ? '#8f957f' : brass, cx + Math.round(dx * 41), cy + Math.round(dy * 25), cx + Math.round(dx * 46), cy + Math.round(dy * 28));
   }
-  wetEllipse(state.sealed ? '#93b6a1' : '#9c88a6', 29, 16);
-  wetEllipse(state.sealed ? '#597e7d' : '#51465d', 28, 15);
+  ellipse(state.sealed ? '#93b6a1' : '#9c88a6', cx, cy + 1, 29, 16);
+  ellipse(state.sealed ? '#597e7d' : '#51465d', cx, cy + 1, 28, 15);
   const glint = state.sealed ? '#a5cab4' : '#c2a4bd';
   if (state.sealed) {
     for (const [x, y, w] of [[130, 91, 14], [151, 98, 17], [144, 85, 10]]) rect(glint, x, y, w, 1);

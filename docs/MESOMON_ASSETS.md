@@ -10,7 +10,7 @@ Port Marche uses original pixel art drawn at native resolution. Every tile, spri
 - Battle illustrations and dialogue/party portraits:48×48px transparent images. Rillik's tail-ring, Muddren's reinforced back, Gleamwing's lantern-like wings, Tressel's rope-tail and the Wretch's broken asymmetry distinguish silhouettes.
 - The 320×180px cover places Tavian and Rillik on a timber jetty, with a moored sailing boat, a tide beacon and a distant customs skyline.
 - The 216×90px Fieldcase still life shows Tavian’s brass survey cuff and unlit Edenite core beside cord and a folded letter in a felt-lined travel case.
-- The transparent 128×64px scenery atlas holds a 48×48px cargo crane, a 32×32px sluice wheel and a 48×32px skiff. Its frame rectangles are recorded in the version 3 manifest.
+- The transparent 128×64px scenery atlas holds a 48×48px cargo crane, a 32×32px tide-stair wheel and a 48×32px skiff. The underwharf sluice has its own 16×24px lever cabinet. Its red grip drops and the counterweight rises when the crossing drains.
 - `renderer/interiors.ts` paints room illustrations into the cached map at native resolution. Edda’s workbench, the unfinished sail and her tide plots sit on the workshop floor plan. The passage’s barred outfall, tide staff and pier posts follow its existing masonry and walking lanes.
 - Light comes from the upper left. Hard edges, charcoal outlines, warm brass and sea-glass accents unite the set. No blur, antialiasing, emoji or external image-generation request is used.
 
@@ -22,7 +22,7 @@ The source is `scripts/generate-mesomon-assets.py`. Run `python scripts/generate
 
 `exteriors.ts` paints the ferry and quay architecture. `workshop.ts` places Edda’s furniture, documents and exit against the interaction grid. `tideworks.ts` paints the wheel rack, crossing and basin from their saved story flags. The renderer rebuilds the relevant cached room when its mechanism changes. `environmentMotion.ts` draws short sequences of integer-pixel water, light and air details within the camera bounds. Opening the chart pauses the scene.
 
-Foreground fixtures have a world-space foot position so an actor can walk behind the hoist, lantern and tide gauge. Transparent interaction art sits directly on the scene. Taps on a painted desk, doorway or gangplank use the visible object’s bounds. In the chamber, the basin water blocks movement and a dry service platform leads up to the rift.
+Foreground fixtures have a world-space foot position so an actor can walk behind the hoist, lantern and tide gauge. In the lower quay, the bell and rope rack share their workers’ tiles and the survey compass lies flush with the paving. Transparent interaction art sits directly on the scene. Taps on a painted desk, doorway or gangplank use the visible object’s bounds. In the chamber, the basin water blocks movement and a dry service platform leads up to the rift.
 
 Phaser3 is loaded inside `createMesomonView` after entry to the lazy Mesomon route. A cached terrain canvas is built from the authoritative typed map; the viewport draws that layer plus a small number of actors and bounded water/current effects. No React DOM element represents an individual tile. Only the current map's terrain texture is retained. NPC interaction taps pass IDs to the pure reducer, which owns proximity and story authorization.
 

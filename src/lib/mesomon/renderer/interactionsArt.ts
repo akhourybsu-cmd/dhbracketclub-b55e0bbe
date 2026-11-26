@@ -4,7 +4,7 @@ export const INTERACTION_ART_KEYS = [
   'rift-open', 'rift-scar', 'survey-page', 'eddy-flow', 'eddy-drained',
   'channel-pull', 'channel-calm', 'timber-brace', 'tincture-flask',
   'wayboard', 'survey-cuts', 'reed-tuft', 'stone-doorway', 'stone-steps',
-  'rope-coil', 'rest-lantern',
+  'rope-coil', 'rest-lantern', 'sluice-closed', 'sluice-open',
 ] as const;
 export type InteractionArtKey = typeof INTERACTION_ART_KEYS[number];
 export interface InteractionArtState { sealed: boolean; sluiceOpen: boolean }
@@ -18,6 +18,7 @@ export function interactionArtKey(data: Pick<MapObject, 'id'>, state: Interactio
     case 'page': return 'survey-page';
     case 'sense-eddy': return state.sluiceOpen ? 'eddy-drained' : 'eddy-flow';
     case 'sense-channel': return state.sealed ? 'channel-calm' : 'channel-pull';
+    case 'sluice': return state.sluiceOpen ? 'sluice-open' : 'sluice-closed';
     case 'gate-brace': return 'timber-brace';
     case 'pickup-tincture': return 'tincture-flask';
     case 'harbor-sign':
@@ -178,6 +179,30 @@ export function paintInteractionArt(ctx: CanvasRenderingContext2D, key: Interact
     r(ink, 4, 11, 9, 9); r('#c5914f', 5, 12, 7, 6); r('#e4bb71', 6, 12, 5, 5);
     r('#fff0ba', 7, 13, 2, 3); r('#987647', 8, 11, 1, 8);
     r(brassDark, 4, 19, 9, 2); r(brass, 3, 21, 11, 1); r('#dcc18c', 5, 19, 6, 1);
+  } else if (key === 'sluice-closed' || key === 'sluice-open') {
+    // A hand-operated counterweight cabinet, distinct from the tide stair's
+    // large wheel. The red grip moves down to drain; its weight rises inside.
+    const open = key === 'sluice-open';
+    r(shadow, 1, 22, 13, 1);
+    r('#243b3f', 2, 4, 9, 18); r('#506c6b', 3, 5, 7, 16);
+    r('#96a391', 3, 5, 1, 15); r('#6f8980', 4, 5, 5, 1);
+    r('#203b40', 5, 8, 4, 12); r('#6b8379', 9, 8, 1, 12);
+    // A little sheave and exposed chain remain visible through the open slot.
+    r('#b49a67', 5, 7, 3, 3); r('#596d60', 6, 8); r('#d4bc85', 5, 7, 2, 1);
+    r('#a9ac8d', 6, 10, 1, 9);
+    const weightY = open ? 11 : 15;
+    r('#303f40', 4, weightY, 5, 4); r('#899181', 5, weightY, 3, 3);
+    r('#b4b49a', 5, weightY, 2, 1); r('#5b6f66', 7, weightY + 1, 1, 2);
+    // Bolted feet and the pivot ground the machine on the existing stone.
+    r('#2c4141', 1, 21, 11, 2); r('#7d8e7d', 2, 21, 3, 1); r('#7d8e7d', 8, 21, 3, 1);
+    r('#b8ae84', 3, 22); r('#b8ae84', 9, 22);
+    line('#263c40', 10, 15, 13, open ? 20 : 8);
+    line('#8e9c89', 11, 15, 14, open ? 20 : 8);
+    const gripY = open ? 20 : 7;
+    r('#754f44', 12, gripY, 3, 3); r('#bb6f55', 12, gripY, 3, 2);
+    r('#e0a17a', 12, gripY, 2, 1);
+    r('#253d40', 9, 14, 3, 3); r('#b5b59a', 10, 15);
+    r('#a4a58b', 3, 6); r('#85947e', 9, 6);
   }
   ctx.restore();
 }

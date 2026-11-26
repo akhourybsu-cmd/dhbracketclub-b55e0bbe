@@ -1,6 +1,7 @@
 import type { MapId } from '../types';
+import { paintQuayFixture, quayFixtures, type QuayFixture } from './quaySquare';
 
-export interface ForegroundPiece {
+interface WallFixture {
   id: 'pier-hoist' | 'lamp-bracket' | 'gauge-arm';
   x: number;
   y: number;
@@ -10,9 +11,11 @@ export interface ForegroundPiece {
   footY: number;
 }
 
+export type ForegroundPiece = WallFixture | QuayFixture;
+
 const pieces: Partial<Record<MapId, readonly ForegroundPiece[]>> = {
   // The upright stands in water immediately outside the arrival pier.
-  harbor: [{ id: 'pier-hoist', x: 446, y: 438, width: 30, height: 34, footY: 472 }],
+  harbor: [{ id: 'pier-hoist', x: 446, y: 438, width: 30, height: 34, footY: 472 }, ...quayFixtures],
   // The bracket's backplate attaches to the east wall above the harbor window.
   workshop: [{ id: 'lamp-bracket', x: 211, y: 119, width: 21, height: 23, footY: 142 }],
   // The projecting gauge hangs from the masonry west of the entry towpath.
@@ -25,6 +28,7 @@ export function foregroundForMap(id: MapId): readonly ForegroundPiece[] {
 
 /** Draw once into a transparent texture sized to the piece, origin at top left. */
 export function paintForeground(ctx: CanvasRenderingContext2D, piece: ForegroundPiece) {
+  if (piece.id === 'quay-bell' || piece.id === 'rope-stock') return paintQuayFixture(ctx, piece);
   const palette: Record<string, string> = {
     K: '#293739', d: '#534b40', w: '#83694c', h: '#bf996a',
     g: '#78847a', b: '#bba577', l: '#e8c98a', y: '#f7e4a5',

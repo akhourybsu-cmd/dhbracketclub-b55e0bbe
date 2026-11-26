@@ -77,4 +77,19 @@ describe('transparent physical Mesomon interaction art', () => {
     expect(drained).not.toContain('#a6c8b6');
     expect(drained).toContain('#3a5659');
   });
+  it('gives the underwharf sluice a counterweight cabinet with a state-aware red lever', () => {
+    expect(interactionArtKey({ id: 'sluice' }, state)).toBe('sluice-closed');
+    expect(interactionArtKey({ id: 'sluice' }, { ...state, sluiceOpen: true })).toBe('sluice-open');
+    const closed = painted('sluice-closed').pixels;
+    const open = painted('sluice-open').pixels;
+    expect(open).not.toEqual(closed);
+    expect(closed[7 * 16 + 12]).toBe('#e0a17a');
+    expect(open[7 * 16 + 12]).toBeNull();
+    expect(open[20 * 16 + 12]).toBe('#e0a17a');
+    expect(closed[20 * 16 + 12]).toBeNull();
+    expect(closed[15 * 16 + 5]).toBe('#b4b49a');
+    expect(open[11 * 16 + 5]).toBe('#b4b49a');
+    // The tide wheel retains its separate larger landmark; this is not reused.
+    expect(interactionArtKey({ id: 'gate-wheel' }, state)).toBeNull();
+  });
 });

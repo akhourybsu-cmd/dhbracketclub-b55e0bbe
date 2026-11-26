@@ -41,6 +41,14 @@ describe('Tideworks architectural states', () => {
 
 describe('chamber basin footing', () => {
   const waterCells = [[9, 4], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [8, 6], [10, 6]];
+  it('puts the curved water and maintenance deck on the correct tile centers', () => {
+    const open = surface('chamber');
+    const sealed = surface('chamber', { ...idle, sealed: true });
+    for (let y = 4; y <= 6; y++) for (let x = 7; x <= 11; x++) {
+      const center = (y * 16 + 8) * 1024 + x * 16 + 8;
+      expect(open.get(center) !== sealed.get(center), `footing at ${x},${y}`).toBe(MAPS.chamber.tiles[y][x] === 'dark-water');
+    }
+  });
   it('gives every legacy basin position a one-step exit on restoring its save', () => {
     for (const [x, y] of waterCells) {
       const save = createNewSave();
