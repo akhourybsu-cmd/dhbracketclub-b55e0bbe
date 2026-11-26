@@ -21,6 +21,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { countUnreadChatChannels } from '@/lib/chatExperience';
 import { DHScoreSync } from '@/components/feats/DHScoreCard';
+import { KrisBirthdayGate } from '@/components/celebrations/KrisBirthdayGate';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -35,7 +36,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   const desktop = useMediaQuery('(min-width: 1024px)');
   const { play } = useSoundEffect();
   const { user } = useAuth();
-  const { club, isClubAdmin, isPlatformOwner, isAppAdmin } = useClub();
+  const { club, membership, loading: clubLoading, isClubAdmin, isPlatformOwner, isAppAdmin } = useClub();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const { open: drawerOpen, setOpen: setDrawerOpen } = useNavDrawer();
   const { filterNavPaths } = useClubAssets();
@@ -114,6 +115,9 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col">
       <DHScoreSync />
+      {!isGameShell && !clubLoading && user && club && membership?.club_id === club.id && (
+        <KrisBirthdayGate key={user.id} clubId={club.id} userId={user.id} />
+      )}
       {showMobileHeader && !desktop && <MobileAppHeader title={isDashboard ? club?.name || 'Home' : mobileTitle}
         onOpenMenu={(opener) => { play('tap'); setDrawerOpen(true, opener); }} />}
 
