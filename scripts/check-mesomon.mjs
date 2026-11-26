@@ -2,6 +2,7 @@
 // authentication/club/cloud transport boundary is replaced, with no live writes.
 import assert from 'node:assert/strict';
 import { trackBattleSprites } from './mesomon-creature-visuals.mjs';
+import { fieldContactSheet, sampleField } from './mesomon-zone-visuals.mjs';
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -476,6 +477,82 @@ async function captureLocation(p, mapId, landmark, label = mapId) {
   const {x,y} = (await save(p)).player;
   check(`${engine}-location-${label}`, {mapId,landmark,x,y});
 }
+const zoneTitles = { ship: 'The Wayfarer', harbor: 'Lower quay', workshop: 'Edda’s workshop',
+  'tide-stairs': 'Old tide stairs', passage: 'Under-wharf passage', chamber: 'Rift chamber' };
+const nativeZones = new Map();
+const stateBefore = new Map();
+const savePng = (name, image) => writeFile(join(output, name + '.png'), Buffer.from(image.split(',')[1], 'base64'));
+
+async function setFieldMotion(p, reduced) {
+  if ((await save(p)).settings.reducedMotion === reduced) return;
+  const menu = await openStart(p);
+  await startSection(menu, 'Settings');
+  const toggle = menu.getByRole('switch', {name: /^Reduced motion/i});
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', String(reduced));
+  await closeStart(p, 'm');
+  await expect.poll(async () => (await save(p)).settings.reducedMotion).toBe(reduced);
+}
+
+async function inspectField(p, mapId, label, { moves = true, state = null, desktop = false, motionWindow } = {}) {
+  const name = `${engine}-zone-${label}-${desktop ? 'desktop' : 'phone'}`;
+  await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
+  await expect(p.locator('canvas[data-scene="field"]')).toBeVisible();
+  await expect(p.getByRole('dialog')).toHaveCount(0);
+  await expect(p.getByRole('region', {name: 'Conversation'})).toHaveCount(0);
+  await setFieldMotion(p, false);
+  // Wait out an in-flight step before translating world coordinates to pixels.
+  await pause(650);
+  const normal = await sampleField(p, mapId, moves, motionWindow);
+  assert.equal(normal.reduced, false);
+  assert.equal(normal.missingGreen, 0, name + ' contains the missing texture');
+  assert.equal(normal.opaque, 160*144, name + ' has transparent gaps');
+  assert.ok(normal.palette >= 24, `${name} expected painted scenery, got ${normal.palette} colors`);
+  if (moves) assert.ok(normal.changedPixels > 0, `${name} did not animate its scenery at ${JSON.stringify(normal.zone)}`);
+  await savePng(name + '-native', normal.image);
+  await p.screenshot({path: join(output, name + '.png')});
+  if (!desktop && !nativeZones.has(mapId)) nativeZones.set(mapId, normal.image);
+
+  await setFieldMotion(p, true);
+  // NPCs use a 600ms idle cadence. Allow the one transition to their resting
+  // pose, then test the entire field over multiple animation phases.
+  await pause(800);
+  const still = await sampleField(p, mapId, true, motionWindow);
+  assert.equal(still.reduced, true);
+  assert.deepEqual(still.position, normal.position, 'Changing the motion setting moved Tavian');
+  assert.equal(still.changedFieldPixels, 0, `${name} changed pixels while idle in reduced motion`);
+  const changedLandmarkPixels = {};
+  if (state === 'before') stateBefore.set(mapId, still.landmarks);
+  if (state === 'after') {
+    const before = stateBefore.get(mapId);
+    assert.ok(before?.length, `Missing prior field view for ${mapId}`);
+    for (const [i, landmark] of still.landmarks.entries()) {
+      // Compare the same part of the fixed world from the same tile, after
+      // the renderer has settled into its reduced-motion frame.
+      assert.equal(landmark.name, before[i].name);
+      for (const axis of ['worldX','worldY','width','height']) {
+        assert.equal(landmark.crop[axis], before[i].crop[axis], `${name} sampled a different part of ${landmark.name}`);
+      }
+      const changed = landmark.pixels.filter((pixel,j) => pixel !== before[i].pixels[j]).length;
+      assert.ok(changed >= 12, `${name} did not repaint its ${landmark.name}: ${changed} changed pixels`);
+      changedLandmarkPixels[landmark.name] = changed;
+    }
+  }
+  check(name, { position: normal.position, palette: normal.palette, motionWindow: normal.zone,
+    changedSceneryPixels: normal.changedPixels, staticFrameChangedPixels: still.changedFieldPixels, changedLandmarkPixels });
+  await setFieldMotion(p, false);
+}
+
+async function desktopField() {
+  const context = await browser.newContext({viewport: {width:1440,height:900}, isMobile:false, hasTouch:false, reducedMotion:'no-preference'});
+  try {
+    const p = await context.newPage();
+    await preparePage(p, 'dark');
+    await start(p); await drain(p);
+    await walkTo(p, 'gangplank');
+    await inspectField(p, 'ship', 'stern', {desktop:true});
+  } finally { await context.close(); }
+}
 async function audit(p, label) {
   await settleLayout(p);
   const measure = () => p.locator('.mesomon').evaluate((root, label) => {
@@ -948,7 +1025,9 @@ async function chapter() {
     if (await reduceMotion.getAttribute('aria-checked') === 'true') await reduceMotion.click();
     await closeStart(p, 'm');
     await walkTo(p, 'gangplank');
+    await inspectField(p, 'ship', 'stern');
     await automaticMeeting(p, 'nia', () => p.locator('[data-mm-object="gangplank"]').click());
+    await inspectField(p, 'harbor', 'arrival-pier');
     const fieldcase = await openStart(p);
     await checkFieldGuide(p, fieldcase, [], 'field-guide-unseen');
     await startSection(fieldcase, 'Companions');
@@ -976,6 +1055,7 @@ async function chapter() {
         await walkTo(p,id);
         assert.ok(!(await save(p)).questFlags.gate_opened);
         await captureLocation(p,'tide-stairs',id,'tide-stairs-closed');
+        await inspectField(p,'tide-stairs','gate-closed',{moves:false,state:'before'});
       }
       if (id === 'bram') {
         await automaticMeeting(p, 'bram', () => walkTo(p, 'bram', 'bram'));
@@ -985,6 +1065,7 @@ async function chapter() {
       if (id === 'gate-wheel') {
         assert.equal((await save(p)).questFlags.gate_opened,true);
         await captureLocation(p,'tide-stairs',id,'tide-stairs-open');
+        await inspectField(p,'tide-stairs','gate-open',{state:'after'});
       }
       if (id === 'nia') {
         await p.screenshot({path:join(output,engine+'-harbor.png')});
@@ -1006,6 +1087,7 @@ async function chapter() {
         await p.screenshot({path:join(output,engine+'-workshop.png')});
         await drain(p,{expectedId:'chart'});
         await captureLocation(p,'workshop',id);
+        await inspectField(p,'workshop','chart-window',{state:'before'});
       }
     }
     assert.equal((await save(p)).party[0]?.speciesId,'rillik'); check(engine+'-first-bond-after-real-gate-rescue');
@@ -1032,9 +1114,11 @@ async function chapter() {
     const crossingIsWalkable = () => p.evaluate(async () => window.mmQa.canWalk(await window.mmQa.readSave(),10,12));
     assert.equal(await crossingIsWalkable(),false);
     await captureLocation(p,'passage','sluice','passage-flooded');
+    await inspectField(p,'passage','sluice-flooded',{state:'before'});
     await interact(p,'sluice');
     assert.equal(await crossingIsWalkable(),true);
     await captureLocation(p,'passage','sluice','passage-drained');
+    await inspectField(p,'passage','sluice-drained',{moves:false,state:'after'});
     await interact(p,'tressel'); await battle(p,'bond');
     assert.ok((await save(p)).party.length>=2); check(engine+'-optional-wild-resonance');
     await interact(p, 'gleamwing'); await battle(p, 'sighting');
@@ -1042,15 +1126,23 @@ async function chapter() {
     assert.equal((await save(p)).questFlags.currents_followed, true);
     await interact(p,'pickup-tincture'); await interact(p,'save-lamp'); await interact(p,'chamber-door');
     await walkTo(p,'rift'); await captureLocation(p,'chamber','rift');
+    await inspectField(p,'chamber','rift-open',{state:'before'});
     await interact(p,'rift'); await battle(p,'boss');
     await openStart(p); await startSection(fieldcase, 'Settings');
     const assist=p.getByRole('switch',{name:/Seal Assist/i}); if(await assist.getAttribute('aria-checked')!=='true')await assist.click();
     await closeStart(p, 'm');
     for(let index=0;index<3;index++) await p.getByRole('button',{name:/Seal pulse/i}).click();
     await drain(p); assert.equal((await save(p)).rifts['port-marche'],'sealed'); check(engine+'-three-pulse-assisted-rift-seal');
+    await inspectField(p,'chamber','rift-sealed',{state:'after'});
+    const zones = Object.entries(zoneTitles).map(([id,title]) => ({title, image: nativeZones.get(id)}));
+    assert.ok(zones.every(zone => zone.image), 'The contact sheet needs a real native frame from each room');
+    assert.equal(new Set(zones.map(zone => zone.image)).size, 6, 'The six rooms must render distinct frames');
+    await savePng(engine+'-six-zone-contact-sheet', await fieldContactSheet(p,zones));
     await interact(p,'page');
     // Door names are authored map objects, not production-only test shortcuts.
     for(const id of ['chamber-exit','passage-exit','stairs-exit','workshop-door']) await interact(p,id);
+    await walkTo(p,'chart');
+    await inspectField(p,'workshop','kettle-warm',{state:'after',motionWindow:[74,84,13,19]});
     await interact(p,'closing',false);await drain(p,{inspectChoices:true,expectedId:'closing',choiceId:'wry'}); assert.equal((await save(p)).questFlags.chapter_complete,true); check(engine+'-complete-real-chapter-through-closing');
     await audit(p, engine + '-chapter-complete-fit');
     await p.screenshot({path:join(output,engine+'-chapter-complete.png')});
@@ -1160,7 +1252,7 @@ try {
   const sizes=process.env.MESOMON_QUICK?[[390,844,'dark']]:[[320,568,'dark'],[320,568,'light'],[390,844,'dark'],[390,844,'light'],[844,390,'dark'],[844,390,'light'],[1440,900,'dark'],[1440,900,'light']];
   for(const [width,height,theme]of sizes)await smoke(width,height,theme);
   await walkingPace();
-  if(!process.env.MESOMON_SMOKE_ONLY)await chapter();
+  if(!process.env.MESOMON_SMOKE_ONLY){ await chapter(); await desktopField(); }
   await guestRoute();
   await touchLaunch();
   await offlineTabs();

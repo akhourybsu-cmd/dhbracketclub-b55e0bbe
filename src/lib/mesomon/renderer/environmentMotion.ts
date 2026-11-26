@@ -1,4 +1,7 @@
 import type { MapDefinition, MapId } from '../types';
+import { paintExteriorLife } from './exteriorLife';
+import { paintInteriorLife } from './interiorLife';
+import { paintTideLife } from './tideLife';
 
 /** Only the native-pixel calls used by this layer; importing it never boots Phaser. */
 export interface EnvironmentMotionGraphics {
@@ -12,6 +15,7 @@ export interface EnvironmentMotionView {
   readonly bottom: number;
 }
 export interface EnvironmentMotionState {
+  readonly pageFound?: boolean;
   readonly gateOpened: boolean;
   readonly sluiceOpen: boolean;
   readonly riftSealed: boolean;
@@ -21,8 +25,9 @@ export interface EnvironmentMotionState {
 
 /** About two authored steps a second. There are no sprites, particles or timers. */
 export const ENVIRONMENT_MOTION_FRAME_MS = 420;
-export const MAX_ENVIRONMENT_MOTION_RECTS = 48;
+export const MAX_ENVIRONMENT_MOTION_RECTS = 80;
 const CACHE_LIMIT = 96;
+export type EnvironmentRect = (color: number, alpha: number, x: number, y: number, width?: number, height?: number) => void;
 type PixelRect = readonly [color: number, alpha: number, x: number, y: number, width: number, height: number];
 const frames = new Map<string, readonly PixelRect[]>();
 const shimmer = [0.12, 0.17, 0.21, 0.24, 0.24, 0.21, 0.17, 0.12] as const;
@@ -36,13 +41,13 @@ function authoredFrame(id: MapId, phase: number, state: EnvironmentMotionState):
   // does not allocate another workshop/ship frame.
   const variant = id === 'tide-stairs' ? Number(state.gateOpened)
     : id === 'passage' ? Number(state.sluiceOpen) + Number(state.riftSealed) * 2
-      : id === 'chamber' ? Number(state.riftSealed) : 0;
+      : id === 'chamber' ? Number(state.riftSealed) : id === 'workshop' ? Number(Boolean(state.pageFound)) : 0;
   const key = `${id}:${variant}:${phase}`;
   const cached = frames.get(key);
   if (cached) return cached;
   const pixels: PixelRect[] = [];
   const rect = (color: number, alpha: number, x: number, y: number, width = 1, height = 1) => {
-    if (pixels.length < MAX_ENVIRONMENT_MOTION_RECTS) pixels.push([color, alpha, x, y, width, height]);
+    pixels.push([color, alpha, x, y, width, height]);
   };
   const ripple = (x: number, y: number, width: number, shift: number = sway[phase], color: number = water, alpha: number = shimmer[phase]) => {
     rect(color, alpha, x, y + shift, width, 1);
@@ -120,6 +125,10 @@ function authoredFrame(id: MapId, phase: number, state: EnvironmentMotionState):
     ripple(202, 153 + travel, 11, 0, water, 0.15);
     ripple(220, 174 + travel, 10, 0, water, shimmer[phase] * 0.65);
   }
+
+  if (id === 'ship' || id === 'harbor') paintExteriorLife(id, phase, state, rect);
+  else if (id === 'workshop' || id === 'passage') paintInteriorLife(id, phase, state, rect);
+  else paintTideLife(id, phase, state, rect);
 
   // Absolute time produces a reusable eight-frame sequence. The small global
   // cache is bounded even when repeatedly walking between rooms/state variants.

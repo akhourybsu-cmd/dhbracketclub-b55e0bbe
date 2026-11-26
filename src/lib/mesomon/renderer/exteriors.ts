@@ -85,6 +85,55 @@ function sailboat(p: Paint,x: number,y: number) {
   p.line('#ded0aa',[x+11,y-29],[x+4,y-10]);
 }
 
+// Two deckhouses share a sill, but different footprints and fittings tell them apart.
+// Their solid parts stay within the two blocked cabin pads, leaving the bridge and aisle open.
+function deckhouses(p: Paint) {
+  for (const [x, port] of [[65, true], [145, false]] as const) {
+    const end = x + 44;
+    p.polygon('#423f3955', [x + 1, 86], [end, 83], [end + 3, 94], [end + 1, 98], [x + 5, 98]);
+    p.rect('#605343', x + 1, 76, 41, 18);
+    p.rect(port ? '#b99d75' : '#a78962', x + 2, 77, 37, 14);
+    p.rect('#817360', end - 5, 77, 5, 16);
+    p.rect('#dfc297', x, 92, 42, 2);
+    p.rect('#6c5b48', x + 1, 94, 42, 2);
+    p.polygon('#3a504e', [x - 1, 77], [x + 4, 53], [x + 10, 47], [end - 8, 47], [end - 3, 52], [end + 1, 77], [end - 1, 80], [x, 80]);
+    p.polygon(port ? '#77948a' : '#958b71', [x, 75], [x + 5, 54], [x + 10, 48], [end - 9, 48], [end - 5, 53], [end - 2, 75]);
+    p.line(port ? '#b3c0a9' : '#ccbd96', [x + 1, 74], [x + 6, 54], [x + 11, 49], [end - 10, 49]);
+    p.line(brass, [x, 77], [end, 77]);
+    if (port) {
+      // Three forward windows reflect different pieces of sky; their brass mullions cast to starboard.
+      for (let i = 0; i < 3; i++) {
+        const wx = x + 4 + i * 11;
+        p.rect('#515d55', wx, 81, 10, 9);
+        p.rect('#567c7c', wx + 1, 82, 7, 6);
+        p.rect('#a8bbaa', wx + 1, 82, 6, 2);
+        p.line('#94aa9c', [wx + 1, 87], [wx + 5, 83]);
+        p.rect('#c7aa7e', wx + 9, 81, 1, 9);
+      }
+      // Low chart skylight, with a deep return face under the port side of the mast.
+      p.polygon('#506763', [x + 11, 63], [x + 17, 54], [x + 32, 54], [x + 31, 64], [x + 29, 67], [x + 11, 67]);
+      p.polygon('#adc0ad', [x + 12, 62], [x + 17, 55], [x + 30, 55], [x + 28, 62]);
+      p.line('#647d75', [x + 19, 62], [x + 23, 55]);
+      p.rect('#c6b796', x + 11, 63, 19, 1);
+    } else {
+      // Roll-up canvas covers the freight hatch. Tied folds follow the roof slope.
+      for (const off of [10, 19, 28, 37]) {
+        p.line('#766f5f', [x + off, 54], [x + off - 2, 69]);
+        p.line('#b8ad8c', [x + off - 1, 54], [x + off - 3, 69]);
+      }
+      p.rect('#776c55', x + 5, 68, 33, 5);
+      p.rect('#beb28c', x + 6, 68, 31, 2);
+      for (const tie of [11, 27]) p.rect('#5b6054', x + tie, 67, 2, 6);
+      for (const px of [x + 10, x + 29]) {
+        p.polygon('#615b49', [px - 4, 83], [px - 2, 80], [px + 2, 80], [px + 5, 83], [px + 5, 87], [px + 2, 90], [px - 2, 90], [px - 4, 87]);
+        p.rect('#c5a56d', px - 2, 81, 5, 7);
+        p.rect('#3d5c60', px - 1, 82, 4, 5);
+        p.rect('#99b4a7', px - 1, 82, 3, 2);
+      }
+    }
+  }
+}
+
 function wayfarer(p: Paint) {
   // Build out from the existing collision rectangle. The pointed foredeck, colored
   // strakes and immersed stern lie in the surrounding water.
@@ -154,6 +203,65 @@ function wayfarer(p: Paint) {
   p.rect('#c3a172',83,26,1,41);
   p.polygon('#385c60',[85,26],[97,26],[109,20],[106,26],[112,28],[98,32],[85,32]);
   p.line('#a5b69b',[86,27],[95,27],[103,24]);
+  deckhouses(p);
+  p.rect('#6c5944',83,26,4,42);
+  p.rect('#c3a172',83,26,1,41);
+  // A reefed gaff leaves the working deck open. The nearby shadow, tackle and
+  // individual ratlines explain the height of the spar without a large opaque sail.
+  p.line('#665e4a', [52, 115], [71, 83], [85, 29]);
+  p.line('#b7ab83', [55, 116], [74, 83], [85, 29]);
+  for (let step = 0; step < 7; step++) {
+    const y = 107 - step * 7, x = 58 + step * 3;
+    p.line('#a29170', [x, y], [x + 4, y + 1]);
+  }
+  p.line('#5c5644', [84, 43], [108, 60], [110, 59]);
+  p.line('#d0b88b', [85, 41], [109, 58]);
+  for (let i = 0; i < 4; i++) {
+    const x = 88 + i * 5, y = 44 + i * 4;
+    p.polygon('#a7a183', [x - 2, y], [x + 3, y + 2], [x + 2, y + 6], [x - 1, y + 5]);
+    p.line('#d6caa6', [x - 1, y + 1], [x + 2, y + 3]);
+  }
+  p.rect('#74684e', 108, 59, 1, 12);
+  p.rect('#635e49', 107, 69, 3, 5);
+  p.rect('#bda579', 107, 69, 1, 3);
+  // Bronzed holding-down plates are flush to the deck. Their shadows run in
+  // the same direction as the cabin eaves and stop well short of the gangway.
+  p.polygon('#624e3d55', [53, 117], [56, 116], [103, 153], [109, 156], [105, 157]);
+  p.line('#7b634b', [166, 104], [192, 121], [197, 123]);
+  for (const [x, y] of [[59, 110], [193, 116], [59, 164], [195, 170]]) {
+    p.rect('#695640', x, y, 6, 3);
+    p.rect('#ba9e71', x + 1, y, 3, 1);
+  }
+  // A rolled heaving line rests on the closed grating, leaving the passenger lane clear.
+  for (let loop = 0; loop < 3; loop++) {
+    const x = 69 + loop * 3, y = 132 + loop;
+    p.line('#665640', [x, y + 4], [x + 4, y], [x + 12, y - 1], [x + 14, y + 2], [x + 11, y + 5], [x + 2, y + 6], [x, y + 4]);
+    p.line('#c8ab76', [x, y + 3], [x + 4, y - 1], [x + 11, y - 2], [x + 13, y]);
+  }
+  p.line('#bea578', [83, 139], [90, 141], [92, 145], [99, 145]);
+  // The rose is an inlaid deck fitting. The dark and light halves read as a
+  // compass in the walk surface without suggesting another object to talk to.
+  p.polygon('#7d6249', [146, 153], [152, 149], [165, 149], [172, 153], [165, 157], [152, 157]);
+  p.line('#b89b70', [146, 153], [152, 149], [164, 149], [170, 152]);
+  p.polygon('#c5a978', [151, 153], [158, 152], [160, 146], [161, 152], [169, 153], [161, 154], [158, 160], [158, 154]);
+  p.line('#665947', [160, 148], [159, 153], [153, 153]);
+  p.rect('#dfc79b', 159, 152, 2, 2);
+  for (const x of [76, 100, 158, 178]) {
+    // Round scuppers on the stern strake.
+    const y = x === 76 || x === 178 ? 195 : 199;
+    p.rect('#504e41', x, y, 4, 2);
+    p.rect('#cb9868', x, y + 2, 3, 1);
+  }
+  // A deck tern rides the capped rail facing the sea. Its folded wing and
+  // black crown are present even when motion is turned off.
+  p.rect('#9b6e4e', 201, 122, 1, 3);
+  p.rect('#99694a', 204, 122, 1, 3);
+  p.polygon('#d2d0b7', [196, 119], [198, 116], [201, 116], [203, 119], [210, 118], [213, 117], [210, 121], [205, 123], [199, 123]);
+  p.rect('#515c58', 197, 116, 4, 1);
+  p.rect('#dfd8bc', 196, 117, 5, 3);
+  p.rect('#39464a', 197, 117, 1, 1);
+  p.rect('#bf8c57', 193, 119, 4, 1);
+  p.line('#82928a', [200, 120], [205, 119], [209, 119], [207, 121], [202, 121]);
   sailboat(p,216,122);
 }
 
@@ -213,6 +321,22 @@ function workshopFacade(p: Paint) {
   p.rect('#b2a384',151,208,2,7);
   p.rect('#bc9872',139,235,25,3);
   p.rect('#c6b090',135,238,33,3);
+  // Cut stones turn around the entrance arch. Carry the gutter all the way
+  // from the workshop eaves to the downpipe and its drain at street level.
+  for (const seam of [
+    [[136, 209], [140, 210]], [[139, 201], [143, 204]], [[145, 196], [148, 201]],
+    [[154, 196], [154, 200]], [[162, 198], [159, 203]], [[167, 204], [163, 206]],
+  ] satisfies Point[][]) p.line('#aa9879', ...seam);
+  p.rect('#534e42', 138, 209, 2, 27);
+  p.rect('#d1b28c', 165, 207, 2, 29);
+  p.rect('#8b7861', 137, 242, 30, 1);
+  p.rect('#b29f80', 138, 243, 27, 1);
+  p.rect('#514f41', 213, 188, 4, 39);
+  p.rect('#8d9c85', 214, 188, 2, 36);
+  for (const y of [197, 216]) p.rect('#b2a485', 212, y, 5, 2);
+  p.line('#656f5d', [215, 224], [215, 229], [219, 231]);
+  p.rect('#817c66', 217, 232, 7, 3);
+  p.rect('#585f51', 218, 233, 4, 1);
   // Suspended surveyor's sign: a brass divider above a tide line.
   p.line(darkWood,[170,193],[181,188],[195,188]);
   p.rect(brass,181,188,2,8); p.rect(brass,192,188,2,8);
@@ -239,6 +363,17 @@ function market(p: Paint) {
     const x=308+bay*49;
     p.rect('#635e4d',x,181,43,33);
     p.rect('#435e59',x+3,184,36,25);
+    if (bay === 1) {
+      // The bottler stands inside the existing stall, in shadow behind the counter.
+      p.rect('#344d49', x + 6, 196, 13, 11);
+      p.polygon('#82785c', [x+6, 201], [x+9, 198], [x+13, 197], [x+17, 200], [x+19, 207], [x+5, 207]);
+      p.rect('#b7855f', x+9, 193, 6, 6);
+      p.rect('#d0a67b', x+12, 194, 4, 3);
+      p.rect('#bdc0a4', x+7, 192, 9, 2);
+      p.rect('#b6b697', x+7, 191, 6, 1);
+      p.rect('#658278', x+9, 201, 6, 6);
+      p.rect('#c2b88e', x+10, 200, 2, 2);
+    }
     for(let i=0;i<5;i++){
       const px=x+4+i*7;
       if(bay===0) {
@@ -269,6 +404,125 @@ function market(p: Paint) {
   }
 }
 
+function tideGauge(p: Paint, x: number, y: number) {
+  p.polygon('#28474c', [x-2, y+31], [x+3, y+29], [x+14, y+35], [x+13, y+38], [x+1, y+34]);
+  p.rect('#494c41', x, y, 5, 33);
+  p.rect('#b29166', x, y+1, 2, 24);
+  p.rect('#527063', x, y+26, 2, 7);
+  p.polygon('#dec396', [x-2, y], [x, y-2], [x+4, y-2], [x+7, y], [x+4, y+2], [x, y+2]);
+  p.rect('#d2c5a1', x+5, y+2, 4, 26);
+  p.rect('#777b69', x+8, y+2, 1, 26);
+  for (let i = 0; i < 6; i++) p.rect(i % 2 ? '#667a6f' : '#b16b4b', x+5, y+4+i*4, i % 2 ? 2 : 3, 2);
+  p.rect('#4f6258', x+3, y+22, 3, 1);
+  // The copper float remains readable at rest. Moving cels replace its dark
+  // guide channel rather than stamping extra colored floats onto the water.
+  p.rect('#4a655e', x+7, y+20, 7, 8);
+  p.rect('#bc8059', x+7, y+21, 5, 3);
+  p.rect('#e4bd85', x+8, y+21, 3, 1);
+}
+
+function waterfront(p: Paint) {
+  // The freight wharf sits higher than the water. Lower braces and alternating
+  // wet/dry timbers attach to the *south* faces, leaving every deck tile clear.
+  for (const [left, right, y] of [[146, 382, 464], [385, 463, 544], [49, 127, 512]]) {
+    p.rect('#484b3d', left, y - 2, right - left, 6);
+    p.rect('#a99065', left, y - 2, right - left, 1);
+    p.rect('#6a604a', left, y, right - left, 2);
+    p.rect('#304a47', left, y + 4, right - left, 2);
+    for (let x = left + 9; x < right - 4; x += 28) {
+      p.line('#43574e', [x - 7, y + 4], [x + 1, y + 10]);
+      p.rect('#424738', x, y, 5, 13);
+      p.rect('#9e865e', x, y + 1, 2, 7);
+      p.rect('#78795c', x, y + 7, 2, 3);
+      p.rect('#355350', x, y + 10, 5, 3);
+      p.rect('#567369', x - 2, y + 13, 9, 1);
+      p.rect('#c6ae7d', x, y, 3, 1);
+    }
+  }
+  // A working tide staff on its own pile, just off the incoming pier. The
+  // registering float lives in this channel, well away from the skiff's lines.
+  tideGauge(p, 475, 468);
+  // A ribbed wet edge makes the arrival jetty feel raised even while the
+  // terminal and its skiff are below the bottom of the moving camera.
+  for (const side of [383, 463]) {
+    const offset = side === 383 ? -1 : 1;
+    for (const y of [469, 492, 516]) {
+      p.rect('#6f6650', side, y, 2, 11);
+      p.rect('#b5a27c', side, y, 1, 5);
+      p.rect('#34534f', side + offset, y + 6, 2, 7);
+      p.rect('#657366', side + offset * 2, y + 12, 3, 1);
+    }
+  }
+  // A customs painter once marked the cargo lane and the steel-grated scupper.
+  // Both are flush: the gang can haul goods from the pier to the working square.
+  p.line('#a49a79', [401, 411], [401, 436], [393, 448]);
+  p.line('#827d64', [402, 411], [402, 436], [394, 448]);
+  p.polygon('#686958', [409, 440], [440, 440], [442, 442], [440, 446], [409, 446], [407, 444]);
+  p.rect('#aaa488', 409, 440, 30, 1);
+  for (let x = 410; x < 440; x += 4) {
+    p.rect('#444e49', x, 442, 2, 3);
+    p.rect('#a19777', x + 2, 442, 1, 3);
+  }
+}
+
+/** Freight is weighed flush with the road. Low inset ramps and running grooves
+ * let travelers cross the existing timber scales on their way to the stairs. */
+function weighbridge(p: Paint) {
+  p.polygon('#667169', [399, 306], [443, 306], [448, 311], [448, 328], [443, 334], [400, 334], [397, 330], [397, 310]);
+  p.polygon('#b3a483', [399, 308], [442, 308], [445, 311], [445, 327], [441, 331], [400, 331], [399, 329]);
+  p.rect('#625b4b', 401, 310, 41, 19);
+  for (let x = 402; x < 440; x += 5) {
+    p.rect('#987d5e', x, 311, 4, 16);
+    p.rect('#b59a73', x, 311, 1, 15);
+  }
+  for (const y of [312, 324]) {
+    p.rect('#655f50', 399, y, 46, 3);
+    p.rect('#abac96', 399, y, 46, 1);
+    for (const x of [401, 413, 430, 441]) p.rect('#d4c093', x, y + 1, 1, 1);
+  }
+  // A diagonal trolley approach is worn into the paving beside the bell.
+  // Keep the polished stripes subtle so the compass and staff remain legible.
+  for (const off of [0, 11]) {
+    p.line('#7f8b80', [398, 313 + off], [373, 313 + off], [353, 333 + off], [340, 340 + off]);
+    p.line('#a3a891', [397, 313 + off], [374, 313 + off], [365, 322 + off]);
+  }
+  p.rect('#605f51', 417, 331, 10, 2);
+  p.rect('#d7b47c', 419, 331, 5, 1);
+}
+
+/** Reused salt-worn landing flags, in warmer stone than the surrounding setts.
+ * Joint lines follow the shape of each masonry apron instead of repeating the tile atlas. */
+function harborCourts(p: Paint) {
+  // Edda’s broad old delivery threshold changes material right at the door.
+  p.polygon('#8c9587', [69, 231], [211, 231], [217, 239], [213, 248], [181, 248], [173, 255], [132, 255], [124, 249], [76, 249], [69, 245]);
+  p.polygon('#a6a58e', [71, 232], [209, 232], [214, 239], [209, 246], [179, 246], [172, 252], [133, 252], [126, 246], [78, 246], [71, 243]);
+  p.line('#c0baa0', [72, 243], [79, 246], [123, 246], [132, 252], [171, 252]);
+  for (const [x, y, x2, y2] of [[91, 236, 89, 245], [113, 235, 115, 245], [137, 242, 132, 250], [161, 242, 163, 251], [181, 235, 183, 245], [202, 235, 200, 245]]) {
+    p.line('#899183', [x, y], [x2, y2]);
+  }
+  // Recessed stone trough in the plinth catches runoff from the workshop pipe.
+  p.line('#7c857a', [217, 234], [222, 239], [221, 246], [212, 254], [205, 254]);
+  p.line('#b4b49d', [219, 234], [224, 238], [223, 246], [215, 254]);
+  p.rect('#66756d', 200, 253, 7, 2);
+
+  // The fish hall's long unloading apron turns the edge of the square. The
+  // front is gently downhill; small joints and a worn iron channel carry water east.
+  p.polygon('#747f74', [286, 221], [464, 220], [475, 229], [475, 245], [467, 253], [300, 253], [285, 241]);
+  p.polygon('#a2a38d', [287, 221], [462, 221], [473, 229], [473, 243], [465, 250], [302, 250], [286, 239]);
+  p.line('#bdbaa1', [286, 237], [302, 249], [464, 249]);
+  p.line('#849082', [292, 233], [467, 233], [471, 231]);
+  for (const x of [307, 334, 361, 388, 416, 444]) {
+    p.line('#8a9280', [x, 221], [x - 2, 232]);
+    p.line('#949782', [x + 11, 234], [x + 14, 248]);
+  }
+  p.line('#707f72', [297, 238], [309, 245], [455, 245]);
+  p.line('#bbc0a8', [298, 238], [309, 244], [452, 244]);
+  for (const x of [318, 376, 435]) {
+    p.rect('#68786e', x, 243, 7, 4);
+    for (const dx of [1, 3, 5]) p.rect('#a6ac95', x + dx, 243, 1, 3);
+  }
+}
+
 function harbor(p: Paint, map: MapDefinition) {
   // Swept stone carriage lanes meet at the district map. Narrow brick gutters and
   // flush brass route studs guide travel without implying new collision bounds.
@@ -292,7 +546,10 @@ function harbor(p: Paint, map: MapDefinition) {
   p.rect('#adab93',133,367,269,2); p.rect('#adab93',173,335,354,2);
   p.rect('#ada68a',403,371,2,49); p.rect('#ada68a',442,370,2,55);
   p.ctx.restore();
+  harborCourts(p);
   workshopFacade(p); market(p);
+  waterfront(p);
+  weighbridge(p);
   // Stone abutments and rails frame the stair mouth. The walkable approach stays open.
   for(const x of [514,581]){
     p.rect('#465955',x,310,6,66);

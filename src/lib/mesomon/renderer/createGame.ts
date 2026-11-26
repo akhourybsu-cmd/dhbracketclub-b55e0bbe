@@ -11,6 +11,7 @@ import { paintExteriors } from './exteriors';
 import { paintQuaySquare } from './quaySquare';
 import { paintTideworks, type TideworksState } from './tideworks';
 import { paintEnvironmentMotion } from './environmentMotion';
+import { paintCastShadow, paintFootfall, strideLift, type FieldStep } from './fieldStride';
 import { foregroundForMap, paintForeground } from './foreground';
 import { INTERACTION_ART, interactionArtKey, paintInteractionArt } from './interactionsArt';
 import { WALK_STEP_MS } from '../input';
@@ -138,6 +139,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
     private approachKey = '';
     private approachElapsed = 0;
     private moveStart = 0;
+    private fieldStep?: FieldStep;
     private from = { x: 0, y: 0 };
     private target = { x: 0, y: 0 };
     private companionFacing: Direction = 'down';
@@ -198,10 +200,11 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (!this.ready || disposed) return;
       const map = getMap(session.save);
       const tide: TideworksState = { gateOpen: session.save.questFlags.gate_opened === true, sluiceOpen: session.save.questFlags.sluice_open === true, sealed: session.save.rifts['port-marche'] === 'sealed' };
-      const mapState = (map.id === 'tide-stairs' && tide.gateOpen) || (map.id === 'passage' && tide.sluiceOpen) || (map.id === 'chamber' && tide.sealed);
+      const pageFound = session.save.questFlags.page_found === true;
+      const mapState = (map.id === 'workshop' && pageFound) || (map.id === 'tide-stairs' && tide.gateOpen) || (map.id === 'passage' && tide.sluiceOpen) || (map.id === 'chamber' && tide.sealed);
       if (this.mapId !== map.id || this.mapState !== mapState) {
         this.mapState = mapState;
-        this.rebuildMap(map, tide);
+        this.rebuildMap(map, tide, pageFound);
       }
       this.nearbyTarget = getPhase(session) === 'explore' ? nearbyInteractions(session.save)[0]?.id : undefined;
       if (awaitingFirstFrame) {
@@ -218,6 +221,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       const next = { x: player.x * 16 + 8, y: player.y * 16 + 16 };
       if (nextPosition !== this.previousPosition) {
         const jump = this.previousPosition.split(':')[0] !== player.mapId || !this.tavian || Math.abs(next.x - this.target.x) + Math.abs(next.y - this.target.y) > 18;
+        if (jump) this.fieldStep = undefined;
+        else {
+          const x = (this.target.x - 8) / 16, y = this.target.y / 16 - 1;
+          const direction = next.x > this.target.x ? 'right' : next.x < this.target.x ? 'left' : next.y > this.target.y ? 'down' : 'up';
+          this.fieldStep = { x, y, surface: map.tiles[y][x], direction };
+        }
         this.from = jump ? next : { x: this.tavian?.x ?? next.x, y: this.tavian?.y ?? next.y };
         const adjacent = [[0, 1], [-1, 0], [1, 0], [0, -1]].find(([dx, dy]) => canWalk(session.save, player.x + dx, player.y + dy));
         const previousFollower = this.companionTarget;
@@ -239,7 +248,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (hasBattle !== this.battleMode) { this.battleMode = hasBattle; this.setupBattle(session); }
       if (hasBattle) this.updateBattle(session);
     }
-    private rebuildMap(map: MapDefinition, tide: TideworksState): void {
+    private rebuildMap(map: MapDefinition, tide: TideworksState, pageFound: boolean): void {
       const entering = this.mapId !== map.id;
       this.background?.destroy(); this.background = null;
       if (this.mapTexture) this.textures.remove(this.mapTexture);
@@ -271,7 +280,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         }
         paintInteriorFloor(context, map);
         paintTerrainDepth(context, map);
-        paintInterior(context, map.id);
+        paintInterior(context, map.id, { pageFound, sluiceOpen: tide.sluiceOpen });
         paintExteriors(context, map);
         paintQuaySquare(context, map);
         paintTideworks(context, map, tide);
@@ -426,7 +435,9 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.tavian.setPosition(Math.round(this.from.x + (this.target.x - this.from.x) * progress), Math.round(this.from.y + (this.target.y - this.from.y) * progress));
       const walking = progress < 1 && (this.from.x !== this.target.x || this.from.y !== this.target.y);
       this.tavian.setFrame(DIRECTION_FRAME[session.save.player.facing] + (walking ? 1 + Math.floor(progress * 2) : 0)).setDepth(this.tavian.y + 1);
-      this.playerShadow?.setVisible(this.tavian.visible).setPosition(this.tavian.x, this.tavian.y - 2).setDepth(this.tavian.y - 0.5);
+      const lift = walking ? strideLift(progress) : 0;
+      this.tavian.setDisplayOrigin(8, 16 + lift);
+      this.playerShadow?.setVisible(this.tavian.visible).setPosition(this.tavian.x + 1, this.tavian.y - 2).setScale(lift ? 0.8 : 1, 1).setDepth(this.tavian.y - 0.5);
       this.companionShadow?.setVisible(Boolean(this.companion?.visible));
       if (!this.battleMode) this.cameras.main.centerOn(this.tavian.x, this.tavian.y - 8);
       if (this.companion?.visible) {
@@ -444,10 +455,14 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.effects.clear();
       const view = this.cameras.main.worldView;
       paintEnvironmentMotion(this.decorations, map, view, time, {
+        pageFound: session.save.questFlags.page_found === true,
         gateOpened: session.save.questFlags.gate_opened === true,
         sluiceOpen: session.save.questFlags.sluice_open === true,
         riftSealed: session.save.rifts['port-marche'] === 'sealed', reducedMotion: reduced, paused,
       });
+      if (this.fieldStep && !reduced) paintFootfall(this.decorations, this.fieldStep, time - this.moveStart);
+      paintCastShadow(this.decorations, map.id, this.tavian.x, this.tavian.y);
+      if (this.companion?.visible) paintCastShadow(this.decorations, map.id, this.companion.x, this.companion.y);
       const stop = options.walkDestination?.();
       if (stop) {
         const x = stop.x * 16 + 3, y = stop.y * 16 + 10;
@@ -477,6 +492,10 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
           const row = PEOPLE.indexOf(personArt(o.data.id, o.data.sprite) as typeof PEOPLE[number]);
           o.sprite.setPosition(x, y).setDepth(y).setFrame(row * 15 + DIRECTION_FRAME[direction] + (progress < .5 ? 1 : 2));
           o.shadow?.setPosition(x, y - 1).setDepth(y - .5);
+        }
+        if (o.shadow && o.sprite.x >= view.left - 16 && o.sprite.x <= view.right + 16 &&
+            o.sprite.y >= view.top - 16 && o.sprite.y <= view.bottom + 24) {
+          paintCastShadow(this.decorations, map.id, o.sprite.x, o.sprite.y);
         }
         if (o.data.id === this.nearbyTarget) {
           const area = paintedHits[o.data.id];

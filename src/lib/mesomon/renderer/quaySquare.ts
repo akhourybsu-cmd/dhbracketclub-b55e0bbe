@@ -26,7 +26,7 @@ const bellInk: Record<string, string> = {
 
 export const quayFixtures = [
   { id: 'quay-bell', x: 307, y: 322, width: 42, height: 57, footY: 378 },
-  { id: 'rope-stock', x: 363, y: 384, width: 26, height: 25, footY: 408 },
+  { id: 'rope-stock', x: 363, y: 384, width: 36, height: 25, footY: 408 },
 ] as const;
 export type QuayFixture = typeof quayFixtures[number];
 
@@ -49,6 +49,28 @@ export function paintQuaySquare(ctx: CanvasRenderingContext2D, map: MapDefinitio
   const [mast, stock] = quayFixtures;
   // The port surveyor's compass is set flush into the centre of the freight lane.
   const cx = mast.x - 9, cy = mast.footY - 26;
+  // Four shallow rings form a worn civic seal. Their flat sides follow the
+  // freight lane and the compass facets catch the light from the northwest.
+  const octagon = (color: string, radius: number, height: number) => {
+    for (let y = -height; y <= height; y++) {
+      const chamfer = Math.max(0, Math.abs(y) - Math.floor(height / 3)) * 2;
+      rect(color, cx - radius + chamfer, cy + y, (radius - chamfer) * 2 + 1, 1);
+    }
+  };
+  octagon('#758079', 39, 13);
+  octagon('#ada990', 38, 12);
+  octagon('#8d9385', 36, 11);
+  octagon('#829087', 28, 8);
+  line('#bac0a7', cx - 38, cy - 3, cx - 23, cy - 12);
+  line('#bac0a7', cx - 23, cy - 12, cx + 18, cy - 12);
+  line('#6f7c73', cx + 25, cy + 11, cx + 37, cy + 4);
+  for (const [x, y, x2, y2] of [[-31,-6,-24,-4], [-12,-11,-10,-8], [11,-11,9,-8], [31,-5,24,-3], [-31,6,-24,4], [-12,11,-10,8], [11,11,9,8], [31,5,24,3]]) {
+    line('#758078', cx + x, cy + y, cx + x2, cy + y2);
+  }
+  for (const x of [-31, 31]) {
+    rect('#c1b28d', cx + x - 1, cy - 1, 3, 2);
+    rect('#dbca9e', cx + x - 1, cy - 1, 1, 1);
+  }
   for (const [x, y, x2, y2] of [[-16, 0, -9, -6], [-9, -6, 8, -6], [8, -6, 16, 0], [16, 0, 9, 6], [9, 6, -9, 6], [-9, 6, -16, 0]]) {
     line('#aaa48b', cx + x, cy + y, cx + x2, cy + y2);
   }
@@ -62,6 +84,11 @@ export function paintQuaySquare(ctx: CanvasRenderingContext2D, map: MapDefinitio
   // Contact and cast shadows belong on the paving under the moving cast.
   for (let i = 0; i < 14; i++) rect('#445b593d', mast.x + 25 + i, mast.footY - 1 + Math.floor(i / 3), 6, 2);
   rect('#59656355', stock.x + 8, stock.footY, 19, 3);
+  // The rope jack's spindle sits behind the perforated brass rim. Those holes
+  // keep the maker visible through the wheel. The crank rests here without motion.
+  rect('#515e53', stock.x + 24, stock.y + 7, 10, 8);
+  rect('#40514b', stock.x + 25, stock.y + 6, 8, 10);
+  line('#b69a6c', stock.x + 25, stock.y + 14, stock.x + 32, stock.y + 7);
 }
 
 /** Draw into a transparent texture at local coordinates, sorted by the support's foot. */
@@ -113,5 +140,23 @@ export function paintQuayFixture(ctx: CanvasRenderingContext2D, piece: QuayFixtu
     rect(light, left + 1, y + length - 1, 3, 1);
     rect('#e0bf79', left + 2, y - 1, 2, 2);
   }
+  // The side-mounted turning jack winds the third hank, its axle and frame
+  // standing at the same foot depth as the rope rack and its keeper.
+  rect('#6e604c', 27, 15, 4, 8);
+  rect('#b19971', 27, 15, 1, 7);
+  rect('#555a4b', 24, 22, 10, 2);
+  line('#574f40', 24, 8, 26, 5);
+  line('#574f40', 26, 5, 32, 5);
+  line('#574f40', 32, 5, 35, 8);
+  line('#574f40', 35, 8, 35, 14);
+  line('#574f40', 35, 14, 32, 17);
+  line('#574f40', 32, 17, 26, 17);
+  line('#574f40', 26, 17, 23, 14);
+  line('#574f40', 23, 14, 23, 9);
+  line('#ccaf7b', 24, 8, 27, 5);
+  rect('#dcc295', 27, 5, 5, 1);
+  line('#aa946d', 34, 13, 31, 16);
+  rect('#cab076', 28, 10, 3, 3);
+  rect('#f0d09c', 28, 10, 1, 1);
 
 }

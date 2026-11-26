@@ -64,6 +64,37 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#6d9891', pile - 2, y + h + 5, 7, 1);
     }
   };
+  // A vaulted opening is built course by course. The cut stones continue
+  // around its spring line, with a brighter edge on the lit side of the jamb.
+  const vault = (cx: number, foot: number, radius: number, height: number, lantern: boolean) => {
+    const spring = foot - height;
+    for (let y = -radius; y <= 0; y++) {
+      const half = Math.floor(Math.sqrt(radius * radius - y * y));
+      rect('#75847e', cx - half - 2, spring + y - 2, half * 2 + 5, 1);
+      rect('#24383f', cx - half, spring + y, half * 2 + 1, 1);
+    }
+    rect('#23383f', cx - radius, spring, radius * 2 + 1, height);
+    rect('#364d51', cx - radius + 2, spring + 1, radius * 2 - 4, height - 3);
+    for (let x = cx - radius + 4; x < cx + radius - 2; x += 5) {
+      rect('#1c323a', x, spring - 3, 2, height + 1);
+      rect('#667775', x, spring - 3, 1, height);
+    }
+    for (let i = 1; i < 8; i++) {
+      const angle = Math.PI * i / 8;
+      line('#405457', cx + Math.round(Math.cos(angle) * radius), spring - Math.round(Math.sin(angle) * radius),
+        cx + Math.round(Math.cos(angle) * (radius + 3)), spring - Math.round(Math.sin(angle) * (radius + 3)) - 1);
+    }
+    rect('#96a395', cx - radius - 3, spring, 2, height);
+    rect('#344a50', cx + radius + 1, spring, 2, height + 1);
+    rect('#8b9889', cx - radius - 2, foot - 1, radius * 2 + 5, 2);
+    if (lantern) {
+      rect('#172b32', cx - 2, spring + 1, 6, 6);
+      rect('#98784e', cx - 1, spring, 4, 5);
+      rect('#d8ad6f', cx, spring + 1, 2, 3);
+      rect('#ffe1a0', cx, spring + 1, 1, 2);
+    }
+  };
+
   if (map.id === 'tide-stairs') {
     // The public stairs descend from a high stone quay into the service landing.
     landingFace(128, 240, 144, 19);
@@ -78,6 +109,9 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#788c85', x + 3, 23, 1, 19);
       rect('#879487', x + 13, 17, 6, 4);
     }
+    for (const [x, lamp] of [[71, 0], [113, 1], [155, 0], [197, 0], [239, 1]]) {
+      vault(x, 42, 10, 9, !!lamp);
+    }
     rect('#9aa28e', 46, 8, 227, 2);
     rect('#596f6d', 46, 5, 227, 3);
     rect('#344c4e', 46, 0, 227, 5);
@@ -91,6 +125,36 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#485f60', 112, y + 6, 80, 2);
       rect('#bcc1a9', 114, y, 76, 1);
       rect('#788881', 119 + (i % 3) * 22, y + 1, 1, 3);
+    }
+    // Each stone wears away differently along the middle of the flight.
+    for (let tread = 0; tread < 12; tread++) {
+      const y = 64 + tread * 8;
+      const seam = 116 + (tread * 17) % 34;
+      rect('#768680', seam, y + 1, 1, 3);
+      line('#89968b', seam + 1, y + 3, seam + 3, y + 4);
+      rect('#c2c1a4', seam + 3, y + 1, 8, 1);
+      rect('#6a827d', 178 - tread % 3, y + 2, 8 + tread % 3, 3);
+      rect('#475b5a', 181, y + 6, 7, 2);
+      if (tread % 3 === 1) rect('#8a9483', seam + 11, y, 4, 1);
+    }
+    // The west retaining wall stands in the channel. A ceramic tide staff
+    // runs down its face; rust stops at the previous high-water mark.
+    for (let y = 51; y < 234; y += 25) {
+      blocks(48, y, 15, 22);
+      rect('#879587', 46, y, 3, 18);
+      rect('#364c50', 44, y + 3, 2, 19);
+      rect('#52736e', 44, y + 14, 4, 6);
+      rect('#83968a', 48, y + 20, 12, 1);
+    }
+    rect('#303e3e', 51, 87, 8, 37);
+    rect('#cec5a4', 52, 87, 4, 34);
+    for (let mark = 0; mark < 8; mark++) rect('#815a45', 52, 90 + mark * 4, mark % 2 ? 2 : 4, 1);
+    rect('#788473', 49, 121, 10, 3);
+    // Light through the gallery falls at an angle, breaking at each handrail.
+    for (let pane = 0; pane < 3; pane++) {
+      for (let step = 0; step < 12; step++) {
+        rect('#f1dbc017', 66 + pane * 7 + step, 53 + step * 3, 5, 3);
+      }
     }
     // Low masonry cheeks with bronze railings and breaks onto the cross landings.
     for (const x of [112, 188]) {
@@ -118,6 +182,53 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     if (state.gateOpen) {
       diagonal(141, 145, 151, 137, '#bd9c69', 3);
       rect('#90b5a2', 163, 164, 16, 1);
+    }
+    // A drive rod links the wheel and rising rack. Wear around its bed shows
+    // which way the mechanism travels without adding an obstacle to the path.
+    diagonal(132, 138, 151, 150, '#485953', 3);
+    line(brass, 132, 138, 151, 150);
+    ellipse('#374d4d', 150, 149, 4, 3);
+    ellipse('#aaa073', 149, 148, 3, 2);
+    rect('#c5ae7c', 148, 147, 1, 1);
+
+    rect('#364c4a', 175, 152, 10, 8);
+    rect('#aca47c', 175, 152, 10, 1);
+    rect('#68817a', 177, 154, 6, 4);
+    rect('#adc2a9', 177, state.gateOpen ? 156 : 154, 5, 1);
+
+    // The service dock drains through a covered, walkable stone race into
+    // a scupper in the east bank. The pressure changes at the gate, not at the steps.
+    const runnels = [[186, 165, 195, 174], [195, 174, 231, 174], [231, 174, 243, 186], [243, 186, 269, 186]];
+    for (const [x, y, tx, ty] of runnels) {
+      diagonal(x, y, tx, ty, '#485953', 5);
+      diagonal(x, y, tx, ty, '#a6a38a', 1);
+      diagonal(x, y + 1, tx, ty + 1, state.gateOpen ? '#588489' : '#576359', 2);
+      line(state.gateOpen ? '#85aaa0' : '#737964', x, y + 3, tx, ty + 3);
+    }
+    for (const [x, y] of [[197, 174], [206, 174], [215, 174], [224, 174], [247, 186], [256, 186]]) {
+      rect('#687668', x, y, 2, 5);
+      rect('#bcad84', x, y, 1, 4);
+    }
+    for (const [x, y] of [[169, 201], [185, 212], [230, 200], [247, 211]]) {
+      rect('#544f40', x, y, 2, 2);
+      rect('#ad9b72', x, y, 1, 1);
+      rect('#655c47', x + 6, y - 2, 7, 1);
+    }
+    blocks(266, 172, 8, 28);
+    rect('#344a4c', 271, 179, 9, 16);
+    rect('#a2a892', 268, 176, 11, 3);
+    rect('#273e43', 274, 180, 5, 11);
+    rect('#456463', 273, 193, 7, 3);
+    if (state.gateOpen) {
+      for (let offset = 0; offset < 8; offset++) {
+        rect(offset % 3 ? '#648f8c' : '#92b3a2', 275 + offset, 188 + Math.floor(offset / 2), 1, 6 - Math.floor(offset / 3));
+      }
+      ellipse('#597f7e', 284, 199, 9, 2);
+      rect('#a0bbab', 281, 197, 6, 1);
+      rect('#82a7a0', 289, 200, 4, 1);
+    } else {
+      rect('#6e9089', 276, 192, 1, 2);
+      rect('#657c72', 269, 195, 7, 1);
     }
     brace(52, 58, 1);
     // Shallow lamp light crosses the high landing in sparse widening strips.
@@ -186,6 +297,21 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
   // The axial sight line carries the entrance view up to its engraved dial.
   landingFace(32, 224, 80, 13);
   landingFace(160, 224, 96, 13);
+  // Three blind arches frame the instrument. Their piers stand on the
+  // north wall's blocked tiles; their cast shadows reach the survey floor.
+  blocks(32, 14, 224, 32);
+  for (const center of [67, 142, 217]) {
+    vault(center, 43, 17, 8, false);
+    rect('#25343e', center - 25, 14, 4, 32);
+    rect('#828b83', center - 26, 15, 2, 25);
+    rect('#9a9e8b', center - 28, 40, 7, 2);
+    rect('#516760', center - 28, 42, 8, 4);
+  }
+  rect('#384951', 32, 12, 224, 3);
+  rect('#89948a', 32, 14, 224, 1);
+  for (const x of [47, 106, 179, 236]) {
+    for (let row = 0; row < 13; row++) rect('#1e2c3920', x + row, 46 + row, 4, 1);
+  }
   for (const [x, y, w, h] of [[48, 48, 48, 48], [192, 128, 48, 64]]) {
     blocks(x, y, w, 11);
     rect(deep, x, y + 10, w, h - 10);
@@ -197,6 +323,21 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     for (let ripple = 0; ripple < 3; ripple++) {
       rect('#648e89', x + 8 + ripple * 6, y + 22 + ripple * 9, 13, 1);
     }
+  }
+  // A balance pipe enters each pool through a recessed inspection throat.
+  // One side runs high while the tear is open. Closing it levels the water.
+  for (const [x, y, width] of [[48, 48, 48], [192, 128, 48]]) {
+    const level = state.sealed ? 17 : x === 48 ? 14 : 21;
+    rect('#36474c', x + 2, y + 11, width - 4, level - 10);
+    rect('#65837d', x + 2, y + level + 1, width - 4, 1);
+    rect('#465e60', x + 2, y + level, width - 4, 1);
+    rect('#c0af86', x + width - 8, y + 5, 3, 18);
+    for (let notch = 0; notch < 5; notch++) rect('#6f6d5a', x + width - 8, y + 6 + notch * 3, 2, 1);
+    rect('#38565b', x + 8, y + 8, 11, 6);
+    rect('#96a299', x + 8, y + 7, 11, 1);
+    rect('#2a444b', x + 10, y + 9, 7, 4);
+    rect('#5b8580', x + 12, y + 13, 3, level - 10);
+    rect('#8ca89c', x + 13, y + 13, 1, level - 12);
   }
   for (const x of [131, 140]) {
     rect('#4f6766', x, 131, 2, 80);
@@ -238,13 +379,36 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     const dx = Math.cos(angle), dy = Math.sin(angle);
     line(tick % 4 ? '#8f957f' : brass, cx + Math.round(dx * 41), cy + Math.round(dy * 25), cx + Math.round(dx * 46), cy + Math.round(dy * 28));
   }
+  // The ring is built of individual dressed stones. Raised outer corners,
+  // radial mortar cuts and a partly wetted inside lip give it weight.
+  for (let i = 0; i < 24; i++) {
+    const angle = i * Math.PI / 12 + .075;
+    const ux = Math.cos(angle), uy = Math.sin(angle);
+    const outerX = cx + Math.round(ux * 47), outerY = cy + Math.round(uy * 29);
+    line('#53645f', cx + Math.round(ux * 40), cy + Math.round(uy * 24), outerX, outerY);
+    if (uy > .25) line('#495a59', outerX, outerY + 2, outerX, outerY + 4);
+    if (ux < 0) rect('#c2b89a', outerX, outerY - 1, 2, 1);
+  }
   ellipse(state.sealed ? '#93b6a1' : '#9c88a6', cx, cy + 1, 29, 16);
   ellipse(state.sealed ? '#597e7d' : '#51465d', cx, cy + 1, 28, 15);
   const glint = state.sealed ? '#a5cab4' : '#c2a4bd';
   if (state.sealed) {
     for (const [x, y, w] of [[130, 91, 14], [151, 98, 17], [144, 85, 10]]) rect(glint, x, y, w, 1);
+    rect('#709695', 127, 94, 11, 1);
+    rect('#759a93', 159, 99, 10, 1);
+    line('#829d91', 148, 89, 154, 91);
   } else {
-    for (const [x, y, tx, ty] of [[124, 89, 136, 91], [136, 91, 142, 87], [142, 87, 154, 93], [154, 93, 164, 86], [164, 86, 174, 88]]) line(glint, x, y, tx, ty);
+    // The same two opposed currents distort a reflected arch on either
+    // side of the fissure. Their jagged dark center stays readable in grayscale.
+    for (const [x, y, tx, ty] of [[127, 86, 136, 83], [136, 83, 145, 82], [158, 101, 171, 97]]) {
+      diagonal(x, y, tx, ty, '#74617b', 2);
+    }
+    for (const [x, y, tx, ty] of [[124, 89, 136, 91], [136, 91, 142, 87], [142, 87, 154, 93], [154, 93, 164, 86], [164, 86, 174, 88]]) {
+      diagonal(x, y, tx, ty, '#292637', 3);
+      line(glint, x, y, tx, ty);
+    }
+    line('#97849f', 140, 89, 136, 96);
+    line('#b798b9', 160, 90, 164, 94);
   }
   // One dry landing reaches the rift from the south. The plank seams run
   // across the narrow deck, with bronze edge strips and a solid stop at its tip.

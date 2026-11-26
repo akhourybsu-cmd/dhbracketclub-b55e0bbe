@@ -13,7 +13,8 @@ export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefini
     });
   }
   ctx.clip();
-  const colors = timber ? ['#997c60', '#96785c', '#987b5f', '#9f8061'] : ['#70817c', '#73837c', '#76867e', '#70817d'];
+  const colors = timber ? ['#a18162', '#99785c', '#9b7d61', '#a48262'] : ['#70817c', '#73837c', '#76867e', '#70817d'];
+  const shadedTimber = ['#8c6e56', '#927259', '#95785c', '#96765b'];
   const course = timber ? 9 : 13;
   for (let row = 0; row * course < map.height * 16; row++) {
     let x = -(row % 3) * 13;
@@ -21,16 +22,27 @@ export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefini
       const hash = row * 37 + col * 23 + (row ^ col) * 7;
       const width = (timber ? 40 : 26) + hash % 17;
       const y = row * course;
-      ctx.fillStyle = colors[(hash >>> 2) % colors.length];
+      const grain = (hash >>> 2) % colors.length;
+      const byWall = x + width / 2 < 51 || x + width / 2 > 209 || (y > 179 && hash % 4 !== 0);
+      ctx.fillStyle = timber && byWall ? shadedTimber[grain] : colors[grain];
       ctx.fillRect(x, y, width, course);
-      ctx.fillStyle = timber ? '#80664f' : '#606f6c';
+      ctx.fillStyle = timber ? '#7f6652' : '#606f6c';
       ctx.fillRect(x, y + course - 1, width, 1);
       ctx.fillRect(x, y + 1, 1, course - 2);
-      ctx.fillStyle = timber ? '#ab8b69' : '#89958b';
+      ctx.fillStyle = timber ? (byWall ? '#a08061' : '#ad8c6b') : '#89958b';
       ctx.fillRect(x + 2, y, width - (hash % 8) - 6, 1);
       if (hash % 5 === 0) {
         ctx.fillStyle = timber ? '#7d654f' : '#687b75';
         ctx.fillRect(x + 3, y + 4, timber ? 1 : 3, 1);
+      }
+      if (timber && (hash >>> 2) % 5 === 1) {
+        // Worn knots and tapering grain keep the wide boards from reading
+        // as rectangular floor tiles. Their contrast stays below the clues.
+        ctx.fillStyle = byWall ? '#816650' : '#8c7056';
+        ctx.fillRect(x + 10, y + 4, 6, 1);
+        ctx.fillRect(x + 16, y + 3, 5, 1);
+        ctx.fillRect(x + 20, y + 4, 11, 1);
+        ctx.fillRect(x + 17, y + 5, 3, 1);
       }
       x += width;
     }
@@ -39,7 +51,7 @@ export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefini
 }
 
 /** All coordinates are map pixels. These illustrations are baked once per map. */
-export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId) {
+export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId, state: { pageFound?: boolean; sluiceOpen?: boolean } = {}) {
   if (!['workshop', 'passage', 'tide-stairs', 'chamber'].includes(id)) return;
   const rect = (color: string, x: number, y: number, w: number, h: number) => {
     ctx.fillStyle = color;
@@ -83,11 +95,48 @@ export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId) {
     }
   };
   if (id === 'workshop') {
-    paintWorkshop(rect, line);
+    paintWorkshop(rect, line, state.pageFound);
     return;
   }
 
   if (id === 'passage') {
+    // A cutaway sight tank beneath the crossing. The copper float rides the
+    // actual waterline. All of its stonework is behind the walkable towpath.
+    const tankX = 160, tankY = 242;
+    rect('#1d3035', tankX, tankY, 70, 46);
+    rect('#4c5c58', tankX, tankY + 1, 68, 4);
+    rect('#879283', tankX + 1, tankY + 1, 65, 1);
+    rect('#30484c', 164, 249, 55, 33);
+    rect('#203b42', 165, 250, 52, 30);
+    rect('#3b5253', 166, 251, 2, 27);
+    rect('#4b5d59', 210, 251, 3, 26);
+    const level = state.sluiceOpen ? 272 : 255;
+    rect('#355e64', 167, level, 48, 280 - level);
+    rect('#719891', 167, level, 48, 1);
+    rect('#486d70', 168, level + 3, 46, 1);
+    rect('#4e7372', 183, level + 5, 19, 1);
+    rect('#738277', 171, 248, 2, 31);
+    for (let i = 0; i < 7; i++) rect('#b2b09a', 171, 251 + i * 4, i % 2 + 2, 1);
+    rect('#756047', 177, level - 4, 8, 5);
+    rect('#bf8960', 178, level - 5, 6, 4);
+    rect('#e5bd85', 178, level - 5, 5, 1);
+    rect('#32494b', 177, level - 1, 8, 1);
+    // Bolted rim and vertical tie keep the sight glass visibly below floor level.
+    rect('#72847b', 162, 247, 58, 2);
+    rect('#526761', 162, 249, 2, 34);
+    rect('#34484b', 197, 249, 3, 31);
+    rect('#7f8979', 197, 249, 1, 31);
+    rect('#768477', 162, 281, 58, 3);
+    rect('#293e42', 162, 284, 59, 4);
+    for (const sx of [164, 213]) {
+      rect(brass, sx, 247, 2, 1);
+      rect(brass, sx, 282, 2, 1);
+    }
+    // The return elbow joins the tank to the barred outlet.
+    rect('#21353b', 152, 268, 10, 7);
+    rect('#73837c', 152, 268, 10, 2);
+    rect('#4b6666', 153, 270, 9, 3);
+
     // The incoming service corridor skirts a barred tidal outfall. Its mouth,
     // damp apron and tide staff occupy the masonry east of the walking lane.
     const x = 113, y = 258;
@@ -112,6 +161,13 @@ export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId) {
     rect('#81a396', x + 10, y + 32, 22, 1);
     rect('#496664', x + 3, y + 37, 36, 2);
     rect('#6a8880', x + 17, y + 38, 13, 1);
+    if (state.sluiceOpen) {
+      for (const [sx, h] of [[126, 6], [136, 8], [146, 5]]) {
+        rect('#5a8586', sx, 290 - h, 2, h);
+        rect('#87aaa0', sx, 288, 2, 3);
+        rect('#91b1a2', sx - 1, 291, 5, 1);
+      }
+    }
     rect('#bdad85', x + 41, y + 9, 3, 24);
     for (let tick = 0; tick < 5; tick++) rect(iron, x + 41, y + 11 + tick * 4, tick % 2 + 1, 1);
     post(20, 252, 48);
@@ -120,6 +176,19 @@ export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId) {
     crossbeam(112, 166, 44);
     post(226, 108, 60);
     crossbeam(225, 100, 15);
+    // The upper bank carries a salt-stained pressure main. Its brackets
+    // throw a narrow shadow across the recessed masonry behind the shaft.
+    rect('#192d32', 169, 119, 55, 10);
+    rect('#435d5d', 168, 117, 54, 9);
+    rect('#849489', 168, 117, 54, 2);
+    rect('#687e74', 168, 119, 54, 2);
+    rect('#334f54', 168, 124, 54, 2);
+    for (const sx of [170, 195, 217]) {
+      rect('#2a3d41', sx, 115, 6, 14);
+      rect('#8a8e78', sx, 115, 4, 2);
+      rect('#697668', sx + 1, 117, 3, 9);
+      rect(brass, sx + 1, 127, 2, 1);
+    }
   } else if (id === 'tide-stairs') {
     post(51, 46, 44);
     post(139, 32, 14);

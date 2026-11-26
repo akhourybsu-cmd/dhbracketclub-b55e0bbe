@@ -28,6 +28,19 @@ The battle camera draws the atlas on a 640×576 backing canvas while preserving 
 
 Foreground fixtures have a world-space foot position so an actor can walk behind the hoist, lantern and tide gauge. In the lower quay, the bell and rope rack share their workers’ tiles and the survey compass lies flush with the paving. Transparent interaction art sits directly on the scene. Taps on a painted desk, doorway or gangplank use the visible object’s bounds. In the chamber, the basin water blocks movement and a dry service platform leads up to the rift.
 
+### Walking through the port
+
+| Location | Field artwork and motion |
+| --- | --- |
+| Wayfarer | Two deckhouses frame the captain’s aisle. The rigging rises above a compass set into the deck. A tern perches on the rail and the starboard tackle can pass in front of Tavian. |
+| Lower quay | Timbers and wet braces support the freight wharf. Its tide staff sits in the water beside the arrival pier. Stalls and workstations line the paved route from the docks. |
+| Edda’s workshop | The loft windows look across to the opposite quay. A test pennant stirs beside the spools. After Tavian recovers the page, the kettle glows and sends steam up from its spout. |
+| Old tide stairs | Raking light reveals worn steps and a brass rail. Repairing the wheel carries runoff around the service dock and through an outfall in the east bank. |
+| Under-wharf passage | A float behind glass follows the level of the crossing. Opening the sluice lowers the float and sends water to the three outlets beneath the grille. |
+| Rift chamber | Vaults rise behind the stone dial. Two currents cross the basin in opposite directions. After the seal, the pools equalize and reflections move together. |
+
+Foreground pieces share the walking characters’ depth order. Tavian’s shadow stays on the ground as his foot lifts, and soft ground briefly shows a heel mark or a bent reed. Reduced motion draws the stationary scene for the current story state, including the kettle fire, float height and water levels.
+
 Phaser3 is loaded inside `createMesomonView` after entry to the lazy Mesomon route. A cached terrain canvas is built from the authoritative typed map; the viewport draws that layer plus a small number of actors and bounded water/current effects. No React DOM element represents an individual tile. Only the current map's terrain texture is retained. NPC interaction taps pass IDs to the pure reducer, which owns proximity and story authorization.
 
 The renderer does not move the canonical player, resolve battles, change quests, determine rewards or write saves. Walking interpolation illustrates committed tile movement. Canvas is hidden from assistive technology because the shell supplies map/objective text and nearby interaction controls. All effects become static under reduced motion. The app’s accessible DOM seal ring owns both its phase and input accuracy; Seal Assist bypasses timing in the engine. An optional renderer ring is available to callers that use its matching `sealAccuracy()` method, and is disabled in the app to avoid competing clocks.

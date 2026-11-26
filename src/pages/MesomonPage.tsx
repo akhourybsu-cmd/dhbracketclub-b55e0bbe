@@ -394,32 +394,32 @@ function Chapter({
   }, [menu, playing]);
   const approaching = session?.dialogue?.approach?.actor;
   const stepsLeft = session?.dialogue?.approach?.steps.length ?? 0;
-  const skipWalkAnimation = session?.save.settings.reducedMotion ?? false;
+  const reducedMotion = session?.save.settings.reducedMotion ?? false;
   useEffect(() => {
     if (scenePaused || !approaching) return;
     const timer = window.setTimeout(() => {
       act({ type: "approach-step", actor: approaching, remaining: stepsLeft });
-    }, skipWalkAnimation ? 0 : WALK_STEP_MS);
+    }, reducedMotion ? 0 : WALK_STEP_MS);
     return () => window.clearTimeout(timer);
-  }, [scenePaused, approaching, stepsLeft, skipWalkAnimation, act]);
+  }, [scenePaused, approaching, stepsLeft, reducedMotion, act]);
   const line = approaching ? undefined : session?.dialogue?.lines[session.dialogue.index];
   const voice = line ? readingVoice(line.speaker) : null;
   const lineKey = `${session?.dialogue?.id}:${session?.dialogue?.index}`;
   const textSpeed = session?.save.settings.textSpeed;
+  const textLength = line?.text.length ?? 0;
+  const textComplete = reducedMotion || revealed || textSpeed === "fast" || textCount >= textLength;
   useEffect(() => {
     setRevealed(false);
     setTextCount(0);
   }, [lineKey]);
   useEffect(() => {
-    if (!line || revealed || textSpeed === "fast" || menu || hidden) return;
+    if (scenePaused || textComplete) return;
     const timer = window.setInterval(
-      () => setTextCount((value) => Math.min(line.text.length, value + 2)),
+      () => setTextCount((value) => Math.min(textLength, value + 2)),
       textSpeed === "slow" ? 45 : 24,
     );
     return () => clearInterval(timer);
-  }, [line, revealed, textSpeed, menu, hidden]);
-  const textComplete =
-    !line || revealed || textSpeed === "fast" || textCount >= line.text.length;
+  }, [scenePaused, textComplete, textLength, textSpeed]);
   const readyText = textComplete ? line?.text : line?.text.slice(0, textCount);
 
   const awakenAudio = useCallback(() => {
@@ -516,19 +516,29 @@ function Chapter({
   }, []);
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest('input,textarea,select,[contenteditable="true"]'))
-        return;
-      if (menuRef.current) return;
+      if (target?.closest('input,textarea,select,[contenteditable="true"]')) return;
       const action = keyboardAction(event.key);
-      if (!action || (!playingRef.current && action !== "menu")) return;
-      if (isDirection(action) && current.current?.save.battle && !current.current.dialogue) {
+      // Enter can repeat a native click on the control that just replaced the previous one.
+      if (action === "confirm" && event.repeat) {
         event.preventDefault();
-        if (!event.repeat) document.querySelector<HTMLButtonElement>(".mm-battle-panel [data-battle-default]")?.focus({ preventScroll: true });
         return;
       }
+      if (menuRef.current || !action || (!playingRef.current && action !== "menu")) return;
       const control = target?.closest<HTMLElement>("button,a");
-      const gameConfirm = playingRef.current && event.key.toLowerCase() === "z" && control?.dataset.mmAction === "menu";
+      // Z is the handheld A button even when Start or a direction key still has focus.
+      const gameConfirm = playingRef.current && event.key.toLowerCase() === "z" && !!control?.dataset.mmAction;
+      if (current.current?.save.battle && !current.current.dialogue &&
+          (isDirection(action) || (action === "confirm" && (!control || gameConfirm)))) {
+        event.preventDefault();
+        if (!event.repeat) {
+          const command = document.querySelector<HTMLButtonElement>(".mm-battle-panel button:enabled[data-battle-default]");
+          command?.focus({ preventScroll: true });
+          if (action === "confirm") command?.click();
+        }
+        return;
+      }
       if (control && action === "confirm" && !gameConfirm) {
         if (event.key.toLowerCase() === "z" && control instanceof HTMLButtonElement) {
           event.preventDefault();
@@ -565,7 +575,6 @@ function Chapter({
   const sealActive = session?.save.seal.active ?? false;
   const dialogueActive =
     session?.dialogue !== null && session?.dialogue !== undefined;
-  const reducedMotion = session?.save.settings.reducedMotion ?? false;
   const sealAssist = session?.save.settings.sealAssist ?? false;
   useEffect(() => {
     if (!sealActive) {

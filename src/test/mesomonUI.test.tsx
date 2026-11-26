@@ -144,6 +144,51 @@ describe('Mesomon game shell', () => {
     } finally { vi.useRealTimers(); }
   });
 
+  it('adopts the device motion preference for a new journey and remembers a player override', async () => {
+    const matchMedia = window.matchMedia;
+    vi.stubGlobal('matchMedia', (query: string) => ({ ...matchMedia(query), matches: query === '(prefers-reduced-motion: reduce)' }));
+    const first = mount();
+    await screen.findByRole('button', { name: 'Begin journey' });
+    const menu = openStart();
+    fireEvent.click(menu.getByRole('button', { name: 'Settings' }));
+    const motion = menu.getByRole('switch', { name: /Reduced motion/ });
+    expect(motion).toHaveAttribute('aria-checked', 'true');
+    expect(document.querySelector('.mesomon')).toHaveAttribute('data-reduced-motion', 'true');
+    fireEvent.click(motion);
+    first.unmount();
+    mount();
+    await begin();
+    expect(document.querySelector('.mesomon')).not.toHaveAttribute('data-reduced-motion');
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].settings.reducedMotion).toBe(false);
+  });
+
+  it('starts a restored conversation on entering the field and shows full lines with reduced motion', async () => {
+    const save = createNewSave();
+    save.player = { ...save.player, x: 8, y: 6, facing: 'up' };
+    fixture.save = reduceGame(createSession(save), { type: 'interact', id: 'captain' }).save;
+    const lines = fixture.save.dialogue!.lines;
+    mount();
+    const enter = await screen.findByRole('button', { name: 'Continue journey' });
+    await waitFor(() => expect(fixture.firstFrame).toBeDefined());
+    vi.useFakeTimers();
+    try {
+      act(() => vi.advanceTimersByTime(3000));
+      fireEvent.click(enter);
+      const visibleLine = () => document.querySelector('.mm-dialogue-text > [aria-hidden="true"]');
+      expect(visibleLine()?.textContent).toBe('');
+      act(() => vi.advanceTimersByTime(24));
+      expect(visibleLine()?.textContent).toBe(lines[0].text.slice(0, 2));
+      const menu = openStart();
+      fireEvent.click(menu.getByRole('button', { name: 'Settings' }));
+      fireEvent.click(menu.getByRole('switch', { name: /Reduced motion/ }));
+      fireEvent.click(menu.getByRole('button', { name: 'Back' }));
+      fireEvent.click(menu.getByRole('button', { name: 'Resume' }));
+      expect(visibleLine()).toHaveTextContent(lines[0].text);
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      expect(visibleLine()).toHaveTextContent(lines[1].text);
+    } finally { vi.useRealTimers(); }
+  });
+
   it('pauses the current attack in Start and resumes the next impact through the keyboard', async () => {
     fixture.save = createNewSave();
     const member = makeCompanion('rillik');
@@ -312,6 +357,51 @@ describe('Mesomon game shell', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('returns Z to the remembered battle command after resuming from Start', async () => {
+    const file = createNewSave();
+    const member = makeCompanion('rillik');
+    file.party = [member];
+    file.collection[member.id] = member;
+    file.battle = createBattle(file.party, 'muddren');
+    fixture.save = file;
+    mount();
+    await begin();
+    const battle = within(screen.getByRole('region', { name: 'Battle' }));
+    fireEvent.click(battle.getByRole('button', { name: 'Guard' }));
+    const beats = fixture.saveLocal.mock.calls.at(-1)?.[0].battle.playback.beats;
+    expect(beats.length).toBeGreaterThan(0);
+    for (let i = 0; i < beats.length; i++) fireEvent.click(battle.getByRole('button', { name: 'Next' }));
+    expect(battle.getByRole('button', { name: 'Guard' })).toHaveFocus();
+    const menu = openStart();
+    fireEvent.click(menu.getByRole('button', { name: 'Resume' }));
+    const start = screen.getByRole('button', { name: 'Start' });
+    expect(start).toHaveFocus();
+    fireEvent.keyDown(start, { key: 'z' });
+    expect(battle.getByRole('button', { name: 'Next' })).toHaveFocus();
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].battle.turn).toBe(2);
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].battle.guarded).toBe(true);
+  });
+
+  it('keeps native Enter and Space from repeating across Start, and honors hardware confirm on a focused D-pad', async () => {
+    fixture.save = createNewSave();
+    fixture.save.player = { ...fixture.save.player, x: 8, y: 6, facing: 'up' };
+    fixture.save.settings.textSpeed = 'fast';
+    mount();
+    await begin();
+    const menu = openStart();
+    const resume = menu.getByRole('button', { name: 'Resume' });
+    for (const key of ['Enter', ' ']) expect(fireEvent.keyDown(resume, { key, repeat: true })).toBe(false);
+    fireEvent.click(resume);
+    const start = screen.getByRole('button', { name: 'Start' });
+    expect(fireEvent.keyDown(start, { key: 'Enter', repeat: true })).toBe(false);
+    expect(fireEvent.keyDown(start, { key: 'ArrowLeft', altKey: true })).toBe(true);
+    const direction = screen.getByRole('button', { name: 'Move left' });
+    direction.focus();
+    fireEvent.keyDown(direction, { key: 'z' });
+    expect(screen.getByRole('region', { name: 'Conversation' })).toHaveTextContent('Captain');
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].player.x).toBe(8);
   });
 
   it('uses real engine movement for keyboard-operable direction buttons', async () => {

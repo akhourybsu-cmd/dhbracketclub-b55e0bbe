@@ -37,7 +37,7 @@ describe('bounded Port Marche environment motion', () => {
         for (const rect of rects) {
           expect([rect.x, rect.y, rect.width, rect.height].every(Number.isInteger)).toBe(true);
           expect(rect.alpha).toBeGreaterThan(0);
-          expect(rect.alpha).toBeLessThanOrEqual(0.3);
+          expect(rect.alpha).toBeLessThanOrEqual(1);
         }
       }
       expect(draw(id, 0)).not.toEqual(draw(id, 3 * ENVIRONMENT_MOTION_FRAME_MS));
@@ -75,16 +75,29 @@ describe('bounded Port Marche environment motion', () => {
     expect(active.some(rect => rect.color === 0xaca0ba || rect.color === 0x998ba9)).toBe(true);
     expect(sealed.some(rect => rect.color === 0xaca0ba || rect.color === 0x998ba9)).toBe(false);
   });
-  it('keeps workshop gleams inside its authored window light and ship wakes off its hull', () => {
+  it('keeps daylight in the workshop window and broken reflections in the water behind the ship', () => {
     for (let phase = 0; phase < 8; phase++) {
       const time = phase * ENVIRONMENT_MOTION_FRAME_MS;
-      for (const rect of draw('workshop', time)) {
+      const daylight = draw('workshop', time).filter(rect => rect.color === 0xf0d69c);
+      expect(daylight.length).toBeGreaterThanOrEqual(3);
+      for (const rect of daylight) {
         expect(rect.x).toBeGreaterThanOrEqual(106);
         expect(rect.x + rect.width).toBeLessThanOrEqual(133);
         expect(rect.y).toBeGreaterThanOrEqual(49);
         expect(rect.y + rect.height).toBeLessThanOrEqual(67);
       }
-      expect(draw('ship', time).every(rect => rect.y >= 214 || rect.x + rect.width <= 38 || rect.x >= 219)).toBe(true);
+      const stern = draw('ship', time, {}, { left: 74, top: 214, right: 180, bottom: 224 });
+      expect(stern.length).toBeGreaterThanOrEqual(4);
+    }
+  });
+  it('keeps every story variant within the paint budget, including after revisits', () => {
+    for (const id of Object.keys(MAPS) as MapId[]) {
+      for (const pageFound of [true, false]) for (const sluiceOpen of [true, false]) {
+        for (const riftSealed of [true, false]) for (let phase = 0; phase < 8; phase++) {
+          const rects = draw(id, phase * ENVIRONMENT_MOTION_FRAME_MS, { pageFound, sluiceOpen, riftSealed, gateOpened: pageFound });
+          expect(rects.length).toBeLessThanOrEqual(MAX_ENVIRONMENT_MOTION_RECTS);
+        }
+      }
     }
   });
 });

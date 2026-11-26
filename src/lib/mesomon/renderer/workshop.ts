@@ -2,7 +2,7 @@
 // surrounding wood remains a flat work surface for walking and laying out sailcloth.
 type Stroke = (color: string, x: number, y: number, a: number, b: number) => void;
 
-export function paintWorkshop(r: Stroke, line: Stroke) {
+export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   const ink = '#342e32', shadow = '#43383a', mahogany = '#754a41', cedar = '#956649';
   const lip = '#c29364', teal = '#4e736c', darkTeal = '#365456', sage = '#8da38b';
   const brass = '#d3ab69', brassDark = '#957746', parchment = '#e5ce99', cream = '#fff0bf';
@@ -45,6 +45,18 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
     r('#65898d', x + 3, y + 2, w - 6, h - 5);
     r('#a3c6b3', x + 3, y + 2, w - 6, Math.floor(h / 3));
     r('#c8d7b3', x + 3, y + 2, w - 6, 2);
+    if (w > 30) {
+      // The loft looks across the quay. Keep the sea, sail and opposite roof
+      // behind the sash so the glass reads as a view into a second space.
+      r('#8da49b', 103, 20, 49, 4);
+      r('#617d79', 103, 18, 9, 4);
+      r('#778980', 104, 16, 5, 3);
+      r('#71877e', 142, 19, 10, 3);
+      line('#627971', 138, 12, 138, 23);
+      for (let row = 0; row < 7; row++) r('#e1d7a9', 137 - row, 14 + row, row + 1, 1);
+      r('#536d70', 131, 22, 11, 1);
+      r('#b5c2a4', 111, 23, 7, 1);
+    }
     const mid = x + Math.floor(w / 2);
     r(shadow, mid - 1, y + 1, 2, h - 3);
     r('#55635a', x + 2, y + Math.floor(h / 2), w - 4, 2);
@@ -54,8 +66,9 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
   window(100, 8, 55, 20);
   window(224, 149, 12, 28);
   for (let y = 0; y < 38; y++) {
+    if (y === 15 || y === 16) continue; // projected horizontal sash
     const x = 103 + Math.floor(y / 2);
-    for (let pane = 0; pane < 4; pane++) r('#f5db9533', x + pane * 10, 31 + y, 8, 1);
+    for (let pane = 0; pane < 4; pane++) r(y < 26 ? '#f5db953c' : '#f5db9524', x + pane * 10, 31 + y, 8, 1);
   }
   for (let y = 0; y < 26; y++) {
     const x = 218 - Math.floor(y * 1.45);
@@ -73,17 +86,61 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
     r(shadow, x + w - 7, 28, 3, 2);
   }
   const bindings = ['#80524a', teal, '#b08355', '#738184', '#915c4d'];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 5; i++) {
     const x = 36 + i * 5, h = 6 + ((i * 7) % 5);
     r(bindings[i % bindings.length], x, 23 - h, 4, h);
     r(brass, x, 21, 3, 1);
   }
+  // The last half of the shelf is a carving bench. A half-hull hangs on
+  // its mahogany backboard, with its chisel lying on the lip underneath.
+  r('#734d40', 62, 10, 26, 12);
+  r('#8c604b', 63, 11, 24, 10);
+  r('#b09067', 64, 11, 21, 1);
+  r('#4a3e39', 66, 15, 19, 2);
+  r('#544139', 68, 17, 14, 3);
+  r('#e0bc88', 65, 14, 20, 2);
+  r('#bf996a', 67, 16, 16, 2);
+  r('#a28158', 70, 18, 10, 1);
+  r(brassDark, 71, 22, 9, 1);
+  r('#d3cab0', 80, 22, 4, 1);
   for (let i = 0; i < 7; i++) {
     const x = 168 + i * 7;
     r('#d9c29a', x, 16 - i % 3, 4, 7 + i % 3);
     r('#af9171', x, 15 - i % 3, 4, 2);
     r(teal, x, 19, 4, 2);
   }
+
+  // A wall niche holds Edda's sail thread on a bobbin rack. The recess,
+  // turned dowels and projecting shelf are all on the solid west wall.
+  r(ink, 16, 42, 15, 34);
+  r('#654f41', 18, 44, 11, 27);
+  r('#493d37', 19, 45, 10, 24);
+  for (const [y, yarn, sheen] of [[49, '#a56352', '#d3916e'], [60, '#6f9288', '#a7b59c']] as const) {
+    r(shadow, 20, y + 2, 10, 7);
+    r(brass, 18, y + 2, 12, 2);
+    r(yarn, 21, y, 6, 7);
+    r(sheen, 21, y + 1, 5, 2);
+    for (const end of [20, 27]) {
+      r(cedar, end, y - 1, 2, 9);
+      r(lip, end, y - 1, 1, 8);
+    }
+  }
+  r(ink, 15, 71, 17, 5);
+  r(lip, 15, 70, 16, 2);
+  // The upper rail casts a stepped shadow over the knotting line below.
+  for (let step = 0; step < 5; step++) r('#3d343824', 32, 74 + step, 6 - step, 1);
+  // A test pennant hangs in the wall vent. Sailmakers can read the draft
+  // here before laying out a full length of cloth on the floor.
+  r(ink, 17, 97, 14, 27);
+  r('#4f5149', 18, 98, 12, 24);
+  r('#323e3d', 20, 100, 9, 20);
+  r(lip, 18, 97, 11, 1);
+  r(cedar, 18, 122, 12, 2);
+  r(brass, 19, 101, 9, 2);
+  r('#ad6650', 22, 103, 5, 13);
+  r('#dba277', 22, 103, 2, 12);
+  r('#b57a5b', 22, 116, 2, 2);
+  r('#ad6650', 26, 116, 1, 1);
 
   // A knotted woven runner marks the work area without blocking a single tile.
   r('#594d4255', 107, 90, 53, 29);
@@ -124,7 +181,7 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
 
   // Bench tops project above their solid cells, with a shallow drawer and two feet.
   const bench = (x: number, y: number, stain: string) => {
-    r('#493c3555', x + 1, y + 12, 18, 4);
+    for (let row = 0; row < 7; row++) r('#44393635', x + 2 + Math.floor(row / 2), y + 10 + row, 17 - Math.floor(row / 3), 1);
     r(ink, x, y + 6, 16, 8);
     r(stain, x + 1, y + 6, 14, 6);
     r(lip, x + 2, y + 7, 12, 1);
@@ -135,6 +192,8 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
     r('#b48b64', x - 1, y - 7, 18, 12);
     r('#c6a078', x, y - 7, 16, 1);
     r('#825c48', x - 1, y + 5, 18, 2);
+    r('#55403b', x + 16, y + 7, 2, 4);
+    r('#b78b67', x + 2, y + 13, 1, 2);
   };
   const paper = (x: number, y: number, w: number, h: number) => {
     r('#8b7558', x + 1, y + 1, w, h);
@@ -194,6 +253,12 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
   r(sage, 81, 115, 14, 1);
   r(ink, 84, 119, 8, 6);
   r('#916953', 85, 122, 5, 1);
+  if (kettleWarm) {
+    r('#a35f41', 85, 120, 6, 4);
+    r('#db9453', 86, 120, 4, 3);
+    r('#f6ca7d', 87, 121, 2, 2);
+    r('#d89d6655', 83, 126, 11, 2);
+  }
   r(shadow, 79, 111, 18, 4);
   r('#798982', 80, 111, 16, 1);
   r(ink, 84, 104, 10, 7);
@@ -229,6 +294,21 @@ export function paintWorkshop(r: Stroke, line: Stroke) {
     r(cedar, x, 204, w, 5);
     r(lip, x + 1, 204, w - 2, 1);
     r('#695345', x, 210, w, 3);
+  }
+  // Heavy cloth bolts lie on the cutaway wall's built-in rack, each with a
+  // wound end and fastening band. Keep the doorway and passage in front free.
+  for (const [x, y, len, body, edge] of [
+    [44, 209, 25, '#80948c', '#adb3a0'], [70, 209, 23, '#9c886e', '#c5ac87'],
+    [52, 203, 31, '#b99f7e', '#dfc5a0'],
+  ] as const) {
+    r(ink, x, y + 1, len, 6);
+    r(body, x + 1, y, len - 3, 5);
+    r(edge, x + 2, y, len - 4, 1);
+    r(mahogany, x + 7, y, 2, 5);
+    r('#b68862', x + 7, y, 1, 2);
+    r(shadow, x + len - 3, y + 1, 4, 4);
+    r(edge, x + len - 3, y + 1, 3, 3);
+    r('#786758', x + len - 2, y + 2, 2, 1);
   }
   for (const x of [125, 144]) {
     r(ink, x, 197, 4, 17);

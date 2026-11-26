@@ -2,7 +2,7 @@ import type { MapId } from '../types';
 import { paintQuayFixture, quayFixtures, type QuayFixture } from './quaySquare';
 
 interface WallFixture {
-  id: 'pier-hoist' | 'lamp-bracket' | 'gauge-arm';
+  id: 'pier-hoist' | 'lamp-bracket' | 'gauge-arm' | 'sheet-block' | 'rail-finial' | 'pool-sight';
   x: number;
   y: number;
   width: number;
@@ -14,12 +14,16 @@ interface WallFixture {
 export type ForegroundPiece = WallFixture | QuayFixture;
 
 const pieces: Partial<Record<MapId, readonly ForegroundPiece[]>> = {
+  // Rigged to the starboard chainplate; only the tackle reaches over the deck.
+  ship: [{ id: 'sheet-block', x: 181, y: 144, width: 17, height: 28, footY: 171 }],
   // The upright stands in water immediately outside the arrival pier.
   harbor: [{ id: 'pier-hoist', x: 446, y: 438, width: 30, height: 34, footY: 472 }, ...quayFixtures],
   // The bracket's backplate attaches to the east wall above the harbor window.
   workshop: [{ id: 'lamp-bracket', x: 211, y: 119, width: 21, height: 23, footY: 142 }],
   // The projecting gauge hangs from the masonry west of the entry towpath.
   passage: [{ id: 'gauge-arm', x: 23, y: 281, width: 24, height: 25, footY: 306 }],
+  'tide-stairs': [{ id: 'rail-finial', x: 185, y: 134, width: 8, height: 18, footY: 151 }],
+  chamber: [{ id: 'pool-sight', x: 183, y: 140, width: 18, height: 25, footY: 164 }],
 };
 
 export function foregroundForMap(id: MapId): readonly ForegroundPiece[] {
@@ -44,7 +48,39 @@ export function paintForeground(ctx: CanvasRenderingContext2D, piece: Foreground
       }
     });
   };
-  if (piece.id === 'pier-hoist') {
+  if (piece.id === 'sheet-block') {
+    // A double sheave hangs from the angled davit. The gap below the
+    // tackle leaves a silhouette visible as it crosses the player's coat.
+    stamp(1, 0, [
+      '  KhhK', ' KbhwdKK', ' K KKhwdKK', ' b   KKhwdKK',
+      ' K     KKhwdKK', ' b       KKhwwK', ' K         KbwK',
+      'KbK        KhwK', 'KgdK       KhwK', 'KhlK       KhwK',
+      'KgdK       KhwK', ' KbK       KhwK', '  K        KhwK',
+      '  b        KhwK', '  K        KhwK', '  K        KhwK',
+      '  Kb       KhwK', '   K       KhwK',
+    ]);
+    stamp(11, 18, [' KhwK', ' KhwK', ' KbgK', ' KgdK', ' KhwK', ' KhwK', 'KggggK', ' KbdK', ' KddK', '  KK']);
+  } else if (piece.id === 'rail-finial') {
+    // A cast-brass end cap above the lower flight's bronze rail.
+    stamp(0, 0, [
+      '   bK', '  KylK', ' KbylbK', '  KbgK', '  KbgK', ' KbbbgK',
+      '  KbdK', '  KbdK', '  KhdK', '  KhdK', '  KhdK', '  KhdK',
+      '  KhdK', ' KbbgdK', ' KgggdK', 'KgggggdK', ' KgggdK', '   ddK',
+    ]);
+  } else if (piece.id === 'pool-sight') {
+    // An optical sight on the pool wall. The open brass ring lets the
+    // player remain visible through the instrument when passing behind it.
+    stamp(0, 1, [
+      '            bK', '           KylK', '         KbbbbgK',
+      '        KbK   KgK', '        KbK   KgK', 'KbbbbbbbbbbgbbggK',
+      ' KgggggggggggddK', '         KbK KgK', '          KbbgK',
+      '           KbK', '          KbbgK', '           KhdK',
+      '           KhdK', '           KhdK', '           KhdK',
+      '           KhdK', '           KhdK', '          KbbgdK',
+      '          KgggdK', '         KbggggdK', '         KgggggdK',
+      '          KgggdK', '           KddK', '            KK',
+    ]);
+  } else if (piece.id === 'pier-hoist') {
     // A bronze block, hanging link chain and hook on a timber cantilever.
     stamp(19, 1, [
       '  KddddK', ' KhhhhhwK', ' KwwwwwdK', '  KhwwdK',
