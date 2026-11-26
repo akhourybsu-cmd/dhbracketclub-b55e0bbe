@@ -7,13 +7,13 @@ import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
  * Approved users (club members or platform owners) get full app access.
  * Everyone else is funneled to /club/request (the unified onboarding shell).
  */
-export function ClubGate({ children }: { children: React.ReactNode }) {
+export function ClubGate({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const { state, loading } = useOnboardingStatus();
   const location = useLocation();
 
   if (authLoading || loading) {
-    return (
+    return fallback ?? (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="loading-spinner-ring" />
       </div>

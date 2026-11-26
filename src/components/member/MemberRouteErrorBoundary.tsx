@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 interface Props {
   children: ReactNode;
   resetKey: string;
+  fallback?: ReactNode;
 }
 interface State {
   hasError: boolean;
@@ -29,6 +30,7 @@ export class MemberRouteErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    if (this.props.fallback) return this.props.fallback;
 
     return (
       <main className="flex min-h-[70dvh] items-center justify-center px-4 py-10">

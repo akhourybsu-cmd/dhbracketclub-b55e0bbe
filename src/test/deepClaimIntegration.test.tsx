@@ -94,7 +94,7 @@ describe('Deep Claim existing application integration', () => {
     const source = readFileSync(resolve(__dirname, '../App.tsx'), 'utf8');
     expect(source).toContain('const DeepClaimPage = lazyWithRetry(() => import("./pages/DeepClaimPage"))');
     expect(source).toContain('<Route path="/deep-claim" element={<ProtectedPage assetSlug="deep-claim"><DeepClaimPage /></ProtectedPage>} />');
-    expect(source).toMatch(/<ProtectedRoute>\s*<ClubGate>/);
+    expect(source).toMatch(/<ProtectedRoute\b[^>]*>\s*<ClubGate\b[^>]*>/);
   });
 
   it('uses a self-contained original emblem and a single real discovery link', () => {

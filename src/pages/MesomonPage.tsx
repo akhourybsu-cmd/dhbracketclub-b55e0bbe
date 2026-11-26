@@ -1,13 +1,10 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft,
+  LogOut,
+  Maximize,
+  Minimize,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -35,6 +32,7 @@ import { keyboardAction } from "@/lib/mesomon/input";
 import { MOVES, SPECIES } from "@/lib/mesomon/data/species";
 import { resonanceEligibility } from "@/lib/mesomon/battle";
 import { portraitUrl, dialoguePortrait } from "@/lib/mesomon/assets";
+import { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
 import { MesomonAudio } from "@/lib/mesomon/audio";
 import { readPreferences, writePreferences } from "@/lib/mesomon/preferences";
 import type {
@@ -72,7 +70,7 @@ export default function MesomonPage() {
         <h1>Mesomon</h1>
         <p>Opening Port Marche…</p>
         <button onClick={() => void assets.refresh()}>Retry</button>
-        <Link to="/compete">Return to DH Club</Link>
+        <Link to="/compete">Exit game</Link>
       </div>
     );
   if (!user || !club || !assets.isInstalled("mesomon"))
@@ -80,7 +78,7 @@ export default function MesomonPage() {
       <div className="mesomon mm-access">
         <h1>Mesomon</h1>
         <p>Install Mesomon in your club’s Apps to enter Port Marche.</p>
-        <Link to="/compete">Return to DH Club</Link>
+        <Link to="/compete">Exit game</Link>
       </div>
     );
   return (
@@ -103,14 +101,21 @@ export function MesomonGame({
   initialSlot?: 1 | 2 | 3;
 }) {
   const [slot, setSlot] = useState<1 | 2 | 3>(initialSlot);
-  return (
-    <Chapter
-      key={`${userId ?? "guest"}:${slot}`}
-      userId={userId}
-      clubId={clubId}
-      slot={slot}
-      onSlot={setSlot}
-    />
+  const device = useRef<HTMLDivElement>(null);
+  const fullscreen = useMesomonFullscreen(device);
+
+  return createPortal(
+    <div className="mm-device" ref={device}>
+      <Chapter
+        key={`${userId ?? "guest"}:${slot}`}
+        userId={userId}
+        clubId={clubId}
+        slot={slot}
+        onSlot={setSlot}
+        fullscreen={fullscreen}
+      />
+    </div>,
+    document.body,
   );
 }
 
@@ -119,11 +124,13 @@ function Chapter({
   clubId,
   slot,
   onSlot,
+  fullscreen,
 }: {
   userId?: string | null;
   clubId?: string | null;
   slot: 1 | 2 | 3;
   onSlot: (slot: 1 | 2 | 3) => void;
+  fullscreen: ReturnType<typeof useMesomonFullscreen>;
 }) {
   const sync = useMesomonSave({ userId, clubId, slot });
   const [session, setSession] = useState<GameSession | null>(null);
@@ -332,17 +339,6 @@ function Chapter({
       clearInterval(cloudTimer);
     };
   }, [playing, hidden, menu, dispatch]);
-  useEffect(() => {
-    const node = document.querySelector<HTMLMetaElement>(
-      'meta[name="theme-color"]',
-    );
-    const previous = node?.content;
-    if (node) node.content = "#102224";
-    return () => {
-      if (node && previous !== undefined) node.content = previous;
-    };
-  }, []);
-
   const phase = session ? getPhase(session) : "explore";
   const checkpoint = session
     ? `${session.save.player.mapId}:${session.save.party.length}:${session.save.battle?.turn ?? 0}:${phase}:${session.save.seal.pulses}:${getObjective(session.save)}`
@@ -476,7 +472,15 @@ function Chapter({
       audio.current?.cue(action === "cancel" ? "cancel" : "confirm");
       dispatch({ type: "input", action });
     },
-    [sync.blocked, awakenAudio, dispatch, hitSeal, line, textComplete, clearMoveBuffer],
+    [
+      sync.blocked,
+      awakenAudio,
+      dispatch,
+      hitSeal,
+      line,
+      textComplete,
+      clearMoveBuffer,
+    ],
   );
   const pressRef = useRef(press);
   pressRef.current = press;
@@ -546,6 +550,7 @@ function Chapter({
 
   const begin = () => {
     if (sync.blocked || sync.loading) return;
+    fullscreen.enterOnPlay();
     // A cloud response can arrive just before the title's adoption effect.
     // Never begin with an older blank session against that cloud revision.
     if (sync.save && adoptedSave.current !== sync.save) {
@@ -610,7 +615,7 @@ function Chapter({
     dispatch({ type: "battle", action });
   };
 
-  const content = (
+  return (
     <div
       className={`mesomon mm-phase-${phase}`}
       data-playing={playing}
@@ -624,18 +629,40 @@ function Chapter({
         data-mm-layer
         aria-hidden={menu ? true : undefined}
       >
-        <Link
-          to="/compete"
-          onClick={leave}
-          aria-label="Return to DH Club"
-          className="mm-icon"
-        >
-          <ArrowLeft size={18} />
-        </Link>
+        {!playing && session && (
+          <Link
+            to="/compete"
+            onClick={leave}
+            aria-label="Exit game"
+            title="Exit game"
+            className="mm-icon"
+          >
+            <LogOut size={18} aria-hidden="true" />
+          </Link>
+        )}
         <div className="mm-wordmark">
-          <span>DH GAMES</span>
+          <img src={portraitUrl("rillik")} width="32" height="32" alt="" />
           <h1>MESOMON</h1>
         </div>
+        {fullscreen.available && (
+          <button
+            type="button"
+            className="mm-icon"
+            aria-label={
+              fullscreen.active ? "Leave full screen" : "Enter full screen"
+            }
+            title={
+              fullscreen.active ? "Leave full screen" : "Enter full screen"
+            }
+            onClick={fullscreen.toggle}
+          >
+            {fullscreen.active ? (
+              <Minimize size={17} />
+            ) : (
+              <Maximize size={17} />
+            )}
+          </button>
+        )}
         <button
           className="mm-icon"
           aria-label={
@@ -662,6 +689,11 @@ function Chapter({
           <Menu size={19} />
         </button>
       </header>
+      {fullscreen.error && (
+        <div className="mm-display-notice" role="status">
+          {fullscreen.error}
+        </div>
+      )}
       {!session ? (
         <div className="mm-loading">
           <img src="/games/mesomon/cover.png" alt="Port Marche harbor" />
@@ -672,7 +704,7 @@ function Chapter({
               : "Your journey is safe on this device."}
           </p>
           <button onClick={() => void sync.reload()}>Retry</button>
-          <Link to="/compete">Return to DH Club</Link>
+          <Link to="/compete">Exit game</Link>
         </div>
       ) : (
         <>
@@ -792,7 +824,7 @@ function Chapter({
                       <br />
                       has one voice.
                     </h2>
-                    <p>The inland road is not yet open in this build.</p>
+                    <p>Beyond the inland gate, Edda’s trail continues.</p>
                     <button
                       className="mm-primary"
                       onClick={() => dispatch({ type: "advance" })}
@@ -800,7 +832,7 @@ function Chapter({
                       Revisit the harbor
                     </button>
                     <Link to="/compete" onClick={leave}>
-                      Return to DH Club
+                      Exit game
                     </Link>
                   </div>
                 )}
@@ -1025,6 +1057,7 @@ function Chapter({
               session={session}
               onClose={closeMenu}
               onSettings={updateSettings}
+              onExit={leave}
               onSave={() => {
                 saveLocal.current(session.save);
                 void sync.flush();
@@ -1100,7 +1133,6 @@ function Chapter({
       )}
     </div>
   );
-  return createPortal(content, document.body);
 }
 
 function BattlePanel({
@@ -1378,6 +1410,7 @@ function GameMenu({
   onClose,
   onSettings,
   onSave,
+  onExit,
   onTitle,
   onRestart,
   onCompanion,
@@ -1388,6 +1421,7 @@ function GameMenu({
   onClose: () => void;
   onSettings: (value: Partial<MesomonSettings>) => void;
   onSave: () => void;
+  onExit: () => void;
   onTitle: () => void;
   onRestart: () => void;
   onCompanion: () => void;
@@ -1629,16 +1663,17 @@ function GameMenu({
                 Save now
               </button>
               <button onClick={onTitle}>Title screen</button>
-              <Link to="/compete" onClick={onSave}>
-                Return to DH Club
-              </Link>
               <button className="mm-danger" onClick={onRestart}>
                 Begin this file again
               </button>
             </>
           )}
         </div>
-        <footer>Independent, non-canon Mesoplasia story.</footer>
+        <footer>
+          <Link to="/compete" onClick={onExit}>
+            <LogOut size={16} aria-hidden="true" /> Exit game
+          </Link>
+        </footer>
       </section>
     </div>
   );

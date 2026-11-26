@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MesomonGame } from '@/pages/MesomonPage';
 import { createNewSave } from '@/lib/mesomon/engine';
@@ -51,6 +51,34 @@ function mount(strict=false) {
 async function begin() { fireEvent.click(await screen.findByRole('button',{name:/Begin journey|Continue journey/})); }
 
 describe('Mesomon game shell', () => {
+  it('keeps the console unbranded and exits a running game through its pause menu', async () => {
+    render(
+      <MemoryRouter initialEntries={['/mesomon']}>
+        <Routes>
+          <Route path="/mesomon" element={<MesomonGame userId={USER} clubId={CLUB} />} />
+          <Route path="/compete" element={<h1>Compete</h1>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByRole('button', { name: 'Begin journey' });
+    const exit = { name: 'Exit game', exact: true };
+    const brand = /\b(?:DHF?|Dry (?:My )?Horse)\b/i;
+    const consoleShell = document.querySelector('.mesomon')!;
+    expect(consoleShell).not.toHaveTextContent(brand);
+    expect(screen.getByRole('link', exit)).toHaveAttribute('href', '/compete');
+    await begin();
+    expect(consoleShell).not.toHaveTextContent(brand);
+    expect(screen.queryByRole('link', exit)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    const menu = await screen.findByRole('dialog', { name: 'Game menu' });
+    expect(menu).not.toHaveTextContent(brand);
+    fixture.flush.mockClear();
+    fireEvent.click(within(menu).getByRole('link', exit));
+    expect(await screen.findByRole('heading', { name: 'Compete' })).toBeVisible();
+    expect(document.querySelector('.mesomon')).not.toBeInTheDocument();
+    expect(fixture.flush).toHaveBeenCalled();
+  });
+
   it('offers three explicit files and waits for player interaction before unlocking audio', async () => {
     mount();
     expect(await screen.findByRole('button',{name:'File 1'})).toHaveAttribute('aria-pressed','true');

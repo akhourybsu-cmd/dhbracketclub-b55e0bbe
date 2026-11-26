@@ -11,12 +11,12 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="DH Club" />
-    <meta name="application-name" content="DH Club" />
+    <meta name="apple-mobile-web-app-title" content="DH Club" data-mesomon="Mesomon" />
+    <meta name="application-name" content="DH Club" data-mesomon="Mesomon" />
     <meta name="format-detection" content="telephone=no" />
-    <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" data-mesomon="/games/mesomon/icon-192.png" href="/favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" data-mesomon="/games/mesomon/icon-192.png" href="/apple-touch-icon.png" />
+    <link rel="manifest" data-mesomon="/games/mesomon/app.webmanifest" href="/manifest.webmanifest" />
     <style>
       /* Pre-React splash to avoid white flash on installed PWA cold launch. */
       html, body { background: #0D1210; }
@@ -39,6 +39,13 @@
         border-radius: 50%;
         animation: dh-spin 0.8s linear infinite;
       }
+      html[data-mesomon-console], html[data-mesomon-console] body,
+      html[data-mesomon-console] #root:empty::before { background: #102224; }
+      html[data-mesomon-console] #root:empty::after { border-top-color: #d4bc7c; }
+      html[data-mesomon-console] [data-sonner-toaster] { display: none; }
+      @media (prefers-reduced-motion: reduce) {
+        html[data-mesomon-console] #root:empty::after { animation: none; }
+      }
       @keyframes dh-spin { to { transform: rotate(360deg); } }
     </style>
     <!-- Preload fonts for faster rendering -->
@@ -46,7 +53,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Cinzel:wght@500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Cinzel:wght@500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&display=swap" />
-    <title>DH — Compete With Your Crew</title>
+    <title data-mesomon="Mesomon · Port Marche">DH — Compete With Your Crew</title>
     <meta name="description" content="Your club’s home for chat, The Drop, games, challenges, and DH Score. Compete with your crew — for fun, not funds.">
     <meta name="author" content="Dry My Horse" />
 
@@ -68,6 +75,32 @@
     <meta property="og:description" content="Your club’s home for chat, The Drop, games, challenges, and DH Score. Compete with your crew — for fun, not funds.">
   <meta name="twitter:description" content="Your club’s home for chat, The Drop, games, challenges, and DH Score. Compete with your crew — for fun, not funds.">
 
+  <!-- Set the launch identity before React or the game chunk downloads. -->
+  <script>
+    (() => {
+      const fields = Array.from(document.head.querySelectorAll('[data-mesomon]'), node => {
+        const attr = node.tagName === 'TITLE' ? null : node.tagName === 'LINK' ? 'href' : 'content';
+        return { node, attr, original: attr ? node.getAttribute(attr) : node.textContent };
+      });
+      function update() {
+        const active = /^\/mesomon\/?$/i.test(location.pathname);
+        if (document.documentElement.hasAttribute('data-mesomon-console') === active) return;
+        document.documentElement.toggleAttribute('data-mesomon-console', active);
+        fields.forEach(({ node, attr, original }) => {
+          const value = active ? node.dataset.mesomon : original;
+          if (attr) node.setAttribute(attr, value);
+          else node.textContent = value;
+        });
+        if (active) {
+          document.querySelector('meta[name="theme-color"]').content = '#102224';
+          document.querySelector('meta[name="color-scheme"]').content = 'dark';
+        }
+      }
+      update();
+      document.addEventListener('dh:route-changed', update);
+    })();
+  </script>
+
   <!--
     BOOTSTRAP UPDATE PROBE — runs BEFORE any bundled JS.
     This breaks installed PWAs out of stale-SW limbo even when the cached
@@ -80,6 +113,7 @@
         var url = new URL(window.location.href);
         var forceKill = url.searchParams.has('fresh') || url.searchParams.has('kill');
         var alreadyNuked = sessionStorage.getItem('__dh_nuked__') === '1';
+        var gameLaunch = document.documentElement.hasAttribute('data-mesomon-console');
 
         function nukeAll(reason) {
           if (alreadyNuked) return Promise.resolve();
@@ -106,6 +140,20 @@
           window.location.replace(u.toString());
         }
 
+        function gameEntered() {
+          var root = document.getElementById('root');
+          return document.documentElement.hasAttribute('data-mesomon-console') &&
+            (!gameLaunch || (root && root.hasChildNodes()) || document.querySelector('body > .mm-device'));
+        }
+
+        function recoverStaleBuild(reason) {
+          // A cold, empty shell can recover. A slow version probe must never
+          // interrupt someone who has already entered Port Marche.
+          if (!gameEntered()) {
+            nukeAll(reason).then(function () { if (!gameEntered()) reloadClean(); });
+          }
+        }
+
         if (forceKill) {
           nukeAll('manual ?fresh/?kill').then(reloadClean);
           return;
@@ -128,7 +176,7 @@
               if (remoteId && remoteId !== 'dev') {
                 if (lastSeen && lastSeen !== remoteId && !alreadyNuked) {
                   // We previously saw a different build → SW is likely serving stale shell.
-                  nukeAll('build mismatch ' + lastSeen + ' -> ' + remoteId).then(reloadClean);
+                  recoverStaleBuild('build mismatch ' + lastSeen + ' -> ' + remoteId);
                   return;
                 }
                 localStorage.setItem('__dh_build_id__', remoteId);
@@ -136,7 +184,7 @@
             } catch (e) {
               // version.json was intercepted and returned non-JSON (probably HTML from old SW)
               if (!alreadyNuked) {
-                nukeAll('version.json intercepted as non-JSON').then(reloadClean);
+                recoverStaleBuild('version.json intercepted as non-JSON');
               }
             }
           })

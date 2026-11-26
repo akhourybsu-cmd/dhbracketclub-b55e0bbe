@@ -163,6 +163,36 @@ async function audit(p, label) {
   await settleLayout(p);
   const measure = () => p.locator('.mesomon').evaluate((root, label) => {
     const issues = [], viewport = document.documentElement.clientWidth;
+    const height = document.documentElement.clientHeight;
+    const device = root.closest('.mm-device') ?? root;
+    const gapsToViewport = node => {
+      const box = node.getBoundingClientRect();
+      return [box.left, box.top, viewport - box.right, height - box.bottom];
+    };
+    const edgeGaps = gapsToViewport(device);
+    if (edgeGaps.some(gap => Math.abs(gap) > 1)) issues.push('The console does not fill the viewport');
+    for (const [x, y] of [[1, 1], [viewport - 2, 1], [1, height - 2], [viewport - 2, height - 2]]) {
+      if (!device.contains(document.elementFromPoint(x, y))) issues.push(`An outer app layer is visible at ${x},${y}`);
+    }
+    if (/\b(?:DHF?|Dry (?:My )?Horse)\b/i.test(device.innerText)) issues.push('Host branding is visible inside the game');
+    const titleArt = root.querySelector('.mm-title-art img');
+    const titleGaps = titleArt ? gapsToViewport(titleArt) : null;
+    if (titleGaps?.some(gap => gap > 1)) issues.push('Title artwork stops before the edge of the viewport');
+    const menu = root.querySelector('.mm-menu');
+    if (menu) {
+      const backdrop = getComputedStyle(menu.closest('.mm-modal-backdrop'));
+      const safe = [backdrop.paddingLeft, backdrop.paddingTop, backdrop.paddingRight, backdrop.paddingBottom].map(parseFloat);
+      if (gapsToViewport(menu).some((gap, i) => Math.abs(gap - safe[i]) > 1)) issues.push('The pause menu does not fill its safe area');
+    }
+    if (label.endsWith('-game-fit')) {
+      const deck = root.querySelector('.mm-control-deck');
+      if (deck) {
+        const [left, , right, bottom] = gapsToViewport(deck);
+        const footer = root.querySelector('.mm-footnote')?.getBoundingClientRect().height ?? 0;
+        const safe = parseFloat(getComputedStyle(root).paddingBottom);
+        if (left > 1 || right > 1 || bottom > footer + safe + 1) issues.push('The controller leaves an unused outer strip');
+      }
+    }
     for (const [name, node] of [['document', document.documentElement], ['body', document.body], ['game', root]]) {
       if (node.scrollWidth > node.clientWidth + 1) issues.push(`${name} overflows horizontally`);
     }
@@ -201,7 +231,7 @@ async function audit(p, label) {
           issues.push('Exploration tiles render below 24 CSS pixels');
       }
     }
-    return { issues, display, canvasCount: root.querySelectorAll('canvas').length, rootWidth: root.getBoundingClientRect().width, viewport };
+    return { issues, display, edgeGaps, titleGaps, canvasCount: root.querySelectorAll('canvas').length, rootWidth: root.getBoundingClientRect().width, viewport };
   }, label);
   // A mobile orientation change can reach CSS, ResizeObserver and Phaser on
   // different frames. Record the final geometry at the failing viewport.
@@ -284,6 +314,8 @@ async function smoke(width, height, theme) {
   const label = `${engine}-${width}x${height}-${theme}`;
   const { p, context } = await setup(width, height, theme);
   try {
+    await expect(p.getByRole('button', { name: /^Begin journey$/i })).toBeVisible();
+    await expect(p.getByRole('link', { name: 'Exit game', exact: true })).toHaveAttribute('href', '/compete');
     await audit(p, label + '-title-fit'); await p.screenshot({ path: join(output, label + '-title.png') });
     await start(p); await drain(p); await audit(p, label + '-game-fit');
     await auditFrame(p, label + '-ship-art', 'ship');
@@ -337,7 +369,8 @@ async function smoke(width, height, theme) {
     await press(p,offlineDirection);await expect.poll(async()=>{const s=await save(p);return`${s.player.x}:${s.player.y}`;}).not.toBe(`${offlineBefore.player.x}:${offlineBefore.player.y}`);
     await expect(p.locator('.mm-save-offline')).toContainText('Offline');check(label+'-disconnected-play-saves-locally');
     await context.setOffline(false);
-    await p.evaluate(() => window.mmQa.navigate('/compete'));
+    await press(p, 'menu');
+    await p.getByRole('dialog').getByRole('link', { name: 'Exit game', exact: true }).click();
     await expect(p.getByRole('heading', { name: 'DH Club destination' })).toBeVisible(); await expect(p.locator('canvas')).toHaveCount(0);
     if (engine === 'webkit' && width < 1024) {
       await p.getByRole('button', { name: 'Outside lower control' }).tap();
@@ -454,7 +487,10 @@ async function chapter() {
     // Door names are authored map objects, not production-only test shortcuts.
     for(const id of ['chamber-exit','passage-exit','stairs-exit','workshop-door']) await interact(p,id);
     await interact(p,'closing',false);await drain(p,{inspectChoices:true}); assert.equal((await save(p)).questFlags.chapter_complete,true); check(engine+'-complete-real-chapter-through-closing');
+    await audit(p, engine + '-chapter-complete-fit');
     await p.screenshot({path:join(output,engine+'-chapter-complete.png')});
+    await p.locator('.mm-end').getByRole('link', { name: 'Exit game', exact: true }).click();
+    await expect(p.getByRole('heading', { name: 'DH Club destination' })).toBeVisible();
   } catch(error) { await p.screenshot({path:join(output,engine+'-chapter-failure.png')}).catch(()=>{}); throw error; }
   finally { await context.close(); }
 }
@@ -464,7 +500,8 @@ async function guestRoute() {
   try {
     await expect(p.getByRole('heading',{name:'Mesomon',exact:true})).toBeVisible();
     await expect(p.locator('canvas')).toHaveCount(0);
-    await p.getByRole('link',{name:'Return to DH Club',exact:true}).click();
+    await audit(p, engine + '-guest-gate-fit');
+    await p.getByRole('link',{name:'Exit game',exact:true}).click();
     await expect(p.getByRole('heading',{name:'DH Club destination'})).toBeVisible();
     check(engine+'-unauthenticated-route-has-clear-return-without-a-crash');
   } finally {await context.close();}

@@ -197,6 +197,10 @@ export const GAME_SHELL_PREFIXES = [
   '/journey',
 ] as const;
 
+export function isMesomonConsole(pathname: string): boolean {
+  return /^\/mesomon\/?$/i.test(pathname);
+}
+
 export function isGameShellRoute(pathname: string): boolean {
   return GAME_SHELL_PREFIXES.some((prefix) => prefix === '/mesomon'
     ? pathname === prefix || pathname.startsWith(`${prefix}/`)

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
+import { isMesomonConsole } from '@/lib/appNavigation';
 import { fetchRemoteBuildId, nukeAndReload } from '@/lib/forceUpdate';
 
 const CHECK_INTERVAL_MS = 30 * 1000;
@@ -36,6 +37,15 @@ export function useAppUpdate() {
   const lastSuccessfulProbeRef = useRef<number>(Date.now());
   const mountedAtRef = useRef<number>(Date.now());
   const softReloadedRef = useRef(false);
+  const deferredUpdate = useRef<string | null>(null);
+  const applyUpdate = useCallback((remote: string) => {
+    if (isMesomonConsole(window.location.pathname)) {
+      deferredUpdate.current = remote;
+      return;
+    }
+    try { localStorage.setItem(LS_LAST_NUKED_REMOTE, remote); } catch { /* noop */ }
+    void nukeAndReload();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,12 +103,7 @@ export function useAppUpdate() {
       writeLS(LS_LAST_PROMPTED_REMOTE, remote);
       try { sessionStorage.setItem(LS_SESSION_PROMPTED, remote); } catch { /* noop */ }
 
-      const doNuke = () => {
-        // Record the remote id we're nuking for BEFORE navigating away so
-        // the next load can detect a broken-deploy loop.
-        writeLS(LS_LAST_NUKED_REMOTE, remote);
-        void nukeAndReload();
-      };
+      const doNuke = () => applyUpdate(remote);
 
       const busy = isBusyContext();
       toast('🚀 New version available', {
@@ -121,9 +126,9 @@ export function useAppUpdate() {
     };
 
     const check = async () => {
-      if (cancelled || promptedRef.current) return;
+      if (cancelled || promptedRef.current || isMesomonConsole(window.location.pathname)) return;
       const remote = await fetchRemoteBuildId();
-      if (cancelled || !remote) return;
+      if (cancelled || !remote || isMesomonConsole(window.location.pathname)) return;
       lastSuccessfulProbeRef.current = Date.now();
       // If local now matches remote, clear any stale loop-guard marker so
       // future genuine deploys can prompt again.
@@ -143,7 +148,7 @@ export function useAppUpdate() {
     const interval = setInterval(check, CHECK_INTERVAL_MS);
 
     const onVisibility = () => {
-      if (document.visibilityState !== 'visible') return;
+      if (document.visibilityState !== 'visible' || isMesomonConsole(window.location.pathname)) return;
       void check();
       // Android fallback: if the JS bundle has been alive for >5min and we
       // haven't seen a build id update in that window, the cached bundle may
@@ -169,6 +174,7 @@ export function useAppUpdate() {
 
     return () => {
       cancelled = true;
+      if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', check);
@@ -183,10 +189,18 @@ export function useAppUpdate() {
   // simply re-running check() through the visibility path is overkill;
   // inline a minimal version that respects the same localStorage guards.
   useEffect(() => {
+    if (isMesomonConsole(location.pathname)) return;
+    if (deferredUpdate.current) {
+      const remote = deferredUpdate.current;
+      deferredUpdate.current = null;
+      applyUpdate(remote);
+      return;
+    }
     if (promptedRef.current) return;
+    let cancelled = false;
     void (async () => {
       const remote = await fetchRemoteBuildId();
-      if (!remote) return;
+      if (cancelled || !remote || isMesomonConsole(window.location.pathname)) return;
       lastSuccessfulProbeRef.current = Date.now();
       if (remote === localBuildId) return;
       if (localBuildId === 'dev' || remote === 'dev') return;
@@ -204,10 +218,7 @@ export function useAppUpdate() {
       promptedRef.current = true;
       try { localStorage.setItem(LS_LAST_PROMPTED_REMOTE, remote); } catch { /* noop */ }
       try { sessionStorage.setItem(LS_SESSION_PROMPTED, remote); } catch { /* noop */ }
-      const doNuke = () => {
-        try { localStorage.setItem(LS_LAST_NUKED_REMOTE, remote); } catch { /* noop */ }
-        void nukeAndReload();
-      };
+      const doNuke = () => applyUpdate(remote);
       toast('🚀 New version available', {
         description: 'Updating in 10 seconds — tap to update now.',
         duration: AUTO_NUKE_DELAY_MS,
@@ -221,5 +232,6 @@ export function useAppUpdate() {
       });
       autoTimerRef.current = setTimeout(doNuke, AUTO_NUKE_DELAY_MS);
     })();
-  }, [location.pathname, localBuildId]);
+    return () => { cancelled = true; };
+  }, [location.pathname, localBuildId, applyUpdate]);
 }

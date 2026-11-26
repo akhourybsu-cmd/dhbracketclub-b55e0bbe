@@ -393,6 +393,22 @@ for x,y,w in [(10,58,64),(205,29,66),(275,34,42)]:
 d.line((90,18,90,100),fill=P['wood'],width=5);d.line((90,19,140,39),fill=P['woodlight'],width=4);d.line((138,39,138,77),fill=P['ink'],width=1);d.rectangle((133,77,143,81),fill=P['wood'])
 cover.alpha_composite(human('tavian').resize((32,48),Image.Resampling.NEAREST),(154,103));cover.alpha_composite(creature('rillik',large=True),(179,123));cover.alpha_composite(human('nia'),(110,79))
 cover.save(OUT/'cover.png',optimize=True)
+
+# An opaque porthole keeps Rillik legible through round and squircle launcher masks.
+launcher = Image.new('RGB', (64, 64), P['ink'])
+porthole = ImageDraw.Draw(launcher)
+porthole.ellipse((3, 3, 60, 60), fill='#263D3C', outline='#476260')
+porthole.ellipse((6, 6, 57, 57), fill=P['darkwood'], outline=P['ochre'], width=2)
+porthole.ellipse((9, 9, 54, 54), fill=P['sea'], outline=P['ink'])
+porthole.arc((6, 6, 57, 57), 204, 283, fill=P['plaster'])
+for x, y in [(22, 15), (36, 13), (42, 22), (18, 44), (30, 48)]:
+    porthole.line((x, y, x + 3, y), fill=P['lightsea'])
+porthole.ellipse((17, 41, 44, 45), fill=P['ink'])
+rillik = creature('rillik', large=True)
+launcher.paste(rillik, (7, 7), rillik)
+for size in (192, 512):
+    launcher.resize((size, size), Image.Resampling.NEAREST).save(OUT / f'icon-{size}.png', optimize=True)
+
 manifest=dict(version=2,original=True,tileSize=16,people=dict(cell=[16,16],frames=15,rows=HUMANS),creatures=dict(cell=[16,16],frames=8,rows=SPECIES),tiles={name:i for i,name in enumerate(TILES)},assets=['harbor-tiles.png','people.png','mesomon.png','battle.png','portraits.png','cover.png']+[f'portraits/{name}.png' for name in HUMANS]+[f'portraits/{name.replace("_","-")}.png' for name in SPECIES])
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print('Wrote six original PNG atlases/key art and manifest to',OUT)

@@ -5,7 +5,7 @@ import '@fontsource/dm-sans/700.css';
 import '../../src/index.css';
 import React, { Suspense, lazy, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MemoryRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { MemoryRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { getMap, canWalk, createNewSave } from '../../src/lib/mesomon/engine';
@@ -15,12 +15,12 @@ const MesomonPage = lazy(() => import('../../src/pages/MesomonPage'));
 const params = new URLSearchParams(location.search);
 const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
 function CurrentRoute() {
-  const route = useLocation(), navigate = useNavigate();
+  const route = useLocation();
   useEffect(() => {
     const user = params.get('guest') === '1' ? null : '11111111-1111-4111-8111-111111111111';
-    Object.assign(window, { mmQa: { getMap, canWalk, createNewSave, navigate, readSave: async () => (await readLocalSave(user, 1))?.save || null } });
+    Object.assign(window, { mmQa: { getMap, canWalk, createNewSave, readSave: async () => (await readLocalSave(user, 1))?.save || null } });
     return () => { Reflect.deleteProperty(window, 'mmQa'); };
-  }, [navigate]);
+  }, []);
   return <span hidden data-qa-route={route.pathname} />;
 }
 function Outside() {

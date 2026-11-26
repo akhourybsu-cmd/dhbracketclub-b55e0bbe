@@ -15,6 +15,7 @@ import { ThemeProvider } from "next-themes";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useOfflineIndicator } from "@/hooks/useOfflineIndicator";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
+import { isMesomonConsole } from "@/lib/appNavigation";
 import { useThemeChrome } from "@/hooks/useThemeChrome";
 import { MemberRouteErrorBoundary } from "@/components/member/MemberRouteErrorBoundary";
 
@@ -186,6 +187,21 @@ function PageFallback() {
   );
 }
 
+function MesomonEntry({ failed = false }: { failed?: boolean }) {
+  return (
+    <main className="fixed inset-0 grid place-content-center gap-4 bg-[#102224] p-6 text-center text-[#eee2c5]">
+      <h1 className="text-xl font-bold tracking-[0.2em]">MESOMON</h1>
+      {failed ? (
+        <div role="alert" className="grid gap-3">
+          <p>Port Marche couldn’t open.</p>
+          <button className="min-h-11 border border-current" onClick={() => window.location.reload()}>Retry</button>
+          <a className="grid min-h-11 place-items-center" href="/compete">Exit game</a>
+        </div>
+      ) : <p role="status">Opening Port Marche…</p>}
+    </main>
+  );
+}
+
 const ProtectedPage = ({
   children,
   assetSlug,
@@ -226,7 +242,11 @@ function AnimatedRoutes() {
         {/* Compete hub */}
         <Route path="/compete" element={<ProtectedPage><CompetePage /></ProtectedPage>} />
         <Route path="/deep-claim" element={<ProtectedPage assetSlug="deep-claim"><DeepClaimPage /></ProtectedPage>} />
-        <Route path="/mesomon" element={<ProtectedPage assetSlug="mesomon"><MesomonPage /></ProtectedPage>} />
+        <Route path="/mesomon" element={
+          <Suspense fallback={<MesomonEntry />}>
+            <AssetGuard slug="mesomon" fallback={<MesomonEntry />}><MesomonPage /></AssetGuard>
+          </Suspense>
+        } />
 
         {/* Portfolio Wars — live trading league */}
         <Route path="/portfolio-wars" element={<ProtectedPage assetSlug="portfolio-wars"><PwLayout><PortfolioWarsPage /></PwLayout></ProtectedPage>} />
@@ -421,11 +441,13 @@ function AnimatedRoutes() {
     return <MemberRouteErrorBoundary resetKey={location.pathname}>{routes}</MemberRouteErrorBoundary>;
   }
 
+  const consoleRoute = isMesomonConsole(location.pathname);
+  const fallback = consoleRoute ? <MesomonEntry /> : undefined;
   return (
-    <ProtectedRoute>
-      <ClubGate>
-        <MemberRouteErrorBoundary resetKey={location.pathname}>
-          <AppLayout>{routes}</AppLayout>
+    <ProtectedRoute fallback={fallback}>
+      <ClubGate fallback={fallback}>
+        <MemberRouteErrorBoundary resetKey={location.pathname} fallback={consoleRoute ? <MesomonEntry failed /> : undefined}>
+          {consoleRoute ? routes : <AppLayout>{routes}</AppLayout>}
         </MemberRouteErrorBoundary>
       </ClubGate>
     </ProtectedRoute>
@@ -436,7 +458,8 @@ function AppWithUpdate() {
   useAppUpdate();
   useOfflineIndicator();
   useRoutePrefetch();
-  useThemeChrome();
+  const { pathname } = useLocation();
+  useThemeChrome(isMesomonConsole(pathname));
   return <AnimatedRoutes />;
 }
 

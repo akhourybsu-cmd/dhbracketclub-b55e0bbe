@@ -13,15 +13,17 @@ import { useClub } from "@/contexts/ClubContext";
 export function AssetGuard({
   slug,
   children,
+  fallback,
 }: {
   slug: string;
   children: React.ReactNode;
+  fallback?: React.ReactNode;
 }) {
   const { isInstalled, loading } = useClubAssets();
   const { isAppAdmin } = useClub();
 
   // Wait for asset list to load before deciding — avoids flicker-redirects
-  if (loading) return null;
+  if (loading) return fallback ?? null;
   if (isAppAdmin) return <>{children}</>;
   if (!isInstalled(slug)) return <Navigate to="/dashboard" replace />;
 

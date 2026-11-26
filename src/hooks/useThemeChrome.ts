@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useTheme } from 'next-themes';
 
 const COLORS = {
@@ -7,12 +7,13 @@ const COLORS = {
 } as const;
 
 /** Keeps browser/PWA chrome visually attached to the active app theme. */
-export function useThemeChrome() {
+export function useThemeChrome(mesomon = false) {
   const { resolvedTheme, theme } = useTheme();
 
-  useEffect(() => {
-    const active = (resolvedTheme ?? theme) === 'light' ? 'light' : 'dark';
-    const color = COLORS[active];
+  useLayoutEffect(() => {
+    document.dispatchEvent(new Event('dh:route-changed'));
+    const active = !mesomon && (resolvedTheme ?? theme) === 'light' ? 'light' : 'dark';
+    const color = mesomon ? '#102224' : COLORS[active];
 
     let themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!themeColor) {
@@ -29,5 +30,5 @@ export function useThemeChrome() {
       document.head.appendChild(colorScheme);
     }
     colorScheme.content = active;
-  }, [resolvedTheme, theme]);
+  }, [resolvedTheme, theme, mesomon]);
 }

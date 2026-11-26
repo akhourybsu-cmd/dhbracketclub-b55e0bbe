@@ -2,7 +2,11 @@
 
 Mesomon is a separate game at `/mesomon`, with a lazy-loaded `MesomonPage` and the existing DH authentication and active-club flow. The shared `AssetGuard` requires the club's installed `mesomon` asset. The page also checks installation directly because the shared guard intentionally allows application administrators to inspect uninstalled features.
 
-The existing `appNavigation.ts` registry owns the menu destination, title, Compete context, and immersive-shell recognition. Mesomon matches only `/mesomon` and its children; neighboring route names do not gain its shell. `AppLayout` suppresses ordinary mobile navigation and shared desktop chrome using its established immersive-game behavior. Gesture restrictions belong to the Mesomon game surface, not shared DH CSS or document scrolling.
+The existing `appNavigation.ts` registry owns the menu destination, title and Compete context. The playable `/mesomon` route opens outside the shared club layout. Its authentication, club and installation checks, lazy loading, and recoverable render errors use a full-screen game panel. Leaving restores the ordinary club layout and current theme. The game handles its own save notices, and shared update prompts and scheduled update reloads wait until the player leaves.
+
+Opening `/mesomon` directly sets the title, favicon, status-bar color, Apple touch icon and install manifest before the application bundle loads. Supporting browsers can offer a separate Mesomon home-screen install with an original Rillik icon and a start URL of `/mesomon`. The normal DH shortcut continues to open its configured dashboard. A regular browser tab still controls its own address bar and operating-system indicators.
+
+The console fills the viewport in portrait and landscape. Its LCD uses a 160 × 144 logical display and the controller occupies the surrounding space. On touch devices that support element fullscreen, Begin Journey or Continue requests fullscreen once. The header also offers a fullscreen toggle when available. On iPhone, open the game in Safari and use **Share → Add to Home Screen** to launch it without Safari’s toolbar. During play, **Menu → Exit game** saves and returns to Compete.
 
 The Compete card appears only when `useClubAssets().isInstalled('mesomon')` is true. It loads a small original chapter cover lazily and imports no engine, game state, audio, or chapter data. The route imports the game page through `lazyWithRetry`; Phaser and chapter assets remain behind that route boundary. Existing games retain their routes and shells.
 
