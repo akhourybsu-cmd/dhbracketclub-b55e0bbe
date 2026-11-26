@@ -1,4 +1,5 @@
 import type { MapDefinition, MapId } from '../types';
+import { paintWorkshop } from './workshop';
 
 /** Courses run across tile boundaries. Only the collision map's floor tiles expose them. */
 export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefinition) {
@@ -8,7 +9,7 @@ export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefini
   ctx.beginPath();
   for (let row = 0; row < map.height; row++) {
     map.tiles[row].forEach((tile, col) => {
-      if (tile === 'floor' || tile === 'stone') ctx.rect(col * 16, row * 16, 16, 16);
+      if (tile === 'floor' || tile === 'stone' || (timber && tile === 'wood')) ctx.rect(col * 16, row * 16, 16, 16);
     });
   }
   ctx.clip();
@@ -81,76 +82,8 @@ export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId) {
       rect('#9a9c87', x + bolt + 1, y + 2, 1, 1);
     }
   };
-  const spool = (x: number, y: number, thread: string) => {
-    rect('#493f36', x, y + 1, 11, 11);
-    rect('#b08858', x + 1, y, 9, 2);
-    rect('#67533f', x + 2, y + 2, 7, 7);
-    for (let turn = 0; turn < 3; turn++) rect(thread, x + 2, y + 3 + turn * 2, 7, 1);
-    rect('#c19d6c', x, y + 9, 10, 2);
-  };
   if (id === 'workshop') {
-    // A half-laid sail lies flat across the entry floor. Brass rings hold the
-    // corners while the open hem runs back toward Edda's note and twine reel.
-    for (let y = 0; y < 30; y++) {
-      const left = 87 + Math.floor(y / 4);
-      const right = 149 - Math.floor(y * 1.55);
-      rect('#604d4266', left + 2, 137 + y, right - left, 1);
-      rect(y > 25 ? '#b3a082' : '#cbb997', left, 135 + y, right - left, 1);
-    }
-    line('#a59678', 88, 136, 95, 162);
-    line('#a59678', 145, 136, 101, 162);
-    line('#ad9f81', 107, 136, 99, 161);
-    for (let stitch = 0; stitch < 8; stitch++) rect('#f0dbad', 91 + stitch * 6, 136, 3, 1);
-    for (const [x, y] of [[89, 137], [141, 137], [96, 159]]) {
-      rect('#9e824e', x, y, 3, 3);
-      rect('#534c3e', x + 1, y + 1, 1, 1);
-    }
-    line('#ddc08b', 90, 136, 85, 130);
-    line('#ddc08b', 85, 130, 78, 128);
-    // A vise, twine and the tool rail share the note's workbench.
-    rect('#4b3e32', 58, 128, 29, 15);
-    rect('#b8966b', 58, 128, 29, 2);
-    rect('#755840', 59, 131, 27, 7);
-    rect('#9d7c57', 59, 139, 26, 3);
-    spool(61, 129, '#c7aa76');
-    rect(iron, 78, 130, 6, 4);
-    rect('#a5aaa0', 77, 130, 3, 2);
-    line('#b1b3a3', 81, 134, 84, 137);
-    // Old tide plots pinned beside the satchel, with three tide traces.
-    rect('#514c40', 183, 130, 22, 13);
-    rect('#dec69a', 182, 129, 22, 13);
-    rect('#b39770', 183, 138, 20, 1);
-    for (let trace = 0; trace < 3; trace++) {
-      const x = 184 + trace * 6;
-      line('#668982', x, 136, x + 3, 132 + trace % 2);
-      line('#668982', x + 3, 132 + trace % 2, x + 6, 136);
-    }
-    rect('#866448', 183, 130, 2, 1);
-    rect('#866448', 200, 130, 2, 1);
-    // A brass cage lamp hangs over the kettle. Its soft, stepped pool
-    // overlaps the edge of the worktable and picks out the lighter boards.
-    for (let row = 0; row < 15; row++) {
-      const inset = Math.max(0, Math.abs(7 - row) - 2);
-      rect('#ddac6b24', 74 + inset * 2, 98 + row, 26 - inset * 4, 1);
-    }
-    rect('#b69c69', 86, 96, 2, 3);
-    rect('#534c3d', 84, 99, 6, 10);
-    rect('#f2cc7d', 85, 101, 4, 5);
-    rect('#fff0ba', 86, 101, 1, 4);
-    rect('#887449', 87, 100, 1, 6);
-    rect('#645740', 83, 106, 8, 2);
-    rect('#a98a58', 82, 108, 10, 1);
-    // North wall: drawknife, hanging awls and three packed reels.
-    rect('#513e34', 53, 17, 51, 15);
-    rect('#a78159', 53, 18, 51, 3);
-    for (const x of [56, 66, 75, 84]) {
-      rect('#d4a36b', x, 20, 3, 4);
-      line('#acb7ad', x + 1, 24, x + 1, 29);
-    }
-    line('#d8bc87', 92, 21, 90, 26);
-    line('#d8bc87', 90, 26, 99, 28);
-    line('#d8bc87', 99, 28, 101, 21);
-    for (const [x, thread] of [[162, '#c39564'], [175, '#9eb3a0'], [188, '#bb8d74']] as const) spool(x, 21, thread);
+    paintWorkshop(rect, line);
     return;
   }
 

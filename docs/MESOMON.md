@@ -12,6 +12,8 @@ Combat uses a seeded resolver with priority/agility, four moves per companion, d
 
 The first-play duration of 15–25 minutes is a design target. Automated walkthroughs and headless simulations establish functional completion, not measured human reading/exploration time or physical-phone frame rates.
 
+Tap a clear patch of ground to walk there. Tapping a distant person or landmark walks Tavian up to it. Tap again or press A to interact. The small gold pointer marks what A will select. A direction on the pad or keyboard takes over immediately. Open **Map** to see the route to the next known stop and read its walking directions. Each leg respects people, solid terrain and the current state of the tideworks. Closing or reopening the game keeps Tavian on the last tile he reached.
+
 ## Writing and staging a scene
 
 Chapter dialogue lives in `data/dialogue.ts`. Put the ordinary first encounter there. Use `data/remarks.ts` for reactions to a discovery, a past conversation, a return visit or Tavian’s closing reply. Put the most specific condition first. The engine selects the lines when the interaction begins and stores those lines and the pending completion event in the save. An old file can finish the conversation it was already reading.

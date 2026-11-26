@@ -32,6 +32,13 @@ fill(passage, 10, 11, 2, 4, 'wood'); fill(passage, 21, 5, 1, 7, 'dark-water'); f
 const chamber = grid(18, 16, 'dark-water');
 fill(chamber, 2, 2, 14, 12, 'floor'); fill(chamber, 2, 2, 14, 1, 'wall'); fill(chamber, 2, 2, 1, 12, 'wall'); fill(chamber, 15, 2, 1, 12, 'wall'); fill(chamber, 3, 3, 3, 3, 'dark-water'); fill(chamber, 12, 8, 3, 4, 'dark-water'); fill(chamber, 7, 13, 3, 2, 'floor');
 
+// The chamber dial's rounded opening is wet on both sides of a maintenance
+// tongue. Its southern approach (9,6) ends beside the central rift at (9,5).
+fill(chamber, 9, 4, 1, 1, 'dark-water');
+fill(chamber, 7, 5, 5, 1, 'dark-water');
+fill(chamber, 8, 6, 1, 1, 'dark-water');
+fill(chamber, 10, 6, 1, 1, 'dark-water');
+
 export const MAPS: Record<MapId, MapDefinition> = {
   ship: { id: 'ship', name: 'The Wayfarer · arrival deck', width: 16, height: 14, tiles: ship, spawn: { x: 8, y: 9 }, ambience: 'harbor', objects: [
     object('captain', 8, 5, 'Captain', 'npc'), object('gangplank', 8, 11, 'Go ashore', 'door', 'gangplank', false), object('ship-rail', 11, 8, 'Watch the harbor', 'sign', 'rope'),

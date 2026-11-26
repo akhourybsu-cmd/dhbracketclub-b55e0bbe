@@ -49,7 +49,7 @@ export interface MesomonSaveV1 {
 }
 export interface GameSession { save: MesomonSaveV1; dialogue: DialogueState | null; notice: string; }
 export type GameAction = { type: 'input'; action: InputAction }
-  | { type: 'move'; direction: Direction } | { type: 'interact'; id?: string }
+  | { type: 'move' | 'face'; direction: Direction } | { type: 'interact'; id?: string }
   | { type: 'advance' } | { type: 'choice'; id: 'warm' | 'wry' | 'direct' }
   | { type: 'battle'; action: BattleAction } | { type: 'seal'; accuracy: number }
   | { type: 'sense' } | { type: 'companion'; released: boolean }

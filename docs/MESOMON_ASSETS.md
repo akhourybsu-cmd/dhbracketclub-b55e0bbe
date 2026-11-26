@@ -20,6 +20,10 @@ The source is `scripts/generate-mesomon-assets.py`. Run `python scripts/generate
 
 ## Rendering
 
+`exteriors.ts` paints the ferry and quay architecture. `workshop.ts` places Edda’s furniture, documents and exit against the interaction grid. `tideworks.ts` paints the wheel rack, crossing and basin from their saved story flags. The renderer rebuilds the relevant cached room when its mechanism changes. `environmentMotion.ts` draws short sequences of integer-pixel water, light and air details within the camera bounds. Opening the chart pauses the scene.
+
+Foreground fixtures have a world-space foot position so an actor can walk behind the hoist, lantern and tide gauge. Transparent interaction art sits directly on the scene. Taps on a painted desk, doorway or gangplank use the visible object’s bounds. In the chamber, the basin water blocks movement and a dry service platform leads up to the rift.
+
 Phaser3 is loaded inside `createMesomonView` after entry to the lazy Mesomon route. A cached terrain canvas is built from the authoritative typed map; the viewport draws that layer plus a small number of actors and bounded water/current effects. No React DOM element represents an individual tile. Only the current map's terrain texture is retained. NPC interaction taps pass IDs to the pure reducer, which owns proximity and story authorization.
 
 The renderer does not move the canonical player, resolve battles, change quests, determine rewards or write saves. Walking interpolation illustrates committed tile movement. Canvas is hidden from assistive technology because the shell supplies map/objective text and nearby interaction controls. All effects become static under reduced motion. The app’s accessible DOM seal ring owns both its phase and input accuracy; Seal Assist bypasses timing in the engine. An optional renderer ring is available to callers that use its matching `sealAccuracy()` method, and is disabled in the app to avoid competing clocks.

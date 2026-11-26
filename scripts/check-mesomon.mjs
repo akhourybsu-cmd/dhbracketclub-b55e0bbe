@@ -177,6 +177,37 @@ async function interact(p, id, dialogue = true) {
   await p.locator(`[data-mm-object="${id}"]`).click();
   if (dialogue) await drain(p);
 }
+async function tapMapObject(p, id) {
+  const canvas = p.locator('.mesomon canvas');
+  const position = await canvas.evaluate(async (node, id) => {
+    const state = await window.mmQa.readSave();
+    const map = window.mmQa.getMap(state);
+    const object = map.objects.find(candidate => candidate.id === id);
+    if (!object) throw Error(`No object ${id} on ${map.id}`);
+    // The native viewport follows the player's tile center and stops at the map edges.
+    const axis = (target, player, mapTiles, pixels, rendered) => {
+      const scroll = Math.max(0, Math.min(mapTiles * 16 - pixels, player * 16 + 8 - pixels / 2));
+      return (target * 16 + 8 - scroll) * rendered / pixels;
+    };
+    const rect = node.getBoundingClientRect();
+    return {
+      x:axis(object.x,state.player.x,map.width,node.width,rect.width),
+      y:axis(object.y,state.player.y,map.height,node.height,rect.height),
+    };
+  },id);
+  await canvas.tap({position});
+}
+async function captureLocation(p, mapId, landmark, label = mapId) {
+  await expect(p.locator('.mesomon')).toHaveAttribute('data-map-id', mapId);
+  await expect(p.locator('.mesomon canvas')).toBeVisible();
+  await expect(p.getByRole('region', {name:'Conversation'})).toHaveCount(0);
+  await expect(p.getByRole('dialog')).toHaveCount(0);
+  await expect(p.locator(`[data-mm-object="${landmark}"]`)).toBeVisible();
+  await settleLayout(p);
+  await p.screenshot({path:join(output,`${engine}-location-${label}.png`)});
+  const {x,y} = (await save(p)).player;
+  check(`${engine}-location-${label}`, {mapId,landmark,x,y});
+}
 async function audit(p, label) {
   await settleLayout(p);
   const measure = () => p.locator('.mesomon').evaluate((root, label) => {
@@ -483,8 +514,16 @@ async function chapter() {
   const { p, context } = await setup(390,844,'dark');
   try {
     await start(p); await drain(p);
-    await interact(p, 'captain', false);
+    await tapMapObject(p,'captain');
+    await expect(p.locator('[data-mm-object="captain"]')).toBeVisible();
+    await expect(p.getByRole('region',{name:'Conversation'})).toHaveCount(0);
+    // Allow the final 130 ms walking frame to reach the persisted tile before aiming again.
+    await pause(160); await settleLayout(p);
+    await tapMapObject(p,'captain');
+    await expect(p.getByRole('region',{name:'Conversation'})).toBeVisible();
+    check(engine+'-touch-captain-walks-to-adjacency-and-second-tap-speaks');
     await drain(p, {opening: true});
+    await captureLocation(p,'ship','captain');
     await interact(p,'gangplank');
     await press(p,'menu');
     const fieldcase = p.getByRole('dialog', {name:'Game menu'});
@@ -502,13 +541,35 @@ async function chapter() {
     check(engine+'-arrival-fieldcase-and-spoiler-safe-journal');
     await fieldcase.getByRole('button', {name:'Close menu'}).click();
     for (const id of ['nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
+      if (id === 'gate-wheel') {
+        await walkTo(p,id);
+        assert.ok(!(await save(p)).questFlags.gate_opened);
+        await captureLocation(p,'tide-stairs',id,'tide-stairs-closed');
+      }
       await interact(p,id,id !== 'chart');
-      if(id==='nia')await p.screenshot({path:join(output,engine+'-harbor.png')});
+      if (id === 'gate-wheel') {
+        assert.equal((await save(p)).questFlags.gate_opened,true);
+        await captureLocation(p,'tide-stairs',id,'tide-stairs-open');
+      }
+      if (id === 'nia') {
+        await p.screenshot({path:join(output,engine+'-harbor.png')});
+        await p.getByRole('button',{name:'Open location chart'}).click();
+        const chartDialog = p.getByRole('dialog',{name:'Location chart'});
+        const chart = chartDialog.getByRole('region',{name:'Location chart'});
+        await expect(chart).toContainText(/workshop/i);
+        await expect(chart.getByRole('list',{name:'Walking directions'})).toBeVisible();
+        await p.screenshot({path:join(output,engine+'-harbor-location-chart.png')});
+        await chartDialog.getByRole('button',{name:'Close chart'}).click();
+        await expect(chartDialog).toHaveCount(0);
+        check(engine+'-phone-chart-to-workshop');
+      }
+      if (id === 'bell-worker') await captureLocation(p,'harbor',id);
       if(id==='chart'){
         await expect(p.getByRole('region',{name:'Conversation'})).toContainText(/pinhole/i);
         await expect(p.locator('.mm-dialogue-next')).toHaveText('Continue',{timeout:7000});
         await p.screenshot({path:join(output,engine+'-workshop.png')});
         await drain(p);
+        await captureLocation(p,'workshop',id);
       }
     }
     assert.equal((await save(p)).party[0]?.speciesId,'rillik'); check(engine+'-first-bond-after-real-gate-rescue');
@@ -520,10 +581,19 @@ async function chapter() {
     await expect(p.locator('.mm-dialogue-next')).toHaveText('Continue',{timeout:7000});
     await p.screenshot({path:join(output,engine+'-underwharf.png')});
     await drain(p);
-    await interact(p,'sluice'); await interact(p,'tressel'); await battle(p,'bond');
+    await walkTo(p,'sluice');
+    const crossingIsWalkable = () => p.evaluate(async () => window.mmQa.canWalk(await window.mmQa.readSave(),10,12));
+    assert.equal(await crossingIsWalkable(),false);
+    await captureLocation(p,'passage','sluice','passage-flooded');
+    await interact(p,'sluice');
+    assert.equal(await crossingIsWalkable(),true);
+    await captureLocation(p,'passage','sluice','passage-drained');
+    await interact(p,'tressel'); await battle(p,'bond');
     assert.ok((await save(p)).party.length>=2); check(engine+'-optional-wild-resonance');
     await walkTo(p,'sense-channel'); await p.getByRole('button',{name:/Current Sense/i}).click(); await drain(p);
-    await interact(p,'pickup-tincture'); await interact(p,'save-lamp'); await interact(p,'chamber-door'); await interact(p,'rift'); await battle(p,'boss');
+    await interact(p,'pickup-tincture'); await interact(p,'save-lamp'); await interact(p,'chamber-door');
+    await walkTo(p,'rift'); await captureLocation(p,'chamber','rift');
+    await interact(p,'rift'); await battle(p,'boss');
     await press(p,'menu'); await p.getByRole('button',{name:/Settings/i}).click();
     const assist=p.getByRole('switch',{name:/Seal Assist/i}); if(await assist.getAttribute('aria-checked')!=='true')await assist.click();
     await p.keyboard.press('Escape');

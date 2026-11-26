@@ -4,10 +4,27 @@ import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, personArt, propArt }
 import { paintBattleStage } from './battleStage';
 import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
-import { canWalk, getMap, getVisibleObjects } from '../engine';
+import { paintExteriors } from './exteriors';
+import { paintTideworks, type TideworksState } from './tideworks';
+import { paintEnvironmentMotion } from './environmentMotion';
+import { foregroundForMap, paintForeground } from './foreground';
+import { INTERACTION_ART, interactionArtKey, paintInteractionArt } from './interactionsArt';
+import { canWalk, getMap, getPhase, getVisibleObjects, nearbyInteractions } from '../engine';
+
+// Native pixels relative to the interaction tile. Raised desks and recessed doors
+// can be tapped on their visible faces, even where they project into the next tile.
+const paintedHits: Record<string, [number, number, number, number]> = {
+  chart: [-2, -9, 21, 25], 'field-map': [-2, -9, 21, 25], 'satchel-hook': [-2, -19, 21, 35],
+  'workshop-note': [-2, -11, 22, 27], kettle: [-2, -13, 19, 29], 'rest-rope': [-2, -4, 20, 20],
+  'workshop-exit': [-2, 0, 21, 24], gangplank: [-4, 0, 24, 40],
+  'workshop-door': [-7, -39, 30, 55], 'tide-door': [0, 0, 16, 16],
+};
+interface TilePoint { x: number; y: number }
 
 export interface MesomonViewOptions {
   onInteract?: (id: string) => void;
+  onTap?: (tile: TilePoint, objectId?: string) => void;
+  walkDestination?: () => TilePoint | undefined;
   onFirstFrame?: () => void;
   onError?: (message: string) => void;
   signal?: AbortSignal;
@@ -95,8 +112,11 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
   class PortMarcheScene extends Phaser.Scene {
     private ready = false;
     private mapId = '';
+    private mapState = false;
+    private nearbyTarget: string | undefined;
     private mapTexture: string | null = null;
     private background: PhaserTypes.GameObjects.Image | null = null;
+    private foreground: PhaserTypes.GameObjects.Image[] = [];
     private tavian: PhaserTypes.GameObjects.Sprite | null = null;
     private companion: PhaserTypes.GameObjects.Sprite | null = null;
     private objects: { data: MapObject; sprite: PhaserTypes.GameObjects.Sprite; shadow: PhaserTypes.GameObjects.Ellipse | null }[] = [];
@@ -130,6 +150,13 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       }
       const scenery = this.textures.addImage('ms:scenery', images[sheets.length]);
       if (!scenery) { options.onError?.(artError); return; }
+      this.textures.createCanvas('ms:touch-tile', 16, 16);
+      for (const key of INTERACTION_ART.keys) {
+        const texture = this.textures.createCanvas(`ms:interaction:${key}`, INTERACTION_ART.width, INTERACTION_ART.height);
+        if (!texture) continue;
+        paintInteractionArt(texture.context, key);
+        texture.refresh();
+      }
       for (const [name, frame] of Object.entries(SCENERY)) {
         scenery.add(name, 0, frame.x, frame.y, frame.width, frame.height);
       }
@@ -145,21 +172,36 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.game.canvas.style.imageRendering = 'pixelated';
       this.game.canvas.style.touchAction = 'none';
       this.scale.updateBounds();
+      this.input.on('pointerup', (pointer: PhaserTypes.Input.Pointer, over: PhaserTypes.GameObjects.GameObject[]) => {
+        if (paused || disposed || !latest || getPhase(latest) !== 'explore' || pointer.getDistance() > 8 || pointer.button > 0) return;
+        const world = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        const hit = over.find(object => object.getData('interactionId'));
+        const id: string | undefined = hit?.getData('interactionId');
+        if (options.onTap) options.onTap({ x: Math.floor(world.x / 16), y: Math.floor(world.y / 16) }, id);
+        else if (id) options.onInteract?.(id);
+      });
       if (latest) this.apply(latest);
       if (paused) this.scene.pause();
     }
     apply(session: GameSession): void {
       if (!this.ready || disposed) return;
       const map = getMap(session.save);
-      if (this.mapId !== map.id) this.rebuildMap(map);
+      const tide: TideworksState = { gateOpen: session.save.questFlags.gate_opened === true, sluiceOpen: session.save.questFlags.sluice_open === true, sealed: session.save.rifts['port-marche'] === 'sealed' };
+      const mapState = (map.id === 'tide-stairs' && tide.gateOpen) || (map.id === 'passage' && tide.sluiceOpen) || (map.id === 'chamber' && tide.sealed);
+      if (this.mapId !== map.id || this.mapState !== mapState) {
+        this.mapState = mapState;
+        this.rebuildMap(map, tide);
+      }
+      this.nearbyTarget = getPhase(session) === 'explore' ? nearbyInteractions(session.save)[0]?.id : undefined;
       if (awaitingFirstFrame) {
         awaitingFirstFrame = false;
         this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
           if (!disposed) options.onFirstFrame?.();
         });
       }
-      const signature = getVisibleObjects(session.save).map(o => `${o.id}:${o.sprite}:${o.x}:${o.y}`).join('|') + `:${session.save.questFlags.gate_opened}:${session.save.rifts['port-marche']}`;
-      if (signature !== this.objectSignature) { this.rebuildObjects(getVisibleObjects(session.save)); this.objectSignature = signature; }
+      const visible = getVisibleObjects(session.save);
+      const signature = visible.map(o => `${o.id}:${o.sprite}:${o.x}:${o.y}`).join('|') + `:${tide.gateOpen}:${tide.sluiceOpen}:${tide.sealed}`;
+      if (signature !== this.objectSignature) { this.rebuildObjects(visible, tide); this.objectSignature = signature; }
       const { player } = session.save;
       const nextPosition = `${player.mapId}:${player.x}:${player.y}`;
       const next = { x: player.x * 16 + 8, y: player.y * 16 + 16 };
@@ -186,7 +228,8 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (hasBattle !== this.battleMode) { this.battleMode = hasBattle; this.setupBattle(session); }
       if (hasBattle) this.updateBattle(session);
     }
-    private rebuildMap(map: MapDefinition): void {
+    private rebuildMap(map: MapDefinition, tide: TideworksState): void {
+      const entering = this.mapId !== map.id;
       this.background?.destroy(); this.background = null;
       if (this.mapTexture) this.textures.remove(this.mapTexture);
       this.mapId = map.id; this.objectSignature = '';
@@ -218,6 +261,8 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         paintInteriorFloor(context, map);
         paintTerrainDepth(context, map);
         paintInterior(context, map.id);
+        paintExteriors(context, map);
+        paintTideworks(context, map, tide);
         if (map.id === 'harbor') {
           const skiff = SCENERY.skiff;
           // Moored in the water directly alongside the west edge of the arrival pier.
@@ -227,16 +272,32 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         texture.refresh(); this.background = this.add.image(0, 0, this.mapTexture).setOrigin(0).setDepth(-100);
       }
       this.cameras.main.setBounds(0, 0, map.width * 16, map.height * 16);
-      this.previousPosition = '';
+      if (entering) {
+        this.previousPosition = '';
+        for (const image of this.foreground) {
+          const key = image.texture.key;
+          image.destroy();
+          this.textures.remove(key);
+        }
+        this.foreground = [];
+        for (const piece of foregroundForMap(map.id)) {
+          const key = `ms:foreground:${map.id}:${piece.id}`;
+          const layer = this.textures.createCanvas(key, piece.width, piece.height);
+          if (!layer) continue;
+          paintForeground(layer.context, piece);
+          layer.refresh();
+          this.foreground.push(this.add.image(piece.x, piece.y, key).setOrigin(0).setDepth(piece.footY - 0.25));
+        }
+      }
     }
-    private rebuildObjects(objects: MapObject[]): void {
+    private rebuildObjects(objects: MapObject[], tide: TideworksState): void {
       this.objects.forEach(o => { o.sprite.destroy(); o.shadow?.destroy(); }); this.objects = [];
       for (const data of objects) {
         const person = personArt(data.id, data.sprite);
         const peopleRow = PEOPLE.indexOf(person as typeof PEOPLE[number]);
         const creatureRow = CREATURES.indexOf(data.sprite as SpeciesId);
         const actor = peopleRow >= 0 || creatureRow >= 0;
-        const objectTile = data.sprite === 'rift' && latest?.save.rifts['port-marche'] === 'sealed' ? 'stone' : data.sprite === 'gate' && latest?.save.questFlags.gate_opened === true ? 'bridge' : propArt(data.sprite);
+        const objectTile = data.sprite === 'rift' && latest?.save.rifts['port-marche'] === 'sealed' ? 'stone' : data.id === 'tide-lattice' && latest?.save.questFlags.gate_opened === true ? 'bridge' : propArt(data.sprite);
         const texture = peopleRow >= 0 ? 'ms:people' : creatureRow >= 0 ? 'ms:creatures' : 'ms:tiles';
         const frame = peopleRow >= 0 ? peopleRow * 15 + DIRECTION_FRAME[data.direction ?? 'down'] : creatureRow >= 0 ? creatureRow * 8 + CREATURE_DIRECTION[data.direction ?? 'down'] : Math.max(0, TILES.indexOf(objectTile as typeof TILES[number]));
         const x = data.x * 16 + 8, y = data.y * 16 + 16;
@@ -248,10 +309,21 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
           shadow = this.add.ellipse(x, y - 1, 10, 3, 0x102224, 0.25);
         }
         shadow?.setDepth(y - 0.5);
-        const sprite = this.add.sprite(x, y, landmark ? 'ms:scenery' : texture, landmark ?? frame)
+        const area = paintedHits[data.id];
+        const art = interactionArtKey(data, tide);
+        let key: string = texture;
+        let objectFrame: number | string | undefined = frame;
+        if (landmark) { key = 'ms:scenery'; objectFrame = landmark; }
+        if (art) { key = `ms:interaction:${art}`; objectFrame = undefined; }
+        if (area) { key = 'ms:touch-tile'; objectFrame = undefined; }
+        const sprite = this.add.sprite(x, y, key, objectFrame)
           .setOrigin(landmark === 'crane' ? 18 / SCENERY.crane.width : 0.5, 1).setDepth(y);
-        sprite.setInteractive({ useHandCursor: true, pixelPerfect: Boolean(landmark) });
-        sprite.on('pointerup', () => { if (!disposed && !paused) options.onInteract?.(data.id); });
+        if (area) {
+          sprite.setInteractive({ hitArea: new Phaser.Geom.Rectangle(...area), hitAreaCallback: Phaser.Geom.Rectangle.Contains, useHandCursor: true });
+        } else {
+          sprite.setInteractive({ useHandCursor: true, pixelPerfect: Boolean(landmark) });
+        }
+        sprite.setData('interactionId', data.id);
         this.objects.push({ data, sprite, shadow });
       }
     }
@@ -259,6 +331,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.battleStage?.destroy(); this.battleStage = null;
       this.battleSprites.forEach(s => s.destroy()); this.battleSprites = [];
       this.background?.setVisible(!this.battleMode); this.objects.forEach(o => { o.sprite.setVisible(!this.battleMode); o.shadow?.setVisible(!this.battleMode); });
+      this.foreground.forEach(image => image.setVisible(!this.battleMode));
       if (!this.battleMode || !session.save.battle) { this.cameras.main.setBounds(0, 0, getMap(session.save).width * 16, getMap(session.save).height * 16); return; }
       this.cameras.main.setScroll(0, 0).removeBounds();
       this.battleStage = this.add.graphics().setDepth(8000);
@@ -301,20 +374,17 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         });
         return;
       }
-      // At most one small effect per visible water row; no particles or per-frame React work.
       const view = this.cameras.main.worldView;
-      if (!reduced && map.ambience === 'harbor') {
-        this.decorations.fillStyle(0x9FD6B1, 0.25);
-        const step = Math.floor(time / 650) % 3;
-        for (let y = Math.max(0, Math.floor(view.top / 16)); y < Math.min(map.height, Math.ceil(view.bottom / 16)); y++) {
-          const x = Math.max(0, Math.floor(view.left / 16)) + (y * 3 + step) % 10;
-          if (map.tiles[y]?.[x] === 'water') this.decorations.fillRect(x * 16 + 3 + step, y * 16 + 7, 5, 1);
-        }
-      }
-      if (map.id === 'passage' && session.save.questFlags.sluice_open !== true) {
-        this.decorations.fillStyle(0x483F32); this.decorations.fillRect(160, 176, 32, 64);
-        this.decorations.fillStyle(0xC09245); for (let x = 162; x < 191; x += 6) this.decorations.fillRect(x, 177, 2, 62);
-        this.decorations.fillStyle(0x102224); this.decorations.fillRect(160, 188, 32, 3); this.decorations.fillRect(160, 222, 32, 3);
+      paintEnvironmentMotion(this.decorations, map, view, time, {
+        gateOpened: session.save.questFlags.gate_opened === true,
+        sluiceOpen: session.save.questFlags.sluice_open === true,
+        riftSealed: session.save.rifts['port-marche'] === 'sealed', reducedMotion: reduced, paused,
+      });
+      const stop = options.walkDestination?.();
+      if (stop) {
+        const x = stop.x * 16 + 3, y = stop.y * 16 + 10;
+        this.decorations.lineStyle(1, 0xf1d098, 0.9);
+        this.decorations.strokeRect(x, y, 10, 3);
       }
       if (time - this.frameAt > 600) {
         this.frameAt = time;
@@ -326,12 +396,21 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         }
       }
       for (const o of this.objects) {
-        if (o.data.kind === 'sense' && session.save.party.length > 0) {
+        if (o.data.id === this.nearbyTarget) {
+          const area = paintedHits[o.data.id];
+          const x = o.data.x * 16 + (area ? Math.round(area[0] + area[2] / 2) : 8);
+          const top = area ? o.data.y * 16 + area[1] : o.sprite.y - o.sprite.height;
+          const y = Math.max(Math.round(view.top) + 3, top - 5);
+          this.effects.fillStyle(0x263638, 1).fillTriangle(x - 4, y, x + 4, y, x, y + 5);
+          this.effects.fillStyle(0xf0cc81, 1).fillTriangle(x - 2, y + 1, x + 2, y + 1, x, y + 3);
+        }
+        const sensed = o.data.id === 'sense-eddy' ? session.save.questFlags.current_eddy : session.save.questFlags.current_channel;
+        if (o.data.kind === 'sense' && !sensed && session.save.party.length > 0) {
           this.effects.lineStyle(1, 0x9FD6B1, 0.7);
           const radius = reduced ? 9 : 6 + Math.floor(time / 180) % 5;
           this.effects.strokeEllipse(o.data.x * 16 + 8, o.data.y * 16 + 10, radius * 2, radius);
         }
-        if (['clue', 'pickup', 'crystal'].includes(o.data.kind)) {
+        if (o.data.id !== this.nearbyTarget && ['clue', 'pickup', 'crystal'].includes(o.data.kind)) {
           this.effects.fillStyle(0xE8E1C6, 0.85); this.effects.fillRect(o.sprite.x - 1, o.sprite.y - 19, 2, 2);
         }
       }

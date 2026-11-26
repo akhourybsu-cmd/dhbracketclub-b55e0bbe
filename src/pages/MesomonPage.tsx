@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ChevronUp,
   Compass,
+  Map as MapIcon,
   BookOpen,
   Feather,
   Menu,
@@ -20,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useClubAssets } from "@/hooks/useClubAssets";
 import { useMesomonSave } from "@/hooks/useMesomonSave";
+import { LocationChart } from "@/components/mesomon/LocationChart";
 import {
   CHAPTER_TITLE,
   createNewSave,
@@ -37,6 +39,7 @@ import { resonanceEligibility } from "@/lib/mesomon/battle";
 import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
 import { readingVoice } from "@/lib/mesomon/reading";
 import { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
+import { useTapWalk } from "@/lib/mesomon/useTapWalk";
 import { MesomonAudio } from "@/lib/mesomon/audio";
 import { readPreferences, writePreferences } from "@/lib/mesomon/preferences";
 import type {
@@ -57,7 +60,7 @@ const SAVE_LABELS = {
   attention: "Sync needs attention",
   local: "On this device",
 };
-type MenuTab = "party" | "journal" | "settings" | "save";
+type MenuTab = "party" | "journal" | "settings" | "save" | "chart";
 type MesomonView = Awaited<
   ReturnType<
     typeof import("@/lib/mesomon/renderer/createGame").createMesomonView
@@ -141,9 +144,14 @@ function Chapter({
   const [playing, setPlaying] = useState(false);
   const [menu, setMenu] = useState<MenuTab | null>(null);
   const [restart, setRestart] = useState(false);
-  const closeMenu = useCallback(() => setMenu(null), []);
+  const closeMenu = useCallback(() => {
+    restoreMenuFocus.current = true;
+    setMenu(null);
+  }, []);
   const closeRestart = useCallback(() => setRestart(false), []);
   const menuTrigger = useRef<HTMLButtonElement>(null);
+  const chartTrigger = useRef<HTMLButtonElement>(null);
+  const openedFromChart = useRef(false);
   const wasFullscreen = useRef(fullscreen.active);
   const restoreMenuFocus = useRef(false);
   useEffect(() => {
@@ -197,9 +205,29 @@ function Chapter({
   playingRef.current = playing;
   menuRef.current = menu;
 
-  const dispatch = useCallback((action: GameAction) => {
+  const act = useCallback((action: GameAction) => {
     setSession((value) => (value ? reduceGame(value, action) : value));
   }, []);
+  const showNotice = useCallback((notice: string) => {
+    setSession((value) => (value ? { ...value, notice } : value));
+  }, []);
+  const phase = session ? getPhase(session) : "explore";
+  const walking = useTapWalk(
+    session,
+    playing && !menu && !hidden && !sync.blocked && phase === "explore",
+    act,
+    showNotice,
+  );
+  const { cancel: cancelWalk, tap: tapWorld } = walking;
+  const destination = useRef(walking.destination);
+  destination.current = walking.destination;
+  const dispatch = useCallback(
+    (action: GameAction) => {
+      if (action.type !== "tick" && action.type !== "settings") cancelWalk();
+      act(action);
+    },
+    [act, cancelWalk],
+  );
   useEffect(() => {
     if (
       !sync.loading &&
@@ -243,10 +271,8 @@ function Chapter({
           onFirstFrame: () => {
             if (!abort.signal.aborted) setArtReady(true);
           },
-          onInteract: (id) => {
-            if (playingRef.current && !menuRef.current)
-              dispatch({ type: "interact", id });
-          },
+          onTap: tapWorld,
+          walkDestination: () => destination.current,
           onError: (message) => {
             if (!abort.signal.aborted) setViewError(message);
           },
@@ -360,7 +386,6 @@ function Chapter({
       clearInterval(cloudTimer);
     };
   }, [playing, hidden, menu, dispatch]);
-  const phase = session ? getPhase(session) : "explore";
   const checkpoint = session
     ? `${session.save.player.mapId}:${session.save.party.length}:${session.save.battle?.turn ?? 0}:${phase}:${session.save.seal.pulses}:${getObjective(session.save)}`
     : "";
@@ -384,7 +409,11 @@ function Chapter({
       });
     if (!menu && restoreMenuFocus.current) {
       restoreMenuFocus.current = false;
-      menuTrigger.current?.focus({ preventScroll: true });
+      const trigger = openedFromChart.current
+        ? chartTrigger.current
+        : menuTrigger.current;
+      trigger?.focus({ preventScroll: true });
+      openedFromChart.current = false;
     }
   }, [menu, playing]);
   const line = session?.dialogue?.lines[session.dialogue.index];
@@ -438,6 +467,7 @@ function Chapter({
   const press = useCallback(
     (action: InputAction) => {
       if (sync.blocked) return;
+      cancelWalk();
       awakenAudio();
       if (
         DIRECTIONS.includes(action as Direction) &&
@@ -473,6 +503,7 @@ function Chapter({
       clearMoveBuffer();
       if (action === "menu") {
         setHeld(null);
+        openedFromChart.current = false;
         setMenu((value) => (value ? null : "party"));
         audio.current?.cue("menu");
         return;
@@ -499,6 +530,7 @@ function Chapter({
     },
     [
       sync.blocked,
+      cancelWalk,
       awakenAudio,
       dispatch,
       hitSeal,
@@ -669,6 +701,24 @@ function Chapter({
           <img src={portraitUrl("rillik")} width="32" height="32" alt="" />
           <h1>MESOMON</h1>
         </div>
+        {playing && phase === "explore" && (
+          <button
+            type="button"
+            className="mm-chart-trigger"
+            aria-label="Open location chart"
+            aria-haspopup="dialog"
+            ref={chartTrigger}
+            onClick={() => {
+              openedFromChart.current = true;
+              cancelWalk();
+              setHeld(null);
+              setMenu("chart");
+              audio.current?.cue("menu");
+            }}
+          >
+            <MapIcon size={16} aria-hidden="true" /> Map
+          </button>
+        )}
         {fullscreen.available && (
           <button
             type="button"
@@ -964,14 +1014,18 @@ function Chapter({
                       {session.notice}
                     </p>
                     <div className="mm-nearby">
-                      {nearbyInteractions(session.save).map((object) => (
+                      {nearbyInteractions(session.save).map((object, index) => (
                         <button
                           key={object.id}
+                          className={
+                            index === 0 ? "mm-facing-target" : undefined
+                          }
                           data-mm-object={object.id}
                           onClick={() =>
                             dispatch({ type: "interact", id: object.id })
                           }
                         >
+                          {index === 0 && <kbd aria-hidden="true">A</kbd>}
                           {object.label}
                           <ChevronRight size={13} />
                         </button>
@@ -1075,7 +1129,7 @@ function Chapter({
                 <span className="mm-control-hint">
                   {session.save.party.length
                     ? "Rillik is with you"
-                    : "PORT MARCHE"}
+                    : "Tap ground to walk"}
                 </span>
               </div>
               <div className="mm-ab">
@@ -1532,40 +1586,45 @@ function GameMenu({
         className="mm-menu"
         role="dialog"
         aria-modal="true"
-        aria-label="Game menu"
+        aria-label={tab === "chart" ? "Location chart" : "Game menu"}
       >
         <header>
           <div>
             <small>TAVIAN’S</small>
-            <h2>Fieldcase</h2>
+            <h2>{tab === "chart" ? "Harbor chart" : "Fieldcase"}</h2>
           </div>
           <button
             className="mm-icon"
-            aria-label="Close menu"
+            aria-label={tab === "chart" ? "Close chart" : "Close menu"}
             data-mm-action="cancel"
             onClick={onClose}
           >
             ×
           </button>
         </header>
-        <nav aria-label="Fieldcase sections">
-          {(["party", "journal", "settings", "save"] as const).map((value) => (
-            <button
-              key={value}
-              aria-pressed={value === tab}
-              onClick={() => onTab(value)}
-            >
-              {value === "party"
-                ? "Companions"
-                : value === "save"
-                  ? "Save & exit"
-                  : value === "journal"
-                    ? "Journal"
-                    : "Settings"}
-            </button>
-          ))}
-        </nav>
+        {tab !== "chart" && (
+          <nav aria-label="Fieldcase sections">
+            {(["party", "journal", "settings", "save"] as const).map(
+              (value) => (
+                <button
+                  key={value}
+                  aria-pressed={value === tab}
+                  onClick={() => onTab(value)}
+                >
+                  {value === "party"
+                    ? "Companions"
+                    : value === "save"
+                      ? "Save & exit"
+                      : value === "journal"
+                        ? "Journal"
+                        : "Settings"}
+                </button>
+              ),
+            )}
+          </nav>
+        )}
         <div className="mm-menu-body" data-section={tab} key={tab}>
+          {tab === "chart" && <LocationChart save={session.save} />}
           {tab === "party" && (
             <>
               {session.save.party.length > 0 ? (

@@ -340,6 +340,7 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     session.notice = `${save.seal.pulses}/3 pulses aligned`; return session;
   }
   if (getPhase(session) !== 'explore') return previous;
+  if (action.type === 'face') { save.player.facing = action.direction; return session; }
   if (action.type === 'move') {
     save.player.facing = action.direction; const delta = DELTAS[action.direction], x = save.player.x + delta.x, y = save.player.y + delta.y;
     if (canWalk(save, x, y)) { save.player.x = x; save.player.y = y; session.notice = ''; }

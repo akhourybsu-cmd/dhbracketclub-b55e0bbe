@@ -127,6 +127,19 @@
   flex: 1;
   padding-left: 3px;
 }
+.mesomon .mm-chart-trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: #f6e5b6;
+  background: #35483b;
+  border-color: #827c59;
+  font-size: 12px;
+  font-weight: 750;
+}
 .mm-wordmark > span {
   font-size: 8px;
   letter-spacing: 0.24em;
@@ -393,6 +406,21 @@
   box-shadow: 0 2px #a7a47f;
   max-width: 100%;
 }
+.mm-nearby kbd {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: #233a35;
+  background: #e8cb85;
+  border: 1px solid #82734c;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1;
+}
+.mesomon .mm-facing-target { border-color: #8a744e; }
 .mm-dialogue {
   padding-left: 13px;
   padding-bottom: 35px;
