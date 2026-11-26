@@ -1,5 +1,6 @@
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { MESOMON_ASSETS } from '@/lib/mesomon/assets';
 
 /** Discovery stays lightweight: no game rules, renderer or audio in Compete. */
 export function MesomonDiscoveryCard() {
@@ -9,7 +10,7 @@ export function MesomonDiscoveryCard() {
       className="group relative block overflow-hidden rounded-2xl border border-[#9fd6b1]/35 bg-[#102224] text-[#e8e1c6] shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9fd6b1]"
     >
       <img
-        src="/games/mesomon/cover.png"
+        src={MESOMON_ASSETS.cover}
         alt=""
         loading="lazy"
         decoding="async"

@@ -9,105 +9,204 @@ OUT.mkdir(parents=True, exist_ok=True)
 P = dict(ink='#102224', slate='#30474A', teal='#2F6667', sea='#244C52', lightsea='#417F7D', marsh='#657D55', ochre='#C09245', plaster='#D8C9A5', foam='#E8E1C6', eden='#9FD6B1', rift='#36243F', wood='#765740', woodlight='#A67D50', darkwood='#483F32', roof='#91564B', skin='#B87955', brass='#C49443')
 TILES = ['water','water2','dock','stone','grass','mud','wall','roof','door','stair','reeds','floor','shelf','table','crate','gate','bridge','rift','rope','rail','lamp','sand','channel','flower','chart','map','satchel','rock','sign','awning','window','ship','planks','black','arch','gear']
 
-def tile(name):
-    im=Image.new('RGBA',(16,16),P['slate']); d=ImageDraw.Draw(im)
-    def r(box,c): d.rectangle(box, fill=P.get(c,c))
-    if name in ['water','water2','channel']:
-        r((0,0,15,15),'sea'); off=3 if name=='water2' else 0
-        for x,y,w in [(1,3,5),(9,9,6),(2,13,4),(10,1,3)]:
-            y=(y+off)%16;r((x,y,min(15,x+w),y),'teal');r((x+1,y+1,min(15,x+w-1),y+1),'lightsea')
-        if name=='channel':r((0,0,1,15),'ink')
-    elif name in ['dock','bridge','planks','ship','floor']:
-        r((0,0,15,15),'wood');
-        for y in [0,5,10,15]:r((0,y,15,y),'darkwood')
-        for x,y in [(4,0),(11,5),(7,10)]:r((x,y,x,y+4),'darkwood');r((x+2,y+2,x+4,y+2),'woodlight')
-        for x,y in [(1,2),(13,7),(3,12)]:r((x,y,x,y),'ochre')
-        if name=='ship':r((0,0,2,15),'woodlight');r((3,0,3,15),'darkwood')
-        if name=='bridge':r((0,0,15,1),'woodlight');r((0,14,15,15),'darkwood')
-    elif name in ['stone','stair','arch']:
-        r((0,0,15,15),'slate')
-        for y in [0,7,15]:r((0,y,15,y),'ink');r((0,min(y+1,15),15,min(y+1,15)),'#59706B')
-        r((7,1,7,6),'ink');r((2,8,2,14),'ink');r((12,8,12,14),'ink')
-        r((2,4,4,4),'#6B8076');r((10,11,12,11),'#536B65')
-        if name=='stair':
-            for y in [3,6,9,12]:r((0,y,15,y),'plaster');r((0,y+1,15,y+1),'ink')
-        if name=='arch':r((3,4,12,15),'ink');r((5,2,10,3),'plaster')
-    elif name in ['grass','reeds','flower','mud','sand']:
-        r((0,0,15,15),'#485B43' if name not in ['mud','sand'] else ('#65574A' if name=='mud' else '#A39A75'))
-        for x,y in [(1,2),(7,5),(12,12),(4,13),(13,2),(2,8)]:r((x,y,x+1,y+1),'marsh' if name!='sand' else 'plaster')
-        if name=='reeds':
-            for x,y in [(2,2),(6,5),(11,1),(13,7)]:r((x,y,x,y+8),'#A3A56D');r((x-1,y,x+1,y+2),'ochre')
-        if name=='flower':
-            for x,y in [(4,4),(10,11)]:r((x,y,x+2,y+2),'foam');r((x+1,y+1,x+1,y+1),'ochre')
-    elif name in ['wall','window']:
-        r((0,0,15,15),'plaster');r((0,0,15,1),'#A7997A');r((0,15,15,15),'wood')
-        for x,y in [(0,8),(9,4),(4,13)]:r((x,y,min(x+4,15),y),'#B5AB89')
-        if name=='window':r((3,3,12,12),'wood');r((4,4,11,11),'teal');r((7,4,8,11),'ochre');r((4,7,11,8),'ochre');r((5,4,6,5),'foam')
-    elif name in ['roof','awning']:
-        r((0,0,15,15),'roof' if name=='roof' else 'teal')
-        if name=='roof':
-            for y in [1,6,11]:
-                r((0,y,15,y),'#B7765C');r((0,y+1,15,y+1),'#623E36');r(((y*3)%11,y+2,(y*3)%11,y+4),'#623E36')
-        else:
-            for x in [0,8]:r((x,0,x+3,15),'plaster')
-            r((0,14,15,15),'darkwood')
-    elif name=='black':r((0,0,15,15),'ink')
-    else:
-        r((0,0,15,15),'floor' if 'floor' in P else 'wood')
-        if name=='door':r((2,0,13,15),'darkwood');r((4,1,11,15),'wood');r((4,2,4,14),'woodlight');r((10,9,11,10),'brass')
-        if name=='shelf':
-            r((1,1,14,14),'darkwood')
-            for y in [4,10,14]:r((1,y,14,y),'woodlight')
-            for x in [3,6,9,12]:r((x,1,x+1,3),'eden' if x==9 else 'ochre');r((x,7,x+1,9),'plaster')
-        if name=='table':r((1,3,14,12),'darkwood');r((1,3,14,9),'woodlight');r((4,4,10,7),'plaster');r((5,5,8,5),'teal')
-        if name=='crate':r((1,1,14,14),'darkwood');r((2,2,13,13),'wood');d.line((2,2,13,13), fill=P['woodlight'],width=2);d.line((13,2,2,13),fill=P['woodlight'],width=2)
-        if name in ['gate','rail']:
-            r((0,0,15,15),'slate')
-            for x in [1,5,9,13]:r((x,0,x+1,15),'ink');r((x,0,x,14),'ochre')
-            r((0,3,15,4),'darkwood');r((0,11,15,12),'darkwood')
-        if name=='rift':r((0,0,15,15),'ink');d.polygon([(9,0),(5,6),(8,8),(4,15),(10,12),(12,7),(9,6),(12,0)],fill=P['rift']);d.line([(9,1),(7,6),(9,8),(6,14)],fill='#BB8DC1',width=1)
-        if name=='rope':r((0,0,15,15),'dock' if 'dock' in P else 'wood');d.ellipse((2,3,13,12),outline=P['ochre'],width=2);d.ellipse((5,5,10,10),outline=P['plaster'])
-        if name=='lamp':r((0,0,15,15),'slate');r((7,2,8,15),'darkwood');r((4,3,11,9),'ink');r((5,4,10,8),'ochre');r((6,4,8,7),'foam')
-        if name=='chart':r((2,2,13,13),'plaster');d.line([(3,9),(5,7),(7,9),(9,5),(12,8)],fill=P['teal']);d.line([(3,5),(6,5),(9,4),(12,4)],fill=P['roof'])
-        if name=='map':r((1,2,14,12),'plaster');d.line([(3,3),(5,5),(4,9),(8,11)],fill=P['teal'],width=2);d.ellipse((9,5,12,8),outline=P['roof'])
-        if name=='satchel':r((4,3,11,12),'darkwood');r((5,5,10,11),'woodlight');r((7,5,8,6),'brass')
-        if name=='rock':d.polygon([(2,12),(3,5),(7,2),(13,4),(15,10),(11,14)],fill='#60736B');d.line([(4,5),(7,3),(11,4)],fill=P['plaster'])
-        if name=='sign':r((7,5,8,15),'wood');r((1,2,14,8),'darkwood');r((3,4,11,4),'plaster');r((3,6,8,6),'ochre')
-        if name=='gear':
-            d.ellipse((3,3,12,12),fill=P['ochre']);d.ellipse((6,6,9,9),fill=P['ink'])
-            for x,y in [(6,1),(6,12),(1,6),(12,6)]:r((x,y,x+2,y+2),'brass')
-    return im
-
 def field_tile(name):
-    # Ground textures leave quiet space around small silhouettes. Keep prop and
-    # building details at the same scale as the 16-pixel doors and stairs.
-    if name not in ('stone', 'dock', 'floor', 'water', 'water2', 'grass'):
-        return tile(name)
-    base = {'stone': '#788780', 'dock': '#916F50', 'floor': '#987858',
-            'water': '#315E65', 'water2': '#315E65', 'grass': '#607854'}[name]
-    im = Image.new('RGBA', (16, 16), base)
+    """Material studies at the game's native scale. Top light falls to the right."""
+    base = {'stone': '#788780', 'floor': '#997759', 'dock': '#916F50',
+            'water': '#315E65', 'water2': '#315E65', 'channel': '#234953',
+            'roof': '#985c4d', 'wall': '#ceb994', 'window': '#ceb994',
+            'rock': '#38474a', 'stair': '#7a877d', 'awning': '#477b79'}
+    # Carved furniture and quay fixtures have top, front and return planes.
+    if name in ('shelf', 'table', 'crate', 'gear', 'rope', 'lamp','reeds','door','rift'):
+        im = field_tile('dock' if name in ('crate','rope') else 'floor' if name in ('shelf','table','door') else 'stone')
+        d = ImageDraw.Draw(im)
+        def rect(box,color):
+            d.rectangle(box,fill=color)
+        def line(points,color,width=1):
+            d.line(points,fill=color,width=width)
+        if name=='crate':
+            d.polygon([(0,4),(9,1),(14,3),(15,12),(7,15),(1,13)],fill='#504438')
+            d.polygon([(1,4),(8,2),(13,3),(7,6)],fill='#c19b6e')
+            d.polygon([(2,5),(7,7),(7,13),(2,12)],fill='#a17750')
+            d.polygon([(8,7),(13,5),(13,11),(8,13)],fill='#816348')
+            line((2,6,6,12),'#d2a871',2)
+            line((8,12,12,6),'#b28b5d')
+        elif name=='shelf':
+            rect((0,0,15,14),'#4a4036')
+            for y in (1,7):
+                for x,w,h,col in ((2,2,3,'#b58d5f'),(5,1,4,'#bdba93'),(8,2,2,'#77a492'),(12,1,3,'#ad7156')):
+                    rect((x,y+4-h,x+w,y+4),col)
+                    d.point((x,y+4-h),fill='#d3bd91')
+                rect((0,y+4,15,y+5),'#916d4c')
+                line((0,y+4,14,y+4),'#c29668')
+            rect((1,13,2,15),'#554437')
+            rect((13,13,14,15),'#554437')
+        elif name=='table':
+            rect((2,6,14,14),'#654e3b')
+            rect((3,12,12,14),'#987858')
+            d.polygon([(0,5),(2,2),(14,2),(15,8),(13,10),(1,9)],fill='#594838')
+            d.polygon([(1,5),(3,3),(13,3),(14,7),(2,8)],fill='#b99060')
+            rect((4,4,10,6),'#dbc69f')
+            line((5,5,8,5),'#778b78')
+        elif name=='door':
+            rect((1,0,14,15),'#574e43')
+            rect((2,0,12,14),'#b7976c')
+            rect((4,2,11,14),'#6b5341')
+            rect((5,3,10,10),'#86674c')
+            rect((6,4,9,7),'#426166')
+            line((6,4,8,4),'#9eab99')
+            rect((9,10,10,11),'#d7b67c')
+            line((2,15,14,15),'#c1b79a')
+        elif name=='rope':
+            for box in ((1,4,13,13),(3,5,11,11),(5,6,9,9)):
+                d.ellipse(box,outline='#5b4d38',width=2)
+                d.arc(box,155,325,fill='#d0a974',width=2)
+            line((9,9,12,9,15,12),'#c29a65')
+        elif name=='gear':
+            d.ellipse((1,2,15,15),fill='#394942')
+            d.ellipse((1,1,14,14),outline='#a98a57',width=3)
+            d.arc((1,1,14,14),175,290,fill='#dec18a',width=2)
+            for a,b in (((3,3),(12,12)),((2,10),(12,4)),((8,2),(7,13))):
+                line((*a,*b),'#92794e',2)
+            d.ellipse((5,5,10,10),fill='#c3a36a',outline='#595440')
+        elif name=='lamp':
+            d.ellipse((5,12,13,15),fill='#546760')
+            rect((7,6,8,13),'#443f35')
+            rect((4,3,11,9),'#4e5142')
+            rect((5,4,10,8),'#ddab5c')
+            rect((6,4,8,7),'#f3da94')
+            d.polygon([(3,3),(7,0),(9,0),(12,3)],fill='#56645a')
+            line((4,9,11,9),'#a08b62')
+        elif name=='reeds':
+            rect((0,0,15,15),'#64795b')
+            for x,y,h in ((1,13,5),(5,11,8),(9,15,7),(13,10,8)):
+                line((x,y,x+1,y-h),'#435c48',2)
+                line((x,y-1,x-2,y-5),'#8fa078')
+                line((x+1,y-h,x+1,y-h-2),'#af8957',2)
+        else:
+            d.polygon([(5,15),(7,10),(3,8),(7,4),(6,1),(12,0),(10,6),(14,8),(10,11),(10,14)],fill='#392e46')
+            line((9,0,8,5,10,8,7,12,7,15),'#bc96bc')
+            d.point((4,5),fill='#c6abce')
+            d.point((12,12),fill='#8e7398')
+        return im
+    if name in ('planks','ship','bridge','chart','map','satchel','sign'):
+        im = field_tile('dock')
+        d = ImageDraw.Draw(im)
+        if name in ('bridge','ship'):
+            d.line((0,0,15,0), fill='#b29571', width=2)
+            d.line((0,15,15,15), fill='#5c4c3f', width=2)
+        elif name in ('chart','map'):
+            d.polygon([(1,3),(5,2),(9,3),(14,2),(13,12),(9,13),(6,12),(2,13)],fill='#d6c69d')
+            d.line((3,9,5,7,8,8,11,5,13,5),fill='#649088',width=2)
+            d.line((4,4,5,4,7,5),fill='#aa7857')
+            d.point((11,9),fill='#925c49')
+        elif name=='satchel':
+            d.arc((4,1,11,9),180,360,fill='#534a3c',width=2)
+            d.rectangle((3,6,12,13),fill='#6d503a')
+            d.rectangle((4,5,11,9),fill='#a88155')
+            d.rectangle((7,8,8,10),fill='#d2ac70')
+        elif name=='sign':
+            d.rectangle((7,7,9,15),fill='#5a4938')
+            d.rectangle((1,2,14,9),fill='#63523e')
+            d.line((2,2,13,2),fill='#bf996a')
+            d.line((3,4,11,4),fill='#dbc79e')
+            d.line((3,6,8,6),fill='#b99c6c')
+        return im
+    if name in ('grass','flower','mud','sand'):
+        color = {'grass':'#607854','flower':'#607854','mud':'#77695a','sand':'#b6a680'}[name]
+        im = Image.new('RGBA',(16,16),color)
+        d = ImageDraw.Draw(im)
+        if name in ('grass','flower'):
+            for x,y in ((3,4),(11,12)):
+                d.line((x-2,y-1,x,y+1,x+2,y-2),fill='#81916e')
+                if name=='flower':
+                    d.rectangle((x,y-3,x+1,y-2),fill='#dace9c')
+        else:
+            for x,y in ((1,4),(9,11)):
+                d.line((x,y,x+3,y),fill='#a29676' if name=='sand' else '#6a6153')
+        return im
+    if name in ('black','arch','rail','gate'):
+        im = Image.new('RGBA',(16,16),P['ink']) if name=='black' else field_tile('stone')
+        d = ImageDraw.Draw(im)
+        if name=='arch':
+            d.polygon([(2,15),(2,6),(5,2),(10,2),(13,5),(13,15)],fill='#b1a68a')
+            d.polygon([(4,15),(4,6),(7,4),(10,5),(11,7),(11,15)],fill=P['ink'])
+        if name in ('rail','gate'):
+            for x in (1,7,13):
+                d.rectangle((x,1,x+1,15),fill='#484a40')
+                d.line((x,1,x,13),fill='#ab986e')
+            for y in (4,11):
+                d.rectangle((0,y,15,y+1),fill='#585340')
+                d.line((0,y,15,y),fill='#9d875f')
+        return im
+    im = Image.new('RGBA', (16, 16), base[name])
     d = ImageDraw.Draw(im)
-    if name == 'stone':
-        for x, y, w in [(0, 5, 7), (10, 5, 5), (4, 12, 9)]:
-            d.line((x, y, x + w, y), fill='#647771')
-        d.line((8, 1, 8, 4), fill='#647771')
-        d.line((3, 10, 3, 12), fill='#647771')
-        d.line((4, 13, 7, 13), fill='#8F9C90')
-    elif name in ('dock', 'floor'):
-        for y, joint in [(0, 3), (8, 11)]:
-            d.line((0, y, 15, y), fill='#6F5744')
-            d.line((joint, y + 1, joint, y + 7), fill='#795E49')
-            d.line((joint + 1, y + 1, joint + 3, y + 1), fill='#AC8860')
-        d.line((3, 12, 7, 12), fill='#A7815C')
-    elif name == 'grass':
-        for x, y in [(2, 3), (10, 10)]:
-            d.line((x, y, x + 1, y + 2), fill='#82926B')
-            d.point((x + 2, y + 1), fill='#82926B')
-    else:
-        shift = 3 if name == 'water2' else 0
-        for x, y in [(2, 3 + shift), (10, 11 - shift)]:
-            d.line((x, y, x + 3, y), fill='#4E7D7F')
-            d.point((x + 4, y - 1), fill='#4E7D7F')
+    def line(points, color):
+        d.line(points, fill=color)
+    def rect(box, color):
+        d.rectangle(box, fill=color)
+    if name in ('water', 'water2', 'channel'):
+        y = 4 if name == 'water' else 10
+        d.polygon([(-2,y+2),(2,y),(8,y),(11,y-2),(16,y-2),(16,y),(12,y),(8,y+2)],
+                  fill='#38676d' if name != 'channel' else '#305861')
+        line((1,y+1,6,y+1), '#48797a')
+        line((7,y,9,y-1), '#548382')
+        line((10,(y+8)%16,14,(y+8)%16), '#294f59')
+    elif name in ('floor','dock'):
+        for y,joint in ((0,4),(8,12)):
+            rect((0,y,15,y), '#6b5344')
+            rect((0,y+1,15,y+1), '#ad8962')
+            line((joint,y+2,joint,y+7), '#725844')
+            line((joint+2,y+3,joint+2,y+3), '#604c3e')
+        line((0,5,3,5), '#9e7955')
+        line((6,13,9,13,11,12), '#a5805b')
+        if name == 'floor':
+            rect((0,9,11,14), '#a58160')
+            line((2,12,7,12), '#b18c68')
+    elif name in ('rock','stone'):
+        dark,light,face = ('#29383e','#52605c','#414e4f') if name=='rock' else ('#62746e','#97a295','#839187')
+        for x,y in ((-4,1),(7,1),(1,9),(12,9)):
+            d.polygon([(x,y+1),(x+1,y),(x+8,y),(x+9,y+1),(x+8,y+5),(x+1,y+5)],fill=face)
+            line((x,y+5,x+7,y+5,x+9,y+3),dark)
+            line((x+1,y+1,x+3,y,x+7,y),light)
+    elif name=='stair':
+        for y in (0,8):
+            rect((0,y,15,y+3),'#97a193')
+            rect((0,y+3,15,y+3),'#c5c4aa')
+            rect((0,y+4,15,y+5),'#586966')
+            rect((0,y+6,15,y+7),'#647572')
+            line((3+y,y+1,4+y,y+1),'#a8ad9b')
+    elif name=='roof':
+        for y,offset in ((0,-4),(8,0)):
+            for x in range(offset-8,16,8):
+                d.polygon([(x,y),(x+7,y),(x+6,y+5),(x+4,y+7),(x,y+6)], fill='#ac6c55')
+                line((x,y+1,x+1,y+4), '#c28262')
+                line((x+6,y+1,x+5,y+5,x+3,y+6), '#805144')
+                line((x,y+7,x+4,y+7), '#63463f')
+    elif name=='awning':
+        for x in (0,8):
+            rect((x,0,x+3,12),'#d1c39d')
+            rect((x,1,x,10),'#e8dbb3')
+            rect((x+4,1,x+4,10),'#548e83')
+        rect((0,11,15,13),'#354d49')
+        for x,col in ((0,'#b7a782'),(4,'#46746e'),(8,'#b7a782'),(12,'#46746e')):
+            rect((x,11,x+3,13),col)
+            rect((x+1,14,x+2,14),col)
+        rect((0,15,15,15),'#344641')
+    elif name in ('window','wall'):
+        rect((0,0,15,1),'#826b58')
+        rect((0,2,15,3),'#ac9779')
+        line((2,6,5,6), '#dbc7a1')
+        line((11,9,14,9), '#bca888')
+        rect((0,13,15,15),'#887966')
+        line((0,13,15,13),'#aa9475')
+        if name=='window':
+            rect((3,4,13,13),'#a18b70')
+            rect((2,3,12,12),'#5a5145')
+            rect((3,4,11,10),'#385962')
+            rect((4,4,6,7),'#6c9390')
+            line((4,6,6,4),'#abb4a1')
+            rect((7,4,7,11),'#997952')
+            rect((2,11,12,11),'#dec495')
     return im
 
 # The Wayfarer's two three-tile deckhouses are painted as whole structures.
@@ -135,6 +234,25 @@ def deckhouse():
     d.rectangle((18, 9, 28, 14), fill='#95A79A')
     for y in (11, 13):
         d.line((20, y, 26, y), fill=P['slate'])
+    # Curved zinc roof and its projecting drip edge sit above a glazed pilot house.
+    d.polygon([(40,3),(43,5),(46,24),(44,27),(39,23)],fill='#456764')
+    d.polygon([(6,5),(9,3),(13,3),(9,23),(4,23)],fill='#819b92')
+    d.line((5,23,40,23),fill='#77918a')
+    d.line((5,28,43,28),fill='#3c524d',width=2)
+    d.rectangle((16,31,29,42),fill='#594f40')
+    d.rectangle((17,31,28,40),fill='#d1b489')
+    d.rectangle((18,32,27,36),fill='#36575b')
+    d.line((19,33,22,33),fill='#94af9d')
+    d.line((23,32,23,36),fill='#a1855f')
+    d.line((19,39,26,39),fill='#a1855f')
+    d.rectangle((42,29,44,42),fill='#745e49')
+    d.rectangle((13,15,32,19),fill='#526c67')
+    d.polygon([(14,13),(18,7),(30,7),(32,14),(29,17),(15,17)],fill='#405751')
+    d.polygon([(15,13),(19,8),(29,8),(30,13)],fill='#bca57d')
+    d.rectangle((16,14,30,16),fill='#80795f')
+    for x in (19,22,25):
+        d.line((x,10,x+2,10),fill='#786f57')
+    d.line((4,43,43,43),fill='#c29b6e')
     return im
 
 def ship_detail(name):
@@ -259,6 +377,27 @@ def map_person(name, direction, frame, pose):
         x = 11 if pose == 12 else 2
         draw.rectangle((x, 9, x + 2, 10), fill=P['ink'])
         draw.line((x, 9, x + 1, 9), fill=trim)
+    # Model the brow, cheek and jacket independently of travel orientation.
+    def shade(color, delta):
+        return tuple(max(0,min(255,c+delta)) for c in ImageColor.getrgb(color)) + (255,)
+    head_y = int(frame != 0)
+    for y in range(1,13):
+        for x in range(3,13):
+            p=im.getpixel((x,y))
+            if p == ImageColor.getrgb(hair)+(255,) and x in (4,5,6) and y==2+head_y:
+                im.putpixel((x,y),shade(hair,23))
+            if p == ImageColor.getrgb(skin)+(255,) and (x>=10 or y==7+head_y):
+                im.putpixel((x,y),shade(skin,-25))
+            if p == ImageColor.getrgb(coat)+(255,) and x>=10:
+                im.putpixel((x,y),shade(coat,-18))
+    if name=='porter':
+        draw.rectangle((10,9,13,12),fill='#685240')
+        draw.line((10,9,13,9),fill='#c09c6e')
+    elif name=='lanternkeeper':
+        draw.rectangle((2,11,4,14),fill='#655a45')
+        draw.point((3,12),fill='#efcb82')
+    elif name=='edda':
+        draw.line((5,3+head_y,9,2+head_y),fill='#e0d9bd')
     if pose == 14:
         draw.line((6, 6, 9, 6), fill=hair)
     return im
@@ -358,7 +497,18 @@ def field_creature(name, direction, step):
         rows[-1] = rows[-1][:len(rows[-1]) // 2] + rows[-1][len(rows[-1]) // 2:].replace('k', '.')
         y -= int(name == 'gleamwing' or name == 'rift-wretch')
     stamp(im, rows, palette, 1, y)
-    return im.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if direction == 'right' else im
+    if direction == 'right':
+        im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    # Give the torso an underside while keeping the eyes and species markings intact.
+    base = ImageColor.getrgb(palette['c'])
+    underside = tuple(max(0, v - 17) for v in base) + (255,)
+    for py in range(7,15):
+        for px in range(1,15):
+            if im.getpixel((px,py))[:3] == base:
+                below = im.getpixel((px,py+1))
+                if below[3] == 0 or below[:3] == ImageColor.getrgb(P['ink']):
+                    im.putpixel((px,py), underside)
+    return im
 
 monsters = Image.new('RGBA', (16 * 8, 16 * len(SPECIES)))
 for row, name in enumerate(SPECIES):
@@ -366,33 +516,301 @@ for row, name in enumerate(SPECIES):
         for step in (0, 1):
             monsters.paste(field_creature(name, direction, step), (16 * (index * 2 + step), 16 * row))
 monsters.save(OUT/'mesomon.png', optimize=True)
+def battle_creature(name):
+    im = creature(name,large=True)
+    d = ImageDraw.Draw(im)
+    if name=='rillik':
+        d.polygon([(18,22),(22,24),(29,25),(32,28),(25,27),(20,26)],fill='#709391')
+        d.polygon([(11,31),(19,30),(24,31),(30,29),(33,30),(30,32),(13,33)],fill='#42636f')
+        d.line((11,17,10,12,13,16),fill='#b1c2ac')
+        d.line((18,18,19,14),fill='#c1ccaf')
+        d.line((13,35,16,35),fill='#78958e')
+        d.line((39,30,42,26),fill='#79998e')
+    elif name=='muddren':
+        for x,y in [(15,20),(23,18),(30,24)]:
+            d.polygon([(x,y-2),(x+4,y+4),(x+1,y+4)],fill='#888c67')
+            d.line((x-2,y+2,x,y-1),fill='#d2c18d')
+        d.line((15,32,22,34,30,31),fill='#596c54',width=2)
+        d.line((8,29,12,29),fill='#c4b689')
+    elif name=='gleamwing':
+        for x,sign in [(10,1),(38,-1)]:
+            d.line((x,15,x+3*sign,22,x+10*sign,28),fill='#768c77')
+            d.line((x+3*sign,22,x+8*sign,23),fill='#e1c98b')
+            d.line((x,16,x+2*sign,15),fill='#dfd8ac',width=2)
+        d.line((23,23,23,31),fill='#83a898')
+    elif name=='tressel':
+        d.polygon([(27,18),(30,17),(31,24),(34,29),(28,32),(22,32),(28,28)],fill='#956546')
+        d.line((15,18,16,13,19,16),fill='#d4a06b')
+        d.line((14,25,17,27,20,26),fill='#c89161')
+        d.line((28,34,30,34),fill='#b68a61')
+    else:
+        for pts in ([(14,12),(19,10),(22,17),(16,16)],[(31,17),(35,17),(37,20),(32,24)],[(17,28),(21,31),(12,34)],[(28,28),(32,29),(35,34),(30,32)]):
+            d.polygon(pts,fill='#4b3b57')
+        d.line((21,9,22,13),fill='#c0a1bd')
+        d.line((16,24,19,22),fill='#a689ad')
+    return im
+
 battle=Image.new('RGBA',(48*len(SPECIES),48))
-for i,name in enumerate(SPECIES):battle.paste(creature(name,large=True),(i*48,0))
+for i,name in enumerate(SPECIES):battle.paste(battle_creature(name),(i*48,0))
 battle.save(OUT/'battle.png',optimize=True)
+def portrait(name):
+    """Three-quarter busts, with clothing and trade details drawn at portrait scale."""
+    im = Image.new('RGBA',(48,48))
+    d = ImageDraw.Draw(im)
+    coat,hair,skin,trim = {
+        'tavian': ('#487676','#304449','#cc9772','#9fd6b1'),
+        'nia': ('#ae7951','#3e5140','#a6b482','#dfbd86'),
+        'bram': ('#6f795b','#c6bda0','#b48a68','#bbb68a'),
+        'seli': ('#70815e','#aca182','#cfb18b','#d8c496'),
+        'pell': ('#9c8050','#604d3d','#c09676','#e7c788'),
+        'captain': ('#516f78','#999c8e','#c5a27f','#dcbc76'),
+        'edda': ('#796d87','#c2bbaa','#bb967c','#e0d3b6'),
+        'fisher': ('#738494','#4c4d51','#ba8866','#cbb88b'),
+        'worker': ('#a17a4f','#6b5341','#c39770','#e0b174'),
+        'porter': ('#92756b','#634f47','#b38565','#d0b694'),
+        'lanternkeeper': ('#587965','#4e5849','#ba9272','#edc779'),
+        'vendor': ('#a16f61','#664b49','#c19779','#e6bd8f'),
+    }[name]
+    def tone(color,delta):
+        return tuple(max(0,min(255,c+delta)) for c in ImageColor.getrgb(color))
+    def poly(points,color):
+        d.polygon(points,fill=color)
+    ink='#293b3b'
+    poly([(3,47),(5,39),(10,34),(17,32),(18,28),(13,20),(13,12),(17,6),(25,3),(32,5),(37,10),(36,24),(32,29),(32,32),(41,35),(45,40),(47,47)],ink)
+    poly([(5,47),(7,39),(15,34),(19,33),(29,33),(38,35),(43,40),(45,47)],coat)
+    poly([(27,33),(32,33),(39,37),(41,41),(40,47),(29,47)],tone(coat,-22))
+    poly([(9,39),(16,35),(19,35),(16,39),(9,42)],tone(coat,23))
+    poly([(16,34),(20,30),(28,29),(32,33),(27,38),(22,39)],trim)
+    poly([(19,29),(21,25),(29,26),(29,32),(24,35),(20,34)],tone(skin,-25))
+    poly([(15,14),(19,8),(27,7),(33,10),(35,16),(33,24),(30,27),(26,30),(20,29),(16,25),(14,21),(15,19)],skin)
+    poly([(29,12),(34,13),(33,19),(36,17),(35,22),(31,24),(30,27),(26,29),(24,28),(28,25)],tone(skin,-25))
+    poly([(15,14),(15,11),(19,6),(25,5),(31,6),(35,10),(36,14),(34,18),(30,20),(29,14),(24,12),(18,14)],hair)
+    poly([(15,12),(18,8),(25,6),(29,7),(23,8),(20,11)],tone(hair,25))
+    d.line((17,17,20,16),fill=tone(hair,-8))
+    d.line((23,16,27,16),fill=tone(hair,-8))
+    d.point((18,18),fill=ink)
+    d.line((24,18,25,18),fill=ink)
+    d.line((21,19,20,22,22,22),fill=tone(skin,-25))
+    d.line((21,25,25,24),fill=tone(skin,-48))
+    d.line((19,20,17,21),fill=tone(skin,15))
+    d.line((17,35,21,39,26,36),fill=tone(trim,-30),width=2)
+    if name in ('captain','worker','fisher','vendor'):
+        poly([(11,12),(14,8),(16,5),(29,3),(34,6),(36,10),(31,12),(22,11),(15,14)],tone(coat,-15))
+        d.line((13,12,21,10,32,9),fill=trim,width=2)
+        if name=='captain':
+            d.rectangle((23,6,26,8),fill=trim)
+        if name=='fisher':
+            d.line((14,9,25,6,33,7),fill=tone(coat,28),width=2)
+    elif name in ('nia','seli'):
+        poly([(31,18),(42,12),(39,18),(33,23),(31,22)],tone(skin,-16))
+        d.line((33,19,39,15),fill=tone(skin,20))
+    elif name=='bram':
+        poly([(14,22),(18,24),(22,23),(26,22),(31,19),(31,26),(26,32),(20,31),(16,28)],hair)
+        d.line((18,25,21,28,25,28),fill=tone(hair,22))
+    elif name=='tavian':
+        poly([(15,12),(16,7),(20,4),(23,4),(27,1),(27,5),(32,5),(34,7),(25,7),(22,10)],hair)
+        d.line((12,47,27,36,31,35),fill='#7d6048',width=3)
+        d.rectangle((19,41,22,43),outline='#d3ac70')
+    elif name=='edda':
+        d.ellipse((33,6,40,14),fill=hair,outline=tone(hair,-38))
+        d.line((16,17,20,17,21,20,17,20,16,17,23,17,27,17,26,20,23,20,23,17),fill='#817653')
+    elif name=='pell':
+        d.line((28,19,28,24),fill=hair,width=2)
+        d.line((18,24,20,23,24,23),fill=hair)
+    if name in ('bram','porter','worker'):
+        d.line((12,36,17,47),fill=tone(coat,-30),width=4)
+        d.rectangle((13,39,16,41),outline=trim)
+    if name=='lanternkeeper':
+        d.ellipse((28,37,33,43),fill='#896c45',outline='#d5b37b')
+        d.rectangle((30,39,31,41),fill='#f1d295')
+    return im
+
 portraits=Image.new('RGBA',(48*len(HUMANS),48))
 for i,name in enumerate(HUMANS):
-    base=human(name).crop((2,0,14,18)).resize((24,36),Image.Resampling.NEAREST);portraits.paste(base,(i*48+12,8))
+    portraits.paste(portrait(name),(i*48,0))
 portraits.save(OUT/'portraits.png',optimize=True)
 (OUT/'portraits').mkdir(exist_ok=True)
 for i,name in enumerate(HUMANS): portraits.crop((i*48,0,(i+1)*48,48)).save(OUT/'portraits'/f'{name}.png',optimize=True)
 for i,name in enumerate(SPECIES): battle.crop((i*48,0,(i+1)*48,48)).save(OUT/'portraits'/f'{name.replace("_","-")}.png',optimize=True)
 
-# Hand-composed harbor key art, rendered at a320x180 pixel canvas.
-cover=Image.new('RGBA',(320,180),P['sea']);d=ImageDraw.Draw(cover)
-d.rectangle((0,0,319,47),fill='#9CABA0');d.rectangle((0,42,319,54),fill='#6C8D86')
-for x,h in [(0,24),(28,31),(58,18),(86,36),(119,23),(156,43),(183,32),(223,19),(252,34),(286,24)]:
-    d.rectangle((x,47-h,x+24,55),fill='#617C72');d.polygon([(x-2,47-h),(x+12,37-h),(x+26,47-h)],fill='#476A65')
-for y in range(56,180,16):
-    for x in range(0,320,16):cover.paste(tile('water2' if ((x+y)//16)%2 else 'water'),(x,y))
-for x,y,w,h in [(0,94,120,50),(112,62,208,44),(152,88,40,92),(264,92,56,88)]:
-    for yy in range(y,y+h,16):
-        for xx in range(x,x+w,16):cover.paste(tile('stone' if y==62 else 'dock'),(xx,yy))
-for x,y,w in [(10,58,64),(205,29,66),(275,34,42)]:
-    d.rectangle((x,y,x+w,y+44),fill=P['plaster']);d.rectangle((x,y+39,x+w,y+44),fill=P['wood']);d.polygon([(x-4,y),(x+w//2,y-18),(x+w+4,y)],fill=P['roof'])
-    for wx in range(x+8,x+w-5,17):d.rectangle((wx,y+9,wx+8,y+20),fill=P['teal']);d.line((wx+4,y+9,wx+4,y+20),fill=P['ochre'])
-d.line((90,18,90,100),fill=P['wood'],width=5);d.line((90,19,140,39),fill=P['woodlight'],width=4);d.line((138,39,138,77),fill=P['ink'],width=1);d.rectangle((133,77,143,81),fill=P['wood'])
-cover.alpha_composite(human('tavian').resize((32,48),Image.Resampling.NEAREST),(154,103));cover.alpha_composite(creature('rillik',large=True),(179,123));cover.alpha_composite(human('nia'),(110,79))
-cover.save(OUT/'cover.png',optimize=True)
+def scenery():
+    sheet = Image.new('RGBA', (128, 64))
+    d = ImageDraw.Draw(sheet)
+    # A timber sheer-leg crane with a geared drum, pulley and rope sling.
+    d.ellipse((6,39,43,47),fill='#34454380')
+    d.polygon([(5,37),(17,33),(38,37),(42,40),(29,45),(5,41)],fill='#493e34')
+    d.polygon([(5,37),(18,33),(38,37),(28,41)],fill='#b08d61')
+    d.line((11,38,21,18,31,39),fill='#423e35',width=5)
+    d.line((11,37,21,17,31,38),fill='#93754f',width=3)
+    d.line((17,36,17,5),fill='#443c35',width=7)
+    d.line((15,34,15,6),fill='#c59e6b',width=2)
+    d.line((18,35,18,6),fill='#97734f',width=3)
+    d.polygon([(11,10),(12,4),(19,3),(43,10),(46,13),(42,16)],fill='#463e38')
+    d.polygon([(12,6),(17,4),(43,11),(42,13)],fill='#cba678')
+    d.line((19,24,37,13),fill='#554637',width=4)
+    d.line((19,22,36,13),fill='#a78153',width=2)
+    d.line((22,28,41,12),fill='#52635b')
+    d.ellipse((38,9,45,16),fill='#403e34',outline='#b28c52')
+    d.point((41,12),fill='#dfbf80')
+    d.line((43,16,43,28),fill='#665338')
+    d.line((43,27,45,29,43,32,41,32,40,30),fill='#3b403b',width=2)
+    d.ellipse((12,26,23,37),fill='#47473b',outline='#b9965c',width=2)
+    d.ellipse((15,29,20,34),fill='#94764e',outline='#594e37')
+    d.line((17,31,23,28),fill='#e0bc78')
+    # A sluice wheel mounted on a cast-iron pedestal.
+    d.polygon([(51,27),(56,23),(73,23),(78,27),(75,30),(52,30)],fill='#39474a')
+    d.polygon([(55,26),(59,14),(69,14),(73,27)],fill='#60716c')
+    d.ellipse((51,1,76,26),fill='#293c40')
+    d.ellipse((53,3,74,24),fill='#748079',outline='#bd9961',width=2)
+    d.ellipse((56,6,71,21),fill='#344b4b')
+    for tip in ((64,4),(72,8),(73,17),(66,23),(57,21),(54,13),(57,6)):
+        d.line((64,14,*tip),fill='#a48c63',width=2)
+    d.arc((52,2,75,25),175,292,fill='#e4c48b',width=2)
+    d.ellipse((60,10,67,17),fill='#544d3d',outline='#d0ab6d',width=2)
+    # High prow and swept transom, painted at an angle to the quay.
+    d.polygon([(81,21),(87,14),(104,6),(124,4),(122,14),(111,23),(92,29),(84,28)],fill='#284a52')
+    d.polygon([(81,19),(87,12),(106,4),(126,2),(123,13),(111,21),(91,27),(83,25)],fill='#493f37')
+    d.polygon([(82,18),(89,12),(107,5),(124,3),(119,12),(103,20),(87,24)],fill='#d0a36e')
+    d.polygon([(86,18),(92,12),(110,6),(121,5),(116,11),(102,18),(89,22)],fill='#526c69')
+    d.line((85,24,92,25,110,19,120,12),fill='#a1624b',width=2)
+    for x,y in ((91,15),(99,11),(109,7)):
+        d.line((x,y,x+5,y+4),fill='#332f2b',width=3)
+        d.line((x,y-1,x+5,y+3),fill='#c39669',width=2)
+    d.line((90,23,115,6),fill='#d7b785')
+    return sheet
+
+scenery().save(OUT/'scenery.png', optimize=True)
+
+def harbor_cover():
+    im = Image.new('RGBA', (320,180), '#b5c0aa')
+    d = ImageDraw.Draw(im)
+    def poly(points,color):
+        d.polygon(points,fill=color)
+    def line(points,color,width=1):
+        d.line(points,fill=color,width=width)
+    def box(points,color):
+        d.rectangle(points,fill=color)
+    # Warm estuary light separates the remote skyline, breakwater and working quay.
+    for y,c in ((13,'#c1c8ad'),(29,'#d9cfac'),(43,'#e3d0a6')):
+        box((0,y,319,64),c)
+    d.ellipse((207,17,228,38),fill='#f0ddb0')
+    for x,y,w in [(9,19,44),(83,9,26),(139,27,31),(254,15,39)]:
+        poly([(x,y+2),(x+6,y),(x+w-7,y),(x+w,y+2)],'#d8d4b6')
+    poly([(0,49),(17,44),(35,45),(52,40),(76,46),(94,44),(117,50),(145,42),(160,41),(179,45),(208,39),(232,42),(255,36),(281,43),(300,38),(319,42),(319,67),(0,67)],'#9cae9d')
+    for x,y,w,h in [(0,52,25,8),(27,48,15,12),(48,47,30,13),(86,50,16,10),(126,49,24,11),(154,46,17,14),(178,50,21,10),(255,48,29,12),(290,45,31,15)]:
+        box((x,y,x+w,y+h),'#78958a')
+        poly([(x-2,y),(x+4,y-5),(x+w-5,y-5),(x+w+2,y)],'#6d8a82')
+    box((0,61,319,179),'#49767a')
+    for y,spacing in [(65,37),(70,51),(77,49),(85,54),(97,72),(113,91),(134,116)]:
+        for x in range(-(y%9),320,spacing):
+            w=spacing//3
+            line((x,y,x+w,y,x+w+2,y-1),'#67928c')
+    for i in range(9):
+        w=3+i*2
+        line((218-w+i%3,65+3*i,218+w-i%4,65+3*i),'#b5b497')
+    # The distant tide beacon and its sloping breakwater.
+    poly([(226,64),(245,56),(287,57),(319,53),(319,67),(254,68)],'#516f70')
+    box((260,33,267,57),'#c6b799')
+    poly([(264,34),(267,34),(268,57),(265,57)],'#8a8f80')
+    box((258,32,269,34),'#455f60')
+    box((260,27,267,31),'#556864')
+    box((261,28,263,31),'#e6c881')
+    poly([(258,27),(264,21),(270,27)],'#536661')
+    # A foreground customs house with a side elevation and an overhanging roof.
+    poly([(0,76),(75,64),(105,74),(105,99),(0,123)],'#746d59')
+    poly([(0,67),(60,55),(60,93),(0,109)],'#c5a984')
+    poly([(60,55),(90,63),(90,88),(60,93)],'#947d65')
+    poly([(-7,67),(17,37),(59,33),(67,53)],'#885746')
+    poly([(17,37),(45,32),(76,35),(92,61),(65,56),(57,37)],'#aa7054')
+    line((0,66,64,53,91,61),'#4f5042',3)
+    for x,y in ((8,75),(27,71),(46,67),(68,66)):
+        box((x,y,x+7,y+12),'#655e4e')
+        box((x+1,y+1,x+5,y+9),'#527473')
+        line((x+2,y+2,x+4,y+2),'#abc0a8')
+        line((x+3,y+1,x+3,y+10),'#987951')
+    box((31,26,36,37),'#82654f')
+    box((29,25,37,27),'#afa080')
+    # A moored vessel behind the near jetty. Rigging stays open against the sky.
+    poly([(93,82),(112,84),(149,82),(156,77),(149,89),(103,95)],'#344d50')
+    line((94,82,109,85,146,82,154,78),'#d1b580',2)
+    line((121,83,121,35),'#6f6650',2)
+    line((97,83,121,36,150,81),'#78857b')
+    poly([(119,41),(117,73),(100,77)],'#d7c8a1')
+    poly([(124,44),(142,70),(124,74)],'#b9b599')
+    line((119,76,145,70),'#766e57',2)
+    # Pier beams and pilings cast separate shadows into the tidal water.
+    for x,y in [(10,123),(64,108),(107,100),(171,126),(237,109),(292,97)]:
+        poly([(x,y),(x+6,y-1),(x+5,y+23),(x+1,y+25)],'#334d50')
+        line((x+1,y+3,x+1,y+18),'#786e56',2)
+        line((x+2,y+25,x+13,y+25),'#365e65')
+    poly([(0,110),(99,84),(113,96),(0,128)],'#715a46')
+    poly([(0,108),(99,82),(113,91),(0,122)],'#ae8a62')
+    line((0,122,113,91),'#d1ac78',2)
+    poly([(60,180),(60,153),(305,78),(319,81),(319,180)],'#4a4840')
+    poly([(60,151),(303,77),(319,81),(319,105),(102,179),(60,179)],'#b3936a')
+    for x in range(60,334,13):
+        y=151-(x-60)*74//243
+        line((x,y,x+28,y+12),'#876e52')
+        line((x+1,y,x+28,y+11),'#c2a178')
+    line((92,179,319,103),'#d5b382',3)
+    poly([(106,180),(319,109),(319,116),(132,180)],'#725b47')
+    # A timber jib frames the harbor panorama on the right.
+    for pts,color,width in [
+        ((278,102,278,6),'#353d37',10),((275,100,275,7),'#a68055',4),
+        ((279,66,238,31),'#534b3a',7),((278,62,239,29),'#ae885c',3),
+        ((292,-6,225,28),'#423f34',9),((292,-8,224,26),'#b58f63',4),
+        ((225,28,225,58),'#575c4f',1),((228,28,228,58),'#73755f',1),
+        ((248,105,276,67,299,94),'#514a3b',6)]:
+        line(pts,color,width)
+    d.ellipse((221,25,230,34),fill='#454b40',outline='#ae935e',width=2)
+    line((225,58,222,61,225,65,229,63),'#50574b',2)
+    # Distinct foreground silhouettes bookend the two travelers.
+    for x,y in ((104,147),(205,116),(298,88)):
+        box((x,y-7,x+5,y+4),'#575241')
+        d.ellipse((x-1,y-9,x+6,y-5),fill='#d0ad7a',outline='#796549')
+    # Retaining beams hold up the near face of the jetty. A net hangs over the cap.
+    for x in range(121,330,34):
+        y=178-(x-100)//3
+        poly([(x,y+3),(x+7,y),(x+7,179),(x+2,179)],'#5d5141')
+        line((x+2,y+4,x+2,179),'#71614b',2)
+    for i in range(8):
+        x=247+i*5
+        y=130-i*2
+        line((x,y,x+4,y+17,x+8,y+20),'#8c8769')
+        line((x,y+15,x+7,y+6),'#838068')
+    for x,y in ((275,97),(297,90),(297,74)):
+        poly([(x,y),(x+13,y-5),(x+24,y),(x+10,y+6)],'#b79366')
+        poly([(x,y),(x+10,y+6),(x+10,y+20),(x,y+14)],'#90704e')
+        poly([(x+10,y+6),(x+24,y),(x+24,y+14),(x+10,y+20)],'#745d45')
+        line((x+2,y+3,x+9,y+16),'#b08c61',2)
+        line((x+12,y+16,x+22,y+3),'#9c7953',2)
+    d.ellipse((149,133,183,139),fill='#776c54')
+    d.ellipse((178,128,211,134),fill='#776c54')
+    # Tavian turns back from the quay, his windblown scarf and cuff catching the light.
+    poly([(155,135),(157,127),(159,119),(157,116),(155,121),(152,121),(153,114),
+          (157,109),(157,106),(155,103),(157,97),(163,95),(169,96),(171,100),
+          (170,105),(168,108),(173,113),(175,120),(173,123),(170,120),
+          (168,124),(170,132),(173,134),(172,136),(167,136),(163,126),
+          (160,132),(160,136),(154,137)],'#263c40')
+    poly([(156,114),(159,109),(166,108),(170,110),(173,117),(170,118),
+          (167,115),(167,122),(158,123),(159,115),(155,119)],'#487879')
+    poly([(157,113),(159,110),(163,110),(160,114)],'#76a19a')
+    poly([(158,101),(163,99),(168,101),(168,104),(166,107),(162,108),(158,105)],'#c2936c')
+    line((166,102,166,104,164,106),'#a37858')
+    line((157,101,161,99,165,99,169,101),'#35494a',2)
+    line((157,98,160,96,165,96),'#647a71')
+    d.point((159,103),fill='#364340')
+    poly([(158,108),(163,109),(167,107),(169,109),(163,113),(158,111)],'#c19b66')
+    poly([(163,110),(157,112),(151,110),(147,112),(151,108),(157,110)],'#bd8d58')
+    line((171,117,173,117),'#a2d7b4',2)
+    line((159,122,167,111),'#795e46',2)
+    box((157,119,161,124),'#8c6e4e')
+    line((157,119,161,119),'#c19b63')
+    line((157,134,159,133),'#657469',2)
+    im.alpha_composite(creature('rillik',large=True),(175,95))
+    return im
+
+harbor_cover().save(OUT/'cover.png',optimize=True)
 
 # An opaque porthole keeps Rillik legible through round and squircle launcher masks.
 launcher = Image.new('RGB', (64, 64), P['ink'])
@@ -409,6 +827,6 @@ launcher.paste(rillik, (7, 7), rillik)
 for size in (192, 512):
     launcher.resize((size, size), Image.Resampling.NEAREST).save(OUT / f'icon-{size}.png', optimize=True)
 
-manifest=dict(version=2,original=True,tileSize=16,people=dict(cell=[16,16],frames=15,rows=HUMANS),creatures=dict(cell=[16,16],frames=8,rows=SPECIES),tiles={name:i for i,name in enumerate(TILES)},assets=['harbor-tiles.png','people.png','mesomon.png','battle.png','portraits.png','cover.png']+[f'portraits/{name}.png' for name in HUMANS]+[f'portraits/{name.replace("_","-")}.png' for name in SPECIES])
+manifest=dict(version=3,scenery={'crane':dict(x=0,y=0,width=48,height=48),'wheel':dict(x=48,y=0,width=32,height=32),'skiff':dict(x=80,y=0,width=48,height=32)},original=True,tileSize=16,people=dict(cell=[16,16],frames=15,rows=HUMANS),creatures=dict(cell=[16,16],frames=8,rows=SPECIES),tiles={name:i for i,name in enumerate(TILES)},assets=['harbor-tiles.png','people.png','mesomon.png','battle.png','portraits.png','cover.png','scenery.png']+[f'portraits/{name}.png' for name in HUMANS]+[f'portraits/{name.replace("_","-")}.png' for name in SPECIES])
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
-print('Wrote six original PNG atlases/key art and manifest to',OUT)
+print('Wrote original Port Marche artwork and manifest to',OUT)

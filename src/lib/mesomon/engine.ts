@@ -1,5 +1,6 @@
 import { createBattle, makeCompanion, resolveBattleTurn } from './battle';
-import { CLOSING_CHOICES, DIALOGUES } from './data/dialogue';
+import { CLOSING_CHOICES } from './data/dialogue';
+import { narrativeLines } from './narrative';
 import { MAPS, WALKABLE_TILES } from './data/maps';
 import { SPECIES } from './data/species';
 import type { DialogueLine, DialogueState, Direction, GameAction, GameSession, MapDefinition, MapId, MapObject, MesomonSaveV1, StoryEvent } from './types';
@@ -18,7 +19,9 @@ export function createSession(save: MesomonSaveV1): GameSession { const restored
 export function getMap(value: MapId | MesomonSaveV1): MapDefinition { return MAPS[typeof value === 'string' ? value : value.player.mapId]; }
 export function getVisibleObjects(save: MesomonSaveV1): MapObject[] {
   return getMap(save).objects.filter(object => {
-    if (object.id === 'closing') return flag(save, 'page_found');
+    if (object.id === 'nia') return !flag(save, 'workshop_entered');
+    if (object.id === 'nia-stairs') return flag(save, 'bram_met') && !flag(save, 'page_found');
+    if (object.id === 'closing') return flag(save, 'page_found') || (flag(save, 'workshop_entered') && !flag(save, 'bram_met'));
     if (object.id === 'whistle-reeds') return flag(save, 'whistle_accepted') && !flag(save, 'whistle_found');
     if (object.id === 'gate-brace') return !flag(save, 'brace_found');
     if (object.id === 'rillik-bond') return !flag(save, 'rillik_bonded');
@@ -57,8 +60,8 @@ export function getPhase(session: GameSession): 'explore' | 'dialogue' | 'battle
 
 const QUEST_STEPS = [
   ['disembarked', 'Disembark in Port Marche'], ['workshop_entered', 'Find Edda’s workshop'], ['clues_complete', 'Inspect the three workshop clues'],
-  ['bram_met', 'Speak to Bram at the tide barrier'], ['rillik_bonded', 'Free the trapped Rillik'], ['currents_followed', 'Follow the wrong current twice'],
-  ['tutorial_complete', 'Make the under-wharf passage safe'], ['boss_defeated', 'Push back the Rift Wretch'], ['rift_sealed', 'Seal the first rift'], ['chapter_complete', 'Bring Edda’s page home'],
+  ['bram_met', 'Speak to Bram at the tide barrier'], ['rillik_bonded', 'Free the trapped Rillik'], ['current_eddy', 'Trace the current beneath the boards'],
+  ['sluice_open', 'Drain the crossing'], ['tutorial_complete', 'Make the under-wharf passage safe'], ['currents_followed', 'Follow the upper channel'], ['boss_defeated', 'Push back the Rift Wretch'], ['rift_sealed', 'Seal the first rift'], ['page_found', 'Inspect the stone beside the sealed rift'], ['chapter_complete', 'Bring Edda’s page home'],
 ] as const;
 export function getQuestSteps(save: MesomonSaveV1) {
   const first = QUEST_STEPS.findIndex(([key]) => !flag(save, key));
@@ -79,7 +82,7 @@ export function getObjective(save: MesomonSaveV1): string {
   if (!flag(save, 'current_channel')) return 'Use Current Sense near the upper channel.';
   if (!flag(save, 'boss_defeated')) return 'Follow the second current into the old tide chamber.';
   if (!flag(save, 'rift_sealed')) return 'The demon is gone. Align three pulses to seal the rift.';
-  if (!flag(save, 'page_found')) return 'Rillik found a loose stone beside the sealed rift.';
+  if (!flag(save, 'page_found')) return 'Inspect the stone beside the sealed rift.';
   if (!flag(save, 'chapter_complete')) return 'Return to Nia at Edda’s workshop.';
   return 'Port Marche is quiet again. The inland road will have to wait.';
 }
@@ -88,6 +91,9 @@ function open(session: GameSession, id: string, lines: DialogueLine[], onFinish?
   const dialogue: DialogueState = { id, lines: clone(lines), index: 0, ...(onFinish ? { onFinish } : {}), ...(choices ? { choices: clone(choices) } : {}) };
   session.save.dialogue = dialogue;
   return { ...session, dialogue, notice: '' };
+}
+function scene(session: GameSession, id: string, onFinish?: StoryEvent): GameSession {
+  return open(session, id, narrativeLines(session.save, id), onFinish);
 }
 function short(session: GameSession, speaker: string, ...lines: string[]): GameSession { return open(session, `${speaker}-remark`, lines.map(text => ({ speaker, text }))); }
 function teleport(session: GameSession, mapId: MapId, x: number, y: number, facing: Direction = 'up'): GameSession { session.save.player = { ...session.save.player, mapId, x, y, facing }; return session; }
@@ -128,7 +134,8 @@ function finishBattle(session: GameSession): GameSession {
   save.battle = null;
   if (battle.phase === 'lost') {
     healParty(save); teleport(session, 'tide-stairs', 12, 12, 'left');
-    return short(session, 'Nia', 'You’re both here. That’s the part I care about.', 'Rest. The chamber can wait until you’ve caught your breath.');
+    if (flag(save, 'page_found')) return short(session, 'Tavian', 'Dry boards. We can catch our breath here.');
+    return short(session, 'Nia', 'Steady. Sit here on the steps a minute.', battle.id === 'chamber-boss' ? 'That thing can wait. Let me see your wrist.' : 'There’s room to rest here. I’ve got the gate.');
   }
   if (battle.phase === 'escaped') { session.notice = 'You stepped back. The creature has room.'; return session; }
   if (battle.phase === 'resonated' && battle.enemy.speciesId !== 'rift-wretch') {
@@ -137,11 +144,11 @@ function finishBattle(session: GameSession): GameSession {
   }
   if (battle.id === 'passage-encounter') {
     save.questFlags.tutorial_complete = true;
-    return short(session, 'Tavian', battle.phase === 'resonated' ? 'You can come with us. We’ll leave the nest alone.' : 'Easy. Keep your dry corner. We only need the passage.', 'The next current is above the crossing.');
+    return short(session, 'Tavian', battle.phase === 'resonated' ? 'You can come with us. We’ll leave the nest alone.' : 'Easy. Keep your dry corner. We only need the passage.', flag(save, 'current_channel') ? 'We can get through to the chamber now.' : 'The next current is above the crossing.');
   }
   if (battle.id === 'gleamwing-encounter') { save.questFlags.gleamwing_complete = true; session.notice = battle.phase === 'resonated' ? 'Gleamwing answered · a new crystal rests beside Rillik’s' : 'The lantern is quiet again.'; return session; }
-  save.questFlags.boss_defeated = true; save.seal = { active: true, pulses: 0, attempts: 0 };
-  return open(session, 'boss-defeated', DIALOGUES['boss-defeated']);
+  save.questFlags.boss_defeated = true; save.questFlags.companion_released = true; save.seal = { active: true, pulses: 0, attempts: 0 };
+  return scene(session, 'boss-defeated');
 }
 
 function advance(session: GameSession): GameSession {
@@ -163,55 +170,79 @@ function interact(session: GameSession, requestedId?: string): GameSession {
   const save = session.save;
   const object = nearbyInteractions(save).find(value => !requestedId || value.id === requestedId);
   if (!object) { session.notice = 'Walk beside someone or something, then press A.'; return session; }
-  const id = object.id;
-  if (id === 'captain') return flag(save, 'captain_met') ? short(session, 'Captain', 'Gangplank’s aft. Mind the third board.') : open(session, 'captain', DIALOGUES.captain, 'captain-met');
+  const result = interactWithObject(session, object.id);
+  const visitId = object.id === 'muddren-catch' ? 'fisher' : object.id;
+  save.questFlags[`visited:${visitId}`] = true;
+  return result;
+}
+
+function interactWithObject(session: GameSession, id: string): GameSession {
+  const save = session.save;
+  if (id === 'captain') return flag(save, 'captain_met') ? short(session, 'Captain', 'Gangplank’s aft. Mind the third board.') : scene(session, 'captain', 'captain-met');
   if (id === 'gangplank') {
     if (!flag(save, 'captain_met')) return short(session, 'Captain', 'Tavian. A word before you go ashore.');
     save.questFlags.disembarked = true; teleport(session, 'harbor', 26, 30, 'up'); session.notice = 'Port Marche · the harbor remembers you'; return session;
   }
-  if (id === 'nia') return flag(save, 'nia_met') ? short(session, 'Nia', flag(save, 'page_found') ? 'I’ll meet you at Edda’s. You look like you need a chair.' : 'Northwest. Past the market, under the crooked sign.') : open(session, 'nia', DIALOGUES.nia, 'nia-met');
+  if (id === 'nia') return flag(save, 'nia_met') ? scene(session, 'nia-repeat') : scene(session, 'nia', 'nia-met');
   if (id === 'workshop-door') {
     if (!flag(save, 'nia_met')) return short(session, 'Tavian', 'Nia’s waiting at the pier. I should say hello.');
     teleport(session, 'workshop', 8, 11);
-    return !flag(save, 'workshop_entered') ? open(session, 'workshop', DIALOGUES.workshop, 'workshop-entered') : session;
+    return !flag(save, 'workshop_entered') ? scene(session, 'workshop', 'workshop-entered') : session;
   }
   if (id === 'workshop-exit') return teleport(session, 'harbor', 9, 16, 'down');
   if (['chart', 'field-map', 'satchel-hook'].includes(id)) {
     const key = id === 'chart' ? 'clue_chart' : id === 'field-map' ? 'clue_map' : 'clue_hook';
+    const lines = narrativeLines(save, flag(save, key) ? id + '-repeat' : id);
     save.questFlags[key] = true;
     const complete = ['clue_chart', 'clue_map', 'clue_hook'].every(value => flag(save, value));
-    return open(session, id, [...DIALOGUES[id], ...(complete && !flag(save, 'clues_complete') ? DIALOGUES['clues-complete'] : [])], complete && !flag(save, 'clues_complete') ? 'clues-complete' : undefined);
+    return open(session, id, [...lines, ...(complete && !flag(save, 'clues_complete') ? narrativeLines(save, 'clues-complete') : [])], complete && !flag(save, 'clues_complete') ? 'clues-complete' : undefined);
   }
   if (id === 'bram') {
-    if (!flag(save, 'clues_complete')) return short(session, 'Bram', 'The tide stairs are closed. Water’s moving wrong.', 'If you’re looking for Edda, start at her workshop.');
-    return flag(save, 'bram_met') ? short(session, 'Bram', flag(save, 'rift_sealed') ? 'Inlet’s holding. Whatever you did, thank you.' : 'Stairs are beside me. Bring yourselves back.') : open(session, 'bram', DIALOGUES.bram, 'bram-met');
+    if (!flag(save, 'clues_complete')) return scene(session, 'bram-early');
+    return flag(save, 'bram_met') ? scene(session, 'bram-repeat') : scene(session, 'bram', 'bram-met');
   }
   if (id === 'tide-door') return flag(save, 'bram_met') ? teleport(session, 'tide-stairs', 5, 4) : short(session, 'Bram', 'Talk to me before you pass that barrier.');
   if (id === 'stairs-exit') return teleport(session, 'harbor', 34, 22, 'left');
-  if (id === 'gate-brace') { save.questFlags.brace_found = true; return short(session, 'Tavian', 'A sound length of timber. This will take the load.'); }
+  if (id === 'gate-brace') {
+    save.questFlags.brace_found = true;
+    return short(session, 'Tavian', flag(save, 'visited:gate-wheel')
+      ? 'Long enough to slip under that wheel. Still sound, too.'
+      : 'Good solid timber. I’ll take it up to the gate.');
+  }
   if (id === 'gate-wheel') {
     if (flag(save, 'gate_opened')) return short(session, 'Tavian', 'It’s holding. Nia’s brace is better than the old bracket.');
-    if (!flag(save, 'brace_found')) return open(session, 'gate-blocked', DIALOGUES['gate-blocked']);
-    return open(session, 'gate-opened', DIALOGUES['gate-opened'], 'gate-opened');
+    if (!flag(save, 'brace_found')) return scene(session, 'gate-blocked');
+    return scene(session, 'gate-opened', 'gate-opened');
   }
-  if (id === 'rillik-bond') return flag(save, 'gate_opened') ? open(session, 'first-bond', DIALOGUES['first-bond'], 'first-bond') : short(session, 'Tavian', 'It can’t get clear of the lattice. Open the gate first.');
+  if (id === 'rillik-bond') return flag(save, 'gate_opened') ? scene(session, 'first-bond', 'first-bond') : short(session, 'Tavian', 'It can’t get clear of the lattice. Open the gate first.');
   if (id === 'passage-door') return flag(save, 'rillik_bonded') ? teleport(session, 'passage', 4, 19) : short(session, 'Nia', 'Check the lower walkway before going under.');
   if (id === 'passage-exit') return teleport(session, 'tide-stairs', 15, 6, 'left');
-  if (id === 'sense-eddy') { if (!flag(save, 'rillik_bonded')) return session; save.questFlags.current_eddy = true; save.questFlags.sense_pulse = Number(save.questFlags.sense_pulse ?? 0) + 1; return open(session, 'sense-eddy', DIALOGUES['sense-eddy']); }
+  if (id === 'sense-eddy' || id === 'sense-channel') {
+    if (!flag(save, 'rillik_bonded')) return session;
+    save.questFlags.companion_released = true;
+    const key = id === 'sense-eddy' ? 'current_eddy' : 'current_channel';
+    const dialogueId = flag(save, key) ? id + '-repeat' : id;
+    save.questFlags[key] = true;
+    save.questFlags.sense_pulse = Number(save.questFlags.sense_pulse ?? 0) + 1;
+    if (flag(save, 'current_eddy') && flag(save, 'current_channel')) save.questFlags.currents_followed = true;
+    return scene(session, dialogueId);
+  }
   if (id === 'sluice') {
     if (flag(save, 'sluice_open')) return short(session, 'Tavian', 'The crossing’s drained. No need to turn it again.');
     if (!flag(save, 'current_eddy')) return short(session, 'Tavian', 'Which channel does this drain? Let Rillik check the current.');
-    save.questFlags.sluice_open = true; return open(session, 'sluice', DIALOGUES.sluice);
+    save.questFlags.sluice_open = true; return scene(session, 'sluice');
   }
-  if (id === 'tressel') return open(session, 'tressel', DIALOGUES.tressel, 'tutorial-complete');
-  if (id === 'sense-channel') {
-    save.questFlags.current_channel = true; save.questFlags.sense_pulse = Number(save.questFlags.sense_pulse ?? 0) + 1;
-    if (flag(save, 'current_eddy')) save.questFlags.currents_followed = true;
-    return open(session, 'sense-channel', DIALOGUES['sense-channel']);
+  if (id === 'tressel') {
+    save.questFlags.companion_released = true;
+    return scene(session, flag(save, 'visited:tressel') ? 'tressel-retry' : 'tressel', 'tutorial-complete');
   }
   if (id === 'pickup-tincture') { save.questFlags.passage_tincture = true; save.inventory.tincture = (save.inventory.tincture ?? 0) + 1; session.notice = 'Found a sealed tincture · +1'; return session; }
-  if (id === 'save-lamp' || id === 'rest-rope') { healParty(save); session.notice = 'Companions rested · progress saved on this device'; return session; }
-  if (id === 'gleamwing') return open(session, 'gleamwing', [{ speaker: 'Tavian', text: 'It’s circling the clean side of the lantern. Not the light.' }, { speaker: 'Field note', text: 'An optional encounter. Calm its agitation, then offer Resonate.' }], 'wild-complete');
+  if (id === 'save-lamp' || id === 'rest-rope') {
+    healParty(save);
+    session.notice = save.party.length ? 'Your companions are rested.' : 'Tavian rests for a moment beside the window.';
+    return session;
+  }
+  if (id === 'gleamwing') return scene(session, 'gleamwing', 'wild-complete');
   if (id === 'chamber-door') {
     if (!flag(save, 'tutorial_complete')) return short(session, 'Tavian', 'That frightened Tressel is still guarding the way back.');
     if (!flag(save, 'currents_followed')) return short(session, 'Tavian', 'Rillik hasn’t found where the second current leads yet.');
@@ -221,57 +252,49 @@ function interact(session: GameSession, requestedId?: string): GameSession {
   if (id === 'rift') {
     if (flag(save, 'rift_sealed')) return short(session, 'Tavian', 'One voice. At last.');
     if (flag(save, 'boss_defeated')) { save.seal.active = true; return session; }
-    return open(session, 'boss-intro', DIALOGUES['boss-intro'], 'boss-introduced');
+    save.questFlags.companion_released = true;
+    return scene(session, flag(save, 'boss_introduced') ? 'boss-retry' : 'boss-intro', 'boss-introduced');
   }
-  if (id === 'page') return flag(save, 'page_found') ? short(session, 'Tavian', 'I have the page. Nia’s at the workshop.') : open(session, 'page', DIALOGUES.page, 'page-found');
-  if (id === 'closing') return flag(save, 'chapter_complete') ? short(session, 'Nia', 'There’s still food. Sit down while it’s warm.') : open(session, 'closing', DIALOGUES.closing, undefined, CLOSING_CHOICES);
+  if (id === 'page') {
+    if (flag(save, 'page_found')) return scene(session, 'page-repeat');
+    save.questFlags.companion_released = true;
+    return scene(session, 'page', 'page-found');
+  }
+  if (id === 'closing' && !flag(save, 'page_found')) return scene(session, 'workshop-nia');
+  if (id === 'closing') {
+    if (flag(save, 'chapter_complete')) return scene(session, 'closing-repeat');
+    save.questFlags.companion_released = true;
+    return open(session, 'closing', narrativeLines(save, 'closing'), undefined, CLOSING_CHOICES);
+  }
   if (id === 'pell') {
-    if (flag(save, 'whistle_found') && !flag(save, 'whistle_returned')) return open(session, 'whistle-returned', [
-      { speaker: 'Pell', text: 'That’s it! I thought the marsh had eaten it.' },
-      { speaker: 'Port Marche', text: flag(save, 'rillik_bonded') ? 'Pell plays three notes. Rillik flattens its ear fins.' : 'Pell plays three bright notes. A gull answers badly.' },
-      { speaker: 'Tavian', text: 'Plenty loud. Keep it out of the water this time.' },
-      { speaker: 'Pell', text: 'Seli said to give you this. Don’t drink it all at once.' },
-    ], 'whistle-returned');
+    if (flag(save, 'whistle_found') && !flag(save, 'whistle_returned')) return scene(session, 'whistle-returned', 'whistle-returned');
     if (flag(save, 'whistle_returned')) {
-      if (flag(save, 'rillik_bonded') && !flag(save, 'whistle_imitation')) {
+      if (flag(save, 'companion_released') && !flag(save, 'whistle_imitation')) {
         save.questFlags.whistle_imitation = true;
-        return open(session, 'whistle-imitation', [{ speaker: 'Port Marche', text: 'Pell plays the same three notes, softly this time.' }, { speaker: 'Port Marche', text: 'Rillik answers with a low, almost accurate hum.' }, { speaker: 'Pell', text: 'Your friend’s better at that than I am.' }]);
+        return scene(session, 'whistle-imitation');
       }
-      return short(session, 'Pell', flag(save, 'whistle_imitation') ? 'Your friend hummed my tune. Better than I can play it.' : 'I tied it on a string. The string’s a bit long.');
+      return scene(session, 'pell-repeat');
     }
-    return open(session, 'whistle-accepted', [{ speaker: 'Pell', text: 'Have you seen a tin whistle? Dented. Not very loud.' }, { speaker: 'Tavian', text: 'Where did you last have it?' }, { speaker: 'Pell', text: 'Reeds below the market. Before the water folded.' }, { speaker: 'Tavian', text: 'Folded?' }, { speaker: 'Pell', text: 'Like cloth. I wasn’t going back in.' }], 'whistle-accepted');
+    return flag(save, 'whistle_accepted') ? scene(session, 'pell-pending') : scene(session, 'whistle-accepted', 'whistle-accepted');
   }
   if (id === 'whistle-reeds') { save.questFlags.whistle_found = true; save.inventory['tin-whistle'] = 1; session.notice = 'Found Pell’s dented tin whistle'; return session; }
   if (id === 'fisher' || id === 'muddren-catch') {
-    if (flag(save, 'wrong_catch')) return short(session, 'Fisher', 'Back in the mud. That’s where it wanted to be.');
-    if (!flag(save, 'rillik_bonded')) return short(session, 'Fisher', 'Muddren in a fishing net. Never had that before.', 'It’s breathing too fast. I’m keeping the net wet.');
-    return open(session, 'wrong-catch', [{ speaker: 'Tavian', text: 'Loosen the knot. It’s scared of the pull.' }, { speaker: 'Port Marche', text: 'Rillik answers with a low Resonant Cry.' }, { speaker: 'Fisher', text: 'That’s it. Easy now.' }, { speaker: 'Port Marche', text: 'The Muddren slides into the shallows. Its breathing settles.' }, { speaker: 'Tavian', text: 'Some things just need a way out.' }], 'wrong-catch');
+    if (flag(save, 'wrong_catch')) return scene(session, 'fisher-repeat');
+    if (!flag(save, 'rillik_bonded')) return scene(session, 'fisher-early');
+    save.questFlags.companion_released = true;
+    return scene(session, 'wrong-catch', 'wrong-catch');
   }
   if (id === 'seli') {
-    if (!flag(save, 'seli_gift')) { save.questFlags.seli_gift = true; save.inventory.tincture = (save.inventory.tincture ?? 0) + 1; return short(session, 'Seli', 'Tavian Merrow. You still owe me a jar.', 'Keep this tincture. You can return the bottle.', 'The insects are staying off the water. Even the hungry ones.'); }
-    if (save.party.length) { healParty(save); return short(session, 'Seli', 'A little water. A quiet corner. Let your friends rest.', 'No charge for sitting still.'); }
-    return short(session, 'Seli', 'Edda came through yesterday. Bought lamp oil and nothing sweet.', 'That was when I started worrying.');
+    if (!flag(save, 'seli_gift')) {
+      save.questFlags.seli_gift = true;
+      save.inventory.tincture = (save.inventory.tincture ?? 0) + 1;
+      return scene(session, 'seli-gift');
+    }
+    if (save.party.length) { healParty(save); return scene(session, 'seli-rest'); }
+    return scene(session, 'seli-repeat');
   }
-  const remarks: Record<string, [string, ...string[]]> = {
-    'ship-rail': ['Tavian', 'The channel’s deep enough for ships twice this size.', 'Mud beyond the harbor. Stone where people needed it.'],
-    'dockworker': ['Dock worker', 'Tide came in twice this morning. Only one was wet.', 'I know what that sounds like. I was standing here.'],
-    'bell-worker': ['Crane rigger', 'Heard a bell under the pier. Clean as anything.', 'There isn’t a bell under the pier. I checked.'],
-    'lamp-keeper': ['Lamp keeper', 'The moths won’t land on the harbor lamps.', 'Glass is clean. Oil’s good. Something else is wrong.'],
-    'merchant': ['Merchant', 'South channel’s slow today. Everything comes in late.', 'Except the rain. That’s always punctual.'],
-    'rope-worker': ['Rope maker', 'Nia repaired that crane with a cupboard hinge.', 'Tell Bram. She won’t.'],
-    'harbor-sign': ['Harbor board', 'Workshop: northwest. Market: north.', 'Old tide stairs: eastern quay. Arrival pier: south.'],
-    'inland-gate': ['Road keeper', flag(save, 'chapter_complete') ? 'The inland road is not yet open in this build.' : 'The causeway’s under inspection. Harbor business only today.'],
-    'harbor-crane': ['Nia’s repair tag', 'New bearing. Do not “improve” with oil from the kitchen. — N.C.'],
-    'departure-pier': ['Tavian', 'The ship will leave on the morning tide.', 'For once, I don’t have to be aboard.'],
-    'workshop-note': ['Edda’s note', 'The second voice is not echo. Echo follows. This one waits.'],
-    kettle: ['Tavian', 'Dry kettle. She never leaves it that way.'],
-    'tide-lattice': ['Tavian', flag(save, 'gate_opened') ? 'The gap is wide enough. Rillik got through.' : 'A small blue creature is keeping its head above the water.'],
-    'nia-stairs': ['Nia', flag(save, 'rillik_bonded') ? 'Go on. I’ll keep the return route standing.' : 'A brace under the wheel. I’ll take the weight.'],
-    'maintenance-plaque': ['Maintenance marks', 'Lower channel: counterweight, then sluice.', 'Someone has wiped the newest chalk line away.'],
-    'chamber-markings': ['Tavian', 'Old survey cuts. Edda used to bring me here.', 'That newer mark isn’t hers.'],
-  };
-  const remark = remarks[id];
-  return remark ? short(session, remark[0], ...remark.slice(1)) : session;
+  const lines = narrativeLines(save, id);
+  return lines.length ? open(session, id, lines) : session;
 }
 
 export function reduceGame(previous: GameSession, action: GameAction): GameSession {
@@ -290,8 +313,8 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     const choice = dialogue?.index === (dialogue?.lines.length ?? 0) - 1 ? dialogue?.choices?.find(value => value.id === action.id) : undefined;
     if (!choice) return previous;
     save.questFlags.response_tone = choice.id;
-    save.dialogueHistory = [...save.dialogueHistory, dialogue!.lines[dialogue!.index], { speaker: 'Tavian', text: choice.text }].slice(-100);
-    return open(session, 'closing-after', [{ speaker: 'Tavian', text: choice.text }, ...DIALOGUES['closing-after']], 'chapter-complete');
+    save.dialogueHistory = [...save.dialogueHistory, dialogue!.lines[dialogue!.index]].slice(-100);
+    return open(session, 'closing-after', [{ speaker: 'Tavian', text: choice.text }, ...narrativeLines(save, 'closing-after')], 'chapter-complete');
   }
   if (action.type === 'battle') {
     if (!save.battle || session.dialogue || save.battle.phase !== 'choosing') return previous;
@@ -303,7 +326,7 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     save.seal.attempts++;
     if (save.settings.sealAssist || save.settings.reducedMotion || action.accuracy >= 0.72) save.seal.pulses++;
     else { session.notice = 'A little early. Breathe, then try the same pulse again.'; return session; }
-    if (save.seal.pulses >= 3) { save.seal.active = false; return open(session, 'sealed', DIALOGUES.sealed, 'sealed'); }
+    if (save.seal.pulses >= 3) { save.seal.active = false; return scene(session, 'sealed', 'sealed'); }
     session.notice = `${save.seal.pulses}/3 pulses aligned`; return session;
   }
   if (getPhase(session) !== 'explore') return previous;
@@ -315,10 +338,11 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
   if (action.type === 'interact') return interact(session, action.id);
   if (action.type === 'sense') {
     if (!flag(save, 'rillik_bonded')) { session.notice = 'There is no bonded current to follow yet.'; return session; }
+    save.questFlags.companion_released = true;
     const sense = nearbyInteractions(save).find(object => object.kind === 'sense');
     if (sense) return interact(session, sense.id);
     save.questFlags.sense_pulse = Number(save.questFlags.sense_pulse ?? 0) + 1;
-    session.notice = save.player.mapId === 'passage' ? 'Rillik listens. Find the wet eddies beside the channel.' : 'Rillik’s tail ring glows, then settles. No nearby disturbance.';
+    session.notice = save.player.mapId === 'passage' && !flag(save, 'currents_followed') ? 'Rillik listens. Find the wet eddies beside the channel.' : 'Rillik’s tail ring glows, then settles. No nearby disturbance.';
     return session;
   }
   if (action.type === 'companion') { if (save.party.length) save.questFlags.companion_released = action.released; return session; }

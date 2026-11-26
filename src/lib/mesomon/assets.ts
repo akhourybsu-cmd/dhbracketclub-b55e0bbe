@@ -1,13 +1,17 @@
 /** Original Port Marche artwork, loaded only by the Mesomon route. */
+const version = 3;
+const artUrl = (path: string) => `/games/mesomon/${path}.png?v=${version}`;
+
 export const MESOMON_ASSETS = {
-  version: 2,
+  version,
   root: '/games/mesomon/',
-  cover: '/games/mesomon/cover.png',
-  tiles: '/games/mesomon/harbor-tiles.png?v=2',
-  people: '/games/mesomon/people.png?v=2',
-  creatures: '/games/mesomon/mesomon.png?v=2',
-  battle: '/games/mesomon/battle.png',
-  portraits: '/games/mesomon/portraits.png',
+  cover: artUrl('cover'),
+  scenery: artUrl('scenery'),
+  tiles: artUrl('harbor-tiles'),
+  people: artUrl('people'),
+  creatures: artUrl('mesomon'),
+  battle: artUrl('battle'),
+  portraits: artUrl('portraits'),
 } as const;
 export const PEOPLE = ['tavian', 'nia', 'bram', 'seli', 'pell', 'captain', 'edda', 'fisher', 'worker', 'porter', 'lanternkeeper', 'vendor'] as const;
 export const CREATURES = ['rillik', 'muddren', 'gleamwing', 'tressel', 'rift-wretch'] as const;
@@ -31,7 +35,7 @@ export function propArt(sprite: string): TileArt {
 const PORTRAITS = new Set<string>([...PEOPLE, ...CREATURES]);
 export function portraitUrl(id: string): string {
   const normalized = id.toLowerCase().replace(/_/g, '-');
-  return `/games/mesomon/portraits/${PORTRAITS.has(normalized) ? normalized : 'tavian'}.png`;
+  return artUrl(`portraits/${PORTRAITS.has(normalized) ? normalized : 'tavian'}`);
 }
 
 /** Notes and stage directions have no speaking face. Named harbor workers
@@ -41,9 +45,15 @@ export function dialoguePortrait(speaker: string): string | null {
   const aliases: Record<string, string> = {
     'dock worker': 'worker', 'crane rigger': 'worker',
     'lamp keeper': 'lanternkeeper', 'rope maker': 'porter',
-    merchant: 'vendor', 'road keeper': 'worker',
+    merchant: 'vendor', 'road keeper': 'worker', 'quay runner': 'porter',
   };
   const first = label.split(/\s+/)[0].replace(/['’]s$/, '');
   const id = aliases[label] ?? (PEOPLE.some(person => person === first) ? first : null);
   return id ? portraitUrl(id) : null;
 }
+
+export const SCENERY = {
+  crane: { x: 0, y: 0, width: 48, height: 48 },
+  wheel: { x: 48, y: 0, width: 32, height: 32 },
+  skiff: { x: 80, y: 0, width: 48, height: 32 },
+} as const;

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CREATURES, MESOMON_ASSETS, PEOPLE, TILES, portraitUrl, dialoguePortrait, personArt, propArt } from '../assets';
+import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, portraitUrl, dialoguePortrait, personArt, propArt } from '../assets';
 
 const root = resolve(process.cwd(), 'public/games/mesomon');
 function dimensions(file: string) {
@@ -15,11 +15,18 @@ describe('Mesomon original asset geometry', () => {
     expect(dimensions('people.png')).toEqual([15 * 16, PEOPLE.length * 16]);
     expect(dimensions('mesomon.png')).toEqual([8 * 16, CREATURES.length * 16]);
     expect(dimensions('battle.png')).toEqual([CREATURES.length * 48, 48]);
+    const [width, height] = dimensions('scenery.png');
+    expect([width, height]).toEqual([128, 64]);
+    for (const frame of Object.values(SCENERY)) {
+      expect(frame.x + frame.width).toBeLessThanOrEqual(width);
+      expect(frame.y + frame.height).toBeLessThanOrEqual(height);
+    }
     expect(dimensions('cover.png')).toEqual([320, 180]);
   });
   it('ships every manifest asset and an individual portrait for every named character and species', () => {
-    const manifest = JSON.parse(readFileSync(resolve(root, 'manifest.json'), 'utf8')) as { version: number; assets: string[]; people: { cell: number[] }; creatures: { rows: string[]; cell: number[] } };
+    const manifest = JSON.parse(readFileSync(resolve(root, 'manifest.json'), 'utf8')) as { version: number; scenery: typeof SCENERY; assets: string[]; people: { cell: number[] }; creatures: { rows: string[]; cell: number[] } };
     expect(manifest.version).toBe(MESOMON_ASSETS.version);
+    expect(manifest.scenery).toEqual(SCENERY);
     expect(manifest.people.cell).toEqual([16, 16]);
     expect(manifest.creatures.cell).toEqual([16, 16]);
     expect(manifest.creatures.rows).toEqual([...CREATURES]);
@@ -38,12 +45,13 @@ describe('Mesomon original asset geometry', () => {
   it('matches named speakers and keeps narration faceless', () => {
     expect(dialoguePortrait('Edda’s letter')).toBe(portraitUrl('edda'));
     expect(dialoguePortrait('Crane rigger')).toBe(portraitUrl('worker'));
+    expect(dialoguePortrait('Quay runner')).toBe(portraitUrl('porter'));
     expect(dialoguePortrait('Nia')).toBe(portraitUrl('nia'));
     expect(dialoguePortrait('Port Marche')).toBeNull();
     expect(dialoguePortrait('Field note')).toBeNull();
   });
   it('keeps speaker portraits on the fixed asset path', () => {
-    expect(portraitUrl('Nia')).toBe('/games/mesomon/portraits/nia.png');
-    expect(portraitUrl('../../auth')).toBe('/games/mesomon/portraits/tavian.png');
+    expect(portraitUrl('Nia')).toBe('/games/mesomon/portraits/nia.png?v=3');
+    expect(portraitUrl('../../auth')).toBe('/games/mesomon/portraits/tavian.png?v=3');
   });
 });

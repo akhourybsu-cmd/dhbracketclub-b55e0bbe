@@ -113,6 +113,44 @@ describe('Mesomon game shell', () => {
     expect(within(conversation).getByRole('button',{name:'Continue'})).toBeVisible();
   });
 
+  it('closes Settings and restores menu-button focus when WebKit consumes Escape on fullscreen exit', async () => {
+    let owner: Element | null = null;
+    const properties: [object, string, PropertyDescriptor][] = [
+      [document, 'webkitFullscreenElement', { get: () => owner }],
+      [document, 'webkitFullscreenEnabled', { value: true }],
+      [document, 'webkitExitFullscreen', { value: vi.fn() }],
+      [HTMLElement.prototype, 'webkitRequestFullscreen', { value: () => {
+        owner = document.querySelector('.mm-device');
+        fireEvent(document, new Event('webkitfullscreenchange'));
+      } }],
+    ];
+    const previous = properties.map(([object, key]) => Object.getOwnPropertyDescriptor(object, key));
+    try {
+      properties.forEach(([object, key, descriptor]) => Object.defineProperty(object, key, { ...descriptor, configurable: true }));
+      mount();
+      await begin();
+      fireEvent.click(screen.getByRole('button', { name: /enter full screen/i }));
+      await screen.findByRole('button', { name: /leave full screen/i });
+      const trigger = screen.getByRole('button', { name: 'Menu' });
+      fireEvent.click(trigger);
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+      const assist = screen.getByRole('switch', { name: /Seal Assist/ });
+      assist.focus();
+      expect(assist).toHaveFocus();
+      owner = null;
+      // Native browser exit has no accompanying DOM keydown on WebKit.
+      fireEvent(document, new Event('webkitfullscreenchange'));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(trigger).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Move up' })).toBeEnabled();
+    } finally {
+      properties.forEach(([object, key], index) => {
+        if (previous[index]) Object.defineProperty(object, key, previous[index]!);
+        else Reflect.deleteProperty(object, key);
+      });
+    }
+  });
+
   it('supports settings and keyboard dismissal without losing the current journey', async () => {
     fixture.save=createNewSave(); fixture.save.dialogue=null;
     mount(); await begin();

@@ -29,10 +29,13 @@ function walkTo(session: GameSession, object: MapObject): GameSession {
   }
   throw new Error(`Unreachable ${session.save.player.mapId}:${object.id}`);
 }
-function interactWith(session: GameSession, id: string): GameSession {
+function beginInteraction(session: GameSession, id: string): GameSession {
   const object = getVisibleObjects(session.save).find(value => value.id === id);
   if (!object) throw new Error(`Missing ${session.save.player.mapId}:${id}`);
-  const result = finishDialogue(reduceGame(walkTo(session, object), { type: 'interact', id }));
+  return reduceGame(walkTo(session, object), { type: 'interact', id });
+}
+function interactWith(session: GameSession, id: string): GameSession {
+  const result = finishDialogue(beginInteraction(session, id));
   expect(migrateSave(result.save), `Save remains valid after ${id}`).not.toBeNull();
   return result;
 }
@@ -83,6 +86,129 @@ describe('Mesomon Port Marche chapter', () => {
     session = createSession(migrateSave(session.save)!);
     expect(getPhase(session)).toBe('explore');
     expect(getObjective(session.save)).toContain('inland road');
+  });
+
+  it.each([
+    ['chart', 'satchel-hook', 'field-map'], ['chart', 'field-map', 'satchel-hook'],
+    ['field-map', 'chart', 'satchel-hook'], ['field-map', 'satchel-hook', 'chart'],
+    ['satchel-hook', 'chart', 'field-map'], ['satchel-hook', 'field-map', 'chart'],
+  ])('solves the workshop once when visiting %s, %s, %s', (...order) => {
+    let session = createSession(createNewSave());
+    for (const id of ['captain', 'gangplank', 'nia', 'workshop-door']) session = interactWith(session, id);
+    expect(getVisibleObjects(session.save).some(object => object.id === 'closing')).toBe(true);
+    for (const [index, id] of order.entries()) {
+      const first = beginInteraction(session, id);
+      expect(first.dialogue?.onFinish).toBe(index === 2 ? 'clues-complete' : undefined);
+      const revisit = beginInteraction(finishDialogue(first), id);
+      expect(revisit.dialogue?.lines).not.toEqual(first.dialogue?.lines);
+      expect(revisit.dialogue?.lines.length).toBeGreaterThan(0);
+      expect(revisit.dialogue?.onFinish).toBeUndefined();
+      session = finishDialogue(revisit);
+    }
+    expect(session.save.questFlags.clues_complete).toBe(true);
+    session = interactWith(session, 'workshop-exit');
+    expect(getVisibleObjects(session.save).some(object => object.id === 'nia')).toBe(false);
+  });
+
+  it('remembers optional introductions and observations through a reload', () => {
+    let session = createSession(createNewSave());
+    for (const id of ['captain', 'gangplank']) session = interactWith(session, id);
+    const stranger = beginInteraction(session, 'pell');
+    expect(stranger.dialogue?.onFinish).toBe('whistle-accepted');
+    const pending = beginInteraction(finishDialogue(stranger), 'pell');
+    expect(pending.dialogue?.id).toBe('pell-pending');
+    expect(pending.dialogue?.onFinish).toBeUndefined();
+    session = interactWith(finishDialogue(pending), 'bram');
+    const first = beginInteraction(session, 'dockworker');
+    session = createSession(migrateSave(finishDialogue(first).save)!);
+    const repeat = beginInteraction(session, 'dockworker');
+    expect(repeat.dialogue?.lines).not.toEqual(first.dialogue?.lines);
+    expect(session.save.questFlags['visited:dockworker']).toBe(true);
+    const unintroduced = createSession(createNewSave());
+    expect(unintroduced.save.questFlags['visited:bram']).toBeUndefined();
+    const progress = ['nia', 'workshop-door', 'field-map', 'chart', 'satchel-hook', 'workshop-exit'];
+    for (const id of progress) session = interactWith(session, id);
+    let other = unintroduced;
+    for (const id of ['captain', 'gangplank', ...progress]) other = interactWith(other, id);
+    expect(beginInteraction(other, 'bram').dialogue?.lines).not.toEqual(beginInteraction(session, 'bram').dialogue?.lines);
+  });
+
+  it('lets Tavian mention the crane tag only after he reads it', () => {
+    let session = createSession(createNewSave());
+    for (const id of ['captain', 'gangplank']) session = interactWith(session, id);
+    const withoutTag = beginInteraction(session, 'rope-worker');
+    expect(withoutTag.dialogue?.lines.some(line => line.speaker === 'Tavian')).toBe(false);
+    session = interactWith(session, 'harbor-crane');
+    const withTag = beginInteraction(createSession(migrateSave(session.save)!), 'rope-worker');
+    expect(withTag.dialogue?.lines[0]).toMatchObject({ speaker: 'Tavian', text: expect.stringMatching(/pie weight/i) });
+    const revisit = beginInteraction(finishDialogue(withTag), 'rope-worker');
+    expect(revisit.dialogue?.lines).not.toEqual(withTag.dialogue?.lines);
+  });
+
+  it('lets Pell hear Rillik after an earlier whistle return only when Rillik is outside', () => {
+    let session = createSession(createNewSave());
+    for (const id of ['captain', 'gangplank', 'pell', 'whistle-reeds', 'pell', 'nia', 'workshop-door', 'field-map', 'chart', 'satchel-hook', 'workshop-exit', 'bram', 'tide-door', 'gate-brace', 'gate-wheel', 'rillik-bond', 'stairs-exit']) session = interactWith(session, id);
+    session = reduceGame(session, { type: 'companion', released: false });
+    session = interactWith(session, 'pell');
+    expect(session.save.questFlags.whistle_imitation).toBeUndefined();
+    session = reduceGame(session, { type: 'companion', released: true });
+    const imitation = beginInteraction(session, 'pell');
+    expect(imitation.dialogue?.id).toBe('whistle-imitation');
+    expect(beginInteraction(finishDialogue(imitation), 'pell').dialogue?.id).toBe('pell-repeat');
+  });
+
+  it('keeps all three closing answers distinct, saved, and spoken once', () => {
+    const replies = new Set<string>();
+    for (const id of ['warm', 'wry', 'direct'] as const) {
+      let session = createSession(createNewSave());
+      Object.assign(session.save.questFlags, { workshop_entered: true, page_found: true });
+      session.save.player = { ...session.save.player, mapId: 'workshop', x: 8, y: 7 };
+      session = beginInteraction(session, 'closing');
+      while (session.dialogue!.index < session.dialogue!.lines.length - 1) session = reduceGame(session, { type: 'advance' });
+      const answer = session.dialogue!.choices!.find(choice => choice.id === id)!.text;
+      session = reduceGame(session, { type: 'choice', id });
+      session = createSession(migrateSave(session.save)!);
+      replies.add(session.dialogue!.lines.find(line => line.speaker === 'Nia')!.text);
+      session = finishDialogue(session);
+      expect(session.save.dialogueHistory.filter(line => line.speaker === 'Tavian' && line.text === answer)).toHaveLength(1);
+      expect(session.save.questFlags.response_tone).toBe(id);
+      session = reduceGame(session, { type: 'advance' });
+      expect(beginInteraction(session, 'closing').dialogue?.choices).toBeUndefined();
+    }
+    expect(replies.size).toBe(3);
+  });
+
+  it('keeps Nia in one place and lets the harbor recognize the sealed rift on a first visit', () => {
+    const save = createNewSave();
+    const niaLocations = () => Object.values(MAPS).flatMap(map =>
+      getVisibleObjects({ ...save, player: { ...save.player, mapId: map.id } })
+        .filter(object => ['nia', 'closing', 'nia-stairs'].includes(object.id))
+        .map(() => map.id));
+    expect(niaLocations()).toEqual(['harbor']);
+    save.questFlags.workshop_entered = true;
+    expect(niaLocations()).toEqual(['workshop']);
+    save.questFlags.bram_met = true;
+    expect(niaLocations()).toEqual(['tide-stairs']);
+    save.questFlags.page_found = true;
+    expect(niaLocations()).toEqual(['workshop']);
+
+    save.player = { ...save.player, mapId: 'harbor', x: 11, y: 25 };
+    const before = beginInteraction(createSession(save), 'dockworker');
+    save.questFlags.rift_sealed = true;
+    const after = beginInteraction(createSession(save), 'dockworker');
+    const repeat = beginInteraction(finishDialogue(after), 'dockworker');
+    expect(after.dialogue?.lines).not.toEqual(before.dialogue?.lines);
+    expect(repeat.dialogue?.lines).toEqual(after.dialogue?.lines);
+  });
+
+  it('resumes the exact lines from a preexisting save without rewriting its conversation', () => {
+    const save = createNewSave();
+    save.dialogue = { id: 'captain', index: 1, lines: [
+      { speaker: 'Captain', text: 'Port Marche.' }, { speaker: 'Tavian', text: 'I can see that.' },
+    ], onFinish: 'captain-met' };
+    const restored = createSession(migrateSave(save)!);
+    expect(restored.dialogue?.lines[restored.dialogue.index].text).toBe('I can see that.');
+    expect(finishDialogue(restored).save.questFlags.captain_met).toBe(true);
   });
 
   it('will not bypass story barriers or interact with a distant object', () => {
@@ -144,7 +270,7 @@ describe('Mesomon Port Marche chapter', () => {
     const battle = createBattle([makeCompanion('rillik')], 'rift-wretch', 'chamber-boss', 77);
     expect(resonanceEligibility({ ...battle, agitation: 0 }, 9).eligible).toBe(false);
     const result = resolveBattleTurn(battle, { type: 'resonate' }, { emptyBuds: 9 });
-    expect(result.phase).toBe('choosing'); expect(result.turn).toBe(0); expect(result.log[0]).toContain('Rift-born');
+    expect(result.phase).toBe('choosing'); expect(result.turn).toBe(0); expect(result.log[0]).toContain('Rift Wretch');
     expect(resolveBattleTurn(battle, { type: 'move', moveId: 'bank-break' })).toBe(battle);
   });
 
@@ -206,7 +332,7 @@ describe('Mesomon Port Marche chapter', () => {
     expect(result.activeIndex).toBe(1);
     expect(result.allies[0].vitality).toBe(0);
     expect(result.enemy.vitality).toBe(battle.enemy.vitality);
-    expect(result.log.some(line => line.startsWith('Brine Snap'))).toBe(false);
+    expect(result.log.some(line => line.includes('Brine Snap'))).toBe(false);
     const next = resolveBattleTurn(result, { type: 'move', moveId: 'quick-tackle' });
     expect(next.enemy.vitality).toBeLessThan(result.enemy.vitality);
   });
@@ -238,7 +364,7 @@ describe('Mesomon Port Marche chapter', () => {
     const battle = createBattle([makeCompanion('rillik')], 'rift-wretch', 'chamber-boss', 19);
     const third = { ...battle, turn: 2, mudbound: 2 };
     const veil = resolveBattleTurn(third, { type: 'move', moveId: 'tidal-veil' });
-    expect(veil.log.some(line => line.includes('two broken strikes'))).toBe(true);
+    expect(veil.log.some(line => line.includes('double pulse'))).toBe(true);
     expect(veil.mudbound).toBe(0);
     expect(veil.allies[0].vitality).toBeGreaterThanOrEqual(42);
     const outcomes = new Set<number>();

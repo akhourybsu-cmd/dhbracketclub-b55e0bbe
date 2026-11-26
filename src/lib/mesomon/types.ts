@@ -25,6 +25,10 @@ export type BattleAction = { type: 'move'; moveId: MoveId } | { type: 'guard' }
   | { type: 'resonate' } | { type: 'flee' };
 export interface DialogueLine { speaker: string; text: string; }
 export interface DialogueChoice { id: 'warm' | 'wry' | 'direct'; label: string; text: string; }
+export interface NarrativeVariant {
+  when?: { all?: string[]; none?: string[]; tone?: DialogueChoice['id'] };
+  lines: DialogueLine[];
+}
 export interface DialogueState { id: string; lines: DialogueLine[]; index: number; onFinish?: StoryEvent; choices?: DialogueChoice[]; }
 export type StoryEvent = 'captain-met' | 'nia-met' | 'workshop-entered' | 'clues-complete' | 'bram-met' | 'gate-opened' | 'first-bond' | 'boss-introduced' | 'sealed' | 'page-found' | 'chapter-complete' | 'whistle-accepted' | 'whistle-returned' | 'wrong-catch' | 'tutorial-complete' | 'wild-complete';
 export interface MesomonSettings {

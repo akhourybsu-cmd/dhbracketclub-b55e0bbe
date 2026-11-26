@@ -33,6 +33,7 @@ export function useMesomonFullscreen(device: RefObject<HTMLDivElement>) {
   const [active, setActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoAttempted = useRef(false);
+  const lastTouchButton = useRef<HTMLButtonElement | null>(null);
   const pending = useRef<{ explicit: boolean } | null>(null);
   const timeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -66,7 +67,14 @@ export function useMesomonFullscreen(device: RefObject<HTMLDivElement>) {
       finish();
       sync();
     };
+    // Some WebKit versions synthesize a plain MouseEvent for a tap. Match
+    // that click to the actual pointer release on the same button.
+    const rememberPointer = (event: PointerEvent) => {
+      lastTouchButton.current = event.pointerType === 'touch' && event.target instanceof Element
+        ? event.target.closest('button') : null;
+    };
     sync();
+    node.addEventListener('pointerup', rememberPointer, true);
     doc.addEventListener('fullscreenchange', changed);
     doc.addEventListener('webkitfullscreenchange', changed);
     doc.addEventListener('fullscreenerror', failed);
@@ -75,6 +83,7 @@ export function useMesomonFullscreen(device: RefObject<HTMLDivElement>) {
     mode?.addEventListener?.('change', sync);
     return () => {
       finish();
+      node.removeEventListener('pointerup', rememberPointer, true);
       doc.removeEventListener('fullscreenchange', changed);
       doc.removeEventListener('webkitfullscreenchange', changed);
       doc.removeEventListener('fullscreenerror', failed);
@@ -122,5 +131,12 @@ export function useMesomonFullscreen(device: RefObject<HTMLDivElement>) {
     }
   }, [device, finish, sync]);
 
-  return { available, active, error, toggle: () => change(true), enterOnPlay: () => change(false) };
+  const enterOnPlay = (event: MouseEvent) => {
+    const pointer = (event as Partial<PointerEvent>).pointerType;
+    const fromTouch = pointer ? pointer === 'touch' :
+      event.detail > 0 && event.target instanceof Node && lastTouchButton.current?.contains(event.target);
+    lastTouchButton.current = null;
+    if (fromTouch) change(false);
+  };
+  return { available, active, error, toggle: () => change(true), enterOnPlay };
 }

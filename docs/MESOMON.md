@@ -12,6 +12,14 @@ Combat uses a seeded resolver with priority/agility, four moves per companion, d
 
 The first-play duration of 15–25 minutes is a design target. Automated walkthroughs and headless simulations establish functional completion, not measured human reading/exploration time or physical-phone frame rates.
 
+## Writing and staging a scene
+
+Chapter dialogue lives in `data/dialogue.ts`. Put the ordinary first encounter there. Use `data/remarks.ts` for reactions to a discovery, a past conversation, a return visit or Tavian’s closing reply. Put the most specific condition first. The engine selects the lines when the interaction begins and stores those lines and the pending completion event in the save. An old file can finish the conversation it was already reading.
+
+Give each speaker something they could have seen or heard. Nia follows the investigation from the pier to the workshop and the tide stairs. A clue can be the first or the last thing Tavian finds. When writing a callback, gate it on the actual observation. For example, the rope maker answers a different question after Tavian reads the repair tag on the crane. Check the ordinary route, a return visit, and the reverse discovery order when changing a scene.
+
+Use a character’s name for spoken dialogue, `Port Marche` for something the player can see, and `Field note` for a control or rule. Letters and inscriptions keep their own source credit. Register new written sources in `reading.ts` so they appear on paper and keep that credit in the journal. The closing conversation gives each response its own reply.
+
 ## Architecture and DH integration
 
 - `/mesomon` uses the existing protected/lazy route, installed `mesomon` asset, club context and game-shell navigation. The page additionally enforces installation rather than relying on the shared administrator inspection bypass. Club admins install the catalog entry through existing Club Apps; no club receives an unsolicited install.

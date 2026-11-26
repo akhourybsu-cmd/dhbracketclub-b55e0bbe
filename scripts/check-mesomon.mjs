@@ -64,7 +64,7 @@ const controls = (p, name) => p.locator(`[data-mm-action="${name}"]`);
 async function auditBuild() {
   const release=JSON.parse(await readFile('dist/games/mesomon/release.json','utf8'));
   assert.equal(release.schema_version,1,'The build must emit the Mesomon release metadata schema');
-  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,1);assert.equal(release.assets_version,2);
+  assert.equal(release.chapter,'port-marche');assert.equal(release.rules_version,1);assert.equal(release.assets_version,3);
   assert.match(release.source_sha,/^[a-f\d]{40}$/,'Release metadata must contain the actual Git commit');
   assert.equal(typeof release.source_dirty,'boolean','Release metadata must identify uncommitted source');
   if(process.env.GITHUB_SHA)assert.equal(release.source_sha,process.env.GITHUB_SHA,'CI build metadata must identify the checked GitHub commit');
@@ -107,11 +107,29 @@ async function start(p) {
 async function settleLayout(p) {
   await p.evaluate(async()=>{await document.fonts.ready;await new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done)));});
 }
-async function drain(p, {inspectChoices=false}={}) {
+async function drain(p, {inspectChoices=false, opening=false}={}) {
   let choicesInspected=false;
+  const readingModes = new Set();
   for (let count = 0; count < 180; count++) {
     const state = await save(p);
-    if (!state?.dialogue) return;
+    if (!state?.dialogue) {
+      if (opening) {
+        assert.deepEqual([...readingModes].sort(), ['document', 'scene', 'speech']);
+        check(engine + '-opening-shows-spoken-lines-narration-and-letter');
+      }
+      return;
+    }
+    if (opening) {
+      const panel = p.getByRole('region', {name: 'Conversation'});
+      const kind = await panel.getAttribute('data-voice');
+      if (kind && !readingModes.has(kind)) {
+        await expect(panel.locator('.mm-dialogue-next')).toHaveText('Continue', {timeout: 7000});
+        if (kind === 'speech') await expect(panel.locator('.mm-speaker img')).toBeVisible();
+        else await expect(panel.locator('.mm-speaker img')).toHaveCount(0);
+        await p.screenshot({path: join(output, engine + '-reading-' + kind + '.png')});
+        readingModes.add(kind);
+      }
+    }
     const choice = state.dialogue.choices?.[1] || state.dialogue.choices?.[0];
     if (choice && state.dialogue.index >= state.dialogue.lines.length - 1) {
       if(inspectChoices&&!choicesInspected){
@@ -361,6 +379,8 @@ async function smoke(width, height, theme) {
     await expect(p.locator('.mesomon canvas')).toHaveCount(1);
     await expect.poll(async () => { const s = await save(p); return `${s.player.mapId}:${s.player.x}:${s.player.y}`; }).toBe(`${persisted.player.mapId}:${persisted.player.x}:${persisted.player.y}`);
     check(label + '-reload-restores-position-with-one-canvas');
+    await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
+    await auditFrame(p, label + '-restored-ship-art', 'ship');
     await p.screenshot({ path: join(output, label + '-game.png') });
     await context.setOffline(true);
     const offlineBefore=await save(p),offlineDirection=await p.evaluate(async()=>{
@@ -463,7 +483,9 @@ async function chapter() {
   const { p, context } = await setup(390,844,'dark');
   try {
     await start(p); await drain(p);
-    for (const id of ['captain','gangplank','nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
+    await interact(p, 'captain', false);
+    await drain(p, {opening: true});
+    for (const id of ['gangplank','nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
       await interact(p,id);
       if(id==='nia')await p.screenshot({path:join(output,engine+'-harbor.png')});
       if(id==='workshop-door')await p.screenshot({path:join(output,engine+'-workshop.png')});
@@ -507,6 +529,25 @@ async function guestRoute() {
   } finally {await context.close();}
 }
 
+async function touchLaunch() {
+  const {p, context} = await setup(390, 844, 'dark');
+  try {
+    const button = p.getByRole('button', {name: 'Begin journey', exact: true});
+    await expect(button).toBeEnabled();
+    const canExpand = await p.getByRole('button', {name: 'Enter full screen', exact: true}).count();
+    await button.tap();
+    await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
+    if (canExpand) {
+      const owner = () => p.evaluate(() => (document.fullscreenElement ?? document.webkitFullscreenElement)?.matches('.mm-device') ?? false);
+      await expect.poll(owner).toBe(true);
+      await p.getByRole('button', {name: 'Leave full screen', exact: true}).tap();
+      await expect.poll(owner).toBe(false);
+    }
+    await audit(p, engine + '-trusted-touch-console-fit');
+    check(engine + '-touch-begin-plays-and-expands-where-supported', {nativeFullscreenOffered: !!canExpand});
+  } finally { await context.close(); }
+}
+
 async function offlineTabs() {
   const {p:a,context}=await setup(390,844,'dark');
   let b;
@@ -526,7 +567,7 @@ async function offlineTabs() {
     const offlineArtRequests = [];
     b.on('request', request => {
       const path = new URL(request.url()).pathname;
-      if (/^\/games\/mesomon\/(harbor-tiles|people|mesomon|battle)\.png$/.test(path)) offlineArtRequests.push(path);
+      if (/^\/games\/mesomon\/(harbor-tiles|people|mesomon|battle|scenery)\.png$/.test(path)) offlineArtRequests.push(path);
     });
     await context.setOffline(true);await a.bringToFront();
     const before=position(await save(a));await press(a,'right');
@@ -570,6 +611,7 @@ try {
   for(const [width,height,theme]of sizes)await smoke(width,height,theme);
   if(!process.env.MESOMON_SMOKE_ONLY)await chapter();
   await guestRoute();
+  await touchLaunch();
   await offlineTabs();
   assert.deepEqual(report.runtimeErrors,[]);console.log(`PASS Mesomon ${engine}: ${report.checks.length} checks`);
   }

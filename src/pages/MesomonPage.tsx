@@ -10,6 +10,8 @@ import {
   ChevronRight,
   ChevronUp,
   Compass,
+  BookOpen,
+  Feather,
   Menu,
   Volume2,
   VolumeX,
@@ -31,7 +33,8 @@ import {
 import { keyboardAction } from "@/lib/mesomon/input";
 import { MOVES, SPECIES } from "@/lib/mesomon/data/species";
 import { resonanceEligibility } from "@/lib/mesomon/battle";
-import { portraitUrl, dialoguePortrait } from "@/lib/mesomon/assets";
+import { MESOMON_ASSETS, portraitUrl } from "@/lib/mesomon/assets";
+import { readingVoice } from "@/lib/mesomon/reading";
 import { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
 import { MesomonAudio } from "@/lib/mesomon/audio";
 import { readPreferences, writePreferences } from "@/lib/mesomon/preferences";
@@ -139,7 +142,20 @@ function Chapter({
   const [restart, setRestart] = useState(false);
   const closeMenu = useCallback(() => setMenu(null), []);
   const closeRestart = useCallback(() => setRestart(false), []);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const wasFullscreen = useRef(fullscreen.active);
+  const restoreMenuFocus = useRef(false);
+  useEffect(() => {
+    // The browser can consume Escape while leaving native fullscreen.
+    if (wasFullscreen.current && !fullscreen.active && (menu || restart)) {
+      restoreMenuFocus.current = true;
+      setRestart(false);
+      setMenu(null);
+    }
+    wasFullscreen.current = fullscreen.active;
+  }, [fullscreen.active, menu, restart]);
   const [viewError, setViewError] = useState<string | null>(null);
+  const [artReady, setArtReady] = useState(false);
   const [viewRetry, setViewRetry] = useState(0);
   const [held, setHeld] = useState<Direction | null>(null);
   const [hidden, setHidden] = useState(() => document.hidden);
@@ -217,11 +233,15 @@ function Chapter({
     if (!parent || !session) return;
     const abort = new AbortController();
     let instance: MesomonView | null = null;
+    setArtReady(false);
     setViewError(null);
     import("@/lib/mesomon/renderer/createGame")
       .then(({ createMesomonView }) =>
         createMesomonView(parent, {
           signal: abort.signal,
+          onFirstFrame: () => {
+            if (!abort.signal.aborted) setArtReady(true);
+          },
           onInteract: (id) => {
             if (playingRef.current && !menuRef.current)
               dispatch({ type: "interact", id });
@@ -361,9 +381,13 @@ function Chapter({
       .forEach((node) => {
         node.inert = !!menu;
       });
+    if (!menu && restoreMenuFocus.current) {
+      restoreMenuFocus.current = false;
+      menuTrigger.current?.focus({ preventScroll: true });
+    }
   }, [menu, playing]);
   const line = session?.dialogue?.lines[session.dialogue.index];
-  const speakerArt = line ? dialoguePortrait(line.speaker) : null;
+  const voice = line ? readingVoice(line.speaker) : null;
   const lineKey = `${session?.dialogue?.id}:${session?.dialogue?.index}`;
   const textSpeed = session?.save.settings.textSpeed;
   useEffect(() => {
@@ -548,9 +572,9 @@ function Chapter({
     return () => clearInterval(timer);
   }, [sealActive, dialogueActive, hidden, menu, reducedMotion, sealAssist]);
 
-  const begin = () => {
+  const begin = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (sync.blocked || sync.loading) return;
-    fullscreen.enterOnPlay();
+    fullscreen.enterOnPlay(event.nativeEvent);
     // A cloud response can arrive just before the title's adoption effect.
     // Never begin with an older blank session against that cloud revision.
     if (sync.save && adoptedSave.current !== sync.save) {
@@ -681,6 +705,7 @@ function Chapter({
         </button>
         <button
           className="mm-icon"
+          ref={menuTrigger}
           data-mm-action="menu"
           aria-label="Menu"
           disabled={!session || sync.blocked}
@@ -696,7 +721,7 @@ function Chapter({
       )}
       {!session ? (
         <div className="mm-loading">
-          <img src="/games/mesomon/cover.png" alt="Port Marche harbor" />
+          <img src={MESOMON_ASSETS.cover} alt="Port Marche harbor" />
           <h2>Opening the harbor</h2>
           <p>
             {sync.loading
@@ -728,13 +753,21 @@ function Chapter({
               </span>
             </div>
             <div className="mm-display-slot">
-              <div className="mm-screen">
+              <div className="mm-screen" data-art-ready={artReady}>
                 <div
                   ref={pixels}
                   className="mm-pixels"
                   role="img"
                   aria-label={`Port Marche game view. Tavian at ${session.save.player.x}, ${session.save.player.y} in ${getMap(session.save).name}.`}
                 />
+                {playing && !artReady && !viewError && (
+                  <div className="mm-opening-scene" role="status">
+                    <img src={MESOMON_ASSETS.cover} alt="" />
+                    <span>
+                      Opening {getMap(session.save).name.split(" · ")[0]}…
+                    </span>
+                  </div>
+                )}
                 {viewError && (
                   <div className="mm-view-error" role="alert">
                     <p>{viewError}</p>
@@ -746,7 +779,7 @@ function Chapter({
                 {!playing && (
                   <div className="mm-title">
                     <div className="mm-title-art" aria-hidden="true">
-                      <img src="/games/mesomon/cover.png" alt="" />
+                      <img src={MESOMON_ASSETS.cover} alt="" />
                     </div>
                     <div className="mm-title-copy">
                       <small>CHAPTER I</small>
@@ -778,14 +811,14 @@ function Chapter({
                       <span className="mm-title-note">
                         {sync.save
                           ? `${Math.floor(sync.save.playtimeSeconds / 60)} min · ${getMap(sync.save).name}`
-                          : "Tavian Merrow returns to a harbor he knows."}
+                          : "Arrival aboard the Wayfarer"}
                       </span>
                     </div>
                   </div>
                 )}
                 {playing && phase === "seal" && !session.dialogue && (
                   <div className="mm-seal" aria-label="Rift seal">
-                    <p>Find the same voice.</p>
+                    <p>Close the rift</p>
                     <div className="mm-seal-circles" aria-hidden="true">
                       <i />
                       <b
@@ -824,7 +857,10 @@ function Chapter({
                       <br />
                       has one voice.
                     </h2>
-                    <p>Beyond the inland gate, Edda’s trail continues.</p>
+                    <p>
+                      Edda took the inland road. Her map is back on the workshop
+                      table.
+                    </p>
                     <button
                       className="mm-primary"
                       onClick={() => dispatch({ type: "advance" })}
@@ -841,22 +877,35 @@ function Chapter({
             {playing && (
               <section
                 className={`mm-event ${session.dialogue ? "mm-dialogue" : ""}`}
+                data-voice={voice?.kind}
                 aria-label={session.dialogue ? "Conversation" : "Field notes"}
               >
-                {line ? (
+                {line && voice ? (
                   <>
                     <div className="mm-speaker">
-                      {speakerArt && (
+                      {voice.portrait && (
                         <img
-                          key={speakerArt}
-                          src={speakerArt}
+                          key={voice.portrait}
+                          src={voice.portrait}
                           alt=""
                           onError={(event) => {
                             event.currentTarget.style.visibility = "hidden";
                           }}
                         />
                       )}
-                      <strong>{line.speaker}</strong>
+                      {voice.kind === "document" && (
+                        <Feather size={14} aria-hidden="true" />
+                      )}
+                      {voice.kind === "guide" && (
+                        <BookOpen size={14} aria-hidden="true" />
+                      )}
+                      <strong
+                        className={
+                          voice.kind === "scene" ? "mm-sr-only" : undefined
+                        }
+                      >
+                        {voice.credit}
+                      </strong>
                     </div>
                     <p className="mm-dialogue-text">
                       <span aria-hidden="true">
@@ -865,7 +914,13 @@ function Chapter({
                           {textComplete ? " ▾" : ""}
                         </span>
                       </span>
-                      <span className="mm-sr-only">{line.text}</span>
+                      <span
+                        className="mm-sr-only"
+                        aria-live="polite"
+                        aria-atomic="true"
+                      >
+                        {line.text}
+                      </span>
                     </p>
                     {session.dialogue?.choices &&
                     session.dialogue.index >=
@@ -905,8 +960,7 @@ function Chapter({
                       {getObjective(session.save)}
                     </p>
                     <p className="mm-notice" role="status">
-                      {session.notice ||
-                        "Walk close to something. Press A to look."}
+                      {session.notice}
                     </p>
                     <div className="mm-nearby">
                       {nearbyInteractions(session.save).map((object) => (
@@ -1144,7 +1198,7 @@ function BattlePanel({
   onAction: (action: BattleAction) => void;
   onContinue: () => void;
 }) {
-  const [tab, setTab] = useState<"moves" | "switch" | "pack">("moves");
+  const [tab, setTab] = useState<"moves" | "switch" | "pack" | "log">("moves");
   const [busy, setBusy] = useState(false);
   const locked = useRef(false),
     cooldown = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1240,7 +1294,7 @@ function BattlePanel({
         {battle.log.at(-1) || "Choose a move."}
       </p>
       <div className="mm-battle-tabs" aria-label="Battle actions">
-        {(["moves", "switch", "pack"] as const).map((value) => (
+        {(["moves", "switch", "pack", "log"] as const).map((value) => (
           <button
             key={value}
             aria-pressed={tab === value}
@@ -1250,7 +1304,9 @@ function BattlePanel({
               ? "Moves"
               : value === "switch"
                 ? "Switch"
-                : "Satchel"}
+                : value === "pack"
+                  ? "Satchel"
+                  : "Log"}
           </button>
         ))}
       </div>
@@ -1266,7 +1322,9 @@ function BattlePanel({
                 <strong>{MOVES[id].name}</strong>
                 <small>
                   {MOVES[id].kind === "calm"
-                    ? "Calm"
+                    ? battle.enemy.speciesId === "rift-wretch"
+                      ? "Loosen hold"
+                      : "Calm"
                     : MOVES[id].kind === "guard"
                       ? "Guard"
                       : MOVES[id].kind === "evade"
@@ -1310,6 +1368,12 @@ function BattlePanel({
             </button>
           ))}
         </div>
+      ) : tab === "log" ? (
+        <ol className="mm-turn-history" aria-label="Recent battle actions">
+          {battle.log.map((message, index) => (
+            <li key={index}>{message}</li>
+          ))}
+        </ol>
       ) : (
         <div className="mm-pack">
           <button
@@ -1318,7 +1382,7 @@ function BattlePanel({
             }
             onClick={() => choose({ type: "item", itemId: "tincture" })}
           >
-            Healing tincture{" "}
+            Healing tincture · up to 26 vitality{" "}
             <span>
               ×
               {Math.max(
@@ -1568,7 +1632,7 @@ function GameMenu({
                     .slice(-32)
                     .map((entry, index) => (
                       <p key={index}>
-                        <strong>{entry.speaker}</strong>
+                        <strong>{readingVoice(entry.speaker).credit}</strong>
                         {entry.text}
                       </p>
                     ))

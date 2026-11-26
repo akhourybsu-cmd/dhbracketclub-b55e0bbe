@@ -1,10 +1,13 @@
 import type PhaserTypes from 'phaser';
 import type { Direction, GameSession, MapDefinition, MapObject, SpeciesId, TileKind } from '../types';
-import { CREATURES, MESOMON_ASSETS, PEOPLE, TILES, personArt, propArt } from '../assets';
+import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, personArt, propArt } from '../assets';
+import { paintBattleStage } from './battleStage';
+import { paintTerrainDepth } from './terrain';
 import { canWalk, getMap, getVisibleObjects } from '../engine';
 
 export interface MesomonViewOptions {
   onInteract?: (id: string) => void;
+  onFirstFrame?: () => void;
   onError?: (message: string) => void;
   signal?: AbortSignal;
   /** Opt in only when sealAccuracy() also drives the caller’s input. */
@@ -26,6 +29,10 @@ const sheets = [
   { key: 'ms:creatures', url: MESOMON_ASSETS.creatures, size: 16, columns: 8, rows: CREATURES.length },
   { key: 'ms:battle', url: MESOMON_ASSETS.battle, size: 48, columns: CREATURES.length, rows: 1 },
 ];
+const artwork = [
+  ...sheets.map(sheet => ({ url: sheet.url, width: sheet.columns * sheet.size, height: sheet.rows * sheet.size })),
+  { url: MESOMON_ASSETS.scenery, width: 128, height: 64 },
+];
 const artError = 'The harbor artwork could not load. Retry when your connection returns.';
 const closed = () => new DOMException('Mesomon view was closed.', 'AbortError');
 
@@ -36,7 +43,7 @@ async function loadArtwork(signal?: AbortSignal) {
   signal?.addEventListener('abort', abort, { once: true });
   const timeout = setTimeout(abort, 18000);
   try {
-    return await Promise.all(sheets.map(sheet => new Promise<HTMLImageElement>((resolve, reject) => {
+    return await Promise.all(artwork.map(sheet => new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image();
       const cleanup = () => {
         image.onload = null;
@@ -53,7 +60,7 @@ async function loadArtwork(signal?: AbortSignal) {
       image.onload = async () => {
         try {
           await image.decode();
-          if (image.naturalWidth !== sheet.columns * sheet.size || image.naturalHeight !== sheet.rows * sheet.size) {
+          if (image.naturalWidth !== sheet.width || image.naturalHeight !== sheet.height) {
             throw new Error(artError);
           }
           resolve(image);
@@ -81,6 +88,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
   let currentScene: PortMarcheScene | null = null;
   let disposed = false;
   let paused = false;
+  let awaitingFirstFrame = true;
   let bootTimer: ReturnType<typeof setTimeout> | null = null;
   const sealPhase = (time: number) => (time % 1800) / 1800;
   class PortMarcheScene extends Phaser.Scene {
@@ -96,6 +104,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
     private effects: PhaserTypes.GameObjects.Graphics | null = null;
     private battleSprites: PhaserTypes.GameObjects.Sprite[] = [];
     private battleMode = false;
+    private battleStage: PhaserTypes.GameObjects.Graphics | null = null;
     private frameAt = 0;
     private moveStart = 0;
     private from = { x: 0, y: 0 };
@@ -118,6 +127,11 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
           return;
         }
       }
+      const scenery = this.textures.addImage('ms:scenery', images[sheets.length]);
+      if (!scenery) { options.onError?.(artError); return; }
+      for (const [name, frame] of Object.entries(SCENERY)) {
+        scenery.add(name, 0, frame.x, frame.y, frame.width, frame.height);
+      }
       this.ready = true; registerScene(this);
       this.cameras.main.setRoundPixels(true);
       this.decorations = this.add.graphics().setDepth(-20);
@@ -137,6 +151,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (!this.ready || disposed) return;
       const map = getMap(session.save);
       if (this.mapId !== map.id) this.rebuildMap(map);
+      if (awaitingFirstFrame) {
+        awaitingFirstFrame = false;
+        this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
+          if (!disposed) options.onFirstFrame?.();
+        });
+      }
       const signature = getVisibleObjects(session.save).map(o => `${o.id}:${o.sprite}:${o.x}:${o.y}`).join('|') + `:${session.save.questFlags.gate_opened}:${session.save.rifts['port-marche']}`;
       if (signature !== this.objectSignature) { this.rebuildObjects(getVisibleObjects(session.save)); this.objectSignature = signature; }
       const { player } = session.save;
@@ -194,6 +214,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         if (map.id === 'workshop') {
           for (const [x, y] of [[3, 3], [4, 3], [11, 3], [12, 3]]) context.drawImage(atlas, TILES.indexOf('shelf') * 16, 0, 16, 16, x * 16, y * 16, 16, 16);
         }
+        paintTerrainDepth(context, map);
+        if (map.id === 'harbor') {
+          const skiff = SCENERY.skiff;
+          // Moored in the water directly alongside the west edge of the arrival pier.
+          context.drawImage(images[sheets.length], skiff.x, skiff.y, skiff.width, skiff.height, 21 * 16, 31 * 16, skiff.width, skiff.height);
+        }
         // The same map data remains the collision source; these marks never add invisible blockers.
         texture.refresh(); this.background = this.add.image(0, 0, this.mapTexture).setOrigin(0).setDepth(-100);
       }
@@ -211,18 +237,29 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         const texture = peopleRow >= 0 ? 'ms:people' : creatureRow >= 0 ? 'ms:creatures' : 'ms:tiles';
         const frame = peopleRow >= 0 ? peopleRow * 15 + DIRECTION_FRAME[data.direction ?? 'down'] : creatureRow >= 0 ? creatureRow * 8 + CREATURE_DIRECTION[data.direction ?? 'down'] : Math.max(0, TILES.indexOf(objectTile as typeof TILES[number]));
         const x = data.x * 16 + 8, y = data.y * 16 + 16;
-        const shadow = actor ? this.add.ellipse(x, y - 1, 10, 3, 0x102224, 0.25).setDepth(y - 0.5) : null;
-        const sprite = this.add.sprite(x, y, texture, frame).setOrigin(0.5, 1).setDepth(y);
-        sprite.setInteractive({ useHandCursor: true });
+        const landmark = data.sprite === 'crane' || data.sprite === 'wheel' ? data.sprite : null;
+        let shadow: PhaserTypes.GameObjects.Ellipse | null = null;
+        if (landmark === 'wheel') {
+          shadow = this.add.ellipse(x + 3, y - 1, 16, 5, 0x102224, 0.32);
+        } else if (actor) {
+          shadow = this.add.ellipse(x, y - 1, 10, 3, 0x102224, 0.25);
+        }
+        shadow?.setDepth(y - 0.5);
+        const sprite = this.add.sprite(x, y, landmark ? 'ms:scenery' : texture, landmark ?? frame)
+          .setOrigin(landmark === 'crane' ? 18 / SCENERY.crane.width : 0.5, 1).setDepth(y);
+        sprite.setInteractive({ useHandCursor: true, pixelPerfect: Boolean(landmark) });
         sprite.on('pointerup', () => { if (!disposed && !paused) options.onInteract?.(data.id); });
         this.objects.push({ data, sprite, shadow });
       }
     }
     private setupBattle(session: GameSession): void {
+      this.battleStage?.destroy(); this.battleStage = null;
       this.battleSprites.forEach(s => s.destroy()); this.battleSprites = [];
       this.background?.setVisible(!this.battleMode); this.objects.forEach(o => { o.sprite.setVisible(!this.battleMode); o.shadow?.setVisible(!this.battleMode); });
       if (!this.battleMode || !session.save.battle) { this.cameras.main.setBounds(0, 0, getMap(session.save).width * 16, getMap(session.save).height * 16); return; }
       this.cameras.main.setScroll(0, 0).removeBounds();
+      this.battleStage = this.add.graphics().setDepth(8000);
+      paintBattleStage(this.battleStage, session.save.battle.enemy.speciesId === 'rift-wretch', getMap(session.save).ambience === 'harbor');
       this.battleSprites = [this.add.sprite(45, 98, 'ms:battle', 0).setOrigin(0.5, 1).setFlipX(true).setDepth(9000), this.add.sprite(116, 67, 'ms:battle', 0).setOrigin(0.5, 1).setDepth(9000)];
     }
     private updateBattle(session: GameSession): void {
@@ -254,7 +291,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       }
       this.effects.clear(); this.decorations.clear();
       if (this.battleMode) {
-        this.drawBattle(time, reduced); return;
+        const boss = session.save.battle?.enemy.speciesId === 'rift-wretch';
+        this.battleSprites.forEach((sprite, i) => {
+          const bob = reduced ? 0 : Math.floor(time / (boss && i === 1 ? 430 : 850)) % 2;
+          sprite.setY((i === 0 ? 98 : 67) + bob);
+        });
+        return;
       }
       // At most one small effect per visible water row; no particles or per-frame React work.
       const view = this.cameras.main.worldView;
@@ -289,24 +331,8 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         if (['clue', 'pickup', 'crystal'].includes(o.data.kind)) {
           this.effects.fillStyle(0xE8E1C6, 0.85); this.effects.fillRect(o.sprite.x - 1, o.sprite.y - 19, 2, 2);
         }
-        if (o.data.sprite === 'crane') {
-          this.decorations.lineStyle(2, 0x765740); this.decorations.lineBetween(o.sprite.x, o.sprite.y, o.sprite.x, o.sprite.y - 52); this.decorations.lineStyle(2, 0xA67D50); this.decorations.lineBetween(o.sprite.x, o.sprite.y - 52, o.sprite.x + 32, o.sprite.y - 42);
-          const swing = reduced ? 0 : Math.round(Math.sin(time / 2500) * 2); this.decorations.lineStyle(1, 0x102224); this.decorations.lineBetween(o.sprite.x + 30, o.sprite.y - 42, o.sprite.x + 30 + swing, o.sprite.y - 16);
-        }
       }
       if (session.save.seal.active && options.sealRing) this.drawSeal(time, reduced);
-    }
-    private drawBattle(time: number, reduced: boolean): void {
-      if (!this.decorations || !this.effects || !latest) return;
-      const boss = latest.save.battle?.enemy.speciesId === 'rift-wretch';
-      this.decorations.fillStyle(boss ? 0x201F2C : 0x30474A); this.decorations.fillRect(0, 0, 160, 144);
-      this.decorations.fillStyle(boss ? 0x36243F : 0x2F6667); this.decorations.fillRect(0, 35, 160, 60);
-      this.decorations.lineStyle(1, 0x657D55, 0.5);
-      for (let i = 0; i < 6; i++) this.decorations.lineBetween(0, 44 + i * 8, 160, 44 + i * 8);
-      this.decorations.fillStyle(0x102224, 0.4); this.decorations.fillEllipse(45, 98, 55, 10); this.decorations.fillEllipse(116, 67, 53, 9);
-      if (!reduced) this.battleSprites.forEach((sprite, i) => sprite.setY((i === 0 ? 98 : 67) + (Math.floor(time / (boss && i === 1 ? 430 : 850)) % 2)));
-      // A rift uses broken edges; it is not an alternate colorway of a Mesomon.
-      if (boss) { this.effects.lineStyle(1, 0x9B78AB, 0.6); this.effects.lineBetween(118, 5, 111, 23); this.effects.lineBetween(124, 9, 120, 16); }
     }
     private drawSeal(time: number, reduced: boolean): void {
       if (!this.effects) return;

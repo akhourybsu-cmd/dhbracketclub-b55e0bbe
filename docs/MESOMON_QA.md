@@ -31,7 +31,9 @@ Active-game receipts record the rendered canvas dimensions, the size of each 16�
 
 The browser runner reads the native 160×144 Phaser canvas during ship exploration and both chapter battles. It checks deck and sea colors, Tavian’s colors at the spawn position, and separate ally and enemy sprite regions for Rillik, Tressel and the Rift Wretch. Each sample requires multiple opaque artwork pixels. Any bright green pixel from Phaser’s missing-texture graphic fails the frame check. The runner waits for a painted frame and retains measured counts, the native PNG and a viewport screenshot on failure.
 
-The build check traverses the actual static JavaScript import graph from `dist/index.html`. Dynamic dependency filenames alone are not treated as eager imports. It asserts that the main app does not eagerly import the Mesomon route or Phaser chunk. It also validates the emitted `dist/games/mesomon/release.json`: Port Marche chapter, rules version 1 and asset version 2, an actual Git SHA, and an explicit dirty-source flag. In GitHub Actions the SHA must equal `GITHUB_SHA`; CI must report a clean source checkout.
+The build check traverses the actual static JavaScript import graph from `dist/index.html`. Dynamic dependency filenames alone are not treated as eager imports. It asserts that the main app does not eagerly import the Mesomon route or Phaser chunk. It also validates the emitted `dist/games/mesomon/release.json`: Port Marche chapter, rules version 1 and asset version 3, an actual Git SHA, and an explicit dirty-source flag. In GitHub Actions the SHA must equal `GITHUB_SHA`; CI must report a clean source checkout.
+
+The browser walkthrough checks painted exploration sprites after a file reload, the three opening reading styles, and a real touch launch. It measures the console at the four viewport corners, checks the pause menu against the safe area, and exits through the same controls available to players.
 
 ## Evidence boundaries
 

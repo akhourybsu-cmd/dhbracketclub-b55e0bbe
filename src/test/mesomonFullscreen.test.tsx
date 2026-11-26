@@ -8,11 +8,17 @@ function Console() {
   const { active, available, enterOnPlay, toggle, error } = useMesomonFullscreen(device);
   return (
     <div ref={device} data-testid="console">
-      <button onClick={enterOnPlay}>Play</button>
+      <button onClick={event => enterOnPlay(event.nativeEvent)}>Play</button>
       {available && <button onClick={toggle}>{active ? 'Exit full screen' : 'Full screen'}</button>}
       {error && <p role="status">{error}</p>}
     </div>
   );
+}
+
+function play(pointer: 'touch' | 'mouse' | 'keyboard' = 'touch') {
+  const event = new MouseEvent('click', { bubbles: true, detail: pointer === 'keyboard' ? 0 : 1 });
+  Object.defineProperty(event, 'pointerType', { value: pointer === 'keyboard' ? '' : pointer });
+  fireEvent(screen.getByText('Play'), event);
 }
 
 const restorations: Array<() => void> = [];
@@ -61,15 +67,36 @@ describe('Mesomon native fullscreen', () => {
     const { request, makeOwner } = browser();
     render(<Console />);
     expect(request).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Play'));
+    play();
     expect(request).toHaveBeenCalledWith({ navigationUI: 'hide' });
     expect(request.mock.instances[0]).toBe(screen.getByTestId('console'));
     expect(screen.getByText('Exit full screen')).toBeInTheDocument();
     makeOwner(null);
-    fireEvent.click(screen.getByText('Play'));
+    play();
     expect(request).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByText('Full screen'));
     expect(request).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps mouse and keyboard play windowed on a touch-capable desktop', () => {
+    const { request } = browser({ coarse: true });
+    render(<Console />);
+    play('mouse');
+    play('keyboard');
+    expect(request).not.toHaveBeenCalled();
+    play('touch');
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
+  it('recognizes WebKit taps when the resulting click has no pointer type', () => {
+    const { request } = browser({ webkit: true });
+    render(<Console />);
+    const button = screen.getByText('Play');
+    const pointer = new Event('pointerup', { bubbles: true });
+    Object.defineProperty(pointer, 'pointerType', { value: 'touch' });
+    fireEvent(button, pointer);
+    fireEvent.click(button, { detail: 1 });
+    expect(request).toHaveBeenCalledTimes(1);
   });
 
   it('respects a manual exit and uses the older WebKit fullscreen events', () => {
@@ -77,7 +104,7 @@ describe('Mesomon native fullscreen', () => {
     render(<Console />);
     fireEvent.click(screen.getByText('Full screen'));
     fireEvent.click(screen.getByText('Exit full screen'));
-    fireEvent.click(screen.getByText('Play'));
+    play();
     expect(exit).toHaveBeenCalledTimes(1);
     expect(request).toHaveBeenCalledTimes(1);
   });
@@ -85,7 +112,7 @@ describe('Mesomon native fullscreen', () => {
   it('enters only on explicit request with a fine pointer', () => {
     const { request } = browser({ coarse: false });
     render(<Console />);
-    fireEvent.click(screen.getByText('Play'));
+    play();
     expect(request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('Full screen'));
     expect(request).toHaveBeenCalledTimes(1);
@@ -95,7 +122,7 @@ describe('Mesomon native fullscreen', () => {
     const { request } = browser(options);
     render(<Console />);
     expect(screen.queryByText('Full screen')).toBeNull();
-    fireEvent.click(screen.getByText('Play'));
+    play();
     expect(request).not.toHaveBeenCalled();
   });
 
@@ -104,7 +131,7 @@ describe('Mesomon native fullscreen', () => {
     render(<Console />);
     makeOwner(document.documentElement);
     expect(screen.queryByText('Full screen')).toBeNull();
-    fireEvent.click(screen.getByText('Play'));
+    play();
     cleanup();
     expect(request).not.toHaveBeenCalled();
     expect(exit).not.toHaveBeenCalled();
@@ -114,9 +141,9 @@ describe('Mesomon native fullscreen', () => {
     const { request } = browser();
     request.mockImplementation(() => Promise.reject(new Error('User denied fullscreen')));
     render(<Console />);
-    fireEvent.click(screen.getByText('Play'));
+    play();
     await waitFor(() => expect(request).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByText('Play'));
+    play();
     expect(request).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('status')).toBeNull();
     fireEvent.click(screen.getByText('Full screen'));
