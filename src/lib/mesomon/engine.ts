@@ -1,6 +1,6 @@
 import { createBattle, makeCompanion, resolveBattleTurn } from './battle';
 import { CLOSING_CHOICES } from './data/dialogue';
-import { narrativeLines } from './narrative';
+import { beginNarrativeBeat } from './narrative';
 import { MAPS, WALKABLE_TILES } from './data/maps';
 import { SPECIES } from './data/species';
 import type { DialogueLine, DialogueState, Direction, GameAction, GameSession, MapDefinition, MapId, MapObject, MesomonSaveV1, StoryEvent } from './types';
@@ -59,9 +59,19 @@ export function getPhase(session: GameSession): 'explore' | 'dialogue' | 'battle
 }
 
 const QUEST_STEPS = [
-  ['disembarked', 'Disembark in Port Marche'], ['workshop_entered', 'Find Edda’s workshop'], ['clues_complete', 'Inspect the three workshop clues'],
-  ['bram_met', 'Speak to Bram at the tide barrier'], ['rillik_bonded', 'Free the trapped Rillik'], ['current_eddy', 'Trace the current beneath the boards'],
-  ['sluice_open', 'Drain the crossing'], ['tutorial_complete', 'Make the under-wharf passage safe'], ['currents_followed', 'Follow the upper channel'], ['boss_defeated', 'Push back the Rift Wretch'], ['rift_sealed', 'Seal the first rift'], ['page_found', 'Inspect the stone beside the sealed rift'], ['chapter_complete', 'Bring Edda’s page home'],
+  ['disembarked', 'Came ashore on the lower quay.'],
+  ['workshop_entered', 'Edda’s workshop was empty. Nia helped me look.'],
+  ['clues_complete', 'The chart, map and missing satchel point to the old tide stairs.'],
+  ['bram_met', 'Bram saw Edda go down with a lamp.'],
+  ['rillik_bonded', 'After we lifted the gate, Rillik came back and touched the cuff.'],
+  ['current_eddy', 'Rillik found a drain behind the passage wall.'],
+  ['sluice_open', 'Opened the sluice. The crossing is dry.'],
+  ['tutorial_complete', 'Passed the flooded nest.'],
+  ['currents_followed', 'Foam in the upper channel runs uphill to the chamber.'],
+  ['boss_defeated', 'The Wretch slipped back through the opening.'],
+  ['rift_sealed', 'Three pulses from the cuff closed the rift.'],
+  ['page_found', 'Edda wrapped her survey page in wax. She took the inland road.'],
+  ['chapter_complete', 'Brought the page home to Nia.'],
 ] as const;
 export function getQuestSteps(save: MesomonSaveV1) {
   const first = QUEST_STEPS.findIndex(([key]) => !flag(save, key));
@@ -93,7 +103,7 @@ function open(session: GameSession, id: string, lines: DialogueLine[], onFinish?
   return { ...session, dialogue, notice: '' };
 }
 function scene(session: GameSession, id: string, onFinish?: StoryEvent): GameSession {
-  return open(session, id, narrativeLines(session.save, id), onFinish);
+  return open(session, id, beginNarrativeBeat(session.save, id), onFinish);
 }
 function short(session: GameSession, speaker: string, ...lines: string[]): GameSession { return open(session, `${speaker}-remark`, lines.map(text => ({ speaker, text }))); }
 function teleport(session: GameSession, mapId: MapId, x: number, y: number, facing: Direction = 'up'): GameSession { session.save.player = { ...session.save.player, mapId, x, y, facing }; return session; }
@@ -192,10 +202,10 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   if (id === 'workshop-exit') return teleport(session, 'harbor', 9, 16, 'down');
   if (['chart', 'field-map', 'satchel-hook'].includes(id)) {
     const key = id === 'chart' ? 'clue_chart' : id === 'field-map' ? 'clue_map' : 'clue_hook';
-    const lines = narrativeLines(save, flag(save, key) ? id + '-repeat' : id);
+    const lines = beginNarrativeBeat(save, flag(save, key) ? id + '-repeat' : id);
     save.questFlags[key] = true;
     const complete = ['clue_chart', 'clue_map', 'clue_hook'].every(value => flag(save, value));
-    return open(session, id, [...lines, ...(complete && !flag(save, 'clues_complete') ? narrativeLines(save, 'clues-complete') : [])], complete && !flag(save, 'clues_complete') ? 'clues-complete' : undefined);
+    return open(session, id, [...lines, ...(complete && !flag(save, 'clues_complete') ? beginNarrativeBeat(save, 'clues-complete') : [])], complete && !flag(save, 'clues_complete') ? 'clues-complete' : undefined);
   }
   if (id === 'bram') {
     if (!flag(save, 'clues_complete')) return scene(session, 'bram-early');
@@ -264,7 +274,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   if (id === 'closing') {
     if (flag(save, 'chapter_complete')) return scene(session, 'closing-repeat');
     save.questFlags.companion_released = true;
-    return open(session, 'closing', narrativeLines(save, 'closing'), undefined, CLOSING_CHOICES);
+    return open(session, 'closing', beginNarrativeBeat(save, 'closing'), undefined, CLOSING_CHOICES);
   }
   if (id === 'pell') {
     if (flag(save, 'whistle_found') && !flag(save, 'whistle_returned')) return scene(session, 'whistle-returned', 'whistle-returned');
@@ -293,7 +303,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
     if (save.party.length) { healParty(save); return scene(session, 'seli-rest'); }
     return scene(session, 'seli-repeat');
   }
-  const lines = narrativeLines(save, id);
+  const lines = beginNarrativeBeat(save, id);
   return lines.length ? open(session, id, lines) : session;
 }
 
@@ -314,7 +324,7 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
     if (!choice) return previous;
     save.questFlags.response_tone = choice.id;
     save.dialogueHistory = [...save.dialogueHistory, dialogue!.lines[dialogue!.index]].slice(-100);
-    return open(session, 'closing-after', [{ speaker: 'Tavian', text: choice.text }, ...narrativeLines(save, 'closing-after')], 'chapter-complete');
+    return open(session, 'closing-after', [{ speaker: 'Tavian', text: choice.text }, ...beginNarrativeBeat(save, 'closing-after')], 'chapter-complete');
   }
   if (action.type === 'battle') {
     if (!save.battle || session.dialogue || save.battle.phase !== 'choosing') return previous;

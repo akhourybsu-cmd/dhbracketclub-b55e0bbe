@@ -812,6 +812,78 @@ def harbor_cover():
 
 harbor_cover().save(OUT/'cover.png',optimize=True)
 
+def fieldcase():
+    """A brass cuff rests on its side in the felt-lined field instrument case."""
+    im = Image.new('RGB', (216,90), '#574d40')
+    d = ImageDraw.Draw(im)
+    poly = d.polygon
+    line = d.line
+    # Rolled leather lip and inset green felt tray.
+    poly([(0,7),(10,0),(207,0),(215,6),(215,83),(209,89),(5,89),(0,83)],fill='#977654')
+    poly([(3,8),(11,3),(205,3),(212,8),(212,79),(206,85),(10,85),(3,79)],fill='#554c3f')
+    poly([(8,12),(15,7),(201,7),(207,12),(207,74),(200,80),(15,80),(8,74)],fill='#273e3f')
+    poly([(11,16),(17,11),(200,11),(204,15),(204,72),(199,77),(16,77),(11,72)],fill='#435954')
+    line([(15,75),(199,75),(203,72)],fill='#607064')
+    for x in range(14,204,9):
+        line((x,4,x+3,4),fill='#c2a078')
+        line((x,84,x+3,84),fill='#bd986e')
+    # Pressed corners and rivets secure the case.
+    for x,sign in ((1,1),(214,-1)):
+        for y,dy in ((2,1),(87,-1)):
+            poly([(x,y),(x+13*sign,y),(x+10*sign,y+3*dy),(x+4*sign,y+4*dy),(x+2*sign,y+11*dy),(x,y+12*dy)],fill='#b69a6d')
+            d.point((x+3*sign,y+2*dy),fill='#685c47')
+    # Folded cream letter under a leather retaining loop.
+    for points,col in [
+        ([(151,21),(191,16),(198,46),(157,53)],'#344944'),
+        ([(148,18),(190,13),(195,43),(153,49)],'#9f967c'),
+        ([(148,17),(189,12),(194,41),(153,47)],'#c4b999'),
+        ([(151,19),(186,14),(172,34)],'#ded0ad'),
+        ([(154,44),(167,28),(173,34),(181,23),(193,40)],'#d1c4a2')]:
+        poly(points,fill=col)
+    line((149,18,172,34,188,14),fill='#ab9d7e')
+    poly([(180,11),(185,10),(192,45),(187,46)],fill='#76634d')
+    line((181,12,187,44),fill='#a38963')
+    # Cord is wound into an irregular oval. The loose end doubles back through its turns.
+    for offset in (0,3,6,9):
+        ring=(128+offset,47+offset//2,180-offset,72-offset//2)
+        d.ellipse(ring,outline='#394640',width=4)
+        d.ellipse((ring[0],ring[1]-1,ring[2],ring[3]-1),outline='#a28960',width=2)
+        d.arc((ring[0],ring[1]-1,ring[2],ring[3]-1),170,287,fill='#c2a777',width=2)
+    line([(153,62),(167,66),(177,68),(187,67),(193,62),(189,60)],fill='#384942',width=4)
+    line([(153,61),(167,65),(177,67),(187,66),(193,61),(189,59)],fill='#bea477',width=2)
+    # A broad open cylinder. The two distinct rims show its bore and thickness.
+    d.ellipse((34,49,121,73),fill='#344a45')
+    poly([(36,32),(43,23),(64,17),(87,15),(99,18),(109,25),(115,39),
+          (114,50),(107,59),(76,69),(55,68),(43,61),(36,47)],fill='#463e34')
+    poly([(42,30),(62,21),(84,17),(95,18),(105,23),(109,30),(80,43),(52,48)],fill='#b79963')
+    poly([(47,41),(67,32),(104,24),(111,30),(114,41),(111,51),
+          (104,56),(73,66),(58,65)],fill='#8f754e')
+    poly([(53,51),(82,42),(114,34),(113,41),(83,50),(55,59)],fill='#a98a57')
+    poly([(56,61),(83,54),(110,45),(110,50),(102,56),(74,65),(60,65)],fill='#685d43')
+    line((70,64,103,54,109,49),fill='#baa16b',width=2)
+    line((79,19,88,18,97,20,104,25),fill='#e2c58c',width=2)
+    d.ellipse((34,23,73,69), fill='#6e6046',outline='#534b39')
+    d.ellipse((33,22,70,66), fill='#c3a56d')
+    d.ellipse((37,26,66,62), fill='#363c35')
+    d.ellipse((41,29,65,60), fill='#544c3e')
+    d.arc((37,26,66,62),13,147,fill='#99845a',width=2)
+    d.arc((34,23,69,65),170,307,fill='#e4cb94',width=2)
+    # Recessed, dark sea-glass core with a burnished bezel and a small winding lug.
+    poly([(66,30),(71,22),(86,18),(97,21),(101,28),(96,35),(78,41),(69,38)],fill='#5d5743')
+    poly([(65,28),(71,21),(86,17),(96,20),(99,26),(94,32),(77,38),(68,35)],fill='#d0b47c')
+    poly([(69,28),(73,23),(86,20),(94,22),(96,26),(92,30),(77,35),(71,33)],fill='#474e42')
+    poly([(72,28),(75,24),(86,21),(92,23),(93,27),(89,29),(77,33),(73,31)],fill='#4b6a63')
+    poly([(73,28),(76,25),(86,22),(83,26),(76,30)],fill='#718b79')
+    poly([(76,31),(84,26),(92,24),(93,27),(88,29),(78,32)],fill='#344f4d')
+    line((73,23,83,20),fill='#e5c98e')
+    for x,y in ((67,30),(94,21),(77,36)):
+        d.point((x,y),fill='#705e42')
+    poly([(96,36),(103,33),(108,35),(108,40),(101,43),(96,41)],fill='#64553e')
+    line((97,36,103,34,106,35),fill='#c4a56c',width=2)
+    return im
+
+fieldcase().save(OUT/'fieldcase.png',optimize=True)
+
 # An opaque porthole keeps Rillik legible through round and squircle launcher masks.
 launcher = Image.new('RGB', (64, 64), P['ink'])
 porthole = ImageDraw.Draw(launcher)
@@ -827,6 +899,6 @@ launcher.paste(rillik, (7, 7), rillik)
 for size in (192, 512):
     launcher.resize((size, size), Image.Resampling.NEAREST).save(OUT / f'icon-{size}.png', optimize=True)
 
-manifest=dict(version=3,scenery={'crane':dict(x=0,y=0,width=48,height=48),'wheel':dict(x=48,y=0,width=32,height=32),'skiff':dict(x=80,y=0,width=48,height=32)},original=True,tileSize=16,people=dict(cell=[16,16],frames=15,rows=HUMANS),creatures=dict(cell=[16,16],frames=8,rows=SPECIES),tiles={name:i for i,name in enumerate(TILES)},assets=['harbor-tiles.png','people.png','mesomon.png','battle.png','portraits.png','cover.png','scenery.png']+[f'portraits/{name}.png' for name in HUMANS]+[f'portraits/{name.replace("_","-")}.png' for name in SPECIES])
+manifest=dict(version=3,scenery={'crane':dict(x=0,y=0,width=48,height=48),'wheel':dict(x=48,y=0,width=32,height=32),'skiff':dict(x=80,y=0,width=48,height=32)},original=True,tileSize=16,people=dict(cell=[16,16],frames=15,rows=HUMANS),creatures=dict(cell=[16,16],frames=8,rows=SPECIES),tiles={name:i for i,name in enumerate(TILES)},assets=['harbor-tiles.png','people.png','mesomon.png','battle.png','portraits.png','cover.png','scenery.png','fieldcase.png']+[f'portraits/{name}.png' for name in HUMANS]+[f'portraits/{name.replace("_","-")}.png' for name in SPECIES])
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print('Wrote original Port Marche artwork and manifest to',OUT)

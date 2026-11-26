@@ -27,6 +27,7 @@ export interface DialogueLine { speaker: string; text: string; }
 export interface DialogueChoice { id: 'warm' | 'wry' | 'direct'; label: string; text: string; }
 export interface NarrativeVariant {
   when?: { all?: string[]; none?: string[]; tone?: DialogueChoice['id'] };
+  once?: string;
   lines: DialogueLine[];
 }
 export interface DialogueState { id: string; lines: DialogueLine[]; index: number; onFinish?: StoryEvent; choices?: DialogueChoice[]; }

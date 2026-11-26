@@ -20,6 +20,10 @@ Give each speaker something they could have seen or heard. Nia follows the inves
 
 Use a character’s name for spoken dialogue, `Port Marche` for something the player can see, and `Field note` for a control or rule. Letters and inscriptions keep their own source credit. Register new written sources in `reading.ts` so they appear on paper and keep that credit in the journal. The closing conversation gives each response its own reply.
 
+The journal pairs one current objective with Tavian’s account of the journey. Write each entry in the past tense and unlock it on the flag that confirms Tavian experienced it. Future encounters stay off the page until the player reaches them.
+
+Give a one-time conversation variant a stable `once` key. Its lines and receipt share the same save. This lets a player meet the rope maker, read the repair tag later and come back with a new question, even across a reload.
+
 ## Architecture and DH integration
 
 - `/mesomon` uses the existing protected/lazy route, installed `mesomon` asset, club context and game-shell navigation. The page additionally enforces installation rather than relying on the shared administrator inspection bypass. Club admins install the catalog entry through existing Club Apps; no club receives an unsolicited install.

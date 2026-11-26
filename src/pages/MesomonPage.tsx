@@ -21,6 +21,7 @@ import { useClub } from "@/contexts/ClubContext";
 import { useClubAssets } from "@/hooks/useClubAssets";
 import { useMesomonSave } from "@/hooks/useMesomonSave";
 import {
+  CHAPTER_TITLE,
   createNewSave,
   createSession,
   getMap,
@@ -788,7 +789,7 @@ function Chapter({
                         <br />
                         <em>MARCHE</em>
                       </h2>
-                      <p>A Harbor in Two Voices</p>
+                      <p>{CHAPTER_TITLE}</p>
                       <div className="mm-slot-tabs" aria-label="Save slots">
                         {([1, 2, 3] as const).map((value) => (
                           <button
@@ -1564,10 +1565,10 @@ function GameMenu({
             </button>
           ))}
         </nav>
-        <div className="mm-menu-body">
+        <div className="mm-menu-body" data-section={tab} key={tab}>
           {tab === "party" && (
             <>
-              {session.save.party.length ? (
+              {session.save.party.length > 0 ? (
                 session.save.party.map((member) => (
                   <article className="mm-party-member" key={member.id}>
                     <img
@@ -1596,7 +1597,16 @@ function GameMenu({
                   </article>
                 ))
               ) : (
-                <p>There’s room beside you. You haven’t formed a bond yet.</p>
+                <figure className="mm-cuff-study">
+                  <img
+                    src={MESOMON_ASSETS.fieldcase}
+                    alt="A brass cuff and a folded letter tucked into Tavian’s fieldcase"
+                  />
+                  <figcaption>
+                    <strong>Edenite cuff</strong>
+                    <span>No bonds yet</span>
+                  </figcaption>
+                </figure>
               )}
               {!!session.save.party.length && (
                 <button onClick={onCompanion}>
@@ -1609,23 +1619,21 @@ function GameMenu({
           )}
           {tab === "journal" && (
             <>
-              <h3>A Harbor in Two Voices</h3>
+              <h3>{CHAPTER_TITLE}</h3>
               <p className="mm-journal-objective">
                 {getObjective(session.save)}
               </p>
               <ol className="mm-quest-steps">
-                {getQuestSteps(session.save).map((step) => (
-                  <li
-                    key={step.id}
-                    data-complete={step.complete}
-                    aria-current={step.active ? "step" : undefined}
-                  >
-                    <span aria-hidden="true">{step.complete ? "◆" : "◇"}</span>
-                    {step.label}
-                  </li>
-                ))}
+                {getQuestSteps(session.save)
+                  .filter((step) => step.complete)
+                  .map((step) => (
+                    <li key={step.id}>
+                      <span aria-hidden="true">◆</span>
+                      {step.label}
+                    </li>
+                  ))}
               </ol>
-              <h3>Recent conversations</h3>
+              <h3>Recent notes</h3>
               <div className="mm-conversation-log">
                 {session.save.dialogueHistory.length ? (
                   session.save.dialogueHistory
@@ -1637,7 +1645,7 @@ function GameMenu({
                       </p>
                     ))
                 ) : (
-                  <p>Your field notes begin at the quay.</p>
+                  <p>No entries yet.</p>
                 )}
               </div>
             </>

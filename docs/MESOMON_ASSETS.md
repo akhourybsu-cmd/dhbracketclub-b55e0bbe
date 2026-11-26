@@ -9,7 +9,9 @@ Port Marche uses original pixel art drawn at native resolution. Every tile, spri
 - Creature overworld atlas:16×16px cells with a dedicated front, profile and back drawing for each species. Down, left, right and up each have two movement frames. Boots and paws meet the lower tile edge. The winged species hovers above a grounded shadow.
 - Battle illustrations and dialogue/party portraits:48×48px transparent images. Rillik's tail-ring, Muddren's reinforced back, Gleamwing's lantern-like wings, Tressel's rope-tail and the Wretch's broken asymmetry distinguish silhouettes.
 - The 320×180px cover places Tavian and Rillik on a timber jetty, with a moored sailing boat, a tide beacon and a distant customs skyline.
+- The 216×90px Fieldcase still life shows Tavian’s brass survey cuff and unlit Edenite core beside cord and a folded letter in a felt-lined travel case.
 - The transparent 128×64px scenery atlas holds a 48×48px cargo crane, a 32×32px sluice wheel and a 48×32px skiff. Its frame rectangles are recorded in the version 3 manifest.
+- `renderer/interiors.ts` paints room illustrations into the cached map at native resolution. Edda’s workbench, the unfinished sail and her tide plots sit on the workshop floor plan. The passage’s barred outfall, tide staff and pier posts follow its existing masonry and walking lanes.
 - Light comes from the upper left. Hard edges, charcoal outlines, warm brass and sea-glass accents unite the set. No blur, antialiasing, emoji or external image-generation request is used.
 
 Slate joints, dock planks and water use lower-contrast accents around the actors. The Wayfarer’s copper vent hood, glazed door and portholes fit one 48×48px deckhouse illustration, sliced into nine terrain cells. Each human speaker has a dedicated three-quarter bust, with trade clothing and personal details visible at dialogue scale. Both travel atlases share the 16-pixel ground grid, and the camera centers on the player’s tile midpoint.

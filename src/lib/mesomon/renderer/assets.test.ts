@@ -22,6 +22,7 @@ describe('Mesomon original asset geometry', () => {
       expect(frame.y + frame.height).toBeLessThanOrEqual(height);
     }
     expect(dimensions('cover.png')).toEqual([320, 180]);
+    expect(dimensions('fieldcase.png')).toEqual([216, 90]);
   });
   it('ships every manifest asset and an individual portrait for every named character and species', () => {
     const manifest = JSON.parse(readFileSync(resolve(root, 'manifest.json'), 'utf8')) as { version: number; scenery: typeof SCENERY; assets: string[]; people: { cell: number[] }; creatures: { rows: string[]; cell: number[] } };

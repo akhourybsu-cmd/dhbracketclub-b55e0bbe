@@ -3,6 +3,7 @@ const version = 3;
 const artUrl = (path: string) => `/games/mesomon/${path}.png?v=${version}`;
 
 export const MESOMON_ASSETS = {
+  fieldcase: artUrl('fieldcase'),
   version,
   root: '/games/mesomon/',
   cover: artUrl('cover'),

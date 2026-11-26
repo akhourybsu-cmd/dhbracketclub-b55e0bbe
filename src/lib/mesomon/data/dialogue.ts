@@ -27,8 +27,8 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     ...say('Port Marche', 'She pulls him close, then takes the bag off his shoulder.'),
     ...say('Tavian', 'Where’s Edda?'),
     ...say('Nia', 'Missed supper yesterday. Missed your boat today. Her workshop lamp burned all night.'),
-    ...say('Tavian', 'She asked me to bring the cuff. That’s all she said.'),
-    ...say('Nia', 'Then bring it. Northwest, past the market. I’ll walk with you.'),
+    ...say('Tavian', 'I thought she’d be here to tell me what she needed the core for.'),
+    ...say('Nia', 'Come on. We’ll try her workshop. Northwest, just past the market.'),
   ],
   workshop: [
     ...say('Nia', 'Yesterday she had that chair wedged under the door.'),

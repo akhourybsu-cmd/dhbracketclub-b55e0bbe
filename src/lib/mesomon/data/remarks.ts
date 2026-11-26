@@ -95,7 +95,8 @@ export const REMARKS: Record<string, NarrativeVariant[]> = {
   ],
   'rope-worker': [
     {
-      when: { all: ['visited:harbor-crane'], none: ['visited:rope-worker'] },
+      when: { all: ['visited:harbor-crane'] },
+      once: 'crane-bearing',
       lines: [
         ...say('Tavian', 'Nia’s crane tag says somebody took a bearing for a pie weight.'),
         ...say('Rope maker', 'Did the job, too. Tell her it’s cooling on my sill. Apple, if she wants a slice.'),

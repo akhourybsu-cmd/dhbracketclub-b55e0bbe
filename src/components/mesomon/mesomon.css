@@ -957,6 +957,42 @@
   touch-action: pan-y;
   min-height: 0;
 }
+.mm-menu-body[data-section="party"] {
+  background: radial-gradient(ellipse at 25% 10%, #f4edce, transparent 64%), #dbd2b4;
+}
+.mm-cuff-study {
+  width: min(100%, 648px);
+  margin: clamp(14px, 5vh, 48px) auto;
+  background: #f4ecd0;
+  padding: 6px 6px 0;
+  box-shadow: 0 2px #ad9d78, 0 5px 8px #56492e38;
+}
+.mm-cuff-study img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 216 / 90;
+  background: #4e463d;
+  image-rendering: pixelated;
+}
+.mm-cuff-study figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 5px;
+  color: #294938;
+  font-size: 12px;
+}
+.mm-cuff-study figcaption strong { font: bold 18px Georgia, serif; }
+.mm-menu-body[data-section="journal"] {
+  background: linear-gradient(90deg, #b86e422b 1px, transparent 1px) 9px 0 / 100% 100%,
+    repeating-linear-gradient(#f0e7cd 0 24px, #d6d6bd 24px 25px);
+}
+.mm-menu .mm-party-member > img {
+  background: #405946;
+  border: 2px solid #bfac7d;
+  box-shadow: 1px 2px #695d45;
+}
 .mm-menu-body > button,
 .mm-menu-body > a {
   width: 100%;
@@ -1591,18 +1627,11 @@
   gap: 8px;
 }
 .mm-quest-steps li {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.4;
   display: flex;
   gap: 9px;
-  color: #647052;
-}
-.mm-quest-steps [data-complete="true"] {
   color: #365947;
-}
-.mm-quest-steps [aria-current="step"] {
-  font-weight: 850;
-  color: #1b4239;
 }
 .mm-quest-steps li span {
   flex: none;

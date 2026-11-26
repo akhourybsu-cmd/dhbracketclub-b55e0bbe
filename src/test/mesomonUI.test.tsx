@@ -51,6 +51,20 @@ function mount(strict=false) {
 async function begin() { fireEvent.click(await screen.findByRole('button',{name:/Begin journey|Continue journey/})); }
 
 describe('Mesomon game shell', () => {
+  it('shows the empty cuff and only discoveries already entered in this file', async () => {
+    fixture.save = createNewSave();
+    fixture.save.questFlags.disembarked = true;
+    fixture.save.questFlags.captain_met = true;
+    mount();
+    await begin();
+    fireEvent.click(screen.getByRole('button', {name: 'Menu'}));
+    const fieldcase = within(screen.getByRole('dialog'));
+    expect(fieldcase.getByRole('img', {name: /brass cuff/i})).toBeVisible();
+    fireEvent.click(fieldcase.getByRole('button', {name: 'Journal'}));
+    expect(fieldcase.getByText('Came ashore on the lower quay.')).toBeVisible();
+    expect(fieldcase.getByText('Nia is waiting at the arrival pier.')).toBeVisible();
+    expect(fieldcase.queryByText(/Wretch|sealed rift|upper channel/i)).toBeNull();
+  });
   it('keeps the console unbranded and exits a running game through its pause menu', async () => {
     render(
       <MemoryRouter initialEntries={['/mesomon']}>

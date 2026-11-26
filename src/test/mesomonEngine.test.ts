@@ -133,15 +133,20 @@ describe('Mesomon Port Marche chapter', () => {
     expect(beginInteraction(other, 'bram').dialogue?.lines).not.toEqual(beginInteraction(session, 'bram').dialogue?.lines);
   });
 
-  it('lets Tavian mention the crane tag only after he reads it', () => {
+  it.each([false, true])('lets Tavian discuss the crane tag once, including after a prior visit (%s)', (metRopeMaker) => {
     let session = createSession(createNewSave());
     for (const id of ['captain', 'gangplank']) session = interactWith(session, id);
-    const withoutTag = beginInteraction(session, 'rope-worker');
-    expect(withoutTag.dialogue?.lines.some(line => line.speaker === 'Tavian')).toBe(false);
+    if (metRopeMaker) {
+      const withoutTag = beginInteraction(session, 'rope-worker');
+      expect(withoutTag.dialogue?.lines.some(line => line.speaker === 'Tavian')).toBe(false);
+      session = finishDialogue(withoutTag);
+    }
     session = interactWith(session, 'harbor-crane');
     const withTag = beginInteraction(createSession(migrateSave(session.save)!), 'rope-worker');
     expect(withTag.dialogue?.lines[0]).toMatchObject({ speaker: 'Tavian', text: expect.stringMatching(/pie weight/i) });
-    const revisit = beginInteraction(finishDialogue(withTag), 'rope-worker');
+    const resumed = createSession(migrateSave(withTag.save)!);
+    expect(resumed.dialogue?.lines).toEqual(withTag.dialogue?.lines);
+    const revisit = beginInteraction(finishDialogue(resumed), 'rope-worker');
     expect(revisit.dialogue?.lines).not.toEqual(withTag.dialogue?.lines);
   });
 

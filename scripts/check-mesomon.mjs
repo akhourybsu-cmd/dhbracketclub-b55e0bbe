@@ -485,17 +485,41 @@ async function chapter() {
     await start(p); await drain(p);
     await interact(p, 'captain', false);
     await drain(p, {opening: true});
-    for (const id of ['gangplank','nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
-      await interact(p,id);
+    await interact(p,'gangplank');
+    await press(p,'menu');
+    const fieldcase = p.getByRole('dialog', {name:'Game menu'});
+    await expect(fieldcase.getByText('No bonds yet', {exact:true})).toBeVisible();
+    const cuff = fieldcase.getByRole('img', {name:/brass cuff/i});
+    await expect(cuff).toBeVisible();
+    await expect.poll(() => cuff.evaluate(img => img.naturalWidth)).toBeGreaterThan(0);
+    await p.screenshot({path:join(output,engine+'-empty-fieldcase.png')});
+    await fieldcase.getByRole('button', {name:'Journal',exact:true}).click();
+    await expect(fieldcase.locator('.mm-journal-objective')).toContainText('Nia');
+    const entries = fieldcase.locator('.mm-quest-steps li');
+    await expect(entries).toHaveCount(1);
+    await expect(entries).toHaveText([/came ashore/i]);
+    await p.screenshot({path:join(output,engine+'-early-journal.png')});
+    check(engine+'-arrival-fieldcase-and-spoiler-safe-journal');
+    await fieldcase.getByRole('button', {name:'Close menu'}).click();
+    for (const id of ['nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
+      await interact(p,id,id !== 'chart');
       if(id==='nia')await p.screenshot({path:join(output,engine+'-harbor.png')});
-      if(id==='workshop-door')await p.screenshot({path:join(output,engine+'-workshop.png')});
+      if(id==='chart'){
+        await expect(p.getByRole('region',{name:'Conversation'})).toContainText(/pinhole/i);
+        await expect(p.locator('.mm-dialogue-next')).toHaveText('Continue',{timeout:7000});
+        await p.screenshot({path:join(output,engine+'-workshop.png')});
+        await drain(p);
+      }
     }
     assert.equal((await save(p)).party[0]?.speciesId,'rillik'); check(engine+'-first-bond-after-real-gate-rescue');
     await p.screenshot({path:join(output,engine+'-first-bond.png')});
     for(const id of ['stairs-exit','whistle-reeds','pell','fisher','tide-door','passage-door']) await interact(p,id);
-    await p.screenshot({path:join(output,engine+'-underwharf.png')});
     assert.equal((await save(p)).questFlags.whistle_returned,true); assert.equal((await save(p)).questFlags.wrong_catch,true); check(engine+'-both-optional-harbor-stories');
-    await walkTo(p,'sense-eddy'); await p.getByRole('button',{name:/Current Sense/i}).click(); await drain(p);
+    await walkTo(p,'sense-eddy'); await p.getByRole('button',{name:/Current Sense/i}).click();
+    await expect(p.getByRole('region',{name:'Conversation'})).toContainText(/wet seam/i);
+    await expect(p.locator('.mm-dialogue-next')).toHaveText('Continue',{timeout:7000});
+    await p.screenshot({path:join(output,engine+'-underwharf.png')});
+    await drain(p);
     await interact(p,'sluice'); await interact(p,'tressel'); await battle(p,'bond');
     assert.ok((await save(p)).party.length>=2); check(engine+'-optional-wild-resonance');
     await walkTo(p,'sense-channel'); await p.getByRole('button',{name:/Current Sense/i}).click(); await drain(p);

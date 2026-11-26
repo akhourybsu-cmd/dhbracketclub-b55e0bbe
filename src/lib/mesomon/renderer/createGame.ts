@@ -2,6 +2,7 @@ import type PhaserTypes from 'phaser';
 import type { Direction, GameSession, MapDefinition, MapObject, SpeciesId, TileKind } from '../types';
 import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, personArt, propArt } from '../assets';
 import { paintBattleStage } from './battleStage';
+import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
 import { canWalk, getMap, getVisibleObjects } from '../engine';
 
@@ -214,7 +215,9 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         if (map.id === 'workshop') {
           for (const [x, y] of [[3, 3], [4, 3], [11, 3], [12, 3]]) context.drawImage(atlas, TILES.indexOf('shelf') * 16, 0, 16, 16, x * 16, y * 16, 16, 16);
         }
+        paintInteriorFloor(context, map);
         paintTerrainDepth(context, map);
+        paintInterior(context, map.id);
         if (map.id === 'harbor') {
           const skiff = SCENERY.skiff;
           // Moored in the water directly alongside the west edge of the arrival pier.
