@@ -287,7 +287,6 @@ async function readConversation(p, {inspectChoices=false, opening=false, expecte
       const kind = voice.kind;
       if (kind && !readingModes.has(kind)) {
         if (!atChoices) {
-          if (await panel.locator('.mm-dialogue-next').textContent() !== 'Continue') await press(p, 'confirm');
           await expect(panel.locator('.mm-dialogue-next')).toHaveText('Continue', {timeout: 7000});
         }
         await p.screenshot({path: join(output, engine + '-reading-' + kind + '.png')});
@@ -328,7 +327,8 @@ async function readConversation(p, {inspectChoices=false, opening=false, expecte
       continue;
     }
     const next = panel.locator('.mm-dialogue-next');
-    if ((await next.textContent()) !== 'Continue') await press(p, 'confirm');
+    // A reveal input can become an advance if the last character lands between
+    // reading the button label and sending the key. Read each page before acting.
     await expect(next).toHaveText('Continue', {timeout: 7000});
     if (chapterReaders.has(p)) await verifyPrintedPage(p, panel, dialogue);
     await press(p, 'confirm');
