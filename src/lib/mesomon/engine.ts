@@ -3,6 +3,7 @@ import { advanceBattleBeat } from './battlePlayback';
 import { CLOSING_CHOICES } from './data/dialogue';
 import { beginNarrativeBeat } from './narrative';
 import { MAPS, WALKABLE_TILES } from './data/maps';
+import { fieldObstacleAt } from './data/fieldObstacles';
 import { habitatSeed, newJourneySeed } from './individuals';
 import { SPECIES } from './data/species';
 import type { ApproachingNpc, NpcPosition, DialogueLine, DialogueState, Direction, GameAction, GameSession, MapDefinition, MapId, MapObject, MesomonSaveV1, StoryEvent } from './types';
@@ -17,7 +18,17 @@ export function createNewSave(slot: 1 | 2 | 3 = 1, journeySeed = newJourneySeed(
   return { schemaVersion: 1, slot, journeySeed, player: { name: 'Tavian', mapId: 'ship', x: 8, y: 9, facing: 'up' }, party: [], collection: {}, inventory: { tincture: 2, 'crystal-bud': 2 }, questFlags: {}, activeQuestId: 'harbor-two-voices', rifts: { 'port-marche': 'unseen' }, settings: { textSpeed: 'normal', battleSpeed: 'normal', reducedMotion: false, haptics: false, mute: true, sealAssist: false, musicVolume: 0.35, ambientVolume: 0.3 }, playtimeSeconds: 0, savedAt: new Date().toISOString(), battle: null, seal: { active: false, pulses: 0, attempts: 0 }, dialogue: null, dialogueHistory: [] };
 }
 
-export function createSession(save: MesomonSaveV1): GameSession { const restored = clone(save); return { save: restored, dialogue: restored.dialogue, notice: '' }; }
+function copySession(save: MesomonSaveV1, notice = ''): GameSession {
+  const restored = clone(save);
+  return { save: restored, dialogue: restored.dialogue, notice };
+}
+
+/** Repair the playable copy only. A pending cloud retry must keep its original payload. */
+export function createSession(save: MesomonSaveV1): GameSession {
+  const session = copySession(save);
+  restoreFieldPositions(session.save);
+  return session;
+}
 export function getMap(value: MapId | MesomonSaveV1): MapDefinition { return MAPS[typeof value === 'string' ? value : value.player.mapId]; }
 export function getVisibleObjects(save: MesomonSaveV1): MapObject[] {
   return getMap(save).objects.filter(object => {
@@ -39,11 +50,12 @@ export function getVisibleObjects(save: MesomonSaveV1): MapObject[] {
   });
 }
 
-export function canWalk(save: MesomonSaveV1, x: number, y: number): boolean {
+export function canWalk(save: MesomonSaveV1, x: number, y: number, occupants?: readonly MapObject[]): boolean {
   const map = getMap(save);
   if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= map.width || y >= map.height || !WALKABLE_TILES.has(map.tiles[y][x])) return false;
   if (map.id === 'passage' && !flag(save, 'sluice_open') && x >= 10 && x <= 11 && y >= 11 && y <= 14) return false;
-  return !getVisibleObjects(save).some(object => object.solid && object.x === x && object.y === y);
+  if (fieldObstacleAt(map.id, x, y)) return false;
+  return !(occupants ?? getVisibleObjects(save)).some(object => object.solid && object.x === x && object.y === y);
 }
 
 export function nearbyInteractions(save: MesomonSaveV1): MapObject[] {
@@ -156,41 +168,117 @@ function faceOneAnother(save: MesomonSaveV1, resident: NpcPosition) {
   if (facing) { resident.facing = facing; save.player.facing = opposite[facing]; }
 }
 
-/** A short walk to a neighbouring tile, avoiding people, props and the foot of
- * the tide stairs. A resident must never park on a door or a return position. */
-function meetOnQuay(session: GameSession, actor: ApproachingNpc): GameSession {
-  const save = session.save;
-  if (save.player.mapId !== 'harbor' || flag(save, actor + '_met')) return session;
-  const residents = getVisibleObjects(save);
-  const npc = residents.find(object => object.id === actor);
-  if (!npc || Math.abs(npc.x - save.player.x) + Math.abs(npc.y - save.player.y) > 3) return session;
+type FieldPoint = { x: number; y: number };
+const distance = (a: FieldPoint, b: FieldPoint) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-  const queue: { x: number; y: number; steps: Direction[] }[] = [{ x: npc.x, y: npc.y, steps: [] }];
-  const seen = new Set([npc.y * MAPS.harbor.width + npc.x]);
+/** Choose the closest square on the accessible side of gates, with ties broken
+ * by path order from the room entrance. An older save may be deep inside a prop. */
+function nearestReachable(map: MapDefinition, origin: FieldPoint, canStand: (x: number, y: number) => boolean): FieldPoint {
+  const queue = [map.spawn];
+  const seen = new Set([map.spawn.y * map.width + map.spawn.x]);
+  let closest = map.spawn, best = Infinity;
   for (const tile of queue) {
-    if (Math.abs(tile.x - save.player.x) + Math.abs(tile.y - save.player.y) === 1) {
-      const result = scene(session, actor, actor === 'nia' ? 'nia-met' : 'bram-met');
-      save.questFlags['visited:' + actor] = true;
-      const position = { x: npc.x, y: npc.y, facing: npc.direction ?? 'down' };
-      (save.quayResidents ??= {})[actor] = position;
-      if (tile.steps.length && !save.settings.reducedMotion) {
-        result.dialogue!.approach = { actor, steps: tile.steps };
-      } else {
-        position.x = tile.x; position.y = tile.y;
-        faceOneAnother(save, position);
-      }
-      return result;
+    const gap = distance(tile, origin);
+    if (gap < best && canStand(tile.x, tile.y)) {
+      closest = tile;
+      best = gap;
+      if (gap <= 1) break;
     }
+    for (const { x: dx, y: dy } of Object.values(DELTAS)) {
+      const x = tile.x + dx, y = tile.y + dy;
+      const key = y * map.width + x;
+      if (seen.has(key) || !canStand(x, y)) continue;
+      seen.add(key);
+      queue.push({ x, y });
+    }
+  }
+  return closest;
+}
+
+function residentCanStand(save: MesomonSaveV1, others: MapObject[], x: number, y: number) {
+  return canWalk(save, x, y, others) && !(x === 34 && y === 22)
+    && !(save.player.x === x && save.player.y === y)
+    && !others.some(object => object.x === x && object.y === y);
+}
+
+/** A short walk that ends beside Tavian, clear of doors, people and the return landing. */
+function meetingPath(save: MesomonSaveV1, origin: FieldPoint, others: MapObject[]) {
+  const queue: { x: number; y: number; steps: Direction[] }[] = [{ x: origin.x, y: origin.y, steps: [] }];
+  const seen = new Set([origin.y * MAPS.harbor.width + origin.x]);
+  for (const tile of queue) {
+    if (distance(tile, save.player) === 1) return tile;
     if (tile.steps.length >= 4) continue;
     for (const direction of directions) {
       const x = tile.x + DELTAS[direction].x, y = tile.y + DELTAS[direction].y;
       const key = y * MAPS.harbor.width + x;
-      if (seen.has(key) || !canWalk(save, x, y) || (x === 34 && y === 22)
-        || residents.some(object => object.x === x && object.y === y)) continue;
-      seen.add(key); queue.push({ x, y, steps: [...tile.steps, direction] });
+      if (seen.has(key) || !residentCanStand(save, others, x, y)) continue;
+      seen.add(key);
+      queue.push({ x, y, steps: [...tile.steps, direction] });
     }
   }
-  return session;
+}
+
+function restoreFieldPositions(save: MesomonSaveV1) {
+  const { player, dialogue } = save;
+  if (save.quayResidents) {
+    // The residents remain on the quay while Tavian explores other rooms.
+    const harbor = player.mapId === 'harbor' ? save : { ...save, player: { ...player, mapId: 'harbor' as const, ...MAPS.harbor.spawn } };
+    for (const actor of ['nia', 'bram'] as const) {
+      const resident = save.quayResidents[actor];
+      if (!resident) continue;
+      const others = getVisibleObjects(harbor).filter(object => object.id !== actor);
+      const legal = (x: number, y: number) => residentCanStand(harbor, others, x, y);
+      if (!legal(resident.x, resident.y)) Object.assign(resident, nearestReachable(MAPS.harbor, resident, legal));
+    }
+  }
+  const occupants = getVisibleObjects(save);
+  const legal = (x: number, y: number) => canWalk(save, x, y, occupants);
+  if (!legal(player.x, player.y)) Object.assign(player, nearestReachable(getMap(save), player, legal));
+
+  // A newer fixture may cross an older saved walk-in choreography. Keep the
+  // conversation and its end event, replacing only steps that no longer fit.
+  if (!dialogue?.approach) return;
+  const { actor, steps } = dialogue.approach;
+  const resident = save.quayResidents?.[actor];
+  if (player.mapId === 'harbor' && resident) {
+    const others = occupants.filter(object => object.id !== actor);
+    let { x, y } = resident;
+    const valid = steps.every(direction => {
+      x += DELTAS[direction].x; y += DELTAS[direction].y;
+      return residentCanStand(save, others, x, y);
+    });
+    if (valid && distance({ x, y }, player) === 1) return;
+    const path = meetingPath(save, resident, others);
+    if (path?.steps.length) {
+      dialogue.approach.steps = path.steps;
+      return;
+    }
+    // A saved meeting already started. If its short approach was cut off,
+    // stage the resident beside Tavian before showing the saved first line.
+    if (!path) Object.assign(resident, nearestReachable(MAPS.harbor, player, (x, y) => residentCanStand(save, others, x, y)));
+    faceOneAnother(save, resident);
+  }
+  delete dialogue.approach;
+}
+
+function meetOnQuay(session: GameSession, actor: ApproachingNpc): GameSession {
+  const save = session.save;
+  if (save.player.mapId !== 'harbor' || flag(save, actor + '_met')) return session;
+  const residents = getVisibleObjects(save), npc = residents.find(object => object.id === actor);
+  if (!npc || distance(npc, save.player) > 3) return session;
+  const path = meetingPath(save, npc, residents.filter(object => object.id !== actor));
+  if (!path) return session;
+  const result = scene(session, actor, actor === 'nia' ? 'nia-met' : 'bram-met');
+  save.questFlags['visited:' + actor] = true;
+  const position = { x: npc.x, y: npc.y, facing: npc.direction ?? 'down' };
+  (save.quayResidents ??= {})[actor] = position;
+  if (path.steps.length && !save.settings.reducedMotion) {
+    result.dialogue!.approach = { actor, steps: path.steps };
+  } else {
+    position.x = path.x; position.y = path.y;
+    faceOneAnother(save, position);
+  }
+  return result;
 }
 function short(session: GameSession, speaker: string, ...lines: string[]): GameSession { return open(session, `${speaker}-remark`, lines.map(text => ({ speaker, text }))); }
 function teleport(session: GameSession, mapId: MapId, x: number, y: number, facing: Direction = 'up'): GameSession { session.save.player = { ...session.save.player, mapId, x, y, facing }; return session; }
@@ -401,7 +489,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
 }
 
 export function reduceGame(previous: GameSession, action: GameAction): GameSession {
-  const session = createSession(previous.save); session.notice = previous.notice;
+  const session = copySession(previous.save, previous.notice);
   const save = session.save;
   if (action.type === 'settings') { save.settings = { ...save.settings, ...action.settings }; return session; }
   if (action.type === 'tick') { if (Number.isFinite(action.seconds)) save.playtimeSeconds += Math.max(0, Math.min(60, Math.floor(action.seconds))); return session; }

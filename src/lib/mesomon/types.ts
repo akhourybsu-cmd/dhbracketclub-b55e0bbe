@@ -1,6 +1,14 @@
 export type Direction = 'up' | 'down' | 'left' | 'right';
 export type InputAction = Direction | 'confirm' | 'cancel' | 'menu';
 export type MapId = 'ship' | 'harbor' | 'workshop' | 'tide-stairs' | 'passage' | 'chamber';
+/** The ground occupied by a fixed piece of scenery, measured in tiles. */
+export interface FieldObstacle {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
 export type SpeciesId = 'rillik' | 'muddren' | 'gleamwing' | 'tressel' | 'rift-wretch';
 export type Affinity = 'Tide' | 'Stone' | 'Gale' | 'Lumen' | 'Rift';
 export type MoveId = 'brine-snap' | 'reedstep' | 'resonant-cry' | 'tidal-veil' | 'bank-break' | 'mud-wrap' | 'lantern-dust' | 'quick-tackle' | 'splinter-swipe' | 'rift-lash';

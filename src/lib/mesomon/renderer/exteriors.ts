@@ -1,4 +1,5 @@
 import type { MapDefinition } from '../types';
+import { exteriorObstacles } from '../data/exteriorObstacles';
 
 type Point = [number, number];
 
@@ -40,6 +41,137 @@ function pixels(ctx: CanvasRenderingContext2D) {
 type Paint = ReturnType<typeof pixels>;
 
 const deep = '#364446', darkWood = '#584b3d', brass = '#c4a16c', bright = '#dbc397';
+
+// The near edge of each piece meets its collision footprint. Paint in local
+// native pixels so art and movement stay aligned when a work bay is relocated.
+function paintWorkingGear(p: Paint, zone: 'ship' | 'harbor') {
+  for (const footprint of exteriorObstacles[zone]) {
+    p.ctx.save();
+    p.ctx.translate(footprint.x * 16, footprint.y * 16);
+    switch (footprint.id) {
+      case 'mail-locker': {
+        // A marine dispatch locker with a curved, tarred lid, lashings and a brass seal.
+        p.polygon('#584c3b77', [1, 11], [46, 10], [50, 15], [48, 17], [3, 16]);
+        p.rect('#3e4946', 1, 3, 46, 11);
+        p.polygon('#49665f', [1, 3], [4, 0], [42, 0], [46, 3], [46, 7], [1, 7]);
+        p.rect('#839887', 5, 0, 36, 1);
+        p.rect('#607e70', 3, 2, 40, 3);
+        p.rect('#8e7657', 2, 8, 43, 5);
+        p.rect('#5d5040', 3, 13, 41, 2);
+        for (const x of [7, 37]) {
+          p.rect('#564f40', x, 0, 4, 14);
+          p.rect('#c3a77a', x + 1, 0, 2, 13);
+          p.rect('#ddd1a0', x + 1, 2, 2, 3);
+        }
+        p.rect('#d0b481', 22, 7, 5, 4); p.rect('#665842', 24, 8, 1, 2);
+        break;
+      }
+      case 'raised-hatch':
+        // The raised coaming around the loaded grating has a visible toe and lip.
+        p.rect('#624f3d', 1, 13, 31, 3);
+        p.rect('#cbab78', 1, 13, 31, 1);
+        break;
+      case 'salt-store': {
+        // Stacked salt boxes: lower boards, a split lid and white salt at the seams.
+        for (const [x, y, w, h] of [[1, 2, 23, 15], [25, 2, 21, 15], [2, 15, 29, 16], [32, 16, 14, 14]]) {
+          p.rect('#5d5748', x, y, w, h);
+          p.rect('#be9d75', x + 1, y, w - 3, h - 8);
+          p.rect('#a47d58', x + 1, y + h - 8, w - 3, 7);
+          p.rect('#e0c699', x + 2, y + h - 9, w - 4, 2);
+          p.rect('#77624b', x + 1, y + h - 4, w - 3, 1);
+          for (const dx of [2, w - 5]) p.rect('#726854', x + dx, y, 2, h - 1);
+          p.line('#d6c7a1', [x + 5, y + 2], [x + w - 7, y + h - 10]);
+        }
+        break;
+      }
+      case 'timber-stocks': {
+        // Two dark sleepers raise a bank of shipwright's spars above the wet quay.
+        for (const x of [6, 37]) {
+          p.rect('#4d4a3f', x, 2, 5, 30); p.rect('#968364', x, 3, 2, 27);
+        }
+        for (let i = 0; i < 5; i++) {
+          const x = 1 + (i % 2) * 2, y = 2 + 5 * i;
+          p.polygon('#625440', [x, y+1], [42, y], [46, y+2], [46,y+5], [4,y+6], [x,y+4]);
+          p.line('#be9a6a', [x+1,y+2], [41,y+1]);
+          p.line('#94724f', [x+2,y+4], [41,y+3]);
+          p.rect('#d5af77', 43, y+1, 3, 3);
+          p.rect('#94734d', 44, y+2, 1, 1);
+        }
+        for (const x of [9, 34]) p.line('#c1ac7d',[x,1],[x+2,15],[x+1,28]);
+        break;
+      }
+      case 'barrel-dray': {
+        // Broad iron wheels and three upright casks on the weighbridge.
+        p.rect('#494d45', 0, 13, 5, 4);
+        p.rect('#655640', 4, 7, 40, 20); p.rect('#b49569', 5, 7, 39, 2);
+        p.rect('#99774e', 5, 22, 39, 5);
+        p.rect('#60523e', 3, 25, 42, 3);
+        for (const x of [7, 34]) {
+          p.rect('#3a4844', x, 24, 6, 7); p.rect('#928976', x + 1, 25, 2, 5);
+        }
+        for (const [x,y] of [[8, 3], [27, 3], [18, 11]]) {
+          p.polygon('#70553d',[x,y+2],[x+3,y],[x+9,y],[x+12,y+3],[x+12,y+10],[x+10,y+13],[x+3,y+13],[x,y+10]);
+          p.rect('#ae865c',x+2,y+2,8,10); p.rect('#d0ad79',x+3,y+1,6,2);
+          for (const dy of [4,10]) p.rect('#59675c',x+1,y+dy,11,2);
+          p.rect('#c0b18a',x+3,y+4,2,1);
+        }
+        break;
+      }
+      case 'fish-trestle': {
+        for (const x of [3, 22, 43]) p.rect('#5f5544', x, 8, 2, 7);
+        p.rect('#5b5848', 0, 2, 47, 10); p.rect('#a89571', 1, 1, 45, 8);
+        p.rect('#c8b48a', 0, 8, 47, 2);
+        for (let i = 0; i < 4; i++) {
+          const x = 3+i*11, y = i%2+3;
+          p.polygon('#627b76',[x,y],[x+3,y+2],[x+6,y],[x+9,y+1],[x+8,y+3],[x+4,y+4],[x+2,y+3],[x,y+4]);
+          p.rect('#b5c9b5',x+4,y+2,4,1); p.rect(deep,x+7,y+1,1,1);
+        }
+        break;
+      }
+      case 'oyster-tanks': {
+        // Water sits below the stone coping and loose oyster baskets hang from cleats.
+        p.rect('#546460', 1, 1, 46, 29); p.rect('#b2ae92', 1, 1, 45, 24);
+        for (const x of [4, 25]) {
+          p.rect('#586c65',x,4,17,17); p.rect('#507b78',x+1,6,15,14);
+          p.rect('#88a79a',x+4,8,9,1); p.rect('#a4b6a1',x+6,17,5,1);
+          p.rect('#756b4f',x+3,9,7,6);
+          p.line('#b8ab7a',[x+1,3],[x+5,10],[x+8,12]);
+          p.rect('#a59e80',x+5,11,2,2);
+        }
+        p.rect('#758779',2,24,44,4); p.rect('#c6c2a2',1,23,45,1);
+        break;
+      }
+      case 'rope-drying-rack': {
+        for (const x of [2, 30, 59]) {
+          p.rect('#605640',x,1,3,14); p.rect('#bda274',x,2,1,12);
+        }
+        p.rect('#847153',1,1,62,3); p.rect('#d5ba8a',1,1,62,1);
+        for (const x of [5, 15, 25, 35, 45, 54]) {
+          p.line('#85704e',[x,3],[x+1,10],[x+4,13],[x+6,10],[x+6,3]);
+          p.line('#d0b582',[x+1,3],[x+2,9],[x+4,11],[x+5,9],[x+5,3]);
+        }
+        break;
+      }
+      case 'upper-quay-curb':
+      case 'lower-quay-curb':
+      case 'east-quay-curb': {
+        // Two stretches on Bram's side leave the break in the rail exactly
+        // one walking tile wide. The high side overlooks the water.
+        const length = footprint.height * 16;
+        p.rect('#4d615e', 1, 0, 13, length);
+        p.rect('#899486', 2, 0, 10, length - 2);
+        p.rect('#bbbaa0', 2, 0, 2, length - 3);
+        for (let y = 12; y < length - 5; y += 13) p.rect('#697971', 3, y, 9, 1);
+        p.rect('#57645c', 6, 0, 3, length - 5);
+        p.rect('#c2ad83', 6, 0, 1, length - 5);
+        post(p, 7, 6, 6); post(p, 7, length - 3, 7);
+        if (footprint.id === 'east-quay-curb') lamp(p, 7, 36);
+        break;
+      }
+    }
+    p.ctx.restore();
+  }
+}
 
 function post(p: Paint, x: number, foot: number, height: number) {
   p.polygon('#253e4188',[x-3,foot-1],[x+3,foot-1],[x+10,foot+3],[x+3,foot+4]);
@@ -657,18 +789,12 @@ function harbor(p: Paint, map: MapDefinition, hearthLit: boolean) {
   workshopFacade(p, hearthLit); market(p);
   waterfront(p);
   weighbridge(p);
-  // Stone abutments and rails frame the stair mouth. The walkable approach stays open.
-  for(const x of [514,581]){
-    p.rect('#465955',x,310,6,66);
-    p.rect('#acb29c',x,310,2,65);
-    for(const y of [310,335,371]) post(p,x+2,y,8);
-  }
+  // The stairhead's working rails are drawn from the actual ground footprints.
   p.polygon('#506a65',[547,329],[547,313],[550,307],[557,301],[571,301],[577,306],[581,312],[581,329]);
   p.polygon('#adaf97',[549,331],[549,313],[553,307],[559,304],[570,304],[576,309],[579,314],[579,331]);
   p.polygon('#445654',[553,332],[553,315],[558,310],[564,308],[571,311],[575,315],[575,332]);
   p.line('#c2b591',[558,305],[559,310]);
   p.line('#c2b591',[570,305],[569,310]);
-  lamp(p,581,340);
   // Piers, mooring stations and a ferry pennant distinguish arrival from the fish landing.
   for(const [x,y] of [[385,487],[463,488],[385,538],[463,538],[50,505],[124,506],[232,458],[324,459]]) post(p,x,y,8);
   const flagX=464,flagY=510;
@@ -705,6 +831,9 @@ function harbor(p: Paint, map: MapDefinition, hearthLit: boolean) {
 
 /** Painted once into the terrain texture, before world objects and travelers. */
 export function paintExteriors(ctx: CanvasRenderingContext2D,map: MapDefinition, hearthLit = false) {
-  if (map.id === 'ship') wayfarer(pixels(ctx));
-  if (map.id === 'harbor') harbor(pixels(ctx), map, hearthLit);
+  if (map.id !== 'ship' && map.id !== 'harbor') return;
+  const p = pixels(ctx);
+  if (map.id === 'ship') wayfarer(p);
+  else harbor(p, map, hearthLit);
+  paintWorkingGear(p, map.id);
 }

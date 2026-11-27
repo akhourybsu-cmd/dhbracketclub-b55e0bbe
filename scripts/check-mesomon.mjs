@@ -195,11 +195,27 @@ async function noShellCommands(p) {
   await expect(p.getByRole('switch', { name: /^Mute\b/ })).toHaveCount(0);
   await expect(p.locator('.mm-save-status')).toHaveCount(0);
 }
-async function start(p) {
-  const newJourney = p.getByRole('button', { name: /^(New journey|Begin journey|Begin|Start journey|New game)$/i });
-  const continueJourney = p.getByRole('button', { name: /^(Continue|Continue journey)$/i });
-  if (await continueJourney.count() && await continueJourney.isVisible()) await continueJourney.click();
-  else await newJourney.click();
+const opening = p => p.getByRole('dialog', {name: 'Opening cinematic', exact: true});
+async function start(p, captureOpening) {
+  const journey = p.getByRole('button', { name: /^(Begin|Continue) journey$/i });
+  await expect(journey).toBeEnabled();
+  const newFile = /^begin/i.test((await journey.textContent()).trim());
+  await journey.click();
+  if (newFile) {
+    const scene = opening(p);
+    await expect(scene).toHaveAttribute('data-shot', 'sea');
+    if (captureOpening) {
+      for (const shot of ['sea', 'letter', 'quay']) {
+        await expect(scene).toHaveAttribute('data-shot', shot);
+        await audit(p, captureOpening + '-opening-' + shot + '-fit');
+        await p.screenshot({path: join(output, captureOpening + '-opening-' + shot + '.png')});
+        await scene.getByRole('button', {name: shot === 'quay' ? 'Arrive at Port Marche' : 'Next scene', exact: true}).click();
+      }
+    } else {
+      await scene.getByRole('button', {name: 'Skip opening', exact: true}).click();
+    }
+  }
+  await expect(opening(p)).toHaveCount(0);
   await expect(p.locator('.mesomon[data-map-id]')).toHaveAttribute('data-map-id', 'ship');
   await expect(p.locator('.mesomon canvas')).toHaveCount(1);
   await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
@@ -451,6 +467,60 @@ async function tapGround(p, tile) {
   assert.ok(position.x > 0 && position.y > 0, 'The destination must be in the rendered viewport');
   await canvas.tap({position});
 }
+
+async function observeSteps(p) {
+  return p.evaluateHandle(() => {
+    const root = document.querySelector('.mesomon');
+    const steps = [];
+    let previous = `${root.dataset.playerX}:${root.dataset.playerY}`;
+    const observer = new MutationObserver(() => {
+      const key = `${root.dataset.playerX}:${root.dataset.playerY}`;
+      if (key === previous) return;
+      steps.push({x: Number(root.dataset.playerX), y: Number(root.dataset.playerY), at: performance.now()});
+      previous = key;
+    });
+    observer.observe(root, {attributes:true, attributeFilter:['data-player-x','data-player-y']});
+    return {steps, observer};
+  });
+}
+
+async function readSteps(trace) {
+  const steps = await trace.evaluate(({steps, observer}) => { observer.disconnect(); return steps; });
+  await trace.dispose();
+  return steps;
+}
+
+async function checkDeckDetour(p) {
+  const spawn = await livePlayer(p);
+  const start = await step(p, 'up');
+  assert.deepEqual(start, {mapId:'ship', x:8, y:8});
+  const stride = await p.evaluate(() => window.mmQa.walkStepMs);
+  await pause(stride + 50);
+  const trace = await observeSteps(p);
+  await press(p, 'up'); // Push directly against the lashed mail chest.
+  await pause(stride + 50);
+  await waitForPlayer(p, start);
+  assert.equal(await trace.evaluate(({steps}) => steps.length), 0);
+
+  const farSide = {mapId:'ship', x:8, y:6};
+  await tapGround(p, farSide);
+  await waitForPlayer(p, farSide);
+  const steps = await readSteps(trace);
+  const blocked = ({x,y}) => y === 7 && x >= 7 && x <= 9;
+  assert.ok(steps.length >= 6, 'Reaching the far side takes a detour around the three-tile chest');
+  assert.ok(!steps.some(blocked), 'A tap route cannot cross the chest');
+  assert.ok(steps.some(({x,y}) => y === 7 && (x < 7 || x > 9)), 'The crew aisle must carry the player around the chest');
+  steps.forEach((point, index) => {
+    const previous = steps[index - 1] ?? start;
+    assert.equal(Math.abs(point.x - previous.x) + Math.abs(point.y - previous.y), 1);
+  });
+  check(engine + '-deck-chest-blocks-dpad-and-ground-tap-walks-around-it', {steps:steps.map(({x,y}) => [x,y])});
+  await pause(stride + 50);
+  await tapGround(p, spawn);
+  await waitForPlayer(p, spawn);
+  await pause(stride + 50);
+}
+
 async function walkingPace() {
   const traces = [];
   for (const mode of ['keyboard-held', 'ground-tap']) {
@@ -469,34 +539,16 @@ async function walkingPace() {
         return null;
       });
       assert.ok(corridor, 'The arrival deck needs a visible four-tile straight route ending at a wall for a bounded pace proof');
-      await p.evaluate(() => {
-        const root = document.querySelector('.mesomon');
-        const trace = {steps: [], startedAt: performance.now(), observer: null};
-        let previous = `${root.dataset.playerX}:${root.dataset.playerY}`;
-        trace.observer = new MutationObserver(() => {
-          const key = `${root.dataset.playerX}:${root.dataset.playerY}`;
-          if (key !== previous) {
-            trace.steps.push({x: Number(root.dataset.playerX), y: Number(root.dataset.playerY), at: performance.now()});
-            previous = key;
-          }
-        });
-        trace.observer.observe(root, {attributes: true, attributeFilter: ['data-player-x','data-player-y']});
-        window.mmPace = trace;
-      });
+      const trace = await observeSteps(p);
       if (mode === 'keyboard-held') {
         heldKey = arrowKeys[corridor.direction];
         await p.keyboard.down(heldKey);
       } else await tapGround(p, corridor.points.at(-1));
-      await p.waitForFunction(() => window.mmPace.steps.length >= 4, null, {timeout: 5000});
+      await p.waitForFunction(({steps}) => steps.length >= 4, trace, {timeout: 5000});
       if (heldKey) { await p.keyboard.up(heldKey); heldKey = null; }
       const expected = {mapId: corridor.origin.mapId, ...corridor.points.at(-1)};
       await waitForPlayer(p, expected);
-      const steps = await p.evaluate(() => {
-        window.mmPace.observer.disconnect();
-        const steps = window.mmPace.steps;
-        delete window.mmPace;
-        return steps;
-      });
+      const steps = await readSteps(trace);
       assert.deepEqual(steps.map(({x,y}) => ({x,y})), corridor.points, `${mode} must commit exactly the requested route`);
       const intervals = steps.slice(1).map((step, index) => step.at - steps[index].at);
       const mean = intervals.reduce((sum, duration) => sum + duration, 0) / intervals.length;
@@ -622,6 +674,10 @@ async function audit(p, label) {
     const titleArt = root.querySelector('.mm-title-art img');
     const titleGaps = titleArt ? gapsToViewport(titleArt) : null;
     if (titleGaps?.some(gap => gap > 1)) issues.push('Title artwork stops before the edge of the viewport');
+    if (label.includes('-opening-') && label.endsWith('-fit')) {
+      const art = root.querySelector('.mm-arrival-frame > svg');
+      if (!art || gapsToViewport(art).some(gap => gap > 1)) issues.push('Opening artwork does not cover the viewport');
+    }
     const menu = root.querySelector('.mm-menu');
     if (menu) {
       const backdrop = getComputedStyle(menu.closest('.mm-modal-backdrop'));
@@ -756,13 +812,19 @@ async function smoke(width, height, theme) {
   const { p, context } = await setup(width, height, theme);
   try {
     await expect(p.getByRole('button', { name: /^Begin journey$/i })).toBeVisible();
-    await noShellCommands(p);
+    await expect(p.getByRole('button', {name: 'Start', exact: true})).toHaveCount(0);
+    await expect(p.getByRole('link', {name: 'Exit game', exact: true})).toHaveAttribute('href', '/compete');
+    await p.keyboard.press('m');
+    await expect(startMenu(p)).toHaveCount(0);
     await audit(p, label + '-title-fit'); await p.screenshot({ path: join(output, label + '-title.png') });
-    const menu = await openStart(p);
-    await expect(menu.getByRole('link', { name: 'Exit game', exact: true })).toHaveAttribute('href', '/compete');
-    await menu.getByRole('button', { name: 'Back to title', exact: true }).click();
-    await expect(menu).toHaveCount(0);
-    await start(p); await drain(p); await audit(p, label + '-game-fit');
+    const settingsTrigger = p.getByRole('button', {name: 'Settings', exact: true});
+    await settingsTrigger.click();
+    const titleSettings = p.getByRole('dialog', {name: 'Settings', exact: true});
+    await expect(titleSettings.getByRole('switch', {name: /^Mute\b/})).toBeVisible();
+    await p.keyboard.press('Escape');
+    await expect(titleSettings).toHaveCount(0);
+    await expect(settingsTrigger).toBeFocused();
+    await start(p, label); await drain(p); await audit(p, label + '-game-fit');
     await auditFrame(p, label + '-ship-art');
     const direction = await p.evaluate(async () => {
       const state = await window.mmQa.readSave(), p = state.player;
@@ -774,7 +836,7 @@ async function smoke(width, height, theme) {
     await step(p, direction, true);
     check(label + '-keyboard-uses-same-actions');
     await noShellCommands(p);
-    await openStart(p);
+    const menu = await openStart(p);
     for (const name of ['Resume', 'Companions', 'Field Guide', 'Journal', 'Map', 'Settings', 'Save file']) {
       await expect(menu.getByRole('button', { name, exact: true })).toBeVisible();
     }
@@ -808,6 +870,7 @@ async function smoke(width, height, theme) {
     await expect(menu).toHaveAttribute('data-section', 'start');
     await startSection(menu, 'Save file');
     await expect(menu.getByRole('button', { name: 'Save now', exact: true })).toBeEnabled();
+    await expect(menu.getByRole('button', {name: /again|erase|delete|replace|restart/i})).toHaveCount(0);
     await p.keyboard.press('x');
     await expect(menu).toHaveAttribute('data-section', 'start');
     await closeStart(p);
@@ -815,6 +878,7 @@ async function smoke(width, height, theme) {
     const persisted = await save(p); await p.reload(); await p.waitForFunction(() => Boolean(window.mmQa));
     const continueButton = p.getByRole('button', { name: /^(Continue|Continue journey)$/i });
     await expect(continueButton).toBeVisible(); await continueButton.click();
+    await expect(opening(p)).toHaveCount(0);
     await expect(controls(p,'up')).toBeVisible();
     await expect(p.locator('.mesomon canvas')).toHaveCount(1);
     await expect.poll(async () => { const s = await save(p); return `${s.player.mapId}:${s.player.x}:${s.player.y}`; }).toBe(`${persisted.player.mapId}:${persisted.player.x}:${persisted.player.y}`);
@@ -1060,6 +1124,7 @@ async function chapter() {
   chapterReaders.add(p);
   try {
     await start(p); await drain(p);
+    await checkDeckDetour(p);
     await tapMapObject(p,'captain');
     await expect(p.locator('[data-mm-object="captain"]')).toBeVisible();
     await expect(p.getByRole('region',{name:'Conversation'})).toHaveCount(0);
@@ -1231,16 +1296,18 @@ async function touchLaunch() {
   try {
     const button = p.getByRole('button', {name: 'Begin journey', exact: true});
     await expect(button).toBeEnabled();
-    const menu = await openStart(p);
-    await startSection(menu, 'Settings');
-    const canExpand = await menu.getByRole('button', {name: 'Enter full screen', exact: true}).count();
-    await closeStart(p, 'm');
+    await p.getByRole('button', {name: 'Settings', exact: true}).tap();
+    const titleSettings = p.getByRole('dialog', {name: 'Settings', exact: true});
+    const canExpand = await titleSettings.getByRole('button', {name: 'Enter full screen', exact: true}).count();
+    await p.keyboard.press('Escape');
+    await expect(titleSettings).toHaveCount(0);
     await button.tap();
+    await opening(p).getByRole('button', {name: 'Skip opening', exact: true}).tap();
     await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
     if (canExpand) {
       const owner = () => p.evaluate(() => (document.fullscreenElement ?? document.webkitFullscreenElement)?.matches('.mm-device') ?? false);
       await expect.poll(owner).toBe(true);
-      await openStart(p);
+      const menu = await openStart(p);
       await startSection(menu, 'Settings');
       await menu.getByRole('button', {name: 'Leave full screen', exact: true}).tap();
       await expect.poll(owner).toBe(false);

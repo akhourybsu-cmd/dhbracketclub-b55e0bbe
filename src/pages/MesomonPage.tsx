@@ -9,11 +9,14 @@ import {
   Compass,
   BookOpen,
   Feather,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useClubAssets } from "@/hooks/useClubAssets";
 import { useMesomonSave } from "@/hooks/useMesomonSave";
+import { ArrivalCinematic } from "@/components/mesomon/ArrivalCinematic";
 import { MesomonStartMenu, type MenuTab } from "@/components/mesomon/MesomonStartMenu";
 import {
   CHAPTER_TITLE,
@@ -133,14 +136,16 @@ function Chapter({
 }) {
   const sync = useMesomonSave({ userId, clubId, slot });
   const [session, setSession] = useState<GameSession | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [entry, setEntry] = useState<"title" | "arrival" | "field">("title");
+  const playing = entry !== "title";
+  const opening = entry === "arrival";
+  const openingRef = useRef(opening);
+  openingRef.current = opening;
   const [menu, setMenu] = useState<MenuTab | null>(null);
-  const [restart, setRestart] = useState(false);
   const closeMenu = useCallback(() => {
     restoreMenuFocus.current = true;
     setMenu(null);
   }, []);
-  const closeRestart = useCallback(() => setRestart(false), []);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const restoreMenuFocus = useRef(false);
   const [viewError, setViewError] = useState<string | null>(null);
@@ -180,7 +185,8 @@ function Chapter({
     setSession((value) => (value ? { ...value, notice } : value));
   }, []);
   const phase = session ? getPhase(session) : "explore";
-  const scenePaused = !playing || !sceneReady || !!menu || hidden || sync.blocked;
+  const layersCovered = !!menu || opening;
+  const scenePaused = !playing || !sceneReady || layersCovered || hidden || sync.blocked;
   const walking = useTapWalk(
     session,
     !scenePaused && phase === "explore",
@@ -262,7 +268,7 @@ function Chapter({
         instance = value;
         view.current = value;
         value.pause(
-          document.hidden || !!menuRef.current || !playingRef.current,
+          document.hidden || !!menuRef.current || openingRef.current || !playingRef.current,
         );
         if (current.current) value.update(current.current);
       })
@@ -286,8 +292,8 @@ function Chapter({
     if (session) view.current?.update(session);
   }, [session]);
   useEffect(() => {
-    view.current?.pause(hidden || !!menu || !playing);
-  }, [hidden, menu, playing]);
+    view.current?.pause(hidden || layersCovered || !playing);
+  }, [hidden, layersCovered, playing]);
   useEffect(() => { audio.current?.pause(scenePaused); }, [scenePaused]);
   useEffect(() => {
     if (!session) return;
@@ -355,7 +361,7 @@ function Chapter({
     };
   }, [cancelWalk]);
   useEffect(() => {
-    if (!playing || hidden || menu) return;
+    if (!playing || hidden || layersCovered) return;
     const timer = window.setInterval(
       () => dispatch({ type: "tick", seconds: 1 }),
       1000,
@@ -365,7 +371,7 @@ function Chapter({
       clearInterval(timer);
       clearInterval(cloudTimer);
     };
-  }, [playing, hidden, menu, dispatch]);
+  }, [playing, hidden, layersCovered, dispatch]);
   const checkpoint = session
     ? `${session.save.player.mapId}:${session.save.party.length}:${session.save.battle?.turn ?? 0}:${phase}:${session.save.seal.pulses}:${getObjective(session.save)}`
     : "";
@@ -385,13 +391,13 @@ function Chapter({
     document
       .querySelectorAll<HTMLElement>(".mesomon [data-mm-layer]")
       .forEach((node) => {
-        node.inert = !!menu;
+        node.inert = layersCovered;
       });
-    if (!menu && restoreMenuFocus.current) {
+    if (!layersCovered && restoreMenuFocus.current) {
       restoreMenuFocus.current = false;
       menuTrigger.current?.focus({ preventScroll: true });
     }
-  }, [menu, playing]);
+  }, [layersCovered, playing]);
   const approaching = session?.dialogue?.approach?.actor;
   const stepsLeft = session?.dialogue?.approach?.steps.length ?? 0;
   const reducedMotion = session?.save.settings.reducedMotion ?? false;
@@ -455,7 +461,7 @@ function Chapter({
   }, [dispatch]);
   const press = useCallback(
     (action: InputAction) => {
-      if (sync.blocked) return;
+      if (sync.blocked || openingRef.current) return;
       awakenAudio();
       if (
         isDirection(action) &&
@@ -468,7 +474,7 @@ function Chapter({
       cancelWalk();
       if (action === "menu") {
         setHeld(null);
-        if (!current.current) return;
+        if (!current.current || !playingRef.current) return;
         if (menuRef.current) closeMenu();
         else setMenu("start");
         audio.current?.cue("menu");
@@ -519,7 +525,7 @@ function Chapter({
   }, []);
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (openingRef.current || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target instanceof Element ? event.target : null;
       if (target?.closest('input,textarea,select,[contenteditable="true"]')) return;
       const action = keyboardAction(event.key);
@@ -528,7 +534,7 @@ function Chapter({
         event.preventDefault();
         return;
       }
-      if (menuRef.current || !action || (!playingRef.current && action !== "menu")) return;
+      if (menuRef.current || !action || !playingRef.current) return;
       const control = target?.closest<HTMLElement>("button,a");
       // Z is the handheld A button even when Start or a direction key still has focus.
       const gameConfirm = playingRef.current && event.key.toLowerCase() === "z" && !!control?.dataset.mmAction;
@@ -584,7 +590,7 @@ function Chapter({
       pausedSealTime.current = 0;
       return;
     }
-    if (!playing || dialogueActive || hidden || menu || reducedMotion || sealAssist) return;
+    if (!playing || dialogueActive || hidden || layersCovered || reducedMotion || sealAssist) return;
     const now = performance.now();
     sealOrigin.current = now - pausedSealTime.current;
     setSealProgress(pausedSealTime.current / SEAL_PERIOD_MS);
@@ -595,7 +601,7 @@ function Chapter({
       clearInterval(timer);
       pausedSealTime.current = (performance.now() - sealOrigin.current) % SEAL_PERIOD_MS;
     };
-  }, [sealActive, dialogueActive, hidden, menu, reducedMotion, sealAssist, playing]);
+  }, [sealActive, dialogueActive, hidden, layersCovered, reducedMotion, sealAssist, playing]);
 
   const begin = (event: React.MouseEvent<HTMLButtonElement>) => {
     if (sync.blocked || sync.loading) return;
@@ -614,9 +620,13 @@ function Chapter({
     }
     awakenAudio();
     playingRef.current = true;
-    setPlaying(true);
+    setEntry(sync.save ? "field" : "arrival");
     if (current.current) saveLocal.current(current.current.save);
   };
+  const finishOpening = useCallback(() => {
+    restoreMenuFocus.current = true;
+    setEntry(stage => stage === "arrival" ? "field" : stage);
+  }, []);
   const updateSettings = (settings: Partial<MesomonSettings>) => {
     const snapshot = current.current;
     if (!snapshot) return;
@@ -628,15 +638,14 @@ function Chapter({
   useEffect(() => {
     if (!sync.blocked) return;
     playingRef.current = false;
-    setPlaying(false);
+    setEntry("title");
     setHeld(null);
     setMenu(null);
-    setRestart(false);
     cancelWalk();
   }, [sync.blocked, cancelWalk]);
   const reloadFile = async () => {
     playingRef.current = false;
-    setPlaying(false);
+    setEntry("title");
     setHeld(null);
     setMenu(null);
     // Keep the preloaded world mounted when reopening a file offline.
@@ -647,7 +656,7 @@ function Chapter({
     if (!sync.conflict?.cloud) return;
     resolvingCloud.current = true;
     playingRef.current = false;
-    setPlaying(false);
+    setEntry("title");
     setHeld(null);
     setMenu(null);
     adoptedSave.current = undefined;
@@ -711,7 +720,7 @@ function Chapter({
           <main
             className="mm-game"
             data-mm-layer
-            aria-hidden={menu ? true : undefined}
+            aria-hidden={layersCovered || undefined}
           >
             <div className="mm-display-slot">
               <div className="mm-screen" data-art-ready={artReady}>
@@ -774,7 +783,29 @@ function Chapter({
                           {sync.save ? "Continue journey" : "Begin journey"}
                           <ChevronRight size={18} />
                         </button>
-                        {startKey}
+                        <button
+                          type="button"
+                          className="mm-title-tool"
+                          ref={menuTrigger}
+                          aria-label="Settings"
+                          title="Settings"
+                          aria-haspopup="dialog"
+                          disabled={sync.blocked}
+                          onClick={() => setMenu("settings")}
+                        >
+                          <Settings size={20} aria-hidden="true" />
+                        </button>
+                        {!sync.blocked && (
+                          <Link
+                            to="/compete"
+                            className="mm-title-tool"
+                            aria-label="Exit game"
+                            title="Exit game"
+                            onClick={leave}
+                          >
+                            <LogOut size={20} aria-hidden="true" />
+                          </Link>
+                        )}
                       </div>
                       <span className="mm-title-note">
                         {sync.save
@@ -959,7 +990,7 @@ function Chapter({
             <div
               className="mm-control-deck"
               data-mm-layer
-              aria-hidden={menu ? true : undefined}
+              aria-hidden={layersCovered || undefined}
             >
               <div
                 className="mm-dpad"
@@ -1075,22 +1106,23 @@ function Chapter({
             </div>
           )}
           {playing && (phase === "battle" || phase === "ending") && (
-            <div className="mm-system-deck" data-mm-layer aria-hidden={menu ? true : undefined}>
+            <div className="mm-system-deck" data-mm-layer aria-hidden={layersCovered || undefined}>
               {startKey}
             </div>
           )}
-          <footer className="mm-footnote" data-mm-layer aria-hidden={menu ? true : undefined}>
+          <footer className="mm-footnote" data-mm-layer aria-hidden={layersCovered || undefined}>
             {playing
               ? "Arrows / WASD · Z / Enter · X / Esc · M for Start"
               : "An independent, non-canon story in Mesoplasia."}
           </footer>
-          {!sync.blocked && menu && !restart && (
+          {opening && !sync.blocked && (
+            <ArrivalCinematic onFinish={finishOpening} reducedMotion={reducedMotion} />
+          )}
+          {!sync.blocked && menu && (
             <MesomonStartMenu
               playing={playing}
               saveStatus={sync.status}
-              saveLabel={!playing && !sync.save && (sync.status === "local" || sync.status === "saved")
-                ? "New file"
-                : SAVE_LABELS[sync.status]}
+              saveLabel={SAVE_LABELS[sync.status]}
               fullscreen={fullscreen}
               tab={menu}
               onTab={setMenu}
@@ -1105,31 +1137,14 @@ function Chapter({
               onTitle={() => {
                 leave();
                 closeMenu();
-                setPlaying(false);
+                setEntry("title");
               }}
-              onRestart={() => setRestart(true)}
               onCompanion={() =>
                 act({
                   type: "companion",
                   released: !session.save.questFlags.companion_released,
                 })
               }
-            />
-          )}
-          {!sync.blocked && restart && (
-            <RestartConfirmation
-              slot={slot}
-              onCancel={closeRestart}
-              onConfirm={() => {
-                if (sync.blocked) return;
-                const next = createNewSave(slot);
-                next.settings = session.save.settings;
-                setSession(createSession(next));
-                saveLocal.current(next);
-                setRestart(false);
-                closeMenu();
-                setPlaying(true);
-              }}
             />
           )}
           {sync.blocked && (
@@ -1143,8 +1158,7 @@ function Chapter({
             </div>
           )}
           {!sync.blocked &&
-            !menu &&
-            !restart &&
+            !layersCovered &&
             (sync.conflict || sync.status === "attention") && (
               <div className="mm-sync-alert" role="status">
                 <span>
@@ -1172,71 +1186,6 @@ function Chapter({
             )}
         </>
       )}
-    </div>
-  );
-}
-
-function RestartConfirmation({
-  slot,
-  onCancel,
-  onConfirm,
-}: {
-  slot: number;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const dialog = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    dialog.current
-      ?.querySelector<HTMLButtonElement>("[data-mm-keep]")
-      ?.focus({ preventScroll: true });
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" || event.key.toLowerCase() === "x") {
-        event.preventDefault();
-        onCancel();
-      }
-      if (event.key !== "Tab") return;
-      const buttons =
-        dialog.current?.querySelectorAll<HTMLButtonElement>("button");
-      if (!buttons?.length) return;
-      if (event.shiftKey && document.activeElement === buttons[0]) {
-        event.preventDefault();
-        buttons[buttons.length - 1].focus();
-      } else if (
-        !event.shiftKey &&
-        document.activeElement === buttons[buttons.length - 1]
-      ) {
-        event.preventDefault();
-        buttons[0].focus();
-      }
-    };
-    window.addEventListener("keydown", key);
-    return () => {
-      window.removeEventListener("keydown", key);
-      if (previous?.isConnected) previous.focus({ preventScroll: true });
-    };
-  }, [onCancel]);
-  return (
-    <div className="mm-modal-backdrop">
-      <section
-        ref={dialog}
-        className="mm-confirm"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="mm-restart-title"
-      >
-        <h2 id="mm-restart-title">Begin again in File {slot}?</h2>
-        <p>
-          This replaces this file’s journey. Your other two files stay safe.
-        </p>
-        <button className="mm-primary" onClick={onConfirm}>
-          Replace this file
-        </button>
-        <button data-mm-keep onClick={onCancel}>
-          Keep my journey
-        </button>
-      </section>
     </div>
   );
 }

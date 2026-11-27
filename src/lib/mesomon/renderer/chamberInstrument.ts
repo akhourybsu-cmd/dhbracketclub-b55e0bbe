@@ -1,3 +1,4 @@
+import { inspectionRails, tongueStops } from '../data/interiorObstacles';
 import type { EnvironmentRect } from './environmentMotion';
 
 // The chamber is an old tide station. Two float lines feed the pens of the
@@ -127,6 +128,51 @@ export function paintChamberInstrument(ctx: CanvasRenderingContext2D, sealed: bo
       if (dy > -3 && dy < 2) rect(side < 0 ? '#d7c297' : '#bbc09d', x + 1, 91 + dy, 2, 1);
     }
   }
+  // Brass handrails stand on continuous stone kerbs. The west gallery
+  // turns at the end of its rail; the east one follows the stilling well.
+  for (const rail of inspectionRails) {
+    const x = rail.x * 16, y = rail.y * 16, length = rail.height * 16;
+    rect('#273a412e', x + 14, y + 4, 3, length - 2);
+    rect('#3b5154', x + 1, y + 1, 14, length - 1);
+    rect('#71837c', x + 1, y + 1, 12, length - 4);
+    rect('#a3a98e', x + 1, y + 1, 2, length - 4);
+    rect('#859284', x + 3, y + 1, 9, 2);
+    rect('#586f6a', x + 11, y + 3, 2, length - 6);
+    for (let joint = 17; joint < length - 6; joint += 19) {
+      rect('#596e68', x + 3, y + joint, 10, 1);
+      rect('#879483', x + 3, y + joint + 1, 9, 1);
+    }
+    rect('#4b5b55', x + 7, y + 4, 3, length - 9);
+    rect('#b39b70', x + 6, y + 3, 2, length - 9);
+    rect('#cdb78b', x + 6, y + 4, 1, length - 11);
+    for (const offset of [3, Math.floor(length / 2), length - 6]) {
+      const post = y + offset;
+      rect('#3d4f4e', x + 4, post, 7, 4);
+      rect('#708079', x + 4, post, 6, 2);
+      rect('#544e41', x + 5, post - 3, 4, 6);
+      rect('#ae946a', x + 5, post - 3, 2, 5);
+      rect('#494d43', x + 4, post - 4, 6, 3);
+      rect('#c5ae7f', x + 4, post - 4, 5, 1);
+      rect('#8b815e', x + 4, post - 3, 5, 1);
+    }
+  }
+
+  // The bridge's old stop-stones carry two turned mooring rings. They
+  // sit on either side of the one-tile plank and leave its boards exposed.
+  for (const stop of tongueStops) {
+    const x = stop.x * 16, y = stop.y * 16;
+    rect('#384e4f', x + 1, y + 3, 14, 13);
+    rect('#78857b', x + 1, y + 3, 13, 9);
+    rect('#9a9e88', x + 1, y + 3, 13, 2);
+    rect('#b2af93', x + 1, y + 3, 2, 8);
+    rect('#64756d', x + 2, y + 12, 11, 2);
+    rect('#555c51', x + 5, y + 6, 7, 4);
+    rect('#bcaa80', x + 5, y + 2, 5, 2);
+    rect('#cdb98a', x + 4, y + 3, 2, 4);
+    rect('#9c8e6c', x + 9, y + 3, 2, 4);
+    rect('#c7af81', x + 5, y + 7, 5, 1);
+  }
+
   // Daylight reflected off the drum breaks at the second current. A long,
   // continuous reflection replaces the broken strips once the water settles.
   if (sealed) {

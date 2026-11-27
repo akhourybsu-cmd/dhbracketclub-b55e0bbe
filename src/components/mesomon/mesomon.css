@@ -625,12 +625,17 @@
   width: min(100%, 360px);
 }
 .mm-title-actions .mm-primary { flex: 1; width: auto; }
-.mm-title-actions .mm-start-key {
-  min-width: 58px;
-  color: #f7e9c1;
-  background: #1c3530;
-  border: 1px solid #738375;
+.mm-title-actions .mm-title-tool {
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  height: 44px;
+  padding: 0;
+  color: var(--mm-paper);
+  background: #203a35;
+  border: 1px solid var(--mm-line);
   border-radius: 4px;
+  box-shadow: inset 0 1px #ffffff12, 0 2px 0 #061514;
 }
 .mm-system-deck {
   flex: none;
@@ -1253,35 +1258,6 @@
 .mm-save-file p {
   font-size: 12px;
 }
-.mesomon .mm-danger {
-  background: transparent;
-  color: #7a4933;
-  font-size: 11px;
-  border-color: #baac87;
-}
-.mm-confirm {
-  padding: 22px;
-  border: 3px double #b0b895;
-  background: #e7dfc2;
-  color: #1b3833;
-  max-width: 360px;
-}
-.mm-confirm h2 {
-  font-size: 20px;
-}
-.mm-confirm p {
-  font-size: 13px;
-  line-height: 1.5;
-  margin: 12px 0;
-}
-.mm-confirm > button {
-  margin-top: 8px;
-  width: 100%;
-}
-.mm-confirm > button:last-child {
-  background: #cad1b2;
-  color: #244535;
-}
 .mm-sync-alert {
   position: absolute;
   z-index: 8;
@@ -1761,10 +1737,6 @@ fieldset.mm-battle-controls {
     padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
       max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   }
-  .mm-confirm {
-    max-height: 100%;
-    overflow-y: auto;
-  }
 }
 @media (orientation: landscape) and (min-width: 540px) and (max-height: 600px) {
   .mm-phase-battle .mm-event {
@@ -1855,13 +1827,6 @@ fieldset.mm-battle-controls {
 .mm-access a, .mm-loading a {
   text-decoration: underline;
   text-underline-offset: 4px;
-}
-.mm-modal-backdrop:has(.mm-confirm) {
-  background: linear-gradient(#102224de, #142f2bf2), url('/games/mesomon/cover.png?v=4') center / cover;
-}
-.mm-confirm {
-  max-height: 100%;
-  overflow-y: auto;
 }
 
 .mesomon[data-playing="true"] .mm-game {

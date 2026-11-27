@@ -84,6 +84,7 @@ export function findWalkingPath<T extends Point>(save: MesomonSaveV1, targets: T
   const index = ({ x, y }: Point) => y * map.width + x;
   const start = { x: save.player.x, y: save.player.y };
   const previous = new Map<number, Point | null>([[index(start), null]]);
+  const occupants = getVisibleObjects(save);
   const queue = [start];
   for (const tile of queue) {
     const target = targets.find(({ x, y }) => Math.abs(tile.x - x) + Math.abs(tile.y - y) <= reach);
@@ -95,7 +96,7 @@ export function findWalkingPath<T extends Point>(save: MesomonSaveV1, targets: T
     }
     for (const direction of directions) {
       const next = { x: tile.x + DELTAS[direction].x, y: tile.y + DELTAS[direction].y };
-      if (!previous.has(index(next)) && canWalk(save, next.x, next.y)) {
+      if (!previous.has(index(next)) && canWalk(save, next.x, next.y, occupants)) {
         previous.set(index(next), tile);
         queue.push(next);
       }

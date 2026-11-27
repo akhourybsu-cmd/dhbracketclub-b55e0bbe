@@ -1,0 +1,31 @@
+.mm-arrival-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  background: #223e49;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mm-arr-cloud { animation: mm-arr-cloud-drift 18s steps(4, end) infinite alternate; }
+  .mm-arr-terns { animation: mm-arr-tern-flight 8s steps(5, end) infinite alternate; }
+  .mm-arr-waves { animation: mm-arr-tide 4s steps(3, end) infinite alternate; }
+  .mm-arr-hull, .mm-arr-bow { animation: mm-arr-bob 3.8s steps(2, end) infinite alternate; }
+  .mm-arr-letter { animation: mm-arr-bob 5.2s steps(2, end) infinite alternate-reverse; }
+  .mm-arr-lantern { animation: mm-arr-light 3.4s ease-in-out infinite alternate; }
+}
+@keyframes mm-arr-cloud-drift { to { transform: translateX(4px); } }
+@keyframes mm-arr-tern-flight { to { transform: translate(5px, -2px); } }
+@keyframes mm-arr-tide { to { transform: translateX(-3px); } }
+@keyframes mm-arr-bob { to { transform: translateY(1px); } }
+@keyframes mm-arr-light { to { opacity: .65; } }
+[data-reduced-motion='true'] .mm-arrival-art *,
+.mm-arrival-art[data-reduced-motion='true'] * { animation: none; }
+@media (orientation: portrait) and (max-aspect-ratio: 3/4) {
+  .mm-arrival-art {
+    position: absolute;
+    left: 50%;
+    width: clamp(100%, 65dvh, 132%);
+    transform: translateX(-50%);
+  }
+}

@@ -66,7 +66,10 @@ function mount(strict=false) {
   return render(strict?<StrictMode>{game}</StrictMode>:game);
 }
 async function begin() {
-  fireEvent.click(await screen.findByRole('button',{name:/Begin journey|Continue journey/}));
+  const journey = await screen.findByRole('button', {name: /^(Begin|Continue) journey$/});
+  const isNew = journey.textContent?.includes('Begin');
+  fireEvent.click(journey);
+  if (isNew) fireEvent.click(await screen.findByRole('button', {name: 'Skip opening'}));
   await waitFor(() => expect(fixture.firstFrame).toBeDefined());
 }
 function openStart() {
@@ -150,8 +153,8 @@ describe('Mesomon game shell', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({ ...matchMedia(query), matches: query === '(prefers-reduced-motion: reduce)' }));
     const first = mount();
     await screen.findByRole('button', { name: 'Begin journey' });
-    const menu = openStart();
-    fireEvent.click(menu.getByRole('button', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('button', {name: 'Settings'}));
+    const menu = within(screen.getByRole('dialog', {name: 'Settings'}));
     const motion = menu.getByRole('switch', { name: /Reduced motion/ });
     expect(motion).toHaveAttribute('aria-checked', 'true');
     expect(document.querySelector('.mesomon')).toHaveAttribute('data-reduced-motion', 'true');
@@ -303,10 +306,10 @@ describe('Mesomon game shell', () => {
     const consoleShell = document.querySelector('.mesomon')!;
     expect(consoleShell).not.toHaveTextContent(brand);
     expect(consoleShell.querySelector('.mm-header, .mm-location')).toBeNull();
-    expect(screen.queryByRole('link', exit)).not.toBeInTheDocument();
-    const titleMenu = openStart();
-    expect(titleMenu.getByRole('link', exit)).toHaveAttribute('href', '/compete');
-    fireEvent.click(titleMenu.getByRole('button', { name: 'Back to title' }));
+    expect(screen.getByRole('link', exit)).toHaveAttribute('href', '/compete');
+    expect(screen.queryByRole('button', { name: 'Start' })).toBeNull();
+    fireEvent.keyDown(window, { key: 'm' });
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(fixture.saveLocal).not.toHaveBeenCalled();
     await begin();
     expect(consoleShell).not.toHaveTextContent(brand);
@@ -321,6 +324,42 @@ describe('Mesomon game shell', () => {
     expect(document.querySelector('.mesomon')).not.toBeInTheDocument();
     expect(fixture.flush).toHaveBeenCalled();
     expect(fixture.saveLocal).toHaveBeenCalled();
+  });
+
+  it('opens a fresh file at sea and reaches the ship after the final shot', async () => {
+    mount();
+    fireEvent.click(await screen.findByRole('button', {name: 'Begin journey'}));
+    const cinematic = await screen.findByRole('dialog', {name: 'Opening cinematic'});
+    expect(cinematic).toHaveAttribute('data-shot', 'sea');
+    expect(screen.queryByRole('button', {name: 'Start'})).toBeNull();
+    fireEvent.keyDown(window, {key: 'm'});
+    expect(screen.queryByRole('dialog', {name: 'Start menu'})).toBeNull();
+    const next = within(cinematic).getByRole('button', {name: 'Next scene'});
+    fireEvent.click(next);
+    expect(cinematic).toHaveAttribute('data-shot', 'letter');
+    fireEvent.click(within(cinematic).getByRole('button', {name: 'Next scene'}));
+    expect(cinematic).toHaveAttribute('data-shot', 'quay');
+    fireEvent.click(within(cinematic).getByRole('button', {name: 'Arrive at Port Marche'}));
+    expect(screen.queryByRole('dialog', {name: 'Opening cinematic'})).toBeNull();
+    expect(screen.getByRole('button', {name: 'Start'})).toBeEnabled();
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].player.mapId).toBe('ship');
+  });
+
+  it('continues an interrupted opening on the same saved ship without replaying it', async () => {
+    const mounted = mount();
+    fireEvent.click(await screen.findByRole('button', {name: 'Begin journey'}));
+    await screen.findByRole('dialog', {name: 'Opening cinematic'});
+    const embarked = fixture.saveLocal.mock.calls.at(-1)?.[0];
+    expect(embarked?.player.mapId).toBe('ship');
+    mounted.unmount();
+    fixture.save = embarked;
+    mount();
+    fireEvent.click(await screen.findByRole('button', {name: 'Continue journey'}));
+    expect(screen.queryByRole('dialog', {name: 'Opening cinematic'})).toBeNull();
+    expect(screen.getByRole('button', {name: 'Start'})).toBeEnabled();
+    const resumed = fixture.saveLocal.mock.calls.at(-1)?.[0];
+    expect(resumed.journeySeed).toBe(embarked.journeySeed);
+    expect(resumed.player).toEqual(embarked.player);
   });
 
   it('offers three explicit files and waits for player interaction before unlocking audio', async () => {
@@ -344,17 +383,17 @@ describe('Mesomon game shell', () => {
     vi.useFakeTimers();
     try {
       const shell = document.querySelector('.mesomon')!;
-      fireEvent.keyDown(window, { key: 'ArrowUp' });
-      expect(shell).toHaveAttribute('data-player-y', '8');
-      fireEvent.keyDown(window, { key: 'ArrowUp', repeat: true });
+      fireEvent.keyDown(window, { key: 'ArrowLeft' });
+      expect(shell).toHaveAttribute('data-player-x', '7');
+      fireEvent.keyDown(window, { key: 'ArrowLeft', repeat: true });
       act(() => vi.advanceTimersByTime(199));
-      expect(shell).toHaveAttribute('data-player-y', '8');
+      expect(shell).toHaveAttribute('data-player-x', '7');
       act(() => vi.advanceTimersByTime(1));
-      expect(shell).toHaveAttribute('data-player-y', '7');
-      fireEvent.keyUp(window, { key: 'ArrowUp' });
-      fireEvent.keyDown(window, { key: 'ArrowUp', repeat: true });
+      expect(shell).toHaveAttribute('data-player-x', '6');
+      fireEvent.keyUp(window, { key: 'ArrowLeft' });
+      fireEvent.keyDown(window, { key: 'ArrowLeft', repeat: true });
       act(() => vi.advanceTimersByTime(400));
-      expect(shell).toHaveAttribute('data-player-y', '7');
+      expect(shell).toHaveAttribute('data-player-x', '6');
     } finally {
       vi.useRealTimers();
     }
@@ -575,12 +614,13 @@ describe('Mesomon game shell', () => {
     expect(menu.getByRole('status')).toHaveClass('mm-save-local');
     fireEvent.click(menu.getByRole('button', {name:'Save file'}));
     expect(menu.getByRole('status')).toHaveClass('mm-save-local');
+    expect(menu.queryByRole('button', {name: /again|erase|delete|replace|restart/i})).toBeNull();
     fixture.flush.mockClear();
     fireEvent.click(menu.getByRole('button', {name:'Save now'}));
     expect(fixture.flush).toHaveBeenCalled();
     expect(fixture.saveLocal).toHaveBeenCalled();
     fireEvent.click(menu.getByRole('button', {name:'Title screen'}));
-    expect(screen.getByRole('button', {name:'Start'})).toHaveFocus();
+    expect(screen.queryByRole('button', {name:'Start'})).toBeNull();
     expect(screen.getByRole('button', {name:'File 1'})).toBeVisible();
   });
 
@@ -593,6 +633,8 @@ describe('Mesomon game shell', () => {
     const resume=await screen.findByRole('button',{name:/^Continue journey/});
     await waitFor(()=>expect(document.querySelector('.mesomon')).toHaveAttribute('data-map-id','harbor'));
     fireEvent.click(resume);
+    expect(screen.queryByRole('dialog', {name: 'Opening cinematic'})).toBeNull();
+    expect(screen.getByRole('button', {name: 'Start'})).toBeVisible();
     expect(document.querySelector('.mesomon')).toHaveAttribute('data-map-id','harbor');
     expect(fixture.saveLocal.mock.calls.at(-1)?.[0].player.mapId).toBe('harbor');
   });
@@ -600,11 +642,9 @@ describe('Mesomon game shell', () => {
   it('remembers title audio settings without creating a chapter save',async()=>{
     const mounted = mount();
     await screen.findByRole('button',{name:'Begin journey'});
-    const titleMenu = openStart();
-    fireEvent.click(titleMenu.getByRole('button', {name:'Save file'}));
-    expect(titleMenu.queryByRole('button', {name:'Save now'})).toBeNull();
-    fireEvent.click(titleMenu.getByRole('button', {name:'Back'}));
-    fireEvent.click(titleMenu.getByRole('button', {name:'Settings'}));
+    expect(screen.queryByRole('button', {name:'Save file'})).toBeNull();
+    fireEvent.click(screen.getByRole('button', {name:'Settings'}));
+    const titleMenu = within(screen.getByRole('dialog', {name:'Settings'}));
     const mute = titleMenu.getByRole('switch', {name:/Mute/});
     expect(mute).toHaveAttribute('aria-checked','true');
     fireEvent.click(mute);
@@ -613,8 +653,8 @@ describe('Mesomon game shell', () => {
     mounted.unmount();
     mount();
     await screen.findByRole('button',{name:'Begin journey'});
-    const reopened = openStart();
-    fireEvent.click(reopened.getByRole('button', {name:'Settings'}));
+    fireEvent.click(screen.getByRole('button', {name:'Settings'}));
+    const reopened = within(screen.getByRole('dialog', {name:'Settings'}));
     expect(reopened.getByRole('switch', {name:/Mute/})).toHaveAttribute('aria-checked','false');
     expect(fixture.saveLocal).not.toHaveBeenCalled();
   });
@@ -657,7 +697,7 @@ describe('Mesomon game shell', () => {
     await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());
     const resume=await screen.findByRole('button',{name:/^Continue journey/});
     expect(resume).toBeDisabled();expect(screen.getByText(fixture.blockReason)).toBeVisible();
-    expect(screen.getByRole('button',{name:'Start'})).toBeDisabled();
+    expect(screen.queryByRole('button',{name:'Start'})).toBeNull();
     expect(screen.getByRole('link',{name:'Exit game'})).toHaveAttribute('href','/compete');
     const writes=fixture.saveLocal.mock.calls.length;
     fireEvent.click(resume);fireEvent.keyDown(document.body,{key:'ArrowUp'});fireEvent.keyUp(document.body,{key:'ArrowUp'});

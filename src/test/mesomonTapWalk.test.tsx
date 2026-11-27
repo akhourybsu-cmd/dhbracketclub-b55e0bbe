@@ -1,7 +1,7 @@
 import { useReducer } from 'react';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createNewSave, createSession, nearbyInteractions, reduceGame } from '@/lib/mesomon/engine';
+import { createNewSave, createSession, DELTAS, nearbyInteractions, reduceGame } from '@/lib/mesomon/engine';
 import { WALK_STEP_MS } from '@/lib/mesomon/input';
 import { useTapWalk } from '@/lib/mesomon/useTapWalk';
 
@@ -23,8 +23,10 @@ describe('walking across the live map by touch', () => {
     const { result } = openDeck();
     const captain = { x: 8, y: 5 };
     act(() => result.current.walk.tap(captain, 'captain'));
-    for (let n = 0; n < 5; n++) advance();
-    expect(result.current.session.save.player).toMatchObject({ x: 8, y: 6, facing: 'up' });
+    for (let n = 0; n < 7; n++) advance();
+    const { x, y, facing } = result.current.session.save.player;
+    const ahead = DELTAS[facing];
+    expect({ x: x + ahead.x, y: y + ahead.y }).toEqual(captain);
     expect(result.current.session.dialogue).toBeNull();
     expect(nearbyInteractions(result.current.session.save)[0].id).toBe('captain');
     act(() => result.current.walk.tap(captain, 'captain'));
@@ -64,7 +66,10 @@ describe('walking across the live map by touch', () => {
     advance(199);
     expect(position()).toMatchObject({ x: 7, y: 8 });
     advance(1);
-    expect(position()).toMatchObject({ x: 7, y: 7 });
+    // The locker occupies (7,7); the next two strides turn around its port end.
+    expect(position()).toMatchObject({ x: 6, y: 8 });
+    advance();
+    expect(position()).toMatchObject({ x: 6, y: 7 });
   });
 
   it('drops a buffered direction when the game is interrupted', () => {

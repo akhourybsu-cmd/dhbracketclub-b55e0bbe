@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAPS } from '../data/maps';
+import { bypassMain, intakeStrainer, scupperWall, stairCheeks } from '../data/tideObstacles';
 import { canWalk, createNewSave, createSession, DELTAS, nearbyInteractions, reduceGame } from '../engine';
 import { migrateSave } from '../save';
 import type { Direction, MapId } from '../types';
@@ -61,6 +62,32 @@ describe('Tideworks architectural states', () => {
     const frames = Array.from({ length: 8 }, (_, phase) => JSON.stringify(hubAt(phase, true)));
     expect(new Set(frames).size).toBe(8);
   });
+  it('paints a stair cheek under each blocked tile and leaves the middle cross-landing unrailed', () => {
+    const stairs = surface('tide-stairs');
+    for (const cheek of stairCheeks) {
+      const cx = cheek.x * 16 + 8;
+      for (let row = cheek.y; row < cheek.y + cheek.height; row++) {
+        expect(stairs.get((row * 16 + 8) * 1024 + cx)).toBe('#85968a');
+      }
+      for (const row of [6, 7]) expect(stairs.get((row * 16 + 8) * 1024 + cx)).toMatch(/^#(?:95a298|99a69a)$/);
+    }
+    for (let col = 0; col < scupperWall.width; col++) {
+      expect(stairs.get(scupperWall.y * 16 * 1024 + (scupperWall.x + col) * 16 + 8)).toBe('#a9ad97');
+    }
+  });
+  it('keeps the intake bed and pipe visible across their full ground footprints in either water state', () => {
+    for (const sluiceOpen of [false, true]) {
+      const passage = surface('passage', { ...idle, sluiceOpen });
+      for (const [obstacle, material] of [[intakeStrainer, '#344e50'], [bypassMain, '#574e43']] as const) {
+        for (let tile = 0; tile < obstacle.width; tile++) {
+          const x = (obstacle.x + tile) * 16;
+          const y = obstacle.y * 16;
+          const visible = Array.from({ length: 256 }, (_, i) => passage.get((y + (i >> 4)) * 1024 + x + i % 16));
+          expect(visible).toContain(material);
+        }
+      }
+    }
+  });
 });
 
 describe('chamber basin footing', () => {
@@ -73,7 +100,7 @@ describe('chamber basin footing', () => {
       expect(open.get(center) !== sealed.get(center), `footing at ${x},${y}`).toBe(MAPS.chamber.tiles[y][x] === 'dark-water');
     }
   });
-  it('gives every legacy basin position a one-step exit on restoring its save', () => {
+  it('restores each legacy basin position to dry ground with a legal next step', () => {
     for (const [x, y] of waterCells) {
       const save = createNewSave();
       Object.assign(save.player, { mapId: 'chamber', x, y });
@@ -81,11 +108,14 @@ describe('chamber basin footing', () => {
       expect(restored?.player).toEqual(save.player);
       if (!restored) throw new Error('Missing restored chamber save');
       expect(canWalk(restored, x, y)).toBe(false);
+      const session = createSession(restored);
+      const landing = session.save.player;
+      expect(canWalk(session.save, landing.x, landing.y)).toBe(true);
       const move = (Object.keys(DELTAS) as Direction[]).find(dir =>
-        canWalk(restored, x + DELTAS[dir].x, y + DELTAS[dir].y));
+        canWalk(session.save, landing.x + DELTAS[dir].x, landing.y + DELTAS[dir].y));
       if (!move) throw new Error(`No exit at ${x},${y}`);
-      const next = reduceGame(createSession(restored), { type: 'move', direction: move });
-      expect(next.save.player).toMatchObject({ mapId: 'chamber', x: x + DELTAS[move].x, y: y + DELTAS[move].y });
+      const next = reduceGame(session, { type: 'move', direction: move });
+      expect(next.save.player).toMatchObject({ mapId: 'chamber', x: landing.x + DELTAS[move].x, y: landing.y + DELTAS[move].y });
     }
   });
   it('reaches the rift from the dry deck and the recovered page from the east passage', () => {
@@ -103,9 +133,11 @@ describe('chamber basin footing', () => {
     expect(session.save.player).toMatchObject({ x: 9, y: 6 });
     expect(nearbyInteractions(session.save).map(obj => obj.id)).toContain('rift');
     session.save.rifts['port-marche'] = 'sealed';
-    walk('down', 'right', 'right', 'right', 'up', 'up');
+    // Step clear of the two deck stops before turning east, then follow the
+    // upper bank of the stilling well to the recovered page.
+    walk('down', 'down', 'right', 'right', 'up', 'right', 'up', 'up');
     expect(nearbyInteractions(session.save).map(obj => obj.id)).toContain('page');
-    walk('down', 'down', 'left', 'left', 'left', 'down', 'down', 'down', 'down', 'down', 'left', 'down');
+    walk('down', 'down', 'left', 'down', 'left', 'left', 'down', 'down', 'down', 'down', 'down', 'left', 'down');
     expect(nearbyInteractions(session.save).map(obj => obj.id)).toContain('chamber-exit');
   });
 });

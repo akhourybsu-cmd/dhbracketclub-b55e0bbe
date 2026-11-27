@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react';
 import { MAPS } from '@/lib/mesomon/data/maps';
+import { fieldObstaclesForMap } from '@/lib/mesomon/data/fieldObstacles';
 import { getChartExits, getChartRoute } from '@/lib/mesomon/wayfinding';
 import type { Direction, MesomonSaveV1, TileKind } from '@/lib/mesomon/types';
 import { ChartLandmarks } from './ChartLandmarks';
@@ -33,6 +34,7 @@ function ChartKey({ symbol, label }: { symbol: 'position' | 'exit' | 'stop'; lab
 export function LocationChart({ save }: { save: MesomonSaveV1 }) {
   const id = useId();
   const map = MAPS[save.player.mapId];
+  const obstacles = fieldObstaclesForMap(map.id);
   const route = useMemo(() => getChartRoute(save), [save]);
   const exits = getChartExits(save);
   const otherExits = exits.filter(door => door.id !== route?.target.id);
@@ -65,7 +67,8 @@ export function LocationChart({ save }: { save: MesomonSaveV1 }) {
         <title id={id + '-title'}>{map.name + ' walking chart'}</title>
         <desc id={id + '-description'}>
           {[`You are facing ${bearings[facing]}.`, route && `Next stop: ${route.label}.`,
-            exits.length > 0 && `Open exits: ${exits.map(door => door.label).join(', ')}.`].filter(Boolean).join(' ')}
+            exits.length > 0 && `Open exits: ${exits.map(door => door.label).join(', ')}.`,
+            obstacles.length > 0 && 'Hatched footprints mark solid scenery.'].filter(Boolean).join(' ')}
         </desc>
         <defs>
           <pattern id={id + '-water'} patternUnits="userSpaceOnUse" width="2.9" height="2.1">
@@ -77,6 +80,10 @@ export function LocationChart({ save }: { save: MesomonSaveV1 }) {
           <pattern id={id + '-boards'} patternUnits="userSpaceOnUse" width="3.4" height="1.45">
             <path d="M0 .7h3.4m-2.9 0v.72m1.6-1.4V.7" stroke="#8c7054" strokeOpacity=".36" strokeWidth=".11" />
           </pattern>
+          <pattern id={id + '-obstacle'} patternUnits="userSpaceOnUse" width=".66" height=".66">
+            <rect width=".66" height=".66" fill="#9e8c70" />
+            <path d="M-.17 .17l.34-.34M0 .66l.66-.66m-.17 .83.34-.34" stroke="#615b48" strokeWidth=".12" />
+          </pattern>
           <pattern id={id + '-reeds'} patternUnits="userSpaceOnUse" width="1.6" height="1.5">
             <path d="M.42 .98.18.46m.24.52.08-.74m-.08.74.3-.46" fill="none" stroke="#4e6756" strokeWidth=".12" />
           </pattern>
@@ -85,6 +92,10 @@ export function LocationChart({ save }: { save: MesomonSaveV1 }) {
           <path d={d} fill={inks[kind]} shapeRendering="crispEdges" />
           {mapTextures[kind] && <path d={d} fill={`url(#${id}-${mapTextures[kind]})`} />}
         </g>)}
+        <g aria-hidden="true" fill={`url(#${id}-obstacle)`} stroke="#554f3f" strokeWidth=".12">
+          {obstacles.map(({ id: name, x, y, width, height }) =>
+            <rect key={name} data-obstacle={name} x={x} y={y} width={width} height={height} />)}
+        </g>
         <ChartLandmarks zone={map.id} flooded={save.questFlags.sluice_open !== true} />
         {otherExits.map(door => <path key={door.id} aria-hidden="true" data-exit={door.id} d={exit}
           transform={`translate(${door.x + .5} ${door.y + .5}) scale(${scale})`} className="meso-chart-exit"><title>{door.label}</title></path>)}
@@ -103,6 +114,9 @@ export function LocationChart({ save }: { save: MesomonSaveV1 }) {
       <ChartKey symbol="position" label="Your position" />
       {route && <ChartKey symbol="stop" label="Next stop" />}
       {otherExits.length > 0 && <ChartKey symbol="exit" label="Open exit" />}
+      {obstacles.length > 0 && <span><svg aria-hidden="true" viewBox="0 0 2.5 2.5" width="14" height="14">
+        <rect x=".15" y=".45" width="2.2" height="1.6" fill={`url(#${id}-obstacle)`} stroke="#554f3f" strokeWidth=".2" />
+      </svg>Solid scenery</span>}
     </div>
     {route ? <>
       <h3>{route.label}</h3>

@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { LocationChart } from '@/components/mesomon/LocationChart';
 import { MAPS } from '@/lib/mesomon/data/maps';
+import { fieldObstaclesForMap } from '@/lib/mesomon/data/fieldObstacles';
 import { createNewSave } from '@/lib/mesomon/engine';
 import type { MapId } from '@/lib/mesomon/types';
 
@@ -23,6 +24,15 @@ describe('Port Marche pocket charts', () => {
     expect(chart).toHaveAccessibleDescription(/You are facing west/);
     expect(chart.querySelector('[data-survey]')).toHaveAttribute('data-survey', map.id);
     expect(chart.querySelector('.meso-chart-position')).toHaveAttribute('transform', expect.stringContaining('rotate(270)'));
+    const obstacles = fieldObstaclesForMap(map.id);
+    expect(obstacles.length).toBeGreaterThan(0);
+    expect(chart.querySelectorAll('[data-obstacle]')).toHaveLength(obstacles.length);
+    for (const {id, x, y, width, height} of obstacles) {
+      const footprint = chart.querySelector(`[data-obstacle="${id}"]`);
+      for (const [attr, value] of Object.entries({x,y,width,height})) expect(footprint).toHaveAttribute(attr, String(value));
+    }
+    expect(chart).toHaveAccessibleDescription(/solid scenery/i);
+    expect(screen.getByText('Solid scenery')).toBeVisible();
   });
 
   it('shows the quay exits as they open and keeps the next stop marked once', () => {

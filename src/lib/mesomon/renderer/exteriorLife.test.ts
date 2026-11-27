@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAPS } from '../data/maps';
+import { exteriorObstacles } from '../data/exteriorObstacles';
 import type { MapId } from '../types';
 import { paintExteriors } from './exteriors';
 import { paintExteriorLife } from './exteriorLife';
@@ -65,9 +66,11 @@ describe('Wayfarer and quay artwork', () => {
 
   it('places both deckhouses on the original blocked roofs and the freight scales on their timber yard', () => {
     const structures: { x: number; y: number }[] = [];
+    let dx = 0, dy = 0;
     const ctx = {
-      fillStyle: '', save() {}, restore() {}, clip() {}, beginPath() {}, rect() {},
-      fillRect(x: number, y: number) { structures.push({ x, y }); },
+      fillStyle: '', save() {}, restore() { dx = dy = 0; }, clip() {}, beginPath() {}, rect() {},
+      translate(x: number, y: number) { dx = x; dy = y; },
+      fillRect(x: number, y: number) { structures.push({ x: x + dx, y: y + dy }); },
     } as unknown as CanvasRenderingContext2D;
     paintExteriors(ctx, MAPS.ship);
     for (const x of [65, 145]) {
@@ -79,5 +82,30 @@ describe('Wayfarer and quay artwork', () => {
     expect(MAPS.harbor.tiles[19][26]).toBe('wood');
     expect(structures.some(mark => mark.x === 401 && mark.y === 310)).toBe(true);
     expect(structures.some(mark => mark.x === 475 && mark.y === 468)).toBe(true);
+  });
+
+  it('puts visible cargo or rigging on every newly occupied deck and quay tile', () => {
+    for (const zone of ['ship', 'harbor'] as const) {
+      let origin: { x: number; y: number } | undefined;
+      const ink = new Set<string>();
+      const ctx = {
+        fillStyle: '', save() {}, restore() { origin = undefined; }, clip() {}, beginPath() {}, rect() {},
+        translate(x: number, y: number) { origin = { x, y }; },
+        fillRect(x: number, y: number, w: number, h: number) {
+          if (!origin) return;
+          for (let v = 0; v < h; v++) for (let u = 0; u < w; u++) {
+            ink.add(`${Math.floor((origin.x + x + u) / 16)},${Math.floor((origin.y + y + v) / 16)}`);
+          }
+        },
+      };
+      paintExteriors(ctx as unknown as CanvasRenderingContext2D, MAPS[zone]);
+      for (const foot of exteriorObstacles[zone]) {
+        // The door jambs and counter are part of the existing architectural painting.
+        if (foot.id.startsWith('workshop-') || foot.id === 'market-counter') continue;
+        for (let y = foot.y; y < foot.y + foot.height; y++) for (let x = foot.x; x < foot.x + foot.width; x++) {
+          expect(ink.has(`${x},${y}`), foot.id).toBe(true);
+        }
+      }
+    }
   });
 });

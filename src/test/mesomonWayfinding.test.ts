@@ -69,7 +69,10 @@ describe('Port Marche location chart', () => {
     const empty = { x: 4, y: 16 };
     const exact = findWalkingPath(save, [empty], 0)!;
     expect(exact.target).toBe(empty);
-    expect(exact.points).toEqual([{ x: 4, y: 19 }, { x: 4, y: 18 }, { x: 4, y: 17 }, empty]);
+    expect(exact.points[0]).toEqual({ x: 4, y: 19 });
+    expect(exact.points.at(-1)).toEqual(empty);
+    expect(exact.points).not.toContainEqual({ x: 4, y: 17 });
+    expect(exact.points.every(({ x, y }) => canWalk(save, x, y))).toBe(true);
     expect(findWalkingPath(save, [{ x: 4, y: 19 }], 0)?.points).toHaveLength(1);
     const sluice = getVisibleObjects(save).find(object => object.id === 'sluice')!;
     expect(findWalkingPath(save, [sluice], 0)).toBeUndefined();

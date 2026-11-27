@@ -1,5 +1,7 @@
-// Map-space pixels. Furniture feet occupy the seven interactable cells. The
-// surrounding wood remains a flat work surface for walking and laying out sailcloth.
+import { workshopFurniture } from '../data/interiorObstacles';
+
+// Paint fixed furniture on its tile footprint. Overhangs and shadows may reach
+// onto the floor, while the clear aisles stay wide enough for Tavian and Rillik.
 type Stroke = (color: string, x: number, y: number, a: number, b: number) => void;
 
 export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
@@ -219,22 +221,73 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   r('#456c67', 132, 101, 3, 3);
   r(parchment, 133, 102, 1, 1);
 
-  // A flat sail panel carries chalk construction lines, reinforcement and hand-sewn eyes.
-  for (let row = 0; row < 34; row++) {
-    const left = 93 + Math.floor(row / 4), right = 152 - Math.floor(row * 1.47);
-    r('#553f3955', left + 2, 144 + row, right - left, 1);
-    r(row < 3 ? '#9da497' : '#c4b398', left, 142 + row, right - left, 1);
+  // The cutting bench is an island. Its iron shoes, two cross-braced
+  // trestles and front edge give the sail a solid place in the room.
+  const benchFoot = workshopFurniture.cuttingBench;
+  const bx = benchFoot.x * 16, by = benchFoot.y * 16, bw = benchFoot.width * 16;
+  const bh = benchFoot.height * 16, foot = by + bh - 1;
+  for (let row = 0; row < 3; row++) r('#453b3838', bx + 4 + row, foot + row, bw - 5, 1);
+  r('#695944', bx + 3, foot - 9, bw - 7, 4);
+  for (const x of [bx + 2, bx + bw - 12]) {
+    line(ink, x + 7, foot - 15, x, foot - 1);
+    line('#866449', x + 8, foot - 15, x + 1, foot - 1);
+    line(lip, x + 9, foot - 15, x + 2, foot - 1);
+    line('#614f3d', x + 5, foot - 15, x + 10, foot - 1);
+    r(darkTeal, x, foot - 1, 4, 2);
+    r('#a8a78a', x, foot - 1, 3, 1);
+    r(shadow, x + 9, foot - 1, 3, 2);
   }
-  line('#9c917b', 95, 145, 101, 172);
-  line('#9c917b', 145, 146, 102, 172);
-  line('#9c917b', 118, 145, 104, 169);
-  for (let i = 0; i < 10; i++) r('#ead5aa', 95 + i * 5, 144, 2, 1);
-  for (const [x, y] of [[96, 145], [145, 144], [101, 169]]) {
-    r(brassDark, x, y, 3, 3);
-    r(shadow, x + 1, y + 1, 1, 1);
+  r(ink, bx, by, bw, 18);
+  r('#ac8560', bx + 1, by + 1, bw - 2, 13);
+  r('#caa373', bx + 2, by + 1, bw - 4, 1);
+  r('#7b5d47', bx + 1, by + 10, bw - 2, 1);
+  r('#8c664a', bx + 1, by + 14, bw - 2, 3);
+  // Edda stretched a sail across the top and folded it over the near edge.
+  for (let row = 0; row < 14; row++) {
+    const left = bx + 4 + Math.floor(row / 3);
+    const right = bx + bw - 12 - row * 2;
+    r('#d5c4a1', left, by + row, right - left, 1);
+    r('#a59e86', right, by + row, 1, 1);
   }
-  line('#cbb677', 95, 145, 87, 141);
-  line('#cbb677', 87, 141, 81, 144);
+  line('#aa9b7e', bx + 10, by + 1, bx + 11, by + 12);
+  line('#b09f81', bx + 40, by + 1, bx + 13, by + 12);
+  for (let i = 0; i < 11; i++) r('#f2dfb9', bx + 5 + i * 4, by + 1, 2, 1);
+  for (let row = 0; row < 7; row++) r('#af9c7e', bx + 8 + row, by + 14 + row, 17 - row * 2, 1);
+  r(brassDark, bx + 5, by + 2, 3, 3);
+  r('#e5bd72', bx + 5, by + 2, 2, 1);
+  // Brass shear blades and their two closed handles sit at the free end.
+  line('#d7caa4', bx + bw - 13, by + 9, bx + bw - 6, by + 5);
+  line('#556866', bx + bw - 13, by + 9, bx + bw - 5, by + 8);
+  r(brassDark, bx + bw - 16, by + 9, 4, 3);
+  r(lip, bx + bw - 15, by + 10, 2, 1);
+  r(brass, bx + bw - 15, by + 7, 3, 2);
+
+  // Flat-file drawers run from the west wall to the plotting desk. The
+  // east worktop gets a bank of pigeonholes for rolled sounding charts.
+  for (const fitting of [workshopFurniture.chartDrawers, workshopFurniture.mapCabinet]) {
+    const x = fitting.x * 16, y = fitting.y * 16, w = fitting.width * 16;
+    r(shadow, x, y, w, 16);
+    r('#ac8159', x + 1, y, w - 2, 5);
+    r(lip, x + 1, y, w - 2, 1);
+    r('#5a463d', x + 1, y + 5, w - 2, 2);
+    if (fitting === workshopFurniture.chartDrawers) {
+      for (const dy of [7, 11]) {
+        r(cedar, x + 2, y + dy, w - 4, 3);
+        r('#ad805a', x + 3, y + dy, w - 6, 1);
+        r(brassDark, x + 13, y + dy + 1, 5, 1);
+        r(brass, x + 14, y + dy, 3, 1);
+      }
+    } else {
+      r('#47554c', x + 2, y + 7, w - 4, 7);
+      for (const offset of [3, 12, 21]) {
+        r(cedar, x + offset, y + 7, 2, 7);
+        r('#b4a07c', x + offset + 3, y + 9, 4, 3);
+        r(parchment, x + offset + 4, y + 9, 3, 1);
+        r('#85765e', x + offset + 5, y + 10, 1, 1);
+      }
+    }
+    r('#6e5241', x + 2, y + 14, w - 4, 2);
+  }
 
   // Bench tops project above their solid cells, with a shallow drawer and two feet.
   const bench = (x: number, y: number, stain: string) => {

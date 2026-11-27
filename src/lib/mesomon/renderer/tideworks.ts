@@ -1,4 +1,5 @@
 import type { MapDefinition } from '../types';
+import { bypassMain, intakeStrainer, scupperWall, stairCheeks, timberCrib } from '../data/tideObstacles';
 
 export interface TideworksState { gateOpen: boolean; sluiceOpen: boolean; sealed: boolean }
 
@@ -183,17 +184,12 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
         rect('#f1dbc017', 66 + pane * 7 + step, 53 + step * 3, 5, 3);
       }
     }
-    // Low masonry cheeks with bronze railings and breaks onto the cross landings.
-    for (const x of [112, 188]) {
-      for (const [y, h] of [[65, 39], [121, 35]]) {
-        rect('#556860', x, y + 4, 4, h);
-        rect('#b7a479', x, y, 2, h);
-        for (let py = y; py < y + h; py += 16) {
-          rect('#475345', x + 1, py, 3, 8);
-          rect('#d5bd81', x, py, 4, 2);
-        }
-      }
-    }
+    // This level cross-landing has an opening through each balustrade.
+    blocks(112, 96, 80, 32);
+    rect('#95a298', 112, 96, 80, 14);
+    rect('#99a69a', 112, 111, 80, 14);
+    for (const [x, y] of [[133, 96], [171, 96], [151, 111]]) rect('#84968c', x, y, 1, 14);
+    rect('#bbc1a6', 112, 125, 80, 2);
     // The iron rack works the lattice from beside the wheel. When Nia fits
     // the brace, its teeth climb and the spillway under the grating clears.
     rect(iron, 146, 145, 9, 24);
@@ -337,6 +333,54 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     rect('#7a7962', 265, 72, 4, 1);
     // Shallow lamp light crosses the high landing in sparse widening strips.
     for (let r = 0; r < 18; r++) rect('#ebdba41b', 76 + r, 48 + r, 23, 1);
+
+    // Solid cheeks follow each flight. Copper rails sit on the outer edges
+    // so the feet of the fixed finial and handwheel stay in the masonry.
+    for (const cheek of stairCheeks) {
+      const x = cheek.x * 16, y = cheek.y * 16, height = cheek.height * 16;
+      const rail = cheek.x === 7 ? x + 3 : x + 11;
+      rect('#465c5940', x + 3, y + 2, 15, height);
+      blocks(x + 1, y + 1, 14, height - 2);
+      rect('#85968a', x + 1, y + 1, 12, height - 6);
+      rect('#b6b9a1', x + 1, y, 12, 2);
+      rect('#a1aa97', x + 1, y + 1, 2, height - 7);
+      rect('#495f5c', x + 12, y + 3, 3, height - 7);
+      for (const post of [y + 3, y + height - 7]) {
+        rect('#485652', rail - 1, post + 1, 5, 7);
+        rect('#b29d72', rail, post, 2, 6);
+        rect('#d0b888', rail - 1, post - 1, 4, 2);
+      }
+      rect('#5b655a', rail + 1, y + 2, 2, height - 9);
+      rect('#baaa7f', rail, y + 2, 2, height - 10);
+      rect('#a9ad94', x + 2, y + height - 5, 11, 1);
+    }
+    // Flood pressure escapes through brick scuppers under the coping.
+    // The rounded nose leaves a bypass between the wall and the main stair.
+    const wallX = scupperWall.x * 16, wallY = scupperWall.y * 16, wallW = scupperWall.width * 16;
+    blocks(wallX + 2, wallY + 2, wallW - 2, 13);
+    rect('#768a82', wallX, wallY + 2, wallW, 5);
+    rect('#a9ad97', wallX + 2, wallY, wallW - 2, 3);
+    rect('#405a59', wallX + 1, wallY + 6, wallW - 1, 2);
+    for (const offset of [9, 28, 47]) {
+      rect('#344d50', wallX + offset, wallY + 10, 10, 4);
+      rect('#253e42', wallX + offset + 2, wallY + 8, 6, 6);
+      rect('#859287', wallX + offset + 3, wallY + 8, 5, 1);
+      rect('#84958b', wallX + offset + 1, wallY + 14, 10, 1);
+      rect('#687f75', wallX + offset + 7, wallY + 1, 1, 4);
+    }
+    // Spare sliding gate timbers sit in a pegged crib above the loose brace.
+    const cribX = timberCrib.x * 16, cribY = timberCrib.y * 16;
+    const length = timberCrib.width * 16 - 4;
+    rect('#48574c', cribX, cribY + 3, length + 4, 13);
+    for (const offset of [1, 5, 9]) {
+      rect('#705c45', cribX + 2, cribY + offset, length, 4);
+      rect('#bc9b70', cribX + 2, cribY + offset, length - 2, 1);
+      rect('#a3845e', cribX + length - 1, cribY + offset + 1, 3, 2);
+    }
+    for (const offset of [2, length - 3]) {
+      rect('#4c5144', cribX + offset, cribY + 2, 4, 13);
+      rect('#a69a78', cribX + offset, cribY + 2, 2, 11);
+    }
     return;
   }
 
@@ -476,6 +520,40 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       for (let row = 0; row < 17; row++) {
         rect('#efd29820', x + Math.floor(row / 2), y + row, 5, 1);
       }
+    }
+    // The west wall feeds twin removable reed baskets on the entry towpath.
+    // Their raised brass rims and front drain lip distinguish them from floor drains.
+    const bedX = intakeStrainer.x * 16, bedY = intakeStrainer.y * 16, bedW = intakeStrainer.width * 16;
+    blocks(bedX, bedY + 3, bedW - 1, 12);
+    rect('#344e50', bedX, bedY + 1, bedW - 1, 10);
+    rect('#8c9d91', bedX + 1, bedY, bedW - 4, 2);
+    rect('#688177', bedX + 1, bedY + 10, bedW - 3, 2);
+    for (const offset of [12, bedW - 14]) {
+      const cx = bedX + offset;
+      ellipse('#263e41', cx, bedY + 6, 10, 5);
+      ellipse('#b39d75', cx, bedY + 4, 9, 4);
+      ellipse('#45615b', cx, bedY + 4, 7, 3);
+      for (let x = cx - 3; x <= cx + 3; x += 3) line('#949d79', x - 2, bedY + 5, x + 1, bedY + 2);
+      rect('#bb9668', cx - 1, bedY + 2, 4, 1);
+      rect('#273f42', cx - 2, bedY + 12, 5, 2);
+    }
+    // A bypass main crosses the east gallery at ankle height. Its elbow runs
+    // into the channel wall; the exposed flange is the free end to walk around.
+    const mainX = bypassMain.x * 16, mainY = bypassMain.y * 16, mainW = bypassMain.width * 16;
+    rect('#31464955', mainX + 2, mainY + 7, mainW, 9);
+    for (const offset of [3, mainW - 13]) {
+      rect('#3c5251', mainX + offset, mainY + 5, 9, 10);
+      rect('#819185', mainX + offset, mainY + 12, 9, 2);
+    }
+    rect('#574e43', mainX + 2, mainY + 2, mainW, 10);
+    rect('#987456', mainX + 3, mainY + 2, mainW - 1, 7);
+    rect('#c09b73', mainX + 4, mainY + 3, mainW - 1, 2);
+    rect('#779087', mainX + 13, mainY + 7, 9, 2);
+    for (const offset of [0, mainW - 8]) {
+      rect('#415554', mainX + offset, mainY, 6, 13);
+      rect('#8e9480', mainX + offset, mainY, 5, 3);
+      rect('#b8ab87', mainX + offset + 1, mainY + 1, 2, 1);
+      rect('#647b71', mainX + offset + 1, mainY + 4, 2, 7);
     }
     rect(cap, 158, 175, 36, 2);
     rect(dark, 158, 239, 36, 3);

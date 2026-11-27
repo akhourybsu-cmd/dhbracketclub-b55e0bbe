@@ -39,13 +39,12 @@ interface StartMenuProps {
   onSave: () => void;
   onExit: () => void;
   onTitle: () => void;
-  onRestart: () => void;
   onCompanion: () => void;
 }
 
 export function MesomonStartMenu({
   tab, onTab, session, playing, saveLabel, saveStatus, fullscreen,
-  onClose, onSettings, onSave, onExit, onTitle, onRestart, onCompanion,
+  onClose, onSettings, onSave, onExit, onTitle, onCompanion,
 }: StartMenuProps) {
   const dialog = useRef<HTMLElement>(null);
   const lastCommand = useRef("resume");
@@ -64,7 +63,7 @@ export function MesomonStartMenu({
       if (back || key === "m") {
         event.preventDefault();
         if (event.repeat) return;
-        if (key === "m" || tab === "start") onClose();
+        if (!playing || key === "m" || tab === "start") onClose();
         else onTab("start");
         return;
       }
@@ -103,7 +102,7 @@ export function MesomonStartMenu({
     };
     window.addEventListener("keydown", keyboard);
     return () => window.removeEventListener("keydown", keyboard);
-  }, [tab, onClose, onTab]);
+  }, [tab, onClose, onTab, playing]);
 
   const s = session.save.settings;
   const harborNotes = tab === "journal" ? getHarborNotes(session.save) : [];
@@ -112,12 +111,12 @@ export function MesomonStartMenu({
   const title = sections.find(section => section.id === tab)?.label ?? "Start menu";
   return (
     <div className="mm-modal-backdrop">
-      <section ref={dialog} className="mm-menu" role="dialog" aria-modal="true" aria-label="Start menu" data-section={tab}>
+      <section ref={dialog} className="mm-menu" role="dialog" aria-modal="true" aria-label={playing ? "Start menu" : "Settings"} data-section={tab}>
         <header>
           <h2>{title}</h2>
           {tab !== "start" && (
-            <button type="button" className="mm-menu-back" data-menu-back data-mm-action="cancel" onClick={() => onTab("start")}>
-              <ArrowLeft size={16} aria-hidden="true" /> Back
+            <button type="button" className="mm-menu-back" data-menu-back data-mm-action="cancel" onClick={() => playing ? onTab("start") : onClose()}>
+              <ArrowLeft size={16} aria-hidden="true" /> {playing ? "Back" : "Back to title"}
             </button>
           )}
         </header>
@@ -133,7 +132,7 @@ export function MesomonStartMenu({
               </div>
               <nav className="mm-start-list" aria-label="Start menu commands">
                 <button className="mm-start-command" data-command="resume" onClick={onClose}>
-                  <Play aria-hidden="true" size={19} /><span>{playing ? "Resume" : "Back to title"}</span>
+                  <Play aria-hidden="true" size={19} /><span>Resume</span>
                   <ChevronRight aria-hidden="true" size={16} />
                 </button>
                 {sections.map(({ id, label, icon: Icon }) => (
@@ -342,13 +341,8 @@ export function MesomonStartMenu({
                 </p>
               </div>
               <span className={`mm-save-status mm-save-${saveStatus}`} role="status">{saveLabel}</span>
-              {playing && (
-                <>
-                  <button className="mm-primary" onClick={onSave}>Save now</button>
-                  <button onClick={onTitle}>Title screen</button>
-                  <button className="mm-danger" onClick={onRestart}>Begin this file again</button>
-                </>
-              )}
+              <button className="mm-primary" onClick={onSave}>Save now</button>
+              <button onClick={onTitle}>Title screen</button>
             </>
           )}
         </div>
