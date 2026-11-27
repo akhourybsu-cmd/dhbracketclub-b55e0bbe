@@ -11,6 +11,15 @@ describe('Port Marche dialogue staging', () => {
     expect(beats).toContainEqual({ kind: 'document', credit: 'Edda’s letter', portrait: null });
   });
 
+  it.each([
+    ['captain', 'Edda’s letter', 'Come home. Bring the core. The harbor is singing in two voices.'],
+    ['clues-complete', 'Edda’s note', 'The second voice is not echo. Echo follows. This one waits.'],
+    ['page', 'Edda’s page', 'Not all doors are opened from the other side.'],
+  ])('keeps the original evidence and its written source when reading %s', (scene, speaker, text) => {
+    expect(DIALOGUES[scene]).toContainEqual({ speaker, text });
+    expect(readingVoice(speaker)).toEqual({ kind: 'document', credit: speaker, portrait: null });
+  });
+
   it('assigns an actual portrait to every speaking role in the chapter and side stories', () => {
     const lines = [...Object.values(DIALOGUES).flat(), ...Object.values(REMARKS).flat().flatMap(variant => variant.lines)];
     for (const speaker of new Set(lines.map(line => line.speaker))) {

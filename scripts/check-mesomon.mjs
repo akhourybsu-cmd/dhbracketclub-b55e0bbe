@@ -66,6 +66,9 @@ const controls = (p, name) => p.locator(`[data-mm-action="${name}"]`);
 const directions = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
 const arrowKeys = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
 const observedDialogues = new Set();
+const chapterReaders = new WeakSet();
+const narrowPages = new Set();
+let longestPage = null;
 const positionKey = player => `${player.mapId}:${player.x}:${player.y}`;
 const livePlayer = p => p.locator('.mesomon').evaluate(root => ({ mapId: root.dataset.mapId, x: Number(root.dataset.playerX), y: Number(root.dataset.playerY) }));
 async function waitForPlayer(p, expected) {
@@ -226,7 +229,45 @@ async function conversationLine(p, expectedId) {
   observedDialogues.add(dialogue.id);
   return { state, dialogue, panel, voice };
 }
-async function drain(p, {inspectChoices=false, opening=false, expectedId, choiceId}={}) {
+async function verifyPrintedPage(p, panel, dialogue) {
+  const line = dialogue.lines[dialogue.index];
+  const ink = panel.locator('.mm-dialogue-text > [aria-hidden="true"]');
+  await expect(ink).toHaveText(line.text + ' ▾');
+  const result = await ink.evaluate(ink => {
+    const range = document.createRange();
+    range.selectNodeContents(ink.firstChild);
+    const lines = [...range.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0);
+    const panel = ink.closest('.mm-dialogue');
+    const box = panel.getBoundingClientRect();
+    const controls = [...panel.querySelectorAll('button, .mm-speaker img')].map(node => node.getBoundingClientRect());
+    return {
+      rows: lines.length,
+      inside: lines.every(r => r.left >= Math.max(0, box.left) - 1 && r.right <= Math.min(innerWidth, box.right) + 1 &&
+        r.top >= Math.max(0, box.top) - 1 && r.bottom <= Math.min(innerHeight, box.bottom) + 1),
+      clear: lines.every(r => controls.every(c => r.right <= c.left || r.left >= c.right || r.bottom <= c.top || r.top >= c.bottom)),
+    };
+  });
+  const id = `${dialogue.id}[${dialogue.index}] ${line.speaker}`;
+  assert.ok(result.rows && result.inside && result.clear, `${id} is clipped or covered at 320px: ${JSON.stringify(result)}`);
+  narrowPages.add(id + ' ' + line.text);
+  if (!longestPage || line.text.length > longestPage.characters) {
+    longestPage = { id, characters: line.text.length, rows: result.rows };
+    await p.screenshot({path:join(output, engine + '-chapter-longest-page-320x568.png')});
+  }
+}
+async function drain(p, options = {}) {
+  if (!chapterReaders.has(p) || !(await save(p))?.dialogue) return readConversation(p, options);
+  const previous = p.viewportSize();
+  try {
+    await p.setViewportSize({width:320,height:568});
+    await settleLayout(p);
+    return await readConversation(p, options);
+  } finally {
+    await p.setViewportSize(previous);
+    await settleLayout(p);
+  }
+}
+async function readConversation(p, {inspectChoices=false, opening=false, expectedId, choiceId}={}) {
   let choicesInspected=false, selectedChoice=false;
   const readingModes = new Set();
   if (expectedId) await conversationLine(p, expectedId);
@@ -254,6 +295,7 @@ async function drain(p, {inspectChoices=false, opening=false, expectedId, choice
       }
     }
     if (atChoices) {
+      if (chapterReaders.has(p)) await verifyPrintedPage(p, panel, dialogue);
       assert.ok(choiceId, `Conversation ${dialogue.id} requires an explicit choice ID; QA will not choose a fallback`);
       assert.equal(dialogue.id, 'closing', 'Only the reviewed closing choice is automated');
       assert.deepEqual(dialogue.choices.map(choice => choice.id).sort(), ['direct', 'warm', 'wry']);
@@ -288,6 +330,7 @@ async function drain(p, {inspectChoices=false, opening=false, expectedId, choice
     const next = panel.locator('.mm-dialogue-next');
     if ((await next.textContent()) !== 'Continue') await press(p, 'confirm');
     await expect(next).toHaveText('Continue', {timeout: 7000});
+    if (chapterReaders.has(p)) await verifyPrintedPage(p, panel, dialogue);
     await press(p, 'confirm');
     await expect.poll(async () => {
       const current = (await save(p)).dialogue;
@@ -1007,6 +1050,7 @@ async function battle(p, mode) {
 }
 async function chapter() {
   const { p, context } = await setup(390,844,'dark');
+  chapterReaders.add(p);
   try {
     await start(p); await drain(p);
     await tapMapObject(p,'captain');
@@ -1050,7 +1094,7 @@ async function chapter() {
     await p.screenshot({path:join(output,engine+'-early-journal.png')});
     check(engine+'-arrival-fieldcase-and-spoiler-safe-journal');
     await closeStart(p, 'm');
-    for (const id of ['nia','pell','seli','dockworker','bell-worker','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
+    for (const id of ['nia','pell','seli','merchant','dockworker','bell-worker','harbor-crane','rope-worker','lamp-keeper','workshop-door','chart','field-map','satchel-hook','workshop-exit','bram','tide-door','gate-brace','gate-wheel','rillik-bond']) {
       if (id === 'gate-wheel') {
         await walkTo(p,id);
         assert.ok(!(await save(p)).questFlags.gate_opened);
@@ -1081,6 +1125,11 @@ async function chapter() {
         check(engine+'-phone-chart-to-workshop');
       }
       if (id === 'bell-worker') await captureLocation(p,'harbor',id);
+      if (id === 'rope-worker') {
+        const flags = (await save(p)).questFlags;
+        assert.equal(flags['heard:onion-lighter'], true);
+        assert.equal(flags['heard:crane-bearing'], true);
+      }
       if(id==='chart'){
         await conversationLine(p,'chart');
         assert.equal((await save(p)).questFlags.clue_chart, true);
@@ -1103,7 +1152,8 @@ async function chapter() {
     await p.screenshot({path:join(output,engine+'-companion-stats.png')});
     await closeStart(p, 'm');
     check(engine+'-individual-stats-match-the-bonded-companion');
-    for(const id of ['stairs-exit','whistle-reeds','pell','fisher','tide-door','passage-door']) await interact(p,id);
+    for(const id of ['stairs-exit','whistle-reeds','pell','fisher','pell','tide-door','passage-door']) await interact(p,id);
+    assert.equal((await save(p)).questFlags.whistle_imitation, true, 'After the rescue, Rillik can answer Pell’s whistle');
     assert.equal((await save(p)).questFlags.whistle_returned,true); assert.equal((await save(p)).questFlags.wrong_catch,true); check(engine+'-both-optional-harbor-stories');
     await walkTo(p,'sense-eddy'); await p.getByRole('button',{name:/Current Sense/i}).click();
     await conversationLine(p,'sense-eddy');
@@ -1140,10 +1190,12 @@ async function chapter() {
     await savePng(engine+'-six-zone-contact-sheet', await fieldContactSheet(p,zones));
     await interact(p,'page');
     // Door names are authored map objects, not production-only test shortcuts.
-    for(const id of ['chamber-exit','passage-exit','stairs-exit','workshop-door']) await interact(p,id);
+    for(const id of ['chamber-exit','passage-exit','stairs-exit','inland-gate','workshop-door']) await interact(p,id);
+    assert.equal((await save(p)).questFlags['heard:flour-carter'], true, 'Tavian brings the road keeper’s lead back to Nia');
     await walkTo(p,'chart');
     await inspectField(p,'workshop','kettle-warm',{state:'after',motionWindow:[74,84,13,19]});
     await interact(p,'closing',false);await drain(p,{inspectChoices:true,expectedId:'closing',choiceId:'wry'}); assert.equal((await save(p)).questFlags.chapter_complete,true); check(engine+'-complete-real-chapter-through-closing');
+    check(engine + '-chapter-dialogue-readable-at-320x568', { pages: narrowPages.size, longestPage });
     await audit(p, engine + '-chapter-complete-fit');
     await p.screenshot({path:join(output,engine+'-chapter-complete.png')});
     await noShellCommands(p);

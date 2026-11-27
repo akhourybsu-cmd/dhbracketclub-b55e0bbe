@@ -34,7 +34,7 @@ Give each speaker something they could have seen or heard. Nia follows the inves
 
 Use a character’s name for spoken dialogue, `Port Marche` for something the player can see, and `Field note` for a control or rule. Letters and inscriptions keep their own source credit. Register new written sources in `reading.ts` so they appear on paper and keep that credit in the journal. The closing conversation gives each response its own reply.
 
-The journal pairs one current objective with Tavian’s account of the journey. Each entry unlocks when Tavian experiences it. The whistle and the fisher’s net each get one short entry under **On the quay**, updated as the player helps. Future encounters stay off the page until the player reaches them.
+The journal pairs the next action with Tavian’s account of what happened. The workshop objective names the clues he still needs to check. Under **On the quay**, the whistle, the fisher’s net, Edda’s lamp oil and the flour carter each get a note only after Tavian learns about them. Bram’s account of the match updates Seli’s earlier lead. Saved conversations keep the words and choices the player saw.
 
 Give a one-time conversation variant a stable `once` key. Its lines and receipt share the same save. This lets a player meet the rope maker, read the repair tag later and come back with a new question, even across a reload.
 

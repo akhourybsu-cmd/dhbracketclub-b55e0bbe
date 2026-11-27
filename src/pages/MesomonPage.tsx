@@ -407,7 +407,10 @@ function Chapter({
   const lineKey = `${session?.dialogue?.id}:${session?.dialogue?.index}`;
   const textSpeed = session?.save.settings.textSpeed;
   const textLength = line?.text.length ?? 0;
-  const textComplete = reducedMotion || revealed || textSpeed === "fast" || textCount >= textLength;
+  // Show the complete question alongside its replies, including on a resumed choice.
+  const choicePrompt = session?.dialogue && session.dialogue.index === session.dialogue.lines.length - 1
+    ? session.dialogue.choices : undefined;
+  const textComplete = !!choicePrompt?.length || reducedMotion || revealed || textSpeed === "fast" || textCount >= textLength;
   useEffect(() => {
     setRevealed(false);
     setTextCount(0);
@@ -823,7 +826,7 @@ function Chapter({
                       has one voice.
                     </h2>
                     <p>
-                      Edda marked the inland road. Tavian’s journey pauses here.
+                      Edda marked the inland road. Tonight, Tavian stays for supper.
                     </p>
                     <button
                       className="mm-primary"
@@ -887,11 +890,9 @@ function Chapter({
                         {line.text}
                       </span>
                     </p>
-                    {session.dialogue?.choices &&
-                    session.dialogue.index >=
-                      session.dialogue.lines.length - 1 ? (
+                    {choicePrompt?.length ? (
                       <div className="mm-tone-choices">
-                        {session.dialogue.choices.map((choice) => (
+                        {choicePrompt.map((choice) => (
                           <button
                             key={choice.id}
                             onClick={() =>

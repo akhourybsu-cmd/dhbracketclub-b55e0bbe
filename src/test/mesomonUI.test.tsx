@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MesomonGame } from '@/pages/MesomonPage';
 import { createNewSave, createSession, reduceGame } from '@/lib/mesomon/engine';
 import { createBattle, makeCompanion, startBattleTurn } from '@/lib/mesomon/battle';
+import { DIALOGUES } from '@/lib/mesomon/data/dialogue';
 import type { MesomonSaveV1 } from '@/lib/mesomon/types';
 
 const fixture = vi.hoisted(() => ({
@@ -236,7 +237,7 @@ describe('Mesomon game shell', () => {
     fireEvent.click(fieldcase.getByRole('button', {name: 'Back'}));
     expect(fieldcase.getByRole('button', {name: 'Field Guide'})).toHaveFocus();
     fireEvent.click(fieldcase.getByRole('button', {name: 'Journal'}));
-    expect(fieldcase.getByText('Edda asked me to bring my core home.')).toBeVisible();
+    expect(fieldcase.getByText('Four years away. One letter from Edda and here I am, cuff and all.')).toBeVisible();
     expect(fieldcase.getByText('Came ashore on the lower quay.')).toBeVisible();
     expect(fieldcase.getByText('Nia is waiting at the arrival pier.')).toBeVisible();
     expect(fieldcase.queryByText(/Wretch|sealed rift|upper channel/i)).toBeNull();
@@ -421,18 +422,18 @@ describe('Mesomon game shell', () => {
     fireEvent.click(screen.getByRole('button',{name:'A — Confirm'}));
     const conversation=await screen.findByRole('region',{name:'Conversation'});
     expect(within(conversation).getByText('Captain',{exact:true})).toBeVisible();
-    expect(conversation.querySelector('[aria-live="polite"]')).toHaveTextContent('Port Marche.');
+    expect(conversation.querySelector('[aria-live="polite"]')?.textContent).toBe(DIALOGUES.captain[0].text);
     const start = openStart();
     fireEvent.click(start.getByRole('button', {name:'Map'}));
     expect(start.getByRole('region', {name:'Location chart'})).toBeVisible();
     fireEvent.keyDown(window, {key:'m'});
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(conversation.querySelector('[aria-live="polite"]')).toHaveTextContent('Port Marche.');
+    expect(conversation.querySelector('[aria-live="polite"]')?.textContent).toBe(DIALOGUES.captain[0].text);
     const startKey = screen.getByRole('button', {name:'Start'});
     expect(startKey).toHaveFocus();
     fireEvent.keyDown(startKey, {key:'z'});
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(conversation.querySelector('[aria-live="polite"]')).toHaveTextContent('Can you see Edda? Grey coat, lamp on her belt.');
+    expect(conversation.querySelector('[aria-live="polite"]')?.textContent).toBe(DIALOGUES.captain[1].text);
     expect(within(conversation).getByRole('button',{name:'Continue'})).toBeVisible();
   });
 

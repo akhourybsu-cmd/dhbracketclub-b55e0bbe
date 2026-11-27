@@ -2,6 +2,38 @@ import { MOVES, SPECIES } from './data/species';
 import { deriveSeed, individualStats, strikeDamage } from './individuals';
 import type { BattleAction, BattleBeat, BattleCue, BattleState, BondedMesomon, Fighter, SpeciesId } from './types';
 
+// Read the animal's posture as agitation falls. The rift has no bond scenes.
+const wildReactions = {
+  rillik: {
+    alert: 'Rillik takes one step back. Its ear fins lie flat.',
+    easing: 'One of Rillik’s ear fins lifts.',
+    waits: 'Rillik sniffs the air and holds its ground.',
+    accepts: 'Rillik taps the bud with its nose.',
+    retreats: 'Rillik slips into the water.',
+  },
+  muddren: {
+    alert: 'Muddren digs its claws into the mud.',
+    easing: 'Muddren’s claws loosen their grip.',
+    waits: 'Muddren rests its chin on its foreclaws.',
+    accepts: 'Muddren lifts its broad head to the bud.',
+    retreats: 'Muddren digs in. Mud rolls shut behind its shell.',
+  },
+  gleamwing: {
+    alert: 'Gleamwing skims past Tavian’s cheek and circles the lamp.',
+    easing: 'Gleamwing drifts out of its tight circle.',
+    waits: 'Gleamwing folds its wings on the lantern rim.',
+    accepts: 'Gleamwing lands on the bud. Light shows through its wings.',
+    retreats: 'Gleamwing flutters up beyond the lantern light.',
+  },
+  tressel: {
+    alert: 'Tressel plants a paw on the wet splinters. Its tail lashes.',
+    easing: 'The curl in Tressel’s tail comes loose.',
+    waits: 'Tressel sits back on its haunches.',
+    accepts: 'Tressel noses the bud. Its tail curls around Tavian’s wrist.',
+    retreats: 'Tressel ducks between the boards, tail last.',
+  },
+} satisfies Record<Exclude<SpeciesId, 'rift-wretch'>, Record<'alert' | 'easing' | 'waits' | 'accepts' | 'retreats', string>>;
+
 export function makeCompanion(
   speciesId: BondedMesomon['speciesId'],
   id = `${speciesId}-bond`,
@@ -25,7 +57,10 @@ export function createBattle(party: BondedMesomon[], enemySpecies: SpeciesId, id
     ...stats, id: `${id}-${(seed >>> 0).toString(36)}`, speciesId: enemySpecies,
     vitality: stats.maxVitality, moves: [...SPECIES[enemySpecies].moves],
   };
-  return { id, allies, activeIndex: Math.max(0, allies.findIndex(member => member.vitality > 0)), enemy, agitation: enemySpecies === 'gleamwing' ? 48 : 68, stability: enemySpecies === 'rift-wretch' ? 64 : 0, maxStability: enemySpecies === 'rift-wretch' ? 64 : 0, frenzy: false, seed: seed >>> 0, turn: 0, guarded: false, evasion: false, mudbound: 0, phase: 'choosing', log: [enemySpecies === 'rift-wretch' ? 'The Rift Wretch has a hold on the tear. Bring its stability to zero so Tavian can seal it.' : `${SPECIES[enemySpecies].name} backs away from Tavian. Use a calming move to lower its agitation.`], usedTinctures: 0 };
+  const opening = enemySpecies === 'rift-wretch'
+    ? 'The Rift Wretch holds the tear open. Bring its stability to zero.'
+    : `${wildReactions[enemySpecies].alert} A calming move lowers agitation.`;
+  return { id, allies, activeIndex: Math.max(0, allies.findIndex(member => member.vitality > 0)), enemy, agitation: enemySpecies === 'gleamwing' ? 48 : 68, stability: enemySpecies === 'rift-wretch' ? 64 : 0, maxStability: enemySpecies === 'rift-wretch' ? 64 : 0, frenzy: false, seed: seed >>> 0, turn: 0, guarded: false, evasion: false, mudbound: 0, phase: 'choosing', log: [opening], usedTinctures: 0 };
 }
 
 export function tinctureRecovery(member: Pick<Fighter, 'vitality' | 'maxVitality'>): number {
@@ -94,6 +129,7 @@ export function resolveBattleTurn(
   const active = battle.allies[battle.activeIndex];
   const enemyName = battle.enemy.speciesId === 'rift-wretch' ? 'the Rift Wretch' : `the wild ${SPECIES[battle.enemy.speciesId].name}`;
   const enemyLabel = SPECIES[battle.enemy.speciesId].name;
+  const reactions = battle.enemy.speciesId === 'rift-wretch' ? null : wildReactions[battle.enemy.speciesId];
   const present = (side: BattleBeat['side'], kind: BattleBeat['kind'], text: string, cue?: BattleCue) => {
     onBeat?.({
       side, kind, text, cue,
@@ -115,10 +151,10 @@ export function resolveBattleTurn(
   if (action.type === 'item' && ((options.tinctures ?? 0) < 1 || active.vitality >= active.maxVitality)) return { ...previous, log: [(options.tinctures ?? 0) < 1 ? 'No tinctures left.' : 'Your companion already has full vitality.'] };
   if (action.type === 'resonate') {
     const eligibility = resonanceEligibility(battle, options.emptyBuds ?? 1, options.storyAllowed ?? true);
-    if (!eligibility.eligible) return { ...previous, log: [eligibility.reason] };
+    if (!eligibility.eligible || !reactions) return { ...previous, log: [eligibility.reason] };
     present('ally', 'notice', 'Tavian holds out an empty crystal bud.', 'resonate');
-    present('enemy', 'notice', `${enemyLabel} steps close enough to touch it.`, 'resonate');
-    return { ...battle, phase: 'resonated', turn: battle.turn + 1, log: [`${SPECIES[battle.enemy.speciesId].name} steps closer. Tavian holds still.`, 'The empty crystal bud rings once. The creature stays with him.'] };
+    present('enemy', 'notice', reactions.accepts, 'resonate');
+    return { ...battle, phase: 'resonated', turn: battle.turn + 1, log: [reactions.accepts, 'The crystal rings once against Tavian’s cuff.'] };
   }
   if (action.type === 'flee') {
     if (battle.enemy.speciesId === 'rift-wretch') return { ...previous, log: ['The Rift Wretch blocks the way out. Bring its stability to zero.'] };
@@ -138,7 +174,7 @@ export function resolveBattleTurn(
   const endCheck = () => {
     const pushedBack = battle.enemy.speciesId === 'rift-wretch' ? battle.stability <= 0 : battle.enemy.vitality <= 0;
     if (pushedBack) {
-      battle.phase = 'won'; append(battle.enemy.speciesId === 'rift-wretch' ? 'The Wretch loses its hold. The rift is still open.' : 'The wild Mesomon slips into a gap in the stone. Tavian can pass.'); return true;
+      battle.phase = 'won'; append(reactions?.retreats ?? 'The Wretch loses its hold. The rift is still open.'); return true;
     }
     if (battle.allies.every(member => member.vitality <= 0)) { battle.phase = 'lost'; append('The last companion tires. Tavian calls everyone back to the cuff.'); return true; }
     const current = battle.allies[battle.activeIndex];
@@ -168,7 +204,7 @@ export function resolveBattleTurn(
       describe('ally', move.id === 'mud-wrap' ? `${name} packs a shell of mud over its back.` : `A veil of water gathers around ${name}.`, move.id);
       return;
     }
-    if (move.kind === 'evade') { battle.evasion = true; describe('ally', `${name} uses ${move.name} to try to dodge.`, move.id); return; }
+    if (move.kind === 'evade') { battle.evasion = true; describe('ally', `${name} hangs back, ready to dodge.`, move.id); return; }
     present('ally', 'action', `${name} uses ${move.name}.`, move.id);
     if (move.kind === 'calm') {
       if (battle.enemy.speciesId === 'rift-wretch') {
@@ -178,7 +214,7 @@ export function resolveBattleTurn(
         present('ally', 'impact', result, move.id);
       } else {
         battle.agitation = Math.max(0, battle.agitation - (24 + Math.floor(member.resonance / 5)));
-        const result = `${enemyLabel} begins to relax.`;
+        const result = wildReactions[battle.enemy.speciesId].easing;
         append(`${name} uses ${move.name}. ${result}`);
         present('ally', 'impact', result, move.id);
         if (resonanceEligibility(battle, options.emptyBuds, options.storyAllowed).eligible) append('It stays close. Tavian can offer a bond.');
@@ -200,8 +236,8 @@ export function resolveBattleTurn(
   const enemyTurn = () => {
     const member = battle.allies[battle.activeIndex];
     const wild = battle.enemy.speciesId !== 'rift-wretch';
-    if (wild && !battle.frenzy && isSettled(battle) && action.type === 'move' && MOVES[action.moveId].kind === 'calm') {
-      describe('enemy', `${enemyLabel} lowers its guard.`, action.moveId);
+    if (reactions && !battle.frenzy && isSettled(battle) && action.type === 'move' && MOVES[action.moveId].kind === 'calm') {
+      describe('enemy', reactions.waits, action.moveId);
       return;
     }
     const base = strikeDamage(enemyMove, battle.enemy, member, random(battle));
@@ -237,7 +273,7 @@ export function resolveBattleTurn(
     }
     if (battle.enemy.speciesId === 'muddren' && battle.turn % 2 === 0 && !battle.guarded && !evaded) {
       battle.mudbound = 2;
-      describe('field', 'Mud clings to the party’s feet. Mudbound slows their next move.', 'mudbound');
+      describe('field', 'The party is Mudbound. Speed drops for the next turn.', 'mudbound');
     }
   };
   if (playerFirst) { playerTurn(); if (!endCheck()) { enemyTurn(); endCheck(); } }

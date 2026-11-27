@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createBattle, makeCompanion, resonanceEligibility, resolveBattleTurn } from '@/lib/mesomon/battle';
-import { canWalk, createNewSave, createSession, DELTAS, getMap, getObjective, getPhase, getQuestSteps, getVisibleObjects, nearbyInteractions, reduceGame } from '@/lib/mesomon/engine';
+import { canWalk, createNewSave, createSession, DELTAS, getHarborNotes, getMap, getObjective, getPhase, getQuestSteps, getVisibleObjects, nearbyInteractions, reduceGame } from '@/lib/mesomon/engine';
 import { keyboardAction, pointerAction } from '@/lib/mesomon/input';
 import { MAPS } from '@/lib/mesomon/data/maps';
 import { migrateSave } from '@/lib/mesomon/save';
@@ -118,6 +118,11 @@ describe('Mesomon Port Marche chapter', () => {
     for (const [index, id] of order.entries()) {
       const first = beginInteraction(session, id);
       expect(first.dialogue?.onFinish).toBe(index === 2 ? 'clues-complete' : undefined);
+      if (index === 2) {
+        const finalClue = createSession(migrateSave(first.save)!);
+        expect(getObjective(finalClue.save)).toMatch(/back of the field map.*3\/3/i);
+        expect(finalClue.dialogue?.lines.some(line => line.speaker === 'Edda’s note')).toBe(true);
+      }
       const revisit = beginInteraction(finishDialogue(first), id);
       expect(revisit.dialogue?.lines).not.toEqual(first.dialogue?.lines);
       expect(revisit.dialogue?.lines.length).toBeGreaterThan(0);
@@ -127,7 +132,11 @@ describe('Mesomon Port Marche chapter', () => {
         const remaining = order[2];
         const hint = beginInteraction(session, 'closing');
         const clueWords = { chart: /chart/i, 'field-map': /map/i, 'satchel-hook': /hook/i };
-        expect(hint.dialogue!.lines.at(-1)?.text).toMatch(clueWords[remaining as keyof typeof clueWords]);
+        const missingClue = clueWords[remaining as keyof typeof clueWords];
+        expect(getObjective(session.save)).toMatch(missingClue);
+        expect(getObjective(session.save)).toContain('2/3');
+        for (const found of order.slice(0, 2)) expect(getObjective(session.save)).not.toMatch(clueWords[found as keyof typeof clueWords]);
+        expect(hint.dialogue!.lines.at(-1)?.text).toMatch(missingClue);
         session = finishDialogue(hint);
       }
     }
@@ -185,6 +194,7 @@ describe('Mesomon Port Marche chapter', () => {
     session = reduceGame(session, { type: 'companion', released: true });
     const imitation = beginInteraction(session, 'pell');
     expect(imitation.dialogue?.id).toBe('whistle-imitation');
+    expect(getHarborNotes(imitation.save).filter(text => /Pell/i.test(text))).toEqual([expect.stringMatching(/squeak/i)]);
     expect(beginInteraction(finishDialogue(imitation), 'pell').dialogue?.id).toBe('pell-repeat');
   });
 
@@ -200,10 +210,13 @@ describe('Mesomon Port Marche chapter', () => {
     expect(healthy.dialogue?.id).toBe('seli-repeat');
     session = finishDialogue(healthy);
     expect(session.save.questFlags['heard:edda-lamp-oil']).toBe(true);
+    expect(getHarborNotes(session.save)).toContainEqual(expect.stringMatching(/Seli.*oil/i));
     const lamp = beginInteraction(session, 'bram');
     expect(lamp.save.questFlags['heard:bram-lamp']).toBe(true);
     expect(lamp.dialogue!.lines.map(line => line.speaker)).toEqual(['Tavian', 'Bram']);
     session = finishDialogue(lamp);
+    expect(getHarborNotes(session.save)).toContainEqual(expect.stringMatching(/Bram.*match/i));
+    expect(getHarborNotes(session.save)).not.toContainEqual(expect.stringMatching(/Seli.*oil/i));
 
     for (const id of ['tide-door', 'passage-door', 'sense-eddy', 'sluice', 'tressel']) session = interactWith(session, id);
     for (let turn = 0; turn < 4; turn++) {
@@ -250,6 +263,25 @@ describe('Mesomon Port Marche chapter', () => {
     },
   );
 
+  it('lets a late visitor follow Seli’s lamp-oil lead after the water settles', () => {
+    const save = createNewSave();
+    Object.assign(save.questFlags, { captain_met: true, disembarked: true, nia_met: true, clues_complete: true, bram_met: true, rift_sealed: true });
+    save.rifts['port-marche'] = 'sealed';
+    save.player = { ...save.player, mapId: 'harbor', x: 22, y: 17 };
+    let session = createSession(save);
+    const waterReport = beginInteraction(session, 'bram');
+    expect(waterReport.save.questFlags['heard:bram-lamp']).toBeUndefined();
+    session = finishDialogue(waterReport);
+    session = interactWith(session, 'seli'); // first visit and tincture
+    session = interactWith(session, 'seli'); // the oil she sold Edda
+    expect(session.save.questFlags['heard:edda-lamp-oil']).toBe(true);
+    const lamp = beginInteraction(createSession(migrateSave(session.save)!), 'bram');
+    expect(lamp.save.questFlags['heard:bram-lamp']).toBe(true);
+    expect(lamp.dialogue?.lines).toContainEqual({ speaker: 'Bram', text: expect.stringMatching(/match/i) });
+    const revisit = beginInteraction(finishDialogue(lamp), 'bram');
+    expect(revisit.dialogue?.lines).toEqual(waterReport.dialogue?.lines);
+  });
+
   it.each([true, false])('lets the chart recall the rigger only after hearing the bell story (%s)', (heardBell) => {
     let session = createSession(createNewSave());
     for (const id of ['captain', 'gangplank', ...(heardBell ? ['bell-worker'] : []), 'nia', 'workshop-door'])
@@ -267,6 +299,7 @@ describe('Mesomon Port Marche chapter', () => {
     let session = interactWith(createSession(save), 'inland-gate');
     expect(session.save.questFlags['visited:inland-gate']).toBe(true);
     expect(Boolean(session.save.questFlags['heard:flour-carter'])).toBe(visit === 'after');
+    expect(getHarborNotes(session.save).some(note => /flour carter/i.test(note))).toBe(visit === 'after');
     session.save.questFlags.page_found = true;
     session = interactWith(createSession(migrateSave(session.save)!), 'workshop-door');
     const supper = beginInteraction(session, 'closing');
@@ -326,6 +359,27 @@ describe('Mesomon Port Marche chapter', () => {
     const restored = createSession(migrateSave(save)!);
     expect(restored.dialogue?.lines[restored.dialogue.index].text).toBe('I can see that.');
     expect(finishDialogue(restored).save.questFlags.captain_met).toBe(true);
+  });
+
+  it('honors the answer shown on a saved choice screen and keeps earlier journal entries verbatim', () => {
+    const save = createNewSave();
+    const earlierEntry = { speaker: 'Edda’s page', text: 'After the tremor. Pulse stronger inland. Try the road at low water. E. Venn.' };
+    const question = { speaker: 'Nia', text: 'Last time, the ferry cook told me you’d gone. Wake me this time?' };
+    const oldAnswer = 'Yes. Breakfast at yours. Let the cook find out last.';
+    save.questFlags.page_found = true;
+    save.dialogueHistory = [earlierEntry];
+    save.dialogue = {
+      id: 'closing', index: 0, lines: [question],
+      choices: [{ id: 'wry', label: 'Wry', text: oldAnswer }],
+    };
+    const restored = createSession(migrateSave(save)!);
+    expect(restored.dialogue?.choices?.[0].text).toBe(oldAnswer);
+    const response = reduceGame(restored, { type: 'choice', id: 'wry' });
+    expect(response.dialogue?.lines[0]).toEqual({ speaker: 'Tavian', text: oldAnswer });
+    expect(response.dialogue?.lines[1].speaker).toBe('Nia');
+    const finished = finishDialogue(createSession(migrateSave(response.save)!));
+    expect(finished.save.dialogueHistory.slice(0, 3)).toEqual([earlierEntry, question, { speaker: 'Tavian', text: oldAnswer }]);
+    expect(finished.save.questFlags).toMatchObject({ response_tone: 'wry', chapter_complete: true });
   });
 
   it('will not bypass story barriers or interact with a distant object', () => {

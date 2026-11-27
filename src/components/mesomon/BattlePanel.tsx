@@ -157,9 +157,9 @@ export function BattlePanel({ save, battle, paused, onBeat, onAction, onContinue
             : battle.phase === "lost" ? "Back to the tide stairs"
             : battle.phase === "escaped" ? "You stepped away"
             : boss ? "Pushed back" : "The way is clear"}</h2>
-          {battle.phase !== "escaped" && <p>{battle.phase === "resonated" ? "Open Companions to see their stats."
-            : battle.phase === "lost" ? "Your companions will recover there."
-            : boss ? "The rift is ready to seal." : `${SPECIES[enemy.speciesId].name} retreats.`}</p>}
+          {battle.phase !== "escaped" && <p>{battle.phase === "lost" ? "Your companions can rest on the dry landing."
+            : boss ? "The tear is still open above the basin." : battle.log.at(-1) ||
+              (battle.phase === "resonated" ? "A new crystal rests in Tavian’s cuff." : `${SPECIES[enemy.speciesId].name} retreats.`)}</p>}
           <button className="mm-primary" disabled={paused} data-battle-default onClick={onContinue}>
             Continue <ArrowRight size={16} aria-hidden="true" />
           </button>
