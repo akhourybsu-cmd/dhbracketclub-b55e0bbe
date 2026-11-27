@@ -3,6 +3,59 @@ import { bypassMain, intakeStrainer, scupperWall, stairCheeks, timberCrib } from
 
 export interface TideworksState { gateOpen: boolean; sluiceOpen: boolean; sealed: boolean }
 
+// The upper edge of each fixture projects into the free walking row behind
+// it. Only that raised part is depth sorted; its stone footing stays cached.
+export const tideRelief = [
+  {
+    mapId: 'tide-stairs', id: 'scupper-coping', x: scupperWall.x * 16, y: scupperWall.y * 16 - 8,
+    width: scupperWall.width * 16, height: 15, footY: scupperWall.y * 16 + 11,
+    paint(ctx: CanvasRenderingContext2D) {
+      const width = scupperWall.width * 16;
+      ctx.fillStyle = '#455b59';
+      ctx.fillRect(2, 4, width - 3, 7);
+      // The shallow return at the nose exposes the height of the cut blocks.
+      ctx.fillStyle = '#7c8c7f';
+      ctx.fillRect(1, 3, width - 4, 5);
+      ctx.fillStyle = '#a7aa90';
+      ctx.fillRect(3, 1, width - 8, 4);
+      ctx.fillStyle = '#cfcaab';
+      ctx.fillRect(5, 1, 25, 1);
+      ctx.fillRect(36, 1, 15, 1);
+      ctx.fillStyle = '#596e67';
+      ctx.fillRect(width - 4, 3, 3, 7);
+      ctx.fillStyle = '#889183';
+      for (const x of [18, 39, 54]) ctx.fillRect(x, 1, 1, 6);
+      ctx.fillStyle = '#3b5151';
+      ctx.fillRect(5, 10, width - 6, 2);
+    },
+  },
+  {
+    mapId: 'passage', id: 'intake-lifting-bails', x: intakeStrainer.x * 16, y: intakeStrainer.y * 16 - 8,
+    width: intakeStrainer.width * 16, height: 16, footY: intakeStrainer.y * 16 + 10,
+    paint(ctx: CanvasRenderingContext2D) {
+      for (const cx of [12, intakeStrainer.width * 16 - 14]) {
+        // The forged lifting handle stands above its reed basket, open in
+        // the middle so a coat is still visible through it while passing.
+        ctx.fillStyle = '#243c40';
+        ctx.fillRect(cx - 6, 3, 3, 9);
+        ctx.fillRect(cx + 4, 3, 3, 10);
+        ctx.fillRect(cx - 4, 1, 9, 3);
+        ctx.fillStyle = '#8c7956';
+        ctx.fillRect(cx - 5, 4, 1, 7);
+        ctx.fillRect(cx + 4, 4, 2, 7);
+        ctx.fillStyle = '#bf9f69';
+        ctx.fillRect(cx - 4, 1, 8, 2);
+        ctx.fillRect(cx - 5, 3, 2, 3);
+        ctx.fillStyle = '#e0bd80';
+        ctx.fillRect(cx - 3, 1, 4, 1);
+        ctx.fillStyle = '#aa9166';
+        ctx.fillRect(cx - 6, 10, 3, 2);
+        ctx.fillRect(cx + 4, 11, 3, 2);
+      }
+    },
+  },
+] as const;
+
 /** Static, integer-pixel architectural sections, painted below actors on the cached map. */
 export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition, state: TideworksState) {
   if (map.ambience !== 'underwharf') return;
@@ -144,26 +197,24 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     rect('#596f6d', 46, 5, 227, 3);
     rect('#344c4e', 46, 0, 227, 5);
     rect('#263c3e', 47, 44, 226, 3);
-    // Broad continuous nosings make the flight read as one volume, not 30 stair icons.
+    // Light from the gallery reveals a flat top, rounded nose and a face in
+    // shade. The heel marks occur in a walking lane instead of at every seam.
     for (let i = 0; i < 12; i++) {
       const y = 64 + i * 8;
-      const tone = i < 4 ? '#99a499' : i < 8 ? '#8a998f' : '#7e9089';
-      rect(tone, 112, y, 80, 5);
-      rect('#657b76', 112, y + 5, 80, 1);
-      rect('#485f60', 112, y + 6, 80, 2);
-      rect('#bcc1a9', 114, y, 76, 1);
-      rect('#788881', 119 + (i % 3) * 22, y + 1, 1, 3);
-    }
-    // Each stone wears away differently along the middle of the flight.
-    for (let tread = 0; tread < 12; tread++) {
-      const y = 64 + tread * 8;
-      const seam = 116 + (tread * 17) % 34;
-      rect('#768680', seam, y + 1, 1, 3);
-      line('#89968b', seam + 1, y + 3, seam + 3, y + 4);
-      rect('#c2c1a4', seam + 3, y + 1, 8, 1);
-      rect('#6a827d', 178 - tread % 3, y + 2, 8 + tread % 3, 3);
-      rect('#475b5a', 181, y + 6, 7, 2);
-      if (tread % 3 === 1) rect('#8a9483', seam + 11, y, 4, 1);
+      const top = i < 4 ? '#a7ae9d' : '#95a292';
+      rect(top, 112, y, 80, 5);
+      rect('#829087', 173 - i % 4, y, 18, 5);
+      rect('#b6b7a1', 130 + i % 3, y + 2, 27, 3);
+      rect('#7a897c', 112, y + 5, 80, 1);
+      rect('#405958', 112, y + 6, 80, 2);
+      rect('#d1cdb0', 114, y + 4, 50 - i % 5, 1);
+      rect('#a3aa95', 166, y + 4, 18, 1);
+      const joint = 116 + (i * 17) % 52;
+      rect('#78877c', joint, y + 1, 1, 3);
+      if (i % 3 === 1) {
+        rect('#73847b', joint, y + 4, 3, 1);
+        rect('#c4c4a8', joint + 2, y + 3, 4, 1);
+      }
     }
     // The west retaining wall stands in the channel. A ceramic tide staff
     // runs down its face; rust stops at the previous high-water mark.
@@ -190,6 +241,17 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     rect('#99a69a', 112, 111, 80, 14);
     for (const [x, y] of [[133, 96], [171, 96], [151, 111]]) rect('#84968c', x, y, 1, 14);
     rect('#bbc1a6', 112, 125, 80, 2);
+    // One daylight shape runs across the landing. Its ragged edges and long
+    // rub marks give the flat meniscus of rainwater a different read from a riser.
+    for (let row = 0; row < 29; row++) {
+      const x = 114 + Math.floor(row / 3);
+      rect('#ddd0a819', x, 96 + row, 37 - Math.floor(row / 4), 1);
+      rect('#254a4d17', 178 + Math.floor(row / 6), 96 + row, 13 - Math.floor(row / 6), 1);
+    }
+    for (const [x, y, w] of [[123, 101, 9], [154, 108, 6], [130, 120, 12], [165, 115, 5]]) {
+      rect('#88968b', x, y, w, 1);
+      rect('#acb09d', x + 2, y + 1, w - 3, 1);
+    }
     // The iron rack works the lattice from beside the wheel. When Nia fits
     // the brace, its teeth climb and the spillway under the grating clears.
     rect(iron, 146, 145, 9, 24);
@@ -293,21 +355,29 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#415351', x, y, 4, 4);
       rect('#b0a17a', x, y, 3, 1);
     }
-    // Slabs radiate around the toe of the old public stair. The fan stops
-    // cleanly against the timber service dock on its right.
-    for (const [radius, depth] of [[39, 14], [51, 21], [63, 29]]) {
+    // The lowest step meets a fan of flush, wedge-cut flags. Paint their
+    // bodies as well as the joints so the ordinary straight paving ends here.
+    const ringStone = ['#869487', '#819183', '#788b80'];
+    for (const [ring, radius, depth] of [[2, 63, 29], [1, 51, 21], [0, 39, 14]]) {
+      for (let y = 160; y <= 158 + depth; y++) {
+        const half = Math.floor(radius * Math.sqrt(1 - ((y - 158) / depth) ** 2));
+        const left = 143 - half, right = Math.min(159, 143 + half);
+        rect(ringStone[ring], left, y, right - left + 1, 1);
+      }
       for (let x = 143 - radius; x < 160; x++) {
-        const dx = (x - 143) / radius;
-        const y = 158 + Math.round(depth * Math.sqrt(1 - dx * dx));
-        if (y < 160) continue;
-        rect('#60736e', x, y, 1, 1);
-        rect('#8b998a', x, y + 1, 1, 1);
+        const y = 158 + Math.round(depth * Math.sqrt(1 - ((x - 143) / radius) ** 2));
+        if (y >= 160) {
+          rect('#586d65', x, y, 1, 1);
+          rect('#9eab97', x, y + 1, 1, 1);
+        }
       }
     }
-    for (const [x, y, tx, ty] of [[93, 165, 83, 167], [117, 171, 112, 176],
-      [104, 172, 96, 177], [130, 178, 128, 185], [150, 172, 151, 177]]) {
-      line('#64776f', x, y, tx, ty);
+    for (const [x, y, tx, ty] of [[92, 160, 81, 163], [110, 167, 99, 169],
+      [121, 175, 114, 184], [143, 172, 143, 179], [155, 179, 159, 186]]) {
+      line('#667b70', x, y, tx, ty);
     }
+    rect('#506860', 113, 160, 46, 2);
+    rect('#657d71', 117, 162, 42, 1);
     // The east-facing returns and the little shadows underneath the rail posts
     // give the flight a continuous side face when seen from the lower landing.
     for (let tread = 0; tread < 12; tread++) {
@@ -387,13 +457,28 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
   if (map.id === 'passage') {
     // Backlit timber galleries are embedded in the solid banks flanking the corridor.
     for (const [x, y] of [[113, 236], [113, 316], [175, 153], [51, 141]]) {
-      rect(deep, x, y - 17, 46, 20);
-      brace(x + 1, y, 1);
-      brace(x + 43, y, -1);
-      rect('#453f38', x, y - 20, 46, 7);
-      rect('#927f62', x, y - 20, 46, 2);
-      rect('#b6a274', x + 4, y - 17, 2, 2);
-      rect('#b6a274', x + 39, y - 17, 2, 2);
+      rect('#192e37', x + 1, y - 17, 45, 21);
+      rect('#283f44', x + 7, y - 14, 32, 15);
+      rect('#233a40', x + 12, y - 12, 23, 10);
+      // The back sill catches reflected waterlight deep inside the bay.
+      rect('#3c5452', x + 10, y - 3, 29, 2);
+      rect('#728275', x + 16, y - 3, 10, 1);
+      for (const jamb of [x, x + 40]) {
+        rect('#344346', jamb + 1, y - 18, 5, 21);
+        rect('#7e6956', jamb, y - 18, 4, 19);
+        rect('#af926a', jamb, y - 15, 1, 13);
+        rect('#485957', jamb - 1, y, 7, 3);
+      }
+      brace(x + 2, y - 2, 1);
+      brace(x + 42, y - 2, -1);
+      rect('#302f2d', x, y - 21, 46, 7);
+      rect('#80664f', x, y - 20, 46, 4);
+      rect('#b69b72', x, y - 21, 44, 2);
+      rect('#665541', x + 4, y - 18, 13, 1);
+      for (const pin of [x + 4, x + 39]) {
+        rect('#433c32', pin, y - 18, 3, 3);
+        rect('#c7ad7f', pin, y - 18, 2, 1);
+      }
     }
     // The copper delivery main terminates in a cast, snail-shaped pump on
     // the blocked north bank. The lower lip stands proud of the crossing.
@@ -421,6 +506,16 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     ellipse('#445f5a', 176, 146, 13, 13);
     ellipse('#2c4546', 177, 147, 10, 10);
     ellipse('#63766a', 175, 146, 8, 8);
+    for (const [x, y, tx, ty] of [[161, 145, 164, 137], [164, 137, 171, 132],
+      [171, 132, 180, 132], [180, 132, 186, 136]]) {
+      diagonal(x, y, tx, ty, '#af9d77', 2);
+      line('#d4bd8a', x, y - 1, tx, ty - 1);
+    }
+    for (const [x, y, tx, ty] of [[167, 139, 173, 136], [173, 136, 181, 138], [181, 138, 185, 144],
+      [185, 144, 184, 151], [184, 151, 178, 154], [178, 154, 171, 152]]) {
+      diagonal(x, y, tx, ty, '#304a48', 3);
+      line('#848f78', x, y, tx, ty);
+    }
     for (const [x, y] of [[166, 136], [181, 133], [189, 146], [181, 158], [164, 152]]) {
       rect('#364940', x, y + 1, 2, 2);
       rect('#ceb184', x, y, 2, 1);
@@ -456,6 +551,19 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#536b69', 94 + offset, 211 + offset, 66 - offset, 2);
       rect('#90a08f', 94 + offset, 213 + offset, 66 - offset, 1);
     }
+    // Recessed jambs belong to the banks in both water states. Their stone
+    // returns step into the opening and the broad base keys into the paving.
+    for (const x of [156, 192]) {
+      rect('#445757', x, 176, 4, 64);
+      rect('#a3a58e', x, 176, 4, 2);
+      rect('#86968a', x, 178, 2, 58);
+      rect('#536c68', x + 2, 178, 2, 61);
+      for (const y of [194, 217]) {
+        rect('#657e75', x, y, 4, 2);
+        rect('#a7ad96', x, y + 2, 2, 1);
+      }
+      rect('#647b71', x - 1, 236, 6, 4);
+    }
     // The crossing occupies exactly the four rows that the closed sluice blocks.
     // Open water drains below load-bearing planks, exposing a continuous walking surface.
     rect(deep, 160, 176, 32, 64);
@@ -473,23 +581,41 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
         rect('#756d58', start - 1, y + 5, 8, 1);
         rect('#6a7568', 160, y + 5, 3, 2);
       }
-    } else {
-      rect('#2e5660', 161, 179, 30, 57);
-      for (let y = 179; y < 236; y += 8) {
-        rect('#426868', 163, y + 1, 24, 2);
-        rect('#344f56', 164, y + 4, 25, 2);
+      // A pair of half-sunk wrought strips secures the timber to the sill.
+      for (const x of [161, 189]) {
+        rect('#675f50', x, 177, 2, 62);
+        for (const y of [180, 204, 230]) rect('#bea478', x, y, 2, 1);
       }
-      for (let y = 183; y < 233; y += 10) {
-        rect('#518585', 162 + (y % 3) * 3, y, 13, 1);
-        rect(foam, 176, y + 2, 8, 1);
+    } else {
+      // Standing water catches a crooked shaft of daylight. Four deep bars
+      // cast an offset reflection, with a water-dark toe under the bronze lip.
+      rect('#254956', 161, 178, 30, 59);
+      for (let y = 179; y < 237; y++) {
+        const x = 163 + Math.round(1.8 * Math.sin(y / 3.5));
+        const shine = 4 + Math.round(2 * Math.sin(y / 5));
+        rect('#32626b', x, y, 21, 1);
+        rect('#477f82', x + 4, y, shine, 1);
+      }
+      for (const [x, y, w] of [[165, 191, 8], [178, 198, 9], [164, 207, 14], [175, 211, 11], [171, 231, 10]]) {
+        rect('#7fa7a1', x, y, w, 1);
+        rect('#568b8c', x + w - 2, y - 1, 4, 1);
       }
       for (let x = 162; x < 190; x += 7) {
-        rect(dark, x, 176, 4, 64);
-        rect('#9c8c6b', x, 176, 2, 62);
+        rect('#172f3ca0', x + 3, 179, 4, 59);
+        rect('#354c50', x, 176, 4, 63);
+        rect('#8b8b6c', x, 177, 2, 36);
+        rect('#5f7972', x, 213, 2, 24);
+        rect('#c1ae83', x, 180, 1, 21);
       }
       for (const y of [185, 224]) {
-        rect('#464c45', 160, y, 32, 6);
-        rect(brass, 160, y, 32, 1);
+        rect('#263d42', 160, y + 2, 32, 6);
+        rect('#817357', 160, y, 32, 5);
+        rect('#bcab81', 160, y, 32, 1);
+        rect('#635d4a', 160, y + 4, 32, 1);
+        for (const x of [163, 188]) {
+          rect('#4a4d42', x, y + 2, 2, 2);
+          rect('#d8be87', x, y + 1, 1, 1);
+        }
       }
     }
     // The cross-gallery's gratings cast a slant of light across the dry approach.

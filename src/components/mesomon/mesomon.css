@@ -1781,7 +1781,7 @@ fieldset.mm-battle-controls {
   display: none;
 }
 .mm-title-art img {
-  object-position: 54% 45%;
+  object-position: 57% 43%;
 }
 .mm-title {
   background: #102224;
@@ -1816,12 +1816,12 @@ fieldset.mm-battle-controls {
   width: 100%;
   height: 100%;
   max-height: none;
-  object-position: 54% 45%;
+  object-position: 57% 43%;
   opacity: .26;
 }
 .mm-access {
   position: fixed;
-  background: linear-gradient(#102224e3, #102224f2), url('/games/mesomon/cover.png?v=4') center / cover;
+  background: linear-gradient(#102224e3, #102224f2), url('/games/mesomon/cover.png?v=5') center / cover;
   padding-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right));
 }
 .mm-access a, .mm-loading a {

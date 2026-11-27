@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Original hard-pixel Port Marche assets. No external source image or artwork."""
-from PIL import Image, ImageColor, ImageDraw
+"""Build Port Marche’s original pixel art and title exports from the tracked sources."""
+from PIL import Image, ImageColor, ImageDraw, ImageOps
 from pathlib import Path
 import json
 
-OUT = Path(__file__).resolve().parent.parent / 'public/games/mesomon'
+from mesomon_field_figures import HUMANS, SPECIES, write_field_sheets
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / 'public/games/mesomon'
 OUT.mkdir(parents=True, exist_ok=True)
 P = dict(ink='#102224', slate='#30474A', teal='#2F6667', sea='#244C52', lightsea='#417F7D', marsh='#657D55', ochre='#C09245', plaster='#D8C9A5', foam='#E8E1C6', eden='#9FD6B1', rift='#36243F', wood='#765740', woodlight='#A67D50', darkwood='#483F32', roof='#91564B', skin='#B87955', brass='#C49443')
 TILES = ['water','water2','dock','stone','grass','mud','wall','roof','door','stair','reeds','floor','shelf','table','crate','gate','bridge','rift','rope','rail','lamp','sand','channel','flower','chart','map','satchel','rock','sign','awning','window','ship','planks','black','arch','gear']
@@ -291,126 +294,8 @@ atlas=Image.new('RGBA',(16*len(TILES),16))
 for i,name in enumerate(TILES):atlas.paste(ship_tiles[name] if name in ship_tiles else field_tile(name),(16*i,0))
 atlas.save(OUT/'harbor-tiles.png',optimize=True)
 
-HUMANS=['tavian','nia','bram','seli','pell','captain','edda','fisher','worker','porter','lanternkeeper','vendor']
+write_field_sheets(OUT)
 
-def human(name,direction='down',frame=0):
-    im=Image.new('RGBA',(16,24));d=ImageDraw.Draw(im)
-    skin={'nia':'#819568','seli':'#C6A47B','bram':'#AE8058','pell':'#BD8B69','captain':'#BD9877','edda':'#C39B75'}.get(name,P['skin'])
-    coat={'nia':'#A16D43','bram':'#667353','seli':'#657955','pell':'#A58F55','captain':'#425D69','edda':'#665D78','fisher':'#68758B','worker':'#8F774F','porter':'#826A63','lanternkeeper':'#4D6A5A','vendor':'#A46D57'}.get(name,'#315B5E')
-    hair={'bram':'#DDD1AE','seli':'#B6A78B','edda':'#B9B3A0','nia':'#283D33','pell':'#463A2C','captain':'#74776B'}.get(name,'#182B2D')
-    def r(box,c):d.rectangle(box,fill=P.get(c,c))
-    bob=1 if frame in [1,2] else 0;sy=1 if name=='bram' else (2 if name=='pell' else 0)
-    r((4,2+sy,11,9+sy),hair);r((3,4+sy,12,7+sy),hair);r((5,5+sy,10,10+sy),skin)
-    if name=='tavian':r((9,0,10,2),hair);r((4,1,9,2),hair)
-    if direction=='up':r((4,3+sy,11,9+sy),hair)
-    elif direction in ['left','right']:
-        x=4 if direction=='left' else 10;r((x,6+sy,x+1,8+sy),skin);r((x,6+sy,x,6+sy),'ink')
-    else:r((5,7+sy,5,7+sy),'ink');r((10,7+sy,10,7+sy),'ink')
-    if name in ['nia','seli']:r((2,5+sy,4,6+sy),skin);r((11,5+sy,13,6+sy),skin)
-    if name=='bram':r((4,8+sy,11,12+sy),hair);r((6,12+sy,9,13+sy),hair)
-    r((4,11+sy-bob,11,18),coat);r((3,12+sy-bob,4,16),coat);r((11,12+sy-bob,12,16),coat)
-    if direction!='up':r((7,11+sy-bob,8,15),'plaster');r((6,11+sy-bob,9,12+sy-bob),'ochre')
-    r((5,18,7,21+(frame==1)),'slate');r((9,18,10,21+(frame==2)),'slate');r((4,21+(frame==1),7,22+(frame==1)),'ink');r((9,21+(frame==2),12,22+(frame==2)),'ink')
-    r((3,16,4,17),skin);r((11,16,12,17),skin)
-    if name=='tavian':
-        cuffx=3 if direction in ['up','left'] else 11;r((cuffx,15,cuffx+1,16),'eden');r((9,13,11,15),'wood');r((10,13,10,13),'brass')
-    return im
-def stamp(image, rows, palette, x=0, y=0):
-    for dy, row in enumerate(rows):
-        for dx, pixel in enumerate(row):
-            if pixel != '.':
-                image.putpixel((x + dx, y + dy), ImageColor.getrgb(palette[pixel]) + (255,))
-
-# Native-resolution cutouts. The broad head and shoulders read above the two boot marks.
-def map_person(name, direction, frame, pose):
-    im = Image.new('RGBA', (16, 16))
-    coat, hair, trim = {
-        'tavian': ('#467778', '#304346', '#9FD6B1'), 'nia': ('#AB7347', '#384A3A', '#E4C17F'),
-        'bram': ('#6F795B', '#D0C5A0', '#A7B18C'), 'seli': ('#71815B', '#BAB290', '#D8C698'),
-        'pell': ('#9F8751', '#584737', '#E8CD89'), 'captain': ('#526D78', '#87918A', '#DBBA75'),
-        'edda': ('#776987', '#C1B9AD', '#E6D8B2'), 'fisher': ('#717C91', '#393C46', '#C3B98A'),
-        'worker': ('#987950', '#59483B', '#DDB670'), 'porter': ('#8C7067', '#5E4A40', '#DBC497'),
-        'lanternkeeper': ('#527765', '#47533F', '#EDC877'), 'vendor': ('#A16E60', '#5A4142', '#F0C899'),
-    }[name]
-    skin = {'nia': '#A5AF7F', 'bram': '#BB916F', 'seli': '#D5B48D', 'pell': '#BD906C'}.get(name, '#D2A07A')
-    palette = dict(k=P['ink'], h=hair, c=coat, s=skin, a=trim, b='#684F3C', p=P['plaster'])
-    side = direction in ('left', 'right')
-    back = direction == 'up'
-    head = [
-        '...kkkk...', '.kkhhhhkk.', 'khhhhhhhhk', 'khhhhhhhhk',
-        'khssshsssk', 'kssksskssk', '.kssssssk.', '..ksssskk.',
-    ]
-    if back:
-        head[4:] = ['khhhhhhhhk', 'khhhhhhhhk', '.khhhhhhk.', '..kkhhkk..']
-    elif side:
-        head[4:] = ['ksshhhhhhk', 'sksshhhhhk', 'sssshsshhk', '.ksssskkk.']
-    stamp(im, head, palette, 3, int(frame != 0))
-    draw = ImageDraw.Draw(im)
-    if name in ('captain', 'fisher', 'worker', 'vendor'):
-        draw.rectangle((4, 2, 11, 3), fill=coat)
-        draw.line((3, 3, 12, 3), fill=trim)
-    elif name in ('nia', 'seli'):
-        draw.line((2, 4, 4, 6), fill=skin)
-        draw.line((13, 4, 11, 6), fill=skin)
-    elif name == 'bram' and not back:
-        draw.line((5, 7, 10, 7), fill=hair)
-    elif name == 'tavian':
-        draw.line((6, 2, 9, 1), fill='#627572')
-        draw.point((10, 0), fill=hair)
-    body = ['..kpaapk..', '.kccaacck.', 'kcccbccack', 'ksccbcccsk', '.kkcccckk.', '..kkkkkk..']
-    if back:
-        body = ['..kcccck..', '.kcbcccck.', 'kcccbcccck', 'kscccbbcsk', '.kkccbbkk.', '..kkkkkk..']
-    elif side:
-        body = ['..kaacck..', '..kacccck.', '.kcccbcck.', '.kscbbcck.', '..kkccck..', '...kkkk...']
-    stamp(im, body, palette, 3, 8)
-    for x, lifted in ((5, frame == 1), (9, frame == 2)):
-        y = 13 if lifted else 14
-        draw.rectangle((x, y, x + 2, y + 1), fill=P['ink'])
-        draw.point((x + 1, y), fill=P['slate'])
-    if direction == 'right':
-        im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    draw = ImageDraw.Draw(im)
-    if name == 'tavian':
-        cuff = 4 if direction in ('up', 'left') else 11
-        draw.line((cuff, 11, cuff + 1, 11), fill=P['eden'])
-    if pose in (12, 13):
-        x = 11 if pose == 12 else 2
-        draw.rectangle((x, 9, x + 2, 10), fill=P['ink'])
-        draw.line((x, 9, x + 1, 9), fill=trim)
-    # Model the brow, cheek and jacket independently of travel orientation.
-    def shade(color, delta):
-        return tuple(max(0,min(255,c+delta)) for c in ImageColor.getrgb(color)) + (255,)
-    head_y = int(frame != 0)
-    for y in range(1,13):
-        for x in range(3,13):
-            p=im.getpixel((x,y))
-            if p == ImageColor.getrgb(hair)+(255,) and x in (4,5,6) and y==2+head_y:
-                im.putpixel((x,y),shade(hair,23))
-            if p == ImageColor.getrgb(skin)+(255,) and (x>=10 or y==7+head_y):
-                im.putpixel((x,y),shade(skin,-25))
-            if p == ImageColor.getrgb(coat)+(255,) and x>=10:
-                im.putpixel((x,y),shade(coat,-18))
-    if name=='porter':
-        draw.rectangle((10,9,13,12),fill='#685240')
-        draw.line((10,9,13,9),fill='#c09c6e')
-    elif name=='lanternkeeper':
-        draw.rectangle((2,11,4,14),fill='#655a45')
-        draw.point((3,12),fill='#efcb82')
-    elif name=='edda':
-        draw.line((5,3+head_y,9,2+head_y),fill='#e0d9bd')
-    if pose == 14:
-        draw.line((6, 6, 9, 6), fill=hair)
-    return im
-
-directions = ('down', 'left', 'right', 'up')
-sheet = Image.new('RGBA', (16 * 15, 16 * len(HUMANS)))
-for row, name in enumerate(HUMANS):
-    for col in range(15):
-        direction = directions[col // 3] if col < 12 else 'down'
-        sheet.paste(map_person(name, direction, col % 3 if col < 12 else 0, col), (col * 16, row * 16))
-sheet.save(OUT/'people.png', optimize=True)
-
-SPECIES=['rillik','muddren','gleamwing','tressel','rift-wretch']
 def creature(name,side='right',frame=0,large=False):
     im=Image.new('RGBA',(48,48));d=ImageDraw.Draw(im)
     def r(box,c):d.rectangle(box,fill=P.get(c,c))
@@ -439,83 +324,6 @@ def creature(name,side='right',frame=0,large=False):
     if side=='left':im=im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     if not large:im=im.resize((16,16),Image.Resampling.NEAREST)
     return im
-# The small sprites have their own silhouettes and face placements at map scale.
-# k = outline, c = body, l = light plane, a = species marking, e = eye.
-FIELD_MONSTERS = {
-    'rillik': (('#638897', '#A5BFBC', '#A9E2BC'), [
-        '..kk....kk....', '..klk..klk....', '..klckkclk....', '...kcccck.....',
-        '..kcccccck....', '..kecclcek..ak', '..kllkkllk.kak', '...kllllckkck.',
-        '...kacccckcck.', '..kcccccclkk..', '..kllkkcllk...', '..kkk..kkk....'], [
-        '....k...kk....', '...klk.klk....', '...klckcck....', '..kcccccck....',
-        '.kecllccck..ak', 'kklllkccck.kak', '.klllcccckkck.', '..kkaccccccck.',
-        '...kccccccck..', '..kllkkccclk..', '..kkk..kkkk...']),
-    'muddren': (('#7A8868', '#BAC096', '#CDB47E'), [
-        '....kk..kk....', '..kkalkkalk...', '.kaallccllak..', '.kllccaccllck.',
-        '..kccallccck..', '.kccccllcccck.', '.kceclllleckk.', '.kllllkllllk..',
-        '..kllaaallk...', '.kllkkcckllk..', '.kkk.....kkk..'], [
-        '......kk......', '....kkalk.kk..', '...kalclkkalk.', '..kllccclcllk.',
-        '..kcccccccllck', '.kkccccacccclk', 'kecllccccccck.', 'klllllcccclk..',
-        '.kllkkcccllk..', '..kkk...kkk...']),
-    'gleamwing': (('#41857C', '#E1D8A7', '#A0DFB8'), [
-        'kk..........kk', 'klkk.k..k.kklk', 'klllk.ak.klllk', '.klalkkkklalk.',
-        '.klaaceecaalk.', '..kllkcckllk..', '...kkkcckkk...', '..kllkcckllk..',
-        '.kllk.kc.kllk.', '..kk..kk..kk..'], [
-        '.......kk.....', '.....kkllkk...', '..k.klllaalk..', '...klllaallk..',
-        '..kkecllllk...', '.kllcckkk.....', '..kkccccllk...', '....kccclllk..',
-        '.....kkckkk...', '.......kk.....']),
-    'tressel': (('#B58259', '#E0BE8E', '#E6CC87'), [
-        '..kk....kk....', '..klk..klk....', '..kcckkcck....', '..kcccccck..kk',
-        '..kellllek.kak', '..kllkkllk..ak', '...kllllck.kak', '...kccccckkck.',
-        '...kclllccck..', '..kllkkcllk...', '..kkk..kkk....'], [
-        '...kk...k.....', '...klk.klk....', '..kcccccck....', '.kecllccck..kk',
-        'kkllllccck.kak', '.kkllcccck..ak', '...kccccckkak.', '...kcllcccck..',
-        '..kllkkccclk..', '..kkk...kkk...']),
-    'rift-wretch': (('#58455F', '#B68EB8', '#9FD6B1'), [
-        '....kk........', '..k.kck...kk..', '..kkklck.kck..', '..kccclkkck...',
-        '.kkcaacclcckk.', 'kcccccclleaack', '..kkcclckkk...', '..kcllccck....',
-        '.kklk.kccck.k.', 'kck...kckkck..', '......klk.....', '.......k......'], [
-        '.....kk.......', '...k.klk..k...', '...kkkclkkck..', '.kkccllcck....',
-        'kaaelccck.kk..', '.kcllkkcck....', '..kkcclkkck...', '.klk.kclck....',
-        '.kk..kcck.kk..', '....klkk......', '....kk........']),
-}
-
-def field_creature(name, direction, step):
-    colors, front, profile = FIELD_MONSTERS[name]
-    palette = dict(zip('cla', colors), k=P['ink'], e=P['ink'])
-    side = direction in ('left', 'right')
-    rows = profile if side else front
-    if direction == 'up':
-        # Hide the face behind a continuous back, retaining the ears, crest and tail.
-        rows = [row.replace('e', 'c').replace('llkkll', 'ccllcc') for row in rows]
-        middle = len(rows) // 2
-        rows[middle] = rows[middle][:4] + 'cllc' + rows[middle][8:]
-    im = Image.new('RGBA', (16, 16))
-    y = 16 - len(rows) - int(name == 'gleamwing')
-    if step:
-        # A lifted trailing foot or wingtip changes the silhouette at this scale.
-        rows = rows.copy()
-        rows[-1] = rows[-1][:len(rows[-1]) // 2] + rows[-1][len(rows[-1]) // 2:].replace('k', '.')
-        y -= int(name == 'gleamwing' or name == 'rift-wretch')
-    stamp(im, rows, palette, 1, y)
-    if direction == 'right':
-        im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
-    # Give the torso an underside while keeping the eyes and species markings intact.
-    base = ImageColor.getrgb(palette['c'])
-    underside = tuple(max(0, v - 17) for v in base) + (255,)
-    for py in range(7,15):
-        for px in range(1,15):
-            if im.getpixel((px,py))[:3] == base:
-                below = im.getpixel((px,py+1))
-                if below[3] == 0 or below[:3] == ImageColor.getrgb(P['ink']):
-                    im.putpixel((px,py), underside)
-    return im
-
-monsters = Image.new('RGBA', (16 * 8, 16 * len(SPECIES)))
-for row, name in enumerate(SPECIES):
-    for index, direction in enumerate(directions):
-        for step in (0, 1):
-            monsters.paste(field_creature(name, direction, step), (16 * (index * 2 + step), 16 * row))
-monsters.save(OUT/'mesomon.png', optimize=True)
 def battle_creature(name):
     im = creature(name,large=True)
     d = ImageDraw.Draw(im)
@@ -657,16 +465,39 @@ def scenery():
     d.ellipse((12,26,23,37),fill='#47473b',outline='#b9965c',width=2)
     d.ellipse((15,29,20,34),fill='#94764e',outline='#594e37')
     d.line((17,31,23,28),fill='#e0bc78')
-    # A sluice wheel mounted on a cast-iron pedestal.
-    d.polygon([(51,27),(56,23),(73,23),(78,27),(75,30),(52,30)],fill='#39474a')
-    d.polygon([(55,26),(59,14),(69,14),(73,27)],fill='#60716c')
-    d.ellipse((51,1,76,26),fill='#293c40')
-    d.ellipse((53,3,74,24),fill='#748079',outline='#bd9961',width=2)
-    d.ellipse((56,6,71,21),fill='#344b4b')
-    for tip in ((64,4),(72,8),(73,17),(66,23),(57,21),(54,13),(57,6)):
-        d.line((64,14,*tip),fill='#a48c63',width=2)
-    d.arc((52,2,75,25),175,292,fill='#e4c48b',width=2)
-    d.ellipse((60,10,67,17),fill='#544d3d',outline='#d0ab6d',width=2)
+    # The iron stand is keyed into the stone. The near wheel faces slightly
+    # left, revealing the thickness of its rim, axle and right-hand bearing.
+    d.polygon([(50,27),(56,23),(72,23),(78,26),(77,30),(54,31),(50,29)],fill='#263b41')
+    d.polygon([(50,26),(56,23),(72,23),(76,26),(70,28),(54,29)],fill='#71847c')
+    d.line((51,26,55,28,70,27),fill='#a4a58a')
+    d.polygon([(55,26),(60,16),(65,14),(72,16),(74,25),(69,27)],fill='#3d5554')
+    d.line((67,16,71,18,73,24),fill='#819084',width=2)
+    for x,y in ((54,27),(73,25)):
+        d.line((x,y,x+1,y),fill='#ccb789')
+    # The openings between the spokes expose the shaft and the stone beyond.
+    d.ellipse((65,10,75,18),fill='#425653',outline='#233a3d')
+    d.line((68,11,73,11),fill='#91a193')
+    d.ellipse((55,2,77,25),outline='#21383d',width=3)
+    d.arc((55,2,77,25),272,91,fill='#6a684f',width=2)
+    d.arc((54,2,76,25),285,62,fill='#85917a')
+    d.ellipse((51,1,74,25),outline='#5b5242',width=3)
+    d.arc((51,1,74,25),139,298,fill='#bf9a68',width=3)
+    d.arc((51,1,74,25),190,271,fill='#efd29a')
+    d.arc((51,1,74,25),305,97,fill='#97754f',width=2)
+    d.arc((54,4,71,22),353,132,fill='#c5a97a')
+    d.arc((54,4,71,22),158,275,fill='#796a4b')
+    for tx,ty in ((60,3),(71,7),(72,17),(65,23),(54,19),(52,10)):
+        d.line((62,13,tx,ty),fill='#4e5548',width=3)
+        d.line((62,12,tx,ty-1),fill='#b09264',width=2)
+        d.line((62,12,(tx+62)//2,(ty+12)//2),fill='#d8b883')
+    d.ellipse((58,9,67,18),fill='#3a4c47')
+    d.ellipse((58,9,65,16),fill='#a78a5d',outline='#cfac77')
+    d.rectangle((60,11,63,14),fill='#695d48')
+    d.line((60,11,62,11),fill='#edca8b')
+    # A turned wooden handgrip breaks the wheel's outline on the lower left.
+    d.line((55,20,52,24),fill='#33403c',width=3)
+    d.line((54,21,51,24),fill='#885b44',width=3)
+    d.line((53,21,51,23),fill='#d49c6d')
     # High prow and swept transom, painted at an angle to the quay.
     d.polygon([(81,21),(87,14),(104,6),(124,4),(122,14),(111,23),(92,29),(84,28)],fill='#284a52')
     d.polygon([(81,19),(87,12),(106,4),(126,2),(123,13),(111,21),(91,27),(83,25)],fill='#493f37')
@@ -681,136 +512,15 @@ def scenery():
 
 scenery().save(OUT/'scenery.png', optimize=True)
 
-def harbor_cover():
-    im = Image.new('RGBA', (320,180), '#b5c0aa')
-    d = ImageDraw.Draw(im)
-    def poly(points,color):
-        d.polygon(points,fill=color)
-    def line(points,color,width=1):
-        d.line(points,fill=color,width=width)
-    def box(points,color):
-        d.rectangle(points,fill=color)
-    # Warm estuary light separates the remote skyline, breakwater and working quay.
-    for y,c in ((13,'#c1c8ad'),(29,'#d9cfac'),(43,'#e3d0a6')):
-        box((0,y,319,64),c)
-    d.ellipse((207,17,228,38),fill='#f0ddb0')
-    for x,y,w in [(9,19,44),(83,9,26),(139,27,31),(254,15,39)]:
-        poly([(x,y+2),(x+6,y),(x+w-7,y),(x+w,y+2)],'#d8d4b6')
-    poly([(0,49),(17,44),(35,45),(52,40),(76,46),(94,44),(117,50),(145,42),(160,41),(179,45),(208,39),(232,42),(255,36),(281,43),(300,38),(319,42),(319,67),(0,67)],'#9cae9d')
-    for x,y,w,h in [(0,52,25,8),(27,48,15,12),(48,47,30,13),(86,50,16,10),(126,49,24,11),(154,46,17,14),(178,50,21,10),(255,48,29,12),(290,45,31,15)]:
-        box((x,y,x+w,y+h),'#78958a')
-        poly([(x-2,y),(x+4,y-5),(x+w-5,y-5),(x+w+2,y)],'#6d8a82')
-    box((0,61,319,179),'#49767a')
-    for y,spacing in [(65,37),(70,51),(77,49),(85,54),(97,72),(113,91),(134,116)]:
-        for x in range(-(y%9),320,spacing):
-            w=spacing//3
-            line((x,y,x+w,y,x+w+2,y-1),'#67928c')
-    for i in range(9):
-        w=3+i*2
-        line((218-w+i%3,65+3*i,218+w-i%4,65+3*i),'#b5b497')
-    # The distant tide beacon and its sloping breakwater.
-    poly([(226,64),(245,56),(287,57),(319,53),(319,67),(254,68)],'#516f70')
-    box((260,33,267,57),'#c6b799')
-    poly([(264,34),(267,34),(268,57),(265,57)],'#8a8f80')
-    box((258,32,269,34),'#455f60')
-    box((260,27,267,31),'#556864')
-    box((261,28,263,31),'#e6c881')
-    poly([(258,27),(264,21),(270,27)],'#536661')
-    # A foreground customs house with a side elevation and an overhanging roof.
-    poly([(0,76),(75,64),(105,74),(105,99),(0,123)],'#746d59')
-    poly([(0,67),(60,55),(60,93),(0,109)],'#c5a984')
-    poly([(60,55),(90,63),(90,88),(60,93)],'#947d65')
-    poly([(-7,67),(17,37),(59,33),(67,53)],'#885746')
-    poly([(17,37),(45,32),(76,35),(92,61),(65,56),(57,37)],'#aa7054')
-    line((0,66,64,53,91,61),'#4f5042',3)
-    for x,y in ((8,75),(27,71),(46,67),(68,66)):
-        box((x,y,x+7,y+12),'#655e4e')
-        box((x+1,y+1,x+5,y+9),'#527473')
-        line((x+2,y+2,x+4,y+2),'#abc0a8')
-        line((x+3,y+1,x+3,y+10),'#987951')
-    box((31,26,36,37),'#82654f')
-    box((29,25,37,27),'#afa080')
-    # A moored vessel behind the near jetty. Rigging stays open against the sky.
-    poly([(93,82),(112,84),(149,82),(156,77),(149,89),(103,95)],'#344d50')
-    line((94,82,109,85,146,82,154,78),'#d1b580',2)
-    line((121,83,121,35),'#6f6650',2)
-    line((97,83,121,36,150,81),'#78857b')
-    poly([(119,41),(117,73),(100,77)],'#d7c8a1')
-    poly([(124,44),(142,70),(124,74)],'#b9b599')
-    line((119,76,145,70),'#766e57',2)
-    # Pier beams and pilings cast separate shadows into the tidal water.
-    for x,y in [(10,123),(64,108),(107,100),(171,126),(237,109),(292,97)]:
-        poly([(x,y),(x+6,y-1),(x+5,y+23),(x+1,y+25)],'#334d50')
-        line((x+1,y+3,x+1,y+18),'#786e56',2)
-        line((x+2,y+25,x+13,y+25),'#365e65')
-    poly([(0,110),(99,84),(113,96),(0,128)],'#715a46')
-    poly([(0,108),(99,82),(113,91),(0,122)],'#ae8a62')
-    line((0,122,113,91),'#d1ac78',2)
-    poly([(60,180),(60,153),(305,78),(319,81),(319,180)],'#4a4840')
-    poly([(60,151),(303,77),(319,81),(319,105),(102,179),(60,179)],'#b3936a')
-    for x in range(60,334,13):
-        y=151-(x-60)*74//243
-        line((x,y,x+28,y+12),'#876e52')
-        line((x+1,y,x+28,y+11),'#c2a178')
-    line((92,179,319,103),'#d5b382',3)
-    poly([(106,180),(319,109),(319,116),(132,180)],'#725b47')
-    # A timber jib frames the harbor panorama on the right.
-    for pts,color,width in [
-        ((278,102,278,6),'#353d37',10),((275,100,275,7),'#a68055',4),
-        ((279,66,238,31),'#534b3a',7),((278,62,239,29),'#ae885c',3),
-        ((292,-6,225,28),'#423f34',9),((292,-8,224,26),'#b58f63',4),
-        ((225,28,225,58),'#575c4f',1),((228,28,228,58),'#73755f',1),
-        ((248,105,276,67,299,94),'#514a3b',6)]:
-        line(pts,color,width)
-    d.ellipse((221,25,230,34),fill='#454b40',outline='#ae935e',width=2)
-    line((225,58,222,61,225,65,229,63),'#50574b',2)
-    # Distinct foreground silhouettes bookend the two travelers.
-    for x,y in ((104,147),(205,116),(298,88)):
-        box((x,y-7,x+5,y+4),'#575241')
-        d.ellipse((x-1,y-9,x+6,y-5),fill='#d0ad7a',outline='#796549')
-    # Retaining beams hold up the near face of the jetty. A net hangs over the cap.
-    for x in range(121,330,34):
-        y=178-(x-100)//3
-        poly([(x,y+3),(x+7,y),(x+7,179),(x+2,179)],'#5d5141')
-        line((x+2,y+4,x+2,179),'#71614b',2)
-    for i in range(8):
-        x=247+i*5
-        y=130-i*2
-        line((x,y,x+4,y+17,x+8,y+20),'#8c8769')
-        line((x,y+15,x+7,y+6),'#838068')
-    for x,y in ((275,97),(297,90),(297,74)):
-        poly([(x,y),(x+13,y-5),(x+24,y),(x+10,y+6)],'#b79366')
-        poly([(x,y),(x+10,y+6),(x+10,y+20),(x,y+14)],'#90704e')
-        poly([(x+10,y+6),(x+24,y),(x+24,y+14),(x+10,y+20)],'#745d45')
-        line((x+2,y+3,x+9,y+16),'#b08c61',2)
-        line((x+12,y+16,x+22,y+3),'#9c7953',2)
-    d.ellipse((149,133,183,139),fill='#776c54')
-    d.ellipse((178,128,211,134),fill='#776c54')
-    # Tavian turns back from the quay, his windblown scarf and cuff catching the light.
-    poly([(155,135),(157,127),(159,119),(157,116),(155,121),(152,121),(153,114),
-          (157,109),(157,106),(155,103),(157,97),(163,95),(169,96),(171,100),
-          (170,105),(168,108),(173,113),(175,120),(173,123),(170,120),
-          (168,124),(170,132),(173,134),(172,136),(167,136),(163,126),
-          (160,132),(160,136),(154,137)],'#263c40')
-    poly([(156,114),(159,109),(166,108),(170,110),(173,117),(170,118),
-          (167,115),(167,122),(158,123),(159,115),(155,119)],'#487879')
-    poly([(157,113),(159,110),(163,110),(160,114)],'#76a19a')
-    poly([(158,101),(163,99),(168,101),(168,104),(166,107),(162,108),(158,105)],'#c2936c')
-    line((166,102,166,104,164,106),'#a37858')
-    line((157,101,161,99,165,99,169,101),'#35494a',2)
-    line((157,98,160,96,165,96),'#647a71')
-    d.point((159,103),fill='#364340')
-    poly([(158,108),(163,109),(167,107),(169,109),(163,113),(158,111)],'#c19b66')
-    poly([(163,110),(157,112),(151,110),(147,112),(151,108),(157,110)],'#bd8d58')
-    line((171,117,173,117),'#a2d7b4',2)
-    line((159,122,167,111),'#795e46',2)
-    box((157,119,161,124),'#8c6e4e')
-    line((157,119,161,119),'#c19b63')
-    line((157,134,159,133),'#657469',2)
-    im.alpha_composite(creature('rillik',large=True),(175,95))
-    return im
-
-harbor_cover().save(OUT/'cover.png',optimize=True)
+# The phone title and its smaller discovery card share one illustration.
+with Image.open(ROOT / 'art/mesomon/title/port-marche.png') as master:
+    ImageOps.fit(master.convert('RGB'), (1280, 720), Image.Resampling.LANCZOS).save(
+        OUT / 'cover.webp', 'WEBP', quality=88, method=6
+    )
+with Image.open(OUT / 'cover.webp') as plate:
+    plate.resize((320, 180), Image.Resampling.LANCZOS).quantize(
+        colors=192, dither=Image.Dither.NONE
+    ).save(OUT / 'cover.png', optimize=True)
 
 def fieldcase():
     """A brass cuff rests on its side in the felt-lined field instrument case."""
@@ -902,7 +612,7 @@ for size in (192, 512):
 field_plates = [f'field-guide/{name}.webp' for name in SPECIES]
 battle_scenes = [f'battle-scenes-v1/{key}.webp' for key in ('passage-encounter', 'gleamwing-encounter', 'chamber-boss')]
 manifest = dict(
-    version=4, original=True, tileSize=16,
+    version=5, original=True, tileSize=16,
     scenery={'crane':dict(x=0,y=0,width=48,height=48),'wheel':dict(x=48,y=0,width=32,height=32),'skiff':dict(x=80,y=0,width=48,height=32)},
     people=dict(cell=[16, 16], frames=15, rows=HUMANS),
     creatures=dict(cell=[16, 16], frames=8, rows=SPECIES),
@@ -910,7 +620,7 @@ manifest = dict(
     fieldGuide=dict(size=[512, 512], files=field_plates),
     battleScenes=dict(version=1, size=[640, 576], files=battle_scenes),
     tiles={name: i for i, name in enumerate(TILES)},
-    assets=['harbor-tiles.png','people.png','mesomon.png','creature-battle-v1.png','portraits.png','cover.png','scenery.png','fieldcase.png']
+    assets=['harbor-tiles.png','people.png','mesomon.png','creature-battle-v1.png','portraits.png','cover.webp','cover.png','scenery.png','fieldcase.png']
         + [f'portraits/{name}.png' for name in HUMANS + SPECIES] + field_plates + battle_scenes,
 )
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

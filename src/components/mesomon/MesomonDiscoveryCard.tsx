@@ -10,7 +10,7 @@ export function MesomonDiscoveryCard() {
       className="group relative block overflow-hidden rounded-2xl border border-[#9fd6b1]/35 bg-[#102224] text-[#e8e1c6] shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9fd6b1]"
     >
       <img
-        src={MESOMON_ASSETS.cover}
+        src={MESOMON_ASSETS.coverThumbnail}
         alt=""
         loading="lazy"
         decoding="async"

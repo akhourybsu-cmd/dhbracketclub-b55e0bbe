@@ -768,10 +768,13 @@ async function audit(p, label) {
 async function auditFrame(p, label) {
   const canvas = p.locator('.mesomon canvas');
   const samples = [
-    { name: 'ship deck', area: [0, 0, 160, 144], color: 0x916f50, minimum: 500 },
-    { name: 'sea', area: [0, 0, 160, 144], color: 0x315e65, minimum: 200 },
-    { name: 'Tavian coat', area: [72, 64, 16, 16], color: 0x467778, minimum: 12 },
-    { name: 'Tavian hair', area: [72, 64, 16, 16], color: 0x304346, minimum: 12 },
+    // The camera follows the traveler, so the two bands of teak can move
+    // across the display. Sample the centered coat and hair separately.
+    { name: 'sunlit teak', area: [0, 0, 160, 144], rgb: [191, 149, 95], tolerance: 11, minimum: 500 },
+    { name: 'starboard shade', area: [0, 0, 160, 144], rgb: [163, 129, 92], tolerance: 11, minimum: 400 },
+    { name: 'sea', area: [0, 0, 160, 144], rgb: [41, 89, 99], tolerance: 8, minimum: 200 },
+    { name: 'Tavian coat', area: [72, 64, 16, 16], rgb: [77, 125, 122], tolerance: 15, minimum: 12 },
+    { name: 'Tavian hair', area: [72, 64, 16, 16], rgb: [52, 72, 71], tolerance: 10, minimum: 12 },
   ];
   let reading;
   try {
@@ -784,11 +787,12 @@ async function auditFrame(p, label) {
         for (let i = 0; i < pixels.length; i += 4) {
           if (rgb(i) === 0x00ff00 && pixels[i + 3]) missingGreen++;
         }
-        const counts = samples.map(({ name, area: [left, top, w, h], color, minimum }) => {
+        const counts = samples.map(({ name, area: [left, top, w, h], rgb: [r, g, b], tolerance, minimum }) => {
           let count = 0;
           for (let y = top; y < top + h; y++) for (let x = left; x < left + w; x++) {
             const i = 4 * (y * width + x);
-            if (pixels[i + 3] === 255 && rgb(i) === color) count++;
+            if (pixels[i + 3] === 255 && Math.abs(pixels[i] - r) <= tolerance
+                && Math.abs(pixels[i + 1] - g) <= tolerance && Math.abs(pixels[i + 2] - b) <= tolerance) count++;
           }
           return { name, count, minimum };
         });

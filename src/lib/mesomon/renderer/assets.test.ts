@@ -24,6 +24,7 @@ describe('Mesomon original asset geometry', () => {
       expect(frame.y + frame.height).toBeLessThanOrEqual(height);
     }
     expect(dimensions('cover.png')).toEqual([320, 180]);
+    expect(readFileSync(resolve(root, 'cover.webp')).subarray(8, 12).toString()).toBe('WEBP');
     expect(dimensions('fieldcase.png')).toEqual([216, 90]);
   });
   it('ships every manifest asset and an individual portrait for every named character and species', () => {
@@ -34,6 +35,9 @@ describe('Mesomon original asset geometry', () => {
       fieldGuide: { size: number[]; files: string[] };
     };
     expect(manifest.version).toBe(MESOMON_ASSETS.version);
+    for (const url of [MESOMON_ASSETS.people, MESOMON_ASSETS.creatures, MESOMON_ASSETS.scenery]) {
+      expect(url.endsWith(`?v=${manifest.version}`)).toBe(true);
+    }
     expect(manifest.scenery).toEqual(SCENERY);
     expect(manifest.people.cell).toEqual([16, 16]);
     expect(manifest.creatures.cell).toEqual([16, 16]);
@@ -66,7 +70,7 @@ describe('Mesomon original asset geometry', () => {
     expect(dialoguePortrait('Field note')).toBeNull();
   });
   it('keeps speaker portraits on the fixed asset path', () => {
-    expect(portraitUrl('Nia')).toBe(`/games/mesomon/portraits/nia.png?v=${MESOMON_ASSETS.version}`);
-    expect(portraitUrl('../../auth')).toBe(`/games/mesomon/portraits/tavian.png?v=${MESOMON_ASSETS.version}`);
+    expect(portraitUrl('Nia')).toBe('/games/mesomon/portraits/nia.png?v=4');
+    expect(portraitUrl('../../auth')).toBe('/games/mesomon/portraits/tavian.png?v=4');
   });
 });

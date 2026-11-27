@@ -1,3 +1,4 @@
+import { interiorBrushes } from './interiorBrushes';
 import type { MapDefinition, MapId } from '../types';
 import { paintWorkshop } from './workshop';
 
@@ -13,38 +14,60 @@ export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefini
     });
   }
   ctx.clip();
-  const colors = timber ? ['#a18162', '#99785c', '#9b7d61', '#a48262'] : ['#70817c', '#73837c', '#76867e', '#70817d'];
-  const shadedTimber = ['#8c6e56', '#927259', '#95785c', '#96765b'];
-  const course = timber ? 9 : 13;
-  for (let row = 0; row * course < map.height * 16; row++) {
-    let x = -(row % 3) * 13;
-    for (let col = 0; x < map.width * 16; col++) {
-      const hash = row * 37 + col * 23 + (row ^ col) * 7;
-      const width = (timber ? 40 : 26) + hash % 17;
-      const y = row * course;
-      const grain = (hash >>> 2) % colors.length;
-      const byWall = x + width / 2 < 51 || x + width / 2 > 209 || (y > 179 && hash % 4 !== 0);
-      ctx.fillStyle = timber && byWall ? shadedTimber[grain] : colors[grain];
-      ctx.fillRect(x, y, width, course);
-      ctx.fillStyle = timber ? '#7f6652' : '#606f6c';
-      ctx.fillRect(x, y + course - 1, width, 1);
-      ctx.fillRect(x, y + 1, 1, course - 2);
-      ctx.fillStyle = timber ? (byWall ? '#a08061' : '#ad8c6b') : '#89958b';
-      ctx.fillRect(x + 2, y, width - (hash % 8) - 6, 1);
-      if (hash % 5 === 0) {
-        ctx.fillStyle = timber ? '#7d654f' : '#687b75';
-        ctx.fillRect(x + 3, y + 4, timber ? 1 : 3, 1);
+  const width = map.width * 16, height = map.height * 16;
+  const surface = timber ? ['#946f51', '#997758', '#a17d5c', '#9d795b', '#987657']
+    : ['#657975', '#697d78', '#6d8079', '#697c77', '#677c77'];
+  const strip = (ink: string, x: number, y: number, w: number, h = 1) => {
+    ctx.fillStyle = ink;
+    ctx.fillRect(x, y, w, h);
+  };
+  // These are joined boards and flagstones. Seams sit inside a course,
+  // with rubbed-away highlights and a stagger independent of the tile grid.
+  let y = 0;
+  for (let row = 0; y < height; row++) {
+    const course = timber ? [8, 9, 11, 9, 10][row % 5] : [13, 16, 12, 15, 16][row % 5];
+    let x = -((row * 29) % (timber ? 46 : 30));
+    for (let col = 0; x < width; col++) {
+      const grain = ((row + 3) * 277 + (col + 11) * 571 + row * col * 509) >>> 0;
+      const span = (timber ? 34 : 27) + grain % (timber ? 37 : 23);
+      strip(surface[(grain >>> 4) % surface.length], x, y, span, course);
+      strip(timber ? '#735b475e' : '#354f4e63', x, y + course - 1, span);
+      strip(timber ? '#624b3f60' : '#3e585555', x, y + 1, 1, course - 2);
+      strip(timber ? '#d8ad793d' : '#b9b99c3d', x + 1, y, span - 4 - grain % 15);
+      if (timber && grain % 4 === 0) {
+        const knot = x + 8 + grain % 9;
+        strip('#6e533d59', knot - 3, y + 4, 10);
+        strip('#6e533d66', knot + 7, y + 3, 5);
+        strip('#6e533d66', knot + 12, y + 4, 6);
+        strip('#d8b18048', knot + 4, y + 5, 9);
+      } else if (!timber && grain % 3 === 0) {
+        strip('#445f5955', x + 1, y + 1, 3);
+        strip('#b5b8a042', x + 4, y + 2, 3);
+        strip('#455e574a', x + span - 3, y + course - 2, 2);
       }
-      if (timber && (hash >>> 2) % 5 === 1) {
-        // Worn knots and tapering grain keep the wide boards from reading
-        // as rectangular floor tiles. Their contrast stays below the clues.
-        ctx.fillStyle = byWall ? '#816650' : '#8c7056';
-        ctx.fillRect(x + 10, y + 4, 6, 1);
-        ctx.fillRect(x + 16, y + 3, 5, 1);
-        ctx.fillRect(x + 20, y + 4, 11, 1);
-        ctx.fillRect(x + 17, y + 5, 3, 1);
+      x += span;
+    }
+    y += course;
+  }
+
+  // Very broad bands of indirect light unify adjacent courses. Falloff is
+  // added in low-alpha passes so timber never changes stain at a tile edge.
+  for (let i = 0; i < 8; i++) {
+    const side = 2 + i * 4;
+    strip(timber ? '#302a340b' : '#142e390b', 0, 0, 32 + side, height);
+    strip(timber ? '#362b330d' : '#1734400c', width - 32 - side, 0, 32 + side, height);
+    strip(timber ? '#452e2d0b' : '#17344008', 0, height - 17 - side, width, 17 + side);
+  }
+  if (map.id === 'chamber') {
+    // Three grilles in the north wall rake reflected blue light across the
+    // stones. The diffuse spill crosses the masonry joints continuously.
+    for (const source of [65, 142, 216]) {
+      for (let dy = 0; dy < 34; dy++) {
+        const x = source + Math.floor(dy / 2);
+        const glow = dy < 11 ? '#add8c031' : dy < 23 ? '#b1dcc022' : '#a6d2be12';
+        strip(glow, x, 47 + dy, 12 + Math.floor(dy / 8));
+        strip(glow, x + 16 + Math.floor(dy / 8), 47 + dy, 8);
       }
-      x += width;
     }
   }
   ctx.restore();
@@ -53,24 +76,7 @@ export function paintInteriorFloor(ctx: CanvasRenderingContext2D, map: MapDefini
 /** All coordinates are map pixels. These illustrations are baked once per map. */
 export function paintInterior(ctx: CanvasRenderingContext2D, id: MapId, state: { pageFound?: boolean; sluiceOpen?: boolean } = {}) {
   if (!['workshop', 'passage', 'tide-stairs', 'chamber'].includes(id)) return;
-  const rect = (color: string, x: number, y: number, w: number, h: number) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-  };
-  // Integer raster lines keep ropes, tools and curved stonework on the same pixel grid as actors.
-  const line = (color: string, x: number, y: number, tx: number, ty: number) => {
-    const dx = Math.abs(tx - x), dy = -Math.abs(ty - y);
-    const sx = x < tx ? 1 : -1, sy = y < ty ? 1 : -1;
-    let error = dx + dy;
-    while (true) {
-      rect(color, x, y, 1, 1);
-      if (x === tx && y === ty) break;
-      const twice = 2 * error;
-      if (twice >= dy) { error += dy; x += sx; }
-      if (twice <= dx) { error += dx; y += sy; }
-    }
-  };
-
+  const { rect, line } = interiorBrushes(ctx);
   const iron = '#34464a', brass = '#b19864', timber = '#705a48';
   const post = (x: number, y: number, height: number) => {
     rect('#1e3036', x + 2, y + 2, 9, height);

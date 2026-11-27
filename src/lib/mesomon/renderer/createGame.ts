@@ -2,11 +2,13 @@ import type PhaserTypes from 'phaser';
 import type { Direction, GameSession, MapDefinition, MapObject, SpeciesId, TileKind } from '../types';
 import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, personArt, propArt } from '../assets';
 import { mountBattleBackdrop } from './battleStage';
+import { BATTLE_SHADOW_FOOT, prepareBattleShadows, shadowFrame } from './battleShadows';
 import { BATTLE_CELL, BATTLE_LANDING, BATTLE_POSES, BATTLE_RENDER_SCALE, FIELD_SCREEN, battleFrame, battleOpacity, battlePose, fighterMotion } from './battleMotion';
 import { impactDefense, paintBattleEffect } from './battleEffects';
 import { getBattleBeat, getBattleHitSide } from '../battlePlayback';
 import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
+import { paintFieldLighting } from './fieldLighting';
 import { paintTidalWater } from './tidalWater';
 import { paintChamberInstrument } from './chamberInstrument';
 import { paintExteriors } from './exteriors';
@@ -125,6 +127,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
     private nearbyTarget: string | undefined;
     private mapTexture: string | null = null;
     private background: PhaserTypes.GameObjects.Image | null = null;
+    private fieldLight: PhaserTypes.GameObjects.Image | null = null;
     private foreground: PhaserTypes.GameObjects.Image[] = [];
     private tavian: PhaserTypes.GameObjects.Sprite | null = null;
     private companion: PhaserTypes.GameObjects.Sprite | null = null;
@@ -133,6 +136,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
     private decorations: PhaserTypes.GameObjects.Graphics | null = null;
     private effects: PhaserTypes.GameObjects.Graphics | null = null;
     private battleSprites: PhaserTypes.GameObjects.Sprite[] = [];
+    private battleShadows: PhaserTypes.GameObjects.Image[] = [];
     private battleMode = false;
     private battleBeatKey = '';
     private beatElapsedMs = 0;
@@ -255,6 +259,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       const entering = this.mapId !== map.id;
       this.background?.destroy(); this.background = null;
       if (this.mapTexture) this.textures.remove(this.mapTexture);
+      if (this.fieldLight) {
+        const key = this.fieldLight.texture.key;
+        this.fieldLight.destroy();
+        this.textures.remove(key);
+        this.fieldLight = null;
+      }
       this.mapId = map.id; this.objectSignature = '';
       this.mapTexture = `ms:map:${map.id}`;
       const texture = this.textures.createCanvas(this.mapTexture, map.width * 16, map.height * 16);
@@ -296,6 +306,14 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         }
         // The same map data remains the collision source; these marks never add invisible blockers.
         texture.refresh(); this.background = this.add.image(0, 0, this.mapTexture).setOrigin(0).setDepth(-100);
+      }
+      const lightKey = `ms:lighting:${map.id}`;
+      const light = this.textures.createCanvas(lightKey, map.width * 16, map.height * 16);
+      if (light) {
+        paintFieldLighting(light.context, map, pageFound, tide.sealed);
+        light.refresh();
+        this.fieldLight = this.add.image(0, 0, lightKey).setOrigin(0).setDepth(2000)
+          .setBlendMode(Phaser.BlendModes.OVERLAY).setVisible(!this.battleMode);
       }
       this.cameras.main.setBounds(0, 0, map.width * 16, map.height * 16);
       if (entering) {
@@ -359,8 +377,10 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       this.hitSide = null;
       this.battleStage?.destroy(); this.battleStage = null;
       this.battleSprites.forEach(s => s.destroy()); this.battleSprites = [];
+      this.battleShadows.forEach(shadow => shadow.destroy()); this.battleShadows = [];
       this.background?.setVisible(!this.battleMode); this.objects.forEach(o => { o.sprite.setVisible(!this.battleMode); o.shadow?.setVisible(!this.battleMode); });
       this.foreground.forEach(image => image.setVisible(!this.battleMode));
+      this.fieldLight?.setVisible(!this.battleMode);
       // Between the stage and portraits, so spray and currents never hide the art.
       this.effects?.setDepth(this.battleMode ? 8900 : 10000);
       this.game.canvas.dataset.scene = this.battleMode ? 'battle' : 'field';
@@ -376,8 +396,13 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       camera.removeBounds().centerOn(FIELD_SCREEN.width / 2, FIELD_SCREEN.height / 2);
       this.battleStage = this.add.graphics().setDepth(8000);
       mountBattleBackdrop(this, this.battleStage, session.save.battle.id, getMap(session.save).ambience === 'harbor');
+      const shadows = prepareBattleShadows(this.textures);
       this.battleSprites = (['ally', 'enemy'] as const).map(side => {
         const foot = BATTLE_LANDING[side];
+        if (shadows) {
+          this.battleShadows.push(this.add.image(foot.x, foot.y - BATTLE_SHADOW_FOOT, shadows, 0)
+            .setOrigin(0.5, 0).setDepth(8500).setScale(1 / scale));
+        }
         return this.add.sprite(foot.x, foot.y, 'ms:battle', 0).setOrigin(0.5, 1).setScale(1 / scale).setFlipX(side === 'enemy').setDepth(9000);
       });
     }
@@ -419,7 +444,17 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         const pose = battlePose(side, cue, this.beatElapsedMs, reduced || (!conscious && cue === 'ready'));
         const frame = battleFrame(fighter.speciesId, pose.cel);
         if (Number(sprite.frame.name) !== frame) sprite.setFrame(frame);
-        sprite.setPosition(pose.x, pose.y).setAlpha(battleOpacity(conscious, side === this.hitSide, this.beatElapsedMs, reduced));
+        const opacity = battleOpacity(conscious, side === this.hitSide, this.beatElapsedMs, reduced);
+        sprite.setPosition(pose.x, pose.y).setAlpha(opacity);
+        const shadow = this.battleShadows[index];
+        if (shadow) {
+          const ground = BATTLE_LANDING[side].y;
+          const lift = Math.max(0, ground - pose.y);
+          const projectedFrame = shadowFrame(frame, side === 'enemy');
+          if (Number(shadow.frame.name) !== projectedFrame) shadow.setFrame(projectedFrame);
+          shadow.setPosition(pose.x + lift * 0.4, ground - BATTLE_SHADOW_FOOT)
+            .setAlpha(opacity * (fighter.speciesId === 'gleamwing' ? 0.24 : 0.35) / (1 + lift * 0.12));
+        }
         if (pose.spark && !beat?.cue) {
           const x = pose.x + (index === 0 ? 10 : -10), y = pose.y - 21;
           this.effects.fillStyle(0xffe6a0).fillRect(x - 3, y, 7, 1).fillRect(x, y - 3, 1, 7);

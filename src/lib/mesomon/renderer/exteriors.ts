@@ -50,20 +50,13 @@ function paintWorkingGear(p: Paint, zone: 'ship' | 'harbor') {
     p.ctx.translate(footprint.x * 16, footprint.y * 16);
     switch (footprint.id) {
       case 'mail-locker': {
-        // A marine dispatch locker with a curved, tarred lid, lashings and a brass seal.
-        p.polygon('#584c3b77', [1, 11], [46, 10], [50, 15], [48, 17], [3, 16]);
-        p.rect('#3e4946', 1, 3, 46, 11);
-        p.polygon('#49665f', [1, 3], [4, 0], [42, 0], [46, 3], [46, 7], [1, 7]);
-        p.rect('#839887', 5, 0, 36, 1);
-        p.rect('#607e70', 3, 2, 40, 3);
-        p.rect('#8e7657', 2, 8, 43, 5);
-        p.rect('#5d5040', 3, 13, 41, 2);
-        for (const x of [7, 37]) {
-          p.rect('#564f40', x, 0, 4, 14);
-          p.rect('#c3a77a', x + 1, 0, 2, 13);
-          p.rect('#ddd1a0', x + 1, 2, 2, 3);
-        }
-        p.rect('#d0b481', 22, 7, 5, 4); p.rect('#665842', 24, 8, 1, 2);
+        // The bulged lid overhangs its cedar case. The straps follow the same arc.
+        p.polygon('#343e3e55', [1, 12], [44, 11], [51, 16], [48, 18], [6, 17]);
+        p.rect('#493d32', 2, 6, 44, 9);
+        p.rect('#a27a51', 3, 7, 36, 6);
+        p.rect('#7b563e', 4, 12, 35, 2);
+        p.rect('#c6a06b', 3, 8, 35, 1);
+        p.rect('#5a5646', 7, 12, 2, 3); p.rect('#5a5646', 37, 12, 2, 3);
         break;
       }
       case 'raised-hatch':
@@ -73,6 +66,7 @@ function paintWorkingGear(p: Paint, zone: 'ship' | 'harbor') {
         break;
       case 'salt-store': {
         // Stacked salt boxes: lower boards, a split lid and white salt at the seams.
+        p.polygon('#34474352', [2,8],[42,6],[52,13],[52,31],[46,35],[8,33]);
         for (const [x, y, w, h] of [[1, 2, 23, 15], [25, 2, 21, 15], [2, 15, 29, 16], [32, 16, 14, 14]]) {
           p.rect('#5d5748', x, y, w, h);
           p.rect('#be9d75', x + 1, y, w - 3, h - 8);
@@ -82,6 +76,7 @@ function paintWorkingGear(p: Paint, zone: 'ship' | 'harbor') {
           for (const dx of [2, w - 5]) p.rect('#726854', x + dx, y, 2, h - 1);
           p.line('#d6c7a1', [x + 5, y + 2], [x + w - 7, y + h - 10]);
         }
+        p.polygon('#463f3954',[5,8],[37,7],[46,14],[39,17],[19,18],[8,15]);
         break;
       }
       case 'timber-stocks': {
@@ -173,6 +168,53 @@ function paintWorkingGear(p: Paint, zone: 'ship' | 'harbor') {
   }
 }
 
+// Freestanding upper parts are sorted by their feet, so the rear aisle passes behind them.
+function lockerLid(ctx: CanvasRenderingContext2D) {
+  const p = pixels(ctx);
+  ctx.save();
+  ctx.translate(0, 5);
+  p.polygon('#374e4e', [0,4],[2,0],[7,-3],[39,-3],[44,-1],[47,3],[47,7],[43,9],[2,9],[0,7]);
+  p.polygon('#5f847d', [1,4],[3,0],[8,-2],[36,-2],[41,0],[41,4]);
+  p.polygon('#87a899', [3,1],[8,-2],[36,-2],[39,-1],[9,0],[5,2]);
+  p.rect('#4c706a', 2, 4, 38, 2);
+  p.rect('#2e4c4d', 2, 7, 38, 2);
+  p.polygon('#3c5d58', [39,-2],[44,0],[46,3],[46,7],[41,8],[41,3]);
+  p.rect('#d4ac70', 3, 8, 36, 1);
+  for (const x of [7, 37]) {
+    p.polygon('#645840', [x+1,-2],[x+4,-2],[x+2,2],[x+2,8],[x+1,9],[x+1,14],[x-2,14],[x-2,8],[x-1,6],[x-1,2]);
+    p.line('#ecc88b', [x+2,-2],[x,1],[x,4]);
+    p.rect('#bb985d',x-1,5,2,4); p.rect('#9e804f',x-1,10,2,3);
+    p.rect('#d4ad75',x-1,12,1,1);
+  }
+  p.rect('#574735', 21, 7, 6, 6);
+  p.rect('#deb776', 21, 7, 5, 4); p.rect('#806440', 23, 8, 1, 2);
+  ctx.restore();
+}
+
+function saltAwning(ctx: CanvasRenderingContext2D) {
+  const p = pixels(ctx);
+  // Two short masts carry the back rope; the front spar sags between them.
+  p.rect('#514b40', 4, 0, 3, 27); p.rect('#b69a68', 4, 1, 1, 25);
+  p.rect('#4f5146', 41, 2, 3, 23); p.rect('#89765a', 41, 3, 1, 20);
+  p.polygon('#625e4d',[2,2],[12,3],[30,4],[40,2],[44,15],[42,19],[31,22],[17,22],[6,20]);
+  p.polygon('#c49d70',[3,2],[13,4],[29,5],[39,3],[42,15],[30,18],[17,18],[6,16]);
+  p.polygon('#d5b68a',[3,2],[13,4],[17,6],[17,17],[7,15]);
+  p.polygon('#ab865e',[27,5],[36,4],[39,3],[42,15],[29,18],[32,13]);
+  p.polygon('#9a7251',[6,16],[17,18],[30,18],[42,15],[42,18],[30,21],[18,21],[6,19]);
+  p.line('#ead0a2',[3,2],[13,4],[25,5]); p.line('#82684e',[20,6],[21,11],[20,17]);
+  p.line('#e2bd8a',[6,16],[17,18],[29,18]); p.line('#a0a391',[6,19],[7,23],[9,26]);
+  p.line('#b5976c',[42,17],[43,19],[42,25]);
+}
+
+const locker = exteriorObstacles.ship.find(piece => piece.id === 'mail-locker')!;
+const saltStore = exteriorObstacles.harbor.find(piece => piece.id === 'salt-store')!;
+export const exteriorRelief = [
+  { id: 'mail-locker-lid', mapId: 'ship', x: locker.x * 16, y: locker.y * 16 - 8,
+    width: 48, height: 20, footY: (locker.y + locker.height) * 16 - 1, paint: lockerLid },
+  { id: 'salt-store-canopy', mapId: 'harbor', x: saltStore.x * 16, y: saltStore.y * 16 - 8,
+    width: 46, height: 28, footY: (saltStore.y + saltStore.height) * 16 - 1, paint: saltAwning },
+] as const;
+
 function post(p: Paint, x: number, foot: number, height: number) {
   p.polygon('#253e4188',[x-3,foot-1],[x+3,foot-1],[x+10,foot+3],[x+3,foot+4]);
   p.rect(darkWood,x-3,foot-height,6,height);
@@ -230,6 +272,11 @@ function deckhouses(p: Paint) {
     p.rect('#6c5b48', x + 1, 94, 42, 2);
     p.polygon('#3a504e', [x - 1, 77], [x + 4, 53], [x + 10, 47], [end - 8, 47], [end - 3, 52], [end + 1, 77], [end - 1, 80], [x, 80]);
     p.polygon(port ? '#77948a' : '#958b71', [x, 75], [x + 5, 54], [x + 10, 48], [end - 9, 48], [end - 5, 53], [end - 2, 75]);
+    // The rolled shoulder turns out of the sun at the right edge of each roof.
+    p.polygon(port ? '#496e69' : '#716e61',[end-12,48],[end-9,48],[end-5,53],[end-2,75],[end-8,75],[end-10,54]);
+    p.polygon(port ? '#94aea0' : '#b8ac89',[x+2,72],[x+6,54],[x+11,49],[x+14,49],[x+9,56],[x+5,72]);
+    p.rect('#4a4f43', x+1, 79, 40, 3);
+    p.polygon('#615a455c',[x+1,81],[end-2,81],[end-1,85],[x+5,84]);
     p.line(port ? '#b3c0a9' : '#ccbd96', [x + 1, 74], [x + 6, 54], [x + 11, 49], [end - 10, 49]);
     p.line(brass, [x, 77], [end, 77]);
     if (port) {
@@ -313,6 +360,41 @@ function rescueBoat(p: Paint) {
   }
 }
 
+/** Fore-and-aft teak bends into the curved margin at the transom. A shipwright
+ * staggers the butt joints between strakes; no joint runs across the whole deck. */
+function afterdeck(p: Paint) {
+  const wood = ['#a7835c','#b08a60','#a78258','#b39068','#af8b63','#a7825d'];
+  const left = 54, span = 146, count = 15;
+  const section = (board: number, y: number) => {
+    const inset = Math.max(0, y - 171) * .65;
+    return Math.round(left + inset + (span - 2 * inset) * board / count);
+  };
+  for (let n = 0; n < count; n++) {
+    const tip = n + 1;
+    p.polygon(wood[n % wood.length], [section(n,87),87], [section(tip,87),87], [section(tip,171),171],
+      [section(tip,186),186], [section(n,186),186], [section(n,171),171]);
+    const caulk = n < 2 || n > 12 ? '#746049' : '#8b6e51';
+    p.line(caulk, [section(n,87),87],[section(n,171),171],[section(n,185),185]);
+    const joint = 98 + ((n * 37) % 71);
+    const x = section(n, joint), width = section(tip, joint) - x;
+    p.rect('#80654c', x + 1, joint, width - 1, 1);
+    p.rect('#c19e70', x + 2, joint + 1, width - 4, 1);
+    p.rect('#785f47', x + 2, joint - 1, 1, 1);
+    if (n % 3 !== 1) {
+      const y = 106 + (n * 13) % 39;
+      p.line('#bf9c70', [x+4,y],[x+4,y+6],[x+5,y+9],[x+5,y+13]);
+    }
+  }
+  // A narrow contrasting covering board turns with the rail; water-dark
+  // seams end at it, instead of cut boards hanging over the side of the ship.
+  p.polygon('#92724e',[54,87],[59,87],[59,168],[63,177],[75,186],[64,186],[54,179]);
+  p.polygon('#8a6b4c',[196,89],[201,89],[201,179],[187,187],[176,187],[190,177],[195,167]);
+  p.line('#c6a579',[58,92],[58,169],[62,178],[75,186]);
+  p.line('#b0936a',[195,98],[195,167],[190,178],[177,186]);
+  // The coaming and its hatch stand up from the planks.
+  p.polygon('#3b403342',[65,143],[94,138],[103,148],[102,153],[73,151]);
+}
+
 function wayfarer(p: Paint) {
   // Build out from the existing collision rectangle. The pointed foredeck, colored
   // strakes and immersed stern lie in the surrounding water.
@@ -334,8 +416,11 @@ function wayfarer(p: Paint) {
   p.line('#6c6650',[73,38],[83,31],[125,17],[167,30]);
   p.polygon('#5f4b3b',[42,60],[49,53],[54,53],[54,186],[65,193],[54,194],[43,183]);
   p.polygon('#6a4f3f',[201,52],[209,60],[209,180],[202,190],[191,195],[197,185]);
-  p.polygon('#725140',[44,176],[61,185],[83,190],[166,191],[205,177],[202,190],[177,201],[157,205],[81,205],[54,197],[44,186]);
-  p.polygon('#ad7352',[46,181],[62,188],[83,194],[163,195],[203,181],[201,185],[169,198],[157,200],[82,200],[55,192],[46,187]);
+  p.polygon('#384c4a',[44,176],[61,185],[83,190],[166,191],[205,177],[202,190],[177,201],[157,205],[81,205],[54,197],[44,186]);
+  p.polygon('#a76a48',[46,181],[62,188],[83,194],[163,195],[203,181],[201,185],[169,198],[157,200],[82,200],[55,192],[46,187]);
+  p.polygon('#77503e',[158,195],[179,190],[203,180],[201,185],[179,194],[165,198],[158,200]);
+  p.line('#cb8e60',[46,182],[63,189],[85,195],[124,195]);
+  p.line('#536760',[53,194],[80,203],[155,203],[178,196]);
   p.line(brass,[46,179],[64,187],[83,191],[163,192],[201,178]);
   p.line('#d6b481',[47,58],[54,51],[54,175],[61,182],[83,187],[126,187]);
   p.line('#a18b6c',[146,188],[168,187],[196,177],[202,168],[202,57]);
@@ -346,11 +431,7 @@ function wayfarer(p: Paint) {
   p.polygon(bright,[113,23],[117,19],[126,19],[131,22],[127,25],[118,26]);
   p.line(darkWood,[109,26],[133,19]);
   // Long deck planks and a teak hatch: flush fittings keep the crossing clear.
-  for(let y=99;y<185;y+=7) {
-    p.rect(y%2?'#916f50':'#977653',55,y,143,7);
-    p.rect('#80644d',55,y+6,143,1);
-    for(let x=64+(y%4)*10;x<194;x+=52) p.rect('#7e6249',x,y+1,1,5);
-  }
+  afterdeck(p);
   p.polygon('#745c46',[65,125],[97,125],[100,128],[100,149],[66,149]);
   p.rect('#bd996b',64,123,33,24);
   p.rect('#594d3b',66,125,29,19);
@@ -466,21 +547,39 @@ function workshopFacade(p: Paint, hearthLit: boolean) {
   windowBank(p,77,196,5); windowBank(p,180,198,3);
   // One broad roof reads as a tall workshop instead of many tiled blocks.
   p.polygon('#655348',[60,182],[75,112],[102,92],[199,92],[218,112],[225,182],[219,189],[66,189]);
-  p.polygon('#ab6d53',[63,177],[78,114],[102,95],[194,95],[207,113],[215,177]);
-  p.polygon('#935b49',[196,95],[213,111],[222,179],[215,180],[205,118]);
+  p.polygon('#b67655',[63,177],[78,114],[102,95],[194,95],[207,113],[215,177]);
+  // Hips turn away from the glazed central pitch. Their joints converge at the ridge.
+  p.polygon('#c18a62',[63,177],[78,114],[102,95],[112,95],[91,124],[77,177]);
+  p.polygon('#8d5949',[183,95],[196,95],[212,113],[222,179],[204,178],[196,129]);
   for(let y=119;y<177;y+=8) {
     const left=78-Math.floor((y-114)/4), right=207+Math.floor((y-114)/8);
     p.rect('#8e5d4d',left,y,right-left,1);
     for(let x=left+((y%3)*6);x<right-4;x+=16) p.rect('#bc8060',x,y+1,5,1);
   }
   p.line('#d3966c',[65,177],[79,114],[102,95],[194,95],[210,111]);
+  p.line('#dca479',[69,176],[90,124],[111,96]);
+  p.line('#be8664',[202,176],[194,129],[182,96]);
+  // Cast shadows anchor the lantern and kiln to the tiled slope.
+  p.polygon('#5e514957',[93,134],[178,128],[194,141],[189,147],[108,148]);
+  p.polygon('#684e445c',[80,136],[90,126],[106,137],[102,141],[88,142]);
   p.rect('#644d41',62,179,161,7);
   p.rect('#cc9672',63,179,157,2);
   p.rect('#806250',65,187,155,3);
+  p.polygon('#675b495c',[68,189],[219,189],[220,197],[78,195]);
+  for (const x of [76, 104, 130, 174, 202]) {
+    p.polygon('#6b5647',[x,185],[x+5,185],[x+5,190],[x+2,193],[x,192]);
+    p.rect('#bd936b', x,186,2,4);
+  }
   // Projecting zinc monitor, glazed to face the harbor.
   p.polygon('#755a49',[92,131],[102,108],[179,106],[188,132],[182,140],[96,142]);
   p.polygon('#506c69',[89,127],[101,104],[175,104],[184,125],[182,134],[91,134]);
   p.polygon('#7e9787',[91,125],[103,106],[173,106],[179,125]);
+  p.polygon('#9bb3a2',[92,124],[104,107],[118,107],[109,123]);
+  p.polygon('#94ab9b',[128,124],[140,107],[158,107],[148,124]);
+  for (const x of [117, 140, 162]) {
+    p.line('#4d6f68',[x,107],[x-6,124]);
+    p.line('#b9c5aa',[x-1,107],[x-7,124]);
+  }
   p.rect('#395d61',93,126,87,7);
   for(let x=94;x<180;x+=10) {
     p.rect('#96ada0',x,126,7,3);
@@ -502,6 +601,11 @@ function workshopFacade(p: Paint, hearthLit: boolean) {
   p.polygon('#d5bd92',[134,240],[134,207],[138,200],[145,195],[157,195],[166,200],[169,207],[169,240]);
   p.polygon('#554f40',[138,240],[138,208],[144,202],[150,200],[157,201],[164,207],[165,240]);
   p.rect('#8e7051',141,211,21,26);
+  p.rect('#5d5141',141,217,3,18);
+  p.rect('#70583f',145,217,15,15);
+  p.rect('#9d7956',146,218,12,12);
+  p.line('#b48d61',[146,230],[158,230],[158,219]);
+  p.rect('#cdb07b',157,225,4,1);
   p.rect('#68827b',142,208,19,7);
   p.rect('#b2a384',151,208,2,7);
   p.rect('#bc9872',139,235,25,3);
@@ -548,17 +652,23 @@ function market(p: Paint) {
   p.rect('#86775f',449,162,12,55);
   p.polygon('#4a6560',[300,173],[312,129],[328,111],[442,111],[457,126],[466,173],[463,179],[300,179]);
   p.polygon('#738e7e',[302,171],[314,130],[328,114],[440,114],[449,130],[457,171]);
+  // Long copper sheets turn over the crown and fall into a cool east gable.
+  p.polygon('#8da38a',[303,170],[315,130],[329,114],[345,114],[329,135],[318,171]);
+  p.polygon('#637e71',[419,114],[441,114],[451,132],[460,172],[439,172],[430,136]);
+  p.polygon('#496760',[441,114],[456,127],[465,172],[459,172],[450,132]);
   for(const x of [323,346,369,392,415,438]) {
     p.line('#a1ac94',[x,116],[x-9,170]);
     p.line('#617b70',[x+1,117],[x-8,170]);
   }
   p.rect('#c0bea0',301,172,161,2);
   p.rect('#526158',302,175,161,5);
+  p.polygon('#3b514d8c',[306,179],[460,179],[466,190],[463,195],[313,191]);
   // Three trade bays have differentiated wares: fish baskets, jars, folded cloth.
   for(let bay=0;bay<3;bay++) {
     const x=308+bay*49;
     p.rect('#635e4d',x,181,43,33);
     p.rect('#435e59',x+3,184,36,25);
+    p.polygon('#354d49',[x+3,183],[x+39,183],[x+39,197],[x+29,194],[x+4,195]);
     if (bay === 1) {
       // The bottler stands inside the existing stall, in shadow behind the counter.
       p.rect('#344d49', x + 6, 196, 13, 11);
@@ -585,12 +695,14 @@ function market(p: Paint) {
     p.rect('#b28e64',x,207,43,4);
     p.rect('#887052',x+2,211,39,6);
     p.rect('#75614b',x+3,217,3,4); p.rect('#75614b',x+37,217,3,4);
-    const fabric=[['#aa694d','#d8b185'],['#527e76','#d5c59d'],['#b3935d','#ded0aa']][bay];
+    const fabric=[['#b86548','#e8c18e'],['#408078','#decea7'],['#b89655','#ede0ac']][bay];
     for(let i=0;i<7;i++){
       const start=x-2+i*7;
       p.polygon(fabric[i%2],[start,177],[start+7,177],[start+6,190],[start-1,190]);
       p.rect(i%2?'#ab997a':bay===0?'#935a48':'#5e7061',start-1,190,7,3);
+      p.rect(i%2?'#bbaa8d':bay===0?'#95573f':'#647768',start,193,4,1);
     }
+    p.line('#544e413d',[x,194],[x+38,194],[x+41,196]);
   }
   // Ridge ventilators separate the hall silhouette from the workshop skyline.
   for(const x of [344,399]){
@@ -660,6 +772,25 @@ function onionLighter(p: Paint) {
 }
 
 function waterfront(p: Paint) {
+  // At high tide the eastern rubbing wale is still well above its reflection.
+  // Leave the narrow water lane between the piling and the reeds visible.
+  p.polygon('#203c4866',[462,465],[468,469],[472,484],[470,540],[465,550],[462,547]);
+  p.polygon('#455954',[461,465],[464,465],[466,472],[466,536],[463,545],[461,542]);
+  p.rect('#af9e76',461,467,2,75);
+  p.rect('#706952',464,471,1,61);
+  p.rect('#a5946e',383,466,3,76);
+  p.rect('#d1b382',383,469,1,64);
+  // Three lashed rope fenders hang over the outside of the arrival jetty.
+  // The timber stays dry above its tide line and darkens where it meets the water.
+  for (const [x, y] of [[465, 477], [465, 509], [381, 511]]) {
+    p.polygon('#2d4a4888',[x-2,y+8],[x+3,y+7],[x+9,y+13],[x+7,y+17],[x+1,y+14]);
+    p.polygon('#4e5a4c',[x-3,y-4],[x-1,y-7],[x+3,y-6],[x+5,y-2],[x+4,y+7],[x+2,y+10],[x-2,y+8],[x-3,y+4]);
+    p.polygon('#8f7e5c',[x-2,y-4],[x,y-6],[x+2,y-5],[x+2,y+3],[x,y+7],[x-2,y+5]);
+    p.line('#ceb383',[x-2,y-3],[x,y-6],[x+2,y-6]);
+    p.line('#4c6358',[x-2,y+5],[x+1,y+6],[x+4,y+3]);
+    p.line('#b8ac82',[x-2,y-1],[x+2,y],[x+4,y-2]);
+    p.line('#697e70',[x,y+11],[x+3,y+12],[x+6,y+11]);
+  }
   // The freight wharf sits higher than the water. Lower braces and alternating
   // wet/dry timbers attach to the *south* faces, leaving every deck tile clear.
   for (const [left, right, y] of [[146, 382, 464], [385, 463, 544], [49, 127, 512]]) {
@@ -668,7 +799,12 @@ function waterfront(p: Paint) {
     p.rect('#6a604a', left, y, right - left, 2);
     p.rect('#304a47', left, y + 4, right - left, 2);
     for (let x = left + 9; x < right - 4; x += 28) {
-      p.line('#43574e', [x - 7, y + 4], [x + 1, y + 10]);
+      // A pair of battered scarf braces recede into the shade beneath each span.
+      if (x + 18 < right) {
+        p.polygon('#354d49',[x+2,y+9],[x+3,y+6],[x+15,y+2],[x+19,y+3],[x+6,y+11]);
+        p.line('#8f8866',[x+4,y+8],[x+13,y+4]);
+      }
+      p.line('#62705c', [x - 7, y + 4], [x + 1, y + 10]);
       p.rect('#424738', x, y, 5, 13);
       p.rect('#9e865e', x, y + 1, 2, 7);
       p.rect('#78795c', x, y + 7, 2, 3);

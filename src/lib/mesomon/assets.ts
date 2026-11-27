@@ -1,25 +1,28 @@
 import type { BattleState, SpeciesId } from './types';
 
 /** Original Port Marche artwork, loaded only by the Mesomon route. */
-const version = 4;
-const artUrl = (path: string) => `/games/mesomon/${path}.png?v=${version}`;
+const version = 5;
+// Keep unchanged images available under the URLs already held in browser caches.
+const originalArtVersion = 4;
+const artUrl = (path: string, revision = originalArtVersion) => `/games/mesomon/${path}.png?v=${revision}`;
 
 export const MESOMON_ASSETS = {
   fieldcase: artUrl('fieldcase'),
   version,
   root: '/games/mesomon/',
-  cover: artUrl('cover'),
-  scenery: artUrl('scenery'),
+  cover: `/games/mesomon/cover.webp?v=${version}`,
+  coverThumbnail: artUrl('cover', version),
+  scenery: artUrl('scenery', version),
   tiles: artUrl('harbor-tiles'),
-  people: artUrl('people'),
-  creatures: artUrl('mesomon'),
+  people: artUrl('people', version),
+  creatures: artUrl('mesomon', version),
   battle: artUrl('creature-battle-v1'),
   portraits: artUrl('portraits'),
 } as const;
 export const PEOPLE = ['tavian', 'nia', 'bram', 'seli', 'pell', 'captain', 'edda', 'fisher', 'worker', 'porter', 'lanternkeeper', 'vendor'] as const;
 export const CREATURES = ['rillik', 'muddren', 'gleamwing', 'tressel', 'rift-wretch'] as const;
 export function fieldPlateUrl(id: SpeciesId): string {
-  return `/games/mesomon/field-guide/${id}.webp?v=${version}`;
+  return `/games/mesomon/field-guide/${id}.webp?v=${originalArtVersion}`;
 }
 export function battleSceneUrl(id: BattleState['id']): string {
   return `/games/mesomon/battle-scenes-v1/${id}.webp`;

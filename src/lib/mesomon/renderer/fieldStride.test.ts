@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WALK_STEP_MS } from '../input';
 import { MAPS } from '../data/maps';
+import { createNewSave, canWalk } from '../engine';
 import type { TileKind } from '../types';
 import { paintCastShadow, paintFootfall, strideLift, type FieldStep } from './fieldStride';
 import { foregroundForMap, paintForeground } from './foreground';
@@ -33,6 +34,28 @@ describe('grounding on the walking map', () => {
     expect(cast('chamber', 180, 105)[0][0]).toBeGreaterThan(180);
     expect(cast('passage', 36, 265)).toEqual([]);
   });
+  it('gives every room a raised fixture with a walkable approach behind its front edge', () => {
+    const save = createNewSave(1, 72);
+    for (const map of Object.values(MAPS)) {
+      save.player = { ...save.player, mapId: map.id, ...map.spawn };
+      const pieces = foregroundForMap(map.id).filter(piece => 'paint' in piece);
+      expect(pieces.length, map.id).toBeGreaterThan(0);
+      expect(new Set(pieces.map(piece => piece.id)).size).toBe(pieces.length);
+      for (const piece of pieces) {
+        let reachableOverlap = false;
+        const right = piece.x + piece.width, bottom = piece.y + piece.height;
+        for (let y = Math.floor(piece.y / 16); y <= Math.floor(bottom / 16); y++) {
+          for (let x = Math.floor(piece.x / 16); x <= Math.floor(right / 16); x++) {
+            const foot = (y + 1) * 16;
+            if (x * 16 < right && (x + 1) * 16 > piece.x && foot > piece.y &&
+                foot <= piece.footY && canWalk(save, x, y)) reachableOverlap = true;
+          }
+        }
+        expect(reachableOverlap, `${map.id} / ${piece.id}`).toBe(true);
+      }
+    }
+  });
+
   it('provides a foot-sorted transparent foreground in each zone, including the three new cutouts', () => {
     for (const map of Object.values(MAPS)) expect(foregroundForMap(map.id).length).toBeGreaterThan(0);
     for (const id of ['ship', 'tide-stairs', 'chamber'] as const) {

@@ -1,4 +1,5 @@
 import { workshopFurniture } from '../data/interiorObstacles';
+import { interiorBrushes } from './interiorBrushes';
 
 // Paint fixed furniture on its tile footprint. Overhangs and shadows may reach
 // onto the floor, while the clear aisles stay wide enough for Tavian and Rillik.
@@ -83,10 +84,21 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
     r(brass, x - 1, 21, 5, 2);
     r(teal, x + 1, 23, 3, 3);
   }
-  for (let y = 0; y < 38; y++) {
-    if (y === 15 || y === 16) continue; // projected horizontal sash
-    const x = 103 + Math.floor(y / 2);
-    for (let pane = 0; pane < 4; pane++) r(y < 26 ? '#f5db953c' : '#f5db9524', x + pane * 10, 31 + y, 8, 1);
+  // The window's reveal has a cool lower rebate and a broad warm sill.
+  r('#37464a', 97, 27, 62, 3);
+  r('#a07d54', 97, 26, 61, 2);
+  r('#e0bd86', 98, 25, 56, 2);
+  r('#f7d7a0', 99, 25, 21, 1);
+  // Daylight spreads down the floorboards. The projected mullion narrows
+  // near the sill and its shadow softens as it reaches the room.
+  for (let y = 0; y < 57; y++) {
+    const x = 100 + Math.floor(y * .43), spread = Math.floor(y / 7);
+    const wash = y < 18 ? '#ffdf9549' : y < 38 ? '#fbd6903d' : '#f6ce8f24';
+    const beam = 25 + spread;
+    r(wash, x, 31 + y, beam, 1);
+    r(wash, x + beam + (y > 40 ? 2 : 4), 31 + y, beam, 1);
+    if (y === 17 || y === 18) r('#6558462e', x, 31 + y, beam * 2 + 4, 1);
+    if (y > 13) r('#fbdba422', x - 2, 31 + y, 2, 1);
   }
   for (let y = 0; y < 26; y++) {
     const x = 218 - Math.floor(y * 1.45);
@@ -221,51 +233,34 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   r('#456c67', 132, 101, 3, 3);
   r(parchment, 133, 102, 1, 1);
 
-  // The cutting bench is an island. Its iron shoes, two cross-braced
-  // trestles and front edge give the sail a solid place in the room.
+  // A joiner's bench on two splayed trestles. Its shadow follows the same
+  // south-east light as the window. The toe ends remain on the solid cells.
   const benchFoot = workshopFurniture.cuttingBench;
   const bx = benchFoot.x * 16, by = benchFoot.y * 16, bw = benchFoot.width * 16;
-  const bh = benchFoot.height * 16, foot = by + bh - 1;
-  for (let row = 0; row < 3; row++) r('#453b3838', bx + 4 + row, foot + row, bw - 5, 1);
-  r('#695944', bx + 3, foot - 9, bw - 7, 4);
-  for (const x of [bx + 2, bx + bw - 12]) {
-    line(ink, x + 7, foot - 15, x, foot - 1);
-    line('#866449', x + 8, foot - 15, x + 1, foot - 1);
-    line(lip, x + 9, foot - 15, x + 2, foot - 1);
-    line('#614f3d', x + 5, foot - 15, x + 10, foot - 1);
-    r(darkTeal, x, foot - 1, 4, 2);
-    r('#a8a78a', x, foot - 1, 3, 1);
-    r(shadow, x + 9, foot - 1, 3, 2);
+  const foot = by + benchFoot.height * 16 - 1;
+  for (let row = 0; row < 13; row++) {
+    const shift = Math.floor(row / 2);
+    r(row < 7 ? '#352d3260' : '#40323732', bx + 5 + shift, foot - 7 + row, bw - 6 - shift, 1);
   }
-  r(ink, bx, by, bw, 18);
-  r('#ac8560', bx + 1, by + 1, bw - 2, 13);
-  r('#caa373', bx + 2, by + 1, bw - 4, 1);
-  r('#7b5d47', bx + 1, by + 10, bw - 2, 1);
-  r('#8c664a', bx + 1, by + 14, bw - 2, 3);
-  // Edda stretched a sail across the top and folded it over the near edge.
-  for (let row = 0; row < 14; row++) {
-    const left = bx + 4 + Math.floor(row / 3);
-    const right = bx + bw - 12 - row * 2;
-    r('#d5c4a1', left, by + row, right - left, 1);
-    r('#a59e86', right, by + row, 1, 1);
+  r('#4a3933', bx + 9, foot - 19, bw - 18, 6);
+  r('#735742', bx + 10, foot - 18, bw - 19, 2);
+  for (const x of [bx + 4, bx + bw - 14]) {
+    for (let i = 0; i < 18; i++) {
+      const lean = Math.floor(i / 5);
+      r('#554136', x + 4 + lean, foot - 18 + i, 4, 1);
+      r('#392e2e', x + 4 - lean, foot - 17 + i, 5, 1);
+      r('#81583d', x + 4 - lean, foot - 17 + i, 3, 1);
+      r('#bf9161', x + 4 - lean, foot - 17 + i, 1, 1);
+    }
+    r('#394c48', x - 1, foot - 1, 6, 2);
+    r('#9eab96', x - 1, foot - 1, 4, 1);
+    r('#534339', x + 6, foot - 1, 6, 1);
   }
-  line('#aa9b7e', bx + 10, by + 1, bx + 11, by + 12);
-  line('#b09f81', bx + 40, by + 1, bx + 13, by + 12);
-  for (let i = 0; i < 11; i++) r('#f2dfb9', bx + 5 + i * 4, by + 1, 2, 1);
-  for (let row = 0; row < 7; row++) r('#af9c7e', bx + 8 + row, by + 14 + row, 17 - row * 2, 1);
-  r(brassDark, bx + 5, by + 2, 3, 3);
-  r('#e5bd72', bx + 5, by + 2, 2, 1);
-  // Brass shear blades and their two closed handles sit at the free end.
-  line('#d7caa4', bx + bw - 13, by + 9, bx + bw - 6, by + 5);
-  line('#556866', bx + bw - 13, by + 9, bx + bw - 5, by + 8);
-  r(brassDark, bx + bw - 16, by + 9, 4, 3);
-  r(lip, bx + bw - 15, by + 10, 2, 1);
-  r(brass, bx + bw - 15, by + 7, 3, 2);
-
   // Flat-file drawers run from the west wall to the plotting desk. The
   // east worktop gets a bank of pigeonholes for rolled sounding charts.
   for (const fitting of [workshopFurniture.chartDrawers, workshopFurniture.mapCabinet]) {
     const x = fitting.x * 16, y = fitting.y * 16, w = fitting.width * 16;
+    for (let row = 0; row < 5; row++) r('#3b323644', x + 2 + row, y + 12 + row, w - 2, 2);
     r(shadow, x, y, w, 16);
     r('#ac8159', x + 1, y, w - 2, 5);
     r(lip, x + 1, y, w - 2, 1);
@@ -287,6 +282,9 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
       }
     }
     r('#6e5241', x + 2, y + 14, w - 4, 2);
+    r('#62483a', x + w - 4, y + 2, 3, 13);
+    r('#947050', x + w - 4, y + 3, 1, 10);
+    r('#a6805c', x + 1, y + 6, 1, 7);
   }
 
   // Bench tops project above their solid cells, with a shallow drawer and two feet.
@@ -471,3 +469,72 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   r('#928678', 129, 207, 15, 2);
   r('#6c7776', 129, 211, 15, 2);
 }
+
+function paintSailCuttingTop(ctx: CanvasRenderingContext2D) {
+  const { rect: r, line } = interiorBrushes(ctx);
+  const bw = workshopFurniture.cuttingBench.width * 16;
+  const ink = '#342e32', brass = '#d3ab69';
+  // Planed oak in perspective, with a recessed green apron and brass bolts.
+  for (let i = 0; i < 17; i++) {
+    const inset = Math.floor((16 - i) / 4);
+    r(ink, inset, 1 + i, bw - inset * 2, 1);
+    r(i < 10 ? '#b58a5e' : '#b08a64', inset + 1, 1 + i, bw - inset * 2 - 3, 1);
+    r('#d4ab75', inset + 1, 1 + i, 1, 1);
+  }
+  r('#e1b57d', 5, 1, bw - 11, 1);
+  r('#654633', 0, 18, bw, 4);
+  r('#dca875', 1, 18, bw - 3, 1);
+  r('#2c4342', 2, 22, bw - 4, 6);
+  r('#51736a', 3, 22, bw - 7, 2);
+  for (const x of [4, bw - 12]) {
+    r('#273c3b', x, 24, 6, 3);
+    r('#948d64', x, 24, 5, 2);
+    r('#f0ce87', x + 1, 24, 2, 1);
+  }
+  // A partially unrolled bolt bridges the sloping top and its near edge.
+  // Tight highlights along the cylinder turn into a wider diffuse cloth face.
+  for (let row = 0; row < 14; row++) {
+    const left = 10 - Math.floor(row / 3), right = 43 - Math.floor(row / 4);
+    r('#8e7659', left + 1, 5 + row, right - left, 1);
+    r('#e4d1a2', left, 4 + row, right - left, 1);
+    r('#c4b488', right - 3, 4 + row, 3, 1);
+    r('#708b7c', left + 3, 4 + row, 2, 1);
+  }
+  for (let row = 0; row < 10; row++) {
+    const left = 6 + Math.floor(row / 3), right = 40 - Math.floor(row / 2);
+    r('#786b56', left + 1, 19 + row, right - left, 1);
+    r(row < 3 ? '#e5c995' : '#c1ac84', left, 18 + row, right - left, 1);
+    r('#aa9472', left + 13, 18 + row, 3, 1);
+    r('#83917a', left + 3, 18 + row, 2, 1);
+  }
+  r('#e7cea0', 14, 27, 6, 1);
+  line('#b4a582', 17, 7, 15, 16);
+  line('#baa984', 34, 7, 20, 16);
+  r('#79644f', 9, 2, 36, 6);
+  r('#b8a27c', 8, 0, 34, 7);
+  r('#e8d6ad', 10, 0, 31, 3);
+  r('#f9e9be', 10, 0, 29, 1);
+  r('#829385', 12, 0, 2, 6);
+  r('#978365', 9, 5, 34, 2);
+  r('#826c51', 41, 0, 4, 7);
+  r('#e8cfa0', 41, 0, 3, 5);
+  r('#8e795b', 42, 2, 2, 2);
+
+  // Closed tailor's shears on the end Edda kept clear.
+  const sx = bw - 18;
+  line('#594b43', sx + 4, 13, sx + 12, 7);
+  line('#ded5b0', sx + 3, 12, sx + 11, 6);
+  line('#758584', sx + 3, 12, sx + 12, 11);
+  r('#715940', sx - 1, 12, 6, 4);
+  r(brass, sx - 1, 12, 4, 2);
+  r('#5a5042', sx, 13, 2, 1);
+  r(brass, sx + 4, 13, 3, 3);
+  r('#ead397', sx + 4, 13, 2, 1);
+}
+
+const cuttingBench = workshopFurniture.cuttingBench;
+export const workshopRelief = [{
+  mapId: 'workshop', id: 'sail-cutting-top', x: cuttingBench.x * 16, y: cuttingBench.y * 16 - 6,
+  width: cuttingBench.width * 16, height: 30, footY: (cuttingBench.y + cuttingBench.height) * 16 - 1,
+  paint: paintSailCuttingTop,
+}] as const;

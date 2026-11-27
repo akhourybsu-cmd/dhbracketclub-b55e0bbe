@@ -40,7 +40,8 @@ export function paintTideLife(id: MapId, phase: number, state: EnvironmentMotion
     // The pump's cast housing is fixed. After lowering the sluice the bronze
     // shaft actually turns inside it, redrawing just its small central disc.
     if (!state.sluiceOpen) return;
-    rect(0x928269, 1, 172, 142, 7, 7);
+    rect(0x928269, 1, 172, 143, 7, 5);
+    rect(0x928269, 1, 173, 142, 5, 7);
     const turns = [[3, -3], [4, 0], [3, 3], [0, 4], [-3, 3], [-4, 0], [-3, -3], [0, -4]];
     const [dx, dy] = turns[phase];
     for (let step = 1; step <= 3; step++) {

@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "original": true,
   "tileSize": 16,
   "scenery": {
@@ -159,6 +159,7 @@
     "mesomon.png",
     "creature-battle-v1.png",
     "portraits.png",
+    "cover.webp",
     "cover.png",
     "scenery.png",
     "fieldcase.png",

@@ -1,5 +1,20 @@
 import type { MapId } from '../types';
 import { paintQuayFixture, quayFixtures, type QuayFixture } from './quaySquare';
+import { exteriorRelief } from './exteriors';
+import { workshopRelief } from './workshop';
+import { chamberRelief } from './chamberInstrument';
+import { tideRelief } from './tideworks';
+
+export interface FieldRelief {
+  mapId: MapId;
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  footY: number;
+  paint(ctx: CanvasRenderingContext2D): void;
+}
 
 interface WallFixture {
   id: 'pier-hoist' | 'lamp-bracket' | 'gauge-arm' | 'sheet-block' | 'rail-finial' | 'pool-sight';
@@ -11,9 +26,9 @@ interface WallFixture {
   footY: number;
 }
 
-export type ForegroundPiece = WallFixture | QuayFixture;
+export type ForegroundPiece = WallFixture | QuayFixture | FieldRelief;
 
-const pieces: Partial<Record<MapId, readonly ForegroundPiece[]>> = {
+const pieces: Record<MapId, readonly (WallFixture | QuayFixture)[]> = {
   // Rigged to the starboard chainplate; only the tackle reaches over the deck.
   ship: [{ id: 'sheet-block', x: 181, y: 144, width: 17, height: 28, footY: 171 }],
   // The upright stands in water immediately outside the arrival pier.
@@ -26,12 +41,15 @@ const pieces: Partial<Record<MapId, readonly ForegroundPiece[]>> = {
   chamber: [{ id: 'pool-sight', x: 183, y: 140, width: 18, height: 25, footY: 164 }],
 };
 
+const raisedFixtures: readonly FieldRelief[] = [...exteriorRelief, ...workshopRelief, ...chamberRelief, ...tideRelief];
+
 export function foregroundForMap(id: MapId): readonly ForegroundPiece[] {
-  return pieces[id] ?? [];
+  return [...pieces[id], ...raisedFixtures.filter(fixture => fixture.mapId === id)];
 }
 
 /** Draw once into a transparent texture sized to the piece, origin at top left. */
 export function paintForeground(ctx: CanvasRenderingContext2D, piece: ForegroundPiece) {
+  if ('paint' in piece) return piece.paint(ctx);
   if (piece.id === 'quay-bell' || piece.id === 'rope-stock') return paintQuayFixture(ctx, piece);
   const palette: Record<string, string> = {
     K: '#293739', d: '#534b40', w: '#83694c', h: '#bf996a',

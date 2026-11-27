@@ -25,6 +25,7 @@ on:
       - 'public/games/mesomon/**'
       - 'art/mesomon/creatures/**'
       - 'art/mesomon/battle-scenes/**'
+      - 'art/mesomon/title/**'
       - 'supabase/migrations/*mesomon*'
       - 'scripts/*mesomon*'
       - 'scripts/fixtures/mesomon*'
@@ -46,9 +47,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify the published creature art against the master plates
+      - name: Verify the published field sprites, creature plates and battle scenes
         run: |
           python -m pip install Pillow==13.0.0
+          python scripts/mesomon_field_figures.py --check
           python scripts/build-mesomon-creature-art.py --check
           python scripts/build-mesomon-battle-scenes.py --check
       - uses: actions/setup-node@v4

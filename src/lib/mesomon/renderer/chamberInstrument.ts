@@ -1,4 +1,5 @@
 import { inspectionRails, tongueStops } from '../data/interiorObstacles';
+import { interiorBrushes } from './interiorBrushes';
 import type { EnvironmentRect } from './environmentMotion';
 
 // The chamber is an old tide station. Two float lines feed the pens of the
@@ -101,18 +102,42 @@ export function paintChamberInstrument(ctx: CanvasRenderingContext2D, sealed: bo
     rect('#87a69a', x - 4, top + 5, 7, 1);
   }
 
-  // Exposed dressed joints follow the southern arc in perspective. Each
-  // block shows a cool return face beneath its warm chamfer; the bronze-
-  // edged deck occupies the opening at the middle.
-  for (let x = -45; x <= 45; x++) {
-    if (x >= -9 && x <= 9) continue;
-    const curvature = Math.sqrt(1 - (x / 47) ** 2);
-    const y = Math.round(91 + 29 * curvature);
-    const height = 2 + Math.round(curvature * 3);
-    rect('#354749', 152 + x, y + 3, 1, height);
-    rect(x < 0 ? '#7d8980' : '#657671', 152 + x, y + 1, 1, height);
-    rect(x < 0 ? '#b0ac90' : '#939981', 152 + x, y, 1, 1);
-    if ([-42, -36, -26, -16, 16, 26, 36, 42].includes(x)) rect('#4c605c', 152 + x, y + 1, 1, height);
+  // The northwest viewing angle exposes the back of the copper liner.
+  // Its wet lower edge runs several pixels below the raised stone bearing.
+  // The water in front of it, and the walkway across it, stay unobstructed.
+  for (let dx = -36; dx <= 36; dx++) {
+    const x = 152 + dx;
+    const curve = Math.sqrt(1 - (dx / 37) ** 2);
+    const top = 91 - Math.round(22 * curve);
+    const lower = 91 - Math.round(17 * curve);
+    const western = dx < -7, eastern = dx > 17;
+    rect(eastern ? '#55594e' : '#746247', x, top - 1, 1, lower - top + 2);
+    rect(western ? '#f1c085' : eastern ? '#9c8a62' : '#d3a979', x, top - 1);
+    rect(western ? '#b08059' : '#846951', x, top, 1, Math.max(1, lower - top - 2));
+    rect(eastern ? '#3e5657' : '#617065', x, lower - 1, 1, 2);
+    if (dx === -29 || dx === -16 || dx === 1 || dx === 20 || dx === 32) {
+      rect('#454b45', x, top, 1, lower - top);
+      rect('#bca67c', x + 1, top + 1);
+    }
+  }
+  // The front arc stands on a foot ring. Each cast panel has a lit upper
+  // chamfer, a shaded vertical face and a soft shadow on the existing paving.
+  // Its two ends break at the boardwalk instead of crossing the walking lane.
+  for (let dx = -46; dx <= 46; dx++) {
+    if (Math.abs(dx) <= 9) continue;
+    const curve = Math.sqrt(1 - (dx / 47) ** 2);
+    const x = 152 + dx, y = Math.round(91 + 29 * curve);
+    const depth = 2 + Math.round(curve * 6);
+    if (dx < -11 || dx > 9) rect('#27393e36', x + 2, y + depth + 3, 1, 3);
+    rect('#293e40', x, y + 2, 1, depth + 2);
+    rect(dx < 0 ? '#7d7361' : '#485c5a', x, y + 1, 1, depth - 1);
+    rect(dx < 0 ? '#ad9a77' : '#7a8977', x, y, 1, 2);
+    rect(dx < -16 ? '#e5c78e' : '#a6a789', x, y);
+    rect(dx < 0 ? '#866e50' : '#626850', x, y + depth, 1, 2);
+    if ([-43, -36, -26, -16, 16, 26, 36, 43].includes(dx)) {
+      rect('#40514f', x, y + 1, 1, depth);
+      rect('#c6ab76', x + 1, y + 2);
+    }
   }
 
   // The two bolted strike plates sit directly on the rim. Repeated knocks
@@ -132,6 +157,10 @@ export function paintChamberInstrument(ctx: CanvasRenderingContext2D, sealed: bo
   // turns at the end of its rail; the east one follows the stilling well.
   for (const rail of inspectionRails) {
     const x = rail.x * 16, y = rail.y * 16, length = rail.height * 16;
+    // The base of each inspection lantern sits on its first stone coping.
+    for (let row = 0; row < 7; row++) {
+      rect('#26383e45', x + 6 + row, y + 3 + row, 6, 1);
+    }
     rect('#273a412e', x + 14, y + 4, 3, length - 2);
     rect('#3b5154', x + 1, y + 1, 14, length - 1);
     rect('#71837c', x + 1, y + 1, 12, length - 4);
@@ -195,3 +224,46 @@ export function paintRecorderMotion(phase: number, sealed: boolean, rect: Enviro
     rect(0x4c5b56, 1, 161, y, 3, 1);
   }
 }
+
+const surveyLamp = [
+  '     dd     ',
+  '    dhdd    ',
+  '    dbbd    ',
+  '   dbbbdd   ',
+  '  dhhbbbsd  ',
+  ' dhhhhbbbsd ',
+  'dqqhbbbbbssd',
+  '  swwwwwsd  ',
+  '  syyyhwsd  ',
+  '  sqyyhwsd  ',
+  '  sqyyhwsd  ',
+  '  syyyhwsd  ',
+  '  sbwwwwsd  ',
+  ' dbbbbbbssd ',
+  '  dhbbbsdd  ',
+  '    dhds    ',
+  '    dbds    ',
+  '    dhds    ',
+  '   dhhbds   ',
+  '  ddbbbssd  ',
+];
+
+// The base is on the rail and the hood hangs over the walkable approach.
+// Each lamp shares a housing; the two lenses identify the paired floats.
+function paintSurveyLamp(ctx: CanvasRenderingContext2D, east: boolean) {
+  const { rect } = interiorBrushes(ctx);
+  const enamel: Record<string, string> = {
+    d: '#263b3d', s: '#485753', b: '#90764f', h: '#bfa16d',
+    w: east ? '#779c89' : '#c29660', y: east ? '#b2ceb0' : '#f0cc88',
+    q: east ? '#e0edcb' : '#fff0bd',
+  };
+  surveyLamp.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) if (row[x] !== ' ') rect(enamel[row[x]], x, y, 1, 1);
+  });
+}
+
+export const chamberRelief = inspectionRails.map((rail, index) => ({
+  mapId: 'chamber' as const, id: rail.id + '-lamp', x: rail.x * 16 + 1, y: rail.y * 16 - 14,
+  width: 12, height: surveyLamp.length, footY: rail.y * 16 + 5,
+  paint: (ctx: CanvasRenderingContext2D) => paintSurveyLamp(ctx, index === 1),
+}));

@@ -6,7 +6,7 @@ import { paintTidalWater } from './tidalWater';
 
 function paintedRects(tiles: TileKind[][], id: MapDefinition['id'] = 'harbor') {
   const fills: number[][] = [];
-  const context = { fillStyle: '', fillRect: (...rect: number[]) => fills.push(rect) };
+  const context = { fillStyle: '', save() {}, restore() {}, beginPath() {}, rect() {}, clip() {}, fillRect: (...rect: number[]) => fills.push(rect) };
   paintTerrainDepth(context as unknown as CanvasRenderingContext2D, {
     ...MAPS[id], tiles, width: tiles[0].length, height: tiles.length,
   });

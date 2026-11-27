@@ -4,7 +4,7 @@ import { bypassMain, intakeStrainer, scupperWall, stairCheeks } from '../data/ti
 import { canWalk, createNewSave, createSession, DELTAS, nearbyInteractions, reduceGame } from '../engine';
 import { migrateSave } from '../save';
 import type { Direction, MapId } from '../types';
-import { paintTideworks, type TideworksState } from './tideworks';
+import { paintTideworks, tideRelief, type TideworksState } from './tideworks';
 import { paintEnvironmentMotion, ENVIRONMENT_MOTION_FRAME_MS } from './environmentMotion';
 
 const idle = { gateOpen: false, sluiceOpen: false, sealed: false };
@@ -69,10 +69,37 @@ describe('Tideworks architectural states', () => {
       for (let row = cheek.y; row < cheek.y + cheek.height; row++) {
         expect(stairs.get((row * 16 + 8) * 1024 + cx)).toBe('#85968a');
       }
-      for (const row of [6, 7]) expect(stairs.get((row * 16 + 8) * 1024 + cx)).toMatch(/^#(?:95a298|99a69a)$/);
+      // In this recorder translucent sunlight and cast shadow are the topmost
+      // fills over the cross-landing's two flagstones.
+      const landing = ['#95a298', '#99a69a', '#ddd0a819', '#254a4d17'];
+      for (const row of [6, 7]) expect(landing).toContain(stairs.get((row * 16 + 8) * 1024 + cx));
     }
     for (let col = 0; col < scupperWall.width; col++) {
       expect(stairs.get(scupperWall.y * 16 * 1024 + (scupperWall.x + col) * 16 + 8)).toBe('#a9ad97');
+    }
+  });
+  it('puts the raised coping and basket bails above their solid supports and over a reachable aisle', () => {
+    for (const piece of tideRelief) {
+      const save = createNewSave();
+      save.player.mapId = piece.mapId;
+      const painted = new Set<string>();
+      const ctx = {
+        fillStyle: '',
+        fillRect(x: number, y: number, width: number, height: number) {
+          for (let j = y; j < y + height; j++) for (let i = x; i < x + width; i++) {
+            expect(i >= 0 && i < piece.width && j >= 0 && j < piece.height).toBe(true);
+            painted.add(`${i},${j}`);
+          }
+        },
+      };
+      piece.paint(ctx as unknown as CanvasRenderingContext2D);
+      const aisleY = Math.floor(piece.y / 16);
+      expect(Array.from(painted).some(key => {
+        const [x, y] = key.split(',').map(Number);
+        return Math.floor((piece.y + y) / 16) === aisleY && canWalk(save, Math.floor((piece.x + x) / 16), aisleY);
+      })).toBe(true);
+      expect(canWalk(save, Math.floor(piece.x / 16), Math.floor(piece.footY / 16))).toBe(false);
+      if (piece.id === 'intake-lifting-bails') expect(painted.has('12,5')).toBe(false);
     }
   });
   it('keeps the intake bed and pipe visible across their full ground footprints in either water state', () => {
