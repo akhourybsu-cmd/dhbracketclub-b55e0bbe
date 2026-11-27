@@ -10,6 +10,7 @@ import type { MesomonSaveV1 } from '@/lib/mesomon/types';
 
 const fixture = vi.hoisted(() => ({
   save: null as MesomonSaveV1 | null,
+  deleteSave: vi.fn(async () => {}),
   saveLocal: vi.fn(), flush: vi.fn(async () => {}), retry: vi.fn(async () => {}), reload: vi.fn(async () => {}),
   useCloud: vi.fn(async () => {}), keepLocal: vi.fn(async () => {}),
   viewCreate: vi.fn(), viewDestroy: vi.fn(), audioCreate: vi.fn(), audioDestroy: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock('@/hooks/useClubAssets', () => ({ useClubAssets: () => ({ loading: false
 vi.mock('@/hooks/useMesomonSave', () => ({ useMesomonSave: () => ({
   save: fixture.save, loading: fixture.loading, status: 'local', error: null, conflict: null,
   saveLocal: fixture.saveLocal, flush: fixture.flush, retry: fixture.retry, reload: fixture.reload,
-  useCloud: fixture.useCloud, keepLocal: fixture.keepLocal,
+  useCloud: fixture.useCloud, keepLocal: fixture.keepLocal, deleteSave: fixture.deleteSave, deleting: false,
   blocked:fixture.blocked,blockReason:fixture.blockReason,
 }) }));
 vi.mock('@/lib/mesomon/renderer/createGame', () => ({
@@ -622,6 +623,44 @@ describe('Mesomon game shell', () => {
     fireEvent.click(menu.getByRole('button', {name:'Title screen'}));
     expect(screen.queryByRole('button', {name:'Start'})).toBeNull();
     expect(screen.getByRole('button', {name:'File 1'})).toBeVisible();
+  });
+
+  it('keeps a failed deletion recoverable on the title and opens a fresh journey after a successful retry', async () => {
+    fixture.save = createNewSave();
+    fixture.save.player.mapId = 'harbor';
+    fixture.save.playtimeSeconds = 120;
+    fixture.deleteSave.mockRejectedValueOnce(new Error('Reconnect to delete this file.'))
+      .mockImplementationOnce(async () => { fixture.save = null; });
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete File 1' }));
+    const prompt = within(screen.getByRole('alertdialog', { name: 'Delete File 1?' }));
+    expect(prompt.getByRole('button', { name: 'Keep file' })).toHaveFocus();
+    expect(prompt.getByText(/2 min/)).toBeInTheDocument();
+    fireEvent.click(prompt.getByRole('button', { name: 'Delete file' }));
+    expect(await prompt.findByRole('alert')).toHaveTextContent('Reconnect');
+    fireEvent.click(prompt.getByRole('button', { name: 'Delete file' }));
+    const fresh = await screen.findByRole('button', { name: 'Begin journey' });
+    await waitFor(() => expect(fresh).toHaveFocus());
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete File 1' })).toBeNull();
+    expect(fixture.saveLocal).not.toHaveBeenCalled();
+    fireEvent.click(fresh);
+    expect(await screen.findByRole('dialog', { name: 'Opening cinematic' })).toBeVisible();
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].player.mapId).toBe('ship');
+  });
+
+  it('requires a fresh confirmation if the selected file changes while the dialog is open', async () => {
+    fixture.save = createNewSave();
+    const mounted = mount();
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete File 1' }));
+    fixture.save = { ...fixture.save, playtimeSeconds: 45 };
+    mounted.rerender(<MemoryRouter><MesomonGame userId={USER} clubId={CLUB}/></MemoryRouter>);
+    const prompt = within(screen.getByRole('alertdialog'));
+    fireEvent.click(prompt.getByRole('button', { name: 'Delete file' }));
+    expect(await prompt.findByRole('alert')).toHaveTextContent('This file changed');
+    expect(fixture.deleteSave).not.toHaveBeenCalled();
+    fireEvent.click(prompt.getByRole('button', { name: 'Keep file' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete File 1' })).toHaveFocus());
   });
 
   it('adopts a cloud chapter that arrives after the title first rendered, before continuing',async()=>{

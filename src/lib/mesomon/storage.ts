@@ -9,6 +9,28 @@ export interface LocalSaveEnvelope {
 export const saveStorageKey = (userId: string | null | undefined, slot: 1 | 2 | 3) => `dh:mesomon:save:v1:${encodeURIComponent(userId || 'guest')}:${slot}`;
 const DB_NAME = 'dh-mesomon-v1', STORE = 'slots', DEADLINE = 1200;
 const memory = new Map<string, LocalSaveEnvelope>();
+interface Erasure { kind: 'erased'; writtenAt: number; cloudRevision: number; }
+const erasures = new Map<string, Erasure>();
+function isErasure(raw: unknown): raw is Erasure {
+  if (!raw || typeof raw !== 'object') return false;
+  const value = raw as Partial<Erasure>;
+  return value.kind === 'erased' && Number.isSafeInteger(value.writtenAt) && Number(value.writtenAt) > 0
+    && Number.isSafeInteger(value.cloudRevision) && Number(value.cloudRevision) >= 0;
+}
+function rememberErasure(key: string, value: Erasure): void {
+  if (value.writtenAt > (erasures.get(key)?.writtenAt ?? 0)) erasures.set(key, value);
+}
+export function readFileErasure(userId: string | null | undefined, slot: 1 | 2 | 3): Erasure | undefined {
+  const key = saveStorageKey(userId, slot);
+  try {
+    const raw = browserStorage()?.getItem(key);
+    if (raw) {
+      const value: unknown = JSON.parse(raw);
+      if (isErasure(value)) rememberErasure(key, value);
+    }
+  } catch { /* IndexedDB and memory may still have the receipt. */ }
+  return erasures.get(key);
+}
 function browserStorage(): Storage | null { try { return typeof localStorage === 'undefined' ? null : localStorage; } catch { return null; } }
 export function archiveCorruptSave(userId: string | null | undefined, slot: 1 | 2 | 3, raw: unknown, source: string): void {
   const store = browserStorage(); if (!store) return;
@@ -46,12 +68,15 @@ export function readCachedLocalSave(userId: string | null | undefined, slot: 1 |
     try {
       raw = store?.getItem(key + suffix) ?? null;
       if (raw) {
-        const parsed = parseLocalEnvelope(JSON.parse(raw), slot);
+        const record: unknown = JSON.parse(raw);
+        if (isErasure(record)) { rememberErasure(key, record); continue; }
+        const parsed = parseLocalEnvelope(record, slot);
         if (parsed) candidates.push(parsed); else archiveCorruptSave(userId, slot, raw, suffix ? 'backup' : 'local');
       }
     } catch { if (raw) archiveCorruptSave(userId, slot, raw, suffix ? 'backup' : 'local'); }
   }
-  return newestLocalSave(candidates);
+  const floor = erasures.get(key)?.writtenAt ?? -1;
+  return newestLocalSave(candidates.filter(value => value && value.writtenAt > floor));
 }
 function openDatabase(): Promise<IDBDatabase | null> {
   try { if (typeof indexedDB === 'undefined') return Promise.resolve(null); } catch { return Promise.resolve(null); }
@@ -67,7 +92,7 @@ function openDatabase(): Promise<IDBDatabase | null> {
     } catch { finish(null); }
   });
 }
-async function idbOperation<T>(mode: IDBTransactionMode, key: string, value?: LocalSaveEnvelope): Promise<T | null> {
+async function idbOperation<T>(mode: IDBTransactionMode, key: string, value?: LocalSaveEnvelope | Erasure): Promise<T | null> {
   const db = await openDatabase(); if (!db) return null;
   return new Promise(resolve => {
     let settled = false;
@@ -75,6 +100,7 @@ async function idbOperation<T>(mode: IDBTransactionMode, key: string, value?: Lo
     const timer = setTimeout(() => finish(null), DEADLINE);
     try {
       const tx = db.transaction(STORE, mode), store = tx.objectStore(STORE);
+      if (isErasure(value)) store.delete(key + ':blocked-branch');
       const request = mode === 'readwrite' ? store.put(value, key) : store.get(key);
       let result: unknown = null;
       request.onsuccess = () => { result = mode === 'readwrite' ? true : request.result; };
@@ -86,10 +112,13 @@ export async function readLocalSave(userId: string | null | undefined, slot: 1 |
   // A successful IndexedDB write may be newer than a perfectly valid cache
   // when localStorage hit quota. Always reconcile the bounded primary read.
   const key = saveStorageKey(userId, slot), raw = await idbOperation<unknown>('readonly', key);
-  const persisted = raw ? parseLocalEnvelope(raw, slot) : null;
-  if (raw && !persisted) archiveCorruptSave(userId, slot, raw, 'indexeddb');
+  if (isErasure(raw)) rememberErasure(key, raw);
+  const persisted = raw && !isErasure(raw) ? parseLocalEnvelope(raw, slot) : null;
+  if (raw && !isErasure(raw) && !persisted) archiveCorruptSave(userId, slot, raw, 'indexeddb');
   // Read caches after awaiting: a movement/ack may have arrived meanwhile.
-  const latest = newestLocalSave([readCachedLocalSave(userId, slot), persisted]);
+  const cached = readCachedLocalSave(userId, slot);
+  const floor = erasures.get(key)?.writtenAt ?? -1;
+  const latest = newestLocalSave([cached, persisted && persisted.writtenAt > floor ? persisted : null]);
   if (latest) memory.set(key, latest);
   return latest;
 }
@@ -103,7 +132,7 @@ export function preserveBlockedBranch(userId: string | null | undefined, slot: 1
 }
 export function writeLocalSave(userId: string | null | undefined, slot: 1 | 2 | 3, envelope: LocalSaveEnvelope): Promise<boolean> {
   const key = saveStorageKey(userId, slot), store = browserStorage();
-  const priorStamp = readCachedLocalSave(userId, slot)?.writtenAt ?? 0;
+  const priorStamp = Math.max(readCachedLocalSave(userId, slot)?.writtenAt ?? 0, erasures.get(key)?.writtenAt ?? 0);
   envelope.writtenAt = Math.max(envelope.writtenAt, Date.now(), priorStamp + 1);
   memory.set(key, envelope);
   let cached = false;
@@ -133,5 +162,31 @@ export function writeLocalSave(userId: string | null | undefined, slot: 1 | 2 | 
 }
 interface WriteJob { latest: LocalSaveEnvelope | null; promise: Promise<boolean>; }
 const writes = new Map<string, WriteJob>();
+/** Replace both durable heads with a content-free receipt. A temporarily
+ * inaccessible older store can never bring back a file behind this receipt. */
+export async function eraseLocalSave(userId: string | null | undefined, slot: 1 | 2 | 3, cloudRevision: number,
+  expectedHead?: number | null): Promise<void> {
+  const key = saveStorageKey(userId, slot);
+  await waitForLocalWrites(userId, slot);
+  const current = readCachedLocalSave(userId, slot);
+  if (expectedHead !== undefined && (current?.writtenAt ?? null) !== expectedHead) {
+    throw new Error('This file changed in another tab. Reload it before deleting.');
+  }
+  const previous = readFileErasure(userId, slot);
+  const receipt: Erasure = { kind: 'erased', cloudRevision,
+    writtenAt: Math.max(Date.now(), (current?.writtenAt ?? 0) + 1, (previous?.writtenAt ?? 0) + 1) };
+  let cached = false;
+  try {
+    const store = browserStorage();
+    if (store) {
+      store.setItem(key, JSON.stringify(receipt));
+      for (const suffix of [':backup', ':diagnostic', ':blocked-branch']) store.removeItem(key + suffix);
+      cached = true;
+    }
+  } catch { /* A full or unavailable cache can still use the database. */ }
+  const durable = await idbOperation<boolean>('readwrite', key, receipt);
+  if (!cached && !durable) throw new Error('Couldn’t clear device storage. Allow storage and try again.');
+  rememberErasure(key, receipt); memory.delete(key);
+}
 export function freshEnvelope(save: MesomonSaveV1): LocalSaveEnvelope { return { version: 1, save, cloudRevision: 0, cloudUpdatedAt: null, dirty: true, pending: null, writtenAt: Date.now() }; }
 export function envelopeFromCloud(cloud: CloudSave): LocalSaveEnvelope { return { version: 1, save: cloud.state, cloudRevision: cloud.revision, cloudUpdatedAt: cloud.updated_at, dirty: false, pending: null, writtenAt: Date.now() }; }

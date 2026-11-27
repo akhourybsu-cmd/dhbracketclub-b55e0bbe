@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_TIMEOUT_MS, withTimeout } from '@/lib/asyncGuards';
 import { migrateSave, parseCloudSave, saveFingerprint, type CloudSave } from '@/lib/mesomon/save';
-import { archiveCorruptSave, envelopeFromCloud, freshEnvelope, readCachedLocalSave, readLocalSave, saveStorageKey, writeLocalSave, waitForLocalWrites, preserveBlockedBranch, type LocalSaveEnvelope } from '@/lib/mesomon/storage';
+import { archiveCorruptSave, eraseLocalSave, readFileErasure, envelopeFromCloud, freshEnvelope, readCachedLocalSave, readLocalSave, saveStorageKey, writeLocalSave, waitForLocalWrites, preserveBlockedBranch, type LocalSaveEnvelope } from '@/lib/mesomon/storage';
 import { acquireFileWriter, type FileWriterLease } from '@/lib/mesomon/writer';
 import type { MesomonSaveV1 } from '@/lib/mesomon/types';
 
@@ -24,7 +24,12 @@ const requestId = () => {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
 };
 interface CloudResponse { data: unknown; error: unknown; }
+function emptyCloudRevision(row: unknown, slot: number): number {
+  const value = row as { slot?: unknown; revision?: unknown; state?: unknown } | null;
+  return value?.slot === slot && value.state === null && Number.isSafeInteger(value.revision) && Number(value.revision) > 0 ? Number(value.revision) : 0;
+}
 interface SaveClient {
+  rpc(name: 'mesomon_delete_save', args: { p_club_id: string; p_slot: number; p_expected_revision: number; p_expected_user_id: string }): PromiseLike<CloudResponse>;
   rpc(name: 'mesomon_save', args: { p_club_id: string; p_slot: number; p_expected_revision: number; p_request_id: string; p_state: object; p_expected_user_id: string }): PromiseLike<CloudResponse>;
   from(name: 'mesomon_save_slots'): { select(fields: string): { eq(field: string, value: string): { eq(field: string, value: number): { maybeSingle(): PromiseLike<CloudResponse> } } } };
 }
@@ -35,6 +40,8 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
   const [status, setStatus] = useState<MesomonSaveStatus>('local'), [error, setError] = useState<string | null>(null);
   const [blocked, setBlocked] = useState(false), [blockReason, setBlockReason] = useState<string | null>(null);
   const blockedRef = useRef(false);
+  const deletion = useRef<object | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const deviceWriteFailed = useRef(false);
   const acquiring = useRef<{ key: string; generation: number; promise: Promise<FileWriterLease | null> } | null>(null);
   const writer = useRef<(FileWriterLease & { key: string; userId?: string | null; slot: 1 | 2 | 3 }) | null>(null);
@@ -53,6 +60,10 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
   const currentParent = useCallback((branch?: LocalSaveEnvelope) => {
     if (blockedRef.current) return false;
     const current = envelope.current, head = readCachedLocalSave(userId, slot);
+    if (current && !head && (readFileErasure(userId, slot)?.writtenAt ?? -1) >= current.writtenAt) {
+      block('This file was deleted in another tab. Reload the empty file.');
+      return false;
+    }
     if (head && (!current || head.writtenAt !== current.writtenAt)) {
       block('This file changed in another tab. Reload the latest file or choose another file.', branch ?? current);
       return false;
@@ -79,8 +90,25 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
     setStatus('attention'); setError('Another save is available. Choose which chapter to keep.');
   }, []);
 
+  const adoptErasure = useCallback(async (revision: number, ticket: number) => {
+    const old = envelope.current;
+    const token = {};
+    deletion.current = token; setDeleting(true);
+    try {
+      if (old || readFileErasure(userId, slot)?.cloudRevision !== revision) {
+        await eraseLocalSave(userId, slot, revision, old?.writtenAt ?? null);
+      }
+      if (ticket !== generation.current) return;
+      envelope.current = null; cloudConflict.current = null; conflicted.current = false;
+      setSave(null); setConflict(null); setError(null); setStatus(hasCloud ? 'saved' : online() ? 'local' : 'offline');
+      if (old) block('This file was deleted on another device. Reload the empty file.');
+    } finally {
+      if (deletion.current === token) { deletion.current = null; setDeleting(false); }
+    }
+  }, [userId, slot, hasCloud, block]);
+
   const flush = useCallback((): Promise<void> => {
-    if (blockedRef.current) return Promise.resolve();
+    if (blockedRef.current || deletion.current) return Promise.resolve();
     if (inFlight.current) return inFlight.current;
     const ticket = generation.current;
     const work = async () => {
@@ -110,6 +138,8 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
           if (result.error) throw result.error;
           const raw = result.data as Record<string, unknown> | null;
           if (!raw || typeof raw !== 'object' || typeof raw.conflict !== 'boolean') throw new Error('Cloud save returned an unreadable response. Try Save again.');
+          const erased = emptyCloudRevision(raw.save, slot);
+          if (raw.conflict && erased) { await adoptErasure(erased, ticket); return; }
           const cloud = raw.save === null ? null : parseCloudSave(raw.save);
           if (raw.save !== null && (!cloud || cloud.slot !== slot)) {
             archiveCorruptSave(userId, slot, raw.save, 'cloud');
@@ -134,11 +164,11 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
     };
     const promise = work().catch(failure => { if (ticket === generation.current) { setError(message(failure)); setStatus(online() ? 'attention' : 'offline'); } }).finally(() => { if (inFlight.current === promise) inFlight.current = null; });
     inFlight.current = promise; return promise;
-  }, [hasCloud, clubId, slot, userId, persist, showConflict, currentParent]);
+  }, [hasCloud, clubId, slot, userId, persist, showConflict, currentParent, adoptErasure]);
   flushRef.current = flush;
 
   const saveLocal = useCallback((input: MesomonSaveV1) => {
-    if (blockedRef.current || !currentParent()) return;
+    if (deletion.current || blockedRef.current || !currentParent()) return;
     const valid = migrateSave(input);
     if (!valid || valid.slot !== slot) { setError('This chapter could not be saved. The last valid save is preserved.'); setStatus('attention'); return; }
     const old = envelope.current;
@@ -146,16 +176,18 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
     if (!changed) return;
     valid.savedAt = new Date().toISOString();
     const next = old ? { ...old, save: valid, dirty: true, writtenAt: Date.now() } : freshEnvelope(valid);
+    if (!old) next.cloudRevision = readFileErasure(userId, slot)?.cloudRevision ?? 0;
     if (!persist(next)) return;
     setSave(valid);
     if (conflicted.current) { setConflict(current => current ? { ...current, local: valid } : current); return; }
     setStatus(!online() ? 'offline' : hasCloud ? 'saving' : 'local');
     if (debounce.current) clearTimeout(debounce.current);
     debounce.current = setTimeout(() => void flushRef.current(), 1400);
-  }, [slot, persist, hasCloud, currentParent]);
+  }, [slot, persist, hasCloud, currentParent, userId]);
 
   const reload = useCallback(async () => {
     const ticket = ++generation.current;
+    deletion.current = null; setDeleting(false);
     blockedRef.current = true; deviceWriteFailed.current = false;
     if (debounce.current) clearTimeout(debounce.current);
     envelope.current = null; inFlight.current = null; conflicted.current = false; cloudConflict.current = null;
@@ -193,6 +225,12 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
       if (ticket !== generation.current) return;
       if (result.error) throw result.error;
       if (!result.data) { if (envelope.current?.cloudRevision) showConflict(null); else if (envelope.current?.dirty) void flushRef.current(); return; }
+      const erased = emptyCloudRevision(result.data, slot);
+      if (erased) {
+        if (envelope.current?.cloudRevision === erased) void flushRef.current();
+        else await adoptErasure(erased, ticket);
+        return;
+      }
       const cloud = parseCloudSave(result.data);
       if (!cloud || cloud.slot !== slot) { archiveCorruptSave(userId, slot, result.data, 'cloud'); throw new Error('Cloud save is unreadable. Your last valid device save is preserved.'); }
       const current = envelope.current;
@@ -204,7 +242,48 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
       if (ticket !== generation.current) return;
       setError(message(failure)); setStatus(online() ? 'attention' : 'offline');
     }
-  }, [userId, clubId, slot, hasCloud, persist, showConflict, block]);
+  }, [userId, clubId, slot, hasCloud, persist, showConflict, block, adoptErasure]);
+
+  const deleteSave = useCallback(async (): Promise<void> => {
+    if (deletion.current || !currentParent() || !envelope.current) throw new Error('Reload this file before deleting it.');
+    if (conflicted.current) throw new Error('Choose which copy of this file to keep before deleting it.');
+    if (userId && (!clubId || !online())) throw new Error('Connect to your club to delete this file from your account.');
+    const token = {};
+    const scope = generation.current;
+    deletion.current = token; setDeleting(true);
+    if (debounce.current) clearTimeout(debounce.current);
+    try {
+      // An acknowledged autosave may advance the revision while the dialog is open.
+      await inFlight.current;
+      if (scope !== generation.current || !currentParent() || conflicted.current || !envelope.current)
+        throw new Error('This file changed. Reload it before deleting.');
+      const expectedHead = envelope.current.writtenAt;
+      const ticket = ++generation.current; // discard any outstanding initial read
+      let revision = 0;
+      if (userId && clubId) {
+        const result = await withTimeout(cloudClient.rpc('mesomon_delete_save', {
+          p_club_id: clubId, p_slot: slot, p_expected_revision: envelope.current.cloudRevision, p_expected_user_id: userId,
+        }), QUERY_TIMEOUT_MS, 'Mesomon file deletion');
+        if (result.error) throw new Error('Couldn’t confirm deletion with your club. Check your connection and try again.');
+        const reply = result.data as { deleted?: boolean; revision?: number } | null;
+        if (reply?.deleted === false) {
+          if (ticket === generation.current) block('This file changed on another device. Reload it before deleting.');
+          throw new Error('This file changed on another device. Reload it before deleting.');
+        }
+        if (reply?.deleted !== true || !Number.isSafeInteger(reply.revision) || Number(reply.revision) < 1)
+          throw new Error('Couldn’t confirm deletion. Try again.');
+        revision = Number(reply.revision);
+      }
+      if (ticket !== generation.current) return;
+      await eraseLocalSave(userId, slot, revision, expectedHead);
+      if (ticket !== generation.current) return;
+      envelope.current = null; conflicted.current = false; cloudConflict.current = null;
+      deviceWriteFailed.current = false; setSave(null); setConflict(null); setError(null);
+      setStatus(hasCloud ? 'saved' : online() ? 'local' : 'offline');
+    } finally {
+      if (deletion.current === token) { deletion.current = null; setDeleting(false); }
+    }
+  }, [currentParent, userId, clubId, slot, block, hasCloud]);
 
   const retry = useCallback(async () => {
     const current = envelope.current;
@@ -253,5 +332,5 @@ export function useMesomonSave({ userId, clubId, slot }: SaveScope) {
     document.addEventListener('visibilitychange', background); window.addEventListener('online', recovered); window.addEventListener('offline', disconnected); window.addEventListener('storage', external); window.addEventListener('focus', recovered);
     return () => { document.removeEventListener('visibilitychange', background); window.removeEventListener('online', recovered); window.removeEventListener('offline', disconnected); window.removeEventListener('storage', external); window.removeEventListener('focus', recovered); };
   }, [userId, slot, currentParent]);
-  return { blocked, blockReason, save, loading, status, error, conflict, saveLocal, flush, retry, useCloud, keepLocal, reload };
+  return { blocked, blockReason, save, loading, deleting, deleteSave, status, error, conflict, saveLocal, flush, retry, useCloud, keepLocal, reload };
 }

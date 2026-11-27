@@ -57,6 +57,8 @@ Three account-owned save files hold validated V1 JSON. The snapshot includes pos
 
 Cloud synchronization reuses the existing authenticated Supabase client. `mesomon_save` checks the expected actor against `auth.uid()`, the active installed club, the file number, payload bounds and expected revision. An advisory transaction lock serializes creation as well as updates; the database advances revision and records an exact request UUID/payload. A retry of an acknowledged request does not advance it again. Clients have only own-slot SELECT access and cannot directly write revisions, owners or snapshot rows. The RPC derives ownership from the session; the actor argument is an assertion against stale-session races.
 
+An occupied file on the title screen offers **Delete**. The confirmation shows the file number, location and playtime. An account deletion requires a connection. Under the same per-file lock as autosave, `mesomon_delete_save` checks the owner and revision, clears the snapshot and advances the slot revision. An empty slot retains that revision so delayed writes cannot recreate an erased journey. Confirmed deletion clears the local chapter and backup. A guest can clear a device file offline. A new journey can use the empty slot immediately.
+
 Local writes precede network work. Bounded cloud hydration cannot trap local play. An existing chapter arriving late is adopted on the title, including a synchronous Begin guard; active play is never silently replaced. Conflicts show both chapters and require **Use cloud save** or **Keep this device**. Choosing cloud pauses play before adoption. Checkpoints, a bounded periodic flush, explicit Save, backgrounding and exit supplement debounced writes. Offline play requires already loaded chapter code/art; purchases or shared DH rewards are not part of this single-player chapter.
 
 On browsers with Web Locks, a file has one active writer on each device. Opening it in another tab offers **Reload file** after the first tab closes. Without Web Locks the game checks the last saved revision and content before writing. The next load compares the cache, backup and IndexedDB so an older cache cannot cover a newer durable save after a storage-quota failure.
@@ -69,6 +71,7 @@ Saves belong to the account across installed clubs. Read/write access requires m
 |---|---|---|
 | `20261125193000_mesomon.sql` | Own-slot RLS, installed-club access, actor assertion, transactional revision/UUID save RPC | Applied and verified, 25 November 2026 |
 | `20261125193500_mesomon_asset.sql` | Register the installable game catalog entry | Applied and verified, 25 November 2026 |
+| `20261127170000_mesomon_delete_save.sql` | Empty-slot revisions and owner-checked deletion | Applied and verified, 27 November 2026 |
 
 Baseline before edits: clean `main` at `63dcaae3988d2150b052b20fbd84633ab5d1b565`, correct origin, matching Lovable SHA, 252 files / 2,702 unit tests, application-project TypeScript, member lint, production build and all 10 GitHub checks green. The implementation adds Phaser to both npm and Bun lockfiles, retaining Lovable’s existing development dependencies.
 

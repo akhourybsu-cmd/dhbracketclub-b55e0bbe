@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
 import { Link } from "react-router-dom";
 import {
   ChevronDown,
@@ -11,11 +12,15 @@ import {
   Feather,
   LogOut,
   Settings,
+  Trash2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useClub } from "@/contexts/ClubContext";
 import { useClubAssets } from "@/hooks/useClubAssets";
 import { useMesomonSave } from "@/hooks/useMesomonSave";
+import { DeleteFileDialog } from "@/components/mesomon/DeleteFileDialog";
+import { HarborTitleArt } from "@/components/mesomon/HarborTitleArt";
+import { saveFingerprint } from "@/lib/mesomon/save";
 import { ArrivalCinematic } from "@/components/mesomon/ArrivalCinematic";
 import { MesomonStartMenu, type MenuTab } from "@/components/mesomon/MesomonStartMenu";
 import {
@@ -62,6 +67,15 @@ type MesomonView = Awaited<
   >
 >;
 
+function titleSession(file: GameSession["save"] | null, slot: 1 | 2 | 3, userId?: string | null) {
+  const restored = createSession(file ?? createNewSave(slot));
+  if (!file) {
+    restored.save.settings.reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  }
+  Object.assign(restored.save.settings, readPreferences(userId));
+  return restored;
+}
+
 export default function MesomonPage() {
   const { user, loading } = useAuth();
   const { club, loading: clubLoading } = useClub();
@@ -103,17 +117,24 @@ export function MesomonGame({
   initialSlot?: 1 | 2 | 3;
 }) {
   const [slot, setSlot] = useState<1 | 2 | 3>(initialSlot);
+  const [slotSwitched, setSlotSwitched] = useState(false);
   const device = useRef<HTMLDivElement>(null);
   const fullscreen = useMesomonFullscreen(device);
 
+  function selectSlot(next: 1 | 2 | 3) {
+    if (next === slot) return;
+    setSlotSwitched(true);
+    setSlot(next);
+  }
   return createPortal(
-    <div className="mm-device" ref={device}>
+    <div className="mm-device" data-title-arrival={slotSwitched ? undefined : true} ref={device}>
       <Chapter
         key={`${userId ?? "guest"}:${slot}`}
         userId={userId}
         clubId={clubId}
         slot={slot}
-        onSlot={setSlot}
+        onSlot={selectSlot}
+        focusSelectedFile={slotSwitched}
         fullscreen={fullscreen}
       />
     </div>,
@@ -126,12 +147,14 @@ function Chapter({
   clubId,
   slot,
   onSlot,
+  focusSelectedFile,
   fullscreen,
 }: {
   userId?: string | null;
   clubId?: string | null;
   slot: 1 | 2 | 3;
   onSlot: (slot: 1 | 2 | 3) => void;
+  focusSelectedFile: boolean;
   fullscreen: ReturnType<typeof useMesomonFullscreen>;
 }) {
   const sync = useMesomonSave({ userId, clubId, slot });
@@ -141,6 +164,17 @@ function Chapter({
   const opening = entry === "arrival";
   const openingRef = useRef(opening);
   openingRef.current = opening;
+  const [fileToDelete, setFileToDelete] = useState<{ location: string; minutes: number; fingerprint: string } | null>(null);
+  const [fileDeleted, setFileDeleted] = useState(false);
+  const focusNewSelection = useRef(focusSelectedFile);
+  const selectFileButton = useCallback((button: HTMLButtonElement | null) => {
+    if (button && focusNewSelection.current) {
+      focusNewSelection.current = false;
+      button.focus({ preventScroll: true });
+    }
+  }, []);
+  const deleteTrigger = useRef<HTMLButtonElement>(null);
+  const journeyTrigger = useRef<HTMLButtonElement>(null);
   const [menu, setMenu] = useState<MenuTab | null>(null);
   const closeMenu = useCallback(() => {
     restoreMenuFocus.current = true;
@@ -185,7 +219,7 @@ function Chapter({
     setSession((value) => (value ? { ...value, notice } : value));
   }, []);
   const phase = session ? getPhase(session) : "explore";
-  const layersCovered = !!menu || opening;
+  const layersCovered = !!menu || opening || !!fileToDelete;
   const scenePaused = !playing || !sceneReady || layersCovered || hidden || sync.blocked;
   const walking = useTapWalk(
     session,
@@ -215,13 +249,7 @@ function Chapter({
       !sync.loading &&
       (!session || (!playing && adoptedSave.current !== sync.save))
     ) {
-      const restored = createSession(sync.save ?? createNewSave(slot));
-      const save = restored.save;
-      if (!sync.save)
-        save.settings.reducedMotion =
-          window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ??
-          false;
-      save.settings = { ...save.settings, ...readPreferences(userId) };
+      const restored = titleSession(sync.save, slot, userId);
       adoptedSave.current = sync.save;
       setSession(restored);
     }
@@ -604,16 +632,12 @@ function Chapter({
   }, [sealActive, dialogueActive, hidden, layersCovered, reducedMotion, sealAssist, playing]);
 
   const begin = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (sync.blocked || sync.loading) return;
+    if (sync.blocked || sync.loading || fileToDelete || sync.deleting) return;
+    setFileDeleted(false);
     fullscreen.enterOnPlay(event.nativeEvent);
-    // A cloud response can arrive just before the title's adoption effect.
-    // Never begin with an older blank session against that cloud revision.
-    if (sync.save && adoptedSave.current !== sync.save) {
-      const restored = createSession(sync.save);
-      restored.save.settings = {
-        ...restored.save.settings,
-        ...readPreferences(userId),
-      };
+    // A cloud restore or completed deletion may precede the title's adoption effect.
+    if (adoptedSave.current !== sync.save) {
+      const restored = titleSession(sync.save, slot, userId);
       adoptedSave.current = sync.save;
       current.current = restored;
       setSession(restored);
@@ -693,10 +717,32 @@ function Chapter({
     </button>
   );
 
+  function openDelete(open: boolean) {
+    if (!open) {
+      if (!sync.deleting) setFileToDelete(null);
+      return;
+    }
+    if (!sync.save || sync.blocked || sync.conflict || sync.loading) return;
+    setFileToDelete({
+      location: getMap(sync.save).name,
+      minutes: Math.floor(sync.save.playtimeSeconds / 60),
+      fingerprint: saveFingerprint(sync.save),
+    });
+  }
+
+  async function deleteSelectedFile() {
+    if (!fileToDelete || !sync.save || sync.blocked || sync.conflict || saveFingerprint(sync.save) !== fileToDelete.fingerprint) {
+      throw new Error("This file changed. Close this window and review the latest save.");
+    }
+    await sync.deleteSave();
+  }
+
   return (
+    <AlertDialog.Root open={!!fileToDelete} onOpenChange={openDelete}>
     <div
       className={`mesomon mm-phase-${phase}`}
       data-playing={playing}
+      data-entry={entry}
       data-map-id={session?.save.player.mapId}
       data-player-x={session?.save.player.x}
       data-player-y={session?.save.player.y}
@@ -752,9 +798,7 @@ function Chapter({
                 )}
                 {!playing && (
                   <div className="mm-title">
-                    <div className="mm-title-art" aria-hidden="true">
-                      <img src={MESOMON_ASSETS.cover} alt="" />
-                    </div>
+                    <HarborTitleArt />
                     <div className="mm-title-copy">
                       <small>CHAPTER I</small>
                       <h2>
@@ -763,21 +807,32 @@ function Chapter({
                         <em>MARCHE</em>
                       </h2>
                       <p>{CHAPTER_TITLE}</p>
-                      <div className="mm-slot-tabs" aria-label="Save slots">
+                      <div className="mm-slot-tabs" role="group" aria-label="Save slots">
                         {([1, 2, 3] as const).map((value) => (
                           <button
                             key={value}
+                            ref={value === slot ? selectFileButton : undefined}
                             aria-pressed={value === slot}
                             onClick={() => onSlot(value)}
                           >
                             File {value}
                           </button>
                         ))}
+                        {sync.save && (
+                          <AlertDialog.Trigger asChild>
+                            <button type="button" className="mm-delete-trigger" ref={deleteTrigger}
+                              disabled={sync.loading || sync.blocked || !!sync.conflict}
+                              aria-label={`Delete File ${slot}`}>
+                              <Trash2 size={15} aria-hidden="true" /> Delete
+                            </button>
+                          </AlertDialog.Trigger>
+                        )}
                       </div>
                       <div className="mm-title-actions">
                         <button
                           className="mm-primary"
-                          disabled={sync.blocked || sync.loading}
+                          ref={journeyTrigger}
+                          disabled={sync.blocked || sync.loading || sync.deleting}
                           onClick={begin}
                         >
                           {sync.save ? "Continue journey" : "Begin journey"}
@@ -807,8 +862,8 @@ function Chapter({
                           </Link>
                         )}
                       </div>
-                      <span className="mm-title-note">
-                        {sync.save
+                      <span className="mm-title-note" aria-live="polite" aria-atomic="true">
+                        {fileDeleted && !sync.save ? `File ${slot} deleted.` : sync.save
                           ? `${Math.floor(sync.save.playtimeSeconds / 60)} min · ${getMap(sync.save).name}`
                           : "Arrival aboard the Wayfarer"}
                       </span>
@@ -1147,6 +1202,20 @@ function Chapter({
               }
             />
           )}
+          {fileToDelete && (
+            <DeleteFileDialog
+              slot={slot} location={fileToDelete.location} minutes={fileToDelete.minutes}
+              cloud={!!(clubId && userId)}
+              onDelete={deleteSelectedFile}
+              onDeleted={() => {
+                lastSave.current = null;
+                lastCheckpoint.current = "";
+                setFileDeleted(true);
+                setFileToDelete(null);
+              }}
+              restoreFocus={() => (deleteTrigger.current || journeyTrigger.current)?.focus({ preventScroll: true })}
+            />
+          )}
           {sync.blocked && (
             <div className="mm-sync-alert" role="alert">
               <span>
@@ -1187,5 +1256,6 @@ function Chapter({
         </>
       )}
     </div>
+    </AlertDialog.Root>
   );
 }

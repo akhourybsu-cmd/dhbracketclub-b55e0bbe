@@ -20,7 +20,7 @@ function CurrentRoute() {
   const route = useLocation();
   useEffect(() => {
     const user = params.get('guest') === '1' ? null : '11111111-1111-4111-8111-111111111111';
-    Object.assign(window, { mmQa: { getMap, getVisibleObjects, canWalk, createNewSave, getObjective, getQuestSteps, readingVoice, walkStepMs: WALK_STEP_MS, readSave: async () => (await readLocalSave(user, 1))?.save || null } });
+    Object.assign(window, { mmQa: { getMap, getVisibleObjects, canWalk, createNewSave, getObjective, getQuestSteps, readingVoice, walkStepMs: WALK_STEP_MS, readSave: async (slot: 1 | 2 | 3 = 1) => (await readLocalSave(user, slot))?.save || null } });
     return () => { Reflect.deleteProperty(window, 'mmQa'); };
   }, []);
   return <span hidden data-qa-route={route.pathname} />;

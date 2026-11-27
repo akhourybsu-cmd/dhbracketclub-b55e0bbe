@@ -1780,8 +1780,97 @@ fieldset.mm-battle-controls {
 .mesomon[data-playing="false"] .mm-footnote {
   display: none;
 }
-.mm-title-art img {
-  object-position: 57% 43%;
+/* Anchor the plate at the same point in every crop. Its water and bird
+   overlays use the illustration's own coordinates, including on tall phones. */
+.mm-title-art { overflow: hidden; pointer-events: none; }
+.mm-title-painting {
+  position: absolute;
+  left: 57%;
+  top: 43%;
+  width: max(100cqw, 177.77778cqh);
+  aspect-ratio: 16 / 9;
+  translate: -57% -43%;
+  transform-origin: 57% 43%;
+}
+.mm-title-painting img, .mm-title-water {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mm-title-ripples path, .mm-title-tern { opacity: 0; }
+.mm-slot-tabs button[aria-pressed] { position: relative; }
+.mm-slot-tabs button[aria-pressed="true"] {
+  color: #fff2cc;
+  box-shadow: inset 0 1px #ecca7b73, inset 0 -3px #57482c, 0 2px #0b2020;
+}
+.mm-slot-tabs button[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  bottom: 6px;
+  left: calc(50% - 7px);
+  width: 14px;
+  height: 2px;
+  background: #f3d58a;
+  box-shadow: 0 1px #453d29;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-painting {
+    animation: mm-harbor-arrive 1600ms cubic-bezier(.16,.68,.26,1);
+  }
+  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-copy h2 {
+    animation: mm-chapter-title 420ms ease-out;
+  }
+  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-ripples path {
+    animation: mm-tide-glint 1450ms ease-in-out var(--mm-ripple-delay, 0ms) 2;
+  }
+  .mm-title-ripples path:nth-child(2) { --mm-ripple-delay: 330ms; }
+  .mm-title-ripples path:nth-child(3) { --mm-ripple-delay: 660ms; }
+  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-tern {
+    animation: mm-tern-flight 3700ms linear;
+  }
+  .mesomon:not([data-reduced-motion="true"]) .mm-slot-tabs button[aria-pressed="true"]::after {
+    animation: mm-file-latch 240ms ease-out;
+  }
+  .mesomon:not([data-reduced-motion="true"]) .mm-title-actions .mm-primary svg {
+    transition: transform 140ms ease-out;
+  }
+  .mesomon:not([data-reduced-motion="true"]) .mm-title-actions .mm-primary:enabled:is(:focus-visible, :active) svg {
+    transform: translateX(3px);
+  }
+  .mesomon[data-entry="field"]:not([data-reduced-motion="true"]) .mm-screen[data-art-ready="true"]::after {
+    animation: mm-field-uncover 280ms ease-out;
+  }
+}
+@keyframes mm-harbor-arrive {
+  from { transform: scale(1.026); }
+  to { transform: scale(1); }
+}
+@keyframes mm-chapter-title {
+  from { transform: translateY(5px); opacity: .65; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes mm-tide-glint {
+  0%, 85%, 100% { opacity: 0; }
+  45% { opacity: .8; }
+  from { transform: translateX(-1.5px); }
+  to { transform: translateX(2px); }
+}
+@keyframes mm-tern-flight {
+  0% { opacity: 0; transform: translate(-5px, 1px); }
+  15%, 78% { opacity: .9; }
+  55% { transform: translate(13px, -3px); }
+  100% { opacity: 0; transform: translate(29px, -5px); }
+}
+@keyframes mm-file-latch {
+  from { opacity: .35; transform: scaleX(.2); }
+  70% { transform: scaleX(1.18); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+@keyframes mm-field-uncover {
+  from { background-color: #142e30b8; }
+  to { background-color: transparent; }
 }
 .mm-title {
   background: #102224;

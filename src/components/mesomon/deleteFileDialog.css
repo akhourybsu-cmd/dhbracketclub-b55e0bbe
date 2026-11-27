@@ -1,0 +1,70 @@
+.mm-slot-tabs .mm-delete-trigger {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding-inline: 9px;
+  min-width: 44px;
+  min-height: 44px;
+  color: #f1d4bd;
+  border-color: #8a7764;
+  background: #382f2be6;
+}
+.mm-file-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: #061514ce;
+}
+.mm-file-dialog {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 31;
+  width: min(calc(100% - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)), 340px);
+  max-height: calc(100% - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: clamp(16px, 4vmin, 24px);
+  background: #ede4c9;
+  color: #193630;
+  border: 2px solid #c2ab79;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 2px #fff6db, 0 5px 0 #132b26, 0 15px 40px #071c1d75;
+}
+.mm-file-book {
+  width: 42px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  background: #35524a;
+  color: #efdcab;
+  border: 1px solid #254036;
+  border-radius: 3px;
+  box-shadow: inset 0 1px #91a18a, 0 2px #b7a57c;
+}
+.mesomon .mm-file-dialog h2 { font-size: 23px; font-weight: 800; line-height: 1.2; }
+.mesomon .mm-file-dialog p { margin-top: 12px; font-size: 14px; line-height: 1.4; }
+.mesomon .mm-file-dialog .mm-file-place { margin-top: 4px; color: #40594e; font-size: 12px; font-weight: 650; }
+.mm-file-dialog .mm-file-error { color: #882f21; }
+.mm-file-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; }
+.mm-file-dialog .mm-file-choices button {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding-inline: 6px; font-size: 14px; font-weight: 750; min-height: 44px;
+  background: #294b42; color: #fff8dc; border-color: #315447;
+}
+.mm-file-dialog .mm-file-choices button:last-child { background: #8a3d2d; border-color: #6e3529; color: #fff5e6; }
+.mm-file-dialog .mm-file-choices button:focus-visible { outline: 3px solid #386c62; outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .mesomon:not([data-reduced-motion]) .mm-file-shade { animation: mm-file-dim 140ms ease-out; }
+  .mesomon:not([data-reduced-motion]) .mm-file-dialog { animation: mm-open-file 180ms ease-out; }
+}
+@keyframes mm-file-dim { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mm-open-file { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@media (max-height: 380px) {
+  .mm-file-book { float: right; margin: 0 0 6px 8px; }
+}

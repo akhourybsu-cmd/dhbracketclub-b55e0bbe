@@ -28,6 +28,7 @@ insert into platform_assets values('${ASSET}','mesomon',true);
 insert into club_installed_assets values('${CLUB}','${ASSET}',true,true);
 `);
 await db.exec(await readFile('supabase/migrations/20261125193000_mesomon.sql', 'utf8'));
+await db.exec(await readFile('supabase/migrations/20261127170000_mesomon_delete_save.sql', 'utf8'));
 async function actor(user, sql, args = [], role = 'authenticated') {
   return db.transaction(async tx => { await tx.exec(`set local role ${role}`); await tx.query("select set_config('test.uid',$1,true)", [user ?? '']); return tx.query(sql, args); });
 }
@@ -103,6 +104,38 @@ await check('competing expected revisions admit one writer and preserve the othe
 });
 await check('new user has no authority to impersonate the owner in payload fields', async () => {
   const result = await save(B, { ...state(), user_id: A, revision: 400 }, 1); assert.equal(result.save.user_id, B); assert.equal(result.save.revision, 2);
+});
+async function erase(user, slot, revision, club = CLUB, expected = user) {
+  const result = await actor(user, 'select public.mesomon_delete_save($1::uuid,$2::smallint,$3::bigint,$4::uuid) result', [club, slot, revision, expected]);
+  return result.rows[0].result;
+}
+await check('deletion requires the same owner, club, installed game and a valid slot', async () => {
+  await blocked(erase(A, 1, 3, OTHER)); await blocked(erase(B, 1, 3, CLUB, A));
+  await blocked(erase(A, 0, 3)); await blocked(erase(A, 1, -1));
+  await blocked(actor(null, 'select mesomon_delete_save($1,1::smallint,3,$2)', [CLUB, A], 'anon'));
+  await db.exec('update club_installed_assets set enabled=false');
+  await blocked(erase(A, 1, 3));
+  await db.exec('update club_installed_assets set enabled=true');
+});
+await check('deleting one file clears its data, retains its revision, and leaves every other file intact', async () => {
+  assert.deepEqual(await erase(A, 1, 2), { deleted:false, revision:3 });
+  assert.deepEqual(await erase(A, 1, 3), { deleted:true, revision:4 });
+  assert.deepEqual(await erase(A, 1, 3), { deleted:true, revision:4 });
+  const erased = (await actor(A, 'select state, playtime_seconds from mesomon_save_slots where slot=1')).rows[0];
+  assert.equal(erased.state, null); assert.equal(erased.playtime_seconds, 0);
+  assert.equal((await actor(A,'select slot from mesomon_save_slots where state is not null')).rows.length, 2);
+  assert.equal((await actor(B,'select state from mesomon_save_slots where slot=1')).rows[0].state.player.name, 'Tavian');
+});
+await check('delayed writes and repeated deletes cannot overwrite the next journey in the slot', async () => {
+  for (const revision of [0,1,2,3]) assert.equal((await save(A,state(1,190),revision)).conflict, true);
+  const fresh = await save(A,state(1,0),4); assert.equal(fresh.conflict, false); assert.equal(fresh.save.revision, 5);
+  assert.deepEqual(await erase(A,1,3), { deleted:false,revision:5 });
+  assert.equal((await save(A,state(1,190),1)).conflict, true);
+});
+await check('an unsynced first chapter can be deleted even while its first upload is delayed', async () => {
+  assert.deepEqual(await erase(B,3,0), { deleted:true,revision:1 });
+  assert.equal((await save(B,state(3),0)).conflict, true);
+  assert.equal((await save(B,state(3),1)).save.revision, 2);
 });
 console.log(`PASS Mesomon database: ${count} groups (PGlite serializes connections; not a native multi-session benchmark)`);
 await db.close();

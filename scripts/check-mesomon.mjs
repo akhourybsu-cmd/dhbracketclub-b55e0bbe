@@ -33,8 +33,8 @@ async function cleanup() {
 }
 for (const [signal, status] of [['SIGINT', 130], ['SIGTERM', 143]]) process.once(signal, () => { void cleanup().then(() => process.exit(status)); });
 
-async function setup(width, height, theme, guest = false) {
-  const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: width < 1024, reducedMotion: 'reduce' });
+async function setup(width, height, theme, guest = false, reducedMotion = 'reduce') {
+  const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: width < 1024, reducedMotion });
   const p = await context.newPage();
   await preparePage(p,theme,guest);
   return { p, context };
@@ -61,7 +61,7 @@ async function preparePage(p,theme,guest=false) {
   await expect(p.locator('.mesomon')).toBeVisible();
   await p.evaluate(async()=>{await document.fonts.ready;});
 }
-const save = p => p.evaluate(async () => window.mmQa.readSave());
+const save = (p, slot = 1) => p.evaluate(slot => window.mmQa.readSave(slot), slot);
 const controls = (p, name) => p.locator(`[data-mm-action="${name}"]`);
 const directions = { up: [0, -1], right: [1, 0], down: [0, 1], left: [-1, 0] };
 const arrowKeys = { up: 'ArrowUp', right: 'ArrowRight', down: 'ArrowDown', left: 'ArrowLeft' };
@@ -196,7 +196,7 @@ async function noShellCommands(p) {
   await expect(p.locator('.mm-save-status')).toHaveCount(0);
 }
 const opening = p => p.getByRole('dialog', {name: 'Opening cinematic', exact: true});
-async function start(p, captureOpening) {
+async function start(p, captureOpening, slot = 1) {
   const journey = p.getByRole('button', { name: /^(Begin|Continue) journey$/i });
   await expect(journey).toBeEnabled();
   const newFile = /^begin/i.test((await journey.textContent()).trim());
@@ -219,7 +219,7 @@ async function start(p, captureOpening) {
   await expect(p.locator('.mesomon[data-map-id]')).toHaveAttribute('data-map-id', 'ship');
   await expect(p.locator('.mesomon canvas')).toHaveCount(1);
   await expect(p.locator('.mm-screen')).toHaveAttribute('data-art-ready', 'true');
-  await expect.poll(() => save(p)).not.toBeNull();
+  await expect.poll(() => save(p, slot)).not.toBeNull();
 }
 async function settleLayout(p) {
   await p.evaluate(async()=>{await document.fonts.ready;await new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done)));});
@@ -1295,6 +1295,102 @@ async function guestRoute() {
   } finally {await context.close();}
 }
 
+async function titleFiles() {
+  const {p, context} = await setup(320, 568, 'dark', false, 'no-preference');
+  const begin = p.getByRole('button', {name: 'Begin journey', exact: true});
+  const resume = p.getByRole('button', {name: 'Continue journey', exact: true});
+  const deleteFile = slot => p.getByRole('button', {name: 'Delete File ' + slot, exact: true});
+  const confirm = p.getByRole('alertdialog', {name: 'Delete File 1?', exact: true});
+  const keep = confirm.getByRole('button', {name: 'Keep file', exact: true});
+  const cloud = slot => p.evaluate(slot => window.mmQaTransport.read().rows[slot], slot);
+  const deleteCalls = () => p.evaluate(() => window.mmQaTransport.calls.filter(call => call.operation === 'mesomon_delete_save').length);
+  const select = async slot => {
+    const file = p.getByRole('button', {name: 'File ' + slot, exact: true});
+    await file.click();
+    await expect(file).toHaveAttribute('aria-pressed', 'true');
+  };
+  const returnToTitle = async slot => {
+    const menu = await openStart(p);
+    await startSection(menu, 'Save file');
+    await menu.getByRole('button', {name: 'Save now', exact: true}).click();
+    await expect.poll(async () => (await cloud(slot))?.state?.slot).toBe(slot);
+    await menu.getByRole('button', {name: 'Title screen', exact: true}).click();
+    await expect(resume).toBeEnabled();
+  };
+  const latchMoves = () => p.locator('.mm-slot-tabs button[aria-pressed="true"]').evaluate(button => {
+    const style = getComputedStyle(button, '::after');
+    return style.animationName.includes('mm-file-latch') && parseFloat(style.animationDuration) >= 0.05;
+  });
+  try {
+    await expect(begin).toBeEnabled();
+    await expect(deleteFile(1)).toHaveCount(0);
+    await expect.poll(latchMoves).toBe(true);
+    await p.emulateMedia({reducedMotion: 'reduce'});
+    await expect.poll(latchMoves).toBe(false);
+    await p.emulateMedia({reducedMotion: 'no-preference'});
+    const settings = p.getByRole('button', {name: 'Settings', exact: true});
+    await settings.click();
+    await p.getByRole('switch', {name: /^Reduced motion/}).click();
+    await p.keyboard.press('Escape');
+    await expect.poll(latchMoves).toBe(false);
+    check(engine + '-title-file-selection-honors-system-and-game-reduced-motion');
+
+    await start(p); await drain(p); await step(p, 'right');
+    await returnToTitle(1);
+    await select(2);
+    await expect(begin).toBeEnabled();
+    await start(p, undefined, 2);
+    await returnToTitle(2);
+    await select(1);
+    await expect(resume).toBeEnabled();
+    const otherSlot = await save(p, 2);
+    const otherCloud = await cloud(2);
+    assert.equal(otherSlot.slot, 2);
+
+    await deleteFile(1).tap();
+    await expect(keep).toBeFocused();
+    await expect(confirm.getByRole('button', {name: 'Delete file', exact: true})).toBeVisible();
+    for (const button of [keep, confirm.getByRole('button', { name: 'Delete file', exact: true })]) {
+      const { readings: [label] } = await readButtonContrast(button);
+      assert.ok(label.ratio >= 4.5, `Title confirmation text contrast for ${label.text}: ${label.ratio}`);
+    }
+    await audit(p, engine + '-title-delete-confirm-fit');
+    await p.screenshot({path: join(output, engine + '-title-delete-confirm.png')});
+    // Both the explicit safe action and Escape must leave the file alone.
+    await keep.press('Enter');
+    await expect(confirm).toHaveCount(0);
+    await expect(deleteFile(1)).toBeFocused();
+    await deleteFile(1).click();
+    await p.keyboard.press('Escape');
+    await expect(confirm).toHaveCount(0);
+    assert.equal(await deleteCalls(), 0);
+    assert.equal((await save(p)).slot, 1);
+
+    await deleteFile(1).tap();
+    await confirm.getByRole('button', {name: 'Delete file', exact: true}).tap();
+    await expect(confirm).toHaveCount(0);
+    await expect(begin).toBeFocused();
+    await expect.poll(() => save(p)).toBeNull();
+    const erased = await cloud(1);
+    assert.equal(erased.state, null);
+    assert.equal(await deleteCalls(), 1);
+    await expect(deleteFile(1)).toHaveCount(0);
+    assert.deepEqual(await save(p, 2), otherSlot);
+    assert.deepEqual(await cloud(2), otherCloud);
+    await p.reload();
+    await expect(begin).toBeEnabled();
+    await expect(deleteFile(1)).toHaveCount(0);
+    await select(2);
+    await expect(resume).toBeEnabled();
+    await expect(deleteFile(2)).toBeVisible();
+    await select(1);
+    await expect(begin).toBeEnabled();
+    await start(p); await returnToTitle(1);
+    assert.ok((await cloud(1)).revision > erased.revision, 'A new journey must save over the deleted slot’s revision');
+    check(engine + '-title-delete-cancels-confirms-persists-and-preserves-neighboring-file');
+  } finally { await context.close(); }
+}
+
 async function touchLaunch() {
   const {p, context} = await setup(390, 844, 'dark');
   try {
@@ -1384,6 +1480,7 @@ try {
   await walkingPace();
   if(!process.env.MESOMON_SMOKE_ONLY){ await chapter(); await desktopField(); }
   await guestRoute();
+  await titleFiles();
   await touchLaunch();
   await offlineTabs();
   check(engine+'-active-dialogue-lines-and-reading-voices-match-saved-conversations', {dialogueIds: [...observedDialogues].sort()});

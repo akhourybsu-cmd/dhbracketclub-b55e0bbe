@@ -4,7 +4,7 @@ const USER = '11111111-1111-4111-8111-111111111111';
 const CLUB = '22222222-2222-4222-8222-222222222222';
 const key = 'mesomon-qa-cloud-v1';
 type Row = { state: unknown; revision: number; updated_at: string; slot: number };
-type Receipt = { fingerprint: string; result: unknown };
+type Receipt = { request: string; fingerprint: string; result: unknown };
 type Store = { rows: Record<string, Row>; receipts: Record<string, Receipt> };
 function read(): Store {
   try { return copy(JSON.parse(localStorage.getItem(key) || 'null') || { rows: {}, receipts: {} }); }
@@ -35,23 +35,33 @@ export const supabase = {
   from: (table: string) => new Query(table),
   async rpc(name: string, args: Record<string, unknown>) {
     calls.push({ operation: name, args: copy(args) });
-    if (name !== 'mesomon_save' || args.p_club_id !== CLUB || args.p_expected_user_id !== USER) return { data: null, error: { message: 'Fixture authorization rejected.' } };
+    if (!['mesomon_save', 'mesomon_delete_save'].includes(name) || args.p_club_id !== CLUB || args.p_expected_user_id !== USER) return { data: null, error: { message: 'Fixture authorization rejected.' } };
     const slot = Number(args.p_slot), expected = Number(args.p_expected_revision);
-    if (![1, 2, 3].includes(slot) || !Number.isInteger(expected) || expected < 0 || typeof args.p_request_id !== 'string') return { data: null, error: { message: 'Invalid save request.' } };
+    if (![1, 2, 3].includes(slot) || !Number.isInteger(expected) || expected < 0) return { data: null, error: { message: 'Invalid save request.' } };
+    const store = read(), current = store.rows[String(slot)];
+    if (name === 'mesomon_delete_save') {
+      const revision = current?.revision ?? 0;
+      if (current && current.state === null) return { data: { deleted: true, revision }, error: null };
+      if (revision !== expected) return { data: { deleted: false, revision }, error: null };
+      store.rows[String(slot)] = { state: null, revision: revision + 1, updated_at: new Date().toISOString(), slot };
+      delete store.receipts[String(slot)];
+      write(store);
+      return { data: { deleted: true, revision: revision + 1 }, error: null };
+    }
+    if (typeof args.p_request_id !== 'string') return { data: null, error: { message: 'Invalid save request.' } };
     const state = args.p_state as { slot?: number; schemaVersion?: number };
     if (!state || state.slot !== slot || state.schemaVersion !== 1) return { data: null, error: { message: 'Invalid save state.' } };
-    const store = read(), request = String(args.p_request_id), fingerprint = JSON.stringify(copy(args));
-    const previous = store.receipts[request];
-    if (previous) {
+    const request = String(args.p_request_id), fingerprint = JSON.stringify(copy(args));
+    const previous = store.receipts[String(slot)];
+    if (previous?.request === request) {
       if (previous.fingerprint !== fingerprint) return { data: null, error: { message: 'Request ID payload mismatch.' } };
       return { data: { ...(copy(previous.result) as object), replayed: true }, error: null };
     }
-    const current = store.rows[String(slot)];
     if ((current?.revision || 0) !== expected) return { data: { conflict: true, replayed: false, save: copy(current || null) }, error: null };
     const row = { state: copy(state), revision: expected + 1, updated_at: new Date().toISOString(), slot };
     store.rows[String(slot)] = row;
     const result = { conflict: false, replayed: false, save: row };
-    store.receipts[request] = { fingerprint, result: copy(result) };
+    store.receipts[String(slot)] = { request, fingerprint, result: copy(result) };
     write(store);
     if (loseNextReply) { loseNextReply = false; throw new Error('Connection interrupted after commit.'); }
     return { data: copy(result), error: null };
