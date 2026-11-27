@@ -37,6 +37,14 @@ export function paintExteriorLife(id: MapId, phase: number, state: EnvironmentMo
     // Water catches the near lugger's two-sided sail in short broken pieces.
     rect(0xb8b69a, .49, 229 + water, 132 + water, 3, 2);
     rect(0xacb39d, .5, 232 - water, 135, 5, 1);
+    // A wool telltale streams from the clew of the tanbark staysail. The
+    // first stitch stays on the sail as the free end dips and lifts in gusts.
+    rect(0xe6c38d, 1, 151, 44, 3, 1);
+    rect(0xbd825e, 1, 154, 44 + Math.sign(water), 4, 2);
+    rect(0xd6a576, 1, 158, 44 + water, 3, 1);
+    // Ripple under the suspended rescue boat, offset from its wet shadow.
+    rect(0x75978a, .8, 213 + water, 188 + water, 8, 1);
+    rect(0xbca680, .55, 215 - water, 191 + water, 4, 1);
     return;
   }
   if (id !== 'harbor') return;
@@ -78,4 +86,11 @@ export function paintExteriorLife(id: MapId, phase: number, state: EnvironmentMo
   rect(0xbab191, .50, 281 - water, 481 + water, 4, 1);
   rect(0xb59c76, .63, 423 + water, 558 + water, 7, 1);
   rect(0x91a999, .57, 428 - water, 561 + water, 4, 1);
+  // Three broken strokes follow the angle of the lighter's immersed bow.
+  // The last catches the reflection of the light-colored rubbing strip.
+  rect(0x89a696, .7, 345 + water, 495 + water, 8, 1);
+  rect(0xa9b9a0, .85, 353 + water, 493 + water, 6, 1);
+  rect(0xc4b996, .8, 359 + water, 491 + water, 5, 1);
+  // A wedge of warm light travels across the copper fish's belly.
+  rect(0xf0cd92, .75, 377 + phase, 96 - Math.floor(phase / 4), 3, 1);
 }

@@ -1,21 +1,41 @@
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { MAPS } from '@/lib/mesomon/data/maps';
-import { getChartRoute } from '@/lib/mesomon/wayfinding';
+import { getChartExits, getChartRoute } from '@/lib/mesomon/wayfinding';
 import type { Direction, MesomonSaveV1, TileKind } from '@/lib/mesomon/types';
+import { ChartLandmarks } from './ChartLandmarks';
 import './locationChart.css';
 
 const inks: Record<TileKind, string> = {
-  water: '#649499', 'dark-water': '#537b82', wall: '#898877', roof: '#a28473',
-  floor: '#dfcda4', wood: '#c9a775', stone: '#d8ccac', grass: '#9aaa80',
-  stairs: '#c0b591', sand: '#e8d4a3', reeds: '#99ad88',
+  water: '#739a99', 'dark-water': '#52797d', wall: '#8c8c76', roof: '#bc987a',
+  floor: '#e1d1ad', wood: '#cbac7e', stone: '#d8ccab', grass: '#a7ae83',
+  stairs: '#b8ae92', sand: '#e7d4a3', reeds: '#9aa783',
 };
 const bearings: Record<Direction, string> = { up: 'north', right: 'east', down: 'south', left: 'west' };
 const arrows: Record<Direction, string> = { up: '↑', right: '→', down: '↓', left: '←' };
+const angles: Record<Direction, number> = { up: 0, right: 90, down: 180, left: 270 };
+const position = 'M0 -1.05L.72 .68 0 .37 -.72 .68Z';
+const exit = 'M-.84 .86V-.26A.84 .84 0 0 1 .84-.26V.86H.34v-1a.34 .34 0 0 0-.68 0v1Z';
+const stop = 'M0 .04l-.8-.96L0-1.84l.8.92Z';
+const mapTextures: Partial<Record<TileKind, string>> = {
+  water: 'water', 'dark-water': 'water', wall: 'hatch', wood: 'boards', reeds: 'reeds',
+};
 
-/** Regional terrain alone is charted. Story locations appear only when they are the next stop. */
+function ChartKey({ symbol, label }: { symbol: 'position' | 'exit' | 'stop'; label: string }) {
+  return <span>
+    <svg aria-hidden="true" viewBox="-1.25 -1.25 2.5 2.5" width="14" height="14">
+      <path d={symbol === 'position' ? position : symbol === 'exit' ? exit : stop}
+        transform={symbol === 'stop' ? 'translate(0 .88)' : undefined} className={'meso-chart-' + symbol} />
+    </svg>
+    {label}
+  </span>;
+}
+
 export function LocationChart({ save }: { save: MesomonSaveV1 }) {
+  const id = useId();
   const map = MAPS[save.player.mapId];
   const route = useMemo(() => getChartRoute(save), [save]);
+  const exits = getChartExits(save);
+  const otherExits = exits.filter(door => door.id !== route?.target.id);
   const terrain = useMemo(() => {
     const paths = new Map<TileKind, string[]>();
     for (const [y, row] of map.tiles.entries()) {
@@ -32,21 +52,58 @@ export function LocationChart({ save }: { save: MesomonSaveV1 }) {
     return Array.from(paths, ([kind, path]) => ({ kind, d: path.join(' ') }));
   }, [map]);
   const line = route?.points.map(({ x, y }) => `${x + .5},${y + .5}`).join(' ');
+  // Give symbols a similar printed size on the small room plans and the full town survey.
+  const scale = map.width / 30;
+  const { x, y, facing } = save.player;
   return <section className="meso-location-chart" aria-label="Location chart">
-    <h2>{map.name}</h2>
-    <div className="meso-chart-frame">
-      <svg className="meso-chart-map" viewBox={`0 0 ${map.width} ${map.height}`} aria-hidden="true">
-        {terrain.map(({ kind, d }) => <path key={kind} d={d} fill={inks[kind]} shapeRendering="crispEdges" />)}
-        {line && <g fill="none" strokeLinejoin="round" strokeLinecap="round">
-          <polyline points={line} stroke="#fff5d9" strokeWidth=".65" />
-          <polyline points={line} stroke="#723327" strokeWidth=".31" strokeDasharray=".48 .33" />
-        </g>}
-        {route && <path transform={`translate(${route.target.x + .5} ${route.target.y + .5})`} d="M0 -0.8 L0.8 0 0 0.8 -0.8 0Z" fill="#a34731" stroke="#fff5d9" strokeWidth=".18" />}
-        <circle cx={save.player.x + .5} cy={save.player.y + .5} r=".54" fill="#173e4a" stroke="#fff5d9" strokeWidth=".2" />
-      </svg>
+    <div className="meso-chart-heading">
+      <h2>{map.name}</h2>
       <span className="meso-chart-north" aria-hidden="true">↑ N</span>
     </div>
-    <div className="meso-chart-key"><span><b aria-hidden="true">●</b> Your position</span>{route && <span><b aria-hidden="true">◆</b> Next stop</span>}</div>
+    <div className="meso-chart-frame">
+      <svg className="meso-chart-map" viewBox={`0 0 ${map.width} ${map.height}`} role="img" aria-labelledby={id + '-title'} aria-describedby={id + '-description'}>
+        <title id={id + '-title'}>{map.name + ' walking chart'}</title>
+        <desc id={id + '-description'}>
+          {[`You are facing ${bearings[facing]}.`, route && `Next stop: ${route.label}.`,
+            exits.length > 0 && `Open exits: ${exits.map(door => door.label).join(', ')}.`].filter(Boolean).join(' ')}
+        </desc>
+        <defs>
+          <pattern id={id + '-water'} patternUnits="userSpaceOnUse" width="2.9" height="2.1">
+            <path d="M.18 .63q.32.13.64 0t.58 0m.55 1.02q.24.1.52 0" fill="none" stroke="#d1e2c7" strokeOpacity=".42" strokeWidth=".13" />
+          </pattern>
+          <pattern id={id + '-hatch'} patternUnits="userSpaceOnUse" width="1.1" height="1.1">
+            <path d="M0 1.1l1.1-1.1" stroke="#4c554d" strokeOpacity=".28" strokeWidth=".13" />
+          </pattern>
+          <pattern id={id + '-boards'} patternUnits="userSpaceOnUse" width="3.4" height="1.45">
+            <path d="M0 .7h3.4m-2.9 0v.72m1.6-1.4V.7" stroke="#8c7054" strokeOpacity=".36" strokeWidth=".11" />
+          </pattern>
+          <pattern id={id + '-reeds'} patternUnits="userSpaceOnUse" width="1.6" height="1.5">
+            <path d="M.42 .98.18.46m.24.52.08-.74m-.08.74.3-.46" fill="none" stroke="#4e6756" strokeWidth=".12" />
+          </pattern>
+        </defs>
+        {terrain.map(({ kind, d }) => <g key={kind}>
+          <path d={d} fill={inks[kind]} shapeRendering="crispEdges" />
+          {mapTextures[kind] && <path d={d} fill={`url(#${id}-${mapTextures[kind]})`} />}
+        </g>)}
+        <ChartLandmarks zone={map.id} flooded={save.questFlags.sluice_open !== true} />
+        {otherExits.map(door => <path key={door.id} aria-hidden="true" data-exit={door.id} d={exit}
+          transform={`translate(${door.x + .5} ${door.y + .5}) scale(${scale})`} className="meso-chart-exit"><title>{door.label}</title></path>)}
+        {line && <g fill="none" strokeLinejoin="round" strokeLinecap="round">
+          <polyline points={line} stroke="#fff5d9" vectorEffect="non-scaling-stroke" strokeWidth="4.2" />
+          <polyline points={line} stroke="#853d30" vectorEffect="non-scaling-stroke" strokeWidth="2.15" strokeDasharray="4.2 3" />
+        </g>}
+        {route && <g transform={`translate(${route.target.x + .5} ${route.target.y + .5}) scale(${scale})`}>
+          <path d={stop} className="meso-chart-stop" />
+          <circle cx="0" cy="-.91" r=".19" fill="#fff5d9" />
+        </g>}
+        <path d={position} className="meso-chart-position" transform={`translate(${x + .5} ${y + .5}) scale(${scale}) rotate(${angles[facing]})`} />
+      </svg>
+    </div>
+    <div className="meso-chart-key">
+      <ChartKey symbol="position" label="Your position" />
+      {route && <ChartKey symbol="stop" label="Next stop" />}
+      {otherExits.length > 0 && <ChartKey symbol="exit" label="Open exit" />}
+    </div>
     {route ? <>
       <h3>{route.label}</h3>
       <ol className="meso-chart-directions" role="list" aria-label="Walking directions">

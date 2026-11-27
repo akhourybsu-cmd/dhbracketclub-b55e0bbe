@@ -41,13 +41,22 @@ function chapterDestination(save: MesomonSaveV1): Destination | undefined {
   if (!has('chapter_complete')) return at('workshop', 'closing');
 }
 
+function openCrossings(save: MesomonSaveV1, from: MapId) {
+  return crossings.filter(({ from: origin, requires = [] }) => origin === from && requires.every(flag => save.questFlags[flag] === true));
+}
+
+export function getChartExits(save: MesomonSaveV1): MapObject[] {
+  const doors = new Set(openCrossings(save, save.player.mapId).map(crossing => crossing.door));
+  return MAPS[save.player.mapId].objects.filter(object => doors.has(object.id));
+}
+
 function nextDoor(save: MesomonSaveV1, destination: MapId): string | undefined {
   const start = save.player.mapId;
   const queue: { map: MapId; first?: string }[] = [{ map: start }];
   const seen = new Set<MapId>([start]);
   for (const { map, first } of queue) {
-    for (const crossing of crossings) {
-      if (crossing.from !== map || seen.has(crossing.to) || crossing.requires?.some(flag => save.questFlags[flag] !== true)) continue;
+    for (const crossing of openCrossings(save, map)) {
+      if (seen.has(crossing.to)) continue;
       const door = first ?? crossing.door;
       if (crossing.to === destination) return door;
       seen.add(crossing.to);

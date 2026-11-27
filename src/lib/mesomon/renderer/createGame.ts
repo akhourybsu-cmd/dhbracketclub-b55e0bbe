@@ -7,6 +7,8 @@ import { impactDefense, paintBattleEffect } from './battleEffects';
 import { getBattleBeat, getBattleHitSide } from '../battlePlayback';
 import { paintInterior, paintInteriorFloor } from './interiors';
 import { paintTerrainDepth } from './terrain';
+import { paintTidalWater } from './tidalWater';
+import { paintChamberInstrument } from './chamberInstrument';
 import { paintExteriors } from './exteriors';
 import { paintQuaySquare } from './quaySquare';
 import { paintTideworks, type TideworksState } from './tideworks';
@@ -20,10 +22,11 @@ import { canWalk, DELTAS, getMap, getPhase, getVisibleObjects, nearbyInteraction
 // Native pixels relative to the interaction tile. Raised desks and recessed doors
 // can be tapped on their visible faces, even where they project into the next tile.
 const paintedHits: Record<string, [number, number, number, number]> = {
-  chart: [-2, -9, 21, 25], 'field-map': [-2, -9, 21, 25], 'satchel-hook': [-2, -19, 21, 35],
+  chart: [-5, -10, 27, 27], 'field-map': [-2, -9, 21, 25], 'satchel-hook': [-2, -19, 21, 35],
   'workshop-note': [-2, -11, 22, 27], kettle: [-2, -13, 19, 29], 'rest-rope': [-2, -4, 20, 20],
   'workshop-exit': [-2, 0, 21, 24], gangplank: [-4, 0, 24, 40],
   'workshop-door': [-7, -39, 30, 55], 'tide-door': [0, 0, 16, 16],
+  'passage-door': [0, -12, 38, 33], 'chamber-door': [-9, -26, 33, 42],
 };
 interface TilePoint { x: number; y: number }
 
@@ -201,7 +204,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       const map = getMap(session.save);
       const tide: TideworksState = { gateOpen: session.save.questFlags.gate_opened === true, sluiceOpen: session.save.questFlags.sluice_open === true, sealed: session.save.rifts['port-marche'] === 'sealed' };
       const pageFound = session.save.questFlags.page_found === true;
-      const mapState = (map.id === 'workshop' && pageFound) || (map.id === 'tide-stairs' && tide.gateOpen) || (map.id === 'passage' && tide.sluiceOpen) || (map.id === 'chamber' && tide.sealed);
+      const mapState = ((map.id === 'workshop' || map.id === 'harbor') && pageFound) || (map.id === 'tide-stairs' && tide.gateOpen) || (map.id === 'passage' && tide.sluiceOpen) || (map.id === 'chamber' && tide.sealed);
       if (this.mapId !== map.id || this.mapState !== mapState) {
         this.mapState = mapState;
         this.rebuildMap(map, tide, pageFound);
@@ -261,6 +264,7 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         context.imageSmoothingEnabled = false;
         for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
           const kind = map.tiles[y][x];
+          if (kind === 'water' || kind === 'dark-water') continue;
           let tile = TILE[kind];
           if (map.ambience === 'underwharf' && kind === 'wall') tile = 'rock';
           if (map.ambience === 'underwharf' && kind === 'floor') tile = 'stone';
@@ -268,7 +272,6 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
             if (kind === 'wall') tile = x === 3 ? 'port' : x === 12 ? 'starboard' : 'bow';
             if (kind === 'roof') tile = `cabin-${x - (x < 9 ? 4 : 9)}-${y - 3}`;
           }
-          if (kind === 'water' && (x + y) % 2) tile = 'water2';
           context.drawImage(atlas, Math.max(0, TILES.indexOf(tile as typeof TILES[number])) * 16, 0, 16, 16, x * 16, y * 16, 16, 16);
           // Wall footings, window rhythm and reeds are painted into the cached layer.
           if (kind === 'wall' && map.id !== 'ship' && map.ambience !== 'underwharf' && (x + y) % 4 === 0) context.drawImage(atlas, TILES.indexOf('window') * 16, 0, 16, 16, x * 16, y * 16, 16, 16);
@@ -278,12 +281,14 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
         if (map.id === 'workshop') {
           for (const [x, y] of [[3, 3], [4, 3], [11, 3], [12, 3]]) context.drawImage(atlas, TILES.indexOf('shelf') * 16, 0, 16, 16, x * 16, y * 16, 16, 16);
         }
+        paintTidalWater(context, map);
         paintInteriorFloor(context, map);
         paintTerrainDepth(context, map);
         paintInterior(context, map.id, { pageFound, sluiceOpen: tide.sluiceOpen });
-        paintExteriors(context, map);
+        paintExteriors(context, map, pageFound);
         paintQuaySquare(context, map);
         paintTideworks(context, map, tide);
+        if (map.id === 'chamber') paintChamberInstrument(context, tide.sealed);
         if (map.id === 'harbor') {
           const skiff = SCENERY.skiff;
           // Moored in the water directly alongside the west edge of the arrival pier.

@@ -95,6 +95,33 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     }
   };
 
+  // Open thresholds have a clear recess, unlike the sealed iron grilles.
+  // Trace the inner and outer stone arches on the same scanline so the
+  // soffit remains visible all the way around the opening.
+  const threshold = (cx: number, foot: number, radius: number, jambHeight: number) => {
+    const spring = foot - jambHeight, opening = radius - 4;
+    for (let row = -radius; row < jambHeight; row++) {
+      const rise = Math.min(row, 0);
+      const outer = Math.round(Math.sqrt(radius * radius - rise * rise));
+      const y = spring + row;
+      rect('#566b66', cx - outer, y, 2 * outer + 1, 1);
+      rect('#9aa58d', cx - outer, y, Math.min(2, outer + 1), 1);
+      if (rise < -opening) continue;
+      const inner = Math.round(Math.sqrt(opening * opening - rise * rise));
+      rect('#2d4245', cx - inner, y, 2 * inner + 1, 1);
+      if (inner > 2) rect('#1c333a', cx - inner + 2, y, inner * 2 - 3, 1);
+      rect('#79897b', cx + inner, y, 1, 1);
+    }
+    for (let i = 1; i < 8; i++) {
+      const angle = Math.PI * i / 8;
+      const sx = Math.cos(angle), sy = Math.sin(angle);
+      line('#3e5553', cx + Math.round(sx * (opening + 1)), spring - Math.round(sy * (opening + 1)),
+        cx + Math.round(sx * radius), spring - Math.round(sy * radius));
+    }
+    rect('#8c9885', cx - radius - 1, foot - 1, radius * 2 + 3, 2);
+    rect('#405b5b', cx - radius, foot + 1, radius * 2 + 1, 2);
+  };
+
   if (map.id === 'tide-stairs') {
     // The public stairs descend from a high stone quay into the service landing.
     landingFace(128, 240, 144, 19);
@@ -231,6 +258,83 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#657c72', 269, 195, 7, 1);
     }
     brace(52, 58, 1);
+    // On the west sea-wall, the lift chain disappears into an open well.
+    // A counterweight descends when the gate rises. Its dry ochre base and
+    // dark band of kelp keep the level legible in a still frame.
+    blocks(35, 127, 28, 52);
+    rect('#263e44', 37, 130, 24, 46);
+    rect('#172e37', 40, 131, 17, 40);
+    rect('#425959', 39, 131, 2, 39);
+    rect('#53665c', 54, 131, 3, 37);
+    rect('#29474b', 40, 170, 17, 6);
+    rect('#698880', 41, 171, 15, 1);
+    const weightY = state.gateOpen ? 156 : 143;
+    for (let y = 133; y < weightY; y += 4) {
+      rect('#958a6e', 47, y, 3, 2);
+      rect('#58645a', 48, y + 2, 1, 2);
+    }
+    rect('#293d3f', 42, weightY + 2, 14, 13);
+    rect('#927351', 42, weightY, 12, 12);
+    rect('#c0a076', 42, weightY, 12, 2);
+    rect('#af8862', 43, weightY + 2, 3, 9);
+    for (const sy of [3, 9]) rect('#535247', 42, weightY + sy, 12, 2);
+    rect('#929581', 34, 126, 30, 3);
+    rect('#c2ba96', 34, 125, 29, 1);
+    for (const [x, y] of [[34, 147], [36, 160], [59, 174], [44, 179]]) {
+      rect('#445c53', x, y, 3, 5);
+      rect('#789080', x, y, 2, 1);
+      rect('#344c48', x + 2, y + 5, 1, 3);
+    }
+    // The wheel's stone foundation is cut flush with the landing. A shallow
+    // swept arc and two iron stops show the travel around the spindle.
+    for (let x = 113; x <= 145; x++) {
+      const dx = (x - 133) / 23;
+      const y = 139 + Math.round(14 * Math.sqrt(1 - dx * dx));
+      rect('#697670', x, y, 1, 2);
+      rect('#a6a68e', x, y + 2, 1, 1);
+    }
+    for (const [x, y] of [[112, 146], [145, 148]]) {
+      rect('#415351', x, y, 4, 4);
+      rect('#b0a17a', x, y, 3, 1);
+    }
+    // Slabs radiate around the toe of the old public stair. The fan stops
+    // cleanly against the timber service dock on its right.
+    for (const [radius, depth] of [[39, 14], [51, 21], [63, 29]]) {
+      for (let x = 143 - radius; x < 160; x++) {
+        const dx = (x - 143) / radius;
+        const y = 158 + Math.round(depth * Math.sqrt(1 - dx * dx));
+        if (y < 160) continue;
+        rect('#60736e', x, y, 1, 1);
+        rect('#8b998a', x, y + 1, 1, 1);
+      }
+    }
+    for (const [x, y, tx, ty] of [[93, 165, 83, 167], [117, 171, 112, 176],
+      [104, 172, 96, 177], [130, 178, 128, 185], [150, 172, 151, 177]]) {
+      line('#64776f', x, y, tx, ty);
+    }
+    // The east-facing returns and the little shadows underneath the rail posts
+    // give the flight a continuous side face when seen from the lower landing.
+    for (let tread = 0; tread < 12; tread++) {
+      const y = 64 + tread * 8;
+      const thickness = 5 - Math.floor(tread / 4);
+      rect('#526b68', 192, y + 2, thickness, 5);
+      rect('#3e595a', 192, y + 7, thickness, 2);
+      line('#8c9a88', 192, y, 191 + thickness, y + 2);
+      if (tread % 2 === 0) diagonal(115, y + 3, 123, y + 7, '#334c4d38', 2);
+    }
+    // The passage entrance is carved into the outside retaining pier. Its
+    // jamb meets the walkable doorway at (16,5); the arch sits in the east bank.
+    blocks(271, 58, 29, 43);
+    threshold(282, 93, 10, 12);
+    for (const [x, y, w] of [[267, 93, 9], [264, 95, 11], [260, 97, 11]]) {
+      rect('#929784', x, y, w, 1);
+      rect('#576c67', x, y + 1, w, 1);
+    }
+    rect('#566f69', 271, 98, 25, 2);
+    rect('#ac9573', 269, 69, 3, 15);
+    rect('#314549', 264, 69, 6, 8);
+    rect('#e4bc7e', 265, 70, 4, 5);
+    rect('#7a7962', 265, 72, 4, 1);
     // Shallow lamp light crosses the high landing in sparse widening strips.
     for (let r = 0; r < 18; r++) rect('#ebdba41b', 76 + r, 48 + r, 23, 1);
     return;
@@ -247,6 +351,52 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       rect('#b6a274', x + 4, y - 17, 2, 2);
       rect('#b6a274', x + 39, y - 17, 2, 2);
     }
+    // The copper delivery main terminates in a cast, snail-shaped pump on
+    // the blocked north bank. The lower lip stands proud of the crossing.
+    rect('#273a3d', 160, 155, 75, 19);
+    for (const [x, y, w] of [[161, 159, 23], [186, 158, 19], [208, 159, 25]]) {
+      rect('#504d42', x, y, w, 10);
+      rect('#8e8066', x, y, w, 2);
+      rect('#635947', x + 3, y + 5, w - 6, 1);
+    }
+    rect('#24353b', 166, 159, 23, 10);
+    rect('#757c6e', 165, 158, 23, 2);
+    for (const x of [166, 183]) {
+      rect('#5c6b60', x, 157, 4, 10);
+      rect('#ba9e71', x + 1, 159, 2, 1);
+    }
+    rect('#192f35', 161, 131, 8, 17);
+    rect('#687567', 160, 130, 7, 17);
+    rect('#94977c', 160, 131, 2, 12);
+    rect('#6c644f', 158, 131, 11, 4);
+    rect('#bd9f72', 158, 131, 10, 1);
+    // Bolted rim, recessed cheeks and offset spindle make a distinct silhouette.
+    ellipse('#1b3339', 177, 148, 16, 15);
+    ellipse('#717e6c', 176, 146, 16, 15);
+    ellipse('#ab9d7c', 176, 145, 15, 14);
+    ellipse('#445f5a', 176, 146, 13, 13);
+    ellipse('#2c4546', 177, 147, 10, 10);
+    ellipse('#63766a', 175, 146, 8, 8);
+    for (const [x, y] of [[166, 136], [181, 133], [189, 146], [181, 158], [164, 152]]) {
+      rect('#364940', x, y + 1, 2, 2);
+      rect('#ceb184', x, y, 2, 1);
+    }
+    // A flanged copper elbow connects the housing to the delivery main above.
+    for (const [x, y, tx, ty] of [[185, 139, 197, 139], [197, 139, 206, 130], [206, 130, 219, 130]]) {
+      diagonal(x, y, tx, ty, '#283e40', 8);
+      diagonal(x, y, tx, ty, '#936c50', 6);
+      line('#c6a278', x, y, tx, ty);
+      line('#a7815d', x, y + 2, tx, ty + 2);
+    }
+    for (const [x, y] of [[192, 138], [215, 129]]) {
+      rect('#44554c', x, y, 4, 9);
+      rect('#aea380', x, y, 3, 2);
+    }
+    // The exposed shaft carries one radial witness mark even when motion is off.
+    ellipse('#344a48', 175, 146, 6, 6);
+    ellipse('#928269', 175, 145, 5, 5);
+    line('#c3ae83', 175, 145, 178, 142);
+    rect('#d4b27f', 174, 144, 3, 3);
     // A capped wall runs down the west side of the entry towpath.
     blocks(7, 183, 23, 144);
     rect('#9ba191', 29, 183, 3, 144);
@@ -272,9 +422,19 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
         rect('#c9b38a', 160, y, 32, 1);
         rect('#514e41', 162, y + 3, 2, 2);
         rect('#514e41', 188, y + 3, 2, 2);
+        // Water has stripped the middle of the planks pale; the lower edge
+        // still carries the wet band visible below water on the way in.
+        const start = 167 + (plank * 7) % 6;
+        rect('#bda17b', start, y + 2, 9, 1);
+        rect('#756d58', start - 1, y + 5, 8, 1);
+        rect('#6a7568', 160, y + 5, 3, 2);
       }
     } else {
       rect('#2e5660', 161, 179, 30, 57);
+      for (let y = 179; y < 236; y += 8) {
+        rect('#426868', 163, y + 1, 24, 2);
+        rect('#344f56', 164, y + 4, 25, 2);
+      }
       for (let y = 183; y < 233; y += 10) {
         rect('#518585', 162 + (y % 3) * 3, y, 13, 1);
         rect(foam, 176, y + 2, 8, 1);
@@ -286,6 +446,35 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
       for (const y of [185, 224]) {
         rect('#464c45', 160, y, 32, 6);
         rect(brass, 160, y, 32, 1);
+      }
+    }
+    // The cross-gallery's gratings cast a slant of light across the dry approach.
+    // A wide gap between the bars leaves the sign, lever and encounter silhouettes clear.
+    for (let bar = 0; bar < 4; bar++) {
+      for (let step = 0; step < 10; step++) {
+        rect('#f4ca8d12', 77 + bar * 9 + step * 2, 169 + step * 3, 5, 3);
+      }
+    }
+    // At the far end the chamber's arched head meets the actual door tile. Salt
+    // bands trail down the recess, keeping the distant portal legible from the bend.
+    blocks(286, 17, 48, 29);
+    threshold(311, 44, 15, 7);
+    rect('#b5ae8c', 295, 45, 33, 2);
+    for (const x of [291, 329]) {
+      rect('#395451', x, 30, 3, 10);
+      rect('#a59b7b', x, 30, 2, 4);
+    }
+    // Daylight through the joints of the wharf roof picks out the threshold
+    // and the turn beside the lantern. The broad joist shadows run underfoot.
+    for (const [y, width] of [[76, 93], [138, 87]]) {
+      for (let row = 0; row < 13; row++) {
+        const x = 240 + Math.floor(row / 2);
+        rect(row < 3 || row > 10 ? '#253d461a' : '#253d463d', x, y + row, width - Math.floor(row / 2), 1);
+      }
+    }
+    for (const [x, y] of [[276, 56], [291, 59], [301, 105]]) {
+      for (let row = 0; row < 17; row++) {
+        rect('#efd29820', x + Math.floor(row / 2), y + row, 5, 1);
       }
     }
     rect(cap, 158, 175, 36, 2);

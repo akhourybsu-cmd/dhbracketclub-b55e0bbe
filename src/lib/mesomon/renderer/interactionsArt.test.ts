@@ -59,12 +59,9 @@ describe('transparent physical Mesomon interaction art', () => {
     expect(result.pixels).toEqual(painted('rift-scar').pixels);
     expect(result.pixels.slice(0, 16 * 18).every(pixel => pixel === null)).toBe(true);
   });
-  it('keeps a doorway genuinely open and stair returns separate from floor tiles', () => {
-    const arch = painted('stone-doorway').pixels;
-    for (const y of [8, 12, 16, 20]) expect(arch[y * 16 + 8]).toBeNull();
-    expect(arch[21 * 16 + 8]).not.toBeNull();
-    expect(interactionArtKey({ id: 'chamber-door' }, state)).toBe('stone-doorway');
-    for (const id of ['passage-door', 'stairs-exit', 'passage-exit', 'chamber-exit']) expect(interactionArtKey({ id }, state)).toBe('stone-steps');
+  it('leaves the two built-in archways clear and keeps return stairs separate from the floor', () => {
+    for (const id of ['passage-door', 'chamber-door']) expect(interactionArtKey({ id }, state)).toBeNull();
+    for (const id of ['stairs-exit', 'passage-exit', 'chamber-exit']) expect(interactionArtKey({ id }, state)).toBe('stone-steps');
     const steps = painted('stone-steps').pixels;
     expect(steps.slice(0, 14 * 16).every(pixel => pixel === null)).toBe(true);
     expect(steps[14 * 16 + 1]).toBeNull();

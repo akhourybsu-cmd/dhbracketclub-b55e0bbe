@@ -2,6 +2,7 @@ import type { MapDefinition, MapId } from '../types';
 import { paintExteriorLife } from './exteriorLife';
 import { paintInteriorLife } from './interiorLife';
 import { paintTideLife } from './tideLife';
+import { paintRecorderMotion } from './chamberInstrument';
 
 /** Only the native-pixel calls used by this layer; importing it never boots Phaser. */
 export interface EnvironmentMotionGraphics {
@@ -110,6 +111,7 @@ function authoredFrame(id: MapId, phase: number, state: EnvironmentMotionState):
     rect(foam, shimmer[phase], 340, 97 + travel, 5, 1);
     rect(water, shimmer[(phase + 4) % 8], 343, 153 + travel, 4, 1);
   } else if (id === 'chamber') {
+    paintRecorderMotion(phase, state.riftSealed, rect);
     // The central basin is centered at152,92 (rx28,ry15). Small broken
     // reflections become gentler and sea-green once the rift is closed.
     if (!state.riftSealed) {
@@ -127,8 +129,8 @@ function authoredFrame(id: MapId, phase: number, state: EnvironmentMotionState):
   }
 
   if (id === 'ship' || id === 'harbor') paintExteriorLife(id, phase, state, rect);
-  else if (id === 'workshop' || id === 'passage') paintInteriorLife(id, phase, state, rect);
-  else paintTideLife(id, phase, state, rect);
+  if (id === 'workshop' || id === 'passage') paintInteriorLife(id, phase, state, rect);
+  if (id === 'tide-stairs' || id === 'passage' || id === 'chamber') paintTideLife(id, phase, state, rect);
 
   // Absolute time produces a reusable eight-frame sequence. The small global
   // cache is bounded even when repeatedly walking between rooms/state variants.

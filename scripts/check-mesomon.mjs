@@ -364,7 +364,14 @@ async function walkTo(p, id, meeting) {
 }
 async function interact(p, id, dialogue = true) {
   await walkTo(p, id);
-  await p.locator(`[data-mm-object="${id}"]`).click();
+  if (id === 'passage-door' || id === 'chamber-door') {
+    // Tap the painted arch beyond the logical door tile after the camera settles.
+    await pause(300);
+    await tapMapObject(p, id, id === 'passage-door' ? {x:18,y:-5} : {x:0,y:-20});
+    await expect(p.locator('.mesomon')).toHaveAttribute('data-map-id', id === 'passage-door' ? 'passage' : 'chamber');
+  } else {
+    await p.locator(`[data-mm-object="${id}"]`).click();
+  }
   if (dialogue) await drain(p);
 }
 async function automaticMeeting(p, id, trigger) {
@@ -401,9 +408,9 @@ async function automaticMeeting(p, id, trigger) {
   assert.equal(distance, 1, 'The resident finishes beside the player');
   check(engine + '-automatic-meeting-' + id, {position: before, distance});
 }
-async function tapMapObject(p, id) {
+async function tapMapObject(p, id, offset = { x: 0, y: 0 }) {
   const canvas = p.locator('.mesomon canvas');
-  const position = await canvas.evaluate(async (node, id) => {
+  const position = await canvas.evaluate(async (node, {id, offset}) => {
     const state = await window.mmQa.readSave();
     const map = window.mmQa.getMap(state);
     const object = window.mmQa.getVisibleObjects(state).find(candidate => candidate.id === id);
@@ -415,10 +422,10 @@ async function tapMapObject(p, id) {
     };
     const rect = node.getBoundingClientRect();
     return {
-      x:axis(object.x,state.player.x,map.width,node.width,rect.width),
-      y:axis(object.y,state.player.y,map.height,node.height,rect.height),
+      x:axis(object.x,state.player.x,map.width,node.width,rect.width) + offset.x * rect.width / node.width,
+      y:axis(object.y,state.player.y,map.height,node.height,rect.height) + offset.y * rect.height / node.height,
     };
-  },id);
+  },{id, offset});
   await canvas.tap({position});
 }
 async function waitAtObject(p, id) {

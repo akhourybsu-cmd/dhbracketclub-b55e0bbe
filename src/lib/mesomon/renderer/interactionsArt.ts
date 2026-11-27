@@ -3,7 +3,7 @@ import type { MapObject } from '../types';
 export const INTERACTION_ART_KEYS = [
   'rift-open', 'rift-scar', 'survey-page', 'eddy-flow', 'eddy-drained',
   'channel-pull', 'channel-calm', 'timber-brace', 'tincture-flask',
-  'wayboard', 'survey-cuts', 'reed-tuft', 'stone-doorway', 'stone-steps',
+  'wayboard', 'survey-cuts', 'reed-tuft', 'stone-steps',
   'rope-coil', 'rest-lantern', 'sluice-closed', 'sluice-open',
 ] as const;
 export type InteractionArtKey = typeof INTERACTION_ART_KEYS[number];
@@ -25,8 +25,6 @@ export function interactionArtKey(data: Pick<MapObject, 'id'>, state: Interactio
     case 'maintenance-plaque': return 'wayboard';
     case 'chamber-markings': return 'survey-cuts';
     case 'whistle-reeds': return 'reed-tuft';
-    case 'chamber-door': return 'stone-doorway';
-    case 'passage-door':
     case 'stairs-exit':
     case 'passage-exit':
     case 'chamber-exit': return 'stone-steps';
@@ -146,19 +144,6 @@ export function paintInteractionArt(ctx: CanvasRenderingContext2D, key: Interact
     r('#9c8055', 7, 7, 2, 4); r('#c2ab6c', 7, 7, 1, 2);
     r('#867650', 12, 11, 2, 4); r('#b4a76d', 12, 11, 1, 2);
     line('#385b4a', 9, 22, 14, 19);
-  } else if (key === 'stone-doorway') {
-    // Open stone jambs reach into the north wall. The opening is transparent:
-    // it cannot stamp an invented wall or square floor over the real room.
-    r(shadow, 2, 22, 13, 1);
-    r(ink, 5, 1, 6, 2); r(ink, 3, 3, 10, 2); r(ink, 2, 5, 12, 2);
-    r(stone, 5, 2, 6, 2); r(stoneLight, 6, 2, 4, 1);
-    r(stone, 3, 4, 3, 3); r(stoneLight, 3, 4, 2, 1);
-    r(stone, 10, 4, 3, 3); r('#687f78', 11, 5, 2, 2);
-    r(ink, 1, 7, 4, 15); r(ink, 11, 7, 4, 15);
-    r(stone, 2, 7, 2, 15); r(stoneLight, 2, 7, 1, 13);
-    r(stone, 12, 7, 2, 15); r('#596e6a', 13, 8, 1, 13);
-    for (const y of [11, 16]) { r('#536b67', 2, y, 2, 1); r('#536b67', 12, y, 2, 1); }
-    r('#9caa93', 4, 21, 8, 1); r('#4f6a66', 4, 22, 8, 1);
   } else if (key === 'stone-steps') {
     // Worn shallow nosings; the unpainted gaps expose the real floor below.
     for (const [x, y, width] of [[5, 14, 6], [3, 17, 10], [1, 20, 14]]) {

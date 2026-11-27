@@ -12,6 +12,10 @@ export function paintTideLife(id: MapId, phase: number, state: EnvironmentMotion
     rect(silver, .23, 35 + swell, 112, 7, 1);
     rect(pearl, .19, 38 - swell, 115 + swell, 4, 1);
     rect(0xb0c1a4, .17, 30 - swell, 119, 8, 1);
+    // Reflections collect in the counterweight well. Even at low tide the
+    // oscillation stays below the weight and inside the stone lip.
+    rect(silver, .43, 42 + swell, 171, 5, 1);
+    rect(0xb0beac, .31, 50 - swell, 173 + swell, 3, 1);
     // Left-hand gallery light catches the worn nosings as the water shifts.
     rect(0xd3c59b, .17, 121 + swell, 96, 6, 1);
     rect(0xc6b992, .16, 125 - swell, 104, 5, 1);
@@ -30,6 +34,19 @@ export function paintTideLife(id: MapId, phase: number, state: EnvironmentMotion
     rect(pearl, .28, 281, 193 + (fall + 1) % 4, 1, 2);
     rect(silver, .21, 278 - fall, 199 + fall, 5 + fall, 1);
     rect(pearl, .23, 285 + fall, 199 + Math.floor(fall / 2), 3 + fall, 1);
+    return;
+  }
+  if (id === 'passage') {
+    // The pump's cast housing is fixed. After lowering the sluice the bronze
+    // shaft actually turns inside it, redrawing just its small central disc.
+    if (!state.sluiceOpen) return;
+    rect(0x928269, 1, 172, 142, 7, 7);
+    const turns = [[3, -3], [4, 0], [3, 3], [0, 4], [-3, 3], [-4, 0], [-3, -3], [0, -4]];
+    const [dx, dy] = turns[phase];
+    for (let step = 1; step <= 3; step++) {
+      rect(0xc3ae83, 1, 175 + Math.round(dx * step / 3), 145 + Math.round(dy * step / 3));
+    }
+    rect(0xd4b27f, 1, 174, 144, 3, 3);
     return;
   }
   if (id !== 'chamber') return;

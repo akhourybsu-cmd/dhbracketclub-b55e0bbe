@@ -4,41 +4,76 @@
   color: #233b35;
   font-family: inherit;
 }
+.meso-chart-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  margin-bottom: .42rem;
+}
 .meso-location-chart h2, .meso-location-chart h3 {
-  margin: 0 0 .45rem;
   color: inherit;
-  font-size: 1.05rem;
   line-height: 1.3;
 }
-.meso-location-chart h3 { font-size: .95rem; }
+.meso-chart-heading h2 {
+  margin: 0;
+  font: 600 1.06rem/1.25 Georgia, serif;
+}
+.meso-chart-north {
+  color: #315249;
+  flex: none;
+  font: bold .74rem/1 monospace;
+  letter-spacing: .06em;
+}
 .meso-chart-frame {
-  background: repeating-linear-gradient(135deg, #d5cbad 0 2px, #ddd4b7 2px 7px);
-  border: 2px solid #827e65;
   position: relative;
   display: flex;
   justify-content: center;
   overflow: hidden;
+  border: 1px solid #675e49;
+  padding: 4px;
+  background-color: #c5b799;
+  background-image: repeating-linear-gradient(0deg, transparent 0 11px, #988e742c 11px 12px),
+    repeating-linear-gradient(90deg, transparent 0 11px, #988e742c 11px 12px);
+  box-shadow: inset 0 0 0 1px #ede0bd, inset 0 0 0 3px #b7ab8c;
 }
-.meso-chart-map { display: block; width: 100%; height: clamp(7rem, 28dvh, 17rem); }
-.meso-chart-north {
-  position: absolute;
-  inset: .2rem .25rem auto auto;
-  background: #283737;
-  color: #fff6df;
-  padding: .1rem .28rem;
-  font: bold .68rem/1.3 monospace;
+.meso-chart-map { display: block; width: 100%; height: clamp(7rem, 29dvh, 17rem); }
+.meso-chart-engraving {
+  fill: none;
+  stroke: #5b5c49;
+  stroke-width: .16;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
-.meso-chart-key { display: flex; flex-wrap: wrap; gap: .2rem .9rem; padding: .4rem 0 .75rem; font-size: .78rem; }
-.meso-chart-key b { color: #173e4a; }
-.meso-chart-key span:nth-child(2) b { color: #963d29; }
+.meso-chart-position, .meso-chart-exit, .meso-chart-stop {
+  stroke: #fff5d9;
+  stroke-width: .22;
+  stroke-linejoin: round;
+  paint-order: stroke fill;
+}
+.meso-chart-position { fill: #133e43; stroke-width: .38; }
+.meso-chart-exit { fill: #3e514b; }
+.meso-chart-stop { fill: #913d2c; stroke-width: .32; }
+.meso-chart-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .2rem .85rem;
+  padding: .46rem 0 .52rem;
+  border-bottom: 1px solid #b4a88a;
+  margin-bottom: .48rem;
+  font-size: .78rem;
+}
+.meso-chart-key span { display: inline-flex; align-items: center; gap: .2rem; }
+.meso-chart-key svg { flex: none; }
+.meso-location-chart h3 { margin: 0 0 .2rem; font-size: .95rem; font-weight: 650; }
 .meso-chart-directions {
   display: flex;
   flex-wrap: wrap;
-  gap: .26rem .65rem;
+  gap: .16rem .6rem;
   margin: 0;
   padding: 0;
   list-style: none;
-  line-height: 1.55;
+  line-height: 1.45;
   font-size: .85rem;
 }
 .meso-chart-directions li:last-child { flex-basis: 100%; }

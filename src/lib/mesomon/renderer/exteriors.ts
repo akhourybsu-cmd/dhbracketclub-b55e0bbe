@@ -134,6 +134,53 @@ function deckhouses(p: Paint) {
   }
 }
 
+/** A partly furled tanbark staysail, seen from the after deck. The belly
+ * swings to starboard; seams converge on the three corners under tension. */
+function staysail(p: Paint) {
+  p.line('#5a5848', [85, 17], [154, 44], [175, 45]);
+  p.line('#c7b186', [85, 16], [153, 43], [175, 45]);
+  p.polygon('#854f3e', [88, 20], [153, 45], [144, 51], [128, 54], [110, 53], [96, 48]);
+  p.polygon('#bc7451', [89, 21], [150, 45], [142, 49], [128, 52], [113, 51], [98, 47]);
+  p.polygon('#ca875e', [90, 22], [113, 31], [123, 46], [128, 51], [113, 50], [99, 46]);
+  p.polygon('#d59a6d', [90, 22], [99, 26], [106, 41], [111, 49], [99, 46]);
+  p.line('#a66449', [108, 29], [114, 43], [120, 51]);
+  p.line('#aa694b', [126, 36], [132, 44], [137, 50]);
+  p.line('#deae7b', [97, 47], [112, 52], [128, 53], [143, 50], [153, 45]);
+  p.line('#675c48', [97, 48], [96, 55], [93, 58]);
+  p.rect('#c1a071', 84, 16, 2, 10);
+  p.rect('#dec193', 84, 15, 3, 2);
+  p.rect('#7d684c', 151, 44, 3, 2);
+}
+
+/** The rescue boat hangs from two iron davits outside the passenger rail.
+ * Show its benches from above and the strakes on the shaded, outboard side. */
+function rescueBoat(p: Paint) {
+  p.polygon('#21474dcc', [210, 139], [219, 145], [224, 160], [224, 175], [220, 187], [215, 192], [211, 186], [207, 172], [206, 151]);
+  const outline: Point[] = [[208, 129], [214, 135], [218, 148], [219, 163], [216, 177], [212, 183], [207, 179], [203, 168], [201, 150], [203, 137]];
+  p.polygon('#3e4944', ...outline);
+  p.polygon('#895940', [209, 133], [216, 145], [218, 162], [215, 176], [212, 181], [208, 177], [204, 165], [203, 149]);
+  p.polygon('#dfc79c', [208, 130], [213, 135], [216, 147], [217, 161], [214, 172], [210, 176], [206, 171], [203, 158], [203, 144]);
+  p.polygon('#94714f', [208, 134], [212, 138], [214, 147], [215, 160], [213, 169], [210, 173], [207, 169], [205, 156], [205, 145]);
+  p.polygon('#5d5846', [209, 138], [213, 150], [213, 161], [210, 170], [208, 166], [206, 152]);
+  for (const [x, y, width] of [[205, 144, 8], [205, 154, 10], [207, 164, 7]]) {
+    p.rect('#675641', x, y, width, 3);
+    p.rect('#c19d6c', x, y, width, 2);
+    p.rect('#dcc293', x, y, width - 1, 1);
+  }
+  p.line('#ddb183', [217, 164], [214, 175], [212, 178]);
+  p.line('#e7cf9e', [206, 143], [209, 155], [212, 166]);
+  p.rect('#cc9f62', 211, 164, 2, 4);
+  for (const y of [140, 172]) {
+    p.rect('#49534f', 193, y - 3, 5, 6);
+    p.rect('#c2aa79', 193, y - 2, 2, 4);
+    p.line('#435351', [195, y], [195, y - 9], [198, y - 13], [205, y - 13], [209, y - 10]);
+    p.line('#b5b599', [196, y - 2], [196, y - 9], [199, y - 12], [205, y - 12]);
+    p.line('#ae9270', [209, y - 9], [209, y - 4]);
+    p.line('#d2b68b', [209, y - 4], [205, y + 1]);
+    p.line('#8b7658', [209, y - 4], [214, y]);
+  }
+}
+
 function wayfarer(p: Paint) {
   // Build out from the existing collision rectangle. The pointed foredeck, colored
   // strakes and immersed stern lie in the surrounding water.
@@ -204,6 +251,11 @@ function wayfarer(p: Paint) {
   p.polygon('#385c60',[85,26],[97,26],[109,20],[106,26],[112,28],[98,32],[85,32]);
   p.line('#a5b69b',[86,27],[95,27],[103,24]);
   deckhouses(p);
+  // The foot of the sail sits above the roofs. Its broken shadow ends at the
+  // cabin coamings and leaves the captain's narrow fore-and-aft passage bright.
+  p.polygon('#49483833', [72, 94], [108, 94], [119, 101], [98, 99], [77, 97]);
+  p.polygon('#49483844', [148, 95], [183, 95], [197, 104], [164, 101]);
+  staysail(p);
   p.rect('#6c5944',83,26,4,42);
   p.rect('#c3a172',83,26,1,41);
   // A reefed gaff leaves the working deck open. The nearby shadow, tackle and
@@ -263,11 +315,12 @@ function wayfarer(p: Paint) {
   p.rect('#bf8c57', 193, 119, 4, 1);
   p.line('#82928a', [200, 120], [205, 119], [209, 119], [207, 121], [202, 121]);
   sailboat(p,216,122);
+  rescueBoat(p);
 }
 
 /** The workshop's sawtooth glass lantern, copper ridge and tall loading arch
  * occupy its contiguous roof/wall footprint. The doorway faces the south plaza. */
-function workshopFacade(p: Paint) {
+function workshopFacade(p: Paint, hearthLit: boolean) {
   p.polygon('#46504b88',[64,200],[224,191],[233,207],[232,232],[221,243],[74,244],[65,236]);
   p.rect('#a39273',66,167,153,70);
   p.rect('#c0ad87',67,175,142,59);
@@ -331,6 +384,17 @@ function workshopFacade(p: Paint) {
   p.rect('#d1b28c', 165, 207, 2, 29);
   p.rect('#8b7861', 137, 242, 30, 1);
   p.rect('#b29f80', 138, 243, 27, 1);
+  if (hearthLit) {
+    // On the walk home, light from Nia's stove reaches the transom and
+    // escapes under the door. Keep the wooden mullion in silhouette.
+    for (const x of [142, 153]) {
+      p.rect('#c9a16d', x, 209, 8, 5);
+      p.rect('#e1bc82', x + 1, 210, 6, 3);
+      p.rect('#f3d198', x + 1, 212, 2, 1);
+    }
+    p.rect('#dfb57b', 142, 235, 19, 1);
+    p.polygon('#ebbd7429', [141, 237], [162, 237], [167, 244], [138, 244]);
+  }
   p.rect('#514f41', 213, 188, 4, 39);
   p.rect('#8d9c85', 214, 188, 2, 36);
   for (const y of [197, 216]) p.rect('#b2a485', 212, y, 5, 2);
@@ -402,6 +466,15 @@ function market(p: Paint) {
     p.polygon('#a3ae95',[x-4,103],[x+4,98],[x+10,98],[x+18,103]);
     p.rect('#acb298',x-2,103,18,1);
   }
+  // The fish hall's maker cut this vane from a sheet of copper. A sunlit
+  // belly and a verdigris back read at the same scale as the brass shop sign.
+  p.rect('#5b6457', 377, 98, 3, 14);
+  p.rect('#dbc292', 377, 99, 1, 11);
+  p.polygon('#465f5a', [362, 88], [371, 91], [376, 87], [382, 86], [387, 89], [395, 92], [389, 97], [382, 99], [373, 98], [369, 95], [362, 100], [364, 94]);
+  p.polygon('#86a79a', [364, 90], [370, 93], [377, 89], [383, 88], [391, 92], [383, 94], [373, 95], [365, 97]);
+  p.polygon('#d2ba85', [372, 95], [382, 94], [392, 92], [388, 96], [379, 98]);
+  p.rect('#3d5954', 386, 91, 2, 2);
+  p.line('#d2c49c', [379, 88], [382, 88], [385, 89]);
 }
 
 function tideGauge(p: Paint, x: number, y: number) {
@@ -419,6 +492,39 @@ function tideGauge(p: Paint, x: number, y: number) {
   p.rect('#4a655e', x+7, y+20, 7, 8);
   p.rect('#bc8059', x+7, y+21, 5, 3);
   p.rect('#e4bd85', x+8, y+21, 3, 1);
+}
+
+/** Low, square-ended freight lighter moored along the south face of the quay.
+ * The market onions ride under an open hatch and a partly rolled canvas. */
+function onionLighter(p: Paint) {
+  p.line('#776e57', [284, 478], [262, 472], [233, 457]);
+  p.line('#b3a177', [374, 475], [381, 479], [385, 486]);
+  p.polygon('#24494f', [277, 478], [295, 472], [356, 470], [378, 474], [377, 484], [363, 494], [303, 500], [282, 495]);
+  p.polygon('#344641', [273, 475], [285, 468], [357, 465], [378, 469], [376, 482], [360, 490], [299, 495], [279, 491]);
+  p.polygon('#46685e', [274, 476], [299, 483], [359, 479], [376, 470], [374, 481], [358, 488], [299, 493], [280, 489]);
+  p.line('#a6b29a', [280, 486], [299, 490], [359, 485], [374, 478]);
+  p.line('#a66c4c', [282, 490], [298, 493], [358, 488], [369, 484]);
+  p.polygon('#d0b485', [273, 475], [286, 469], [357, 466], [376, 469], [359, 481], [298, 486], [278, 481]);
+  p.polygon('#8b6f50', [278, 475], [287, 471], [357, 468], [371, 470], [357, 478], [299, 483], [281, 479]);
+  p.polygon('#514f41', [294, 474], [350, 470], [358, 473], [350, 478], [301, 481], [293, 479]);
+  // Closely packed hemp sacks have pinched necks. A mesh bag on the near
+  // side of the hatch shows the papery skins of the onions inside.
+  for (const [x, y] of [[305, 475], [315, 474], [325, 473], [335, 472], [344, 474], [313, 479], [325, 478], [336, 477]]) {
+    p.polygon('#76634a', [x - 5, y], [x - 5, y - 4], [x - 1, y - 8], [x + 1, y - 8], [x + 5, y - 4], [x + 5, y], [x + 2, y + 1]);
+    p.polygon('#ad9065', [x - 4, y - 1], [x - 4, y - 4], [x - 1, y - 7], [x + 1, y - 7], [x + 3, y - 4], [x + 1, y - 1]);
+    p.rect('#d8b585', x - 1, y - 8, 3, 1);
+    p.rect('#c8a876', x - 3, y - 4, 2, 2);
+  }
+  for (const [x, y] of [[322, 476], [325, 474], [327, 477]]) {
+    p.rect('#a96d48', x, y, 3, 2);
+    p.rect('#dca468', x, y - 1, 2, 2);
+  }
+  // A rolled sailcloth cover lies across the aft coaming, with two dark ties.
+  p.polygon('#7c8e7e', [285, 469], [292, 467], [306, 477], [298, 481], [285, 473]);
+  p.line('#cfca9f', [286, 469], [292, 468], [305, 477]);
+  for (const x of [289, 296]) p.line('#585e50', [x + 3, 468 + (x - 289)], [x, 472 + (x - 289)]);
+  p.line('#caad7e', [358, 471], [365, 472], [371, 470]);
+  p.rect('#635944', 364, 467, 4, 3);
 }
 
 function waterfront(p: Paint) {
@@ -463,6 +569,7 @@ function waterfront(p: Paint) {
     p.rect('#444e49', x, 442, 2, 3);
     p.rect('#a19777', x + 2, 442, 1, 3);
   }
+  onionLighter(p);
 }
 
 /** Freight is weighed flush with the road. Low inset ramps and running grooves
@@ -523,7 +630,7 @@ function harborCourts(p: Paint) {
   }
 }
 
-function harbor(p: Paint, map: MapDefinition) {
+function harbor(p: Paint, map: MapDefinition, hearthLit: boolean) {
   // Swept stone carriage lanes meet at the district map. Narrow brick gutters and
   // flush brass route studs guide travel without implying new collision bounds.
   p.ctx.save();
@@ -547,7 +654,7 @@ function harbor(p: Paint, map: MapDefinition) {
   p.rect('#ada68a',403,371,2,49); p.rect('#ada68a',442,370,2,55);
   p.ctx.restore();
   harborCourts(p);
-  workshopFacade(p); market(p);
+  workshopFacade(p, hearthLit); market(p);
   waterfront(p);
   weighbridge(p);
   // Stone abutments and rails frame the stair mouth. The walkable approach stays open.
@@ -597,7 +704,7 @@ function harbor(p: Paint, map: MapDefinition) {
 }
 
 /** Painted once into the terrain texture, before world objects and travelers. */
-export function paintExteriors(ctx: CanvasRenderingContext2D,map: MapDefinition) {
+export function paintExteriors(ctx: CanvasRenderingContext2D,map: MapDefinition, hearthLit = false) {
   if (map.id === 'ship') wayfarer(pixels(ctx));
-  if (map.id === 'harbor') harbor(pixels(ctx),map);
+  if (map.id === 'harbor') harbor(pixels(ctx), map, hearthLit);
 }

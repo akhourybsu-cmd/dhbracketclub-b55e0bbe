@@ -65,6 +65,22 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   };
   window(100, 8, 55, 20);
   window(224, 149, 12, 28);
+  // A reefed sail serves as the loft blind. Its cloth hangs from the top
+  // beam; the scallops and folded sides leave the harbor view in the glass.
+  r(shadow, 95, 5, 65, 3);
+  r('#b89a6c', 96, 5, 63, 1);
+  for (let col = 0; col < 55; col++) {
+    const fold = [3, 4, 4, 5, 5, 4, 4, 3, 2, 2, 2][col % 11];
+    r('#677c73', 100 + col, 7, 1, fold + 1);
+    r('#7b9485', 100 + col, 7, 1, fold - 1);
+    r('#c2b995', 100 + col, 7 + fold - 1, 1, 1);
+  }
+  for (const x of [99, 152]) {
+    r('#50645e', x, 8, 4, 15);
+    r('#93a292', x, 9, 2, 13);
+    r(brass, x - 1, 21, 5, 2);
+    r(teal, x + 1, 23, 3, 3);
+  }
   for (let y = 0; y < 38; y++) {
     if (y === 15 || y === 16) continue; // projected horizontal sash
     const x = 103 + Math.floor(y / 2);
@@ -103,12 +119,26 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   r('#a28158', 70, 18, 10, 1);
   r(brassDark, 71, 22, 9, 1);
   r('#d3cab0', 80, 22, 4, 1);
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 3; i++) {
     const x = 168 + i * 7;
     r('#d9c29a', x, 16 - i % 3, 4, 7 + i % 3);
     r('#af9171', x, 15 - i % 3, 4, 2);
     r(teal, x, 19, 4, 2);
   }
+  // Edda's octant hangs beside the rolled charts. Its open frame silhouettes
+  // against felt, with a silver index arm crossing the graduated brass arc.
+  r('#405951', 192, 8, 25, 15);
+  r('#597469', 193, 9, 23, 12);
+  line('#4b5046', 204, 10, 195, 19);
+  line('#4b5046', 204, 10, 213, 20);
+  line(brass, 204, 9, 195, 18);
+  line(brassDark, 204, 9, 213, 18);
+  line('#d9c892', 195, 18, 199, 21);
+  r(brass, 200, 21, 9, 1);
+  line(brassDark, 208, 21, 213, 18);
+  line('#cdd1af', 204, 10, 201, 21);
+  r(ink, 202, 8, 4, 3);
+  r(brass, 203, 8, 2, 2);
 
   // A wall niche holds Edda's sail thread on a bobbin rack. The recess,
   // turned dowels and projecting shelf are all on the solid west wall.
@@ -142,6 +172,24 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   r('#b57a5b', 22, 116, 2, 2);
   r('#ad6650', 26, 116, 1, 1);
 
+  // Edda lofted hull curves straight onto the worn planks. A snapped chalk
+  // baseline, half-breadths and fading curved waterlines make a scale drawing;
+  // the boards and their seams still show through every line.
+  r('#dec69b80', 36, 104, 34, 1);
+  for (const [x, span] of [[39, 3], [46, 7], [54, 9], [61, 9], [67, 8]]) {
+    r('#d8bf9270', x, 104 - span, 1, span * 2 + 1);
+    r('#e5cda380', x - 1, 103 - span, 3, 1);
+  }
+  for (const side of [-1, 1]) {
+    const curve = [[36, 0], [41, 4], [48, 7], [55, 9], [62, 9], [68, 7]] as const;
+    for (let i = 1; i < curve.length; i++) {
+      const [x, offset] = curve[i - 1], [end, next] = curve[i];
+      line('#e0c8a083', x, 104 + side * offset, end, 104 + side * next);
+    }
+    line('#d9bf965e', 42, 104, 50, 104 + side * 3);
+    line('#d9bf965e', 50, 104 + side * 3, 65, 104 + side * 5);
+  }
+
   // A knotted woven runner marks the work area without blocking a single tile.
   r('#594d4255', 107, 90, 53, 29);
   for (let x = 108; x < 158; x += 3) {
@@ -161,6 +209,15 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
     line(sage, x, 105, x - 4, 102);
     r('#bdab7d', x, 102, 1, 1);
   }
+  // A woven compass sits between the two diamonds, with one pale and
+  // one dark face on each point. The whole motif lies flush with the rug.
+  for (let dy = -7; dy <= 7; dy++) {
+    const half = Math.abs(dy) < 2 ? 9 - Math.abs(dy) * 3 : Math.floor((7 - Math.abs(dy)) / 2);
+    r('#c9b98d', 133 - half, 102 + dy, half + 1, 1);
+    if (half) r('#749387', 134, 102 + dy, half, 1);
+  }
+  r('#456c67', 132, 101, 3, 3);
+  r(parchment, 133, 102, 1, 1);
 
   // A flat sail panel carries chalk construction lines, reinforcement and hand-sewn eyes.
   for (let row = 0; row < 34; row++) {
@@ -203,6 +260,14 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
 
   // Clue: the tide plot is bolted to its drafting board.
   bench(64, 64, mahogany);
+  // The low drafting table tilts toward the reader. End-grain, the hinge
+  // and a pencil gutter give the tabletop a different profile from a chest.
+  for (let y = 0; y < 14; y++) {
+    const spread = Math.floor(y / 5);
+    r('#503c36', 61 - spread, 54 + y, 23 + spread * 2, 1);
+    r('#b1825a', 62 - spread, 54 + y, 21 + spread * 2, 1);
+    r('#d1a678', 62 - spread, 54 + y, 1, 1);
+  }
   paper(63, 56, 18, 12);
   for (let x = 66; x < 80; x += 4) r('#c2b68c', x, 58, 1, 8);
   r('#bea97f', 65, 63, 15, 1);
@@ -213,6 +278,24 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   for (let i = 0; i < 5; i++) r(mahogany, 66 + i * 3, 66, 1, 1);
   r(brassDark, 63, 56, 2, 2);
   r(brassDark, 79, 56, 2, 2);
+  r('#5e4336', 59, 68, 27, 3);
+  r(lip, 59, 68, 27, 1);
+  // Nia repaired Tav's chair. The seat tucks under the desk; the pale
+  // splice is set into the front leg, on the same solid tile as the chart.
+  r('#392f2c44', 65, 78, 15, 4);
+  r(shadow, 65, 71, 3, 9);
+  r('#d8b585', 66, 77, 2, 2);
+  r(shadow, 76, 72, 3, 8);
+  r('#b07f55', 77, 74, 1, 4);
+  r(ink, 64, 72, 16, 4);
+  r('#b4865f', 65, 72, 14, 2);
+  r('#e0b88a', 65, 72, 12, 1);
+  for (const x of [64, 78]) {
+    r('#654635', x, 69, 2, 7);
+    r(lip, x, 69, 1, 4);
+  }
+  r('#8f634a', 64, 70, 16, 2);
+  r('#d3a576', 65, 69, 13, 1);
 
   // Clue: an unfolded map, damp at the coast, and one graphite pencil.
   bench(176, 64, darkTeal);
@@ -222,6 +305,14 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   line('#a47b66', 184, 64, 187, 61);
   r('#9a523d', 184, 63, 2, 2);
   line(ink, 191, 59, 192, 66);
+  // The chart's damp corner has been held flat with an ink bottle. A
+  // curled edge at the opposite end makes the folded chart read as paper.
+  r('#73847a', 174, 55, 3, 12);
+  r('#dfd2a6', 174, 55, 2, 10);
+  r('#f8e6b6', 174, 56, 1, 8);
+  r(shadow, 189, 55, 4, 4);
+  r('#72928b', 190, 56, 2, 2);
+  r('#ba9566', 190, 54, 2, 1);
 
   // Near the entrance: writing table with a split nib, stopped ink and loose note.
   bench(64, 144, darkTeal);
@@ -247,6 +338,13 @@ export function paintWorkshop(r: Stroke, line: Stroke, kettleWarm = false) {
   r('#a18362', 193, 142, 13, 1);
 
   // Kettle on a small tiled hob. The curved handle encloses the lighter backsplash.
+  if (kettleWarm) {
+    // The oven light reaches the floor through the mouth of the hob.
+    for (let row = 0; row < 10; row++) {
+      const spread = Math.floor(row / 2);
+      r(row < 5 ? '#ecad5d32' : '#e8ab5e1c', 84 - spread, 126 + row, 9 + spread * 2, 1);
+    }
+  }
   r('#473b3655', 81, 124, 17, 5);
   r(ink, 80, 113, 16, 14);
   r(darkTeal, 81, 114, 14, 11);

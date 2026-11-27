@@ -4,6 +4,7 @@ import { canWalk, createNewSave, createSession, DELTAS, nearbyInteractions, redu
 import { migrateSave } from '../save';
 import type { Direction, MapId } from '../types';
 import { paintTideworks, type TideworksState } from './tideworks';
+import { paintEnvironmentMotion, ENVIRONMENT_MOTION_FRAME_MS } from './environmentMotion';
 
 const idle = { gateOpen: false, sluiceOpen: false, sealed: false };
 function surface(mapId: MapId, flags: TideworksState = idle) {
@@ -36,6 +37,29 @@ describe('Tideworks architectural states', () => {
     expect(surface('tide-stairs').get(rack)).not.toEqual(surface('tide-stairs', { ...idle, gateOpen: true }).get(rack));
     expect(surface('chamber').get(basin)).not.toEqual(surface('chamber', { ...idle, sealed: true }).get(basin));
     expect(surface('harbor').size).toBe(0);
+  });
+  it('lowers the sea-wall counterweight as the gate rises and leaves the sill in place', () => {
+    const closed = surface('tide-stairs');
+    const open = surface('tide-stairs', { ...idle, gateOpen: true });
+    const yAtWeight = (pixels: Map<number, string>) =>
+      Array.from({ length: 44 }, (_, i) => i + 131).find(y => pixels.get(y * 1024 + 44) === '#c0a076');
+    expect(yAtWeight(closed)).toBe(143);
+    expect(yAtWeight(open)).toBe(156);
+    expect(open.get(125 * 1024 + 40)).toBe(closed.get(125 * 1024 + 40));
+  });
+  it('turns the pump spindle only on a drained, animated passage', () => {
+    function hubAt(phase: number, sluiceOpen: boolean, reducedMotion = false) {
+      const marks: number[][] = [];
+      paintEnvironmentMotion({
+        fillStyle() {}, fillRect(x, y, width, height) { marks.push([x, y, width, height]); },
+      }, MAPS.passage, { left: 170, top: 140, right: 181, bottom: 151 }, phase * ENVIRONMENT_MOTION_FRAME_MS,
+      { gateOpened: true, riftSealed: false, paused: false, reducedMotion, sluiceOpen });
+      return marks;
+    }
+    expect(hubAt(0, false)).toHaveLength(0);
+    expect(hubAt(3, true, true)).toHaveLength(0);
+    const frames = Array.from({ length: 8 }, (_, phase) => JSON.stringify(hubAt(phase, true)));
+    expect(new Set(frames).size).toBe(8);
   });
 });
 
