@@ -15,7 +15,7 @@ import { paintExteriors } from './exteriors';
 import { paintQuaySquare } from './quaySquare';
 import { paintTideworks, type TideworksState } from './tideworks';
 import { paintEnvironmentMotion } from './environmentMotion';
-import { paintCastShadow, paintFootfall, strideLift, type FieldStep } from './fieldStride';
+import { creatureIdleCel, paintCastShadow, paintFootfall, strideLift, type FieldStep } from './fieldStride';
 import { foregroundForMap, paintForeground } from './foreground';
 import { INTERACTION_ART, interactionArtKey, paintInteractionArt } from './interactionsArt';
 import { WALK_STEP_MS } from '../input';
@@ -482,8 +482,9 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (!this.battleMode) this.cameras.main.centerOn(this.tavian.x, this.tavian.y - 8);
       if (this.companion?.visible) {
         const x = Math.round(this.companionFrom.x + (this.companionTarget.x - this.companionFrom.x) * progress), y = Math.round(this.companionFrom.y + (this.companionTarget.y - this.companionFrom.y) * progress);
-        const species = CREATURES.indexOf(session.save.party[0].speciesId);
-        const frame = species * 8 + CREATURE_DIRECTION[this.companionFacing] + (walking ? Math.floor(progress * 2) : 0);
+        const species = session.save.party[0].speciesId;
+        const cel = walking ? Math.floor(progress * 2) : creatureIdleCel(species, time, reduced);
+        const frame = CREATURES.indexOf(species) * 8 + CREATURE_DIRECTION[this.companionFacing] + cel;
         this.companion.setPosition(x, y).setDepth(y).setFrame(frame);
         this.companionShadow?.setPosition(x, y - 2).setDepth(y - 0.5);
       }
@@ -512,8 +513,6 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       if (time - this.frameAt > 600) {
         this.frameAt = time;
         for (const o of this.objects) {
-          const index = CREATURES.indexOf(o.data.sprite as SpeciesId);
-          if (index >= 0) o.sprite.setFrame(index * 8 + CREATURE_DIRECTION[o.data.direction ?? 'down'] + (!reduced ? Math.floor(time / 600) % 2 : 0));
           const worker = PEOPLE.indexOf(personArt(o.data.id, o.data.sprite) as typeof PEOPLE[number]);
           if (worker >= 7) o.sprite.setFrame(worker * 15 + (!reduced && (o.data.direction ?? 'down') === 'down' && Math.floor(time / 1200) % 2 ? 12 : DIRECTION_FRAME[o.data.direction ?? 'down']));
         }
@@ -521,6 +520,12 @@ export async function createMesomonView(parent: HTMLElement, options: MesomonVie
       const approach = session.dialogue?.approach;
       if (!approach) this.approachKey = '';
       for (const o of this.objects) {
+        if (o.sprite.texture.key === 'ms:creatures') {
+          const species = o.data.sprite as SpeciesId;
+          const cel = creatureIdleCel(species, time, reduced);
+          const frame = CREATURES.indexOf(species) * 8 + CREATURE_DIRECTION[o.data.direction ?? 'down'] + cel;
+          if (Number(o.sprite.frame.name) !== frame) o.sprite.setFrame(frame);
+        }
         if (approach && o.data.id === approach.actor) {
           const key = approach.actor + ':' + approach.steps.length;
           if (this.approachKey !== key) { this.approachKey = key; this.approachElapsed = 0; }
