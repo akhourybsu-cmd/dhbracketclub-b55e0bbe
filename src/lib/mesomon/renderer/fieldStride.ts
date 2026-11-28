@@ -1,4 +1,4 @@
-import type { Direction, MapId, TileKind } from '../types';
+import type { Direction, MapId, SpeciesId, TileKind } from '../types';
 import { WALK_STEP_MS } from '../input';
 import type { EnvironmentMotionGraphics } from './environmentMotion';
 
@@ -8,6 +8,21 @@ export interface FieldStep { x: number; y: number; surface: TileKind; direction:
 
 export function strideLift(progress: number): number {
   return progress >= 0.25 && progress < 0.65 ? 1 : 0;
+}
+
+// Each direction has a settled drawing and a second pose. Hold the lifted
+// paw long enough to read on a phone, then let the animal rest between gestures.
+const idleCadence: Record<SpeciesId, { period: number; hold: number }> = {
+  rillik: { period: 2080, hold: 440 },
+  muddren: { period: 2840, hold: 640 },
+  gleamwing: { period: 540, hold: 260 },
+  tressel: { period: 1840, hold: 370 },
+  'rift-wretch': { period: 1560, hold: 660 },
+};
+
+export function creatureIdleCel(species: SpeciesId, elapsedMs: number, reducedMotion: boolean): 0 | 1 {
+  const { period, hold } = idleCadence[species];
+  return !reducedMotion && elapsedMs % period >= period - hold ? 1 : 0;
 }
 
 // Light positions belong to the painted windows, gallery lanterns, rest lamp

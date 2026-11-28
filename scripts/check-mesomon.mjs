@@ -286,10 +286,17 @@ async function drain(p, options = {}) {
 async function readConversation(p, {inspectChoices=false, opening=false, expectedId, choiceId}={}) {
   let choicesInspected=false, selectedChoice=false;
   const readingModes = new Set();
+  const bondShots = new Set();
   if (expectedId) await conversationLine(p, expectedId);
   for (let count = 0; count < 180; count++) {
     const state = await save(p);
     if (!state?.dialogue) {
+      if (expectedId === 'first-bond') {
+        assert.deepEqual([...bondShots], ['return', 'glow', 'offer', 'touch', 'bond']);
+        await expect(p.locator('[data-bond-shot]')).toHaveCount(0);
+        assert.equal(state.party.filter(member => member.speciesId === 'rillik').length, 1);
+        check(engine + '-rescue-shows-five-bond-shots-before-awarding-one-rillik');
+      }
       if (opening) {
         for (const kind of ['document', 'scene', 'speech']) assert.ok(readingModes.has(kind), `The opening must present its ${kind} reading mode`);
         check(engine + '-opening-shows-spoken-lines-narration-and-letter');
@@ -298,6 +305,36 @@ async function readConversation(p, {inspectChoices=false, opening=false, expecte
       return;
     }
     const { dialogue, panel, voice } = await conversationLine(p);
+    if (expectedId === 'first-bond') {
+      const shot = dialogue.lines[dialogue.index].bondShot;
+      const scene = p.locator('.mm-screen [data-bond-shot]');
+      await expect(scene).toHaveAttribute('data-bond-shot', shot);
+      await expect(scene).toHaveAttribute('data-ready', 'true');
+      await expect(scene).toHaveAccessibleName(/\S/);
+      assert.ok(!state.questFlags.rillik_bonded && !state.party.length, 'The bond is awarded after reading the whole encounter');
+      if (!bondShots.has(shot)) {
+        bondShots.add(shot);
+        await expect(panel.locator('.mm-dialogue-text > [aria-hidden="true"]')).toHaveText(dialogue.lines[dialogue.index].text + ' ▾');
+        const original = p.viewportSize();
+        try {
+          const sizes = shot === 'bond' ? [original, {width:1440,height:900}] : [original];
+          for (const size of sizes) {
+            await p.setViewportSize(size);
+            await settleLayout(p);
+            const bounds = await scene.evaluate(node => {
+              const display = node.closest('.mm-screen').getBoundingClientRect();
+              const image = node.querySelector('img[data-active="true"]');
+              const plate = image.getBoundingClientRect();
+              return image.complete && image.naturalWidth > 0 && plate.width > 0 && plate.height > 0 &&
+                plate.left >= display.left - 1 && plate.right <= display.right + 1 &&
+                plate.top >= display.top - 1 && plate.bottom <= display.bottom + 1;
+            });
+            assert.ok(bounds, 'The full bond illustration fits in the handheld display');
+            await p.screenshot({path:join(output, engine + '-first-bond-' + shot + '-' + size.width + '.png')});
+          }
+        } finally { await p.setViewportSize(original); await settleLayout(p); }
+      }
+    }
     const atChoices = dialogue.choices?.length && dialogue.index >= dialogue.lines.length - 1;
     if (opening) {
       const kind = voice.kind;
@@ -677,6 +714,19 @@ async function audit(p, label) {
     if (label.includes('-opening-') && label.endsWith('-fit')) {
       const art = root.querySelector('.mm-arrival-frame > svg');
       if (!art || gapsToViewport(art).some(gap => gap > 1)) issues.push('Opening artwork does not cover the viewport');
+      const passage = root.querySelector('.mm-arrival-caption p');
+      if (!passage?.textContent.trim()) {
+        issues.push('Missing opening story caption');
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(passage);
+        const rows = [...range.getClientRects()].filter(rect => rect.width && rect.height);
+        const buttons = [...root.querySelectorAll('.mm-arrival button')].map(button => button.getBoundingClientRect());
+        if (!rows.length || rows.some(row => row.left < -1 || row.right > viewport + 1 || row.top < -1 || row.bottom > height + 1 ||
+          buttons.some(button => row.left < button.right && row.right > button.left && row.top < button.bottom && row.bottom > button.top))) {
+          issues.push('Opening story caption is clipped or covered by a control');
+        }
+      }
     }
     const menu = root.querySelector('.mm-menu');
     if (menu) {
@@ -1137,7 +1187,13 @@ async function chapter() {
     await expect(p.getByRole('region',{name:'Conversation'})).toBeVisible();
     check(engine+'-touch-captain-walks-to-adjacency-and-second-tap-speaks');
     await drain(p, {opening: true, expectedId:'captain'});
-    assert.equal((await save(p)).questFlags.captain_met, true);
+    const onDeck = await save(p);
+    assert.equal(onDeck.questFlags.captain_met, true);
+    const account = onDeck.dialogueHistory.map(line => line.text).join(' ');
+    assert.match(account, /four years/i);
+    assert.match(account, /survey crew|charting the coast/i);
+    assert.ok(onDeck.dialogueHistory.some(line => line.speaker === 'Edda’s letter' && /bring the core.*two voices/i.test(line.text)));
+    check(engine + '-skipped-opening-still-explains-homecoming');
     await captureLocation(p,'ship','captain');
     const settingsMenu = await openStart(p);
     await startSection(settingsMenu, 'Settings');
@@ -1179,6 +1235,15 @@ async function chapter() {
       }
       if (id === 'bram') {
         await automaticMeeting(p, 'bram', () => walkTo(p, 'bram', 'bram'));
+      } else if (id === 'rillik-bond') {
+        await walkTo(p, 'passage-door');
+        await p.locator('[data-mm-object="passage-door"]').click();
+        await expect(p.getByRole('region',{name:'Conversation'})).toContainText('Nia');
+        await drain(p);
+        assert.equal((await livePlayer(p)).mapId, 'tide-stairs');
+        check(engine + '-passage-stays-locked-after-the-wheel-until-rillik-bonds');
+        await interact(p, id, false);
+        await drain(p, {expectedId:'first-bond'});
       } else if (id !== 'nia') {
         await interact(p,id,id !== 'chart');
       }

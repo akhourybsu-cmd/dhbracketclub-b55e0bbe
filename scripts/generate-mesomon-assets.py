@@ -611,17 +611,19 @@ for size in (192, 512):
 
 field_plates = [f'field-guide/{name}.webp' for name in SPECIES]
 battle_scenes = [f'battle-scenes-v1/{key}.webp' for key in ('passage-encounter', 'gleamwing-encounter', 'chamber-boss')]
+bond_scenes = [f'first-bond-v1/{key}.webp' for key in ('return', 'offer', 'touch')]
 manifest = dict(
-    version=5, original=True, tileSize=16,
+    version=6, original=True, tileSize=16,
     scenery={'crane':dict(x=0,y=0,width=48,height=48),'wheel':dict(x=48,y=0,width=32,height=32),'skiff':dict(x=80,y=0,width=48,height=32)},
     people=dict(cell=[16, 16], frames=15, rows=HUMANS),
     creatures=dict(cell=[16, 16], frames=8, rows=SPECIES),
     battle=dict(file='creature-battle-v1.png', cell=[192, 192], rows=SPECIES, poses=['rest', 'ready', 'action', 'recoil']),
     fieldGuide=dict(size=[512, 512], files=field_plates),
     battleScenes=dict(version=1, size=[640, 576], files=battle_scenes),
+    firstBond=dict(version=1, size=[640, 480], files=bond_scenes),
     tiles={name: i for i, name in enumerate(TILES)},
     assets=['harbor-tiles.png','people.png','mesomon.png','creature-battle-v1.png','portraits.png','cover.webp','cover.png','scenery.png','fieldcase.png']
-        + [f'portraits/{name}.png' for name in HUMANS + SPECIES] + field_plates + battle_scenes,
+        + [f'portraits/{name}.png' for name in HUMANS + SPECIES] + field_plates + battle_scenes + bond_scenes,
 )
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print('Wrote original Port Marche artwork and manifest to',OUT)

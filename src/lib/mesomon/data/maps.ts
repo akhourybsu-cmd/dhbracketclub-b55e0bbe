@@ -1,5 +1,7 @@
 import type { MapDefinition, MapId, MapObject, TileKind } from '../types';
 
+import { rillikBasin, rillikGangway, rillikLanding } from './tideObstacles';
+
 function grid(width: number, height: number, tile: TileKind): TileKind[][] { return Array.from({ length: height }, () => Array<TileKind>(width).fill(tile)); }
 function fill(tiles: TileKind[][], x: number, y: number, width: number, height: number, tile: TileKind) { for (let row = y; row < y + height; row++) for (let col = x; col < x + width; col++) if (tiles[row]?.[col] !== undefined) tiles[row][col] = tile; }
 function object(id: string, x: number, y: number, label: string, kind: MapObject['kind'], sprite = id, solid = true): MapObject { return { id, x, y, label, kind, sprite, solid }; }
@@ -23,6 +25,10 @@ fill(workshop, 2, 2, 12, 11, 'floor'); fill(workshop, 3, 3, 3, 2, 'wood'); fill(
 
 const stairs = grid(20, 18, 'dark-water');
 fill(stairs, 3, 2, 14, 13, 'stone'); fill(stairs, 3, 2, 14, 1, 'wall'); fill(stairs, 3, 2, 1, 13, 'wall'); fill(stairs, 7, 4, 5, 6, 'stairs'); fill(stairs, 10, 10, 6, 4, 'wood'); fill(stairs, 4, 14, 4, 2, 'stone');
+
+fill(stairs, rillikBasin.x, rillikBasin.y, rillikBasin.width, rillikBasin.height, 'dark-water');
+fill(stairs, rillikGangway.x, rillikGangway.y, 1, 1, 'wood');
+fill(stairs, rillikLanding.x, rillikLanding.y, 1, 1, 'wood');
 
 const passage = grid(24, 22, 'wall');
 fill(passage, 2, 10, 5, 11, 'floor'); fill(passage, 2, 11, 19, 4, 'floor');

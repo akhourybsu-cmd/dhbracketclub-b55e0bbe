@@ -11,6 +11,11 @@ export const timberCrib: FieldObstacle = { id: 'stop-log-crib', x: 4, y: 10, wid
 export const intakeStrainer: FieldObstacle = { id: 'intake-strainer', x: 2, y: 17, width: 3, height: 1 };
 export const bypassMain: FieldObstacle = { id: 'raised-bypass-main', x: 18, y: 8, width: 3, height: 1 };
 
+// The two planked tiles are the only footholds in this flooded service bay.
+export const rillikBasin = { x: 12, y: 10, width: 4, height: 4 } as const;
+export const rillikGangway = { x: 12, y: 12 } as const;
+export const rillikLanding = { x: 13, y: 12 } as const;
+
 export const tideObstacles: Partial<Record<MapId, readonly FieldObstacle[]>> = {
   'tide-stairs': [
     ...stairCheeks, scupperWall, timberCrib,

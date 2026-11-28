@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "original": true,
   "tileSize": 16,
   "scenery": {
@@ -102,6 +102,18 @@
       "battle-scenes-v1/chamber-boss.webp"
     ]
   },
+  "firstBond": {
+    "version": 1,
+    "size": [
+      640,
+      480
+    ],
+    "files": [
+      "first-bond-v1/return.webp",
+      "first-bond-v1/offer.webp",
+      "first-bond-v1/touch.webp"
+    ]
+  },
   "tiles": {
     "water": 0,
     "water2": 1,
@@ -187,6 +199,9 @@
     "field-guide/rift-wretch.webp",
     "battle-scenes-v1/passage-encounter.webp",
     "battle-scenes-v1/gleamwing-encounter.webp",
-    "battle-scenes-v1/chamber-boss.webp"
+    "battle-scenes-v1/chamber-boss.webp",
+    "first-bond-v1/return.webp",
+    "first-bond-v1/offer.webp",
+    "first-bond-v1/touch.webp"
   ]
 }

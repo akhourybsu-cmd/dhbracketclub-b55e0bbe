@@ -28,13 +28,16 @@ describe("Port Marche opening cinematic", () => {
     const { dialog, finish } = setup();
     expect(dialog).toHaveFocus();
     expect(dialog).toHaveAttribute("data-shot", "sea");
-    elapse(3100);
+    expect(screen.getByText(/I left at sixteen to chart the coast/)).toBeVisible();
+    elapse(7200);
     expect(dialog).toHaveAttribute("data-shot", "letter");
     expect(screen.getByRole("heading", { name: "“Come home. Bring the core.”" })).toBeVisible();
-    elapse(4200);
+    expect(screen.getByText(/The harbor is singing in two voices/)).toBeVisible();
+    elapse(5900);
     expect(dialog).toHaveAttribute("data-shot", "quay");
     expect(screen.getByRole("heading", { name: "Port Marche" })).toBeVisible();
-    elapse(3300);
+    expect(screen.getByText(/took the first boat home/)).toBeVisible();
+    elapse(6700);
     fireEvent.click(screen.getByRole("button", { name: "Skip opening" }));
     expect(finish).toHaveBeenCalledTimes(1);
   });
@@ -51,7 +54,7 @@ describe("Port Marche opening cinematic", () => {
     elapse(10000);
     expect(dialog).toHaveAttribute("data-shot", "sea");
     fireEvent.click(screen.getByRole("button", { name: "Play opening" }));
-    elapse(999);
+    elapse(5099);
     expect(dialog).toHaveAttribute("data-shot", "sea");
     elapse(1);
     expect(dialog).toHaveAttribute("data-shot", "letter");

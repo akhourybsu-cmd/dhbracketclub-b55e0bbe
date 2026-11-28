@@ -28,7 +28,7 @@
 .mm-arrival::after {
   content: "";
   z-index: -1;
-  background: linear-gradient(to bottom, #10232c57, transparent 18%, transparent 55%, #10232cc9 90%, #0d2028f5);
+  background: linear-gradient(to bottom, #10232c57, transparent 18%, transparent 49%, #10232cce 79%, #0d2028f5);
 }
 .mm-arrival-top {
   display: flex;
@@ -78,6 +78,13 @@
   font: 500 clamp(1.85rem, 6.2vmin, 4.35rem)/1.04 Georgia, serif;
   letter-spacing: -0.035em;
   text-wrap: balance;
+}
+.mm-arrival .mm-arrival-caption p {
+  margin: 3px 0 0;
+  max-width: 39ch;
+  color: #fff5db;
+  font: 550 clamp(.94rem, 2.15vmin, 1.16rem)/1.45 "DM Sans", sans-serif;
+  text-shadow: 0 1px 3px #081a22, 0 1px 8px #081a22;
 }
 .mm-arrival[data-shot="letter"] h2 { font-style: italic; }
 .mm-arrival-controls { display: flex; align-items: center; gap: 6px; }

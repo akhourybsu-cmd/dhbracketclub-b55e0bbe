@@ -1,23 +1,29 @@
 import type { BattleState, SpeciesId } from './types';
 
 /** Original Port Marche artwork, loaded only by the Mesomon route. */
-const version = 5;
+const version = 6;
 // Keep unchanged images available under the URLs already held in browser caches.
 const originalArtVersion = 4;
+const harborArtVersion = 5;
 const artUrl = (path: string, revision = originalArtVersion) => `/games/mesomon/${path}.png?v=${revision}`;
 
 export const MESOMON_ASSETS = {
   fieldcase: artUrl('fieldcase'),
   version,
   root: '/games/mesomon/',
-  cover: `/games/mesomon/cover.webp?v=${version}`,
-  coverThumbnail: artUrl('cover', version),
-  scenery: artUrl('scenery', version),
+  cover: `/games/mesomon/cover.webp?v=${harborArtVersion}`,
+  coverThumbnail: artUrl('cover', harborArtVersion),
+  scenery: artUrl('scenery', harborArtVersion),
   tiles: artUrl('harbor-tiles'),
   people: artUrl('people', version),
   creatures: artUrl('mesomon', version),
   battle: artUrl('creature-battle-v1'),
   portraits: artUrl('portraits'),
+} as const;
+export const BOND_ART = {
+  return: '/games/mesomon/first-bond-v1/return.webp',
+  offer: '/games/mesomon/first-bond-v1/offer.webp',
+  touch: '/games/mesomon/first-bond-v1/touch.webp',
 } as const;
 export const PEOPLE = ['tavian', 'nia', 'bram', 'seli', 'pell', 'captain', 'edda', 'fisher', 'worker', 'porter', 'lanternkeeper', 'vendor'] as const;
 export const CREATURES = ['rillik', 'muddren', 'gleamwing', 'tressel', 'rift-wretch'] as const;

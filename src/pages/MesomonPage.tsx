@@ -21,6 +21,7 @@ import { useMesomonSave } from "@/hooks/useMesomonSave";
 import { DeleteFileDialog } from "@/components/mesomon/DeleteFileDialog";
 import { HarborTitleArt } from "@/components/mesomon/HarborTitleArt";
 import { saveFingerprint } from "@/lib/mesomon/save";
+import { FirstBondScene } from "@/components/mesomon/FirstBondScene";
 import { ArrivalCinematic } from "@/components/mesomon/ArrivalCinematic";
 import { MesomonStartMenu, type MenuTab } from "@/components/mesomon/MesomonStartMenu";
 import {
@@ -192,7 +193,7 @@ function Chapter({
   const [textCount, setTextCount] = useState(0);
   const [sealProgress, setSealProgress] = useState(0);
   const lastCheckpoint = useRef("");
-  const audioMoment = useRef({ bonded: false, sealed: false, battle: "" });
+  const audioMoment = useRef({ cuffGlowing: false, bonded: false, sealed: false, battle: "" });
   const adoptedSave = useRef<GameSession["save"] | null | undefined>(undefined);
   const resolvingCloud = useRef(false);
   const pixels = useRef<HTMLDivElement>(null);
@@ -219,7 +220,13 @@ function Chapter({
     setSession((value) => (value ? { ...value, notice } : value));
   }, []);
   const phase = session ? getPhase(session) : "explore";
+  const bondShot = session?.dialogue?.id === "first-bond"
+    ? session.dialogue.lines[session.dialogue.index]?.bondShot : undefined;
+  const showBondScene = playing && !!bondShot;
   const layersCovered = !!menu || opening || !!fileToDelete;
+  const fieldPaused = !playing || hidden || layersCovered || showBondScene;
+  const pauseOnViewLoad = useRef(fieldPaused);
+  pauseOnViewLoad.current = fieldPaused;
   const scenePaused = !playing || !sceneReady || layersCovered || hidden || sync.blocked;
   const walking = useTapWalk(
     session,
@@ -295,9 +302,7 @@ function Chapter({
         }
         instance = value;
         view.current = value;
-        value.pause(
-          document.hidden || !!menuRef.current || openingRef.current || !playingRef.current,
-        );
+        value.pause(pauseOnViewLoad.current);
         if (current.current) value.update(current.current);
       })
       .catch((error) => {
@@ -320,8 +325,8 @@ function Chapter({
     if (session) view.current?.update(session);
   }, [session]);
   useEffect(() => {
-    view.current?.pause(hidden || layersCovered || !playing);
-  }, [hidden, layersCovered, playing]);
+    view.current?.pause(fieldPaused);
+  }, [fieldPaused]);
   useEffect(() => { audio.current?.pause(scenePaused); }, [scenePaused]);
   useEffect(() => {
     if (!session) return;
@@ -335,10 +340,13 @@ function Chapter({
     );
     const battle = session.save.battle;
     const moment = {
-      bonded: session.save.questFlags.rillik_bonded === true,
+      cuffGlowing: bondShot === "glow",
+      bonded: bondShot === "bond" || session.save.questFlags.rillik_bonded === true,
       sealed: session.save.rifts["port-marche"] === "sealed",
       battle: battle?.id ?? "",
     };
+    if (playingRef.current && moment.cuffGlowing && !audioMoment.current.cuffGlowing)
+      audio.current?.cue("cuff-answer");
     if (playingRef.current && moment.bonded && !audioMoment.current.bonded)
       audio.current?.cue("bond");
     if (playingRef.current && moment.sealed && !audioMoment.current.sealed)
@@ -352,7 +360,7 @@ function Chapter({
       audio.current?.cue(session.save.battle.enemy.speciesId);
     if (battle && !scenePaused) audio.current?.battleBeat(battle);
     audioMoment.current = moment;
-  }, [session, scenePaused]);
+  }, [session, scenePaused, bondShot]);
   useEffect(
     () => () => {
       audio.current?.destroy();
@@ -773,9 +781,13 @@ function Chapter({
                 <div
                   ref={pixels}
                   className="mm-pixels"
+                  aria-hidden={showBondScene || undefined}
                   role="img"
                   aria-label={`Port Marche game view. Tavian at ${session.save.player.x}, ${session.save.player.y} in ${getMap(session.save).name}.`}
                 />
+                {playing && bondShot && (
+                  <FirstBondScene shot={bondShot} reducedMotion={reducedMotion} paused={scenePaused} />
+                )}
                 {playing && !artReady && !viewError && (
                   <div className="mm-opening-scene" role="status">
                     <img src={MESOMON_ASSETS.cover} alt="" />
@@ -912,7 +924,7 @@ function Chapter({
                       has one voice.
                     </h2>
                     <p>
-                      Edda marked the inland road. Tonight, Tavian stays for supper.
+                      In the morning, Tavian and Nia will ask who saw Edda on the inland road. Tonight his bag stays under the bench.
                     </p>
                     <button
                       className="mm-primary"

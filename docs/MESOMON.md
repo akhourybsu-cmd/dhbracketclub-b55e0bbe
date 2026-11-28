@@ -30,6 +30,8 @@ The release manifest identifies this system as rules version 3. The private save
 
 ## Writing and staging a scene
 
+The tide gate opens a gangway to Rillik’s landing. On the plank, the Edenite in Tavian’s bracelet lights up, Rillik answers, and a blue crystal forms where its paw touches the brass. Each close-up belongs to a saved line of dialogue. Players advance at their own pace, and reopening a file resumes that line. The existing first-bond event adds Rillik to the party when the encounter finishes. Earlier saves retain the dialogue they were reading.
+
 Chapter dialogue lives in `data/dialogue.ts`. Put the ordinary first encounter there. Use `data/remarks.ts` for reactions to a discovery, a past conversation, a return visit or Tavian’s closing reply. Put the most specific condition first. The engine selects the lines when the interaction begins and stores those lines and the pending completion event in the save. An old file can finish the conversation it was already reading.
 
 Give each speaker something they could have seen or heard. Nia follows the investigation from the pier to the workshop and the tide stairs. A clue can be the first or the last thing Tavian finds. When writing a callback, gate it on the actual observation. For example, the rope maker answers a different question after Tavian reads the repair tag on the crane. Check the ordinary route, a return visit, and the reverse discovery order when changing a scene.

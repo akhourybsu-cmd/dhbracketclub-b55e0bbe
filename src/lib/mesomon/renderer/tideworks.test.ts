@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { makeCompanion } from '../battle';
 import { MAPS } from '../data/maps';
 import { bypassMain, intakeStrainer, scupperWall, stairCheeks } from '../data/tideObstacles';
 import { canWalk, createNewSave, createSession, DELTAS, nearbyInteractions, reduceGame } from '../engine';
@@ -8,6 +9,14 @@ import { paintTideworks, tideRelief, type TideworksState } from './tideworks';
 import { paintEnvironmentMotion, ENVIRONMENT_MOTION_FRAME_MS } from './environmentMotion';
 
 const idle = { gateOpen: false, sluiceOpen: false, sealed: false };
+function unlockedChamber() {
+  const save = createNewSave();
+  save.questFlags = { gate_opened: true, rillik_bonded: true, sluice_open: true, tutorial_complete: true, currents_followed: true };
+  const starter = makeCompanion('rillik', 'rillik-first', 71);
+  save.party = [starter];
+  save.collection[starter.id] = structuredClone(starter);
+  return save;
+}
 function surface(mapId: MapId, flags: TideworksState = idle) {
   const pixels = new Map<number, string>();
   const ctx = {
@@ -32,6 +41,14 @@ describe('Tideworks architectural states', () => {
       changesPerRow[Math.floor((y - 176) / 16)]++;
     }
     expect(changesPerRow.every(count => count > 200)).toBe(true);
+  });
+  it('shows a dry gangway only while the same route is walkable', () => {
+    const center = (12 * 16 + 6) * 1024 + 12 * 16 + 7;
+    const closed = surface('tide-stairs'), lowered = surface('tide-stairs', { ...idle, gateOpen: true });
+    expect(closed.get(center)).toBe('#3e686a');
+    expect(lowered.get(center)).toBe('#987a56');
+    const landingCenter = center + 16;
+    expect(closed.get(landingCenter)).toBe(lowered.get(landingCenter));
   });
   it('moves the wheel rack, and settles the chamber basin after the seal', () => {
     const rack = 140 * 1024 + 150, basin = 94 * 1024 + 170;
@@ -129,7 +146,7 @@ describe('chamber basin footing', () => {
   });
   it('restores each legacy basin position to dry ground with a legal next step', () => {
     for (const [x, y] of waterCells) {
-      const save = createNewSave();
+      const save = unlockedChamber();
       Object.assign(save.player, { mapId: 'chamber', x, y });
       const restored = migrateSave(JSON.parse(JSON.stringify(save)));
       expect(restored?.player).toEqual(save.player);
@@ -146,7 +163,7 @@ describe('chamber basin footing', () => {
     }
   });
   it('reaches the rift from the dry deck and the recovered page from the east passage', () => {
-    const save = createNewSave();
+    const save = unlockedChamber();
     Object.assign(save.player, { mapId: 'chamber', ...MAPS.chamber.spawn });
     let session = createSession(save);
     const walk = (...directions: Direction[]) => {

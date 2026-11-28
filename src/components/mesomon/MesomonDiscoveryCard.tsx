@@ -22,7 +22,7 @@ export function MesomonDiscoveryCard() {
         <div className="min-w-0 flex-1">
           <p className="text-[9px] font-extrabold uppercase tracking-[.22em] text-[#9fd6b1]">Chapter I · Port Marche</p>
           <h2 className="mt-1 text-3xl font-extrabold tracking-tight">Mesomon</h2>
-          <p className="mt-2 text-xs leading-relaxed text-[#e8e1c6]">The harbor is singing in two voices.</p>
+          <p className="mt-2 text-xs leading-relaxed text-[#e8e1c6]">Four years at sea. Then a letter from Tavian’s old teacher brings him home.</p>
           <span className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#9fd6b1]/45 bg-[#9fd6b1]/15 px-4 text-xs font-bold text-[#e8e1c6]">
             Enter Port Marche <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
           </span>
