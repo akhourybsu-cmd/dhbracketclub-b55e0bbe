@@ -4,6 +4,8 @@ import { CLOSING_CHOICES } from './data/dialogue';
 import { beginNarrativeBeat } from './narrative';
 import { MAPS, WALKABLE_TILES } from './data/maps';
 import { fieldObstacleAt } from './data/fieldObstacles';
+import { rillikGangway, rillikLanding } from './data/tideObstacles';
+import { missingTideRequirement } from './tideAccess';
 import { habitatSeed, newJourneySeed } from './individuals';
 import { SPECIES } from './data/species';
 import type { ApproachingNpc, NpcPosition, DialogueLine, DialogueState, Direction, GameAction, GameSession, MapDefinition, MapId, MapObject, MesomonSaveV1, StoryEvent } from './types';
@@ -26,6 +28,7 @@ function copySession(save: MesomonSaveV1, notice = ''): GameSession {
 /** Repair the playable copy only. A pending cloud retry must keep its original payload. */
 export function createSession(save: MesomonSaveV1): GameSession {
   const session = copySession(save);
+  restoreTideAccess(session);
   restoreFieldPositions(session.save);
   return session;
 }
@@ -53,6 +56,7 @@ export function getVisibleObjects(save: MesomonSaveV1): MapObject[] {
 export function canWalk(save: MesomonSaveV1, x: number, y: number, occupants?: readonly MapObject[]): boolean {
   const map = getMap(save);
   if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= map.width || y >= map.height || !WALKABLE_TILES.has(map.tiles[y][x])) return false;
+  if (map.id === 'tide-stairs' && !flag(save, 'gate_opened') && x === rillikGangway.x && y === rillikGangway.y) return false;
   if (map.id === 'passage' && !flag(save, 'sluice_open') && x >= 10 && x <= 11 && y >= 11 && y <= 14) return false;
   if (fieldObstacleAt(map.id, x, y)) return false;
   return !(occupants ?? getVisibleObjects(save)).some(object => object.solid && object.x === x && object.y === y);
@@ -92,7 +96,7 @@ const QUEST_STEPS = [
   ['workshop_entered', 'My chair is still under Edda’s bench. No sign of her.'],
   ['clues_complete', 'Edda marked the second beat on her chart. It keeps time as the tide turns. Her map points to the old stairs.'],
   ['bram_met', 'Bram saw Edda take her lamp down the stairs. The water drops when we hear metal ring below the steps.'],
-  ['rillik_bonded', 'Nia braced the gate. I turned the wheel. Rillik could have gone anywhere. It came back.'],
+  ['rillik_bonded', 'Rillik came back for me. When it lifted its paw, I could still feel its heartbeat in my wrist.'],
   ['current_eddy', 'Rillik found a drain behind the passage wall.'],
   ['sluice_open', 'When the boards drained, I found a bootprint. Anyone on the pump crew could have left it.'],
   ['tutorial_complete', 'Tressel’s nest was soaked through. It was piling splinters on the dry boards.'],
@@ -133,23 +137,23 @@ export function getObjective(save: MesomonSaveV1): string {
     if (missing.length === 0) return 'Read the writing on the back of the field map · 3/3';
     if (missing.length === 1) return `Check the ${missing[0]} in Edda’s workshop · 2/3`;
     if (missing.length === 2) return `Check the ${missing[0]} and the ${missing[1]} · 1/3`;
-    return 'Search Edda’s chart, field map and empty hook · 0/3';
+    return 'Check the chart, field map and empty hook · 0/3';
   }
-  if (!flag(save, 'bram_met')) return 'Meet Bram at the east quay barrier.';
+  if (!flag(save, 'bram_met')) return 'Ask Bram at the east quay if he saw Edda.';
   if (!flag(save, 'gate_opened')) {
     if (flag(save, 'brace_found')) return 'Take the timber to the tide wheel.';
-    return needsGateBrace(save) ? 'Find a timber brace below the tide wheel.' : 'Check the wheel at the old tide stairs.';
+    return needsGateBrace(save) ? 'Find a timber brace below the tide wheel.' : 'Help Rillik get free. Check the wheel at the old tide stairs.';
   }
-  if (!flag(save, 'rillik_bonded')) return 'Check the broken walkway for Rillik.';
-  if (!flag(save, 'current_eddy')) return 'Under the wharf, let Rillik listen at the eddy.';
+  if (!flag(save, 'rillik_bonded')) return 'Cross the plank to Rillik on the lower landing.';
+  if (!flag(save, 'current_eddy')) return 'Use Current Sense at the eddy under the wharf.';
   if (!flag(save, 'sluice_open')) return 'Lower the sluice lever to drain the crossing.';
   if (!flag(save, 'tutorial_complete')) return flag(save, 'visited:tressel') ? 'Go back to Tressel at the crossing.' : 'Cross the boards. Check the nest on the far side.';
   if (!flag(save, 'current_channel')) return 'Use Current Sense near the upper channel.';
   if (!flag(save, 'boss_defeated')) return save.player.mapId === 'chamber' ? 'Inspect the basin at the end of the walkway.' : 'Follow the current into the old tide chamber.';
   if (!flag(save, 'rift_sealed')) return 'The demon is gone. Align three pulses to seal the rift.';
   if (!flag(save, 'page_found')) return 'Inspect the stone beside the sealed rift.';
-  if (!flag(save, 'chapter_complete')) return 'Return to Nia at Edda’s workshop.';
-  return 'Revisit the quay. The inland road is closed for this chapter.';
+  if (!flag(save, 'chapter_complete')) return 'Show Edda’s page to Nia at the workshop.';
+  return 'The inland road is closed. You can still explore Port Marche.';
 }
 
 function open(session: GameSession, id: string, lines: DialogueLine[], onFinish?: StoryEvent, choices?: DialogueState['choices']): GameSession {
@@ -218,6 +222,33 @@ function meetingPath(save: MesomonSaveV1, origin: FieldPoint, others: MapObject[
   }
 }
 
+/** Old clients could reach a later room with its required encounter unfinished.
+ * Resume on the near side without awarding the missing bond or replaying a
+ * battle or scene from the inaccessible room. Valid in-flight scenes resume. */
+function restoreTideAccess(session: GameSession) {
+  const save = session.save;
+  const map = save.player.mapId;
+  if (flag(save, 'rillik_bonded') && save.party.length === 0) {
+    // Calling the companion into its crystal never empties the battle party.
+    // Reuse the saved individual if possible; a flag without any individual
+    // returns to the encounter so a real first bond can be made.
+    const starter = Object.values(save.collection).find(member => member.speciesId === 'rillik');
+    if (starter) save.party.push(clone(starter));
+    else {
+      save.questFlags.rillik_bonded = false;
+      save.questFlags.companion_released = false;
+    }
+  }
+  if ((map !== 'passage' && map !== 'chamber') || !missingTideRequirement(save, map)) return;
+  const destination = missingTideRequirement(save, 'passage') ? 'tide-stairs' : 'passage';
+  const landing = MAPS[destination].spawn;
+  teleport(session, destination, landing.x, landing.y, save.player.facing);
+  save.dialogue = null;
+  session.dialogue = null;
+  save.battle = null;
+  save.seal.active = false;
+}
+
 function restoreFieldPositions(save: MesomonSaveV1) {
   const { player, dialogue } = save;
   if (save.quayResidents) {
@@ -233,7 +264,12 @@ function restoreFieldPositions(save: MesomonSaveV1) {
   }
   const occupants = getVisibleObjects(save);
   const legal = (x: number, y: number) => canWalk(save, x, y, occupants);
-  if (!legal(player.x, player.y)) Object.assign(player, nearestReachable(getMap(save), player, legal));
+  const acrossRaisedGangway = player.mapId === 'tide-stairs' && !flag(save, 'gate_opened')
+    && player.x === rillikLanding.x && player.y === rillikLanding.y;
+  const acrossFlood = player.mapId === 'passage' && !flag(save, 'sluice_open') && player.x >= 12;
+  if (!legal(player.x, player.y) || acrossRaisedGangway || acrossFlood) {
+    Object.assign(player, nearestReachable(getMap(save), player, legal));
+  }
 
   // A newer fixture may cross an older saved walk-in choreography. Keep the
   // conversation and its end event, replacing only steps that no longer fit.
@@ -294,7 +330,7 @@ function event(session: GameSession, name?: StoryEvent): GameSession {
     case 'clues-complete': save.questFlags.clues_complete = true; break;
     case 'bram-met': save.questFlags.bram_met = true; break;
     case 'gate-opened': save.questFlags.gate_opened = true; break;
-    case 'first-bond': firstBond(save); session.notice = 'Rillik walks beside you.'; break;
+    case 'first-bond': firstBond(save); session.notice = 'Rillik is bonded to you and walks beside you.'; break;
     case 'boss-introduced': save.questFlags.boss_introduced = true; save.rifts['port-marche'] = 'found'; save.battle = createBattle(save.party, 'rift-wretch', 'chamber-boss', habitatSeed(save, 'chamber-boss')); break;
     case 'sealed': save.questFlags.rift_sealed = true; save.rifts['port-marche'] = 'sealed'; save.seal.active = false; break;
     case 'page-found': save.questFlags.page_found = true; break;
@@ -375,7 +411,7 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   }
   if (id === 'nia') return flag(save, 'nia_met') ? scene(session, 'nia-repeat') : scene(session, 'nia', 'nia-met');
   if (id === 'workshop-door') {
-    if (!flag(save, 'nia_met')) return short(session, 'Tavian', 'Nia’s waiting at the pier. I should say hello.');
+    if (!flag(save, 'nia_met')) return short(session, 'Tavian', 'There’s Nia on the pier. Maybe she’s seen Edda.');
     teleport(session, 'workshop', 8, 11);
     return !flag(save, 'workshop_entered') ? scene(session, 'workshop', 'workshop-entered') : session;
   }
@@ -404,8 +440,8 @@ function interactWithObject(session: GameSession, id: string): GameSession {
     if (!flag(save, 'brace_found')) return scene(session, 'gate-blocked');
     return scene(session, 'gate-opened', 'gate-opened');
   }
-  if (id === 'rillik-bond') return flag(save, 'gate_opened') ? scene(session, 'first-bond', 'first-bond') : short(session, 'Tavian', 'It can’t get clear of the lattice. Open the gate first.');
-  if (id === 'passage-door') return flag(save, 'rillik_bonded') ? teleport(session, 'passage', 4, 19) : short(session, 'Nia', flag(save, 'gate_opened') ? 'Look by the broken plank, Tav. There it is again.' : 'Tav, give me a hand at the wheel first. It’s still caught down there.');
+  if (id === 'rillik-bond') return flag(save, 'gate_opened') ? scene(session, 'first-bond', 'first-bond') : short(session, 'Tavian', 'Its paw’s caught behind the bars. We need to raise the gate.');
+  if (id === 'passage-door') return !missingTideRequirement(save, 'passage') ? teleport(session, 'passage', 4, 19) : short(session, 'Nia', flag(save, 'gate_opened') ? 'There, on the lower landing. I think it’s waiting for you.' : 'Tav, give me a hand at the wheel first. It’s still caught down there.');
   if (id === 'passage-exit') return teleport(session, 'tide-stairs', 15, 6, 'left');
   if (id === 'sense-eddy' || id === 'sense-channel') {
     if (!flag(save, 'rillik_bonded')) return session;
@@ -434,8 +470,13 @@ function interactWithObject(session: GameSession, id: string): GameSession {
   }
   if (id === 'gleamwing') return scene(session, 'gleamwing', 'wild-complete');
   if (id === 'chamber-door') {
-    if (!flag(save, 'tutorial_complete')) return short(session, 'Tavian', 'That Tressel’s still at the crossing. I’d better check on it.');
-    if (!flag(save, 'currents_followed')) return short(session, 'Tavian', 'Rillik hasn’t found where the second current leads yet.');
+    switch (missingTideRequirement(save, 'chamber')) {
+      case 'gate_opened': return short(session, 'Tavian', 'That little one is still caught at the tide stairs.');
+      case 'rillik_bonded': return short(session, 'Tavian', 'I left Rillik on the lower landing.');
+      case 'sluice_open': return short(session, 'Tavian', 'The crossing is flooded. I need the sluice lever.');
+      case 'tutorial_complete': return short(session, 'Tavian', 'That Tressel’s still at the crossing. I’d better check on it.');
+      case 'currents_followed': return short(session, 'Tavian', 'Rillik hasn’t found where the second current leads yet.');
+    }
     return teleport(session, 'chamber', 8, 12);
   }
   if (id === 'chamber-exit') return teleport(session, 'passage', 18, 4, 'down');
@@ -560,12 +601,12 @@ export function reduceGame(previous: GameSession, action: GameAction): GameSessi
   }
   if (action.type === 'interact') return interact(session, action.id);
   if (action.type === 'sense') {
-    if (!flag(save, 'rillik_bonded')) { session.notice = 'There is no bonded current to follow yet.'; return session; }
+    if (!flag(save, 'rillik_bonded')) { session.notice = 'Current Sense needs a companion.'; return session; }
     save.questFlags.companion_released = true;
     const sense = nearbyInteractions(save).find(object => object.kind === 'sense');
     if (sense) return interact(session, sense.id);
     save.questFlags.sense_pulse = Number(save.questFlags.sense_pulse ?? 0) + 1;
-    session.notice = save.player.mapId === 'passage' && !flag(save, 'currents_followed') ? 'Rillik listens. Find the wet eddies beside the channel.' : 'Rillik’s tail ring glows, then settles. No nearby disturbance.';
+    session.notice = save.player.mapId === 'passage' && !flag(save, 'currents_followed') ? 'Rillik listens. Try the swirling water by the channel.' : 'Rillik’s tail ring glows, then settles. No nearby disturbance.';
     return session;
   }
   if (action.type === 'companion') { if (save.party.length) save.questFlags.companion_released = action.released; return session; }

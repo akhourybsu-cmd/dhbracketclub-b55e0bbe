@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canWalk, createNewSave, createSession, DELTAS, getVisibleObjects, reduceGame } from '@/lib/mesomon/engine';
 import { resonanceEligibility } from '@/lib/mesomon/battle';
-import { findWalkingPath, getChartRoute } from '@/lib/mesomon/wayfinding';
+import { findWalkingPath, getChartExits, getChartRoute } from '@/lib/mesomon/wayfinding';
 import type { GameSession, MesomonSaveV1 } from '@/lib/mesomon/types';
 
 function followChart(session: GameSession) {
@@ -97,6 +97,21 @@ describe('Port Marche location chart', () => {
     save.questFlags.bram_met = false;
     expect(getChartRoute(save)?.target.id).toBe('bram');
   });
+  it.each(['gate_opened', 'rillik_bonded', 'sluice_open', 'tutorial_complete', 'currents_followed'])('keeps the chart and chamber door locked together when %s is missing', missing => {
+    const save = passageProgress();
+    Object.assign(save.questFlags, { sluice_open: true, tutorial_complete: true, currents_followed: true });
+    delete save.questFlags[missing];
+    save.player = { ...save.player, mapId: 'passage', x: 19, y: 4, facing: 'up' };
+    expect(getChartExits(save).map(door => door.id)).not.toContain('chamber-door');
+    // Exercise the interaction directly as well as the repaired load path.
+    const stale: GameSession = { save, dialogue: null, notice: '' };
+    for (const action of [{ type: 'interact', id: 'chamber-door' }, { type: 'input', action: 'confirm' }] as const) {
+      const result = reduceGame(stale, action);
+      expect(result.save.player.mapId).toBe('passage');
+      expect(result.dialogue).not.toBeNull();
+    }
+  });
+
   it('never charts a future chapter encounter while its gate is still shut', () => {
     const save = passageProgress();
     Object.assign(save.questFlags, { current_eddy: true, sluice_open: true, currents_followed: true });

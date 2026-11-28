@@ -56,7 +56,7 @@ describe('Port Marche pocket charts', () => {
     const chart = screen.getByRole('img');
     expect(chart.querySelector('[data-crossing="flooded"]')).toBeInTheDocument();
     expect(chart).not.toHaveAccessibleDescription(/Old tide chamber/);
-    view.rerender(<LocationChart save={{ ...save, questFlags: { sluice_open: true, tutorial_complete: true, currents_followed: true } }} />);
+    view.rerender(<LocationChart save={{ ...save, questFlags: { gate_opened: true, rillik_bonded: true, sluice_open: true, tutorial_complete: true, currents_followed: true } }} />);
     expect(chart.querySelector('[data-crossing="drained"]')).toBeInTheDocument();
     expect(chart.querySelector('[data-crossing="flooded"]')).not.toBeInTheDocument();
     expect(chart).toHaveAccessibleDescription(/Old tide chamber/);

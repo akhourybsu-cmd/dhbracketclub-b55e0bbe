@@ -25,6 +25,7 @@ on:
       - 'public/games/mesomon/**'
       - 'art/mesomon/creatures/**'
       - 'art/mesomon/battle-scenes/**'
+      - 'art/mesomon/first-bond/**'
       - 'art/mesomon/title/**'
       - 'supabase/migrations/*mesomon*'
       - 'scripts/*mesomon*'
@@ -57,6 +58,7 @@ jobs:
           python scripts/mesomon_field_figures.py --check
           python scripts/build-mesomon-creature-art.py --check
           python scripts/build-mesomon-battle-scenes.py --check
+          python scripts/build-mesomon-bond-art.py --check
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

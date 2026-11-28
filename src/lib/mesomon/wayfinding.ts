@@ -1,4 +1,5 @@
 import { MAPS } from './data/maps';
+import { missingTideRequirement } from './tideAccess';
 import { canWalk, DELTAS, getVisibleObjects, interactionLabel, needsGateBrace } from './engine';
 import type { Direction, MapId, MapObject, MesomonSaveV1 } from './types';
 
@@ -12,9 +13,9 @@ const crossings: Crossing[] = [
   { from: 'workshop', to: 'harbor', door: 'workshop-exit' },
   { from: 'harbor', to: 'tide-stairs', door: 'tide-door', requires: ['bram_met'] },
   { from: 'tide-stairs', to: 'harbor', door: 'stairs-exit' },
-  { from: 'tide-stairs', to: 'passage', door: 'passage-door', requires: ['rillik_bonded'] },
+  { from: 'tide-stairs', to: 'passage', door: 'passage-door' },
   { from: 'passage', to: 'tide-stairs', door: 'passage-exit' },
-  { from: 'passage', to: 'chamber', door: 'chamber-door', requires: ['tutorial_complete', 'currents_followed'] },
+  { from: 'passage', to: 'chamber', door: 'chamber-door' },
   { from: 'chamber', to: 'passage', door: 'chamber-exit' },
 ];
 
@@ -42,7 +43,9 @@ function chapterDestination(save: MesomonSaveV1): Destination | undefined {
 }
 
 function openCrossings(save: MesomonSaveV1, from: MapId) {
-  return crossings.filter(({ from: origin, requires = [] }) => origin === from && requires.every(flag => save.questFlags[flag] === true));
+  return crossings.filter(({ from: origin, to, requires = [] }) => origin === from
+    && requires.every(flag => save.questFlags[flag] === true)
+    && ((to !== 'chamber' && to !== 'passage') || !missingTideRequirement(save, to)));
 }
 
 export function getChartExits(save: MesomonSaveV1): MapObject[] {

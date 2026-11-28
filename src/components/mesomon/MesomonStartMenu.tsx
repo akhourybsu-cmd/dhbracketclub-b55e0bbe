@@ -218,6 +218,9 @@ export function MesomonStartMenu({
                 {getObjective(session.save)}
               </p>
               <ol className="mm-quest-steps">
+                {!session.save.questFlags.captain_met && (
+                  <li><span aria-hidden="true">◆</span>Edda’s letter reached me on the survey ship. She wants me home with the stone in my cuff.</li>
+                )}
                 {getQuestSteps(session.save)
                   .filter((step) => step.complete)
                   .map((step) => (

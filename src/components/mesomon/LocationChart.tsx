@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react';
 import { MAPS } from '@/lib/mesomon/data/maps';
+import { rillikGangway } from '@/lib/mesomon/data/tideObstacles';
 import { fieldObstaclesForMap } from '@/lib/mesomon/data/fieldObstacles';
 import { getChartExits, getChartRoute } from '@/lib/mesomon/wayfinding';
 import type { Direction, MesomonSaveV1, TileKind } from '@/lib/mesomon/types';
@@ -96,6 +97,9 @@ export function LocationChart({ save }: { save: MesomonSaveV1 }) {
           {obstacles.map(({ id: name, x, y, width, height }) =>
             <rect key={name} data-obstacle={name} x={x} y={y} width={width} height={height} />)}
         </g>
+        {map.id === 'tide-stairs' && save.questFlags.gate_opened !== true && <rect
+          x={rillikGangway.x} y={rillikGangway.y} width="1" height="1" fill={inks['dark-water']}
+          stroke="#554f3f" strokeWidth=".12" data-crossing="raised-gangway" />}
         <ChartLandmarks zone={map.id} flooded={save.questFlags.sluice_open !== true} />
         {otherExits.map(door => <path key={door.id} aria-hidden="true" data-exit={door.id} d={exit}
           transform={`translate(${door.x + .5} ${door.y + .5}) scale(${scale})`} className="meso-chart-exit"><title>{door.label}</title></path>)}

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, portraitUrl, dialoguePortrait, personArt, propArt } from '../assets';
+import { BOND_ART, CREATURES, MESOMON_ASSETS, PEOPLE, SCENERY, TILES, portraitUrl, dialoguePortrait, personArt, propArt } from '../assets';
 import { BATTLE_CELL, BATTLE_POSES } from './battleMotion';
 
 const root = resolve(process.cwd(), 'public/games/mesomon');
@@ -33,10 +33,23 @@ describe('Mesomon original asset geometry', () => {
       people: { cell: number[] }; creatures: { rows: string[]; cell: number[] };
       battle: { file: string; rows: string[]; cell: number[]; poses: string[] };
       fieldGuide: { size: number[]; files: string[] };
+      firstBond: { version: number; size: number[]; files: string[] };
     };
     expect(manifest.version).toBe(MESOMON_ASSETS.version);
-    for (const url of [MESOMON_ASSETS.people, MESOMON_ASSETS.creatures, MESOMON_ASSETS.scenery]) {
+    for (const url of [MESOMON_ASSETS.people, MESOMON_ASSETS.creatures]) {
       expect(url.endsWith(`?v=${manifest.version}`)).toBe(true);
+    }
+    for (const unchanged of [MESOMON_ASSETS.cover, MESOMON_ASSETS.coverThumbnail, MESOMON_ASSETS.scenery]) {
+      expect(unchanged.endsWith('?v=5')).toBe(true);
+    }
+    expect(manifest.firstBond.size).toEqual([640, 480]);
+    expect(manifest.firstBond.files).toEqual(Object.values(BOND_ART).map(path => path.slice(MESOMON_ASSETS.root.length)));
+    for (const file of manifest.firstBond.files) {
+      expect(manifest.assets).toContain(file);
+      expect(file.startsWith(`first-bond-v${manifest.firstBond.version}/`)).toBe(true);
+      const bytes = readFileSync(resolve(root, file));
+      expect(bytes.subarray(8, 12).toString()).toBe('WEBP');
+      expect(bytes.byteLength).toBeLessThan(90 * 1024);
     }
     expect(manifest.scenery).toEqual(SCENERY);
     expect(manifest.people.cell).toEqual([16, 16]);

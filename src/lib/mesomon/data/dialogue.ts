@@ -95,7 +95,7 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     { bondShot: 'glow', speaker: 'Tavian', text: 'Wait. I felt yours, too. Can you do that again?' },
     { bondShot: 'offer', speaker: 'Port Marche', text: 'He rests his open hand on the plank. Rillik sniffs his wrist. Tavian holds still.' },
     { bondShot: 'touch', speaker: 'Port Marche', text: 'One webbed paw settles on the brass. The green stone and the tail ring pulse together.' },
-    { bondShot: 'bond', speaker: 'Port Marche', text: 'A little blue crystal grows beside the green one. Rillik lifts its paw. Tavian can still feel its heartbeat.' },
+    { bondShot: 'bond', speaker: 'Port Marche', text: 'A blue crystal grows beside the green one. Under Rillik’s paw, Tavian feels a heartbeat much quicker than his own.' },
     { bondShot: 'bond', speaker: 'Tavian', text: 'There you are. Come on, then. Let’s find Edda.' },
     { bondShot: 'bond', speaker: 'Field note', text: 'You and Rillik are bonded. Open Companions in Start to call Rillik to rest or walk together.' },
   ],
@@ -132,7 +132,7 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
   sluice: [
     ...say('Tavian', 'Up with the weight. Now the handle.'),
     ...say('Port Marche', 'The lever catches. As the water drains, a bootprint shows in the silt.'),
-    ...say('Tavian', 'Square heel. I wish that narrowed it down.'),
+    ...say('Tavian', 'A work boot. Half the quay wears those. We’d better follow the water.'),
   ],
   tressel: [
     ...say('Port Marche', 'Tressel drags a mouthful of splinters onto the boards. Its nest is soaked.'),
@@ -142,11 +142,11 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
   ],
   'sense-channel': [
     ...say('Port Marche', 'A line of foam climbs past the tide mark. Rillik follows it to the chamber door.'),
-    ...say('Tavian', 'Uphill, all the way to that door. No tide I know runs like that.'),
+    ...say('Tavian', 'The water’s running uphill. Whatever’s pulling it is behind that door.'),
   ],
   'boss-intro': [
     ...say('Port Marche', 'A violet shard slips through a tear above the basin. It strikes the rim and rings.'),
-    ...say('Tavian', 'There. That’s the sound we heard on the steps.'),
+    ...say('Tavian', 'Hear that, Rillik? That’s what Edda heard. Each time it rings, the water rises.'),
     ...say('Port Marche', 'More shards gather round a narrow mask. The water lifts clear of the stone.'),
     ...say('Field note', 'Bring the Rift Wretch’s Stability to zero to drive it back. Demons cannot bond.'),
   ],
@@ -162,10 +162,10 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     ...say('Port Marche', 'A third fades before he can place it. Rillik scratches at a loose stone by the basin.'),
   ],
   page: [
-    ...say('Port Marche', 'Under the stone is a waxed bundle. The paper inside is dry. Tavian knows that hand.'),
+    ...say('Port Marche', 'A sheet of paper lies folded in waxed cloth. Tavian would know Edda’s handwriting anywhere.'),
     ...say('Edda’s page', 'Not all doors are opened from the other side.'),
-    ...say('Edda’s page', 'After the tremor. One mile up the inland road. Same beat, twice as strong.'),
-    ...say('Edda’s page', 'Back at the basin. Tav, I’ve marked your copy. I’ll go inland again at low water. E. Venn.'),
+    ...say('Edda’s page', 'After the tremor. One mile up the inland road. Same beat. Twice as strong as at the basin.'),
+    ...say('Edda’s page', 'Tav, I came back to leave you my route. I’ll take the inland road again at low tide. E. Venn.'),
     ...say('Tavian', 'She made it past the stairs. I’ve got to show Nia.'),
     ...say('Port Marche', 'He slips the field sheet inside Edda’s letter.'),
   ],
