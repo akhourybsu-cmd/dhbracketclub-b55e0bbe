@@ -86,21 +86,21 @@ export function getPhase(session: GameSession): 'explore' | 'dialogue' | 'battle
 }
 
 const QUEST_STEPS = [
-  ['captain_met', 'Four years away. One letter from Edda and here I am, cuff and all.'],
-  ['disembarked', 'Came ashore on the lower quay.'],
-  ['nia_met', 'Nia met the ferry. She’d been looking for Edda too.'],
+  ['captain_met', 'I spent four years charting the coast. Then Edda wrote about a sound in our harbor and asked me to bring my cuff.'],
+  ['disembarked', 'I’m back on the pier I left at sixteen. I wish I’d said goodbye to Nia.'],
+  ['nia_met', 'Nia came to meet me. Edda missed supper last night, and her workshop lamp was still burning.'],
   ['workshop_entered', 'My chair is still under Edda’s bench. No sign of her.'],
-  ['clues_complete', 'Edda packed her case for the tide stairs. The pinholes on her chart keep time even when the tide turns.'],
-  ['bram_met', 'Bram saw Edda go down with a lamp.'],
+  ['clues_complete', 'Edda marked the second beat on her chart. It keeps time as the tide turns. Her map points to the old stairs.'],
+  ['bram_met', 'Bram saw Edda take her lamp down the stairs. The water drops when we hear metal ring below the steps.'],
   ['rillik_bonded', 'Nia braced the gate. I turned the wheel. Rillik could have gone anywhere. It came back.'],
   ['current_eddy', 'Rillik found a drain behind the passage wall.'],
-  ['sluice_open', 'Lowered the lever. A heel print showed through the silt. Whose?'],
-  ['tutorial_complete', 'Tressel had a nest in those boards. We got past without touching it.'],
+  ['sluice_open', 'When the boards drained, I found a bootprint. Anyone on the pump crew could have left it.'],
+  ['tutorial_complete', 'Tressel’s nest was soaked through. It was piling splinters on the dry boards.'],
   ['currents_followed', 'We followed the foam uphill to the chamber.'],
-  ['boss_defeated', 'That ringing at the gate came from the basin. It stopped when the Wretch drew back.'],
+  ['boss_defeated', 'The shards hit the stone basin. That’s the ringing we heard up on the steps.'],
   ['rift_sealed', 'Rillik kept its paw on my cuff for all three pulses. The basin drains toward the sea again.'],
-  ['page_found', 'Under the stone, a dry field sheet in Edda’s hand. I’ve folded it inside her letter.'],
-  ['chapter_complete', 'Showed Nia the page. We’ll ask the carters in the morning.'],
+  ['page_found', 'Edda took a reading a mile inland after the tremor. It’s in her own handwriting. I want Nia to see it.'],
+  ['chapter_complete', 'In the morning Nia and I will ask the carters if they saw Edda. Tonight there’s a place for me at the table.'],
 ] as const;
 export function getQuestSteps(save: MesomonSaveV1) {
   const first = QUEST_STEPS.findIndex(([key]) => !flag(save, key));
@@ -123,10 +123,10 @@ export function needsGateBrace(save: MesomonSaveV1): boolean {
   return !flag(save, 'brace_found') && (flag(save, 'visited:gate-wheel') || flag(save, 'visited:nia-stairs'));
 }
 export function getObjective(save: MesomonSaveV1): string {
-  if (!flag(save, 'captain_met')) return 'Speak to the captain, near the ship’s bow.';
-  if (!flag(save, 'disembarked')) return 'Take the gangplank at the back of the deck.';
+  if (!flag(save, 'captain_met')) return 'Ask the captain at the front of the ship if he can see Edda.';
+  if (!flag(save, 'disembarked')) return 'Go ashore. The gangplank is at the back of the deck.';
   if (!flag(save, 'nia_met')) return 'Nia is waiting at the arrival pier.';
-  if (!flag(save, 'workshop_entered')) return 'Edda’s workshop is northwest, past the market.';
+  if (!flag(save, 'workshop_entered')) return 'Look for Edda at her workshop, northwest of the market.';
   if (!flag(save, 'clues_complete')) {
     const clues = [['clue_chart', 'chart'], ['clue_map', 'field map'], ['clue_hook', 'empty hook']] as const;
     const missing = clues.filter(([key]) => !flag(save, key)).map(([, name]) => name);
