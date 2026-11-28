@@ -91,8 +91,8 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
   'first-bond': [
     { bondShot: 'return', speaker: 'Port Marche', text: 'The plank tips. Rillik lands on the far end. Tavian gets one knee up and grabs the rail.' },
     { bondShot: 'return', speaker: 'Tavian', text: 'You came back for me.' },
-    { bondShot: 'glow', speaker: 'Port Marche', text: 'Green light shines through his wet sleeve. A beat later, the ring on Rillik’s tail lights up.' },
-    { bondShot: 'glow', speaker: 'Tavian', text: 'Wait. My Edenite bracelet… I felt that. Was that you?' },
+    { bondShot: 'glow', speaker: 'Port Marche', text: 'The Edenite in his bracelet shines green through his wet sleeve. A beat later, Rillik’s tail ring lights up.' },
+    { bondShot: 'glow', speaker: 'Tavian', text: 'Wait. I felt yours, too. Can you do that again?' },
     { bondShot: 'offer', speaker: 'Port Marche', text: 'He rests his open hand on the plank. Rillik sniffs his wrist. Tavian holds still.' },
     { bondShot: 'touch', speaker: 'Port Marche', text: 'One webbed paw settles on the brass. The green stone and the tail ring pulse together.' },
     { bondShot: 'bond', speaker: 'Port Marche', text: 'A little blue crystal grows beside the green one. Rillik lifts its paw. Tavian can still feel its heartbeat.' },
