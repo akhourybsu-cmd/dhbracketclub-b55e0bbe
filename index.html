@@ -11,8 +11,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="DH Club" data-mesomon="Mesomon" />
-    <meta name="application-name" content="DH Club" data-mesomon="Mesomon" />
+    <meta name="apple-mobile-web-app-title" content="DH Club" data-mesomon="Mesomon" data-pocket="DH Pocket" />
+    <meta name="application-name" content="DH Club" data-mesomon="Mesomon" data-pocket="DH Pocket" />
     <meta name="format-detection" content="telephone=no" />
     <link rel="icon" data-mesomon="/games/mesomon/icon-192.png" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" data-mesomon="/games/mesomon/icon-192.png" href="/apple-touch-icon.png" />
@@ -39,12 +39,12 @@
         border-radius: 50%;
         animation: dh-spin 0.8s linear infinite;
       }
-      html[data-mesomon-console], html[data-mesomon-console] body,
-      html[data-mesomon-console] #root:empty::before { background: #102224; }
-      html[data-mesomon-console] #root:empty::after { border-top-color: #d4bc7c; }
-      html[data-mesomon-console] [data-sonner-toaster] { display: none; }
+      html:is([data-mesomon-console], [data-pocket-console]), html:is([data-mesomon-console], [data-pocket-console]) body,
+      html:is([data-mesomon-console], [data-pocket-console]) #root:empty::before { background: #102224; }
+      html:is([data-mesomon-console], [data-pocket-console]) #root:empty::after { border-top-color: #d4bc7c; }
+      html:is([data-mesomon-console], [data-pocket-console]) [data-sonner-toaster] { display: none; }
       @media (prefers-reduced-motion: reduce) {
-        html[data-mesomon-console] #root:empty::after { animation: none; }
+        html:is([data-mesomon-console], [data-pocket-console]) #root:empty::after { animation: none; }
       }
       @keyframes dh-spin { to { transform: rotate(360deg); } }
     </style>
@@ -53,7 +53,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Cinzel:wght@500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&display=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Cinzel:wght@500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&display=swap" />
-    <title data-mesomon="Mesomon · Port Marche">DH — Compete With Your Crew</title>
+    <title data-mesomon="Mesomon · Port Marche" data-pocket="DH Pocket">DH — Compete With Your Crew</title>
     <meta name="description" content="Your club’s home for chat, The Drop, games, challenges, and DH Score. Compete with your crew — for fun, not funds.">
     <meta name="author" content="Dry My Horse" />
 
@@ -84,14 +84,17 @@
       });
       function update() {
         const active = /^\/mesomon\/?$/i.test(location.pathname);
-        if (document.documentElement.hasAttribute('data-mesomon-console') === active) return;
+        const pocket = /^\/dh-pocket\/?$/i.test(location.pathname);
+        if (document.documentElement.hasAttribute('data-mesomon-console') === active &&
+            document.documentElement.hasAttribute('data-pocket-console') === pocket) return;
+        document.documentElement.toggleAttribute('data-pocket-console', pocket);
         document.documentElement.toggleAttribute('data-mesomon-console', active);
         fields.forEach(({ node, attr, original }) => {
-          const value = active ? node.dataset.mesomon : original;
+          const value = active ? node.dataset.mesomon : (pocket && node.dataset.pocket) || original;
           if (attr) node.setAttribute(attr, value);
           else node.textContent = value;
         });
-        if (active) {
+        if (active || pocket) {
           document.querySelector('meta[name="theme-color"]').content = '#102224';
           document.querySelector('meta[name="color-scheme"]').content = 'dark';
         }
@@ -113,7 +116,11 @@
         var url = new URL(window.location.href);
         var forceKill = url.searchParams.has('fresh') || url.searchParams.has('kill');
         var alreadyNuked = sessionStorage.getItem('__dh_nuked__') === '1';
-        var gameLaunch = document.documentElement.hasAttribute('data-mesomon-console');
+        function handheldOpen() {
+          return document.documentElement.hasAttribute('data-mesomon-console') ||
+            document.documentElement.hasAttribute('data-pocket-console');
+        }
+        var gameLaunch = handheldOpen();
 
         function nukeAll(reason) {
           if (alreadyNuked) return Promise.resolve();
@@ -142,13 +149,13 @@
 
         function gameEntered() {
           var root = document.getElementById('root');
-          return document.documentElement.hasAttribute('data-mesomon-console') &&
+          return handheldOpen() &&
             (!gameLaunch || (root && root.hasChildNodes()) || document.querySelector('body > .mm-device'));
         }
 
         function recoverStaleBuild(reason) {
           // A cold, empty shell can recover. A slow version probe must never
-          // interrupt someone who has already entered Port Marche.
+          // interrupt someone who has already entered the handheld.
           if (!gameEntered()) {
             nukeAll(reason).then(function () { if (!gameEntered()) reloadClean(); });
           }

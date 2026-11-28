@@ -1,12 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";
-import { Link } from "react-router-dom";
 import {
-  ChevronDown,
-  ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Compass,
   BookOpen,
   Feather,
@@ -39,7 +34,9 @@ import { isDirection, keyboardAction, WALK_STEP_MS } from "@/lib/mesomon/input";
 import { BattlePanel } from "@/components/mesomon/BattlePanel";
 import { MESOMON_ASSETS, fieldPlateUrl } from "@/lib/mesomon/assets";
 import { readingVoice } from "@/lib/mesomon/reading";
-import { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
+import { PocketDevice, PocketDpad, PocketActionKeys } from "@/components/pocket/PocketHandheld";
+import { PocketDeviceContext } from "@/components/pocket/deviceContext";
+import { MesomonExit } from "@/components/mesomon/MesomonExit";
 import { useTapWalk } from "@/lib/mesomon/useTapWalk";
 import { MesomonAudio } from "@/lib/mesomon/audio";
 import { readPreferences, writePreferences } from "@/lib/mesomon/preferences";
@@ -78,68 +75,68 @@ function titleSession(file: GameSession["save"] | null, slot: 1 | 2 | 3, userId?
 }
 
 export default function MesomonPage() {
+  const assets = useClubAssets();
+  if (assets.loading || !assets.isInstalled("mesomon")) {
+    return (
+      <div className="mesomon mm-access">
+        <h1>Mesomon</h1>
+        <p>{assets.loading ? "Opening Port Marche…" : "Install Mesomon in your club’s Apps to enter Port Marche."}</p>
+        {assets.loading && <button onClick={() => void assets.refresh()}>Retry</button>}
+        <MesomonExit />
+      </div>
+    );
+  }
+  return <PocketMesomon />;
+}
+
+/** Both entry points verify the club's cartridge catalog before mounting the game. */
+export function PocketMesomon({ onExitPocketGame }: { onExitPocketGame?: () => void }) {
   const { user, loading } = useAuth();
   const { club, loading: clubLoading } = useClub();
-  const assets = useClubAssets();
-  if (loading || clubLoading || assets.loading)
+  if (loading || clubLoading || !user || !club) {
     return (
       <div className="mesomon mm-access">
         <h1>Mesomon</h1>
-        <p>Opening Port Marche…</p>
-        <button onClick={() => void assets.refresh()}>Retry</button>
-        <Link to="/compete">Exit game</Link>
+        <p>{loading || clubLoading ? "Opening Port Marche…" : "Open Mesomon from your club to play."}</p>
+        <MesomonExit onExitPocketGame={onExitPocketGame} />
       </div>
     );
-  if (!user || !club || !assets.isInstalled("mesomon"))
-    return (
-      <div className="mesomon mm-access">
-        <h1>Mesomon</h1>
-        <p>Install Mesomon in your club’s Apps to enter Port Marche.</p>
-        <Link to="/compete">Exit game</Link>
-      </div>
-    );
-  return (
-    <MesomonGame
-      key={`${user.id}:${club.id}`}
-      userId={user.id}
-      clubId={club.id}
-    />
-  );
+  }
+  return <MesomonGame key={`${user.id}:${club.id}`} userId={user.id} clubId={club.id} onExitPocketGame={onExitPocketGame} />;
 }
 
 /** The same game runs in the app and the isolated interaction test harness. */
-export function MesomonGame({
-  userId,
-  clubId,
-  initialSlot = 1,
-}: {
+interface MesomonGameProps {
   userId?: string | null;
   clubId?: string | null;
   initialSlot?: 1 | 2 | 3;
-}) {
+  onExitPocketGame?: () => void;
+}
+
+export function MesomonGame(props: MesomonGameProps) {
+  const device = useContext(PocketDeviceContext);
+  return device ? <MesomonCartridge {...props} /> : <PocketDevice><MesomonCartridge {...props} /></PocketDevice>;
+}
+
+function MesomonCartridge({ userId, clubId, initialSlot = 1, onExitPocketGame }: MesomonGameProps) {
   const [slot, setSlot] = useState<1 | 2 | 3>(initialSlot);
   const [slotSwitched, setSlotSwitched] = useState(false);
-  const device = useRef<HTMLDivElement>(null);
-  const fullscreen = useMesomonFullscreen(device);
 
   function selectSlot(next: 1 | 2 | 3) {
     if (next === slot) return;
     setSlotSwitched(true);
     setSlot(next);
   }
-  return createPortal(
-    <div className="mm-device" data-title-arrival={slotSwitched ? undefined : true} ref={device}>
-      <Chapter
-        key={`${userId ?? "guest"}:${slot}`}
-        userId={userId}
-        clubId={clubId}
-        slot={slot}
-        onSlot={selectSlot}
-        focusSelectedFile={slotSwitched}
-        fullscreen={fullscreen}
-      />
-    </div>,
-    document.body,
+  return (
+    <Chapter
+      key={`${userId ?? "guest"}:${slot}`}
+      userId={userId}
+      clubId={clubId}
+      slot={slot}
+      onSlot={selectSlot}
+      focusSelectedFile={slotSwitched}
+      onExitPocketGame={onExitPocketGame}
+    />
   );
 }
 
@@ -149,15 +146,16 @@ function Chapter({
   slot,
   onSlot,
   focusSelectedFile,
-  fullscreen,
+  onExitPocketGame,
 }: {
   userId?: string | null;
   clubId?: string | null;
   slot: 1 | 2 | 3;
   onSlot: (slot: 1 | 2 | 3) => void;
   focusSelectedFile: boolean;
-  fullscreen: ReturnType<typeof useMesomonFullscreen>;
+  onExitPocketGame?: () => void;
 }) {
+  const { fullscreen, beforePowerOff } = useContext(PocketDeviceContext)!;
   const sync = useMesomonSave({ userId, clubId, slot });
   const [session, setSession] = useState<GameSession | null>(null);
   const [entry, setEntry] = useState<"title" | "arrival" | "field">("title");
@@ -695,10 +693,14 @@ function Chapter({
     await sync.useCloud();
     resolvingCloud.current = false;
   };
-  const leave = () => {
-    if (current.current && playing) saveLocal.current(current.current.save);
-    void sync.flush();
-  };
+  const leave = useCallback(() => {
+    if (current.current && playingRef.current) saveLocal.current(current.current.save);
+    void flush.current();
+  }, []);
+  useEffect(() => {
+    beforePowerOff.current = leave;
+    return () => { beforePowerOff.current = null; };
+  }, [beforePowerOff, leave]);
   const advanceBattleBeat = useCallback((turn: number, index: number) => {
     dispatch({ type: "battle-beat", turn, index });
   }, [dispatch]);
@@ -725,6 +727,31 @@ function Chapter({
     </button>
   );
 
+  const pocketTitle = !!onExitPocketGame && !playing;
+  const browseFiles = useCallback((direction: Direction) => {
+    const step = direction === "left" || direction === "up" ? -1 : 1;
+    onSlot(((slot - 1 + step + 3) % 3 + 1) as 1 | 2 | 3);
+  }, [onSlot, slot]);
+  useEffect(() => {
+    if (!pocketTitle || layersCovered || sync.blocked || sync.loading || !session || !onExitPocketGame) return;
+    const handleTitleKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+      const key = event.key.toLowerCase();
+      if (event.key.startsWith("Arrow")) {
+        const direction = keyboardAction(event.key);
+        if (direction && isDirection(direction)) browseFiles(direction);
+      } else if (key === "z" || key === "a") {
+        journeyTrigger.current?.click();
+      } else if (key === "x" || key === "b" || key === "escape") {
+        leave();
+        onExitPocketGame();
+      } else return;
+      event.preventDefault();
+    };
+    window.addEventListener("keydown", handleTitleKey);
+    return () => window.removeEventListener("keydown", handleTitleKey);
+  }, [pocketTitle, layersCovered, sync.blocked, sync.loading, session, onExitPocketGame, leave, browseFiles]);
+
   function openDelete(open: boolean) {
     if (!open) {
       if (!sync.deleting) setFileToDelete(null);
@@ -748,7 +775,8 @@ function Chapter({
   return (
     <AlertDialog.Root open={!!fileToDelete} onOpenChange={openDelete}>
     <div
-      className={`mesomon mm-phase-${phase}`}
+      className={`mesomon mm-phase-${phase}${pocketTitle ? " pocket-menu-frame pocket-file-screen" : ""}`}
+      data-title-arrival={focusSelectedFile ? undefined : true}
       data-playing={playing}
       data-entry={entry}
       data-map-id={session?.save.player.mapId}
@@ -758,7 +786,7 @@ function Chapter({
     >
       <h1 className="mm-sr-only">Mesomon</h1>
       {!session ? (
-        <div className="mm-loading">
+        <div className={pocketTitle ? "mm-loading pocket-lcd" : "mm-loading"}>
           <img src={MESOMON_ASSETS.cover} alt="Port Marche harbor" />
           <h2>Opening the harbor</h2>
           <p>
@@ -767,12 +795,12 @@ function Chapter({
               : "Your journey is safe on this device."}
           </p>
           <button onClick={() => void sync.reload()}>Retry</button>
-          <Link to="/compete">Exit game</Link>
+          <MesomonExit onExitPocketGame={onExitPocketGame} />
         </div>
       ) : (
         <>
           <main
-            className="mm-game"
+            className={pocketTitle ? "mm-game pocket-lcd" : "mm-game"}
             data-mm-layer
             aria-hidden={layersCovered || undefined}
           >
@@ -863,15 +891,9 @@ function Chapter({
                           <Settings size={20} aria-hidden="true" />
                         </button>
                         {!sync.blocked && (
-                          <Link
-                            to="/compete"
-                            className="mm-title-tool"
-                            aria-label="Exit game"
-                            title="Exit game"
-                            onClick={leave}
-                          >
+                          <MesomonExit className="mm-title-tool" iconOnly onLeave={leave} onExitPocketGame={onExitPocketGame}>
                             <LogOut size={20} aria-hidden="true" />
-                          </Link>
+                          </MesomonExit>
                         )}
                       </div>
                       <span className="mm-title-note" aria-live="polite" aria-atomic="true">
@@ -1059,77 +1081,7 @@ function Chapter({
               data-mm-layer
               aria-hidden={layersCovered || undefined}
             >
-              <div
-                className="mm-dpad"
-                aria-label="Movement controls"
-                onPointerDown={(event) => {
-                  if (event.pointerType === "mouse" && event.button !== 0)
-                    return;
-                  event.preventDefault();
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  const target = (
-                    event.target as HTMLElement
-                  ).closest<HTMLButtonElement>("[data-mm-action]");
-                  if (
-                    target &&
-                    DIRECTIONS.includes(target.dataset.mmAction as Direction)
-                  )
-                    startHold(target.dataset.mmAction as Direction);
-                }}
-                onPointerMove={(event) => {
-                  if (!event.currentTarget.hasPointerCapture(event.pointerId))
-                    return;
-                  const bounds = event.currentTarget.getBoundingClientRect();
-                  const dx = event.clientX - bounds.left - bounds.width / 2,
-                    dy = event.clientY - bounds.top - bounds.height / 2;
-                  if (Math.abs(dx) + Math.abs(dy) < 12) {
-                    setHeld(null);
-                    return;
-                  }
-                  startHold(
-                    Math.abs(dx) > Math.abs(dy)
-                      ? dx > 0
-                        ? "right"
-                        : "left"
-                      : dy > 0
-                        ? "down"
-                        : "up",
-                  );
-                }}
-                onPointerUp={(event) => {
-                  setHeld(null);
-                  if (event.currentTarget.hasPointerCapture(event.pointerId))
-                    event.currentTarget.releasePointerCapture(event.pointerId);
-                }}
-                onPointerCancel={() => setHeld(null)}
-                onLostPointerCapture={() => setHeld(null)}
-              >
-                {DIRECTIONS.map((direction) => {
-                  const Icon = {
-                    up: ChevronUp,
-                    right: ChevronRight,
-                    down: ChevronDown,
-                    left: ChevronLeft,
-                  }[direction];
-                  return (
-                    <button
-                      key={direction}
-                      className={`mm-direction mm-${direction}`}
-                      data-mm-action={direction}
-                      aria-label={`Move ${direction}`}
-                      aria-pressed={held === direction}
-                      onClick={(event) => {
-                        if (event.detail === 0) press(direction);
-                      }}
-                    >
-                      <Icon size={22} />
-                    </button>
-                  );
-                })}
-                <span aria-hidden="true" className="mm-dpad-center">
-                  ◆
-                </span>
-              </div>
+              <PocketDpad onDirection={press} hold={{ direction: held, start: startHold, stop: () => setHeld(null) }} />
               <div className="mm-quick-actions">
                 {startKey}
                 <button
@@ -1150,26 +1102,8 @@ function Chapter({
                     : "Tap ground to walk"}
                 </span>
               </div>
-              <div className="mm-ab">
-                <button
-                  className="mm-b"
-                  data-mm-action="cancel"
-                  aria-label="B — Cancel"
-                  onClick={() => press("cancel")}
-                >
-                  B
-                </button>
-                <button
-                  className="mm-a"
-                  data-mm-action="confirm"
-                  aria-label="A — Confirm"
-                  onClick={() => press("confirm")}
-                >
-                  A
-                </button>
-                <span>BACK</span>
-                <span>LOOK / TALK</span>
-              </div>
+              <PocketActionKeys onConfirm={() => press("confirm")} onBack={() => press("cancel")}
+                confirmLabel="Confirm" backLabel="Cancel" confirmCaption="LOOK / TALK" />
             </div>
           )}
           {playing && (phase === "battle" || phase === "ending") && (
@@ -1197,6 +1131,7 @@ function Chapter({
               onClose={closeMenu}
               onSettings={updateSettings}
               onExit={leave}
+              onExitPocketGame={onExitPocketGame}
               onSave={() => {
                 saveLocal.current(session.save);
                 void sync.flush();
@@ -1235,7 +1170,7 @@ function Chapter({
                   "This file changed in another window. Reload it before continuing."}
               </span>
               <button onClick={() => void reloadFile()}>Reload file</button>
-              <Link to="/compete" onClick={leave}>Exit game</Link>
+              <MesomonExit onLeave={leave} onExitPocketGame={onExitPocketGame} />
             </div>
           )}
           {!sync.blocked &&
@@ -1266,6 +1201,14 @@ function Chapter({
               </div>
             )}
         </>
+      )}
+      {pocketTitle && onExitPocketGame && (
+        <div className="mm-control-deck" data-mm-layer aria-hidden={layersCovered || undefined}>
+          <PocketDpad onDirection={browseFiles} browseLabel="Browse save files" disabled={sync.loading || sync.deleting || !session} />
+          <PocketActionKeys onConfirm={begin} onBack={() => { leave(); onExitPocketGame(); }}
+            confirmLabel={sync.save ? "Continue journey" : "Begin journey"} backLabel="Eject cartridge" confirmCaption="PLAY"
+            disabled={!session || sync.blocked || sync.loading || sync.deleting} />
+        </div>
       )}
     </div>
     </AlertDialog.Root>

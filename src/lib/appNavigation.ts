@@ -132,6 +132,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/showdown/, 'DH Showdown'],
   [/^\/deep-claim/, 'Deep Claim'],
   [/^\/mesomon(?:\/|$)/, 'Mesomon'],
+  [/^\/dh-pocket\/?$/i, 'DH Pocket'],
   [/^\/drafts/, 'Draft Arena'],
   [/^\/rune-delve/, 'Rune Delve'],
   [/^\/nexus/, 'Nexus Defense'],
@@ -191,6 +192,7 @@ export const GAME_SHELL_PREFIXES = [
   '/showdown',
   '/deep-claim',
   '/mesomon',
+  '/dh-pocket',
   '/portfolio-wars',
   '/readshift',
   '/workouts',
@@ -201,10 +203,15 @@ export function isMesomonConsole(pathname: string): boolean {
   return /^\/mesomon\/?$/i.test(pathname);
 }
 
+export function isHandheldRoute(pathname: string): boolean {
+  return isMesomonConsole(pathname) || /^\/dh-pocket\/?$/i.test(pathname);
+}
+
 export function isGameShellRoute(pathname: string): boolean {
-  return GAME_SHELL_PREFIXES.some((prefix) => prefix === '/mesomon'
-    ? pathname === prefix || pathname.startsWith(`${prefix}/`)
-    : pathname.startsWith(prefix));
+  return GAME_SHELL_PREFIXES.some(prefix => {
+    if (prefix === '/dh-pocket' || prefix === '/mesomon') return isRouteActive(pathname.toLowerCase(), prefix);
+    return pathname.startsWith(prefix);
+  });
 }
 
 /** Every shared destination that can earn a slot in the mobile tab bar. */

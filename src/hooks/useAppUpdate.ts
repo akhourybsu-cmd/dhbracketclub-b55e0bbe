@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { isMesomonConsole } from '@/lib/appNavigation';
+import { isHandheldRoute } from '@/lib/appNavigation';
 import { fetchRemoteBuildId, nukeAndReload } from '@/lib/forceUpdate';
 
 const CHECK_INTERVAL_MS = 30 * 1000;
@@ -39,7 +39,7 @@ export function useAppUpdate() {
   const softReloadedRef = useRef(false);
   const deferredUpdate = useRef<string | null>(null);
   const applyUpdate = useCallback((remote: string) => {
-    if (isMesomonConsole(window.location.pathname)) {
+    if (isHandheldRoute(window.location.pathname)) {
       deferredUpdate.current = remote;
       return;
     }
@@ -126,9 +126,9 @@ export function useAppUpdate() {
     };
 
     const check = async () => {
-      if (cancelled || promptedRef.current || isMesomonConsole(window.location.pathname)) return;
+      if (cancelled || promptedRef.current || isHandheldRoute(window.location.pathname)) return;
       const remote = await fetchRemoteBuildId();
-      if (cancelled || !remote || isMesomonConsole(window.location.pathname)) return;
+      if (cancelled || !remote || isHandheldRoute(window.location.pathname)) return;
       lastSuccessfulProbeRef.current = Date.now();
       // If local now matches remote, clear any stale loop-guard marker so
       // future genuine deploys can prompt again.
@@ -148,7 +148,7 @@ export function useAppUpdate() {
     const interval = setInterval(check, CHECK_INTERVAL_MS);
 
     const onVisibility = () => {
-      if (document.visibilityState !== 'visible' || isMesomonConsole(window.location.pathname)) return;
+      if (document.visibilityState !== 'visible' || isHandheldRoute(window.location.pathname)) return;
       void check();
       // Android fallback: if the JS bundle has been alive for >5min and we
       // haven't seen a build id update in that window, the cached bundle may
@@ -189,7 +189,7 @@ export function useAppUpdate() {
   // simply re-running check() through the visibility path is overkill;
   // inline a minimal version that respects the same localStorage guards.
   useEffect(() => {
-    if (isMesomonConsole(location.pathname)) return;
+    if (isHandheldRoute(location.pathname)) return;
     if (deferredUpdate.current) {
       const remote = deferredUpdate.current;
       deferredUpdate.current = null;
@@ -200,7 +200,7 @@ export function useAppUpdate() {
     let cancelled = false;
     void (async () => {
       const remote = await fetchRemoteBuildId();
-      if (cancelled || !remote || isMesomonConsole(window.location.pathname)) return;
+      if (cancelled || !remote || isHandheldRoute(window.location.pathname)) return;
       lastSuccessfulProbeRef.current = Date.now();
       if (remote === localBuildId) return;
       if (localBuildId === 'dev' || remote === 'dev') return;

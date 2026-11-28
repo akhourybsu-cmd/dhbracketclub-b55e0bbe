@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PocketDevice } from '@/components/pocket/PocketHandheld';
 import { MesomonGame } from '@/pages/MesomonPage';
 import { createNewSave, createSession, getObjective, getQuestSteps, reduceGame } from '@/lib/mesomon/engine';
 import { createBattle, makeCompanion, startBattleTurn } from '@/lib/mesomon/battle';
@@ -321,6 +322,62 @@ describe('Mesomon game shell', () => {
     expect(journal.getByText('Found the tin whistle. Bring it back to Pell.')).toBeVisible();
     expect(journal.queryByText(/has the whistle back|fisher’s net/i)).toBeNull();
   });
+  it('keeps the cartridge title in the LCD and operates its save files with the physical controls', async () => {
+    const eject = vi.fn();
+    render(<MemoryRouter><PocketDevice onClose={vi.fn()}>
+      <MesomonGame userId={USER} clubId={CLUB} onExitPocketGame={eject} />
+    </PocketDevice></MemoryRouter>);
+    const journey = await screen.findByRole('button', { name: 'Begin journey' });
+    expect(journey.closest('.pocket-lcd')).toBeVisible();
+    const dpad = () => within(screen.getByRole('group', { name: 'Browse save files' }));
+    fireEvent.click(dpad().getByRole('button', { name: 'Browse right' }));
+    expect(await screen.findByRole('button', { name: 'File 2', pressed: true })).toHaveFocus();
+    fireEvent.keyDown(document.body, { key: 'ArrowLeft' });
+    await screen.findByRole('button', { name: 'File 1', pressed: true });
+    fireEvent.click(screen.getByRole('button', { name: 'A — Begin journey' }));
+    expect(await screen.findByRole('button', { name: 'Skip opening' })).toBeVisible();
+    expect(document.querySelectorAll('.mm-device')).toHaveLength(1);
+    expect(eject).not.toHaveBeenCalled();
+  });
+
+  it.each(['title', 'Start menu', 'save recovery', 'save loading', 'power switch'])(
+    'ejects or powers down the hosted cartridge from %s', async surface => {
+      const close = vi.fn(), eject = vi.fn();
+      fixture.blocked = surface === 'save recovery';
+      fixture.loading = surface === 'save loading';
+      render(
+        <MemoryRouter>
+          <PocketDevice onClose={close}>
+            <MesomonGame userId={USER} clubId={CLUB} onExitPocketGame={eject} />
+          </PocketDevice>
+        </MemoryRouter>,
+      );
+      expect(document.querySelectorAll('.mm-device')).toHaveLength(1);
+      if (surface === 'Start menu' || surface === 'power switch') {
+        await begin();
+        if (surface === 'Start menu') openStart();
+        fixture.saveLocal.mockClear();
+        fixture.flush.mockClear();
+      } else if (surface !== 'save loading') {
+        await screen.findByRole('button', { name: 'Begin journey' });
+      }
+      if (surface === 'power switch') {
+        fireEvent.click(screen.getByRole('button', { name: 'Close handheld and return to DH Club' }));
+        expect(close).toHaveBeenCalledTimes(1);
+        expect(eject).not.toHaveBeenCalled();
+      } else {
+        fireEvent.click(await screen.findByRole('button', { name: 'Exit game' }));
+        expect(eject).toHaveBeenCalledTimes(1);
+        expect(close).not.toHaveBeenCalled();
+      }
+      if (surface === 'Start menu' || surface === 'power switch') {
+        expect(fixture.saveLocal).toHaveBeenCalled();
+        expect(fixture.flush).toHaveBeenCalled();
+      } else {
+        expect(fixture.saveLocal).not.toHaveBeenCalled();
+      }
+    },
+  );
   it('keeps the console unbranded and exits a running game through its pause menu', async () => {
     render(
       <MemoryRouter initialEntries={['/mesomon']}>

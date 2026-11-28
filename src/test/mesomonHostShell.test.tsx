@@ -17,7 +17,7 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8'
 
 function Shell() {
   const { pathname } = useLocation();
-  useThemeChrome(isMesomonConsole(pathname));
+  useThemeChrome(pathname);
   useAppUpdate();
   return <><Link to="/mesomon">Play</Link><Link to="/compete">Exit</Link></>;
 }
@@ -57,14 +57,15 @@ describe('Mesomon console identity', () => {
     expect(link('icon')).toBe('/games/mesomon/icon-192.png');
     expect(link('apple-touch-icon')).toBe('/games/mesomon/icon-192.png');
 
-    for (const path of ['/compete', '/mesomon-news', '/mesomon/save/1', '/mesomon']) {
+    for (const path of ['/dh-pocket', '/compete', '/mesomon-news', '/mesomon/save/1', '/dh-pocket', '/mesomon']) {
       location.pathname = path;
       document.dispatchEvent(new Event('dh:route-changed'));
       expect(document.documentElement.hasAttribute('data-mesomon-console')).toBe(isMesomonConsole(path));
-      expect(document.title).toBe(isMesomonConsole(path) ? 'Mesomon · Port Marche' : originalTitle);
+      expect(document.documentElement.hasAttribute('data-pocket-console')).toBe(path === '/dh-pocket');
+      expect(document.title).toBe(isMesomonConsole(path) ? 'Mesomon · Port Marche' : path === '/dh-pocket' ? 'DH Pocket' : originalTitle);
       expect(link('manifest')).toBe(isMesomonConsole(path) ? '/games/mesomon/app.webmanifest' : '/manifest.webmanifest');
       expect(link('icon')).toBe(isMesomonConsole(path) ? '/games/mesomon/icon-192.png' : '/favicon.png');
-      expect(meta('apple-mobile-web-app-title')).toBe(isMesomonConsole(path) ? 'Mesomon' : 'DH Club');
+      expect(meta('apple-mobile-web-app-title')).toBe(isMesomonConsole(path) ? 'Mesomon' : path === '/dh-pocket' ? 'DH Pocket' : 'DH Club');
     }
   });
 
@@ -84,10 +85,12 @@ describe('Mesomon console identity', () => {
   it.each([
     { entry: '/mesomon', gameMounted: false, recover: true },
     { entry: '/mesomon', gameMounted: true, recover: false },
+    { entry: '/dh-pocket', gameMounted: true, recover: false },
     { entry: '/compete', gameMounted: true, recover: false },
   ])('handles a stale bootstrap response from $entry with gameMounted=$gameMounted', async ({ entry, gameMounted, recover }) => {
     const document = new DOMParser().parseFromString(read('index.html'), 'text/html');
     document.documentElement.toggleAttribute('data-mesomon-console', entry === '/mesomon');
+    document.documentElement.toggleAttribute('data-pocket-console', entry === '/dh-pocket');
     const script = Array.from(document.scripts).find(tag => tag.textContent?.includes('var forceKill'));
     const location = { href: `https://example.test${entry}`, replace: vi.fn() };
     localStorage.setItem('__dh_build_id__', 'old');
@@ -98,8 +101,8 @@ describe('Mesomon console identity', () => {
       console: { warn: vi.fn(), error: vi.fn() },
     });
     if (gameMounted) {
-      location.href = 'https://example.test/mesomon';
-      document.documentElement.toggleAttribute('data-mesomon-console', true);
+      location.href = entry === '/dh-pocket' ? 'https://example.test/dh-pocket' : 'https://example.test/mesomon';
+      document.documentElement.toggleAttribute('data-mesomon-console', entry !== '/dh-pocket');
       const consoleShell = document.createElement('main');
       consoleShell.className = 'mm-device';
       document.body.append(consoleShell);
@@ -110,10 +113,10 @@ describe('Mesomon console identity', () => {
     expect(sessionStorage.getItem('__dh_nuked__')).toBe(recover ? '1' : null);
   });
 
-  it('keeps the console chrome dark, suppresses update checks, and restores a light club theme on exit', async () => {
+  it.each(['/mesomon', '/dh-pocket'])('keeps %s dark, defers updates and restores the club theme on exit', async (path) => {
     vi.useFakeTimers();
     vi.mocked(fetchRemoteBuildId).mockResolvedValue('dev');
-    openShell('/mesomon');
+    openShell(path);
     const color = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')!;
     expect(color.content).toBe('#102224');
     await act(async () => {

@@ -8,6 +8,14 @@ on:
       - '.github/workflows/mesomon.yml'
       - 'src/lib/mesomon/**'
       - 'src/components/mesomon/**'
+      - 'src/components/pocket/**'
+      - 'src/components/home/PocketLaunchLink.tsx'
+      - 'src/components/home/pocketLaunchLink.css'
+      - 'src/components/home/MobileHome.tsx'
+      - 'src/pages/DHPocketPage.tsx'
+      - 'src/test/dhPocket*'
+      - 'scripts/check-dh-pocket.mjs'
+      - 'scripts/dh-home-fixture.mjs'
       - 'src/components/ProtectedRoute.tsx'
       - 'src/components/ClubGate.tsx'
       - 'src/components/auth/AssetGuard.tsx'
@@ -65,7 +73,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run typecheck
-      - run: npx vitest run mesomon --maxWorkers=1
+      - run: npx vitest run mesomon dhPocket --maxWorkers=1
       - run: node scripts/test-mesomon-db.mjs
       - run: npm run build
       - name: Verify the game remains outside the eager application graph
@@ -74,7 +82,7 @@ jobs:
   browser:
     name: Chapter (${{ matrix.engine }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -97,6 +105,10 @@ jobs:
           set -o pipefail
           mkdir -p "$MESOMON_OUTPUT"
           timeout --signal=TERM --kill-after=30s 900s node scripts/check-mesomon.mjs 2>&1 | tee "$MESOMON_OUTPUT/runner.log"
+      - name: Check DH Pocket launch, cartridge controls and return to Home
+        env:
+          POCKET_OUTPUT: /tmp/mesomon-browser/dh-pocket
+        run: node scripts/check-dh-pocket.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4

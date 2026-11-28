@@ -1816,18 +1816,18 @@ fieldset.mm-battle-controls {
   pointer-events: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-painting {
+  .mesomon[data-title-arrival="true"]:not([data-reduced-motion="true"]) .mm-title-painting {
     animation: mm-harbor-arrive 1600ms cubic-bezier(.16,.68,.26,1);
   }
-  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-copy h2 {
+  .mesomon[data-title-arrival="true"]:not([data-reduced-motion="true"]) .mm-title-copy h2 {
     animation: mm-chapter-title 420ms ease-out;
   }
-  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-ripples path {
+  .mesomon[data-title-arrival="true"]:not([data-reduced-motion="true"]) .mm-title-ripples path {
     animation: mm-tide-glint 1450ms ease-in-out var(--mm-ripple-delay, 0ms) 2;
   }
   .mm-title-ripples path:nth-child(2) { --mm-ripple-delay: 330ms; }
   .mm-title-ripples path:nth-child(3) { --mm-ripple-delay: 660ms; }
-  .mm-device[data-title-arrival="true"] .mesomon:not([data-reduced-motion="true"]) .mm-title-tern {
+  .mesomon[data-title-arrival="true"]:not([data-reduced-motion="true"]) .mm-title-tern {
     animation: mm-tern-flight 3700ms linear;
   }
   .mesomon:not([data-reduced-motion="true"]) .mm-slot-tabs button[aria-pressed="true"]::after {

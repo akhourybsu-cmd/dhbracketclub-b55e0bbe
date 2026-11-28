@@ -1,4 +1,5 @@
 import { useLayoutEffect } from 'react';
+import { isHandheldRoute } from '@/lib/appNavigation';
 import { useTheme } from 'next-themes';
 
 const COLORS = {
@@ -7,13 +8,14 @@ const COLORS = {
 } as const;
 
 /** Keeps browser/PWA chrome visually attached to the active app theme. */
-export function useThemeChrome(mesomon = false) {
+export function useThemeChrome(pathname: string) {
   const { resolvedTheme, theme } = useTheme();
 
   useLayoutEffect(() => {
     document.dispatchEvent(new Event('dh:route-changed'));
-    const active = !mesomon && (resolvedTheme ?? theme) === 'light' ? 'light' : 'dark';
-    const color = mesomon ? '#102224' : COLORS[active];
+    const handheld = isHandheldRoute(pathname);
+    const active = !handheld && (resolvedTheme ?? theme) === 'light' ? 'light' : 'dark';
+    const color = handheld ? '#102224' : COLORS[active];
 
     let themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!themeColor) {
@@ -30,5 +32,5 @@ export function useThemeChrome(mesomon = false) {
       document.head.appendChild(colorScheme);
     }
     colorScheme.content = active;
-  }, [resolvedTheme, theme, mesomon]);
+  }, [resolvedTheme, theme, pathname]);
 }

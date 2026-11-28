@@ -12,6 +12,12 @@ The Compete card appears only when `useClubAssets().isInstalled('mesomon')` is t
 
 `src/lib/onboarding/registry.ts` registers three short steps in the existing installation and What's New framework. The game remains responsible for its playable opening rather than introducing a second onboarding service.
 
+## DH Pocket
+
+On the DH Club home screen, **Launch DH Pocket** opens `/dh-pocket` for members with an available cartridge. The handheld powers on, shows the DH Games mark and opens the cartridge shelf. Tapping a cartridge or pressing A inserts it. Ejecting a game restores the last selected cartridge for that member and club. The bezel power button returns to Home. The direct Mesomon link from Compete still opens the standalone game. Both entry points use the same save slots.
+
+To add a title, register its stable ID, club asset slug, title, edition, label artwork and lazy loader in `src/components/pocket/cartridges.ts`. The game receives an `onExitPocketGame` callback for its exit controls. The shelf and home launcher read this catalog and respect club visibility.
+
 ## Asset migration
 
 `supabase/migrations/20261125193500_mesomon_asset.sql` adds or refreshes the `mesomon` catalog row. It follows Deep Claim's catalog-only installation policy: it does not install or enable the game in anyone's club, alter existing installations, or award DH Score. A club administrator can install Mesomon through **Club Apps** after the migration is deployed. The migration is additive and safe to run again.

@@ -5,7 +5,7 @@ import DashboardPage from '@/pages/DashboardPage';
 
 const state=vi.hoisted(()=>({
   user:{id:'member'},club:{id:'club',name:'DH Club'},desktop:false,fail:false,failTable:'',
-  assets:['feed','posts','chat','events','draft-arena'].map((slug,index)=>({id:slug,sort_order:index,enabled:true,visible_to_members:true,asset:{slug,name:slug}})),
+  assets:['feed','posts','chat','events','draft-arena','mesomon'].map((slug,index)=>({id:slug,sort_order:index,enabled:true,visible_to_members:true,asset:{slug,name:slug}})),
   filters:[] as {table:string;key:string;value:unknown}[],
 }));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({user:state.user})}));
@@ -41,6 +41,7 @@ describe('Dashboard orchestration',()=>{
     await screen.findByRole('heading',{name:'Hey, Alex.'});
     expect(screen.queryByTestId('desktop-home')).not.toBeInTheDocument();
     expect(screen.getAllByTestId('onboarding')).toHaveLength(1);
+    expect(screen.getByRole('link',{name:'Launch DH Pocket'})).toHaveAttribute('href','/dh-pocket');
     expect(screen.getByText('Jordan started a discussion')).toBeInTheDocument();
     expect(state.filters.filter(item=>['drafts','events','activity_feed'].includes(item.table))).toEqual(expect.arrayContaining([
       {table:'drafts',key:'club_id',value:'club'},{table:'events',key:'club_id',value:'club'},{table:'activity_feed',key:'club_id',value:'club'},
@@ -51,11 +52,12 @@ describe('Dashboard orchestration',()=>{
     expect(screen.getAllByTestId('onboarding')).toHaveLength(1);
   });
   it('does not expose hidden apps through shortcuts or activity',async()=>{
-    state.assets=state.assets.map(item=>({...item,visible_to_members:item.asset.slug!=='posts'}));
+    state.assets=state.assets.map(item=>({...item,visible_to_members:!['posts','mesomon'].includes(item.asset.slug)}));
     render(<MemoryRouter><DashboardPage/></MemoryRouter>);
     await screen.findByRole('heading',{name:'Hey, Alex.'});
     expect(screen.queryByText('Jordan started a discussion')).not.toBeInTheDocument();
     expect(screen.queryByRole('link',{name:'Discussions'})).not.toBeInTheDocument();
+    expect(screen.queryByRole('link',{name:'Launch DH Pocket'})).not.toBeInTheDocument();
   });
   it('shows query failures with retry instead of a perpetual skeleton or false empty state',async()=>{
     state.fail=true;render(<MemoryRouter><DashboardPage/></MemoryRouter>);

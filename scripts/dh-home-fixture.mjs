@@ -1,12 +1,12 @@
 // Isolated source data and peripheral hooks. Production Dashboard orchestration,
 // Home queries, shared shell, progression, composer and dialogs remain real.
-export async function installHomeFixture(page) {
+export async function installHomeFixture(page, { mesomon = false } = {}) {
   await page.route("**/*", (route) =>
     new URL(route.request().url()).hostname === "127.0.0.1"
       ? route.continue()
       : route.abort(),
   );
-  await page.addInitScript(() => {
+  await page.addInitScript((withMesomon) => {
     const scenario =
       new URLSearchParams(location.search).get("scenario") || "full";
     const slugs =
@@ -26,6 +26,7 @@ export async function installHomeFixture(page) {
               "posts",
               "rune-delve",
             ];
+    if (withMesomon && scenario === "full") slugs.push("mesomon");
     window.homeQa = {
       scenario,
       queries: [],
@@ -42,18 +43,18 @@ export async function installHomeFixture(page) {
         asset: { id: slug, slug, name: slug },
       })),
     };
-  });
+  }, mesomon);
   const stub = (path, body) =>
     page.route("**/" + path + "*", (route) =>
       route.fulfill({ contentType: "text/javascript", body }),
     );
   await stub(
     "src/contexts/AuthContext.tsx",
-    `const user={id:'member',user_metadata:{display_name:'Alex'}};export const useAuth=()=>({user,signOut:async()=>{}});`,
+    `const user={id:'${mesomon ? "11111111-1111-4111-8111-111111111111" : "member"}',user_metadata:{display_name:'Alex'}};export const useAuth=()=>({user,loading:false,signOut:async()=>{}});export const AuthProvider=({children})=>children;`,
   );
   await stub(
     "src/contexts/ClubContext.tsx",
-    `const club={id:'club',name:'Dry My Horse',accent_color:'152 72% 46%'};export const useClub=()=>({club,isClubAdmin:false,isAppAdmin:false,isPlatformOwner:false});`,
+    `const club={id:'${mesomon ? "22222222-2222-4222-8222-222222222222" : "club"}',name:'Dry My Horse',accent_color:'152 72% 46%'};export const useClub=()=>({club,loading:false,isClubAdmin:false,isAppAdmin:false,isPlatformOwner:false});export const ClubProvider=({children})=>children;`,
   );
   await stub(
     "src/hooks/useClubAssets.ts",
@@ -103,6 +104,7 @@ export async function installHomeFixture(page) {
     "src/integrations/supabase/client.ts",
     `
     import {createNotificationBackend,notificationRow} from '/src/test/fixtures/notificationBackend.ts';
+    ${mesomon ? "import {supabase as saves} from '/scripts/fixtures/mesomon-backend.ts';" : ""}
     import catalog from '/src/lib/feats/catalog.json?import';
     const qa=window.homeQa,now=Date.now(),date=new Date(now).toISOString();
     const inbox=createNotificationBackend([notificationRow(1),notificationRow(2),notificationRow(3)]);
@@ -126,6 +128,7 @@ export async function installHomeFixture(page) {
       throw new Error('Unexpected source '+table);
     }
     function from(table){
+      ${mesomon ? "if(table==='mesomon_save_slots')return saves.from(table);" : ""}
       if(table==='notifications')return inbox.from(table);
       const filters=[],request={table,filters};qa.queries.push(request);let single=false;
       const builder={select:columns=>{request.columns=columns;return builder;},eq:(key,value)=>{filters.push({key,value});return builder;},in:()=>builder,gte:()=>builder,lte:()=>builder,order:()=>builder,limit:()=>builder,abortSignal:()=>builder,is:()=>builder,contains:()=>builder,or:()=>builder,
@@ -136,6 +139,7 @@ export async function installHomeFixture(page) {
     }
     export const supabase={from,channel:inbox.channel,removeChannel:inbox.removeChannel,rpc:async(name,args)=>{
       qa.rpcs.push({name,args});
+      ${mesomon ? "if(name.startsWith('mesomon_'))return saves.rpc(name,args);" : ""}
       if(name==='dh_home_progress')return qa.failProgress?{data:null,error:{message:'Progress offline'}}:{data:progress,error:null};
       if(name==='dh_feats_summary')return {data:{score:progress.score,unlocked:progress.unlocked},error:null};
       if(name==='dh_feats_board')return {data:{version:1,as_of:date,seen_at:date,pinned:['drop_posts'],score:1240,unlocked:34,catalog,progress:{drop_posts:19},unlocks:[{feat_key:'drop_posts',tier:1,points:10,target:1,earned_at:date,historical:true},{feat_key:'drop_posts',tier:2,points:20,target:5,earned_at:date,historical:true}],leaders:[],monthly_leaders:[],me:null,monthly_me:null,members:4},error:null};

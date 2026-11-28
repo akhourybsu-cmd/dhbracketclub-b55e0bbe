@@ -37,6 +37,19 @@ describe('Mobile home organization',()=>{
   expect(homeShortcut('narrative')?.path).toBe('/narrative');
   expect(homeShortcut('missing')).toBeUndefined();
  });
+ it('offers the handheld separately from shortcuts as soon as a cartridge is available',()=>{
+  const home=(installedSlugs:Set<string>)=>(
+    <MemoryRouter><MobileHome displayName="Alex" clubName="DH Club" installedSlugs={installedSlugs}
+      actions={[]} updates={[]} shortcuts={{...shortcuts,pinned:[],available:[]}} onRefresh={vi.fn()}
+      empty={<p>No games installed</p>} /></MemoryRouter>
+  );
+  const view=render(home(new Set()));
+  expect(screen.queryByRole('link',{name:'Launch DH Pocket'})).not.toBeInTheDocument();
+  expect(screen.getByText('No games installed')).toBeVisible();
+  view.rerender(home(new Set(['mesomon'])));
+  expect(screen.getByRole('link',{name:'Launch DH Pocket'})).toHaveAttribute('href','/dh-pocket');
+  expect(screen.queryByText('No games installed')).not.toBeInTheDocument();
+ });
  it('prioritizes one action, expands other actions, filters updates and preserves meaningful links',()=>{
   render(<MemoryRouter><MobileHome displayName="Alex Khoury" clubName="DH Club" installedSlugs={input.installed} actions={actions} updates={buildHomeUpdates(input)} shortcuts={shortcuts} onRefresh={vi.fn()} /></MemoryRouter>);
   expect(screen.getByRole('heading',{name:'Hey, Alex.'})).toBeInTheDocument();

@@ -7,6 +7,7 @@ import {
   pickMostUsedTabs,
   getRouteTitle,
   isGameShellRoute,
+  isHandheldRoute,
   isMobilePrimaryActive,
   isRouteActive,
 } from '@/lib/appNavigation';
@@ -81,6 +82,14 @@ describe('shared app navigation', () => {
     expect(isGameShellRoute('/nfl/crazy-chain')).toBe(true);
     expect(isGameShellRoute('/chat')).toBe(false);
     expect(isGameShellRoute('/club')).toBe(false);
+  });
+
+  it('recognizes the Pocket console on direct launch and leaves unrelated paths alone', () => {
+    expect(isHandheldRoute('/DH-POCKET/')).toBe(true);
+    expect(isGameShellRoute('/dh-pocket')).toBe(true);
+    expect(getRouteTitle('/dh-pocket')).toBe('DH Pocket');
+    expect(isHandheldRoute('/dh-pocket-news')).toBe(false);
+    expect(isGameShellRoute('/dh-pocket-news')).toBe(false);
   });
 
   it('provides stable shell titles with a safe fallback', () => {

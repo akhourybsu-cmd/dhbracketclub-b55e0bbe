@@ -15,7 +15,7 @@ import { ThemeProvider } from "next-themes";
 import { useAppUpdate } from "@/hooks/useAppUpdate";
 import { useOfflineIndicator } from "@/hooks/useOfflineIndicator";
 import { useRoutePrefetch } from "@/hooks/useRoutePrefetch";
-import { isMesomonConsole } from "@/lib/appNavigation";
+import { isHandheldRoute, isMesomonConsole } from "@/lib/appNavigation";
 import { useThemeChrome } from "@/hooks/useThemeChrome";
 import { MemberRouteErrorBoundary } from "@/components/member/MemberRouteErrorBoundary";
 
@@ -64,6 +64,7 @@ const EventsPage = lazyWithRetry(() => import("./pages/EventsPage"));
 const EventDetailPage = lazyWithRetry(() => import("./pages/EventDetailPage"));
 const CompetePage = lazyWithRetry(() => import("./pages/CompetePage"));
 const DeepClaimPage = lazyWithRetry(() => import("./pages/DeepClaimPage"));
+const DHPocketPage = lazyWithRetry(() => import("./pages/DHPocketPage"));
 const MesomonPage = lazyWithRetry(() => import("./pages/MesomonPage"));
 const ShowdownPage = lazyWithRetry(() => import("./pages/ShowdownPage"));
 const ShowdownMatchPage = lazyWithRetry(() => import("./pages/ShowdownMatchPage"));
@@ -202,6 +203,25 @@ function MesomonEntry({ failed = false }: { failed?: boolean }) {
   );
 }
 
+function PocketEntry({ failed = false }: { failed?: boolean }) {
+  return (
+    <main className="fixed inset-0 grid place-content-center gap-3 bg-[#102224] p-6 text-center text-[#eee2c5]">
+      {failed ? (
+        <div role="alert" className="grid gap-3">
+          <h1>DH Pocket couldn’t open.</h1>
+          <button className="min-h-11 border border-current" onClick={() => window.location.reload()}>Retry</button>
+          <a className="grid min-h-11 place-items-center" href="/dashboard">Return to DH Club</a>
+        </div>
+      ) : (
+        <div role="status" className="text-xs tracking-wide text-[#d6d9bd]">
+          <span aria-hidden="true" className="mx-auto mb-3 block h-1.5 w-6 rounded-sm bg-[#afc896] motion-safe:animate-pulse" />
+          Opening DH Pocket…
+        </div>
+      )}
+    </main>
+  );
+}
+
 const ProtectedPage = ({
   children,
   assetSlug,
@@ -242,6 +262,9 @@ function AnimatedRoutes() {
         {/* Compete hub */}
         <Route path="/compete" element={<ProtectedPage><CompetePage /></ProtectedPage>} />
         <Route path="/deep-claim" element={<ProtectedPage assetSlug="deep-claim"><DeepClaimPage /></ProtectedPage>} />
+        <Route path="/dh-pocket" element={
+          <Suspense fallback={<PocketEntry />}><DHPocketPage /></Suspense>
+        } />
         <Route path="/mesomon" element={
           <Suspense fallback={<MesomonEntry />}>
             <AssetGuard slug="mesomon" fallback={<MesomonEntry />}><MesomonPage /></AssetGuard>
@@ -441,12 +464,13 @@ function AnimatedRoutes() {
     return <MemberRouteErrorBoundary resetKey={location.pathname}>{routes}</MemberRouteErrorBoundary>;
   }
 
-  const consoleRoute = isMesomonConsole(location.pathname);
-  const fallback = consoleRoute ? <MesomonEntry /> : undefined;
+  const consoleRoute = isHandheldRoute(location.pathname);
+  const ConsoleEntry = isMesomonConsole(location.pathname) ? MesomonEntry : PocketEntry;
+  const fallback = consoleRoute ? <ConsoleEntry /> : undefined;
   return (
     <ProtectedRoute fallback={fallback}>
       <ClubGate fallback={fallback}>
-        <MemberRouteErrorBoundary resetKey={location.pathname} fallback={consoleRoute ? <MesomonEntry failed /> : undefined}>
+        <MemberRouteErrorBoundary resetKey={location.pathname} fallback={consoleRoute ? <ConsoleEntry failed /> : undefined}>
           {consoleRoute ? routes : <AppLayout>{routes}</AppLayout>}
         </MemberRouteErrorBoundary>
       </ClubGate>
@@ -459,7 +483,7 @@ function AppWithUpdate() {
   useOfflineIndicator();
   useRoutePrefetch();
   const { pathname } = useLocation();
-  useThemeChrome(isMesomonConsole(pathname));
+  useThemeChrome(pathname);
   return <AnimatedRoutes />;
 }
 

@@ -1,0 +1,127 @@
+.pocket-device {
+  --pocket-rail: #28423c;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+  padding-top: env(safe-area-inset-top);
+  color-scheme: dark;
+  background: var(--pocket-rail);
+}
+.pocket-bezel {
+  position: relative;
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: repeating-linear-gradient(112deg, #ffffff03 0 1px, transparent 1px 4px),
+    linear-gradient(160deg, #40594d, var(--pocket-rail) 65%);
+  border-bottom: 1px solid #152c26;
+  box-shadow: inset 0 1px #b6c7aa55, inset 0 -2px #c7c7a21a;
+  user-select: none;
+}
+.pocket-bezel::before {
+  content: "";
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left));
+  height: 6px;
+  width: 28px;
+  background: repeating-linear-gradient(111deg, #122a24 0 3px, transparent 3px 7px);
+}
+.pocket-nameplate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e2cd91;
+  text-shadow: 0 1px #13271f;
+  font: italic 900 15px/1 "DM Sans", sans-serif;
+  letter-spacing: .115em;
+}
+.pocket-brand-stripes { display: flex; gap: 2px; transform: skew(-19deg); }
+.pocket-brand-stripes i { width: 3px; height: 10px; background: currentColor; }
+.pocket-brand-stripes i:nth-child(1) { opacity: .48; }
+.pocket-brand-stripes i:nth-child(2) { opacity: .74; }
+.pocket-power {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: max(6px, env(safe-area-inset-right));
+  border: 0;
+  border-radius: 4px;
+  width: 54px;
+  min-height: 44px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  color: #e5e7d3;
+  background: transparent;
+  touch-action: manipulation;
+}
+.pocket-power:focus-visible { outline: 2px solid #f1ce7c; outline-offset: -3px; }
+.pocket-power:hover { background: #ffffff13; }
+.pocket-power:active { background: #112a24; }
+.pocket-power-light {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c4ed86;
+  box-shadow: 0 0 4px #bbd8799c;
+}
+.pocket-device-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; isolation: isolate; }
+.pocket-device-stage > .mesomon { position: absolute; padding-top: 0; }
+.pocket-menu-frame {
+  --pocket-margin: clamp(8px, 3.5vmin, 26px);
+  padding-inline: max(var(--pocket-margin), env(safe-area-inset-left)) max(var(--pocket-margin), env(safe-area-inset-right));
+}
+.pocket-menu-frame .pocket-lcd {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  margin-block: var(--pocket-margin) 10px;
+  isolation: isolate;
+  overflow: hidden;
+  color: #e1e5b3;
+  background: #24372e;
+  border: 1px solid #0c1c18;
+  border-radius: 5px 5px 13px 5px;
+  box-shadow: 0 0 0 3px #142d28, 0 0 0 5px #698174, 0 7px 0 0 #142d28, inset 0 0 14px #172a24;
+}
+.pocket-menu-frame .mm-control-deck {
+  flex: 0 0 clamp(146px, 24dvh, 205px);
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+@media (orientation: landscape) and (min-width: 540px) {
+  .pocket-menu-frame .pocket-lcd {
+    margin-inline: max(calc(var(--mm-grip) - var(--pocket-margin)), env(safe-area-inset-left))
+      max(calc(var(--mm-grip) - var(--pocket-margin)), env(safe-area-inset-right));
+    margin-bottom: var(--pocket-margin);
+  }
+  .pocket-menu-frame .mm-control-deck { inset-block-start: 0; }
+  .pocket-menu-frame .mm-dpad, .pocket-menu-frame .mm-ab { bottom: 32%; }
+}
+
+/* The cartridge cover takes over the same inset glass and control grips as the shelf. */
+.pocket-file-screen.mesomon[data-playing="false"] .mm-game {
+  position: relative;
+  inset: auto;
+  flex: 1 1 0;
+  width: auto;
+}
+.pocket-file-screen .mm-title-copy { min-width: 0; }
+.pocket-file-screen .mm-slot-tabs { flex-wrap: wrap; }
+@container (max-width: 440px) {
+  .pocket-file-screen .mm-title-copy {
+    display: block;
+    max-width: 100%;
+    padding: 10px 12px 14px;
+  }
+  .pocket-file-screen .mm-title-copy h2 { font-size: clamp(28px, min(12cqw, 14cqh), 48px); }
+  .pocket-file-screen .mm-slot-tabs { gap: 4px; }
+  .pocket-file-screen .mm-slot-tabs button { padding-inline: 7px; }
+  .pocket-file-screen .mm-title-actions { gap: 5px; }
+  .pocket-file-screen .mm-title-actions .mm-primary { padding-inline: 6px; }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { MesomonExit } from "./MesomonExit";
 import {
   ArrowLeft, BookMarked, BookOpen, ChevronRight, Compass, LogOut, Maximize, Minimize,
   PawPrint, Play, Save, Settings,
@@ -38,13 +38,14 @@ interface StartMenuProps {
   onSettings: (value: Partial<MesomonSettings>) => void;
   onSave: () => void;
   onExit: () => void;
+  onExitPocketGame?: () => void;
   onTitle: () => void;
   onCompanion: () => void;
 }
 
 export function MesomonStartMenu({
   tab, onTab, session, playing, saveLabel, saveStatus, fullscreen,
-  onClose, onSettings, onSave, onExit, onTitle, onCompanion,
+  onClose, onSettings, onSave, onExit, onExitPocketGame, onTitle, onCompanion,
 }: StartMenuProps) {
   const dialog = useRef<HTMLElement>(null);
   const lastCommand = useRef("resume");
@@ -140,9 +141,9 @@ export function MesomonStartMenu({
                     <Icon aria-hidden="true" size={19} /><span>{label}</span><ChevronRight aria-hidden="true" size={16} />
                   </button>
                 ))}
-                <Link className="mm-start-command" data-command="exit" to="/compete" onClick={onExit}>
+                <MesomonExit className="mm-start-command" command="exit" onLeave={onExit} onExitPocketGame={onExitPocketGame}>
                   <LogOut aria-hidden="true" size={19} /><span>Exit game</span><ChevronRight aria-hidden="true" size={16} />
-                </Link>
+                </MesomonExit>
               </nav>
             </>
           )}

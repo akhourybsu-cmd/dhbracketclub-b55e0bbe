@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/sheet";
 import { HomeProgressCard } from "./HomeProgressCard";
 import { HomeFeatureGrid } from "./HomeFeatureGrid";
+import { hasPocketCartridges } from "@/components/pocket/cartridges";
+import { PocketLaunchLink } from "./PocketLaunchLink";
 import "./mobileHome.css";
 
 interface Props {
@@ -121,9 +123,10 @@ export function MobileHome({
         };
   const ActionIcon = lead?.icon || quiet.icon;
   const extra = !!widgets || Children.toArray(children).length > 0;
+  const hasPocket = hasPocketCartridges(installedSlugs);
   return (
     <div className="mobile-home home-experience">
-      <header className="home-welcome">
+      <header className={cn("home-welcome", hasPocket && "home-welcome-pocket")}>
         <div>
           <p className="home-date">{format(new Date(), "EEEE, MMMM d")}</p>
           <h1>{firstName ? `Hey, ${firstName}.` : "Welcome home."}</h1>
@@ -151,6 +154,7 @@ export function MobileHome({
             </MobileIconButton>
           )}
         </div>
+        {hasPocket && <PocketLaunchLink />}
       </header>
       {error && (
         <div role="alert" className="home-error">
@@ -285,7 +289,7 @@ export function MobileHome({
         signals={signals}
         updates={updates}
       />
-      {empty}
+      {!hasPocket && empty}
       <section aria-label="Club activity" className="home-club-section">
         <div className="home-section-heading">
           <div>
