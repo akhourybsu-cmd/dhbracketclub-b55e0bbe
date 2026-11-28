@@ -49,6 +49,7 @@ export interface InstalledAsset {
 export const NAV_ASSET_SLUGS: Record<string, string> = {
   '/showdown':        'dh-showdown',
   '/deep-claim':      'deep-claim',
+  '/riftwatch':       'riftwatch',
   '/mesomon':         'mesomon',
   '/drafts':          'draft-arena',
   '/readshift':       'readshift',

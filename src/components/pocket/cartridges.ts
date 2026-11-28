@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { RIFTWATCH } from '@/lib/arcade/riftwatchDefinition';
 
 export interface PocketGameProps {
   onExitPocketGame: () => void;
@@ -10,6 +11,15 @@ export interface PocketCartridge {
   title: string;
   edition: string;
   labelArtwork: string;
+  arcade?: {
+    rulesetVersion: string;
+    supportsRankedScores: boolean;
+    supportsPractice: boolean;
+    leaderboardPeriods: readonly ('today' | 'week' | 'all_time')[];
+    shortDescription: string;
+    route: string;
+    accentColor: string;
+  };
   load: () => Promise<{ default: ComponentType<PocketGameProps> }>;
 }
 
@@ -22,6 +32,15 @@ export const POCKET_CARTRIDGES: readonly PocketCartridge[] = [
     edition: 'Port Marche',
     labelArtwork: '/games/mesomon/cover.webp?v=5',
     load: () => import('@/pages/MesomonPage').then(module => ({ default: module.PocketMesomon })),
+  },
+  {
+    id: RIFTWATCH.key,
+    assetSlug: RIFTWATCH.key,
+    title: RIFTWATCH.name,
+    edition: 'Formation arcade',
+    labelArtwork: RIFTWATCH.thumbnailAsset,
+    arcade: RIFTWATCH,
+    load: () => import('@/pages/RiftwatchPage'),
   },
 ];
 

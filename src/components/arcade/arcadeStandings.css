@@ -1,0 +1,18 @@
+.arcade-board { color: #e6e9e2; display: flex; flex-direction: column; gap: .35rem; min-height: 0; max-height: 100%; }
+.arcade-board h2, .arcade-board h3, .arcade-board p, .arcade-record { margin: 0; }
+.arcade-board h3 { font-size: .8rem; padding-block: .7rem .2rem; color: #afe6d8; }
+.arcade-periods { display: flex; gap: .2rem; flex-wrap: wrap; }
+.arcade-periods button, .arcade-board [role=status] button { min-height: 44px; flex: 1; border: 1px solid #506c78; color: #d2e1dd; background: #102737; border-radius: 3px; padding: 3px 6px; font: bold .74rem ui-monospace, monospace; }
+.arcade-periods button[aria-pressed=true] { background: #bdeed9; color: #0b2226; border-color: #d9fae4; }
+.arcade-score-scroll { overflow-y: auto; min-height: 38px; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
+.arcade-scores { list-style: none; margin: 0; padding: 0; }
+.arcade-scores li { display: grid; grid-template-columns: 2.2rem 26px 1fr auto; align-items: center; gap: .45rem; min-height: 44px; padding: 4px 6px; border-bottom: 1px solid #35515c; }
+.arcade-scores .arcade-score-current { background: #153e3d; border-left: 3px solid #80d9c3; }
+.arcade-scores img, .arcade-avatar { border-radius: 50%; width: 26px; height: 26px; }
+.arcade-avatar { background: #263d52; display: grid; place-items: center; font: bold .76rem monospace; }
+.arcade-who { min-width: 0; text-align: left; overflow-wrap: anywhere; }
+.arcade-points { text-align: right; }
+.arcade-scores time, .arcade-points small { display: block; color: #b5cdcf; font-size: .68rem; }
+.arcade-place, .arcade-points b { font-variant-numeric: tabular-nums; }
+.arcade-record, .arcade-placement { display: flex; gap: .5rem; align-items: baseline; justify-content: center; flex-wrap: wrap; color: #c9f4d8; font-size: .8rem; }
+.arcade-record small, .arcade-placement span { color: #dae5dd; }

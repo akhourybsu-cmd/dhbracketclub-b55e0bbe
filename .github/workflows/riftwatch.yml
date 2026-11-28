@@ -1,0 +1,59 @@
+name: Riftwatch arcade
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/riftwatch.yml'
+      - 'src/**/*[Rr]iftwatch*'
+      - 'src/**/riftwatch/**'
+      - 'src/**/arcade/**'
+      - 'src/components/pocket/**'
+      - 'src/pages/DHPocketPage.tsx'
+      - 'src/App.tsx'
+      - 'public/games/riftwatch/**'
+      - 'supabase/functions/_shared/arcade/**'
+      - 'supabase/functions/arcade-run/**'
+      - 'supabase/migrations/*arcade*'
+      - 'scripts/*riftwatch*'
+      - 'scripts/test-arcade-db.mjs'
+      - 'docs/rollback/riftwatch_arcade.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: node scripts/test-arcade-db.mjs
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check --no-lock supabase/functions/arcade-run/index.ts
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - run: npm run build
+      - run: node scripts/check-riftwatch-release.mjs ${{ matrix.engine }}

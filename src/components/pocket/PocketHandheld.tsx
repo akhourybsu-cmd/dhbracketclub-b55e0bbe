@@ -15,9 +15,10 @@ export function PocketDevice({ children, onClose }: { children: ReactNode; onClo
   const device = useRef<HTMLDivElement>(null);
   const fullscreen = useMesomonFullscreen(device);
   const beforePowerOff = useRef<(() => void) | null>(null);
+  const closeDevice = onClose && (() => { beforePowerOff.current?.(); onClose(); });
   return createPortal(
     <div className={onClose ? "mm-device pocket-device" : "mm-device"} ref={device}>
-      <PocketDeviceContext.Provider value={{ fullscreen, beforePowerOff }}>
+      <PocketDeviceContext.Provider value={{ fullscreen, beforePowerOff, closeDevice }}>
         {onClose ? (
           <>
             <div className="pocket-bezel">
@@ -25,7 +26,7 @@ export function PocketDevice({ children, onClose }: { children: ReactNode; onClo
                 <span className="pocket-brand-stripes" aria-hidden="true"><i /><i /><i /></span>
                 <b>DH POCKET</b>
               </div>
-              <button type="button" className="pocket-power" onClick={() => { beforePowerOff.current?.(); onClose(); }}
+              <button type="button" className="pocket-power" onClick={closeDevice}
                 aria-label="Close handheld and return to DH Club" title="Close handheld">
                 <span className="pocket-power-light" aria-hidden="true" /><Power size={16} aria-hidden="true" />
               </button>
@@ -91,12 +92,13 @@ export function PocketDpad({ onDirection, hold, disabled = false, browseLabel = 
   );
 }
 
-export function PocketActionKeys({ onConfirm, onBack, confirmLabel, backLabel, confirmCaption, disabled = false }: {
+export function PocketActionKeys({ onConfirm, onBack, confirmLabel, backLabel, confirmCaption, backCaption = "BACK", disabled = false }: {
   onConfirm: (event: MouseEvent<HTMLButtonElement>) => void;
-  onBack: () => void;
+  onBack: (event: MouseEvent<HTMLButtonElement>) => void;
   confirmLabel: string;
   backLabel: string;
   confirmCaption: string;
+  backCaption?: string;
   disabled?: boolean;
 }) {
   return (
@@ -105,7 +107,7 @@ export function PocketActionKeys({ onConfirm, onBack, confirmLabel, backLabel, c
         onClick={onBack}>B</button>
       <button type="button" className="mm-a" data-mm-action="confirm" aria-label={`A — ${confirmLabel}`}
         onClick={onConfirm} disabled={disabled}>A</button>
-      <span aria-hidden="true">BACK</span><span aria-hidden="true">{confirmCaption}</span>
+      <span aria-hidden="true">{backCaption}</span><span aria-hidden="true">{confirmCaption}</span>
     </div>
   );
 }

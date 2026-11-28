@@ -107,6 +107,25 @@ const REGISTRY: Record<string, FeatureOnboarding> = {
     primaryCta: { label: 'Enter Deep Claim', route: '/deep-claim' },
   },
 
+  'riftwatch': {
+    featureKey: 'riftwatch',
+    displayName: 'Riftwatch',
+    shortDescription: 'Pilot a ward-skiff and chase your club’s high score.',
+    featureType: 'game',
+    importance: 'standard',
+    version: 1,
+    iconKey: 'Orbit',
+    tags: ['Arcade', 'Solo', 'High scores'],
+    onboardingTitle: 'Take the watch',
+    onboardingSummary: 'Hold the line. Seal the sky.',
+    onboardingSteps: [
+      { title: 'Find a firing lane', body: 'Steer left or right. Hold A to fire past your three wards.', iconKey: 'MoveHorizontal' },
+      { title: 'Time your pulse', body: 'When Eden Pulse is full, press B to clear nearby hostile shots.', iconKey: 'Zap' },
+      { title: 'Post a score', body: 'Ranked runs are verified for your club. Practice keeps your best on this device.', iconKey: 'Trophy' },
+    ],
+    primaryCta: { label: 'Launch Riftwatch', route: '/riftwatch' },
+  },
+
   'mesomon': {
     featureKey: 'mesomon',
     displayName: 'Mesomon',

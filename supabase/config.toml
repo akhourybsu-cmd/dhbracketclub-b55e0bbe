@@ -53,3 +53,7 @@ verify_jwt = false
 # (scheduler scan) internally, so JWT verification is disabled at the edge.
 [functions.readshift-advance]
 verify_jwt = false
+
+# arcade-run validates the member's bearer token with Supabase Auth before either database client is used.
+[functions.arcade-run]
+verify_jwt = false

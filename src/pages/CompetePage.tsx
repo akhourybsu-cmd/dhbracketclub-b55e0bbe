@@ -23,6 +23,7 @@ import draftEmblem from '@/assets/draft-emblem.webp';
 import { useWorkoutLog } from '@/hooks/useWorkoutLog';
 import { ShowdownDiscoveryCard } from '@/components/showdown/ShowdownDiscoveryCard';
 import { DeepClaimDiscoveryCard } from '@/components/deepClaim/DeepClaimDiscoveryCard';
+import { RIFTWATCH } from '@/lib/arcade/riftwatchDefinition';
 import { MesomonDiscoveryCard } from '@/components/mesomon/MesomonDiscoveryCard';
 
 /* ── FORGE card ── */
@@ -617,7 +618,8 @@ export default function CompetePage() {
   const { user } = useAuth();
   const { season, loading: seasonLoading } = useCurrentSeason();
   const { entries } = useSeasonEntries(season?.id);
-  const { isInstalled } = useClubAssets();
+  const { isInstalled, isVisible } = useClubAssets();
+  const { isClubAdmin } = useClub();
   const totalDrafts = season ? getSeasonDraftTarget(season) : 12;
 
   return (
@@ -647,6 +649,18 @@ export default function CompetePage() {
           {isInstalled('dh-showdown') && <ShowdownDiscoveryCard />}
           {isInstalled('deep-claim') && <DeepClaimDiscoveryCard />}
           {isInstalled('mesomon') && <MesomonDiscoveryCard />}
+          {isInstalled(RIFTWATCH.key) && (isClubAdmin || isVisible(RIFTWATCH.key)) && (
+            <Link to={RIFTWATCH.route} className="flex items-center gap-4 rounded-2xl border border-[#45c4b0]/45 bg-[#0b1320] p-3 text-[#e6e9e2] btn-press">
+              <img src={RIFTWATCH.thumbnailAsset} alt="" loading="lazy" width="112" height="76"
+                className="w-24 rounded-md [image-rendering:pixelated] sm:w-32" />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-[#83d7c6]">DH Pocket Arcade</p>
+                <h2 className="text-2xl font-extrabold">{RIFTWATCH.name}</h2>
+                <p className="text-xs text-[#cedbd9]">{RIFTWATCH.tagline}</p>
+              </div>
+              <ChevronRight aria-hidden="true" className="size-5 shrink-0" />
+            </Link>
+          )}
           {isInstalled('rune-delve') && <RuneDelveCompeteCard />}
           {isInstalled('nexus-defense') && <NexusDefenseCompeteCard />}
           {isInstalled('nfl-pickem') && <PickemCompeteCard />}

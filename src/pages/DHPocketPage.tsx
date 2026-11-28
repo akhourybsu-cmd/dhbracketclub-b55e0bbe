@@ -148,7 +148,7 @@ function PocketSession({ cartridges, pending, onRefresh, storageKey }: {
 
   useLayoutEffect(() => {
     // Remove the previous shelf entry as well when powering off from a game.
-    if (poweringOff.current && !gameId) navigate('/dashboard', { replace: true });
+    if (poweringOff.current && !gameId) navigate('/dashboard', { replace: true, state: { focusPocketLauncher: true } });
   }, [gameId, navigate]);
 
   function launch(cartridge: PocketCartridge) {
@@ -163,7 +163,7 @@ function PocketSession({ cartridges, pending, onRefresh, storageKey }: {
     if (gameId && location.state?.pocketShelf) {
       poweringOff.current = true;
       navigate(-1);
-    } else navigate('/dashboard', { replace: true });
+    } else navigate('/dashboard', { replace: true, state: { focusPocketLauncher: true } });
   }
 
   return <PocketDevice onClose={closePocket}>

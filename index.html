@@ -84,7 +84,7 @@
       });
       function update() {
         const active = /^\/mesomon\/?$/i.test(location.pathname);
-        const pocket = /^\/dh-pocket\/?$/i.test(location.pathname);
+        const pocket = /^\/(?:dh-pocket|riftwatch(?:\/practice)?)\/?$/i.test(location.pathname);
         if (document.documentElement.hasAttribute('data-mesomon-console') === active &&
             document.documentElement.hasAttribute('data-pocket-console') === pocket) return;
         document.documentElement.toggleAttribute('data-pocket-console', pocket);

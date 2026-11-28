@@ -1,9 +1,15 @@
-import { Link } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
 import "./pocketLaunchLink.css";
 
 export function PocketLaunchLink() {
+  const link = useRef<HTMLAnchorElement>(null);
+  const location = useLocation();
+  useEffect(() => {
+    if (location.state?.focusPocketLauncher) link.current?.focus({ preventScroll: true });
+  }, [location.key, location.state]);
   return (
-    <Link to="/dh-pocket" className="home-pocket-key">
+    <Link ref={link} to="/dh-pocket" className="home-pocket-key">
       <svg
         className="home-pocket-glyph"
         viewBox="0 0 30 38"

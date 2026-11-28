@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ClubProvider } from "@/contexts/ClubContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ClubGate } from "@/components/ClubGate";
@@ -64,6 +64,7 @@ const EventsPage = lazyWithRetry(() => import("./pages/EventsPage"));
 const EventDetailPage = lazyWithRetry(() => import("./pages/EventDetailPage"));
 const CompetePage = lazyWithRetry(() => import("./pages/CompetePage"));
 const DeepClaimPage = lazyWithRetry(() => import("./pages/DeepClaimPage"));
+const RiftwatchPracticePage = lazyWithRetry(() => import("./pages/RiftwatchPracticePage"));
 const DHPocketPage = lazyWithRetry(() => import("./pages/DHPocketPage"));
 const MesomonPage = lazyWithRetry(() => import("./pages/MesomonPage"));
 const ShowdownPage = lazyWithRetry(() => import("./pages/ShowdownPage"));
@@ -222,6 +223,12 @@ function PocketEntry({ failed = false }: { failed?: boolean }) {
   );
 }
 
+function RiftwatchEntry() {
+  const { loading, user } = useAuth();
+  if (loading) return <PocketEntry />;
+  return <Navigate to={user ? '/dh-pocket?game=riftwatch' : '/riftwatch/practice'} replace />;
+}
+
 const ProtectedPage = ({
   children,
   assetSlug,
@@ -262,6 +269,10 @@ function AnimatedRoutes() {
         {/* Compete hub */}
         <Route path="/compete" element={<ProtectedPage><CompetePage /></ProtectedPage>} />
         <Route path="/deep-claim" element={<ProtectedPage assetSlug="deep-claim"><DeepClaimPage /></ProtectedPage>} />
+        <Route path="/riftwatch" element={<RiftwatchEntry />} />
+        <Route path="/riftwatch/practice" element={
+          <Suspense fallback={<PocketEntry />}><RiftwatchPracticePage /></Suspense>
+        } />
         <Route path="/dh-pocket" element={
           <Suspense fallback={<PocketEntry />}><DHPocketPage /></Suspense>
         } />
@@ -460,6 +471,10 @@ function AnimatedRoutes() {
     location.pathname === '/reset-password' ||
     location.pathname === '/club/request';
 
+  // This public cartridge entry only offers local, unranked play.
+  if (/^\/riftwatch(?:\/practice)?\/?$/i.test(location.pathname)) {
+    return <MemberRouteErrorBoundary resetKey={location.pathname} fallback={<PocketEntry failed />}>{routes}</MemberRouteErrorBoundary>;
+  }
   if (shellless) {
     return <MemberRouteErrorBoundary resetKey={location.pathname}>{routes}</MemberRouteErrorBoundary>;
   }

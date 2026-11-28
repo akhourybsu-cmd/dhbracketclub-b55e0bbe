@@ -12,6 +12,7 @@ import {
   Flame,
   Gem,
   House,
+  Orbit,
   Link2,
   Lock,
   MessageCircle,
@@ -73,6 +74,7 @@ export const APP_NAV_SECTIONS: AppNavSection[] = [
     items: [
       { path: '/showdown', label: 'DH Showdown', shortLabel: 'Showdown', icon: Swords },
       { path: '/deep-claim', label: 'Deep Claim', shortLabel: 'Claim', icon: Gem },
+      { path: '/riftwatch', label: 'Riftwatch', icon: Orbit },
       { path: '/mesomon', label: 'Mesomon', icon: Compass },
       { path: '/drafts', label: 'Draft Arena', shortLabel: 'Drafts', icon: Bookmark },
       { path: '/rune-delve', label: 'Rune Delve', shortLabel: 'Delve', icon: Sparkles },
@@ -133,6 +135,7 @@ const ROUTE_TITLES: Array<[RegExp, string]> = [
   [/^\/deep-claim/, 'Deep Claim'],
   [/^\/mesomon(?:\/|$)/, 'Mesomon'],
   [/^\/dh-pocket\/?$/i, 'DH Pocket'],
+  [/^\/riftwatch(?:\/practice)?\/?$/i, 'Riftwatch'],
   [/^\/drafts/, 'Draft Arena'],
   [/^\/rune-delve/, 'Rune Delve'],
   [/^\/nexus/, 'Nexus Defense'],
@@ -193,6 +196,7 @@ export const GAME_SHELL_PREFIXES = [
   '/deep-claim',
   '/mesomon',
   '/dh-pocket',
+  '/riftwatch',
   '/portfolio-wars',
   '/readshift',
   '/workouts',
@@ -204,12 +208,12 @@ export function isMesomonConsole(pathname: string): boolean {
 }
 
 export function isHandheldRoute(pathname: string): boolean {
-  return isMesomonConsole(pathname) || /^\/dh-pocket\/?$/i.test(pathname);
+  return isMesomonConsole(pathname) || /^\/(?:dh-pocket|riftwatch(?:\/practice)?)\/?$/i.test(pathname);
 }
 
 export function isGameShellRoute(pathname: string): boolean {
   return GAME_SHELL_PREFIXES.some(prefix => {
-    if (prefix === '/dh-pocket' || prefix === '/mesomon') return isRouteActive(pathname.toLowerCase(), prefix);
+    if (prefix === '/dh-pocket' || prefix === '/mesomon' || prefix === '/riftwatch') return isRouteActive(pathname.toLowerCase(), prefix);
     return pathname.startsWith(prefix);
   });
 }

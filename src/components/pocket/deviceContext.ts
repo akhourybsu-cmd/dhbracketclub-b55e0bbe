@@ -2,6 +2,7 @@ import { createContext, type MutableRefObject } from "react";
 import type { useMesomonFullscreen } from "@/lib/mesomon/useMesomonFullscreen";
 
 interface PocketDeviceState {
+  closeDevice?: () => void;
   fullscreen: ReturnType<typeof useMesomonFullscreen>;
   beforePowerOff: MutableRefObject<(() => void) | null>;
 }
