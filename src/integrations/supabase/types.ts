@@ -254,6 +254,195 @@ export type Database = {
         }
         Relationships: []
       }
+      arcade_rulesets: {
+        Row: {
+          asset_slug: string
+          game_key: string
+          is_current: boolean
+          max_ticks: number
+          ruleset_version: string
+          tick_rate: number
+        }
+        Insert: {
+          asset_slug: string
+          game_key: string
+          is_current?: boolean
+          max_ticks: number
+          ruleset_version: string
+          tick_rate: number
+        }
+        Update: {
+          asset_slug?: string
+          game_key?: string
+          is_current?: boolean
+          max_ticks?: number
+          ruleset_version?: string
+          tick_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arcade_rulesets_asset_slug_fkey"
+            columns: ["asset_slug"]
+            isOneToOne: false
+            referencedRelation: "platform_assets"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
+      arcade_run_sessions: {
+        Row: {
+          client_build: string | null
+          club_id: string
+          created_at: string
+          expires_at: string
+          game_key: string
+          id: string
+          lease_until: string | null
+          receipt: Json | null
+          rejection_code: string | null
+          replay_encoding_version: number | null
+          replay_hash: string | null
+          request_id: string
+          ruleset_version: string
+          seed: string
+          started_at: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+          verified_at: string | null
+        }
+        Insert: {
+          client_build?: string | null
+          club_id: string
+          created_at?: string
+          expires_at: string
+          game_key: string
+          id?: string
+          lease_until?: string | null
+          receipt?: Json | null
+          rejection_code?: string | null
+          replay_encoding_version?: number | null
+          replay_hash?: string | null
+          request_id: string
+          ruleset_version: string
+          seed: string
+          started_at?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+          verified_at?: string | null
+        }
+        Update: {
+          client_build?: string | null
+          club_id?: string
+          created_at?: string
+          expires_at?: string
+          game_key?: string
+          id?: string
+          lease_until?: string | null
+          receipt?: Json | null
+          rejection_code?: string | null
+          replay_encoding_version?: number | null
+          replay_hash?: string | null
+          request_id?: string
+          ruleset_version?: string
+          seed?: string
+          started_at?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arcade_run_sessions_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcade_run_sessions_game_key_ruleset_version_fkey"
+            columns: ["game_key", "ruleset_version"]
+            isOneToOne: false
+            referencedRelation: "arcade_rulesets"
+            referencedColumns: ["game_key", "ruleset_version"]
+          },
+        ]
+      }
+      arcade_scores: {
+        Row: {
+          achieved_at: string
+          club_id: string
+          created_at: string
+          game_key: string
+          id: string
+          kills: number
+          ruleset_version: string
+          run_id: string
+          score: number
+          simulation_ticks: number
+          summary: Json
+          user_id: string
+          wave: number
+        }
+        Insert: {
+          achieved_at: string
+          club_id: string
+          created_at?: string
+          game_key: string
+          id?: string
+          kills: number
+          ruleset_version: string
+          run_id: string
+          score: number
+          simulation_ticks: number
+          summary: Json
+          user_id: string
+          wave: number
+        }
+        Update: {
+          achieved_at?: string
+          club_id?: string
+          created_at?: string
+          game_key?: string
+          id?: string
+          kills?: number
+          ruleset_version?: string
+          run_id?: string
+          score?: number
+          simulation_ticks?: number
+          summary?: Json
+          user_id?: string
+          wave?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arcade_scores_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arcade_scores_game_key_ruleset_version_fkey"
+            columns: ["game_key", "ruleset_version"]
+            isOneToOne: false
+            referencedRelation: "arcade_rulesets"
+            referencedColumns: ["game_key", "ruleset_version"]
+          },
+          {
+            foreignKeyName: "arcade_scores_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "arcade_run_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bracket_picks: {
         Row: {
           bracket_id: string
@@ -6381,6 +6570,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mesomon_save_slots: {
+        Row: {
+          created_at: string
+          id: string
+          last_request_id: string
+          playtime_seconds: number
+          revision: number
+          schema_version: number
+          slot: number
+          state: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_request_id: string
+          playtime_seconds?: number
+          revision?: number
+          schema_version?: number
+          slot: number
+          state?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_request_id?: string
+          playtime_seconds?: number
+          revision?: number
+          schema_version?: number
+          slot?: number
+          state?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       message_link_previews: {
         Row: {
@@ -14649,6 +14877,94 @@ export type Database = {
         Args: { _checked_at: string; _game_id: string; _results: Json }
         Returns: Json
       }
+      arcade_board_data: {
+        Args: {
+          p_club: string
+          p_game: string
+          p_period: string
+          p_rules: string
+          p_user: string
+        }
+        Returns: Json
+      }
+      arcade_claim_run: {
+        Args: {
+          p_club_id: string
+          p_encoding_version: number
+          p_game_key: string
+          p_replay_hash: string
+          p_ruleset_version: string
+          p_run_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      arcade_envelope: {
+        Args: { s: Database["public"]["Tables"]["arcade_run_sessions"]["Row"] }
+        Returns: Json
+      }
+      arcade_finish_run: {
+        Args: {
+          p_club_id: string
+          p_rejection_code: string
+          p_replay_hash: string
+          p_run_id: string
+          p_summary: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      arcade_leaderboard: {
+        Args: {
+          p_club_id: string
+          p_game_key: string
+          p_period: string
+          p_ruleset_version: string
+        }
+        Returns: Json
+      }
+      arcade_lock_access: {
+        Args: {
+          p_club: string
+          p_game: string
+          p_rules: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      arcade_member_eligible: {
+        Args: {
+          p_club: string
+          p_game: string
+          p_rules: string
+          p_user: string
+        }
+        Returns: boolean
+      }
+      arcade_period_start: {
+        Args: { p_at: string; p_period: string }
+        Returns: string
+      }
+      arcade_row_visible: {
+        Args: {
+          p_club: string
+          p_game: string
+          p_member: string
+          p_rules: string
+        }
+        Returns: boolean
+      }
+      arcade_run_status: { Args: { p_run_id: string }; Returns: Json }
+      arcade_start_run: {
+        Args: {
+          p_client_build: string
+          p_club_id: string
+          p_game_key: string
+          p_request_id: string
+          p_ruleset_version: string
+        }
+        Returns: Json
+      }
       award_endless_rewards: {
         Args: { _run_id: string; _wave_reached: number }
         Returns: Json
@@ -15912,6 +16228,27 @@ export type Database = {
           _target_type?: string
         }
         Returns: string
+      }
+      mesomon_can_play: { Args: never; Returns: boolean }
+      mesomon_delete_save: {
+        Args: {
+          p_club_id: string
+          p_expected_revision: number
+          p_expected_user_id: string
+          p_slot: number
+        }
+        Returns: Json
+      }
+      mesomon_save: {
+        Args: {
+          p_club_id: string
+          p_expected_revision: number
+          p_expected_user_id: string
+          p_request_id: string
+          p_slot: number
+          p_state: Json
+        }
+        Returns: Json
       }
       narrative_can_see_campaign: {
         Args: { _campaign: string; _user: string }
