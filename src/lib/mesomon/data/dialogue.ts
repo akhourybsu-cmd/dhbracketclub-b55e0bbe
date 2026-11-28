@@ -176,9 +176,9 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
   ],
   'closing-after': [
     ...say('Port Marche', 'Tavian takes the unfinished letter from his bag. This time he puts it in Nia’s hand.'),
-    ...say('Port Marche', 'He sets the crystal by Edda’s map. Rillik slips out and circles twice on the rope.'),
+    ...say('Port Marche', 'While Nia reads, Rillik pulls a coil of clean rope under the bench and climbs into the middle.'),
     ...say('Nia', 'There goes my good rope. Oh, let it sleep.'),
-    ...say('Port Marche', 'Rillik tucks its nose in and sleeps. On the map, a point along the inland road pulses once.'),
+    ...say('Port Marche', 'Rillik falls asleep against his boot. The blue crystal slows with its breathing. On Edda’s map, the inland road pulses once.'),
   ],
 };
 
