@@ -3,7 +3,7 @@ import { WALK_STEP_MS } from '../input';
 import { MAPS } from '../data/maps';
 import { createNewSave, canWalk } from '../engine';
 import type { TileKind } from '../types';
-import { paintCastShadow, paintFootfall, strideLift, type FieldStep } from './fieldStride';
+import { creatureIdleCel, paintCastShadow, paintFootfall, strideLift, type FieldStep } from './fieldStride';
 import { foregroundForMap, paintForeground } from './foreground';
 
 function print(surface: TileKind, age = 0, direction: FieldStep['direction'] = 'down') {
@@ -15,6 +15,12 @@ function print(surface: TileKind, age = 0, direction: FieldStep['direction'] = '
 describe('grounding on the walking map', () => {
   it('lifts the body a single native pixel during a stride and returns to the ground at rest', () => {
     expect([0, 0.25, 0.5, 0.75, 1].map(strideLift)).toEqual([0, 1, 1, 0, 0]);
+  });
+  it('holds a readable Rillik gesture between rests and gives a hovering creature its own cadence', () => {
+    expect([0, 1640, 1900, 2080].map(time => creatureIdleCel('rillik', time, false))).toEqual([0, 1, 1, 0]);
+    expect(creatureIdleCel('gleamwing', 300, false)).toBe(1);
+    expect(creatureIdleCel('muddren', 300, false)).toBe(0);
+    for (const time of [0, 300, 1800, 2400]) expect(creatureIdleCel('rillik', time, true)).toBe(0);
   });
   it('leaves brief directional footsteps on soft ground and keeps hard surfaces clean', () => {
     expect(print('sand')).toHaveLength(2);
