@@ -224,6 +224,9 @@ function Chapter({
     ? session.dialogue.lines[session.dialogue.index]?.bondShot : undefined;
   const showBondScene = playing && !!bondShot;
   const layersCovered = !!menu || opening || !!fileToDelete;
+  const fieldPaused = !playing || hidden || layersCovered || showBondScene;
+  const pauseOnViewLoad = useRef(fieldPaused);
+  pauseOnViewLoad.current = fieldPaused;
   const scenePaused = !playing || !sceneReady || layersCovered || hidden || sync.blocked;
   const walking = useTapWalk(
     session,
@@ -299,9 +302,7 @@ function Chapter({
         }
         instance = value;
         view.current = value;
-        value.pause(
-          document.hidden || !!menuRef.current || openingRef.current || !playingRef.current,
-        );
+        value.pause(pauseOnViewLoad.current);
         if (current.current) value.update(current.current);
       })
       .catch((error) => {
@@ -324,8 +325,8 @@ function Chapter({
     if (session) view.current?.update(session);
   }, [session]);
   useEffect(() => {
-    view.current?.pause(hidden || layersCovered || !playing || showBondScene);
-  }, [hidden, layersCovered, playing, showBondScene]);
+    view.current?.pause(fieldPaused);
+  }, [fieldPaused]);
   useEffect(() => { audio.current?.pause(scenePaused); }, [scenePaused]);
   useEffect(() => {
     if (!session) return;
@@ -784,7 +785,7 @@ function Chapter({
                   role="img"
                   aria-label={`Port Marche game view. Tavian at ${session.save.player.x}, ${session.save.player.y} in ${getMap(session.save).name}.`}
                 />
-                {showBondScene && bondShot && (
+                {playing && bondShot && (
                   <FirstBondScene shot={bondShot} reducedMotion={reducedMotion} paused={scenePaused} />
                 )}
                 {playing && !artReady && !viewError && (
