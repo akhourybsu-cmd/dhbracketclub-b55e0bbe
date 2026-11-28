@@ -4,9 +4,9 @@ export const say = (speaker: string, ...text: string[]): DialogueLine[] =>
   text.map(line => ({ speaker, text: line }));
 
 export const bramGateReport: DialogueLine[] = [
-  ...say('Bram', 'Saw her go down with a lamp. Never saw her come up. I was on the pumps.'),
+  ...say('Bram', 'I saw her go down with her lamp. Then the pump jammed. If she came back up, I missed her.'),
   ...say('Port Marche', 'Metal rings below the steps. The water falls away from the bars.'),
-  ...say('Bram', 'See the blue paw? That Rillik takes the drop every time.'),
+  ...say('Bram', 'See the blue paw? Every time Rillik gets a grip, the water drops.'),
   ...say('Nia', 'Let me under there. I can hold the frame while Tav turns the wheel.'),
   ...say('Bram', 'Go on, both of you. I’ll keep the steps clear.'),
 ];
@@ -18,28 +18,30 @@ export const closingEvidence: DialogueLine[] = [
 ];
 
 export const closingSupper: DialogueLine[] = [
-  ...say('Port Marche', 'Nia sets out two bowls. She draws Tavian’s chair up beside hers.'),
+  ...say('Port Marche', 'Nia sets out two bowls. Tavian puts his bag under the bench.'),
+  ...say('Tavian', 'The captain can give my bunk to somebody else. I’m staying to find her.'),
   ...say('Nia', 'Last time you left, I heard it from the ferry cook. Will you wake me this time?'),
 ];
 
 export const DIALOGUES: Record<string, DialogueLine[]> = {
   captain: [
-    ...say('Captain', 'Port Marche.'),
-    ...say('Tavian', 'Is that a grey coat on the steps? She wears a lamp at her belt.'),
-    ...say('Captain', 'That’s a gull on a post, lad. Who am I looking for?'),
-    ...say('Tavian', 'Edda Venn. She taught me to read the tides here. Sent for me herself.'),
-    ...say('Port Marche', 'Tavian smooths her letter against the rail. The crease runs through his name.'),
+    ...say('Captain', 'Shall I save you a bunk for the trip back?'),
+    ...say('Tavian', 'Please. My old teacher wants a tide reading. I told the survey crew I’d only be a day.'),
+    ...say('Port Marche', 'Tavian hands him Edda’s letter. She usually writes on both sides. This one fits in three lines.'),
     ...say('Edda’s letter', 'Come home. Bring the core. The harbor is singing in two voices.'),
-    ...say('Captain', 'There’s somebody waving now. Your bag’s by the gangplank.'),
+    ...say('Captain', 'This core she wants. Is that the green stone on your wrist?'),
+    ...say('Tavian', 'Put your thumb on it. Feel the tide? Four years charting the coast and I’ve only felt one beat.'),
+    ...say('Tavian', 'Can you see Edda on the steps? She’ll have a lamp on her belt.'),
+    ...say('Captain', 'I can see somebody waving both arms. Take your bag, lad.'),
   ],
   nia: [
     ...say('Nia', 'Tav! Here, give me that wet bag.'),
     ...say('Port Marche', 'He holds it out. She gets both arms round him.'),
     ...say('Tavian', 'There’s a letter for you in there. I started it three ports ago.'),
-    ...say('Nia', 'I’d like to read it. Any sign of Edda from up there?'),
+    ...say('Nia', 'Save it for supper. Did you see Edda from the boat?'),
     ...say('Tavian', 'I kept looking for her lamp. I thought she’d be here.'),
-    ...say('Nia', 'She missed supper, and now your boat. I went by at midnight. Her lamp was still on.'),
-    ...say('Nia', 'Come on. I’ve got her spare key. Northwest, past the market.'),
+    ...say('Nia', 'So did I. She checked your landing time twice. Missed supper last night, too.'),
+    ...say('Nia', 'I knocked at midnight. Her bench lamp was on. Come on, I’ve got her key. Northwest, past the market.'),
   ],
   workshop: [
     ...say('Tavian', 'Edda? It’s Tav.'),
@@ -84,16 +86,18 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     ...say('Tavian', 'Did you see its back foot? It’s keeping the weight off it.'),
     ...say('Nia', 'Tav, your board!'),
     ...say('Port Marche', 'The clang comes again. The plank drops with the water and splits.'),
-    ...say('Nia', 'I can hold this end. Take the lower walkway.'),
+    ...say('Nia', 'I’ve got this end. Take the gangway to the lower landing.'),
   ],
   'first-bond': [
-    ...say('Port Marche', 'Rillik hooks a wet paw over the split plank and hauls itself up beside Tavian.'),
-    ...say('Tavian', 'You came back. Here, I’ll sit down.'),
-    ...say('Port Marche', 'His cuff ticks. Rillik draws back. Tavian lays his wrist on the plank.'),
-    ...say('Tavian', 'Startled me the first time, too.'),
-    ...say('Port Marche', 'Rillik comes closer and rests a paw on the brass. A crystal buds beneath its toes.'),
-    ...say('Tavian', 'There it is again, under the wharf. Want to come and listen?'),
-    ...say('Field note', 'Rillik walks beside you. In Start, open Companions to call it to rest or release it again.'),
+    { bondShot: 'return', speaker: 'Port Marche', text: 'The plank tips. Rillik lands on the far end. Tavian gets one knee up and grabs the rail.' },
+    { bondShot: 'return', speaker: 'Tavian', text: 'You came back for me.' },
+    { bondShot: 'glow', speaker: 'Port Marche', text: 'Green light shines through his wet sleeve. A beat later, the ring on Rillik’s tail lights up.' },
+    { bondShot: 'glow', speaker: 'Tavian', text: 'Wait. My Edenite bracelet… I felt that. Was that you?' },
+    { bondShot: 'offer', speaker: 'Port Marche', text: 'He rests his open hand on the plank. Rillik sniffs his wrist. Tavian holds still.' },
+    { bondShot: 'touch', speaker: 'Port Marche', text: 'One webbed paw settles on the brass. The green stone and the tail ring pulse together.' },
+    { bondShot: 'bond', speaker: 'Port Marche', text: 'A little blue crystal grows beside the green one. Rillik lifts its paw. Tavian can still feel its heartbeat.' },
+    { bondShot: 'bond', speaker: 'Tavian', text: 'There you are. Come on, then. Let’s find Edda.' },
+    { bondShot: 'bond', speaker: 'Field note', text: 'You and Rillik are bonded. Open Companions in Start to call Rillik to rest or walk together.' },
   ],
   'whistle-accepted': [
     ...say('Pell', 'Seen a silver whistle? Well, tin. Looks silver wet.'),
@@ -148,8 +152,8 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
   ],
   'boss-defeated': [
     ...say('Port Marche', 'The last shard slips back through the tear. The ringing stops. The gap stays open.'),
-    ...say('Tavian', 'The water’s still climbing. Rillik? Same as on the plank.'),
-    ...say('Port Marche', 'He holds out his wrist. Rillik lays a paw on the brass. The two beats fall together.'),
+    ...say('Tavian', 'It’s still rising. Rillik, can you feel my heartbeat? Same as on the plank.'),
+    ...say('Port Marche', 'Tavian holds out his wrist. Rillik presses its paw to the blue crystal. The two beats fall together.'),
     ...say('Field note', 'Send three pulses through the cuff to seal the rift.'),
   ],
   sealed: [
@@ -171,7 +175,7 @@ export const DIALOGUES: Record<string, DialogueLine[]> = {
     ...closingSupper,
   ],
   'closing-after': [
-    ...say('Port Marche', 'Tavian takes the unfinished letter from his bag. Nia sees her name and pockets it.'),
+    ...say('Port Marche', 'Tavian takes the unfinished letter from his bag. This time he puts it in Nia’s hand.'),
     ...say('Port Marche', 'He sets the crystal by Edda’s map. Rillik slips out and circles twice on the rope.'),
     ...say('Nia', 'There goes my good rope. Oh, let it sleep.'),
     ...say('Port Marche', 'Rillik tucks its nose in and sleeps. On the map, a point along the inland road pulses once.'),
