@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MesomonGame } from '@/pages/MesomonPage';
-import { createNewSave, createSession, reduceGame } from '@/lib/mesomon/engine';
+import { createNewSave, createSession, getObjective, getQuestSteps, reduceGame } from '@/lib/mesomon/engine';
 import { createBattle, makeCompanion, startBattleTurn } from '@/lib/mesomon/battle';
 import { DIALOGUES } from '@/lib/mesomon/data/dialogue';
 import type { MesomonSaveV1 } from '@/lib/mesomon/types';
@@ -13,7 +13,7 @@ const fixture = vi.hoisted(() => ({
   deleteSave: vi.fn(async () => {}),
   saveLocal: vi.fn(), flush: vi.fn(async () => {}), retry: vi.fn(async () => {}), reload: vi.fn(async () => {}),
   useCloud: vi.fn(async () => {}), keepLocal: vi.fn(async () => {}),
-  viewCreate: vi.fn(), viewDestroy: vi.fn(), audioCreate: vi.fn(), audioDestroy: vi.fn(),
+  viewCreate: vi.fn(), viewDestroy: vi.fn(), audioCreate: vi.fn(), audioDestroy: vi.fn(), audioCue: vi.fn(),
   blocked:false,blockReason:'',loading:false,
   delayFirstFrame: false,
   firstFrame: undefined as (() => void) | undefined,
@@ -51,7 +51,7 @@ vi.mock('@/lib/mesomon/renderer/createGame', () => ({
 vi.mock('@/lib/mesomon/audio', () => ({ MesomonAudio: class {
   constructor() { fixture.audioCreate(); }
   unlock = async () => {};
-  setSettings = vi.fn(); setScene = vi.fn(); cue = vi.fn(); battleBeat = vi.fn(); pause = vi.fn();
+  setSettings = vi.fn(); setScene = vi.fn(); cue = fixture.audioCue; battleBeat = vi.fn(); pause = vi.fn();
   destroy = () => fixture.audioDestroy();
 } }));
 
@@ -79,6 +79,32 @@ function openStart() {
 }
 
 describe('Mesomon game shell', () => {
+  it('sounds the cuff and bond once per encounter while successive saved lines hold the same shot', async () => {
+    const file = createNewSave();
+    const lines = DIALOGUES['first-bond'];
+    file.settings.reducedMotion = true;
+    file.questFlags.gate_opened = true;
+    file.player = { ...file.player, mapId: 'tide-stairs', x: 13, y: 12 };
+    file.dialogue = { id: 'first-bond', lines, index: 0, onFinish: 'first-bond' };
+    fixture.save = file;
+    mount();
+    await begin();
+    const sceneCues = () => fixture.audioCue.mock.calls.map(([cue]) => cue).filter(cue => ['cuff-answer', 'bond'].includes(cue));
+    const expected: string[] = [];
+    for (const [index, line] of lines.entries()) {
+      expect(document.querySelector('[data-bond-shot]')).toHaveAttribute('data-bond-shot', line.bondShot);
+      if (line.bondShot !== lines[index - 1]?.bondShot) {
+        if (line.bondShot === 'glow') expected.push('cuff-answer');
+        if (line.bondShot === 'bond') expected.push('bond');
+      }
+      expect(sceneCues()).toEqual(expected);
+      fireEvent.click(screen.getByRole('button', {name:'Continue'}));
+    }
+    expect(document.querySelector('[data-bond-shot]')).toBeNull();
+    expect(fixture.saveLocal.mock.calls.at(-1)?.[0].party.map((member: { id: string }) => member.id)).toEqual(['rillik-first']);
+    expect(sceneCues()).toEqual(['cuff-answer', 'bond']);
+  });
+
   it.each(['first frame', 'art failure'])('holds a restored battle for the %s, even under keyboard and touch input', async ready => {
     const file = createNewSave();
     const member = makeCompanion('rillik');
@@ -241,9 +267,12 @@ describe('Mesomon game shell', () => {
     fireEvent.click(fieldcase.getByRole('button', {name: 'Back'}));
     expect(fieldcase.getByRole('button', {name: 'Field Guide'})).toHaveFocus();
     fireEvent.click(fieldcase.getByRole('button', {name: 'Journal'}));
-    expect(fieldcase.getByText('Four years away. One letter from Edda and here I am, cuff and all.')).toBeVisible();
-    expect(fieldcase.getByText('Came ashore on the lower quay.')).toBeVisible();
-    expect(fieldcase.getByText('Nia is waiting at the arrival pier.')).toBeVisible();
+    const entries = getQuestSteps(fixture.save).filter(step => step.complete);
+    expect(entries.map(step => step.id)).toEqual(['captain_met', 'disembarked']);
+    const notes = fieldcase.getAllByRole('listitem');
+    expect(notes).toHaveLength(entries.length);
+    entries.forEach((step, index) => expect(notes[index]).toHaveTextContent(step.label));
+    expect(fieldcase.getByText(getObjective(fixture.save))).toBeVisible();
     expect(fieldcase.queryByText(/Wretch|sealed rift|upper channel/i)).toBeNull();
     expect(fieldcase.queryByRole('heading', { name: 'On the quay' })).toBeNull();
   });

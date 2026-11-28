@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { bondFighter, createBattle, makeCompanion, resolveBattleTurn } from '@/lib/mesomon/battle';
+import { DIALOGUES } from '@/lib/mesomon/data/dialogue';
 import { MOVES, SPECIES } from '@/lib/mesomon/data/species';
 import { createNewSave, createSession, reduceGame } from '@/lib/mesomon/engine';
 import { habitatSeed, individualStats, statBounds, strikeDamage } from '@/lib/mesomon/individuals';
@@ -15,6 +16,33 @@ function finishScene(save: MesomonSaveV1, event: StoryEvent) {
 }
 
 describe('Port Marche individuals', () => {
+  it('reopens every illustrated bond beat and awards the same Rillik once at the end', () => {
+    const file = createNewSave(1, 150);
+    const lines = DIALOGUES['first-bond'];
+    expect([...new Set(lines.map(line => line.bondShot))]).toEqual(['return', 'glow', 'offer', 'touch', 'bond']);
+    file.dialogue = { id: 'first-bond', lines, index: 0, onFinish: 'first-bond' };
+    let session = createSession(file);
+    for (const [index, line] of lines.entries()) {
+      const persisted = migrateSave(JSON.parse(JSON.stringify(session.save)));
+      expect(persisted?.party).toHaveLength(0);
+      expect(persisted?.dialogue?.index).toBe(index);
+      expect(persisted?.dialogue?.lines[index]).toEqual(line);
+      session = reduceGame(createSession(persisted!), { type: 'advance' });
+    }
+    expect(session.save.party.map(member => member.id)).toEqual(['rillik-first']);
+    expect(session.save.collection['rillik-first']).toEqual(session.save.party[0]);
+    expect(session.save.questFlags.companion_released).toBe(true);
+    expect(finishScene(session.save, 'first-bond').party).toEqual(session.save.party);
+  });
+
+  it('finishes a previously saved first bond with its original lines', () => {
+    const file = createNewSave(1, 150);
+    file.dialogue = { id: 'first-bond', lines: [{ speaker: 'Tavian', text: 'There you are.' }], index: 0, onFinish: 'first-bond' };
+    const restored = migrateSave(file)!;
+    expect(restored.dialogue?.lines[0]).toEqual(file.dialogue.lines[0]);
+    expect(reduceGame(createSession(restored), { type: 'advance' }).save.party).toHaveLength(1);
+  });
+
   it('rolls all attributes within each species’ bounds, including both ends', () => {
     for (const speciesId of Object.keys(SPECIES) as SpeciesId[]) {
       const rolls = Array.from({ length: 256 }, (_, i) => individualStats(speciesId, i));

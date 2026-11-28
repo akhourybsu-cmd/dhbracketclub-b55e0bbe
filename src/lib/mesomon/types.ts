@@ -47,7 +47,9 @@ export interface BattleState {
 export type BattleAction = { type: 'move'; moveId: MoveId } | { type: 'guard' }
   | { type: 'switch'; index: number } | { type: 'item'; itemId: 'tincture' }
   | { type: 'resonate' } | { type: 'flee' };
-export interface DialogueLine { speaker: string; text: string; }
+export const BOND_SHOTS = ['return', 'glow', 'offer', 'touch', 'bond'] as const;
+export type BondShot = typeof BOND_SHOTS[number];
+export interface DialogueLine { speaker: string; text: string; bondShot?: BondShot; }
 export interface DialogueChoice { id: 'warm' | 'wry' | 'direct'; label: string; text: string; }
 export interface NarrativeVariant {
   when?: { all?: string[]; none?: string[]; tone?: DialogueChoice['id'] };

@@ -1,5 +1,5 @@
 import type { MapDefinition } from '../types';
-import { bypassMain, intakeStrainer, scupperWall, stairCheeks, timberCrib } from '../data/tideObstacles';
+import { bypassMain, intakeStrainer, rillikBasin, rillikGangway, rillikLanding, scupperWall, stairCheeks, timberCrib } from '../data/tideObstacles';
 
 export interface TideworksState { gateOpen: boolean; sluiceOpen: boolean; sealed: boolean }
 
@@ -450,6 +450,47 @@ export function paintTideworks(ctx: CanvasRenderingContext2D, map: MapDefinition
     for (const offset of [2, length - 3]) {
       rect('#4c5144', cribX + offset, cribY + 2, 4, 13);
       rect('#a69a78', cribX + offset, cribY + 2, 2, 11);
+    }
+
+    // The catch basin has a wet, impassable bed. Rillik clings to the grate
+    // above it. Tavian can reach the little landing only from the west bank.
+    const bx = rillikBasin.x * 16, by = rillikBasin.y * 16;
+    const bw = rillikBasin.width * 16, bh = rillikBasin.height * 16;
+    rect('#65776c', bx, by, bw, bh);
+    rect('#b2ad8c', bx + 1, by, bw - 2, 2);
+    rect('#293f43', bx + 2, by + 2, bw - 4, bh - 4);
+    rect('#35585c', bx + 4, by + 6, bw - 7, bh - 10);
+    rect('#3e686a', bx + 6, by + 11, bw - 13, bh - 17);
+    for (const [dx, dy, width] of [[9, 12, 7], [39, 13, 9], [34, 36, 11], [12, 51, 12], [44, 48, 6]]) {
+      rect('#648780', bx + dx, by + dy, width, 1);
+      rect('#4b706e', bx + dx + 3, by + dy + 2, width - 2, 1);
+    }
+    const gx = rillikGangway.x * 16, gy = rillikGangway.y * 16;
+    const lx = rillikLanding.x * 16, ly = rillikLanding.y * 16;
+    // A section of iron mesh breaks the water beside the dry landing.
+    rect('#293c3e', lx + 2, ly - 12, 12, 12);
+    for (const offset of [3, 7, 11]) {
+      rect('#899487', lx + offset, ly - 12, 1, 11);
+      rect('#606f65', lx + 2, ly - offset, 12, 1);
+    }
+    const deck = (x: number, y: number, width: number) => {
+      rect('#353c36', x, y + 2, width, 14);
+      for (let dx = 0; dx < width; dx += 4) {
+        rect('#987a56', x + dx, y + 1, 4, 12);
+        rect('#c5a378', x + dx, y + 1, 1, 11);
+        rect('#796047', x + dx + 1, y + 11, 3, 2);
+      }
+      for (const dy of [2, 10]) rect('#5d604e', x + 1, y + dy, width - 2, 1);
+    };
+    deck(lx, ly, 16);
+    if (state.gateOpen) deck(gx, gy, 16);
+    else {
+      // The raised half presents a narrow barred face, with water visible
+      // between its tip and the fixed landing.
+      rect('#394746', gx, gy - 3, 5, 17);
+      rect('#ab9167', gx, gy - 4, 3, 17);
+      rect('#d3bc8a', gx, gy - 4, 4, 2);
+      for (const dy of [1, 7]) rect('#5d6054', gx, gy + dy, 4, 2);
     }
     return;
   }

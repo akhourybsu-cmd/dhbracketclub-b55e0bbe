@@ -156,9 +156,22 @@ def person(name, facing, step, index):
     if facing == 'right':
         im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     if name == 'tavian':
-        cuff = 3 if facing in ('left', 'up') else 11
-        im.putpixel((cuff, 11), colors['g'])
-        im.putpixel((cuff + 1, 11), colors['a'])
+        # Fitted to his left wrist: screen right when facing us, screen left
+        # from behind. In right profile the far wrist peeks past the coat.
+        pen = ImageDraw.Draw(im)
+        cuff_x = {'down': 11, 'left': 4, 'right': 10, 'up': 2}[facing]
+        cuff_y = 11 + (step == 2) - (step == 1)
+        if index == 12:
+            cuff_x, cuff_y = 13, 10
+            pen.line((11, 9, 13, 9), fill=colors['L'])
+        pen.line((cuff_x, cuff_y, cuff_x + 2, cuff_y), fill='#b98a53')
+        pen.point((cuff_x, cuff_y), fill='#f1cf87')
+        pen.point((cuff_x + 1, cuff_y), fill='#b3f2d1')
+        pen.line((cuff_x, cuff_y + 1, cuff_x + 1, cuff_y + 1), fill=colors['s'])
+        if view != 'up':
+            # One stray lock above the lit cheek; collar, not a glowing bib.
+            pen.point((10 if facing == 'right' else 5, bob + 4), fill=colors['d'])
+            pen.line((6, 8 + bob, 8, 8 + bob), fill='#d4ad77')
     # A single narrow crest glint keeps the hair volume legible on dark floors.
     for x, y in ((5, 2 + bob), (6, 2 + bob), (4, 3 + bob)):
         if im.getpixel((x, y)) == colors['h']:
@@ -172,22 +185,6 @@ def person(name, facing, step, index):
 # large illustrated plates. k/s/c/l = outline, near shade, body and upper face;
 # a/g = local markings, and n/w = pupil and glint.
 CREATURES = {
-    'rillik': (
-        ('#273c4a','#44576c','#638897','#a4bfbd','#7dbeac','#dce9c8','#26313c','#f7deb1'),
-        ('..k...k.........', '..lk..lk........', '..lck.lck....kk.', '..kakklak...kack',
-         '...lccck....kgsk', '..kllccsk...kack', '..kncclnsk...csk',
-         '..lglnglck..kssk', '...kgglcsk.kcck.', '....llcccskcsk..',
-         '...kgglcscssk...', '...kgllsscck....', '...klskscsk.....', '...kck.kck......'),
-        ('...k..k.........', '...lk.lck.......', '...laklck....kk.',
-         '...klccsk...kack', '..kllccsk...kgsk', '.kncclcsk...kack',
-         'kgglccsck....csk', '.kgglccllk..kssk', '...kgllcclckcck.',
-         '...kglcssccssk..', '...kllcskcsk....', '...ksck..lck....',
-         '...klk..kck.....'),
-        ('..k...k.........', '..lck.lck.......', '..kak.kak....kk.',
-         '..klcklck...kack', '...clcck....kgsk', '..kllccsk...kack',
-         '..klllccsk...csk', '..kcllcssk..kssk', '...kcccsk..kcck.',
-         '....lclcskkcsk..', '...kccclcsssk...', '...kclscssck....',
-         '...ksckkcsk.....', '...kck.kck......')),
     'muddren': (
         ('#3d4035','#5b5e47','#84916b','#b2b586','#b7935f','#e3c789','#302e2a','#eedaa0'),
         ('......kkk.......', '....kagllsk.....', '..kallscssckk...',
@@ -246,8 +243,56 @@ CREATURES = {
          '.klsck..kck.sk..', '.ckk...klsk..l..', '.......ksck.....', '........sk......')),
 }
 
+# Three views of the river animal. The raised tail sits on a separate plane:
+# its ring and finely tapered tip move together without stretching the back.
+RILLIK_VIEWS = {
+    'down': (
+        '...c...s', '...lc..lc', '...laclalc', '...klsklsk',
+        '...kllccck', '..ksllccssk', '..kowllwosk', '..kllngllsk',
+        '...kggglsk', '...ksgglcck', '...ksgglcssk', '...ksglccssk',
+        '...klsccscsk', '...klskscsk', '...kck..kck', '..klsk.kllsk'),
+    'left': (
+        '.....c..s', '....lc.lc', '...laclac', '...klcklsk',
+        '...kllcckk', '..kllllcsk', '.kowcclcsk', 'nggllccsskk',
+        '.kgggllclcckk', '..ksgglcclccsk', '...kgglccccssk',
+        '...klsclscscssk', '...klskscskcck', '...kck..kk.kck',
+        '..klsk....klsk'),
+    'up': (
+        '...c...s', '...lc..lc', '...laclalc', '...klsklsk',
+        '...klllcck', '..kllclccsk', '..ksclccssk', '...kllccsk',
+        '...kclccsk', '...kllcccsk', '...kslcccssk', '...kclcccssk',
+        '...klsccscsk', '...ksckscsk', '...kck..kck', '..klsk.kllsk'),
+}
+
+
+def river_companion(facing, step):
+    colors = palette(dict(k='#273840', s='#475467', c='#637e91', l='#a0b6b8',
+                          a='#92cbb6', g='#e6d9b9', w='#e9cd9a', o='#b57e41',
+                          n='#29313a', j='#bedfcc'))
+    im = Image.new('RGBA', (16, 16))
+    # Tail curls up and back. The dark inner rim makes the glass read as a
+    # ring around the tail even against pale reeds or glints on the water.
+    tail = ('...ksk', '..kssck', '..ksjaj', '...jask', '....csk',
+            '...ksck', '..ksck', 'kscck', 'kssk')
+    profile = facing in ('left', 'right')
+    paint(im, tail, colors, 9, (4 if profile else 3) - step)
+    rows = RILLIK_VIEWS['left' if profile else facing]
+    paint(im, rows, colors, 0, 16 - len(rows))
+    if step:
+        # Rillik tests the footing with the near forepaw; the farther hind
+        # foot stays planted. This also gives the companion a quiet idle pose.
+        x = 2
+        paw = im.crop((x, 14, x + 4, 16))
+        im.paste((0, 0, 0, 0), (x, 14, x + 4, 16))
+        im.paste(paw, (x - 1, 13), paw)
+    if facing == 'right':
+        im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    return im
+
 
 def field_creature(name, facing, step):
+    if name == 'rillik':
+        return river_companion(facing, step)
     colors, front, side, back = CREATURES[name]
     rows = front if facing == 'down' else back if facing == 'up' else side
     pigments = palette(dict(zip('ksclagnw', colors)))

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { makeCompanion } from '@/lib/mesomon/battle';
+import { rillikBasin, rillikGangway, rillikLanding } from '@/lib/mesomon/data/tideObstacles';
 import { fieldObstaclesForMap } from '@/lib/mesomon/data/fieldObstacles';
 import { MAPS } from '@/lib/mesomon/data/maps';
 import { canWalk, createNewSave, createSession, DELTAS, getVisibleObjects, reduceGame } from '@/lib/mesomon/engine';
@@ -15,6 +17,11 @@ function saveAt(mapId: MapId, flags: string[] = [], position = MAPS[mapId].spawn
   const save = createNewSave(1, 100);
   Object.assign(save.player, { mapId, ...position });
   for (const flag of flags) save.questFlags[flag] = true;
+  if (flags.includes('rillik_bonded')) {
+    const rillik = makeCompanion('rillik', 'rillik-first', 100);
+    save.party = [rillik];
+    save.collection[rillik.id] = structuredClone(rillik);
+  }
   if (flags.includes('rift_sealed')) save.rifts['port-marche'] = 'sealed';
   return save;
 }
@@ -51,8 +58,7 @@ const landings: Record<MapId, Point[]> = {
   ship: [MAPS.ship.spawn],
   harbor: [MAPS.harbor.spawn, { x: 9, y: 16 }, { x: 34, y: 22 }],
   workshop: [MAPS.workshop.spawn],
-  // Lower walkway includes the landing used after a lost battle.
-  'tide-stairs': [MAPS['tide-stairs'].spawn, { x: 15, y: 6 }, { x: 12, y: 12 }],
+  'tide-stairs': [MAPS['tide-stairs'].spawn, { x: 15, y: 6 }],
   passage: [MAPS.passage.spawn, { x: 18, y: 4 }],
   chamber: [MAPS.chamber.spawn],
 };
@@ -62,28 +68,46 @@ describe('Port Marche field barriers', () => {
     for (const flags of storyVisits[map.id]) {
       const save = saveAt(map.id, flags);
       const seen = reachableFrom(save);
-      // The closed sluice cuts off the east bank. All of it joins the same
-      // walking network once drained; no other isolated patch is intentional.
-      const beyondFlood = ({ x }: Point) => map.id === 'passage' && !save.questFlags.sluice_open && x >= 12;
+      const behindGate = ({ x, y }: Point) =>
+        (map.id === 'passage' && !save.questFlags.sluice_open && x >= 12)
+        || (map.id === 'tide-stairs' && !save.questFlags.gate_opened &&
+          ((x === rillikLanding.x && y === rillikLanding.y) || (x === 13 && y === 11)));
       const disconnected: string[] = [];
       const wronglyConnected: string[] = [];
       for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
         if (!canWalk(save, x, y)) continue;
         const tile = { x, y };
-        if (beyondFlood(tile)) {
+        if (behindGate(tile)) {
           if (seen.has(key(tile))) wronglyConnected.push(key(tile));
         } else if (!seen.has(key(tile))) disconnected.push(key(tile));
       }
       expect(disconnected, `${map.id} with ${flags.join(', ')}`).toEqual([]);
-      expect(wronglyConnected, 'Closed sluice has a walkable bypass').toEqual([]);
+      expect(wronglyConnected, 'Closed crossing has a walkable bypass').toEqual([]);
       for (const landing of landings[map.id]) expect(canWalk(save, landing.x, landing.y), key(landing)).toBe(true);
       for (const object of getVisibleObjects(save)) {
         const path = findWalkingPath(save, [object], 1);
-        if (beyondFlood(object)) expect(path, object.id).toBeUndefined();
+        if (behindGate(object)) expect(path, object.id).toBeUndefined();
         else {
           expect(path, object.id).toBeDefined();
           expect(distance(path!.points.at(-1)!, object), object.id).toBeLessThanOrEqual(1);
         }
+      }
+    }
+  });
+
+  it('limits rescue to the dry landing and keeps the catch basin impassable after Rillik leaves', () => {
+    const save = saveAt('tide-stairs', ['bram_met']);
+    const rillik = MAPS['tide-stairs'].objects.find(object => object.id === 'rillik-bond')!;
+    expect(findWalkingPath(save, [rillik], 1)).toBeUndefined();
+    expect(findWalkingPath(save, [rillikGangway], 0)).toBeUndefined();
+    expect(findWalkingPath(save, [rillikLanding], 0)).toBeUndefined();
+    save.questFlags.gate_opened = true;
+    const path = findWalkingPath(save, [rillik], 1)!;
+    expect(path.points.slice(-2)).toEqual([rillikGangway, rillikLanding]);
+    save.questFlags.rillik_bonded = true;
+    for (let x: number = rillikBasin.x; x < rillikBasin.x + rillikBasin.width; x++) {
+      for (let y: number = rillikBasin.y; y < rillikBasin.y + rillikBasin.height; y++) {
+        expect(canWalk(save, x, y), key({ x, y })).toBe(y === rillikLanding.y && (x === rillikGangway.x || x === rillikLanding.x));
       }
     }
   });

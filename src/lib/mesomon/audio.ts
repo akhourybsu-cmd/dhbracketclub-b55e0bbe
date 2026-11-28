@@ -2,7 +2,7 @@ import type { BattleCue, BattleState, MapId, MesomonSettings, SpeciesId } from '
 import { getBattleBeat, getBattleHitSide } from './battlePlayback';
 
 type Scene = MapId | 'battle' | 'boss';
-type Cue = 'ally-hit' | 'enemy-hit' | 'confirm' | 'cancel' | 'menu' | 'bond' | 'seal' | SpeciesId;
+type Cue = 'ally-hit' | 'enemy-hit' | 'confirm' | 'cancel' | 'menu' | 'cuff-answer' | 'bond' | 'seal' | SpeciesId;
 const THEMES: Record<'harbor' | 'workshop' | 'underwharf' | 'battle' | 'boss', number[]> = {
   harbor: [62, 69, 67, 64, 65, 62, 59, 57, 62, 64, 69, 67, 64, 60, 62, 57],
   workshop: [62, 65, 69, 72, 71, 69, 65, 64, 62, 60, 59, 57],
@@ -175,6 +175,11 @@ export class MesomonAudio {
   cue(cue: Cue): void {
     const ctx = this.context;
     if (!ctx || this.paused || this.settings.mute || ctx.state !== 'running') return;
+    if (cue === 'cuff-answer') {
+      this.tone(62, ctx.currentTime, 0.23, this.effects, 'triangle', 0.45);
+      this.tone(74, ctx.currentTime + 0.3, 0.27, this.effects, 'sine', 0.5);
+      return;
+    }
     if (cue === 'ally-hit' || cue === 'enemy-hit') {
       const pitch = cue === 'ally-hit' ? 44 : 56;
       this.tone(pitch + 7, ctx.currentTime, 0.045, this.effects, 'square', 0.19);

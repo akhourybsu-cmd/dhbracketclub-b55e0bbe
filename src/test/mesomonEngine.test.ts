@@ -328,6 +328,24 @@ describe('Mesomon Port Marche chapter', () => {
     expect(replies.size).toBe(3);
   });
 
+  it('changes Tavian’s memory at the arrival pier only as his reason to stay changes', () => {
+    let session = createSession(createNewSave());
+    for (const id of ['captain', 'gangplank', 'nia']) session = interactWith(session, id);
+    const readPier = () => {
+      const encounter = beginInteraction(session, 'departure-pier');
+      const words = encounter.dialogue!.lines.map(line => line.text).join(' ');
+      session = finishDialogue(encounter);
+      return words;
+    };
+    expect(readPier()).toMatch(/Nia.*sailed/);
+    session.save.questFlags.page_found = true;
+    expect(readPier()).toMatch(/show Nia/);
+    session.save.questFlags.chapter_complete = true;
+    session.save.questFlags.ending_seen = true;
+    session = createSession(migrateSave(session.save)!);
+    expect(readPier()).toMatch(/bag.*tonight/);
+  });
+
   it('keeps Nia in one place and lets the harbor recognize the sealed rift on a first visit', () => {
     const save = createNewSave();
     const niaLocations = () => Object.values(MAPS).flatMap(map =>

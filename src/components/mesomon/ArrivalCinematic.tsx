@@ -5,9 +5,21 @@ import { ArrivalArt } from "./cinematic/ArrivalArt";
 import "./arrivalCinematic.css";
 
 const SHOTS = [
-  { id: "sea", duration: 3100, label: "At sea", title: "The Wayfarer", description: "A ferry cuts across the open water toward the harbor." },
-  { id: "letter", duration: 4200, label: "Edda’s letter", title: "“Come home. Bring the core.”", description: "Tavian unfolds a letter aboard the ferry." },
-  { id: "quay", duration: 3300, label: "Chapter I", title: "Port Marche", description: "The quay comes into view from the water." },
+  {
+    id: "sea", duration: 7200, label: "Tavian Merrow", title: "Aboard the Wayfarer",
+    caption: "I left at sixteen to chart the coast. I packed for one summer. That was four years ago.",
+    description: "A ferry approaches the harbor.",
+  },
+  {
+    id: "letter", duration: 5900, label: "Edda Venn · My old teacher", title: "“Come home. Bring the core.”",
+    caption: "“The harbor is singing in two voices.”",
+    description: "Tavian unfolds a letter at the rail.",
+  },
+  {
+    id: "quay", duration: 6700, label: "Tavian Merrow", title: "Port Marche",
+    caption: "I left my charts with the crew and took the first boat home. I’ve been looking for her lamp since dawn.",
+    description: "The quay comes into view.",
+  },
 ] as const;
 
 interface ArrivalCinematicProps {
@@ -143,6 +155,7 @@ export function ArrivalCinematic({ reducedMotion, onFinish }: ArrivalCinematicPr
           <div key={shot.id} className="mm-arrival-lines">
             <span className="mm-arrival-label">{shot.label}</span>
             <h2>{shot.title}</h2>
+            <p>{shot.caption}</p>
             <span className="sr-only">{shot.description}</span>
           </div>
         </div>

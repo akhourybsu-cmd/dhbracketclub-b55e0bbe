@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { SPECIES } from './data/species';
-import type { MesomonSaveV1 } from './types';
+import { BOND_SHOTS, type MesomonSaveV1 } from './types';
 
 const move = z.enum(['brine-snap', 'reedstep', 'resonant-cry', 'tidal-veil', 'bank-break', 'mud-wrap', 'lantern-dust', 'quick-tackle', 'splinter-swipe', 'rift-lash']);
 const species = z.enum(['rillik', 'muddren', 'gleamwing', 'tressel']);
 const integer = (maximum: number) => z.number().int().min(0).max(maximum);
-const line = z.object({ speaker: z.string().max(64), text: z.string().max(700) });
+const line = z.object({ speaker: z.string().max(64), text: z.string().max(700), bondShot: z.enum(BOND_SHOTS).optional() });
 const events = z.enum(['captain-met', 'nia-met', 'workshop-entered', 'clues-complete', 'bram-met', 'gate-opened', 'first-bond', 'boss-introduced', 'sealed', 'page-found', 'chapter-complete', 'whistle-accepted', 'whistle-returned', 'wrong-catch', 'tutorial-complete', 'wild-complete']);
 const direction = z.enum(['up', 'down', 'left', 'right']);
 const npcPosition = z.object({ x: integer(39), y: integer(35), facing: direction });

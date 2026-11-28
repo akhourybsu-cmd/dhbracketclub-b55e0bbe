@@ -1,0 +1,83 @@
+/* Keep every painted detail inside the handheld display in both orientations. */
+.mm-bond-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #102226;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+.mm-bond-scene[data-ready="true"] { opacity: 1; }
+.mm-bond-plate {
+  position: relative;
+  width: min(100cqw, 133.3333cqh);
+  aspect-ratio: 4 / 3;
+  isolation: isolate;
+  overflow: hidden;
+}
+.mesomon .mm-bond-plate img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+  user-select: none;
+  opacity: 0;
+}
+.mm-bond-plate img[data-active="true"] { opacity: 1; }
+/* In the contact painting, the empty socket and the new crystal share
+   these coordinates. Keep the socket brass until the line where it forms. */
+.mm-bond-setting {
+  position: absolute;
+  inset: 0;
+  background-size: 100% 100%;
+  clip-path: polygon(36.7% 69.1%, 42.9% 67.7%, 41% 61.2%, 38% 63%);
+  filter: grayscale(1) sepia(.85) brightness(.58);
+}
+.mm-bond-scene[data-bond-shot="bond"] .mm-bond-setting { opacity: 0; }
+.mm-bond-light { position: absolute; inset: 0; }
+.mm-bond-light span {
+  position: absolute;
+  display: block;
+  width: var(--light-width);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, var(--light-inner), var(--light-rim) 37%, transparent 70%);
+  mix-blend-mode: screen;
+}
+.mm-bond-core, .mm-bond-contact, .mm-bond-tail-linked {
+  --light-inner: #d8ffca9c;
+  --light-rim: #93d7ad59;
+}
+.mm-bond-tail, .mm-bond-crystal {
+  --light-inner: #deffffae;
+  --light-rim: #7acfe666;
+}
+.mm-bond-core { left: 17.7%; top: 53.7%; --light-width: 12%; }
+.mm-bond-tail { left: 89.8%; top: 20.5%; --light-width: 8%; }
+.mm-bond-contact { left: 34.2%; top: 62.8%; --light-width: 14%; }
+.mm-bond-tail-linked { left: 38.5%; top: 13.8%; --light-width: 11%; }
+.mm-bond-crystal { left: 39.8%; top: 65.7%; --light-width: 8%; }
+@media (prefers-reduced-motion: no-preference) {
+  .mm-bond-scene:not([data-still]) { transition: opacity 180ms ease-out; }
+  .mm-bond-scene:not([data-still]) .mm-bond-setting { transition: opacity 420ms ease-out; }
+  .mm-bond-scene:not([data-still]) img { transition: opacity 240ms ease-in-out; }
+  .mm-bond-scene:not([data-still]) .mm-bond-light span { animation: mm-bond-answer 1250ms ease-in-out both; }
+  .mm-bond-scene:not([data-still]) .mm-bond-tail { animation-delay: 520ms; }
+  .mm-bond-scene:not([data-still])[data-bond-shot="bond"] .mm-bond-light span { animation: mm-bond-together 1350ms ease-in-out 2 both; }
+  .mm-bond-scene:not([data-still])[data-paused] .mm-bond-light span { animation-play-state: paused; }
+}
+@keyframes mm-bond-answer {
+  0% { opacity: 0; transform: scale(.58); }
+  48% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: .6; transform: scale(.85); }
+}
+@keyframes mm-bond-together {
+  0%, 100% { opacity: .62; transform: scale(.82); }
+  48% { opacity: 1; transform: scale(1.12); }
+}
