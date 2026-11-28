@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
+    paths: &mesomon_paths
       - '.github/workflows/mesomon.yml'
       - 'src/lib/mesomon/**'
       - 'src/components/mesomon/**'
@@ -33,6 +33,10 @@ on:
       - 'src/lib/onboarding/registry.ts'
       - 'package.json'
       - 'package-lock.json'
+
+  pull_request:
+    branches: [main]
+    paths: *mesomon_paths
 
 permissions:
   contents: read
